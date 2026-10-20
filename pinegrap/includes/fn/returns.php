@@ -80,6 +80,11 @@ define('PG_RETURN_NOTE_MAX', 2000);
 define('PG_RETURN_MAX_LINES', 200);
 
 /**
+ * The most returns the panel list reads at once, newest first.
+ */
+define('PG_RETURN_PANEL_LIMIT', 1000);
+
+/**
  * True when both tables are in the database (2026.11.0).
  *
  * @return bool
@@ -334,6 +339,21 @@ function pg_return_carrier($value)
     return $value;
 }
 
+/**
+ * The carrier as people read it: the name of a carrier the site knows, or the
+ * stored text itself.
+ *
+ * @param string $carrier as pg_return_carrier() stores it
+ * @return string
+ */
+function pg_return_carrier_label($carrier)
+{
+    $carrier = (string) $carrier;
+    $carriers = function_exists('pg_shipping_carriers') ? pg_shipping_carriers() : array();
+
+    return isset($carriers[$carrier]['name']) ? (string) $carriers[$carrier]['name'] : $carrier;
+}
+
 /* ---------------------------------------------------------------------------
    Dates and deadlines
    --------------------------------------------------------------------------- */
@@ -379,18 +399,21 @@ function pg_return_add_days($date, $days)
  * The withdrawal window of a delivery.
  *
  * The 14 days run from the day after the goods were delivered. A known
- * delivery date opens them by itself. Without one (the shipment rows do not
- * keep it yet) the delivery is estimated: three days after the ship date, or
- * the recipient's own expected delivery date when that is later. Both of
- * those may be dates the checkout planned rather than ones that happened, so
- * the later one is taken: an estimate that is too late gives the customer a
- * few days more, one that is too early would cut their legal period short.
+ * delivery date (every parcel of the delivery arrived, pg_return_parcel_delivery())
+ * opens them by itself. Without one the delivery is estimated: three days
+ * after the ship date, the recipient's own expected delivery date, or the day
+ * the latest parcel known to have arrived did, whichever is latest. The first
+ * two may be dates the checkout planned rather than ones that happened, so
+ * the latest is taken: an estimate that is too late gives the customer a few
+ * days more, one that is too early would cut their legal period short.
  *
  * The window is open on every day up to and including the deadline, before
  * the delivery too (a customer may withdraw before the goods arrive).
  *
- * @param array  $dates delivered (known, Y-m-d), ship_date and delivery_date
- *                      (from ship_tos); a missing or empty date is unknown
+ * @param array  $dates delivered (known, Y-m-d), parcel_delivered (the latest
+ *                      parcel that arrived while others have not), ship_date
+ *                      and delivery_date (from ship_tos); a missing or empty
+ *                      date is unknown
  * @param string $today Y-m-d in the site's time zone
  * @return array|null delivered, estimated, deadline, open; null when no date
  *                    is known or today is not a date
@@ -410,6 +433,7 @@ function pg_return_window($dates, $today)
         $candidates = array();
         $ship_date = pg_return_date(isset($dates['ship_date']) ? $dates['ship_date'] : '');
         $expected = pg_return_date(isset($dates['delivery_date']) ? $dates['delivery_date'] : '');
+        $parcel = pg_return_date(isset($dates['parcel_delivered']) ? $dates['parcel_delivered'] : '');
 
         if ($ship_date !== '') {
             $candidates[] = pg_return_add_days($ship_date, PG_RETURN_DELIVERY_DAYS);
@@ -417,6 +441,10 @@ function pg_return_window($dates, $today)
 
         if ($expected !== '') {
             $candidates[] = $expected;
+        }
+
+        if ($parcel !== '') {
+            $candidates[] = $parcel;
         }
 
         if (empty($candidates)) {
@@ -437,6 +465,44 @@ function pg_return_window($dates, $today)
         'deadline'  => $deadline,
         'open'      => (strcmp($today, $deadline) <= 0),
     );
+}
+
+/**
+ * When the parcels of a delivery reached the recipient, from their shipment
+ * rows (shipping_tracking_numbers.delivered_at, 2026.11.0).
+ *
+ * The goods are delivered when the last parcel is, so a delivery date is
+ * known only when every parcel with a number has one. While some have
+ * arrived and others not, the latest known arrival is still a day the goods
+ * were not all delivered before, which the estimate takes into account.
+ *
+ * @param string[] $dates one per parcel with a number: Y-m-d, or '' while unknown
+ * @return array delivered (Y-m-d, or '' unless every parcel arrived), latest
+ *               (the latest known arrival, or '')
+ */
+function pg_return_parcel_delivery($dates)
+{
+    $known = array();
+    $all = true;
+
+    foreach ((array) $dates as $date) {
+        $date = pg_return_date(is_string($date) ? $date : '');
+
+        if ($date === '') {
+            $all = false;
+        } else {
+            $known[] = $date;
+        }
+    }
+
+    if (empty($known)) {
+        return array('delivered' => '', 'latest' => '');
+    }
+
+    sort($known, SORT_STRING);
+    $latest = end($known);
+
+    return array('delivered' => $all ? $latest : '', 'latest' => $latest);
 }
 
 /**
@@ -666,15 +732,16 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
 }
 
 /**
- * Where a delivery stands for a return: whether its goods have left and its
- * withdrawal window.
+ * Where a delivery stands for a return: whether its goods have left, its
+ * parcels and its withdrawal window.
  *
  * @param int    $order_id
  * @param int    $ship_to_id
  * @param string $today Y-m-d, or '' for today in the site's time zone
- * @return array|null ship_to (id, name, ship_date, delivery_date), goods_left,
- *                    window (pg_return_window()); null when the delivery is
- *                    not the order's
+ * @return array|null ship_to (id, name, ship_date, delivery_date,
+ *                    method_code), parcels (number, carrier, delivered),
+ *                    goods_left, window (pg_return_window()); null when the
+ *                    delivery is not the order's
  */
 function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
 {
@@ -686,7 +753,7 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
     }
 
     $ship_to = db_item(
-        "SELECT id, first_name, last_name, ship_date, delivery_date
+        "SELECT id, first_name, last_name, ship_date, delivery_date, shipping_method_code
         FROM ship_tos
         WHERE (id = '" . $ship_to_id . "') AND (order_id = '" . $order_id . "')");
 
@@ -698,22 +765,50 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
         $today = date('Y-m-d');
     }
 
-    $has_tracking = ((int) db_value(
-        "SELECT COUNT(*)
+    // The carrier and delivery columns of a parcel came with 2026.11.0
+    // (11.0.20); before that step only the number is there.
+    $rich = pg_schema_has('shipping_tracking_numbers', 'delivered_at');
+
+    $rows = db_items(
+        "SELECT number" . ($rich ? ", carrier, delivered_at" : "") . "
         FROM shipping_tracking_numbers
-        WHERE (ship_to_id = '" . $ship_to_id . "') AND (TRIM(number) != '')") > 0);
+        WHERE (ship_to_id = '" . $ship_to_id . "') AND (TRIM(number) != '')
+        ORDER BY id");
+
+    $method_code = (string) $ship_to['shipping_method_code'];
+    $default_carrier = function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '';
+    $parcels = array();
+    $arrivals = array();
+
+    foreach ($rows as $row) {
+        $carrier = $rich ? strtolower(trim((string) $row['carrier'])) : '';
+
+        if (($carrier === '') || !function_exists('pg_shipping_carrier_exists') || !pg_shipping_carrier_exists($carrier)) {
+            $carrier = function_exists('pg_shipping_carrier') ? pg_shipping_carrier((string) $row['number'], $method_code, $default_carrier) : '';
+        }
+
+        $delivered = ($rich && ((int) $row['delivered_at'] > 0)) ? date('Y-m-d', (int) $row['delivered_at']) : '';
+        $arrivals[] = $delivered;
+
+        $parcels[] = array(
+            'number'    => trim((string) $row['number']),
+            'carrier'   => $carrier,
+            'delivered' => $delivered,
+        );
+    }
 
     $shipped_quantity = (int) db_value(
         "SELECT COALESCE(SUM(shipped_quantity), 0)
         FROM order_items
         WHERE (order_id = '" . $order_id . "') AND (ship_to_id = '" . $ship_to_id . "')");
 
-    // The shipment rows keep no delivery date yet; once they do, that date
-    // goes in as 'delivered' and the estimate steps aside.
+    $arrived = pg_return_parcel_delivery($arrivals);
+
     $window = pg_return_window(array(
-        'delivered'     => '',
-        'ship_date'     => (string) $ship_to['ship_date'],
-        'delivery_date' => (string) $ship_to['delivery_date'],
+        'delivered'        => $arrived['delivered'],
+        'parcel_delivered' => $arrived['latest'],
+        'ship_date'        => (string) $ship_to['ship_date'],
+        'delivery_date'    => (string) $ship_to['delivery_date'],
     ), $today);
 
     return array(
@@ -722,8 +817,10 @@ function pg_return_delivery_state($order_id, $ship_to_id, $today = '')
             'name'          => trim(trim((string) $ship_to['first_name']) . ' ' . trim((string) $ship_to['last_name'])),
             'ship_date'     => pg_return_date((string) $ship_to['ship_date']),
             'delivery_date' => pg_return_date((string) $ship_to['delivery_date']),
+            'method_code'   => $method_code,
         ),
-        'goods_left' => pg_return_goods_left($has_tracking, $shipped_quantity, (string) $ship_to['ship_date'], $today),
+        'parcels'    => $parcels,
+        'goods_left' => pg_return_goods_left(!empty($parcels), $shipped_quantity, (string) $ship_to['ship_date'], $today),
         'window'     => $window,
     );
 }
@@ -1114,12 +1211,7 @@ function pg_return_present($return, $enabled, $format_date)
     $day = function ($stamp) { return ((int) $stamp > 0) ? date('Y-m-d', (int) $stamp) : ''; };
     $status = (string) $return['status'];
     $reasons = pg_return_reasons();
-    $carrier = (string) $return['carrier'];
-    $carriers = function_exists('pg_shipping_carriers') ? pg_shipping_carriers() : array();
-
-    if (isset($carriers[$carrier]['name'])) {
-        $carrier = (string) $carriers[$carrier]['name'];
-    }
+    $carrier = pg_return_carrier_label((string) $return['carrier']);
 
     // The refund is due once the goods are on their way back, until it is paid.
     $refund = in_array($status, array('shipped', 'received'), true)
@@ -1495,10 +1587,50 @@ function pg_return_request_mail_body($data)
  */
 function pg_return_send_request_mail($return_id)
 {
+    $context = pg_return_mail_context($return_id);
+
+    if ($context === null) {
+        return false;
+    }
+
+    $reasons = pg_return_reasons();
+    $return = $context['return'];
+
+    return (bool) email(array(
+        'to'                 => $context['to'],
+        'to_name'            => $context['customer'],
+        'from_name'          => $context['from_name'],
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => lang(array('string' => 'We received your return request for order #{var:1}', 'vars' => array($context['order_number']))),
+        'format'             => 'html',
+        'body'               => pg_return_request_mail_body(array(
+            'customer'      => $context['customer'],
+            'order_number'  => $context['order_number'],
+            'lines'         => $context['lines'],
+            'reason_label'  => isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : '',
+            'customer_note' => (string) $return['customer_note'],
+            'from_name'     => $context['from_name'],
+        )),
+        'type'               => 'system',
+        'queue'              => true,
+    ));
+}
+
+/**
+ * What every mail about a return needs: the return, the order's billing
+ * address and name, the order number, the lines, and the sender's name.
+ *
+ * @param int $return_id
+ * @return array|null return, to, customer, order_number, lines (name,
+ *                    quantity), from_name; null when the return is gone, the
+ *                    order has no address or the site has no sender
+ */
+function pg_return_mail_context($return_id)
+{
     $return = pg_return_load($return_id);
 
     if (!$return) {
-        return false;
+        return null;
     }
 
     $order = db_item(
@@ -1509,40 +1641,25 @@ function pg_return_send_request_mail($return_id)
     $to = is_array($order) ? trim((string) $order['billing_email_address']) : '';
 
     if (($to === '') || (strpos($to, '@') === false) || !defined('EMAIL_ADDRESS') || (EMAIL_ADDRESS === '')) {
-        return false;
+        return null;
     }
 
-    $from_name = (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== ''))
-        ? ORGANIZATION_NAME
-        : (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : 'Pinegrap');
-
-    $order_number = ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) (int) $order['id'];
-    $customer = trim(trim((string) $order['billing_first_name']) . ' ' . trim((string) $order['billing_last_name']));
-    $reasons = pg_return_reasons();
     $lines = array();
 
     foreach ($return['items'] as $item) {
         $lines[] = array('name' => $item['name'], 'quantity' => $item['quantity']);
     }
 
-    return (bool) email(array(
-        'to'                 => $to,
-        'to_name'            => $customer,
-        'from_name'          => $from_name,
-        'from_email_address' => EMAIL_ADDRESS,
-        'subject'            => lang(array('string' => 'We received your return request for order #{var:1}', 'vars' => array($order_number))),
-        'format'             => 'html',
-        'body'               => pg_return_request_mail_body(array(
-            'customer'      => $customer,
-            'order_number'  => $order_number,
-            'lines'         => $lines,
-            'reason_label'  => isset($reasons[(string) $return['reason']]) ? $reasons[(string) $return['reason']] : '',
-            'customer_note' => (string) $return['customer_note'],
-            'from_name'     => $from_name,
-        )),
-        'type'               => 'system',
-        'queue'              => true,
-    ));
+    return array(
+        'return'       => $return,
+        'to'           => $to,
+        'customer'     => trim(trim((string) $order['billing_first_name']) . ' ' . trim((string) $order['billing_last_name'])),
+        'order_number' => ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) (int) $order['id'],
+        'lines'        => $lines,
+        'from_name'    => (defined('ORGANIZATION_NAME') && (ORGANIZATION_NAME !== ''))
+            ? ORGANIZATION_NAME
+            : (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : 'Pinegrap'),
+    );
 }
 
 /**
@@ -1576,4 +1693,602 @@ function pg_return_notify_staff($return_id, $event)
         'form_id'     => (int) $row['id'],
         'order_total' => ($event === 'shipped') ? 'shipped' : 'requested',
     ));
+}
+
+/* ---------------------------------------------------------------------------
+   The panel: the Returns list (view_returns.php) and one return
+   (view_return.php), for whoever manages the orders
+   --------------------------------------------------------------------------- */
+
+/**
+ * The statuses in which a return still waits on somebody: staff to decide,
+ * the customer to send the goods, the parcel to arrive, the money to go back.
+ *
+ * @return string[]
+ */
+function pg_return_open_statuses()
+{
+    return array('requested', 'approved', 'shipped', 'received');
+}
+
+/**
+ * The statuses a list filter stands for: "open" (the default, also for any
+ * value that is not a filter), one status, or "all".
+ *
+ * @param mixed $filter
+ * @return string[]
+ */
+function pg_return_filter_statuses($filter)
+{
+    if ($filter === 'all') {
+        return pg_return_statuses();
+    }
+
+    $status = pg_return_status($filter);
+
+    return ($status !== '') ? array($status) : pg_return_open_statuses();
+}
+
+/**
+ * The choices of the list's status filter, each with how many returns it
+ * holds.
+ *
+ * @param array $counts status => number of returns
+ * @return array value => label
+ */
+function pg_return_filter_options($counts)
+{
+    $count = function ($status) use ($counts) {
+        return (is_array($counts) && isset($counts[$status])) ? (int) $counts[$status] : 0;
+    };
+
+    $open = 0;
+
+    foreach (pg_return_open_statuses() as $status) {
+        $open += $count($status);
+    }
+
+    $options = array('open' => lang(array('string' => 'Open ({var:1})', 'vars' => array($open))));
+    $all = 0;
+
+    foreach (pg_return_statuses() as $status) {
+        $all += $count($status);
+        $options[$status] = lang(array('string' => '{var:1} ({var:2})', 'vars' => array(pg_return_status_label($status), $count($status))));
+    }
+
+    $options['all'] = lang(array('string' => 'All ({var:1})', 'vars' => array($all)));
+
+    return $options;
+}
+
+/**
+ * How many returns are in each status.
+ *
+ * @return array status => number
+ */
+function pg_return_status_counts()
+{
+    $counts = array();
+
+    if (!pg_returns_ready()) {
+        return $counts;
+    }
+
+    foreach (db_items("SELECT status, COUNT(*) AS number FROM order_returns GROUP BY status") as $row) {
+        $counts[(string) $row['status']] = (int) $row['number'];
+    }
+
+    return $counts;
+}
+
+/**
+ * The returns the list shows, newest request first, each with its order's
+ * number and billing name and its lines.
+ *
+ * @param string[] $statuses
+ * @param int      $limit
+ * @return array[] order_returns rows plus order_number, customer, email, items
+ */
+function pg_returns_panel_rows($statuses, $limit = PG_RETURN_PANEL_LIMIT)
+{
+    $statuses = array_values(array_filter(array_map('pg_return_status', (array) $statuses)));
+
+    if (empty($statuses) || !pg_returns_ready()) {
+        return array();
+    }
+
+    $in = array();
+
+    foreach ($statuses as $status) {
+        $in[] = "'" . e($status) . "'";
+    }
+
+    $rows = db_items(
+        "SELECT
+            order_returns.*,
+            orders.order_number,
+            orders.billing_first_name,
+            orders.billing_last_name,
+            orders.billing_email_address
+        FROM order_returns
+        LEFT JOIN orders ON orders.id = order_returns.order_id
+        WHERE order_returns.status IN (" . implode(', ', $in) . ")
+        ORDER BY order_returns.requested_at DESC, order_returns.id DESC
+        LIMIT " . max(1, (int) $limit));
+
+    if (empty($rows)) {
+        return array();
+    }
+
+    $items = pg_return_items_of(array_map(function ($row) { return (int) $row['id']; }, $rows));
+
+    foreach ($rows as $index => $row) {
+        $rows[$index]['customer'] = trim(trim((string) $row['billing_first_name']) . ' ' . trim((string) $row['billing_last_name']));
+        $rows[$index]['email'] = (string) $row['billing_email_address'];
+        $rows[$index]['items'] = isset($items[(int) $row['id']]) ? $items[(int) $row['id']] : array();
+    }
+
+    return $rows;
+}
+
+/**
+ * A calendar date as the panel prints it, in the site's day and month order.
+ *
+ * @param string $date Y-m-d
+ * @return string '' when the value is not a date
+ */
+function pg_return_day_text($date)
+{
+    $date = pg_return_date($date);
+
+    if ($date === '') {
+        return '';
+    }
+
+    list($year, $month, $day) = array_map('intval', explode('-', $date));
+
+    return (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day'))
+        ? $month . '/' . $day . '/' . $year
+        : $day . '/' . $month . '/' . $year;
+}
+
+/**
+ * A moment as the panel prints it: the date in the site's order and the time
+ * on the site's clock.
+ *
+ * @param int $stamp unix time
+ * @return string '' for 0
+ */
+function pg_return_time_text($stamp)
+{
+    $stamp = (int) $stamp;
+
+    if ($stamp <= 0) {
+        return '';
+    }
+
+    $clock = (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i';
+
+    return pg_return_day_text(date('Y-m-d', $stamp)) . ' ' . date($clock, $stamp);
+}
+
+/**
+ * The refund due date of a return, while it is due: from the moment the
+ * goods are on their way back until the money is.
+ *
+ * @param array $return a row of order_returns
+ * @return string Y-m-d, or ''
+ */
+function pg_return_refund_due($return)
+{
+    if (!in_array((string) $return['status'], array('shipped', 'received'), true)) {
+        return '';
+    }
+
+    $day = function ($stamp) { return ((int) $stamp > 0) ? date('Y-m-d', (int) $stamp) : ''; };
+
+    return pg_return_refund_deadline($day($return['shipped_at']), $day($return['received_at']));
+}
+
+/**
+ * What the approval form offers: the carrier the goods go back with and the
+ * code the customer gives it.
+ *
+ * The carrier is the one the delivery came with (its parcel row, or the one
+ * recognised from the shipping method), else the site's default carrier,
+ * else the one of the latest earlier approval. The code is the one given with
+ * the latest earlier approval for that carrier: a shop's contracted return
+ * code stays the same from one return to the next.
+ *
+ * @param string $delivery_carrier the delivery's carrier key, or ''
+ * @param string $site_default     pg_shipping_default_carrier()
+ * @param array  $previous         earlier approvals, newest first: carrier, carrier_code
+ * @return array carrier, carrier_code
+ */
+function pg_return_approval_defaults($delivery_carrier, $site_default, $previous)
+{
+    $previous = is_array($previous) ? array_values($previous) : array();
+    $carrier = pg_return_carrier($delivery_carrier);
+
+    if ($carrier === '') {
+        $carrier = pg_return_carrier($site_default);
+    }
+
+    if (($carrier === '') && isset($previous[0]['carrier'])) {
+        $carrier = pg_return_carrier($previous[0]['carrier']);
+    }
+
+    $code = '';
+
+    if ($carrier !== '') {
+        foreach ($previous as $row) {
+            $given = pg_return_text(isset($row['carrier_code']) ? $row['carrier_code'] : '', 64);
+
+            if (($given !== '') && (strcasecmp(pg_return_carrier(isset($row['carrier']) ? $row['carrier'] : ''), $carrier) === 0)) {
+                $code = $given;
+                break;
+            }
+        }
+    }
+
+    return array('carrier' => $carrier, 'carrier_code' => $code);
+}
+
+/**
+ * The carrier and code the approval form of a return starts with
+ * (pg_return_approval_defaults()), read from its delivery and the shop's
+ * earlier approvals.
+ *
+ * @param array $return a row of order_returns
+ * @param array|null $state pg_return_delivery_state() of its delivery, when already read
+ * @return array carrier, carrier_code
+ */
+function pg_return_suggested_approval($return, $state = null)
+{
+    if ($state === null) {
+        $state = pg_return_delivery_state($return['order_id'], $return['ship_to_id']);
+    }
+
+    $delivery_carrier = '';
+
+    foreach ((is_array($state) && isset($state['parcels'])) ? $state['parcels'] : array() as $parcel) {
+        if ((string) $parcel['carrier'] !== '') {
+            $delivery_carrier = (string) $parcel['carrier'];
+            break;
+        }
+    }
+
+    $previous = db_items(
+        "SELECT carrier, carrier_code
+        FROM order_returns
+        WHERE
+            (id != '" . (int) $return['id'] . "')
+            AND (decided_at > 0)
+            AND (status != 'rejected')
+            AND (carrier != '')
+        ORDER BY decided_at DESC, id DESC
+        LIMIT 20");
+
+    return pg_return_approval_defaults(
+        $delivery_carrier,
+        function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '',
+        $previous);
+}
+
+/**
+ * What staff may do to a return from its screen, in the order the buttons
+ * come: the moves of pg_return_moves() except the refund, which belongs with
+ * the payment that pays it.
+ *
+ * @param string $status
+ * @return string[] target statuses
+ */
+function pg_return_staff_actions($status)
+{
+    return array_values(array_diff(pg_return_next_statuses($status, 'staff'), array('refunded')));
+}
+
+/**
+ * The fields of a return the audit trail compares: what a move changes,
+ * without the time stamps (the trail keeps its own time).
+ *
+ * @param array|null $row a row of order_returns
+ * @return array
+ */
+function pg_return_audit_fields($row)
+{
+    $fields = array();
+
+    foreach (array('status', 'decision_note', 'carrier', 'carrier_code', 'tracking_number') as $field) {
+        $fields[$field] = is_array($row) && isset($row[$field]) ? (string) $row[$field] : '';
+    }
+
+    return $fields;
+}
+
+/**
+ * A move made by staff, with what follows it: the audit trail line, the
+ * activity log line and, when the request was approved or rejected, the
+ * customer's mail. A rejection needs a note: the customer is told why.
+ *
+ * The caller has checked the person's commerce rights.
+ *
+ * @param int    $return_id
+ * @param string $to
+ * @param array  $options note, carrier, carrier_code, tracking_number (as
+ *                        pg_return_move() takes them)
+ * @param int    $user_id the person making the move
+ * @return array ok, error, return (the row as it is now), mailed
+ */
+function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
+{
+    $options = is_array($options) ? $options : array();
+    $to = pg_return_status($to);
+
+    if (($to === 'rejected') && (pg_return_text(isset($options['note']) ? $options['note'] : '', PG_RETURN_NOTE_MAX) === '')) {
+        return array('ok' => false, 'error' => lang('Tell the customer why the return is rejected.'), 'return' => null, 'mailed' => false);
+    }
+
+    $before = pg_returns_ready() ? db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'") : null;
+
+    $moved = pg_return_move($return_id, $to, array_merge($options, array('by' => 'staff', 'user_id' => (int) $user_id)));
+
+    if (!$moved['ok']) {
+        return array('ok' => false, 'error' => $moved['error'], 'return' => null, 'mailed' => false);
+    }
+
+    $after = $moved['return'];
+    $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $after['order_id'] . "'");
+
+    if ($order_number === '') {
+        $order_number = (string) (int) $after['order_id'];
+    }
+
+    pg_audit('update', 'order_return', (int) $after['id'], pg_return_audit_fields($before), pg_return_audit_fields($after),
+        lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int) $after['id'], $order_number))));
+
+    $vars = array((int) $after['id'], $order_number);
+
+    switch ($to) {
+        case 'approved':
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was approved.', 'vars' => $vars)));
+            break;
+        case 'rejected':
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was rejected.', 'vars' => $vars)));
+            break;
+        case 'shipped':
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as sent back.', 'vars' => $vars)));
+            break;
+        case 'received':
+            log_activity(lang(array('string' => 'The goods of return request {var:1} of order {var:2} were received.', 'vars' => $vars)));
+            break;
+        case 'closed':
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was closed.', 'vars' => $vars)));
+            break;
+    }
+
+    // The move stands whatever happens to the mail.
+    $mailed = in_array($to, array('approved', 'rejected'), true) ? pg_return_send_decision_mail($after['id']) : false;
+
+    return array('ok' => true, 'error' => '', 'return' => $after, 'mailed' => $mailed);
+}
+
+/**
+ * Approves several requests at once, each with the carrier and code its own
+ * screen would offer (pg_return_suggested_approval()) and no note. A return
+ * that is no longer a request is left as it is.
+ *
+ * @param int[] $return_ids
+ * @param int   $user_id
+ * @return array approved, mailed, skipped (counts), errors (list of text)
+ */
+function pg_returns_bulk_approve($return_ids, $user_id = 0)
+{
+    $result = array('approved' => 0, 'mailed' => 0, 'skipped' => 0, 'errors' => array());
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $return_ids))));
+
+    foreach ($ids as $id) {
+        $return = pg_returns_ready() ? db_item("SELECT * FROM order_returns WHERE id = '" . $id . "'") : null;
+
+        if (!$return || ((string) $return['status'] !== 'requested')) {
+            $result['skipped']++;
+            continue;
+        }
+
+        $moved = pg_return_staff_move($id, 'approved', pg_return_suggested_approval($return), $user_id);
+
+        if ($moved['ok']) {
+            $result['approved']++;
+            $result['mailed'] += $moved['mailed'] ? 1 : 0;
+        } else {
+            $result['errors'][] = lang(array('string' => 'Return request #{var:1}: {var:2}', 'vars' => array($id, $moved['error'])));
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * The body of the mail that tells a customer what the shop decided.
+ *
+ * @param array $data status (approved or rejected), customer, order_number,
+ *                    lines (name, quantity), carrier (its name), carrier_code,
+ *                    decision_note, can_mark_sent (the customer may say on
+ *                    the order page that the parcel left), from_name
+ * @return string HTML
+ */
+function pg_return_decision_mail_body($data)
+{
+    $approved = (isset($data['status']) && ($data['status'] === 'approved'));
+    $customer = isset($data['customer']) ? (string) $data['customer'] : '';
+    $order_number = isset($data['order_number']) ? (string) $data['order_number'] : '';
+    $carrier = isset($data['carrier']) ? (string) $data['carrier'] : '';
+    $code = isset($data['carrier_code']) ? (string) $data['carrier_code'] : '';
+    $note = isset($data['decision_note']) ? (string) $data['decision_note'] : '';
+    $items = '';
+
+    foreach ((array) (isset($data['lines']) ? $data['lines'] : array()) as $line) {
+        $items .= '<li>' . h((string) $line['name']) . ' × ' . (int) $line['quantity'] . '</li>';
+    }
+
+    $paragraph = function ($html) {
+        return '<p style="margin:0 0 12px;">' . $html . '</p>';
+    };
+
+    if ($approved) {
+        $title = lang('Your return was approved');
+        $intro = lang(array('string' => 'Your request to return items from order #{var:1} was approved.', 'vars' => array($order_number)));
+
+        if (($carrier !== '') && ($code !== '')) {
+            $how = h(lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)))) . ' <strong>' . h($code) . '</strong>';
+        } elseif ($carrier !== '') {
+            $how = h(lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier))));
+        } elseif ($code !== '') {
+            $how = h(lang('Give the carrier this return code:')) . ' <strong>' . h($code) . '</strong>';
+        } else {
+            $how = h(lang('You can send the goods back now.'));
+        }
+    } else {
+        $title = lang('About your return request');
+        $intro = lang(array('string' => 'We could not accept your request to return items from order #{var:1}.', 'vars' => array($order_number)));
+        $how = '';
+    }
+
+    return '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;background:#f7f7f7;padding:20px;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;padding:24px;border-radius:6px;border:1px solid #e5e5e5;">'
+        . '<h2 style="margin:0 0 16px;font-size:18px;">' . h($title) . '</h2>'
+        . $paragraph(h(lang('Hello')) . (($customer !== '') ? ' ' . h($customer) : '') . ',')
+        . $paragraph(h($intro))
+        . (($items !== '') ? '<ul style="margin:0 0 12px;padding-left:20px;">' . $items . '</ul>' : '')
+        . (($note !== '') ? $paragraph('<strong>' . h(lang('Note from the shop')) . ':</strong> ' . nl2br(h($note))) : '')
+        . (($how !== '') ? '<p style="margin:0 0 12px;padding:12px;background:#eef6fb;border-radius:4px;">' . $how . '</p>' : '')
+        . (($approved && !empty($data['can_mark_sent'])) ? $paragraph(h(lang('Once the parcel is on its way, you can tell us so on your order page.'))) : '')
+        . (!$approved ? $paragraph(h(lang('Please contact us if you have any questions.'))) : '')
+        . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Tells the customer what the shop decided about a request, at the order's
+ * billing address, through the mail queue when the general job runs.
+ *
+ * @param int $return_id
+ * @return bool sent or queued; false when the return is neither approved nor
+ *              rejected, the order has no address or the site has no sender
+ */
+function pg_return_send_decision_mail($return_id)
+{
+    $context = pg_return_mail_context($return_id);
+
+    if ($context === null) {
+        return false;
+    }
+
+    $return = $context['return'];
+    $status = (string) $return['status'];
+
+    if (!in_array($status, array('approved', 'rejected'), true)) {
+        return false;
+    }
+
+    $subject = ($status === 'approved')
+        ? lang(array('string' => 'Your return request for order #{var:1} was approved', 'vars' => array($context['order_number'])))
+        : lang(array('string' => 'About your return request for order #{var:1}', 'vars' => array($context['order_number'])));
+
+    return (bool) email(array(
+        'to'                 => $context['to'],
+        'to_name'            => $context['customer'],
+        'from_name'          => $context['from_name'],
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => $subject,
+        'format'             => 'html',
+        'body'               => pg_return_decision_mail_body(array(
+            'status'        => $status,
+            'customer'      => $context['customer'],
+            'order_number'  => $context['order_number'],
+            'lines'         => $context['lines'],
+            'carrier'       => pg_return_carrier_label((string) $return['carrier']),
+            'carrier_code'  => (string) $return['carrier_code'],
+            'decision_note' => (string) $return['decision_note'],
+            'can_mark_sent' => pg_returns_customer_enabled(),
+            'from_name'     => $context['from_name'],
+        )),
+        'type'               => 'system',
+        'queue'              => true,
+    ));
+}
+
+/**
+ * The user names of some people, by id.
+ *
+ * @param int[] $user_ids
+ * @return array user id => name
+ */
+function pg_return_user_names($user_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $user_ids))));
+    $names = array();
+
+    if (empty($ids)) {
+        return $names;
+    }
+
+    foreach (db_items("SELECT user_id, user_username FROM user WHERE user_id IN (" . implode(',', $ids) . ")") as $row) {
+        $names[(int) $row['user_id']] = (string) $row['user_username'];
+    }
+
+    return $names;
+}
+
+/**
+ * The returns of an order as the panel's order screen lists them: each with
+ * its status, when it was asked and how many items, linked to its screen.
+ *
+ * @param array $rows each: id, status, requested_at, items (pg_returns_of_order())
+ * @return string HTML, or '' when the order has none
+ */
+function pg_returns_panel_card_html($rows)
+{
+    if (!is_array($rows) || empty($rows)) {
+        return '';
+    }
+
+    $lines = '';
+
+    foreach ($rows as $row) {
+        $quantity = 0;
+
+        foreach ((array) (isset($row['items']) ? $row['items'] : array()) as $item) {
+            $quantity += (int) $item['quantity'];
+        }
+
+        $status = (string) $row['status'];
+
+        $lines .= '<div class="row align-items-center mb-1">
+                        <span class="col"><a class="link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
+                        . '<span class="d-block small text-muted">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
+                        <span class="col-auto text-end"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
+                    </div>';
+    }
+
+    return '<div class="card mt-3">
+                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
+                    <a class="btn btn-sm btn-outline-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
+                </div>
+                <div class="card-body">
+                    ' . $lines . '
+                </div>
+            </div>';
+}
+
+/**
+ * The Returns card of the panel's order screen (view_order.php).
+ *
+ * @param int $order_id
+ * @return string HTML, or '' when the order has no returns
+ */
+function pg_returns_panel_card($order_id)
+{
+    return pg_returns_panel_card_html(pg_returns_of_order($order_id));
 }

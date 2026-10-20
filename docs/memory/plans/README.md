@@ -10,7 +10,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule; CI checks done (PR #673)
-- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model and the My Account side done): panel screens, approval mail, iyzico refund and ERP return invoice, reminders, API, the classic order view left
+- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model, My Account side and panel screens done): iyzico refund and ERP return invoice, reminders, staff-recorded requests, API, the classic order view left
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - docker-image.md: Plan (approved 2026-10-19, steps 1-5 built: #565, #621, #689, #737, #797): compose stack, unattended install, README section, GHCR images; owner's panel-update question left
