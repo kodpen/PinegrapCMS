@@ -19,6 +19,7 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 ## What does it write?
 - `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (account card fields the e-document provider needs, nobody to bill), the waybill tie-back, `created_by = 0`, log "Order (#N) was invoiced automatically once it was paid: X".
 - The e-document is not sent: there is no `erp_edoc_queue` worker, so it stays the order screen's next step.
+- Seen on dev (2026-10-20): Payment Received on a bank-transfer order issued its invoice with the account opened under GİB's name; the e-document waited on the order card.
 
 ## What happens when it cannot?
 - A log line and a bell row `action = 'erp_auto_invoice'` (title = the reason, `order_id`, `order_total` = order number) once per order and reason (`erp_alert_auto_invoice_refused()`), shown to `manage_erp`, linking to `view_order.php?id=N#erp_order_documents`. The reason is in the language of the request that tried (the visitor's at checkout).
