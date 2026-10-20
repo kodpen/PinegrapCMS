@@ -29,7 +29,9 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions skill entry (legacy gateways frozen on purpose) is the owner's to add.
 
 ## Open questions?
-- Sipay/Param after PayTR by demand. Bank vPOS direct integrations are per-bank work; prefer a PSP that fronts the banks.
+- Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
+- 3b: `payment_intent.succeeded` for an order still incomplete: alert only, or complete it from the webhook? Owner.
+- Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
 
 ## Where to start?
 - 3b: a generic `payment_callback.php?driver=<key>` calling `notify()`; Stripe's events signed with the webhook secret. Step 4 (PayTR, PayPal v2) appends its ENUM value as 11.0.24 did and reuses `pg_payment_return_modes()`. Read `commerce/payment-drivers.md`, `commerce/payment-driver-stripe.md` first.
