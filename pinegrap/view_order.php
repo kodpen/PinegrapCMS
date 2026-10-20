@@ -2117,12 +2117,13 @@ if (!$_POST) {
 
 	}
 
-    // The refund goes through the driver of the store's Payment Gateway value
-    // (includes/fn/payments.php), only when the payment completed and the
-    // order is not cancelled and still has money on it. The cancel button is
+    // The refund goes through the driver that took the order's payment
+    // (pg_payment_refund_driver(): the gateway's for a card order, the
+    // method's own otherwise), only when the payment completed and the order
+    // is not cancelled and still has money on it. The cancel button is
     // NOT built here - it stays gateway-independent (see $output_cancel_button
     // below) so bank-transfer / cash-on-delivery orders can be cancelled.
-    $refund_driver = pg_payment_refund_driver(defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '');
+    $refund_driver = pg_payment_refund_driver($payment_method);
     $refund_remaining_cents = $total_cents - $refunded_amount_cents;
     $refund_offered = ($refund_driver !== '')
         && $transaction_id
@@ -2309,13 +2310,15 @@ if (!$_POST) {
     }
     if ($status != 'cancelled' && $status != 'incomplete') {
 
+        // The same driver process_order_cancellation() asks to void the payment.
+        $cancel_driver = pg_payment_cancel_driver($payment_method);
         $cancel_voids_payment =
-            defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'
+            ($cancel_driver !== '')
             && $transaction_id
             && $total_cents > $refunded_amount_cents;
 
         $cancel_payment_note = $cancel_voids_payment
-            ? '<p class="text-muted small">' . lang('This will void the payment via iyzico.') . '</p>'
+            ? '<p class="text-muted small">' . lang(array('string' => 'This will void the payment via {var:1}.', 'vars' => h(pg_payment_driver($cancel_driver)['label']))) . '</p>'
             : ($total_cents > 0
                 ? '<p class="text-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>'
                 : '');
@@ -2928,9 +2931,9 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // The driver of the store's Payment Gateway value gives the money back,
-        // the same one the modal was offered for.
-        $refund_driver = pg_payment_refund_driver(defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '');
+        // The driver that took the order's payment gives the money back, the
+        // same one the modal was offered for.
+        $refund_driver = pg_payment_refund_driver((string) $order_row['payment_method']);
 
         if ($refund_driver === '') {
             $liveform->mark_error('_error', lang('This payment method cannot do that.'));
