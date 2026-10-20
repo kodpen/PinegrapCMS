@@ -41,8 +41,9 @@ function check_for_products_in_cart($request) {
 
     $recipient = isset($request['recipient']) ? $request['recipient'] : array();
 
-    // If there is no active order then return false.
-    if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
+    // If there is no active order then return false. The guest view
+    // (pg_offer_guest_view()) has an empty cart.
+    if (!($_SESSION['ecommerce']['order_id'] ?? '') || pg_offer_guest_view()) {
         return false;
     }
 
