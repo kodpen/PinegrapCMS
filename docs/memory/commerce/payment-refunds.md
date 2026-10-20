@@ -1,6 +1,6 @@
 ---
 name: payment-refunds
-description: Money back through payment drivers: the order screen's refund (the gateway's driver), the cancellation's void (the method's redirect driver), log_name, the outcome lines
+description: Money back through payment drivers (PR #873): the order screen's refund (the gateway's driver), the cancellation's void (the method's redirect driver), log_name, the outcome lines
 ---
 
 ## Which driver gives money back on the order screen?
@@ -27,6 +27,6 @@ description: Money back through payment drivers: the order screen's refund (the 
 - The cancel dialog's "This will void the payment via iyzico." note still follows `ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'`, though a card order is not voided (open question in the plan).
 
 ## How was it verified?
-- `tests/payment_refunds_test.php`: requests through `pg_payment_call()` against a stand-in for iyzico's HTTP client, compared with the statements the old view_order.php and process_order_cancellation() blocks used (copied as `legacy_refunds_*()`), and the outcome against the old log lines for success, refusal with and without a message, no answer and a thrown exception. No running shop or iyzico sandbox.
+- `tests/payment_refunds_test.php`: requests through `pg_payment_call()` against a stand-in for iyzico's HTTP client, compared with the statements the old view_order.php and process_order_cancellation() blocks used (copied as `legacy_refunds_*()`), and the outcome against the old log lines for success, refusal with and without a message, no answer and a thrown exception. A throwaway sandbox (tools/setup_sandbox.sh, iyzico unreachable) gave the same error box, log lines and refund_status as the old code for a card refund, a PWI cancel and a card cancel; no iyzico sandbox.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/order-cancellation-config.md
