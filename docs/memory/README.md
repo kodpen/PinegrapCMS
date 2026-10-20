@@ -6,7 +6,7 @@ Open the index of the folder the task needs, then only the files you need.
 
 ## Memory folders (docs/memory/)
 
-- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (52)
+- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (53)
 - core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (37)
 - data/README.md: Table structures and SQL pitfalls (10)
 - designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (80)

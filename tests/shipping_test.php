@@ -256,3 +256,71 @@ function test_shipment_rows_ready_without_a_database()
 {
 	pg_assert_false(pg_shipment_rows_ready());
 }
+
+// How the order screen reads a parcel row: the carrier and link the row
+// names, else the ones worked out as every screen works them out.
+function test_shipment_view()
+{
+	$named = pg_shipment_view(array('number' => '12345678901', 'carrier' => 'aras', 'status' => 'delivered', 'format_warning' => '1'), 'Standart Teslimat', '');
+	pg_assert_same('aras', $named['carrier'], 'the row names the carrier');
+	pg_assert_true($named['named'], 'named');
+	pg_assert_same('Aras Kargo', $named['carrier_name']);
+	pg_assert_contains('araskargo.com.tr', $named['url'], 'link from the named carrier');
+	pg_assert_same('delivered', $named['status']);
+	pg_assert_true($named['warning'], 'warning flag');
+
+	$guessed = pg_shipment_view(array('number' => '12345678901', 'carrier' => ''), 'MNG Ertesi Gün', 'yurtici');
+	pg_assert_same('mng', $guessed['carrier'], 'guessed from the method code');
+	pg_assert_false($guessed['named'], 'not named');
+	pg_assert_same('created', $guessed['status'], 'no status: created');
+	pg_assert_false($guessed['warning'], 'no warning');
+
+	$own_link = pg_shipment_view(array('number' => '73001234567', 'carrier' => 'yurtici', 'tracking_url' => 'https://www.n11.com/kargo/73001234567'), '', '');
+	pg_assert_same('https://www.n11.com/kargo/73001234567', $own_link['url'], 'the row\'s own link first');
+
+	$bad_link = pg_shipment_view(array('number' => '73001234567', 'carrier' => 'yurtici', 'tracking_url' => 'javascript:alert(1)'), '', '');
+	pg_assert_contains('yurticikargo.com', $bad_link['url'], 'an unsafe stored link is not used');
+
+	$unknown = pg_shipment_view(array('number' => 'ABC-12345', 'carrier' => 'nope', 'status' => 'lost'), 'Standart Teslimat', '');
+	pg_assert_same('', $unknown['carrier'], 'no carrier');
+	pg_assert_same('', $unknown['url'], 'no link');
+	pg_assert_same('created', $unknown['status'], 'an unknown status reads as created');
+}
+
+// The badge of each status.
+function test_shipment_status_badges()
+{
+	pg_assert_same('text-bg-success', pg_shipment_status_class('delivered'));
+	pg_assert_same('text-bg-primary', pg_shipment_status_class('in_transit'));
+	pg_assert_same('text-bg-primary', pg_shipment_status_class('out_for_delivery'));
+	pg_assert_same('text-bg-warning', pg_shipment_status_class('returned'));
+	pg_assert_same('text-bg-danger', pg_shipment_status_class('exception'));
+	pg_assert_same('text-bg-secondary', pg_shipment_status_class('created'));
+	pg_assert_same('text-bg-secondary', pg_shipment_status_class('anything'));
+	pg_assert_same(lang('Recorded'), pg_shipment_status_label('anything'), 'unknown reads as recorded');
+	pg_assert_same(lang('Delivered'), pg_shipment_status_label('delivered'));
+}
+
+// The carrier select: "Automatic" first, naming what it resolves to, then
+// every carrier; labels escaped because the select prints them raw.
+function test_shipment_carrier_options()
+{
+	$options = pg_shipment_carrier_options('Yurtiçi Kargo');
+	pg_assert_same('', reset($options), 'Automatic is the first option');
+	pg_assert_contains('Yurtiçi Kargo', (string) key($options), 'and names the carrier it resolves to');
+	pg_assert_same(count(pg_shipping_carriers()) + 1, count($options), 'every carrier once');
+	pg_assert_contains('aras', array_values($options), 'a carrier key as the value');
+
+	$plain = pg_shipment_carrier_options('');
+	pg_assert_same(h(lang('Automatic')), (string) key($plain), 'nothing to name');
+
+	$escaped = pg_shipment_carrier_options('<b>x</b>');
+	pg_assert_contains('&lt;b&gt;', (string) key($escaped), 'escaped');
+}
+
+// The warning note names the carrier it checked against.
+function test_shipment_warning_text()
+{
+	pg_assert_contains('MNG Kargo', pg_shipment_warning_text('MNG Kargo'));
+	pg_assert_same(lang('This does not look like a tracking number. It was saved anyway.'), pg_shipment_warning_text(''));
+}
