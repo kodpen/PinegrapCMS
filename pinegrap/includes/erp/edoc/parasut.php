@@ -767,7 +767,7 @@ function erp_edoc_parasut_no_product_text($line)
 /**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
- * line's rate when it has one, as its amount otherwise.
+ * line's rate when that rate is its only discount, as its amount otherwise.
  *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
  *                            order_number and order_date (Y-m-d)
@@ -786,14 +786,19 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
             return array('error' => $product['error']);
         }
 
+        // A campaign discount and a typed one apply one after the other
+        // (erp_manual_lines_build()), which no single rate says: such a line
+        // goes with the amount the two came to (discount_amount holds the
+        // sum). The typed rate alone, with no campaign, goes as the rate.
         $discount_rate = (float) ($line['discount_rate'] ?? 0);
+        $as_rate = ($discount_rate > 0) && ((float) ($line['offer_discount_rate'] ?? 0) <= 0);
         $attributes = array(
             'quantity' => (float) $line['quantity'],
             'unit_price' => erp_edoc_parasut_money((int) $line['unit_price']),
             'vat_rate' => (float) $line['tax_rate'],
             'description' => mb_substr(trim((string) $line['description']), 0, 255),
-            'discount_type' => ($discount_rate > 0) ? 'percentage' : 'amount',
-            'discount_value' => ($discount_rate > 0) ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
+            'discount_type' => $as_rate ? 'percentage' : 'amount',
+            'discount_value' => $as_rate ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
         );
 
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
