@@ -13,7 +13,7 @@ description: When the panel's licence check (license_check() in includes/fn/outp
 - Only the first call of a request may ask (a static flag in `license_check()`), so the card and the dot never cost two requests, a forced one included.
 
 ## Why the 15-minute wait?
-- Each attempt may wait up to 10 seconds (`CURLOPT_TIMEOUT`). The old condition ignored `last_check` while `status` was empty, so with the server unreachable every panel page asked twice: three pages, six requests, and up to 20 seconds per page on a timeout. Issue #815.
+- Each attempt may wait up to 10 seconds (`CURLOPT_TIMEOUT`). The old condition ignored `last_check` while `status` was empty, so with the server unreachable every panel page asked twice: three pages, six requests, and up to 20 seconds per page on a timeout. Issue #815, fixed in PR #913.
 
 ## What guards it?
 - `tests/output_test.php`: `test_output_license_check_due_*` (first and forced, the wait after a failure, the 12 hours).
