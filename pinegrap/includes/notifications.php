@@ -312,12 +312,23 @@ function pg_notification_display($notification)
 
 	} elseif ($action == 'order_return') {
 
-		// title is the order number, order_total what happened (requested,
-		// or shipped when the customer sent the goods back) and form_id the
-		// return (pg_return_notify_staff()), whose screen the line opens.
-		$display['title']   = ((string) ($notification['order_total'] ?? '') === 'shipped')
-			? lang('A customer sent back the goods of a return.')
-			: lang('A customer asked to return goods.');
+		// title is the order number, order_total what happened (requested;
+		// shipped when the customer sent the goods back; refund_due and
+		// refund_overdue from the daily reminder) and form_id the return
+		// (pg_return_notify_staff()), whose screen the line opens.
+		switch ((string) ($notification['order_total'] ?? '')) {
+			case 'shipped':
+				$display['title'] = lang('A customer sent back the goods of a return.');
+				break;
+			case 'refund_due':
+				$display['title'] = lang(array('string' => 'The refund of a return is due within {var:1} days.', 'vars' => array(defined('PG_RETURN_REMIND_DAYS') ? PG_RETURN_REMIND_DAYS : 3)));
+				break;
+			case 'refund_overdue':
+				$display['title'] = lang('The refund of a return is overdue.');
+				break;
+			default:
+				$display['title'] = lang('A customer asked to return goods.');
+		}
 		$display['details'] = lang('Order Number') . ': #' . h($notification['title']);
 		$display['url']     = ((int) ($notification['form_id'] ?? 0) > 0)
 			? 'view_return.php?id=' . (int) $notification['form_id']

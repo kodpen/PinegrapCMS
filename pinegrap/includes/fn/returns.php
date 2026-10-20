@@ -85,6 +85,11 @@ define('PG_RETURN_MAX_LINES', 200);
 define('PG_RETURN_PANEL_LIMIT', 1000);
 
 /**
+ * Days before a refund falls due that staff are reminded of it.
+ */
+define('PG_RETURN_REMIND_DAYS', 3);
+
+/**
  * True when both tables are in the database (2026.11.0).
  *
  * @return bool
@@ -1135,6 +1140,11 @@ function pg_return_move($return_id, $to, $options = array())
         return $refuse(lang('The return was changed in the meantime. Open it again.'));
     }
 
+    // From here on a refund falls due, and the daily reminder has to run.
+    if (in_array($to, array('shipped', 'received'), true)) {
+        pg_return_reminder_job_switch_on();
+    }
+
     return array('ok' => true, 'error' => '', 'return' => pg_return_load($return['id']));
 }
 
@@ -1664,13 +1674,13 @@ function pg_return_mail_context($return_id)
 
 /**
  * Tells the shop's staff on the panel bell (and on their subscribed devices)
- * that a customer asked for a return or sent the goods back. The row carries
- * the order number as its title, what happened as order_total ('requested'
- * or 'shipped') and the return as form_id; the sentence around them is built
- * by pg_notification_display().
+ * that a customer asked for a return or sent the goods back, or that a
+ * refund falls due. The row carries the order number as its title, what
+ * happened as order_total and the return as form_id; the sentence around them
+ * is built by pg_notification_display().
  *
  * @param int    $return_id
- * @param string $event requested or shipped
+ * @param string $event requested, shipped, refund_due or refund_overdue
  * @return int|false the notification id
  */
 function pg_return_notify_staff($return_id, $event)
@@ -1691,7 +1701,7 @@ function pg_return_notify_staff($return_id, $event)
         'title'       => ((string) $row['order_number'] !== '') ? (string) $row['order_number'] : (string) (int) $row['order_id'],
         'order_id'    => (int) $row['order_id'],
         'form_id'     => (int) $row['id'],
-        'order_total' => ($event === 'shipped') ? 'shipped' : 'requested',
+        'order_total' => in_array($event, array('shipped', 'refund_due', 'refund_overdue'), true) ? $event : 'requested',
     ));
 }
 
@@ -1977,8 +1987,8 @@ function pg_return_suggested_approval($return, $state = null)
 
 /**
  * What staff may do to a return from its screen, in the order the buttons
- * come: the moves of pg_return_moves() except the refund, which belongs with
- * the payment that pays it.
+ * come: the moves of pg_return_moves() except the refund, which has its own
+ * form because it moves money first (pg_return_refund()).
  *
  * @param string $status
  * @return string[] target statuses
@@ -2291,4 +2301,583 @@ function pg_returns_panel_card_html($rows)
 function pg_returns_panel_card($order_id)
 {
     return pg_returns_panel_card_html(pg_returns_of_order($order_id));
+}
+
+/* ---------------------------------------------------------------------------
+   The refund of a return whose goods are back, and the reminders of refunds
+   falling due
+   --------------------------------------------------------------------------- */
+
+/**
+ * An amount of money as typed ("120", "120.5", "120,50") in minor units.
+ *
+ * @param mixed $value
+ * @return int -1 when the value is not an amount
+ */
+function pg_return_amount_cents($value)
+{
+    if (is_int($value)) {
+        return ($value >= 0) ? $value * 100 : -1;
+    }
+
+    if (!is_string($value) || (preg_match('/^\s*(\d{1,9})(?:[.,](\d{1,2}))?\s*$/', $value, $parts) !== 1)) {
+        return -1;
+    }
+
+    return ((int) $parts[1] * 100) + (isset($parts[2]) ? (int) str_pad($parts[2], 2, '0') : 0);
+}
+
+/**
+ * What the goods of a return cost the customer, from the order's own lines:
+ * each unit's price and its share of the line's tax, less the line's share of
+ * the order discount with the tax taken again on what is left, the way the
+ * ERP spreads the discount (erp_order_lines()). Shipping is not included.
+ *
+ * @param array $lines      order item id => price (a unit, minor units),
+ *                          quantity, tax_total (the line's)
+ * @param array $quantities order item id => how many go back
+ * @param int   $discount   orders.discount
+ * @return int minor units
+ */
+function pg_return_refund_estimate($lines, $quantities, $discount)
+{
+    $lines = is_array($lines) ? $lines : array();
+    $discount = max(0, (int) $discount);
+    $subtotal = 0;
+
+    foreach ($lines as $line) {
+        $subtotal += (int) $line['price'] * max(0, (int) $line['quantity']);
+    }
+
+    $amount = 0;
+
+    foreach ((array) $quantities as $id => $count) {
+        if (!isset($lines[$id])) {
+            continue;
+        }
+
+        $line = $lines[$id];
+        $sold = max(1, (int) $line['quantity']);
+        $count = min(max(0, (int) $count), $sold);
+
+        if ($count === 0) {
+            continue;
+        }
+
+        $base = (int) $line['price'] * $count;
+        $tax = (int) round((int) $line['tax_total'] * $count / $sold);
+        $share = (($discount > 0) && ($subtotal > 0)) ? min($base, (int) round($discount * $base / $subtotal)) : 0;
+
+        if (($share > 0) && ($base > 0)) {
+            $tax = (int) round($tax * ($base - $share) / $base);
+        }
+
+        $amount += $base - $share + $tax;
+    }
+
+    return $amount;
+}
+
+/**
+ * Which line of the ERP's refund lines (erp_order_refund_lines()) each order
+ * line is.
+ *
+ * On the order's own lines a goods line carries its order line's id. An
+ * invoice made from the order lists the goods first and in the order's line
+ * order (erp_order_lines()), so its n-th line is the n-th order line; each
+ * pair is checked by product, and an invoice that does not line up (made or
+ * changed by hand) gives no map.
+ *
+ * @param array $items  order item id => product id, in the order's line order
+ *                      (lines kept for later left out)
+ * @param array $source erp_order_refund_lines(): source, lines (id, product_id)
+ * @return array|null order item id => refund line id
+ */
+function pg_return_erp_line_map($items, $source)
+{
+    if (!is_array($items) || !is_array($source) || !isset($source['lines']) || !is_array($source['lines'])) {
+        return null;
+    }
+
+    $lines = array_values($source['lines']);
+    $map = array();
+
+    if ((isset($source['source']) ? $source['source'] : '') === 'order') {
+        $ids = array();
+
+        foreach ($lines as $line) {
+            $ids[(int) $line['id']] = true;
+        }
+
+        foreach ($items as $item_id => $product_id) {
+            if (!isset($ids[(int) $item_id])) {
+                return null;
+            }
+
+            $map[(int) $item_id] = (int) $item_id;
+        }
+
+        return $map;
+    }
+
+    $position = 0;
+
+    foreach ($items as $item_id => $product_id) {
+        if (!isset($lines[$position]) || ((int) $lines[$position]['product_id'] !== (int) $product_id)) {
+            return null;
+        }
+
+        $map[(int) $item_id] = (int) $lines[$position]['id'];
+        $position++;
+    }
+
+    return $map;
+}
+
+/**
+ * Money as plain text in the site's currency: for logs and mails.
+ *
+ * @param int $cents
+ * @return string
+ */
+function pg_return_money_text($cents)
+{
+    $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '';
+
+    return html_entity_decode(strip_tags(pg_format_money((int) $cents / 100, $symbol)), ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * What a refund of a return would be: what is left to give back on the order,
+ * whether the payment's driver can give it back, and the amount the goods
+ * come to. With the ERP on, the amount is the ERP's own figure for the same
+ * lines (erp_order_refund_amount()), and an issued invoice names the lines a
+ * return invoice will carry.
+ *
+ * @param array $return pg_return_load()
+ * @return array|null order (id, order_number, status, payment_method),
+ *                    refunded, remaining, driver (key, '' when the money
+ *                    cannot be sent back from here), driver_label, estimate,
+ *                    suggested, erp (invoice_id, invoice_number, quantities);
+ *                    null when the order is gone
+ */
+function pg_return_refund_plan($return)
+{
+    $order = db_item("SELECT * FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
+
+    if (!$order) {
+        return null;
+    }
+
+    $status = (string) $order['status'];
+    $refunded = max(0, (int) (isset($order['refunded_amount']) ? $order['refunded_amount'] : 0));
+    $remaining = max(0, (int) $order['total'] - $refunded);
+    $driver = function_exists('pg_payment_refund_driver') ? pg_payment_refund_driver((string) $order['payment_method']) : '';
+
+    // The same conditions the order screen offers its refund on.
+    if (($driver !== '') && ((trim((string) $order['transaction_id']) === '') || in_array($status, array('cancelled', 'incomplete'), true) || ($remaining <= 0))) {
+        $driver = '';
+    }
+
+    $definition = ($driver !== '') ? pg_payment_driver($driver) : null;
+
+    $quantities = array();
+
+    foreach ($return['items'] as $item) {
+        $quantities[(int) $item['order_item_id']] = (isset($quantities[(int) $item['order_item_id']]) ? $quantities[(int) $item['order_item_id']] : 0) + (int) $item['quantity'];
+    }
+
+    $rows = db_items(
+        "SELECT id, product_id, price, quantity, tax_total
+        FROM order_items
+        WHERE (order_id = '" . (int) $order['id'] . "') AND (saved_for_later = 0)
+        ORDER BY id");
+
+    $lines = array();
+    $products = array();
+
+    foreach ($rows as $row) {
+        $lines[(int) $row['id']] = $row;
+        $products[(int) $row['id']] = (int) $row['product_id'];
+    }
+
+    $estimate = pg_return_refund_estimate($lines, $quantities, isset($order['discount']) ? (int) $order['discount'] : 0);
+    $erp = array('invoice_id' => 0, 'invoice_number' => '', 'quantities' => array());
+
+    if (defined('ERP_ENABLED') && ERP_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_refund.php');
+
+        $source = erp_order_refund_lines((int) $order['id']);
+        $map = ($source !== null) ? pg_return_erp_line_map($products, $source) : null;
+        $chosen = array();
+
+        foreach ($quantities as $item_id => $count) {
+            if (($map === null) || !isset($map[$item_id])) {
+                $chosen = array();
+                break;
+            }
+
+            $chosen[$map[$item_id]] = $count;
+        }
+
+        if (!empty($chosen)) {
+            $built = erp_order_refund_amount($source, $chosen);
+
+            if ($built['error'] === '') {
+                $estimate = (int) $built['amount'];
+
+                if ($source['source'] === 'invoice') {
+                    $erp = array(
+                        'invoice_id'     => (int) $source['invoice_id'],
+                        'invoice_number' => (string) $source['invoice_number'],
+                        'quantities'     => $built['quantities'],
+                    );
+                }
+            }
+        }
+    }
+
+    return array(
+        'order'        => array(
+            'id'             => (int) $order['id'],
+            'order_number'   => ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) (int) $order['id'],
+            'status'         => $status,
+            'payment_method' => (string) $order['payment_method'],
+        ),
+        'refunded'     => $refunded,
+        'remaining'    => $remaining,
+        'driver'       => $driver,
+        'driver_label' => is_array($definition) ? (string) $definition['label'] : '',
+        'estimate'     => $estimate,
+        'suggested'    => min($estimate, $remaining),
+        'erp'          => $erp,
+    );
+}
+
+/**
+ * Gives the money of a received return back and marks it refunded.
+ *
+ * Through the payment's driver ('driver': the one that took the order's
+ * payment, pg_payment_refund_driver()), or as a record of a refund made
+ * another way ('manual': a bank transfer, cash; 0 when the money already went
+ * back from the order screen). The return is marked refunded before the
+ * driver is asked, under the order's lock, so a second click or a second
+ * person cannot pay it twice; a refusal puts it back. What was paid back is
+ * added to the order's refunded amount with an order_refunds row; the order's
+ * status and totals stay as they are (a return is not a cancellation).
+ *
+ * The caller has checked the person's commerce rights.
+ *
+ * @param int   $return_id
+ * @param array $options amount (minor units), method (driver or manual),
+ *                       reference (of a manual refund)
+ * @param int   $user_id
+ * @return array ok, error, amount, method, mailed, erp (pg_return_refund_plan()'s)
+ */
+function pg_return_refund($return_id, $options, $user_id = 0)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'amount' => 0, 'method' => '', 'mailed' => false, 'erp' => null);
+    };
+
+    if (!pg_returns_ready() || !pg_schema_has('order_refunds', 'notes') || !pg_schema_has('orders', 'refunded_amount')) {
+        return $fail(lang('Returns are not installed yet: the database has to be updated first.'));
+    }
+
+    $return = pg_return_load($return_id);
+
+    if (!$return) {
+        return $fail(lang('The return could not be found.'));
+    }
+
+    $options = is_array($options) ? $options : array();
+    $method = (isset($options['method']) && ($options['method'] === 'driver')) ? 'driver' : 'manual';
+    $amount = isset($options['amount']) ? (int) $options['amount'] : -1;
+    $lock = pg_return_lock_name($return['order_id']);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return $fail(lang('Another return is being saved for this order. Try again in a moment.'));
+    }
+
+    $release = function () use ($lock) {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+    };
+
+    // Read again under the lock: what the page showed may be gone.
+    $return = pg_return_load($return['id']);
+
+    if (!$return || ((string) $return['status'] !== 'received')) {
+        $release();
+
+        return $fail(lang('Only a return whose goods are back can be refunded.'));
+    }
+
+    $plan = pg_return_refund_plan($return);
+
+    if ($plan === null) {
+        $release();
+
+        return $fail(lang('The order could not be found.'));
+    }
+
+    if (($method === 'driver') && ($plan['driver'] === '')) {
+        $release();
+
+        return $fail(lang('The payment of this order cannot be refunded from here. Refund it another way and record it.'));
+    }
+
+    if (($amount < 0) || (($method === 'driver') && ($amount === 0))) {
+        $release();
+
+        return $fail(lang('The refund amount must be greater than 0.'));
+    }
+
+    if ($amount > $plan['remaining']) {
+        $release();
+
+        return $fail(lang('The refund amount exceeds the remaining refundable amount.'));
+    }
+
+    $before = db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return['id'] . "'");
+    $moved = pg_return_move($return['id'], 'refunded', array('by' => 'staff', 'user_id' => (int) $user_id));
+
+    if (!$moved['ok']) {
+        $release();
+
+        return $fail($moved['error']);
+    }
+
+    $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
+
+    if ($method === 'driver') {
+        $order_row = db_item("SELECT * FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
+        $order_lines = db_items(
+            "SELECT * FROM order_items
+            WHERE (order_id = '" . (int) $return['order_id'] . "') AND (saved_for_later = 0)
+            ORDER BY id ASC");
+
+        $answer = pg_payment_call($plan['driver'], 'refund', array($order_row, $amount, $order_lines));
+
+        foreach ($answer['log'] as $line) {
+            log_activity($line);
+        }
+
+        if (!$answer['success']) {
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0
+                WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
+
+            $release();
+
+            return $fail(((string) $answer['error'] !== '') ? (string) $answer['error'] : lang('The refund could not be made.'));
+        }
+
+        $reference = pg_return_text((string) $answer['refund_reference'], 255);
+    }
+
+    if ($amount > 0) {
+        db("UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + " . $amount . " WHERE id = '" . (int) $return['order_id'] . "'");
+
+        db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, notes, created_at)
+            VALUES (
+                '" . (int) $return['order_id'] . "',
+                '" . $amount . "',
+                '" . (($method === 'driver') ? 'return' : 'return_manual') . "',
+                '" . e($reference) . "',
+                '" . e('Return request #' . (int) $return['id']) . "',
+                NOW())");
+    }
+
+    $release();
+
+    $after = pg_return_audit_fields($moved['return']);
+    $after['refund_amount'] = (string) $amount;
+    $after['refund_method'] = $method;
+    $after['refund_reference'] = $reference;
+
+    $old = pg_return_audit_fields($before);
+    $old['refund_amount'] = '';
+    $old['refund_method'] = '';
+    $old['refund_reference'] = '';
+
+    pg_audit('update', 'order_return', (int) $return['id'], $old, $after,
+        lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int) $return['id'], $plan['order']['order_number']))));
+
+    $vars = array((int) $return['id'], $plan['order']['order_number'], pg_return_money_text($amount));
+
+    log_activity(($method === 'driver')
+        ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
+        : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)));
+
+    return array(
+        'ok'     => true,
+        'error'  => '',
+        'amount' => $amount,
+        'method' => $method,
+        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method) : false,
+        'erp'    => $plan['erp'],
+    );
+}
+
+/**
+ * The body of the mail that tells a customer their money was given back.
+ *
+ * @param array $data customer, order_number, lines (name, quantity), amount
+ *                    (plain text), by_payment (the money went back the way it
+ *                    was paid), from_name
+ * @return string HTML
+ */
+function pg_return_refund_mail_body($data)
+{
+    $customer = isset($data['customer']) ? (string) $data['customer'] : '';
+    $items = '';
+
+    foreach ((array) (isset($data['lines']) ? $data['lines'] : array()) as $line) {
+        $items .= '<li>' . h((string) $line['name']) . ' × ' . (int) $line['quantity'] . '</li>';
+    }
+
+    $paragraph = function ($html) {
+        return '<p style="margin:0 0 12px;">' . $html . '</p>';
+    };
+
+    return '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;background:#f7f7f7;padding:20px;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;padding:24px;border-radius:6px;border:1px solid #e5e5e5;">'
+        . '<h2 style="margin:0 0 16px;font-size:18px;">' . h(lang('Your refund was made')) . '</h2>'
+        . $paragraph(h(lang('Hello')) . (($customer !== '') ? ' ' . h($customer) : '') . ',')
+        . $paragraph(h(lang(array(
+            'string' => 'We received the items you returned from order #{var:1} and refunded {var:2}.',
+            'vars'   => array(isset($data['order_number']) ? (string) $data['order_number'] : '', isset($data['amount']) ? (string) $data['amount'] : '')))))
+        . (($items !== '') ? '<ul style="margin:0 0 12px;padding-left:20px;">' . $items . '</ul>' : '')
+        . (!empty($data['by_payment']) ? $paragraph(h(lang('The money goes back the way you paid. Your bank may take a few days to show it.'))) : '')
+        . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Tells the customer their money was given back, at the order's billing
+ * address, through the mail queue when the general job runs.
+ *
+ * @param int    $return_id
+ * @param int    $amount minor units
+ * @param string $method driver or manual
+ * @return bool sent or queued
+ */
+function pg_return_send_refund_mail($return_id, $amount, $method)
+{
+    $context = pg_return_mail_context($return_id);
+
+    if ($context === null) {
+        return false;
+    }
+
+    return (bool) email(array(
+        'to'                 => $context['to'],
+        'to_name'            => $context['customer'],
+        'from_name'          => $context['from_name'],
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => lang(array('string' => 'Your refund for order #{var:1}', 'vars' => array($context['order_number']))),
+        'format'             => 'html',
+        'body'               => pg_return_refund_mail_body(array(
+            'customer'     => $context['customer'],
+            'order_number' => $context['order_number'],
+            'lines'        => $context['lines'],
+            'amount'       => pg_return_money_text($amount),
+            'by_payment'   => ($method === 'driver'),
+            'from_name'    => $context['from_name'],
+        )),
+        'type'               => 'system',
+        'queue'              => true,
+    ));
+}
+
+/**
+ * Where a refund stands against its deadline: 'due' from PG_RETURN_REMIND_DAYS
+ * days before it up to the day itself, 'overdue' after it, '' otherwise.
+ *
+ * @param string $deadline Y-m-d (pg_return_refund_due())
+ * @param string $today    Y-m-d
+ * @return string
+ */
+function pg_return_reminder_stage($deadline, $today)
+{
+    $deadline = pg_return_date($deadline);
+    $today = pg_return_date($today);
+
+    if (($deadline === '') || ($today === '')) {
+        return '';
+    }
+
+    if (strcmp($today, $deadline) > 0) {
+        return 'overdue';
+    }
+
+    return (strcmp($deadline, pg_return_add_days($today, PG_RETURN_REMIND_DAYS)) <= 0) ? 'due' : '';
+}
+
+/**
+ * Rings the staff's bell for each return whose refund is due within
+ * PG_RETURN_REMIND_DAYS days, and again once it is overdue: once per return
+ * and stage, told apart by the notification rows already written.
+ *
+ * @param string $today Y-m-d, or '' for today
+ * @return array due, overdue (how many were rung)
+ */
+function pg_return_remind_refunds($today = '')
+{
+    $result = array('due' => 0, 'overdue' => 0);
+
+    if (!pg_returns_ready()) {
+        return $result;
+    }
+
+    if (pg_return_date($today) === '') {
+        $today = date('Y-m-d');
+    }
+
+    foreach (db_items("SELECT * FROM order_returns WHERE status IN ('shipped', 'received')") as $row) {
+        $stage = pg_return_reminder_stage(pg_return_refund_due($row), $today);
+
+        if ($stage === '') {
+            continue;
+        }
+
+        $event = 'refund_' . $stage;
+
+        $rung = (int) db_value(
+            "SELECT COUNT(*)
+            FROM notifications
+            WHERE (action = 'order_return') AND (form_id = '" . (int) $row['id'] . "') AND (order_total = '" . $event . "')");
+
+        if (($rung === 0) && pg_return_notify_staff($row['id'], $event)) {
+            $result[$stage]++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Adds the daily refund reminder to the jobs the general job runs, when the
+ * general job is the one running them; a site that schedules each job on its
+ * own keeps its own schedule. Called when a refund starts to fall due.
+ *
+ * @return bool the job is (now) in the list
+ */
+function pg_return_reminder_job_switch_on()
+{
+    if (!function_exists('pg_cron_dispatch_list') || !defined('JOB_DISPATCH_ENABLED') || !JOB_DISPATCH_ENABLED) {
+        return false;
+    }
+
+    $list = pg_cron_dispatch_list();
+
+    if (in_array('return_reminder_job', $list, true)) {
+        return true;
+    }
+
+    $list[] = 'return_reminder_job';
+
+    db("UPDATE config SET job_dispatch = '" . e(implode(',', $list)) . "'");
+
+    return true;
 }

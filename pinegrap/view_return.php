@@ -11,9 +11,12 @@
  *   action=shipped   tracking_number, carrier (the parcel left the customer)
  *   action=received  the goods are back
  *   action=close     the case is settled outside these steps
+ *   action=refund    refund_amount, refund_method (driver or manual),
+ *                    refund_reference: the money back once the goods are here
  *
- * Approving and rejecting mail the customer. Every move is written to the
- * audit trail and the activity log. The refund is not made here.
+ * Approving, rejecting and refunding mail the customer. Every move is written
+ * to the audit trail and the activity log. A refund of an order with an
+ * issued invoice goes on to its return invoice, filled in with the same lines.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,6 +68,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     $action = isset($_POST['action']) ? (string) $_POST['action'] : '';
+
+    // The money back: its own path, because it moves money before it moves
+    // the return (pg_return_refund()).
+    if ($action === 'refund') {
+        $cents = pg_return_amount_cents(isset($_POST['refund_amount']) ? $_POST['refund_amount'] : '');
+
+        if ($cents < 0) {
+            $refuse('refund_amount', lang('Enter the amount to refund, such as 120 or 120.50.'));
+        }
+
+        $refunded = pg_return_refund($return_id, array(
+            'amount'    => $cents,
+            'method'    => isset($_POST['refund_method']) ? (string) $_POST['refund_method'] : 'manual',
+            'reference' => isset($_POST['refund_reference']) ? (string) $_POST['refund_reference'] : '',
+        ), (int) $user['id']);
+
+        if (!$refunded['ok']) {
+            $refuse('_error', $refunded['error']);
+        }
+
+        if ($refunded['amount'] === 0) {
+            $done = lang('The return was marked as refunded.');
+        } elseif ($refunded['mailed']) {
+            $done = lang(array('string' => 'The refund of {var:1} was recorded. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refunded['amount']))));
+        } else {
+            $done = lang(array('string' => 'The refund of {var:1} was recorded, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount']))));
+        }
+
+        // An issued invoice gets its return invoice for the same lines next,
+        // filled in; whoever may use the ERP checks it and saves. Nothing is
+        // issued without them.
+        $erp = $refunded['erp'];
+
+        if (is_array($erp) && ((int) $erp['invoice_id'] > 0) && !empty($erp['quantities'])
+            && defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+
+            $liveform_return = new liveform('add_erp_return');
+            $liveform_return->add_notice(h($done) . ' ' . h(lang('Issue the return invoice for the same lines to finish.')));
+
+            go(PATH . SOFTWARE_DIRECTORY . '/add_erp_return.php?' . http_build_query(array(
+                'invoice_id' => (int) $erp['invoice_id'],
+                'back_order' => (int) $return['order_id'],
+                'qty'        => $erp['quantities'],
+            )));
+        }
+
+        $liveform->add_notice(h($done));
+        go($here);
+    }
 
     if (!isset($targets[$action])) {
         $refuse('_error', lang('Invalid request.'));
@@ -272,11 +324,71 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
             </div>';
 }
 
-// The refund belongs with the payment; until it can be made from here the
-// screen says what is left.
-if ($status === 'received') {
+// The money back, once the goods are here: through the payment's driver when
+// it can give money back (pg_return_refund_plan()), otherwise recorded after
+// it went back another way.
+$refund_plan = ($status === 'received') ? pg_return_refund_plan($return) : null;
+
+if ($refund_plan !== null) {
+    $money = function ($cents) {
+        return pg_format_money((int) $cents / 100, BASE_CURRENCY_SYMBOL);
+    };
+
+    $by_driver = ($refund_plan['driver'] !== '');
+    $method = $field_value('refund_method', $by_driver ? 'driver' : 'manual');
+
+    if (!$by_driver) {
+        $method = 'manual';
+    }
+
+    $output_methods = $by_driver ? '
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="refund_method" id="refund_method_driver" value="driver"' . (($method === 'driver') ? ' checked' : '') . '>
+                                <label class="form-check-label" for="refund_method_driver">' . h(lang(array('string' => 'Refund through {var:1}', 'vars' => array($refund_plan['driver_label'])))) . '</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="refund_method" id="refund_method_manual" value="manual"' . (($method === 'manual') ? ' checked' : '') . '>
+                                <label class="form-check-label" for="refund_method_manual">' . h(lang('Record a refund made another way')) . '</label>
+                            </div>
+                        </div>' : '
+                        <input type="hidden" name="refund_method" value="manual">
+                        <p class="small text-muted">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>';
+
+    $output_erp_note = ((int) $refund_plan['erp']['invoice_id'] > 0) ? '
+                        <p class="small text-muted mb-0 mt-2">' . h(lang(array('string' => 'After the refund, the return invoice for {var:1} opens with the same lines, ready to be checked and issued.', 'vars' => array($refund_plan['erp']['invoice_number'])))) . '</p>' : '';
+
     $output_forms .= '
-            <div class="alert alert-info" role="status"><i class="bi bi-info-circle me-2" aria-hidden="true"></i>' . h(lang('The goods are back. Refund the customer from the order screen or with the payment provider, then close the return.')) . '</div>';
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                </div>
+                <div class="card-body">
+                    <div class="row small mb-3">
+                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('The returned items come to')) . ':</span> <strong>' . $money($refund_plan['estimate']) . '</strong></div>
+                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('Refunded on this order so far')) . ':</span> ' . $money($refund_plan['refunded']) . '</div>
+                        <div class="col-12 col-md-4"><span class="text-muted">' . h(lang('Left to refund on this order')) . ':</span> ' . $money($refund_plan['remaining']) . '</div>
+                    </div>
+                    <form method="post" action="view_return.php">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . $return_id . '">
+                        ' . $output_methods . '
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label for="refund_amount" class="form-label">' . h(lang('Amount to refund')) . '</label>
+                                ' . $liveform->output_field(array('type' => 'number', 'name' => 'refund_amount', 'id' => 'refund_amount', 'value' => number_format($refund_plan['suggested'] / 100, 2, '.', ''), 'min' => '0', 'max' => number_format($refund_plan['remaining'] / 100, 2, '.', ''), 'step' => '0.01', 'inputmode' => 'decimal', 'class' => 'form-control', 'required' => 'required')) . '
+                            </div>
+                            <div class="col-12 col-md-8">
+                                <label for="refund_reference" class="form-label">' . h(lang('Refund reference')) . ' <span class="text-muted fw-normal">(' . h(lang('optional')) . ')</span></label>
+                                ' . $liveform->output_field(array('type' => 'text', 'name' => 'refund_reference', 'id' => 'refund_reference', 'maxlength' => '255', 'class' => 'form-control', 'autocomplete' => 'off')) . '
+                            </div>
+                        </div>
+                        <div class="form-text">' . h(lang('Shipping is not included; add it when the whole order comes back. Enter 0 when the money already went back from the order screen. The reference is kept only with a refund made another way.')) . '</div>
+                        ' . $output_erp_note . '
+                        <button type="submit" name="action" value="refund" class="btn btn-primary mt-3" data-confirm-content="' . h(lang('The refund will be made and the return marked as refunded. The customer is told by e-mail.')) . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h(lang('Refund the Money')) . '</button>
+                    </form>
+                </div>
+            </div>';
 }
 
 // The deliveries' parcels, and how they were recognised.
