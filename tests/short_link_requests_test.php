@@ -118,8 +118,8 @@ function test_short_link_wizard_lists_leave_the_bin_out_but_keep_the_links_own()
 // the request with a 500.
 function test_short_link_classic_screens_read_one_value_per_field()
 {
-	pg_assert_contains("pg_liveform_single_values(\$liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'link_mode', 'duration'));", short_link_requests_test_source('add_short_link.php'), 'add');
-	pg_assert_contains("pg_liveform_single_values(\$liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code'));", short_link_requests_test_source('edit_short_link.php'), 'edit');
+	pg_assert_contains("pg_liveform_single_values(\$liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'link_mode', 'duration', 'redirect_code'));", short_link_requests_test_source('add_short_link.php'), 'add');
+	pg_assert_contains("pg_liveform_single_values(\$liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'redirect_code'));", short_link_requests_test_source('edit_short_link.php'), 'edit');
 }
 
 // Pages and files go to the Recycle Bin by folder: the bin folder, and the

@@ -134,11 +134,20 @@ function test_erp_edoc_parasut_contact_attributes()
 	pg_assert_false($company['is_abroad']);
 	pg_assert_same('muhasebe@example.com', $company['email']);
 
-	$person = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('title' => 'Ayşe Yılmaz', 'is_person' => true, 'tax_office' => '', 'email' => '', 'phone' => '', 'country_code' => 'DE')), '11111111111');
+	// The postal code travels too: the account sync compares it, and a card
+	// opened without it would differ from its account on that field alone.
+	pg_assert_same('35210', $company['postal_code']);
+
+	$person = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('title' => 'Ayşe Yılmaz', 'is_person' => true, 'tax_office' => '', 'email' => '', 'phone' => '', 'country_code' => 'DE', 'postcode' => ' 10115 ')), '11111111111');
 	pg_assert_same('person', $person['contact_type']);
 	pg_assert_same('11111111111', $person['tax_number']);
 	pg_assert_true($person['is_abroad']);
 	pg_assert_false(isset($person['email']));
+	pg_assert_same('10115', $person['postal_code']);
+
+	// A buyer with no postal code is written without one.
+	$none = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('postcode' => '')), '1234567808');
+	pg_assert_false(isset($none['postal_code']));
 }
 
 // The sales invoice body: lines with their rate or amount discounts, the

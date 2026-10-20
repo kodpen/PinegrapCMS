@@ -4,7 +4,8 @@
 #
 # Installs Pinegrap through the real installation screen against a database
 # server that is already running, and fails unless every upgrade step from the
-# starter site's version up to the last version of versions.php went through.
+# starter site's version up to the last version of versions.php went through
+# and the data/config.php it wrote runs and names the database it was given.
 # A fresh installation loads a starter site (data/backups/<starter>/sql.sql,
 # taken at 2021.3) and runs the whole schema history from there, so this is
 # the check that the steps run on a given MySQL or MariaDB version. The
@@ -153,6 +154,16 @@ install_once() {
 		fi
 		echo "Server log:" >&2
 		grep -E 'pinegrap upgrade|PHP (Fatal|Warning)' "$WORK/server.log" | tail -10 >&2 || true
+		return 1
+	fi
+
+	# The version above is read with this script's own connection, so a config.php the
+	# installer wrote but PHP cannot parse (a password with a quote in it) would still pass.
+	# The site only works when the file runs and names the database it was given.
+	if ! php -r 'include $argv[1]; exit(((DB_HOST === $argv[2]) && (DB_USERNAME === $argv[3]) && (DB_PASSWORD === $argv[4]) && (DB_DATABASE === $argv[5])) ? 0 : 1);' \
+		"$WEB_ROOT/data/config.php" "$DB_HOST" "$DB_USERNAME" "$DB_PASSWORD" "$DB_DATABASE" > /dev/null 2>&1; then
+		echo "FAIL ($label): data/config.php does not run, or does not hold the database it was given." >&2
+		php -l "$WEB_ROOT/data/config.php" >&2 || true
 		return 1
 	fi
 

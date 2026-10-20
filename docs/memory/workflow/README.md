@@ -8,3 +8,4 @@ Project overview, owner rules, git and branches, sandbox and dev machine.
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com
+- static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
