@@ -357,6 +357,20 @@ function mp_sync_send_listings($account, &$summary) {
 
 			mp_log($account_id, 'create', false, $result['error'], count($assembled['items']));
 
+			// A refusal the connector made before sending (a barcode their rules
+			// reject, a brand they do not have) is about the article, so it is
+			// shown on the article's row, where the operator fixes it. A
+			// momentary failure is not: the row would blame the article for
+			// their outage.
+			if (empty($result['retry'])) {
+
+				db("UPDATE marketplace_category_map
+					SET last_error = '" . e(mb_substr((string)$result['error'], 0, 500)) . "',
+						updated_timestamp = UNIX_TIMESTAMP()
+					WHERE (account_id = '" . e($account_id) . "') AND (group_id = '" . e($group_id) . "')");
+
+			}
+
 			continue;
 
 		}

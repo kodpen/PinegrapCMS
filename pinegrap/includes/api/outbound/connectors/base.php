@@ -52,6 +52,16 @@ require_once(dirname(dirname(__FILE__)) . '/http.php');
 // whether or not the shop has an account with it, because the account screen
 // has to offer it before there is one.
 //
+// 'shipment_template' marks a provider whose listings name a cargo agreement
+// (the account's shipment_template column); the account screen asks for one
+// only there.
+//
+// 'key' says what the marketplace knows a product by: 'barcode' for one that
+// identifies every listing, stock line and order line by barcode (Trendyol),
+// absent for one that uses the seller's own code (n11, where the code is the
+// product's name here). It decides what a listing sends as the product's key
+// and so what the mapping row stores as remote_code.
+//
 // A field is a text box unless it says 'type' => 'select'; a select carries
 // its 'options' (stored value => label) and the 'default' an unknown answer
 // falls back to, and is never empty, so it is never "required". Labels and
@@ -62,6 +72,7 @@ function mp_providers() {
 		'n11' => array(
 			'name'   => 'n11',
 			'file'   => 'n11.php',
+			'shipment_template' => true,
 			'fields' => array(
 				'app_key'    => array('label' => 'API key',    'secret' => false),
 				'app_secret' => array('label' => 'API secret', 'secret' => true)
@@ -70,6 +81,7 @@ function mp_providers() {
 		'trendyol' => array(
 			'name'   => 'Trendyol',
 			'file'   => 'trendyol.php',
+			'key'    => 'barcode',
 			'help'   => 'All three are in your Trendyol seller panel, under Account Information › Integration Information. The test environment has credentials of its own and only answers servers whose IP address Trendyol has authorised.',
 			'fields' => array(
 				'seller_id'   => array('label' => 'Seller ID',  'secret' => false),
@@ -132,6 +144,14 @@ function mp_provider_credentials($provider, $input) {
 function mp_provider_field_is_select($meta) {
 
 	return isset($meta['type']) && $meta['type'] === 'select';
+
+}
+
+function mp_provider_keys_by_barcode($provider) {
+
+	$providers = mp_providers();
+
+	return isset($providers[$provider]['key']) && $providers[$provider]['key'] === 'barcode';
 
 }
 
