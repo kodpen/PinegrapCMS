@@ -252,7 +252,12 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
              WHERE page_id = '$page_id'");
 
         if ($ok) {
-            $revision_no = (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$page_id'");
+            // The row this INSERT wrote, by its own id: MAX() could already be
+            // the number of another save of the same page.
+            $revision_id = (int) mysqli_insert_id(db::$con);
+            $revision_no = ($revision_id > 0)
+                ? (int) db_value("SELECT revision_no FROM page_revisions WHERE revision_id = '$revision_id' LIMIT 1")
+                : (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$page_id'");
 
             pg_page_revisions_trim($page_id);
 
