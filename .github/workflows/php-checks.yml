@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   checks:
-    name: lint, consistency checks, unit tests and JS syntax (PHP 8.3, Node 20)
+    name: lint, consistency checks, unit tests and JS syntax (PHP 8.3, Node 24)
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -79,10 +79,12 @@ jobs:
         if: ${{ hashFiles('tools/static_analysis.sh') != '' }}
         run: bash tools/static_analysis.sh phpcompat
 
+      # The syntax check, terser (npx, tools/build_js.php) and npm ci + esbuild
+      # (tools/build_code_editor.php) all run on this Node, an LTS line.
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: JavaScript syntax (node --check)
         run: |
