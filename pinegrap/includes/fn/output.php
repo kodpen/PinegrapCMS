@@ -1413,8 +1413,18 @@ function pg_safe_back_url($candidate, $fallback)
         return $fallback;
     }
 
-    // Reject protocol-relative URLs and dangerous schemes outright
-    if (strpos($candidate, '//') === 0) {
+    // Control characters are refused anywhere, before any other reading: a
+    // browser drops tabs and line breaks from an address before it parses it,
+    // so "/<TAB>/evil.com" is followed as "//evil.com" and "java<TAB>script:"
+    // as "javascript:", and CR/LF would split a Location header.
+    if (preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+        return $fallback;
+    }
+
+    // Reject protocol-relative URLs and dangerous schemes outright. A
+    // backslash counts as a slash here: browsers read "/\evil.com" (and
+    // "\\evil.com") as "//evil.com", another host.
+    if ((strpos($candidate, '//') === 0) || (strpos($candidate, '/\\') === 0) || (strpos($candidate, '\\') === 0)) {
         return $fallback;
     }
     $lower = strtolower($candidate);
@@ -1428,16 +1438,20 @@ function pg_safe_back_url($candidate, $fallback)
     }
 
     // Root-relative path — e.g. "/siparis", "/dukkan/urun-1?q=foo".
-    // The protocol-relative "//host" form was already rejected above, so
-    // a single leading "/" is unambiguously same-origin. Reject anything
-    // that contains control characters, which would let an attacker hide
-    // CRLF / NUL sequences inside a Location header.
-    if (strlen($candidate) > 0 && $candidate[0] === '/'
-        && !preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+    // The protocol-relative "//host" and "/\host" forms and control
+    // characters were already rejected above, so a single leading "/" is
+    // unambiguously same-origin.
+    if (strlen($candidate) > 0 && $candidate[0] === '/') {
         return $candidate;
     }
 
-    // Absolute URL: only allow if host matches current request host
+    // Absolute URL: only allow if host matches current request host. Not with
+    // a backslash in it: parse_url() reads "https://evil.com\@site/" as user
+    // "evil.com\" on host "site", a browser as host "evil.com".
+    if (strpos($candidate, '\\') !== false) {
+        return $fallback;
+    }
+
     $parts = @parse_url($candidate);
     if (is_array($parts) && isset($parts['host'])) {
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
