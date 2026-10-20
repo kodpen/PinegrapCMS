@@ -33,7 +33,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
+	upgrade_2026_11_0_order_returns();          // 11.0.11
 
 }
 
@@ -318,6 +320,52 @@ function upgrade_2026_11_0_image_delivery() {
 
 }
 
+// The queue of outgoing text messages (2026.11.0, 11.0.10; pg_sms_enqueue()
+// and pg_sms_queue_run() in includes/fn/sms.php, the SMS tab of the mail
+// queue screen).
+//
+// A request that wants an SMS writes a row here and the general job sends it,
+// so no visitor waits on the provider. A row is sent again only when the
+// provider's answer shows it never took the message (the driver's retry);
+// after a timeout, a 5xx or a run that stopped halfway the provider may have
+// it, the row becomes 'uncertain' and is not sent again by itself, since a
+// text message sent twice cannot be taken back. status is a VARCHAR rather
+// than an ENUM so a state added later (a delivery report) needs no step.
+// expires_at (0: none) is the time after which a message is no longer worth
+// sending, a sign-in code above all. reference names what a message is about
+// ('order:438:received'); it is unique, so a writer that runs twice queues
+// one message, and NULL for a message about nothing in particular.
+// provider and provider_id say who took the message and under which id, for
+// a delivery report or a question to the provider. InnoDB, so the claim
+// (UPDATE ... WHERE status = 'queued') is a row lock.
+function upgrade_2026_11_0_sms_outbox() {
+
+	install_create_table('sms_outbox', "CREATE TABLE sms_outbox (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		send_after   INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		status       VARCHAR(16) NOT NULL DEFAULT 'queued',
+		attempts     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error   VARCHAR(500) NOT NULL DEFAULT '',
+		claimed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind         VARCHAR(16) NOT NULL DEFAULT '',
+		recipient    VARCHAR(16) NOT NULL DEFAULT '',
+		body         TEXT NOT NULL,
+		reference    VARCHAR(64) NULL DEFAULT NULL,
+		provider     VARCHAR(32) NOT NULL DEFAULT '',
+		provider_id  VARCHAR(64) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_reference (reference),
+		KEY idx_due (status, send_after),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS: outgoing text messages wait in a queue that the scheduled general job sends, so no visitor waits on the SMS provider. The queue is on the SMS tab of the mail queue, under Settings, Jobs.');
+
+}
+
 // The shipment row (2026.11.0, 11.0.20; docs/memory/commerce/shipment-row-schema.md).
 //
 // shipping_tracking_numbers held one thing per parcel: its number. Which
@@ -429,5 +477,68 @@ function upgrade_2026_11_0_shipments() {
 	}
 
 	install_note('Shipping: each tracking number now keeps its carrier, status, dates and where it was recorded, a number is recorded once per address, a shipping method can name its carrier, and automatic e-mails gain the "order delivered" action.');
+
+}
+
+
+// Customer returns (2026.11.0, 11.0.11; includes/fn/returns.php).
+//
+// order_returns is one request to send back goods of a completed order: the
+// lines of one delivery (ship_to_id), why (reason, a code of
+// pg_return_reasons(), and the customer's own words), and where it stands.
+// status is a VARCHAR checked in code rather than an ENUM, so a status added
+// later needs no step and an older server never turns one into ''. Each status
+// reached has its own time, because the deadlines are read from them: the
+// refund is due 14 days after the goods reached the carrier (shipped_at), or
+// after they arrived (received_at). decision_note is what staff wrote when
+// approving or rejecting, for the customer; carrier and carrier_code say which
+// carrier the goods go back with and the code the customer gives it, and
+// tracking_number is the parcel's. source says who asked (customer, panel,
+// api) and requested_by / decided_by which person.
+//
+// order_return_items lists how many of each order line go back; one row per
+// line and return (uq_return_item). What a line still has to give is its
+// quantity less what the open returns hold, worked out from these rows.
+//
+// Both InnoDB: a request is written in one transaction, so a return without
+// its lines is never left behind.
+function upgrade_2026_11_0_order_returns() {
+
+	install_create_table('order_returns', "CREATE TABLE order_returns (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		status           VARCHAR(16) NOT NULL DEFAULT 'requested',
+		reason           VARCHAR(32) NOT NULL DEFAULT '',
+		customer_note    TEXT NULL,
+		decision_note    TEXT NULL,
+		carrier          VARCHAR(32) NOT NULL DEFAULT '',
+		carrier_code     VARCHAR(64) NOT NULL DEFAULT '',
+		tracking_number  VARCHAR(100) NOT NULL DEFAULT '',
+		source           VARCHAR(16) NOT NULL DEFAULT '',
+		requested_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		shipped_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		refunded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (order_id),
+		KEY idx_status (status, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_return_items', "CREATE TABLE order_return_items (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		return_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_return_item (return_id, order_item_id),
+		KEY idx_order_item (order_item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
 
 }

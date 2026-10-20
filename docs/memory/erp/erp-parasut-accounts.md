@@ -21,6 +21,10 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (th
 ## What happens to an invoice of a linked account?
 - `erp_edoc_parasut_contact_for()` reads the linked contact (one GET, as the search was) and puts the invoice on it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number as before.
 - A poll links an account with no card yet to the contact its invoice is on (`erp_edoc_account_link_from_invoice()`, one more GET to fill the card).
+- A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742); cards opened before that differ from their account on the postal code alone.
+
+## What did the first live read show? (demo company, 2026-10-20)
+- One page held all 6 cards; the VKN card linked itself to its account by tax number and matched it on every field but the postal code; the final-consumer card (11111111111) stayed unlinked. Writing a card (POST, PUT) is untried.
 
 ## Why does each operation move the time limit?
 - 25 cards a page and 10 requests per 10 s: a read of 50 pages, or a bulk send of 25 cards (POST + read back), waits about 40 s, and on Windows the PHP time limit counts waiting. `erp_edoc_parasut_allow_time()` moves the limit to at least a minute from now; it never moves it earlier and leaves no limit (the command line) as none.

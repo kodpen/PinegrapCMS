@@ -4,8 +4,8 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ---
 
 ## Where does it stand?
-- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals (withholding scale and `net_total` settled, #630), poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on the demo company, or try them on a company that has one.
-- Account sync (`accounts`, #711, docs/memory/erp/erp-parasut-accounts.md) is written; its first live read is still to come.
+- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals (withholding scale and `net_total` settled, #630), poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on it, or use a company that has one.
+- Account sync (`accounts`, #711, docs/memory/erp/erp-parasut-accounts.md): the list read and the link by tax number work live (2026-10-20); writing a card is untried.
 
 ## How are Paraşüt credentials obtained and stored?
 - Done: the authorization code (Connect on the Paraşüt card, `parasut_connect.php`) beside the password grant; the secret in `config.parasut_credentials_enc`, the token sealed in the service tokens; access token 2 h, refresh token rotates on every use.
@@ -33,4 +33,4 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 - Open: the same correction for an account opened from an order (`erp_account_for_contact()`). It would put a provider call into the order or invoice path; not started, to be decided.
 
 ## How is testing done without a sandbox?
-- Live tests only (the staging host does not take merchant credentials). The demo application the owner holds points at a demo company; low-value one-line invoices there, with the cancel path tried on each.
+- Live tests only (the staging host does not take merchant credentials). The owner's demo application points at a demo company; low-value one-line invoices there, with the cancel path tried on each.

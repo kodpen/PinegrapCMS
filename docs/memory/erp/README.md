@@ -10,6 +10,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-aging-and-due-date.md: Single source for ERP due dates and aging (includes/erp/aging.php): point-in-time open amounts, buckets, filters, and payment_days default due dates.
 - erp-api-events-and-testing.md: ERP webhook events (erp_event, hook placement, new-event checklist) and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: How ERP plugs into the external API only via includes/erp/api.php: load chain, schema pairs, paging, scope groups, error codes, wire-format rules.
+- erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-counter-sale-completion.md: Counter sale completion chain in add_order.php (order, invoice, receipt), when invoice is mandatory, issue_invoice_seen, and the till right check.
