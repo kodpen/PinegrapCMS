@@ -24452,5 +24452,6 @@
     "Paraşüt would not open the card: {var:1}": "Paraşüt kartı açmadı: {var:1}",
     "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun.",
     "Switched on the pre-information form and the distance sales contract at checkout": "Ödeme adımında ön bilgilendirme formu ve mesafeli satış sözleşmesi onayı açıldı",
-    "Site Settings › Ecommerce › Legal Documents": "Site Ayarları › E-Ticaret › Yasal Belgeler"
+    "Site Settings › Ecommerce › Legal Documents": "Site Ayarları › E-Ticaret › Yasal Belgeler",
+    "erp account ({var:1}) was opened under the name GİB registers for its tax number instead of {var:2}": "cari hesap ({var:1}), {var:2} yerine vergi numarasının GİB'de kayıtlı unvanıyla açıldı"
 }
