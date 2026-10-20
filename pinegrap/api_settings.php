@@ -140,6 +140,8 @@ if ($_POST) {
 					UNIX_TIMESTAMP()
 				)");
 
+			pg_audit_record('create', 'api_apps', (int) mysqli_insert_id(db::$con));
+
 			// The one and only time this pair is readable. It is handed to the
 			// next request through the session rather than the query string,
 			// because a query string is written to the server's access log.
@@ -166,6 +168,8 @@ if ($_POST) {
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
 
 		if ($existing) {
+
+			$audit_before = pg_audit_fetch('api_apps', $app_id);
 
 			$status = (isset($_POST['status']) && in_array($_POST['status'], array('active', 'disabled'), true))
 				? $_POST['status']
@@ -198,6 +202,8 @@ if ($_POST) {
 					updated_timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . $app_id . "'");
 
+			pg_audit_record('update', 'api_apps', $app_id, $audit_before);
+
 			$liveform->add_notice(lang('The application was saved.'));
 
 			log_activity(lang(array(
@@ -220,6 +226,8 @@ if ($_POST) {
 
 			$secret = api_generate_secret();
 
+			$audit_before = pg_audit_fetch('api_apps', $app_id);
+
 			// The outgoing secret keeps answering for a day. Issuing a new one
 			// and expecting every integration to be updated in the same instant
 			// is not how a live site works.
@@ -230,6 +238,8 @@ if ($_POST) {
 					api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
 					updated_timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . $app_id . "'");
+
+			pg_audit_record('rotate', 'api_apps', $app_id, $audit_before);
 
 			$_SESSION['software']['api_new_credentials'] = array(
 				'name'    => $existing['name'],
@@ -354,6 +364,8 @@ if ($_POST) {
 
 			api_device_revoke((int)$device['id']);
 
+			pg_audit('revoke', 'api_device', (int)$device['id'], array(), array(), $device['user_username'] . ' / ' . $device['name']);
+
 			$liveform->add_notice(lang(array(
 				'string' => '{var:1} was signed out on {var:2}.',
 				'vars'   => array(h($device['user_username']), h($device['name']))
@@ -388,6 +400,8 @@ if ($_POST) {
 
 				pg_oauth_client_delete((int)$client['id']);
 
+				pg_audit('delete', 'oauth_client', (int)$client['id'], array(), array(), $client_name);
+
 				$liveform->add_notice(lang(array('string' => '{var:1} was removed, and its connections were ended.', 'vars' => h($client_name))));
 
 				log_activity(lang(array(
@@ -400,6 +414,8 @@ if ($_POST) {
 				$turn_on = ($client['status'] !== 'active');
 
 				pg_oauth_client_set_status((int)$client['id'], $turn_on);
+
+				pg_audit('update', 'oauth_client', (int)$client['id'], array('status' => $client['status']), array('status' => $turn_on ? 'active' : 'disabled'), $client_name);
 
 				if ($turn_on) {
 
@@ -438,7 +454,11 @@ if ($_POST) {
 
 		if ($existing) {
 
+			$audit_before = pg_audit_fetch('api_apps', $app_id);
+
 			db("DELETE FROM api_apps WHERE id = '" . $app_id . "'");
+
+			pg_audit_record('delete', 'api_apps', $app_id, $audit_before);
 
 			// The devices signed in through it are signed out with it.
 			api_devices_revoke_app($app_id);

@@ -170,12 +170,18 @@ function pg_settings_apply($key, $user, $liveform)
         return URL_SCHEME;
     }
 
+    // The config row before the module writes it; the audit trail keeps the
+    // columns this category's save changed.
+    $pg_settings_audit_before = pg_audit_fetch('config');
+
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.save.php');
 
     // A module that marked a field wrote nothing and returned early; the log
     // must not say otherwise.
     if (!$liveform->check_form_errors()) {
         log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+
+        pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $key);
     }
 
     // The General screen can turn Secure Mode on in the same request, so the

@@ -521,6 +521,8 @@ if (!$_POST) {
 
         $new_file_id = (int) mysqli_insert_id(db::$con);
 
+        pg_audit_record('create', 'files', $new_file_id);
+
         log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$file_name )), $_SESSION['sessionusername']);
 
         // A file uploaded from the panel is as new to an integration as one

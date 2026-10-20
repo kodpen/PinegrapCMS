@@ -44,11 +44,11 @@ function test_audit_diff_keeps_changed_fields_only()
 // Secrets are recognised by name; ordinary fields that only look alike are not.
 function test_audit_secret_key_names()
 {
-	foreach (array('password', 'smtp_password', 'Password_Confirm', 'api_key', 'apikey', 'google_maps_api_key', 'recaptcha_secret_key', 'client_secret', 'mfa_secret', 'token', 'auth_token', 'parasut_credentials_enc', 'backup_remote_credentials', 'password_hash', 'user_pass', 'card_number', 'card_verification_number', 'cvv', 'pin', 'paypal_api_signature', 'key') as $secret) {
+	foreach (array('password', 'smtp_password', 'Password_Confirm', 'api_key', 'apikey', 'google_maps_api_key', 'recaptcha_secret_key', 'client_secret', 'mfa_secret', 'token', 'auth_token', 'parasut_credentials_enc', 'backup_remote_credentials', 'password_hash', 'user_pass', 'card_number', 'card_verification_number', 'cvv', 'pin', 'paypal_api_signature', 'key', 'user_devpasspin', 'checkout_pin') as $secret) {
 		pg_assert_true(pg_audit_secret_key($secret), $secret);
 	}
 
-	foreach (array('name', 'key_code', 'monkey', 'compass', 'bypass', 'passkeys', 'tokens_used', 'keywords', 'sort_order', 'email_address', 'encoding', 'hashtag') as $plain) {
+	foreach (array('name', 'key_code', 'monkey', 'compass', 'bypass', 'passkeys', 'tokens_used', 'keywords', 'sort_order', 'email_address', 'encoding', 'hashtag', 'spin', 'shipping') as $plain) {
 		pg_assert_false(pg_audit_secret_key($plain), $plain);
 	}
 }
@@ -169,4 +169,42 @@ function test_audit_request_id_and_actor()
 	pg_assert_true(preg_match('/^[0-9a-f]{16,32}$/', $id) === 1, 'hex id');
 	pg_assert_same($id, pg_audit_request_id(), 'same within the request');
 	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'command line');
+}
+
+// A save that changed nothing reads the same twice: the editor, the stamps and
+// the derived SEO score are left out, every other column stays.
+function test_audit_volatile_columns_left_out()
+{
+	$product = array('id' => '7', 'name' => 'SKU-7', 'price' => '1250', 'user' => '3', 'timestamp' => '1760000000', 'out_of_stock_timestamp' => '0', 'seo_score' => '82', 'seo_analysis' => '{}', 'enabled' => '1');
+
+	pg_assert_same(array('id' => '7', 'name' => 'SKU-7', 'price' => '1250', 'enabled' => '1'), pg_audit_volatile('products', $product), 'product');
+	pg_assert_same(array('page_id' => '4', 'page_name' => 'hakkimizda'), pg_audit_volatile('page', array('page_id' => '4', 'page_name' => 'hakkimizda', 'page_user' => '1', 'page_timestamp' => '9', 'layout_modified' => '1')), 'page');
+	pg_assert_same(array('title' => 'Mağaza', 'smtp_password' => 'x'), pg_audit_volatile('config', array('title' => 'Mağaza', 'smtp_password' => 'x', 'last_modified_user_id' => '1', 'last_modified_timestamp' => '9', 'software_update_available' => '1')), 'config');
+	pg_assert_same(array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h'), pg_audit_volatile('user', array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h', 'user_user' => '1', 'user_timestamp' => '9', 'token' => 't', 'user_online_timestamp' => '9')), 'user');
+	pg_assert_same(array('id' => '1', 'status' => 'active'), pg_audit_volatile('api_apps', array('id' => '1', 'status' => 'active', 'last_used_ip' => '10.0.0.1', 'last_used_timestamp' => '9', 'updated_timestamp' => '9')), 'api app');
+	pg_assert_same(array('timestamp_label' => 'x'), pg_audit_volatile('files', array('timestamp_label' => 'x', 'timestamp' => '9')), 'only a column that ends in timestamp');
+}
+
+// Every mapped table names a record type the trail accepts, and the label is the
+// first non-empty name column.
+function test_audit_tables_and_labels()
+{
+	foreach (pg_audit_tables() as $table => $spec) {
+		pg_assert_true(pg_audit_row('update', $spec['type'], 1, array(), array()) !== null, $table . ' type is an identifier');
+	}
+
+	pg_assert_same('Deri Kalem Kılıfı', pg_audit_label_of('products', array('name' => '543', 'short_description' => 'Deri Kalem Kılıfı')), 'product by its description');
+	pg_assert_same('543', pg_audit_label_of('products', array('name' => '543', 'short_description' => ' ')), 'product code when there is no description');
+	pg_assert_same('1172', pg_audit_label_of('orders', array('order_number' => '1172', 'reference_code' => 'ABC')), 'order number');
+	pg_assert_same('', pg_audit_label_of('config', array('title' => 'Mağaza')), 'settings have no label column');
+	pg_assert_same('', pg_audit_label_of('nope', array('name' => 'x')), 'unknown table');
+}
+
+// Without a connection nothing is read and nothing is recorded.
+function test_audit_record_without_table()
+{
+	pg_assert_same(array(), pg_audit_fetch('products', 1), 'no row');
+	pg_assert_same(array(), pg_audit_fetch_many('page', array(1, 2)), 'no rows');
+	pg_assert_same(array(), pg_audit_fetch('nope', 1), 'unknown table');
+	pg_assert_false(pg_audit_record('update', 'products', 1, array('price' => '1')), 'nothing recorded');
 }
