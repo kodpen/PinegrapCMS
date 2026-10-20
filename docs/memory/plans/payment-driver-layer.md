@@ -11,8 +11,8 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 
 ## What is decided?
 - Contract `includes/payments/driver.php` (step 1; `commerce/payment-drivers.md`): `pg_payment_<key>_` prepare, authorize, complete, capture, refund, cancel, notify, capabilities, fields; callers use `pg_payment_call()`. One active card driver plus optional redirect drivers, as today.
-- `submit_order.php` gains one branch (done in step 2, `commerce/payment-driver-iyzico.md`): when the gateway or method has a driver, the driver handles the payment and the rest of the file is unchanged. Legacy branches are reached exactly as before.
-- Stripe: new driver on PaymentIntents with Elements/Payment Request (Apple Pay, Google Pay, Link), webhook `payment_intent.succeeded` with signature check, refunds through the driver; the old Charges code stays for sites that do not switch (setting "Stripe (classic)" vs "Stripe").
+- `submit_order.php` has one branch (step 2, `commerce/payment-driver-iyzico.md`): a gateway or method with a driver is paid by it; legacy branches are reached exactly as before.
+- Stripe: PaymentIntents driver with the Payment Element (Apple Pay, Google Pay, Link), a signed webhook, refunds through the driver; the Charges code stays as "Stripe (classic)".
 - PayTR: iframe/redirect flow, hash verification, installment table, refund API, callback endpoint `payment_callback.php?driver=paytr`.
 - PayPal: Checkout v2 driver beside classic Express Checkout (kept).
 - Saved cards/wallets: tokens only as PSP references, never PAN; optional later.
