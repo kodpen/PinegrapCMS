@@ -9,7 +9,7 @@ description: Backup archives: install-screen upload streamed into data/temp and 
 
 ## Why is every file copied in pieces?
 - The upload used `ZipArchive::getFromIndex()`, which holds a whole file in memory. A 200 MB `sql.sql` needs more than 200 MB, so with `memory_limit` 64M–256M a large backup died with "Allowed memory size exhausted", HTTP 500, and left a backup folder with `files/` and `layouts/` but no dump.
-- Now `pg_restore_archive_copy()` reads the file's stream a megabyte at a time, checks the size and CRC32 the archive records, and deletes a file that does not come out whole. Memory use stays at a few MB whatever the backup's size (tested: 200 MB dump at 64M).
+- Now `pg_restore_archive_copy()` reads the file's stream a megabyte at a time, never more than one byte past the size the archive records (zip-entry-declared-size.md), checks that size and the CRC32, and deletes a file that does not come out whole. Memory use stays at a few MB whatever the backup's size (tested: 200 MB dump at 64M).
 
 ## Why a working folder in data/temp?
 - Files are written to `data/temp/upload_<16 hex>` and the folder is renamed into `data/backups/<name>` only after the last file passed its check, so the backup list never shows a half-extracted backup that looks installable.

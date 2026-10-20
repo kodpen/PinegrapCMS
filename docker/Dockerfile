@@ -43,6 +43,7 @@ RUN set -eux; \
 COPY docker/php-settings.conf "$PHP_INI_DIR/conf.d/pinegrap.ini"
 COPY docker/cron.sh /usr/local/bin/pinegrap-cron
 COPY docker/job-ready.php /usr/local/bin/pinegrap-job-ready
+COPY docker/install.sh /usr/local/bin/pinegrap-install
 
 WORKDIR /var/www/html
 
@@ -56,7 +57,7 @@ COPY --chown=www-data:www-data pinegrap /var/www/html/pinegrap
 # installer writes the real one into the data volume. The whole tree belongs
 # to www-data, as on a host where updates are installed from the panel.
 RUN set -eux; \
-    chmod 0755 /usr/local/bin/pinegrap-cron; \
+    chmod 0755 /usr/local/bin/pinegrap-cron /usr/local/bin/pinegrap-install; \
     chmod 0644 /usr/local/bin/pinegrap-job-ready; \
     printf '<?php ?>' > /var/www/html/pinegrap/data/config.php; \
     chown -R www-data:www-data /var/www/html

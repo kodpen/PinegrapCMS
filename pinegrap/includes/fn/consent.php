@@ -19,6 +19,14 @@
  * reload is needed. With the setting off nothing is held back and every
  * cookie is set as it always was.
  *
+ * Refusing is offered exactly like accepting: the first view of the notice
+ * draws Settings, Reject all and Accept all alike, and no optional category
+ * is switched on for the visitor. Google tags a site adds without holding
+ * them hear the answer through Google Consent Mode v2: the page's <head>
+ * opens with a "default" from the stored answer (everything denied until the
+ * visitor allows it) and the notice's script sends each answer as an
+ * "update" before any held script starts.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -81,6 +89,18 @@ function pg_consent_parse($raw)
 }
 
 /**
+ * The answers this request's visitor has given, from the pg_consent cookie.
+ *
+ * @return array category => bool, only for the categories answered
+ */
+function pg_consent_choices()
+{
+    $raw = (isset($_COOKIE['pg_consent']) && is_string($_COOKIE['pg_consent'])) ? $_COOKIE['pg_consent'] : '';
+
+    return pg_consent_parse($raw);
+}
+
+/**
  * Whether a cookie of an optional category may be set on this request: always
  * when the site does not ask for consent, otherwise only after the visitor
  * said yes to that category.
@@ -94,10 +114,64 @@ function pg_consent_allows($category)
         return true;
     }
 
-    $raw = (isset($_COOKIE['pg_consent']) && is_string($_COOKIE['pg_consent'])) ? $_COOKIE['pg_consent'] : '';
-    $choices = pg_consent_parse($raw);
+    $choices = pg_consent_choices();
 
     return !empty($choices[$category]);
+}
+
+/**
+ * The Google Consent Mode v2 states for a set of answers: statistics decides
+ * analytics_storage, marketing the three advertising types. A category not
+ * answered yet, or refused, is denied. pg_consent.js maps an answer the same
+ * way when it sends the update.
+ *
+ * @param array $choices category => bool (pg_consent_parse())
+ * @return array state name => granted | denied
+ */
+function pg_consent_mode_states($choices)
+{
+    $marketing = !empty($choices['marketing']) ? 'granted' : 'denied';
+
+    return array(
+        'ad_storage' => $marketing,
+        'ad_user_data' => $marketing,
+        'ad_personalization' => $marketing,
+        'analytics_storage' => !empty($choices['analytics']) ? 'granted' : 'denied',
+    );
+}
+
+/**
+ * The inline script that sets the Consent Mode default. It only queues the
+ * command on window.dataLayer, the way Google's own snippet does, and leaves
+ * window.gtag alone: a page without Google tags gets nothing else from it,
+ * and gtag.js or Tag Manager reads the queue in order when it loads.
+ *
+ * @param array $choices category => bool (pg_consent_parse())
+ * @return string
+ */
+function pg_consent_mode_script($choices)
+{
+    return '<script data-pg-consent-mode>window.dataLayer=window.dataLayer||[];'
+        . '(function(){function gtag(){dataLayer.push(arguments);}'
+        . 'gtag("consent","default",' . json_encode(pg_consent_mode_states($choices)) . ');})();</script>';
+}
+
+/**
+ * Where the Consent Mode default goes: straight after the page's <head> tag,
+ * ahead of every script of the page, the software's own included, since a
+ * Google tag that runs before the default is not bound by it. A <meta> with
+ * the character set that opens the head stays first.
+ *
+ * @param string $content the page
+ * @return int|false byte offset, false when the page has no <head> tag
+ */
+function pg_consent_mode_position($content)
+{
+    if (!preg_match('/<head\b[^>]*>(?:\s*<meta\b[^>]*\bcharset\s*=[^>]*>)?/i', (string) $content, $match, PREG_OFFSET_CAPTURE)) {
+        return false;
+    }
+
+    return $match[0][1] + strlen($match[0][0]);
 }
 
 /**
@@ -295,12 +369,13 @@ function pg_consent_markup($content)
 
         $id = 'pg-cc-' . $category;
 
-        // Optional categories start switched on; nothing of theirs runs
-        // until the visitor saves or accepts (pg_consent.js).
+        // Optional categories start switched off: consent is what the visitor
+        // turns on, never a box ticked for them. pg_consent.js switches on
+        // what the stored answer allows when the notice opens.
         $output_switch = $locked
             ? '<span class="pg-cc-always">' . h(lang('Always on')) . '</span>'
             : '<input type="checkbox" class="pg-cc-switch" role="switch" id="' . $id . '" data-pg-cc-category="' . $category . '"'
-                . ' data-pg-cc-revoke="' . h(implode(' ', isset($revoke[$category]) ? $revoke[$category] : array())) . '" checked aria-describedby="' . $id . '-text">';
+                . ' data-pg-cc-revoke="' . h(implode(' ', isset($revoke[$category]) ? $revoke[$category] : array())) . '" aria-describedby="' . $id . '-text">';
 
         $output_categories .=
             '<div class="pg-cc-cat">
@@ -323,15 +398,33 @@ function pg_consent_markup($content)
         $output_policy = ' <a class="pg-cc-link" href="' . h($policy_url) . '">' . h(lang('Cookie policy')) . '</a>';
     }
 
+    $output_settings_button = '<button type="button" class="pg-cc-btn" data-pg-cc="settings">' . h(lang('Settings')) . '</button>';
+
     if ($optional) {
         $intro = lang('This site uses the cookies it needs to work. Other cookies are used only if you allow them; you can choose them in Settings.');
-        $accept_label = lang('Accept all');
+
+        // Refusing must be as easy as accepting: both answers sit side by
+        // side in the first view, drawn the same and as wide as each other
+        // (.pg-cc-choices), neither of them marked as the one to press.
+        $output_intro_actions =
+            '<div class="pg-cc-actions pg-cc-choices">
+                ' . $output_settings_button . '
+                <button type="button" class="pg-cc-btn" data-pg-cc="reject">' . h(lang('Reject all')) . '</button>
+                <button type="button" class="pg-cc-btn" data-pg-cc="accept">' . h(lang('Accept all')) . '</button>
+            </div>';
+
         $output_prefs_actions =
             '<button type="button" class="pg-cc-btn" data-pg-cc="reject">' . h(lang('Only necessary')) . '</button>
             <button type="button" class="pg-cc-btn pg-cc-primary" data-pg-cc="save">' . h(lang('Save choices')) . '</button>';
     } else {
         $intro = lang('This site only uses the cookies it needs to work.');
-        $accept_label = lang('OK');
+
+        $output_intro_actions =
+            '<div class="pg-cc-actions">
+                ' . $output_settings_button . '
+                <button type="button" class="pg-cc-btn pg-cc-primary" data-pg-cc="accept">' . h(lang('OK')) . '</button>
+            </div>';
+
         $output_prefs_actions =
             '<button type="button" class="pg-cc-btn pg-cc-primary" data-pg-cc="save">' . h(lang('OK')) . '</button>';
     }
@@ -339,8 +432,12 @@ function pg_consent_markup($content)
     $close_label = $optional ? lang('Close and keep only the necessary cookies') : lang('Close');
     $path = defined('PATH') ? PATH : '/';
 
+    // Always defined on a request; guarded so the notice can be drawn where
+    // init.php has not run (tests/consent_test.php).
+    $assets = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '') . '/assets';
+
     return '
-<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/pg_consent.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_consent.css') . '">
+<link rel="stylesheet" href="' . $assets . '/css/pg_consent.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_consent.css') . '">
 <div id="pg-cc" class="pg-cc" data-path="' . h($path) . '" data-categories="' . h(implode(',', $optional)) . '">
     <button type="button" class="pg-cc-fab" hidden aria-label="' . h(lang('Cookie settings')) . '" title="' . h(lang('Cookie settings')) . '" aria-controls="pg-cc-card" aria-expanded="false">' . pg_consent_icon() . '</button>
     <div class="pg-cc-card" id="pg-cc-card" role="dialog" aria-modal="false" aria-labelledby="pg-cc-title" hidden>
@@ -351,10 +448,7 @@ function pg_consent_markup($content)
         </div>
         <div class="pg-cc-view" data-pg-cc-view="intro">
             <p class="pg-cc-text">' . h($intro) . $output_policy . '</p>
-            <div class="pg-cc-actions">
-                <button type="button" class="pg-cc-btn" data-pg-cc="settings">' . h(lang('Settings')) . '</button>
-                <button type="button" class="pg-cc-btn pg-cc-primary" data-pg-cc="accept">' . h($accept_label) . '</button>
-            </div>
+            ' . $output_intro_actions . '
         </div>
         <div class="pg-cc-view" data-pg-cc-view="prefs" hidden>
             <div class="pg-cc-cats">' . $output_categories . '</div>
@@ -362,7 +456,7 @@ function pg_consent_markup($content)
         </div>
     </div>
 </div>
-<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_consent.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_consent.js') . '" defer></script>
+<script src="' . $assets . '/js/pg_consent.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_consent.js') . '" defer></script>
 ';
 }
 
@@ -400,7 +494,9 @@ function pg_consent_ui_keys()
         'Always on',
         'Show cookies',
         'Cookie policy',
+        'Settings',
         'This site uses the cookies it needs to work. Other cookies are used only if you allow them; you can choose them in Settings.',
+        'Reject all',
         'Accept all',
         'Only necessary',
         'Save choices',
@@ -410,13 +506,12 @@ function pg_consent_ui_keys()
         'Close',
         'Cookie settings',
         'Cookies',
-        'Settings',
     );
 }
 
 /**
- * The notice added to a visitor page, just before its last </body>. Nothing
- * for a crawler, and nothing for a document that is not a whole HTML page.
+ * The notice and the Consent Mode default added to a visitor page
+ * (pg_consent_insert()). Nothing for a crawler.
  *
  * @param string $content
  * @return string
@@ -427,11 +522,37 @@ function pg_consent_inject($content)
         return $content;
     }
 
-    $position = strripos($content, '</body>');
+    return pg_consent_insert($content, pg_consent_choices());
+}
 
-    if ($position === false) {
+/**
+ * The notice just before the page's last </body>, and the Consent Mode
+ * default for the visitor's answers at the top of its <head>
+ * (pg_consent_mode_position()). Nothing for a document that is not a whole
+ * HTML page (no </body>); a page without a <head> tag gets the notice only,
+ * whose script still sends each answer as an update.
+ *
+ * @param string $content the page
+ * @param array $choices category => bool, the stored answers (pg_consent_choices())
+ * @return string
+ */
+function pg_consent_insert($content, $choices)
+{
+    $content = (string) $content;
+    $body = strripos($content, '</body>');
+
+    if ($body === false) {
         return $content;
     }
 
-    return substr_replace($content, pg_consent_markup($content), $position, 0);
+    $head = pg_consent_mode_position($content);
+
+    // The notice first: it goes further in, so the head offset still holds.
+    $content = substr_replace($content, pg_consent_markup($content), $body, 0);
+
+    if (($head !== false) && ($head <= $body)) {
+        $content = substr_replace($content, pg_consent_mode_script($choices), $head, 0);
+    }
+
+    return $content;
 }

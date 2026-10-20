@@ -1,6 +1,6 @@
 ---
 name: price-history-reference-price
-description: Plan (approved 2026-10-19, in progress: history table, writers and the API read done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), merchant compare-at price, retention
+description: Plan (approved 2026-10-19, in progress: history table, writers, API read and merchant compare-at price done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
 ---
 
 ## Why?
@@ -8,7 +8,8 @@ description: Plan (approved 2026-10-19, in progress: history table, writers and 
 
 ## What is done?
 - Step 1 and step 3 (2026.11.0, 11.0.2): `product_price_history`, `products.compare_at_price`, `initial` rows on upgrade, `pg_price_history_record()` hooked into every `products.price` writer, tests. Details and the writer list: docs/memory/commerce/product-price-history.md.
-- Step 4 (API route): `GET /products/{id}/price-history` with `since`, `channel`, cursor paging, on `pg_price_history_list_sql()`; the MCP tool comes with it. docs/memory/commerce/product-price-history-api.md. `compare_at_price` on the product object is still step 3 below.
+- Step 4 (API route): `GET /products/{id}/price-history` with `since`, `channel`, cursor paging, on `pg_price_history_list_sql()`; the MCP tool comes with it. docs/memory/commerce/product-price-history-api.md.
+- Remaining step 3 (PR #658): `compare_at_price` on the product screen (a switch, single products only), the product list (a column once a product has one, edited in place), import/export, the API product object and both writes, the two copy paths. Nothing on the storefront reads it yet; that is step 2. docs/memory/commerce/product-compare-at-price.md.
 
 ## What is decided?
 - Reference price rule is a setting: `lowest_30d` (default for TR and EU), `lowest_10d`, or `manual`. The catalog widgets print `__reference_price` and `__reference_label` ("lowest price in the last 30 days" style text through `lang()`); the legacy catalog pages get the same value through `get_catalog.php` helpers without layout changes.
@@ -21,7 +22,7 @@ description: Plan (approved 2026-10-19, in progress: history table, writers and 
 ## What remains?
 1. Offer prices into the history (blocker for step 2): a past offer price inside the window is a price that applied, and without it the "lowest price" shown beside a later discount is too high, which is the non-compliance this plan exists to prevent. Record the effective price of the offers that change a product's own price (source `offer`) at their start and end, or compute the window from the history plus the offers' own dates; decide which first (M).
 2. Pure function for the reference price of a window (+ tests), setting card in Settings › Ecommerce, widget tokens (`tools/check_bindings.php`), legacy catalog print (S).
-3. compare_at_price in the product screen, list edit, import/export, the API presenter, and the copy paths (`duplicate_product()`, `duplicate_products.php` list their columns) (S).
+3. Done (PR #658): compare_at_price in the panel, files, API and copies (see above).
 4. Retention trim in the general job (S).
 5. When it ships: one `[NEW]` changelog line.
 

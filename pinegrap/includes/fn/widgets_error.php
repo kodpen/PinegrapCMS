@@ -52,6 +52,46 @@ function pg_sw_error_page_id()
     return $page_id;
 }
 
+// Which blocks of an error page show for an error with this response code
+// (0 when it has none): the visibility flags the widget hands to
+// _eo_apply_visibility_bindings().
+//
+// Maintenance mode is the only sender of a 503 (pg_maintenance_gate()). A
+// page with a block for it ($maintenance_block) shows maintenance there and
+// not in its "other error" block as well; a page designed before that block
+// existed keeps showing maintenance in its "other error" block, its only
+// place for it.
+function pg_sw_error_flags($code, $maintenance_block)
+{
+    $code = (int)$code;
+    $flags = array(
+        'is_not_found'   => ($code === 404),
+        'is_maintenance' => ($code === 503),
+        'is_other_error' => ($code !== 404) && !(($code === 503) && $maintenance_block),
+        'has_error_code' => ($code >= 400),
+    );
+    return $flags;
+}
+
+// Whether $node, or any element under it, is shown only for $flag.
+function pg_sw_error_tree_shows($node, $flag)
+{
+    if (!is_array($node)) return false;
+    if (isset($node['props']['_bindings']['eo_visible_if']) && $node['props']['_bindings']['eo_visible_if'] === $flag) return true;
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $child) {
+        if (pg_sw_error_tree_shows($child, $flag)) return true;
+    }
+    return false;
+}
+
+// The <title> of the page that shows an error with this response code: the
+// page's own, except for maintenance. The starter sites title their error
+// page for a missing page, which is not what the maintenance screen is.
+function pg_sw_error_title($code, $page_title)
+{
+    return ((int)$code === 503) ? lang('Down for Maintenance') : (string)$page_title;
+}
+
 // A same-site address the visitor came from, as a path, or ''. Another site's
 // address, or the address that failed, is not somewhere to send them back to.
 function _pg_err_back_url()
@@ -82,8 +122,10 @@ function _pg_err_back_url()
 // "page not found" and the page answers 404: a page that says "not found"
 // and answers 200 is the soft 404 search engines flag.
 //
-// Visibility flags: is_not_found (code 404), is_other_error (any other
-// error), has_error_code (the error carries an HTTP code).
+// Visibility flags (pg_sw_error_flags()): is_not_found (code 404),
+// is_maintenance (maintenance mode, 503), is_other_error (any other error,
+// maintenance too when the page has no block for it), has_error_code (the
+// error carries an HTTP code).
 // Tokens: ^^__error_code^^, ^^__error_message^^ (the software's own words,
 // as text), ^^__requested_url^^, ^^__site_name^^, ^^__home_url^^,
 // ^^__back_url^^ (a same-site referrer; a link bound to it drops when there
@@ -120,13 +162,9 @@ function _render_system_widget_error_page($tree_json, $widget_id, $cfg = array()
 
     $home_url = defined('PATH') ? PATH : '/';
     $back_url = _pg_err_back_url();
-    $is_404   = ($code === 404);
 
-    _eo_apply_visibility_bindings($tree, array(
-        'is_not_found'   => $is_404,
-        'is_other_error' => !$is_404,
-        'has_error_code' => ($code >= 400),
-    ));
+    $flags = pg_sw_error_flags($code, pg_sw_error_tree_shows($tree, 'is_maintenance'));
+    _eo_apply_visibility_bindings($tree, $flags);
     _pg_member_drop_empty_links($tree, array('__home_url' => $home_url, '__back_url' => $back_url));
     pg_cf_link_labels($tree);
 
