@@ -1,24 +1,27 @@
 ---
 name: link-target-in-attrs
-description: A link's window (target) written in _attrs: the PHP link and button renderers skip it while the canvas prints it; pg_sw_link_attrs_to_props() in the order view, the widget still affected
+description: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
 ---
 
-## Why does a link open in the same window on the page but a new one in the designer?
-- The editor's canvas and code view print every `_attrs` entry. The server's renderers (`includes/fn/designer.php`) read `target` from props and skip an `_attrs` entry of that name: the content link (`case 'link'`, `_render_extra_attrs($props, array('href', 'target'))`) and the Button component drawn as `<a>` (`case 'btn'`, which also skips `rel`).
-- The semantic `<a>` is not affected: it prints the `_attrs` window unless a prop already gave one.
-- The Link Options "Target" box reads and writes the prop. A window lands in `_attrs` when it is typed in the Attrs panel or a starter tree writes it there.
+## Where do a link's target and rel come from?
+- The content link and the Button component drawn as `<a>` print `target` and `rel` from their props (the Target and Relationship options). When a prop is empty, an `_attrs` entry of the same name prints instead, the way the editor's canvas and code view print it; a prop that is set wins and its `_attrs` entry is skipped, so each attribute prints once (`_render_content_html()` `case 'link'`, `_render_component_html()` `case 'btn'`, `includes/fn/designer.php`).
+- A Button drawn as `<button>` or `<input>` prints neither. The semantic `<a>` always did the same with its builtins.
 
-## What does the order view do?
-- `pg_sw_link_attrs_to_props()` (`includes/fn/widgets.php`) moves an `_attrs` `target` into the prop of every content link in the tree, and `target` and `rel` of every Button component drawn as a link; a prop already set wins, an empty value moves nothing, names compare in lower case like the renderer's skip.
-- `_render_system_widget_order_view()` calls it right after decoding the tree, before the not-found closure takes the tree (PR #878). It covers layouts built from the starter tree before the change: their "Print Invoice" and "Track the Shipment" links kept the window in `_attrs` and opened in the same window.
-- The starter tree gives every link `target: '_blank'` as a prop, `rel: noopener` in `_attrs` (the content link prints `rel` from `_attrs`).
-- Tested in `tests/widget_link_target_test.php`.
+## What was wrong before?
+- The link and the button link skipped the `_attrs` window unconditionally: a window typed in the Attrs panel, or written there by a starter tree, showed as a new window in the designer and opened in the same window on the page. My Account's order view ("Print Invoice", "Track the Shipment") and My Invoices ("PDF") did this on every site.
+- The content link never printed its `rel` prop, so the Relationship option did nothing on the page; `rel` in `_attrs` printed.
+- PR #878 first moved the window into the prop inside the order view widget only (`pg_sw_link_attrs_to_props()`); the renderer change replaced that pass and the function is gone.
 
-## Which widgets still have it?
-- My Invoices (`account_invoices`): the starter tree's "PDF" link (`__invoice_pdf_url`) keeps the window in `_attrs`. No other starter tree did (scan of every `StyleDesigner.starterTree()` kind in jsdom, 2026-10-20).
-- Any link on any page or widget whose window was typed in the Attrs panel.
+## What does the designer do?
+- On selection, `migrateNodeLinkProps()` (`style_designer.js`, beside `migrateNodeStyleProps()`) folds an `_attrs` `target` / `rel` into the prop when the option offers the value (link target `_blank _self _parent _top`, button link `_blank _self`, the Relationship list), and drops an `_attrs` entry that sits beside a set prop (the page ignores it). A value the option cannot hold (a named frame, `noopener nofollow`) stays in `_attrs`. Silent, no undo entry; nothing moves on the page.
 
-## What would fix it everywhere?
-- The `link` and `btn` cases reading `target` (and `rel` for `btn`) from `_attrs` when the prop is empty, the way the semantic `<a>` does. Then the order view's call and the helper are no longer needed, and `test_widget_link_target_renderer_skips_attrs_target` changes.
+## What do starter trees and templates carry?
+- Starter trees: links that open a new window have `target: '_blank'` as a prop and `rel: noopener` in `_attrs` (order view since #878, My Invoices since this change). No starter tree keeps a window in `_attrs` (scan of every `StyleDesigner.starterTree()` kind in jsdom).
+- Shipped templates (`includes/design_templates/`): their own trees already give the window as a prop. Six of them take the order view and/or My Invoices from the starter tree (`'tree' => 'starter'`), so they deliver the changed links; their versions went up one patch: hello-pinegrap 2.4.10, bookshop 1.0.8, boutique 1.0.8, clinic 1.0.2, playground 1.0.7, store 1.0.9. Cafe takes neither.
+- `tests/designer_link_target_test.php` checks the renderer, the two starter trees and that no shipped template keeps a link's window in `_attrs`.
+
+## When does an existing site see it?
+- System widgets draw from their tree on every request: at once.
+- A page body is the HTML stored at save (`page.page_tree_code`): a page whose link kept its window in `_attrs` gets it on its next save or with "Save and rebuild page HTML" (designer/page-html-rebuild.md).
 
 Related: docs/memory/commerce/order-view-legal-documents.md
