@@ -143,6 +143,10 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
             'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
+            // When the page goes on the site and comes off it, as the
+            // datetime-local boxes of Page Settings take them ('' for none).
+            'page_publish_at'       => (string)(isset($p['page_publish_at']) ? $p['page_publish_at'] : ''),
+            'page_unpublish_at'     => (string)(isset($p['page_unpublish_at']) ? $p['page_unpublish_at'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -185,6 +189,8 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => '',
             'page_meta_tags'        => '',
             'page_custom_jsonld'    => '',
+            'page_publish_at'       => '',
+            'page_unpublish_at'     => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
