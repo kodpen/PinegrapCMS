@@ -16,7 +16,7 @@ description: Order view widget links to the legal documents kept with the order:
 
 ## What does the starter tree hold?
 - Right column, after the Order History card: "Legal Documents Card" under `has_legal_documents`, one line per document under its own flag, each a link bound to its token.
-- The links carry `target: '_blank'` as a prop: the PHP link renderer reads `target` from props and drops it from `_attrs` (`rel` stays in `_attrs`). The tree's older invoice and tracking links still put `target` in `_attrs` and open in the same window.
+- The links carry `target: '_blank'` as a prop, `rel` in `_attrs`, like every link of the tree; the widget also moves a window kept in `_attrs` into the prop before rendering (designer/link-target-in-attrs.md).
 
 ## What about layouts made before the links?
 - A layout that binds neither token gets `pg_legal_documents_order_view_block()` after the widget: a `container pb-4` card listing the kept copies, the shape of the returns block. A layout that binds a link places the links itself. Deleting the card from a new layout brings the block back; a designer who wants the links elsewhere binds a token there.
