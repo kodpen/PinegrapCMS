@@ -559,6 +559,61 @@ function test_erp_edoc_parasut_contacts_read()
 	pg_assert_same(1, erp_edoc_parasut_contacts_read(null, 25)['pages']);
 }
 
+// A read goes through the listed cards and the archived ones, which
+// Paraşüt's list leaves out and filter[archived]=true lists alone.
+function test_erp_edoc_parasut_contact_lists()
+{
+	$lists = erp_edoc_parasut_contact_lists();
+
+	pg_assert_same(array('listed', 'archived'), array_keys($lists));
+	pg_assert_same('', $lists['listed']);
+	pg_assert_same('filter[archived]=true&', $lists['archived']);
+}
+
+// A page of a read holds the same page of each list: the cards of both,
+// both counts, the pages of the longer list. The archived list adds only
+// archived cards, so an unfiltered answer brings no card twice.
+function test_erp_edoc_parasut_contacts_merge()
+{
+	$listed = erp_edoc_parasut_contacts_read(array(
+		'data' => array(
+			array('id' => '1', 'attributes' => array('name' => 'A', 'archived' => false)),
+			array('id' => '2', 'attributes' => array('name' => 'B', 'archived' => false)),
+		),
+		'meta' => array('total_pages' => 3, 'total_count' => 52),
+	), 25);
+	$archived = erp_edoc_parasut_contacts_read(array(
+		'data' => array(array('id' => '9', 'attributes' => array('name' => 'Z', 'archived' => true))),
+		'meta' => array('total_pages' => 1, 'total_count' => 1),
+	), 25);
+
+	$page = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => $archived));
+
+	pg_assert_same(array('1', '2', '9'), array_column($page['items'], 'external_id'));
+	pg_assert_true($page['items'][0]['is_active']);
+	pg_assert_false($page['items'][2]['is_active']);
+	pg_assert_same(53, $page['total']);
+	pg_assert_same(3, $page['pages']);
+
+	// Past its last page a list adds no card and is still counted.
+	$later = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => array('items' => array(), 'total' => 1, 'pages' => 1)));
+	pg_assert_same(array('1', '2'), array_column($later['items'], 'external_id'));
+	pg_assert_same(53, $later['total']);
+	pg_assert_same(3, $later['pages']);
+
+	$long_archive = erp_edoc_parasut_contacts_merge(array(
+		'listed' => array('items' => array(), 'total' => 3, 'pages' => 1),
+		'archived' => array('items' => array(), 'total' => 60, 'pages' => 3),
+	));
+	pg_assert_same(63, $long_archive['total']);
+	pg_assert_same(3, $long_archive['pages']);
+
+	$unfiltered = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => $listed));
+	pg_assert_same(array('1', '2'), array_column($unfiltered['items'], 'external_id'));
+
+	pg_assert_same(array('items' => array(), 'total' => 0, 'pages' => 1), erp_edoc_parasut_contacts_merge(array()));
+}
+
 // A change is written on the card as Paraşüt keeps it: the given fields
 // change, every other writable attribute goes back as it came, the balances
 // and dates never go.

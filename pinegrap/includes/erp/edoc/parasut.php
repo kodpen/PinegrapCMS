@@ -34,8 +34,9 @@
  *
  * The company's customer and supplier cards (contacts) are read and written
  * for the ERP's account sync (includes/erp/edoc/account_sync.php): accounts()
- * pages through the list, account() reads one card, account_save() opens a
- * card or changes one. Balances never travel.
+ * pages through the list and through the archived cards it leaves out,
+ * account() reads one card, account_save() opens a card or changes one.
+ * Balances never travel.
  *
  * The fields follow the published swagger (apidocs.parasut.com/swagger.json)
  * and are read by name with fallbacks; where the documentation is silent
@@ -1983,32 +1984,107 @@ function erp_edoc_parasut_contacts_read($body, $size)
 }
 
 /**
- * One page of the company's customer and supplier cards (GET contacts).
+ * The lists a read of the cards goes through, each with the filter it is
+ * asked with. Paraşüt's contacts list leaves archived cards out, and a
+ * complete read that never saw them would show every archived card as gone
+ * from Paraşüt; filter[archived]=true lists the archived cards alone. The
+ * documentation names that filter for other lists only (sales offers,
+ * waybills, warehouses); the contacts list takes it (live, 2026-10-20).
+ *
+ * @return array  List => query string prefix ('' for none)
+ */
+function erp_edoc_parasut_contact_lists()
+{
+    return array(
+        'listed' => '',
+        'archived' => 'filter[archived]=true&',
+    );
+}
+
+/**
+ * One page of a read out of the same page of each list: the cards of every
+ * list, how many cards they hold together, and as many pages as the longest
+ * has. The archived list adds archived cards only, so no card comes twice
+ * even if Paraşüt answered that list unfiltered.
+ *
+ * @param array $reads  List => erp_edoc_parasut_contacts_read() of its page
+ * @return array ['items' => cards, 'total' => int, 'pages' => int]
+ */
+function erp_edoc_parasut_contacts_merge($reads)
+{
+    $items = array();
+    $total = 0;
+    $pages = 1;
+
+    foreach ((array) $reads as $list => $read) {
+        foreach ((array) ($read['items'] ?? array()) as $card) {
+            if (((string) $list === 'archived') && !empty($card['is_active'])) {
+                continue;
+            }
+
+            $items[] = $card;
+        }
+
+        $total += max(0, (int) ($read['total'] ?? 0));
+        $pages = max($pages, (int) ($read['pages'] ?? 1));
+    }
+
+    return array('items' => $items, 'total' => $total, 'pages' => $pages);
+}
+
+/**
+ * One page of the company's customer and supplier cards (GET contacts):
+ * page $page of every list of erp_edoc_parasut_contact_lists(), so that a
+ * read through all the pages sees the archived cards too, as passive cards.
  * Sorted by id so that the pages do not shift under a read: the list's own
  * order is by balance, which moves while it is read.
+ *
+ * Page 1 asks every list; a later page of the same read asks only the lists
+ * that reach it, so a company with few archived cards spends one request on
+ * them in a read, not one a page.
  *
  * @param int $page  From 1
  * @return array ['success' => bool, 'error' => string, 'items' => cards, 'total' => int, 'pages' => int]
  */
 function erp_edoc_parasut_accounts($page = 1)
 {
+    // Each list's card count and pages, as this read last found them.
+    static $found = array();
+
     $none = array('success' => false, 'error' => '', 'items' => array(), 'total' => 0, 'pages' => 0);
     $page = max(1, (int) $page);
     $size = (int) ERP_EDOC_PARASUT_PAGE_SIZE;
 
+    if ($page === 1) {
+        $found = array();
+    }
+
     erp_edoc_parasut_allow_time();
 
-    $result = erp_edoc_parasut_request('GET', '/contacts?sort=id&page[number]=' . $page . '&page[size]=' . $size, null, array('doc_type' => 'account'));
+    $reads = array();
 
-    if ((string) $result['login_error'] !== '') {
-        return array_merge($none, array('error' => $result['login_error']));
+    foreach (erp_edoc_parasut_contact_lists() as $list => $filter) {
+        if (isset($found[$list]) && ($page > $found[$list]['pages'])) {
+            $reads[$list] = array('items' => array()) + $found[$list];
+
+            continue;
+        }
+
+        $result = erp_edoc_parasut_request('GET', '/contacts?' . $filter . 'sort=id&page[number]=' . $page . '&page[size]=' . $size, null, array('doc_type' => 'account'));
+
+        if ((string) $result['login_error'] !== '') {
+            return array_merge($none, array('error' => $result['login_error']));
+        }
+
+        if (!erp_edoc_parasut_ok($result) || !is_array($result['body'] ?? null)) {
+            return array_merge($none, array('error' => lang(array('string' => 'Paraşüt would not list its customers and suppliers: {var:1}', 'vars' => erp_edoc_parasut_error_text($result)))));
+        }
+
+        $reads[$list] = erp_edoc_parasut_contacts_read($result['body'], $size);
+        $found[$list] = array('total' => $reads[$list]['total'], 'pages' => $reads[$list]['pages']);
     }
 
-    if (!erp_edoc_parasut_ok($result) || !is_array($result['body'] ?? null)) {
-        return array_merge($none, array('error' => lang(array('string' => 'Paraşüt would not list its customers and suppliers: {var:1}', 'vars' => erp_edoc_parasut_error_text($result)))));
-    }
-
-    return array('success' => true, 'error' => '') + erp_edoc_parasut_contacts_read($result['body'], $size);
+    return array('success' => true, 'error' => '') + erp_edoc_parasut_contacts_merge($reads);
 }
 
 /**
