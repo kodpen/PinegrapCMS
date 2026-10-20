@@ -24632,5 +24632,6 @@
     "This does not look like a {var:1} tracking number. It was saved anyway.": "Bu bir {var:1} takip numarasına benzemiyor. Yine de kaydedildi.",
     "Shipping carrier of {var:1}": "{var:1} numarasının kargo firması",
     "Order (#{var:1}) was marked paid.": "Sipariş (#{var:1}) ödendi olarak işaretlendi.",
-    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi."
+    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi.",
+    "Rounding difference ({var:1})": "Yuvarlama farkı ({var:1})"
 }

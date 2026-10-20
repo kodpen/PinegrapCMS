@@ -745,6 +745,12 @@ function erp_edoc_parasut_product_refusal($lines, $default = null)
         if (is_array($line) && ((int) ($line['product_id'] ?? 0) <= 0)) {
             return erp_edoc_parasut_no_product_text($line);
         }
+
+        // A rounding line (erp_edoc_parasut_rounding_kurus()) has no product
+        // of its own either.
+        if (is_array($line) && (erp_edoc_parasut_rounding_kurus($line) > 0)) {
+            return erp_edoc_parasut_no_product_text(array('description' => lang(array('string' => 'Rounding difference ({var:1})', 'vars' => trim((string) ($line['description'] ?? ''))))));
+        }
     }
 
     return '';
@@ -765,9 +771,56 @@ function erp_edoc_parasut_no_product_text($line)
 }
 
 /**
+ * The kurus a line moves to a rounding line of its own at Paraşüt, or 0.
+ *
+ * Paraşüt takes every line's VAT again from its amount, half up to the
+ * kurus, and its total has to be the ERP's. A line whose VAT the ERP did not
+ * take that way would come back a kurus off and be refused: a charge whose
+ * VAT lies inside the amount charged (shipping 9.99 at 20% is 8.33 + 1.66
+ * by erp_split_gross(), but 20% of 8.33 is 1.67; one charge in six at 20%),
+ * or a line an order's tax was tied back to (erp_order_lines()). No single
+ * line at the rate has that amount and that VAT, two can: the line goes that
+ * many kurus lighter and the kurus go on a line of their own at the same
+ * rate, the smallest number for which the two lines' VAT is the line's.
+ * Amounts and VAT stay the ERP's to the kurus.
+ *
+ * A withheld line and a line out of reach of two (the tie-back took it a
+ * kurus beyond either neighbour of its exact VAT) are left as they are.
+ *
+ * @param array $line  An erp_invoice_items row
+ * @return int  Kurus, 0 for none
+ */
+function erp_edoc_parasut_rounding_kurus($line)
+{
+    $rate = (float) ($line['tax_rate'] ?? 0);
+
+    if (($rate <= 0) || ((float) ($line['withholding_rate'] ?? 0) > 0)) {
+        return 0;
+    }
+
+    $base = (int) ($line['line_total'] ?? 0) - (int) ($line['discount_amount'] ?? 0);
+    $vat = (int) ($line['tax_total'] ?? 0) - (int) ($line['tax2_amount'] ?? 0);
+
+    if (($base <= 1) || (erp_apply_rate($base, $rate) === $vat)) {
+        return 0;
+    }
+
+    for ($kurus = 1; ($kurus < $base) && ($kurus <= 100); $kurus++) {
+        if ((erp_apply_rate($base - $kurus, $rate) + erp_apply_rate($kurus, $rate)) === $vat) {
+            return $kurus;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
+ * A line whose VAT Paraşüt would take otherwise goes a few kurus lighter,
+ * those kurus on a rounding line after every line of the invoice
+ * (erp_edoc_parasut_rounding_kurus()).
  *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
  *                            order_number and order_date (Y-m-d)
@@ -778,6 +831,7 @@ function erp_edoc_parasut_no_product_text($line)
 function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 {
     $details = array();
+    $rounding = array();
 
     foreach ($lines as $line) {
         $product = erp_edoc_parasut_line_product($line);
@@ -801,6 +855,25 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
             'discount_value' => $as_rate ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
         );
 
+        // The kurus that go on a rounding line come off this one: off the
+        // price of a single undiscounted unit, else as discount.
+        $rounding_kurus = erp_edoc_parasut_rounding_kurus($line);
+
+        if ($rounding_kurus > 0) {
+            if (((float) $line['quantity'] === 1.0) && ((int) ($line['discount_amount'] ?? 0) === 0)) {
+                $attributes['unit_price'] = erp_edoc_parasut_money((int) $line['unit_price'] - $rounding_kurus);
+            } else {
+                $attributes['discount_type'] = 'amount';
+                $attributes['discount_value'] = erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0) + $rounding_kurus);
+            }
+
+            $rounding[] = array(
+                'kurus' => $rounding_kurus,
+                'rate' => (float) $line['tax_rate'],
+                'description' => lang(array('string' => 'Rounding difference ({var:1})', 'vars' => trim((string) $line['description']))),
+            );
+        }
+
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
         // so lines with different rates share one document. The rate is the
         // withheld share of the VAT in percent, as Pinegrap keeps it (4/10 =
@@ -812,6 +885,31 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         $details[] = array(
             'type' => 'sales_invoice_details',
             'attributes' => $attributes,
+            'relationships' => array(
+                'product' => array('data' => array('type' => 'products', 'id' => $product['id'])),
+            ),
+        );
+    }
+
+    // The rounding lines after every line of the invoice, so Paraşüt's
+    // lines up to there are the ERP's in order (erp_edoc_parasut_detail_ids()).
+    foreach ($rounding as $extra) {
+        $product = erp_edoc_parasut_line_product(array('product_id' => 0, 'description' => $extra['description']));
+
+        if ($product['error'] !== '') {
+            return array('error' => $product['error']);
+        }
+
+        $details[] = array(
+            'type' => 'sales_invoice_details',
+            'attributes' => array(
+                'quantity' => 1.0,
+                'unit_price' => erp_edoc_parasut_money($extra['kurus']),
+                'vat_rate' => $extra['rate'],
+                'description' => mb_substr($extra['description'], 0, 255),
+                'discount_type' => 'amount',
+                'discount_value' => 0.0,
+            ),
             'relationships' => array(
                 'product' => array('data' => array('type' => 'products', 'id' => $product['id'])),
             ),
@@ -1065,10 +1163,29 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     if (!$check['ok']) {
         erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
 
-        return $fail(lang(array(
+        $currency = (string) $invoice['currency'];
+        $message = lang(array(
             'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}; the record was deleted there and nothing was issued.',
-            'vars' => array(erp_money_out_currency($check['total'], (string) $invoice['currency']), erp_money_out_currency((int) $invoice['grand_total'], (string) $invoice['currency'])),
-        )));
+            'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) $invoice['grand_total'], $currency)),
+        ));
+
+        // How Paraşüt got there, so the gap can be traced to the VAT or to
+        // the amounts before it once the record is gone.
+        $totals = erp_edoc_parasut_totals($result['body']['data']['attributes'] ?? array());
+
+        if ($totals !== array()) {
+            $message .= ' ' . lang(array(
+                'string' => 'Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.',
+                'vars' => array(
+                    erp_money_out_currency($totals['before_taxes'], $currency),
+                    erp_money_out_currency($totals['vat'], $currency),
+                    erp_money_out_currency($totals['vat_withholding'], $currency),
+                    erp_money_out_currency($totals['net'], $currency),
+                ),
+            ));
+        }
+
+        return $fail($message);
     }
 
     erp_query("UPDATE erp_invoices

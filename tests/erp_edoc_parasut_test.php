@@ -232,6 +232,61 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 }
 
+// Paraşüt takes every line's VAT again, half up to the kurus. A line whose
+// VAT the ERP did not take that way goes with a few kurus moved to a line of
+// their own at the same rate, chosen so the two come to the ERP's VAT.
+function test_erp_edoc_parasut_rounding_kurus()
+{
+	$line = array('quantity' => '1.0000', 'unit_price' => 833, 'line_total' => 833, 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => 167, 'tax2_amount' => 0, 'withholding_rate' => '0.000');
+
+	pg_assert_same(0, erp_edoc_parasut_rounding_kurus($line), 'VAT as Paraşüt takes it');
+
+	// Shipping 9.99 with its VAT inside: 8.33 + 1.66, where 20% of 8.33 is 1.67.
+	$shipping = array_merge($line, array('tax_total' => 166));
+	pg_assert_same(1, erp_edoc_parasut_rounding_kurus($shipping), '9.99 shipping');
+	pg_assert_same(1, erp_edoc_parasut_rounding_kurus(array_merge($line, array('unit_price' => 4163, 'line_total' => 4163, 'tax_total' => 832))), '49.95 shipping');
+
+	// One kurus up on a line rounded down (an order's tax tied back to it).
+	pg_assert_same(3, erp_edoc_parasut_rounding_kurus(array_merge($line, array('quantity' => '2.0000', 'line_total' => 1666, 'tax_total' => 334))), 'tied back up');
+
+	// No two lines at the rate reach it, and no rate or a withheld line is left alone.
+	pg_assert_same(0, erp_edoc_parasut_rounding_kurus(array_merge($line, array('quantity' => '2.0000', 'line_total' => 1666, 'tax_total' => 332))), 'out of reach');
+	pg_assert_same(0, erp_edoc_parasut_rounding_kurus(array_merge($shipping, array('tax_rate' => '0.000', 'tax_total' => 0))), 'no VAT');
+	pg_assert_same(0, erp_edoc_parasut_rounding_kurus(array_merge($shipping, array('withholding_rate' => '40.000'))), 'withheld');
+}
+
+// The lines that need it go a few kurus lighter, and those kurus follow
+// every line of the invoice at the line's rate on the default product.
+function test_erp_edoc_parasut_invoice_payload_rounding_lines()
+{
+	$lines = array(
+		array('product_id' => 0, 'description' => 'Deri Kalem Kılıfı', 'quantity' => '1.0000', 'unit_price' => 3995, 'line_total' => 3995, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => 799, 'withholding_rate' => '0.000'),
+		array('product_id' => 0, 'description' => 'Kargo', 'quantity' => '1.0000', 'unit_price' => 833, 'line_total' => 833, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => 166, 'withholding_rate' => '0.000'),
+		array('product_id' => 0, 'description' => 'Hizmet', 'quantity' => '2.0000', 'unit_price' => 833, 'line_total' => 1666, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => 334, 'withholding_rate' => '0.000'),
+	);
+
+	$details = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $lines, '555')['data']['relationships']['details']['data'];
+
+	pg_assert_same(5, count($details), 'two rounding lines after the three');
+	pg_assert_same(39.95, $details[0]['attributes']['unit_price']);
+	pg_assert_same(0.0, $details[0]['attributes']['discount_value']);
+
+	// A single unit goes a kurus cheaper; more units take it as a discount.
+	pg_assert_same(8.32, $details[1]['attributes']['unit_price'], 'shipping a kurus lighter');
+	pg_assert_same(0.0, $details[1]['attributes']['discount_value']);
+	pg_assert_same(8.33, $details[2]['attributes']['unit_price']);
+	pg_assert_same('amount', $details[2]['attributes']['discount_type']);
+	pg_assert_same(0.03, $details[2]['attributes']['discount_value'], 'three kurus off two units');
+
+	pg_assert_same(0.01, $details[3]['attributes']['unit_price']);
+	pg_assert_same(1.0, $details[3]['attributes']['quantity']);
+	pg_assert_same(20.0, $details[3]['attributes']['vat_rate']);
+	pg_assert_contains('Kargo', $details[3]['attributes']['description']);
+	pg_assert_same('9001', $details[3]['relationships']['product']['data']['id']);
+	pg_assert_same(0.03, $details[4]['attributes']['unit_price']);
+	pg_assert_contains('Hizmet', $details[4]['attributes']['description']);
+}
+
 // The grand total Paraşüt computed is net_total ("Genel Toplam"); gross_total
 // is the subtotal before VAT and is not compared.
 function test_erp_edoc_parasut_total_check()
@@ -507,6 +562,11 @@ function test_erp_edoc_parasut_product_refusal()
 	pg_assert_same('', erp_edoc_parasut_product_refusal(array($product), ''));
 	pg_assert_same('', erp_edoc_parasut_product_refusal(array(), ''));
 	pg_assert_contains('"Deneme hizmeti"', erp_edoc_parasut_product_refusal(array($product, $free), ' '));
+
+	// A product's line that needs a rounding line needs the default too.
+	$rounded = array_merge($product, array('quantity' => '1.0000', 'unit_price' => 833, 'line_total' => 833, 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => 166));
+	pg_assert_contains('Deri Kalem Kılıfı', erp_edoc_parasut_product_refusal(array($rounded), ''), 'rounding line without a default');
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($rounded), '9001'));
 
 	// Without a default given, the setting answers (the test sets one).
 	pg_assert_same('', erp_edoc_parasut_product_refusal(array($free)));
