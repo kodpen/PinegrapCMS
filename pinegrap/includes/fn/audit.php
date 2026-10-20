@@ -226,9 +226,29 @@ function pg_audit_compact($value)
 }
 
 /**
+ * A text column that holds a JSON object or list, decoded; null for any
+ * other value. Such columns (config.product_feeds, backup settings) keep
+ * tokens and keys under their own names inside the text.
+ *
+ * @param mixed $value
+ * @return array|null
+ */
+function pg_audit_json_text($value)
+{
+    if (!is_string($value) || (strlen($value) < 2) || !in_array($value[0], array('{', '['), true)) {
+        return null;
+    }
+
+    $decoded = json_decode($value, true);
+
+    return is_array($decoded) ? $decoded : null;
+}
+
+/**
  * One side of a change as it is stored: secrets masked ('***' for a value,
  * an empty value left empty, so "set" and "cleared" still show), long texts
- * compacted, at any depth.
+ * compacted, at any depth. JSON text is stored decoded, so the secrets in it
+ * are masked by the same names.
  *
  * @param array $values
  * @return array
@@ -238,6 +258,12 @@ function pg_audit_redact(array $values)
     $redacted = array();
 
     foreach ($values as $key => $value) {
+        $json = pg_audit_secret_key($key) ? null : pg_audit_json_text($value);
+
+        if ($json !== null) {
+            $value = $json;
+        }
+
         if (pg_audit_secret_key($key)) {
             $redacted[$key] = (($value === null) || ($value === '') || ($value === array())) ? $value : '***';
         } elseif (is_array($value)) {
@@ -399,26 +425,27 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
  * The tables whose rows the save paths hand to the trail by id: the record
  * type they become, the id column (none for the single config row), the
  * column that names the record, and the columns left out because every save
- * or a background task rewrites them (last editor, derived SEO score, usage
- * stamps). Any column ending in "timestamp" is left out as well
- * (pg_audit_volatile()).
+ * or a background task rewrites them (last editor, usage stamps), by name
+ * ('skip') or by prefix ('skip_prefix': the SEO scores, flags and check
+ * times recalculated after every save of a page or product). Any column
+ * ending in "timestamp" is left out as well (pg_audit_volatile()).
  *
  * @return array  table => type, id, label (column names, first non-empty
- *                wins), skip
+ *                wins), skip, skip_prefix
  */
 function pg_audit_tables()
 {
-    $seo = array('seo_score', 'seo_analysis', 'seo_analysis_current');
+    $seo = array('seo_');
 
     return array(
-        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running')),
-        'user'     => array('type' => 'user', 'id' => 'user_id', 'label' => array('user_username'), 'skip' => array('user_user', 'token')),
-        'products' => array('type' => 'product', 'id' => 'id', 'label' => array('short_description', 'name'), 'skip' => array_merge(array('user'), $seo)),
-        'page'     => array('type' => 'page', 'id' => 'page_id', 'label' => array('page_name'), 'skip' => array_merge(array('page_user', 'layout_modified'), $seo)),
-        'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error')),
-        'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user')),
-        'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user')),
-        'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip')),
+        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running'), 'skip_prefix' => array()),
+        'user'     => array('type' => 'user', 'id' => 'user_id', 'label' => array('user_username'), 'skip' => array('user_user', 'token'), 'skip_prefix' => array()),
+        'products' => array('type' => 'product', 'id' => 'id', 'label' => array('short_description', 'name'), 'skip' => array('user'), 'skip_prefix' => $seo),
+        'page'     => array('type' => 'page', 'id' => 'page_id', 'label' => array('page_name'), 'skip' => array('page_user', 'layout_modified'), 'skip_prefix' => $seo),
+        'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error'), 'skip_prefix' => array()),
+        'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip'), 'skip_prefix' => array()),
     );
 }
 
@@ -434,9 +461,17 @@ function pg_audit_volatile($table, array $row)
 {
     $tables = pg_audit_tables();
     $skip = isset($tables[$table]) ? $tables[$table]['skip'] : array();
+    $prefixes = isset($tables[$table]) ? $tables[$table]['skip_prefix'] : array();
 
     foreach (array_keys($row) as $column) {
-        if (in_array($column, $skip, true) || (preg_match('/(^|_)timestamp$/', (string) $column) === 1)) {
+        $column = (string) $column;
+        $drop = in_array($column, $skip, true) || (preg_match('/(^|_)timestamp$/', $column) === 1);
+
+        foreach ($prefixes as $prefix) {
+            $drop = $drop || (strpos($column, $prefix) === 0);
+        }
+
+        if ($drop) {
             unset($row[$column]);
         }
     }
