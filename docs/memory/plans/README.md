@@ -27,7 +27,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
-- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #PRNO, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
+- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
