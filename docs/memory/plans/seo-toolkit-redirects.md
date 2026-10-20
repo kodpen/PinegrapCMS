@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, in progress: steps 1-3 and 7 done; redirects are short link options with CSV and the File Manager choice): slug-change 301, 404 log, canonical, 404 API
+description: Plan (approved 2026-10-19, in progress: steps 1-3, 6 and 7 done; redirects are short link options with CSV and the File Manager choice): slug-change 301, 404 log, 404 API
 ---
 
 ## Why?
@@ -21,12 +21,13 @@ description: Plan (approved 2026-10-19, in progress: steps 1-3 and 7 done; redir
 3. Done (#799): File Manager short link window offers the answer, with the classic screens' name and address checks.
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).
-6. Page settings fields + render (S).
+6. Done (#802): page canonical address, noarchive and max-snippet in the classic page screen and the designer, drawn by `get_page_content()` (11.0.22, `docs/memory/visitors/page-canonical-robots-directives.md`).
 7. Done (#739): `llms.txt`, robots AI section, Content-Signal (`docs/memory/visitors/ai-crawlers-llms-txt.md`, 11.0.21).
 8. API `/seo/not-found` (S).
 
 ## Open questions?
 - Should redirects apply before the WAF? No: after the WAF, like every page.
+- Should a page whose canonical names another address leave sitemap.xml (as noindex does), with an SEO check for it? Not decided; today it stays listed.
 
 ## Where to start?
 - Step 4 or 5; read `docs/memory/platform/short-link-redirects.md` and `router.php`.

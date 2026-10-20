@@ -1,6 +1,6 @@
 ---
 name: page-canonical-robots-directives
-description: A page's own canonical address and its noarchive / max-snippet directives (page.canonical_url, noarchive, max_snippet; 11.0.22): storage, where the override applies, languages, editors, PHP/JS twin.
+description: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 ---
 
 ## What is stored?
