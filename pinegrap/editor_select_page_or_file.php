@@ -374,8 +374,9 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
         }
 
-        // A link with a token for its address has no name to link to.
-        $where .= (($where == '') ? 'WHERE ' : ' AND ') . "(short_links.name <> '')";
+        // A link with a token for its address has no name to link to, and a
+        // name with a * stands for many addresses rather than one.
+        $where .= (($where == '') ? 'WHERE ' : ' AND ') . "(short_links.name <> '') AND (short_links.name NOT LIKE '%*%')";
 
         // Get all short links.
         $short_links = db_items(

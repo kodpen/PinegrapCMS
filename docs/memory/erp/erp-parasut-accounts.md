@@ -4,7 +4,7 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (th
 ---
 
 ## What does the Paraşüt driver hand to the account sync?
-- The driver declares `accounts` (#711), so ERP › Account sync (`erp_account_sync.php`, `includes/erp/edoc/account_sync.php`) works on Paraşüt's contacts with the three operations of that file's contract:
+- The driver declares `accounts` (#711): ERP › Account sync (`erp_account_sync.php`, `includes/erp/edoc/account_sync.php`) works on Paraşüt's contacts through the contract's three operations:
   - `erp_edoc_parasut_accounts($page)`: `GET contacts?sort=id&page[number]=…&page[size]=25`, counts from `meta.total_count` / `meta.total_pages` (`erp_edoc_parasut_contacts_read()`). Sorted by id: the list's own order is `-balance`, which moves while a read pages through it.
   - `erp_edoc_parasut_account($id)`: `GET contacts/{id}`; 404 answers "Paraşüt no longer has this card".
   - `erp_edoc_parasut_account_save($card, $id)`: `POST contacts` ('' id) or `PUT contacts/{id}`.
@@ -19,18 +19,19 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (th
 - A short name that mirrored the name follows it; an account that is both goes as a customer; a Turkish number goes as digits. A new card is written with the fields that hold something; the ERP's `PG-<id>` code and e-Invoice answer are not Paraşüt fields.
 
 ## What happens to an invoice of a linked account?
-- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET, as the search was) and puts the invoice on it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number as before.
+- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET, as the search was) and uses it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number as before.
 - A poll links an account with no card yet to the contact its invoice is on (`erp_edoc_account_link_from_invoice()`, one more GET to fill the card).
-- A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742); cards opened before that differ from their account on the postal code alone.
+- A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742); older cards differ from their account on the postal code alone.
 
-## What did the first live read show? (demo company, 2026-10-20)
-- One page held all 6 cards; the VKN card linked itself to its account by tax number and matched it on every field but the postal code; the final-consumer card (11111111111) stayed unlinked. Writing a card (POST, PUT) is untried.
+## What did the live test show? (demo company, 2026-10-20)
+- Read: one page held all 6 cards; the VKN card linked itself to its account by tax number and matched it on every field but the postal code; the final-consumer card (11111111111) stayed unlinked.
+- PUT: the postal code went to that card, which read back equal. POST: an account (person, TCKN, customer and supplier) opened a card that read back equal, as a customer.
 
 ## Why does each operation move the time limit?
-- 25 cards a page and 10 requests per 10 s: a read of 50 pages, or a bulk send of 25 cards (POST + read back), waits about 40 s, and on Windows the PHP time limit counts waiting. `erp_edoc_parasut_allow_time()` moves the limit to at least a minute from now; it never moves it earlier and leaves no limit (the command line) as none.
+- 25 cards a page and 10 requests per 10 s: 50 pages, or 25 cards sent (POST + read back), wait about 40 s, and on Windows the PHP time limit counts the wait. `erp_edoc_parasut_allow_time()` moves it to at least a minute from now, never earlier; no limit (the command line) stays none.
 
 ## What is not settled?
 - UNVERIFIED: whether the list carries archived and unlisted (`untrackable`) contacts. A card a complete read did not see is shown as gone at the provider.
 
 ## Tests
-- `tests/erp_edoc_parasut_test.php`: `test_erp_edoc_parasut_card`, `_contacts_read`, `_card_attributes_change`, `_card_attributes_create`, `_linked_contact_usable`, `_country_code`, `_offers_its_cards`.
+- `tests/erp_edoc_parasut_test.php`: `test_erp_edoc_parasut_card`, `_contacts_read`, `_card_attributes_*`, `_linked_contact_usable`, `_country_code`, `_offers_its_cards`.
