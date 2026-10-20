@@ -15,9 +15,13 @@ description: Product feed builder (includes/fn/product_feeds.php, PR #561): whic
 ## How is a product described?
 - URL: site base + `pg_sw_catalog_detail_page_name(0)` + `/` + address_name, as the cart and express order link products. Images: `image_name` then `products_images_xref` by file name (as the product page), absolute, max 1 + 10.
 - Title: `_pg_product_rss_title()` (same as RSS/JSON-LD), 150 chars. Description: plain text of `full_description`, else meta, else short description, else the title; 5000 chars. Text fields are entity-decoded, not tag-stripped ("<10 cm" stays).
-- Price: `products.price` as "1499.00 TRY" built from integers; `sale_price` only when the no-code offer price (`get_discounted_product_prices(false)`) is above 0 and below the price.
+- Price: `products.price` as "1499.00 TRY" built from integers; `sale_price` only when the offer price for everybody (`get_discounted_product_prices(false)`, below) is above 0 and below the price.
 - GTIN only with a valid GS1 check digit (spaces/dashes dropped). Brand: product brand, else `default_brand` option.
 - Variant family: the product's first select-type group gives `group_id` "G<id>" (never equals an item id) and the attribute choices (label without a trailing colon, "nothing selected" options skipped).
+
+## Whose offer prices are published?
+- A guest's, whoever builds the feed (panel "Save and build now", `product_feed_job.php` from a manager's browser, the daily job): `get_discounted_product_prices(false)` switches `pg_offer_guest_view()` on while it runs, so the offer checks read no account, no offer code and an empty cart. Coded and key-code offers, cart conditions and rules stay out; `new customer` in its `no_orders` mode is met. The RSS feeds use the same call.
+- Before #747 the run read the requester's session: a manager who had opened a product with `?o=CODE` published the coded price as `sale_price` until the next daily build.
 
 ## What differs per format?
 - OpenAI: needs title, brand, a JPEG/PNG image, price; `is_eligible_search` true and `is_eligible_checkout` always false until the storefront API exists; seller URL/privacy/terms only when given.

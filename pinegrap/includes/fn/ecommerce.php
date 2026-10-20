@@ -1461,6 +1461,10 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
 }
 function get_order_subtotal()
 {
+    // The guest view (pg_offer_guest_view()) has an empty cart.
+    if (pg_offer_guest_view()) {
+        return 0;
+    }
     $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_subtotal = 0;
@@ -2425,15 +2429,18 @@ function pg_offer_customer_conditions_met($offer_id)
 {
     static $answers = array();
     $offer_id = (int) $offer_id;
-    if (isset($answers[$offer_id])) {
-        return $answers[$offer_id];
+    // The guest view (pg_offer_guest_view()) has its own answers: the same
+    // request can ask for the visitor in front of it as well.
+    $key = $offer_id . (pg_offer_guest_view() ? ':guest' : '');
+    if (isset($answers[$key])) {
+        return $answers[$key];
     }
     $conditions = pg_offer_conditions($offer_id);
     if (!$conditions) {
-        $answers[$offer_id] = true;
+        $answers[$key] = true;
         return true;
     }
-    $user_id = (defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
+    $user_id = (!pg_offer_guest_view() && defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
     $met = true;
     foreach ($conditions as $condition) {
         switch ($condition['type']) {
@@ -2485,7 +2492,7 @@ function pg_offer_customer_conditions_met($offer_id)
             break;
         }
     }
-    $answers[$offer_id] = $met;
+    $answers[$key] = $met;
     return $met;
 }
 
@@ -2512,8 +2519,9 @@ function pg_offer_usage_counts($offer_id)
 {
     static $answers = array();
     $offer_id = (int) $offer_id;
-    if (isset($answers[$offer_id])) {
-        return $answers[$offer_id];
+    $key = $offer_id . (pg_offer_guest_view() ? ':guest' : '');
+    if (isset($answers[$key])) {
+        return $answers[$key];
     }
     $used = "(orders.status IN ('complete', 'exported'))
 
@@ -2529,13 +2537,16 @@ function pg_offer_usage_counts($offer_id)
     $counts['total'] = (int) db_value("SELECT COUNT(DISTINCT orders.id) FROM orders WHERE " . $used);
 
     $who = '';
-    $user_id = (defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
+    // The guest view (pg_offer_guest_view()) has no account and no cart, so
+    // it is nobody in particular.
+    $guest = pg_offer_guest_view();
+    $user_id = (!$guest && defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
     if ($user_id) {
         $who = "(orders.user_id = '" . e($user_id) . "')";
     } else {
         // No account: the billing address of the cart in hand is the only
         // thing that ties this visitor to an earlier order.
-        $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+        $order_id = $guest ? 0 : (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
         if ($order_id > 0) {
             $email = trim((string) db_value("SELECT billing_email_address FROM orders WHERE id = '" . e($order_id) . "'"));
             if ($email != '') {
@@ -2546,7 +2557,7 @@ function pg_offer_usage_counts($offer_id)
     if ($who != '') {
         $counts['customer'] = (int) db_value("SELECT COUNT(DISTINCT orders.id) FROM orders WHERE " . $used . " AND " . $who);
     }
-    $answers[$offer_id] = $counts;
+    $answers[$key] = $counts;
     return $counts;
 }
 
@@ -2711,7 +2722,7 @@ function pg_offer_cart_conditions_met($offer_id, $ship_to_id = 0)
 function pg_offer_cart_quantity($ship_to_id = 0)
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
-    if ($order_id <= 0) {
+    if (($order_id <= 0) || pg_offer_guest_view()) {
         return 0;
     }
     $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
@@ -3819,6 +3830,9 @@ function get_best_offer_id($offer_code, $scope = '')
     }
     $best_order_discount = 0;
     $best_order_discount_offer_id = 0;
+    // The guest view (pg_offer_guest_view()) weighs the offers against an
+    // empty cart.
+    $cart_order_id = pg_offer_guest_view() ? '' : ($_SESSION['ecommerce']['order_id'] ?? '');
     // get order items so we can prepare array for ship tos and order items so we can loop through them later to determine discounts
     $query = "SELECT
 
@@ -3848,7 +3862,7 @@ function get_best_offer_id($offer_code, $scope = '')
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+        WHERE order_items.order_id = '" . e($cart_order_id) . "'";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -5169,22 +5183,55 @@ function protect_givex_gift_card_code($gift_card_code)
     // first 6 digits + next 5 digits hidden + next variable number of digits up until the last digit + last digit hidden
     return mb_substr($gift_card_code, 0, 6) . '*****' . mb_substr($gift_card_code, 11, -1) . '*';
 }
+/**
+ * Whether the offer checks are working out prices for everybody: the view of
+ * a visitor with no account, no offer code and an empty cart, whoever's
+ * request runs them. get_discounted_product_prices(false) switches it on
+ * while it runs; the checks that read the signed-in user or the shopping
+ * session (pg_offer_customer_conditions_met(), pg_offer_usage_counts(),
+ * pg_offer_cart_quantity(), get_order_subtotal(),
+ * check_for_products_in_cart(), get_best_offer_id()) read neither while it
+ * is on.
+ *
+ * @param bool|null $on true or false switches it, null only reads it
+ * @return bool
+ */
+function pg_offer_guest_view($on = null)
+{
+    static $guest = false;
+    if ($on !== null) {
+        $guest = (bool) $on;
+    }
+    return $guest;
+}
 // create function that will be used to get discounted product prices based on products that are discounted by offers
 // $for_member: also the signed-in member's agreed prices (pg_erp_member_prices()); false
-// for what is published to everyone, such as the product feeds.
+// for what is published to everyone, such as the product feeds: the prices of
+// a visitor with no account, no offer code and an empty cart
+// (pg_offer_guest_view()), whoever's request builds them, so a manager's
+// session never reaches a feed.
 function get_discounted_product_prices($for_member = true)
 {
+    if (!$for_member && !pg_offer_guest_view()) {
+        pg_offer_guest_view(true);
+        try {
+            return get_discounted_product_prices(false);
+        } finally {
+            pg_offer_guest_view(false);
+        }
+    }
     $discounted_product_prices = array();
     $special_offer_code = '';
     $offer_code = '';
+    $guest = pg_offer_guest_view();
     // if the visitor has an order, then get special offer code from order in database
-    if (isset($_SESSION['ecommerce']['order_id']) == true) {
+    if (!$guest && (isset($_SESSION['ecommerce']['order_id']) == true)) {
         $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $special_offer_code = $row['special_offer_code'] ?? '';
         // else the visitor does not have an order, so if there is a special offer code in the visitor's session (e.g. passed via the query string), then set special offer code
-    } else if (isset($_SESSION['ecommerce']['special_offer_code']) == true) {
+    } else if (!$guest && (isset($_SESSION['ecommerce']['special_offer_code']) == true)) {
         $special_offer_code = $_SESSION['ecommerce']['special_offer_code'];
     }
     // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
