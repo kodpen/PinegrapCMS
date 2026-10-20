@@ -44,11 +44,120 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
     private $styles = array();
 
     /**
+     * Exception code of a load stopped at the cell ceiling
+     */
+    const CELL_CEILING_REACHED = 1001;
+
+    /**
+     * The most cells a load may make, 0 for no ceiling
+     *
+     * A repeated row or column (table:number-rows-repeated,
+     * table:number-columns-repeated) becomes one cell per repeat, and a merged
+     * range one cell reference per cell it covers, so a few bytes of XML can
+     * ask for more cells than memory holds.
+     *
+     * @var int
+     */
+    private $cellCeiling = 0;
+
+    /**
+     * Cells the current load has made so far, merged range references included
+     *
+     * @var int|float
+     */
+    private $cellsMade = 0;
+
+    /**
      * Create a new PHPExcel_Reader_OOCalc
      */
     public function __construct()
     {
         $this->readFilter     = new PHPExcel_Reader_DefaultReadFilter();
+    }
+
+    /**
+     * Set the most cells a load may make; a load that would make more stops
+     * with a PHPExcel_Reader_Exception coded CELL_CEILING_REACHED
+     *
+     * @param int $pValue 0 for no ceiling
+     * @return PHPExcel_Reader_OOCalc
+     */
+    public function setCellCeiling($pValue = 0)
+    {
+        $this->cellCeiling = max(0, (int) $pValue);
+        return $this;
+    }
+
+    /**
+     * The most cells a load may make, 0 for no ceiling
+     *
+     * @return int
+     */
+    public function getCellCeiling()
+    {
+        return $this->cellCeiling;
+    }
+
+    /**
+     * Count cells about to be made against the ceiling
+     *
+     * @param int|float $count
+     * @throws PHPExcel_Reader_Exception
+     */
+    private function spendCells($count)
+    {
+        $this->cellsMade += max(0, $count);
+
+        if (($this->cellCeiling > 0) && ($this->cellsMade > $this->cellCeiling)) {
+            throw new PHPExcel_Reader_Exception('The document makes more than ' . $this->cellCeiling . ' cells.', self::CELL_CEILING_REACHED);
+        }
+    }
+
+    /**
+     * A repeat or span attribute as a whole number; a missing attribute is 1
+     *
+     * @param SimpleXMLElement|null $attribute
+     * @return int
+     */
+    private static function attributeCount($attribute)
+    {
+        return ($attribute === null) ? 1 : (int) (string) $attribute;
+    }
+
+    /**
+     * The column $steps to the right of $column, in the letter sequence the
+     * string increment walks ('Z', 'AA', ..., 'ZZZ', 'AAAA')
+     *
+     * Counted no further than 2^30: a cell reference has at most three
+     * letters, so no cell can be placed past 'ZZZ' and the exact letters
+     * beyond do not matter; the count stays inside a 32-bit integer.
+     *
+     * @param string $column
+     * @param int $steps
+     * @return string
+     */
+    private static function columnAfter($column, $steps)
+    {
+        $limit = 1073741824;
+        $index = 0;
+
+        for ($i = 0, $length = strlen($column); $i < $length; ++$i) {
+            $index = ($index * 26) + (ord($column[$i]) - 64);
+            if ($index > $limit) {
+                return $column;
+            }
+        }
+
+        $index = min($limit, $index + max(0, (int) $steps));
+        $column = '';
+
+        while ($index > 0) {
+            --$index;
+            $column = chr(65 + ($index % 26)) . $column;
+            $index = intdiv($index, 26);
+        }
+
+        return $column;
     }
 
     /**
@@ -324,6 +433,8 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
             throw new PHPExcel_Reader_Exception("Could not open " . $pFilename . " for reading! File does not exist.");
         }
 
+        $this->cellsMade = 0;
+
         $GMT = new DateTimeZone('UTC');
 
         $zipClass = PHPExcel_Settings::getZipClass();
@@ -465,7 +576,7 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                             }
                         case 'table-row':
                             $rowDataTableAttributes = $rowData->attributes($namespacesContent['table']);
-                            $rowRepeats = (isset($rowDataTableAttributes['number-rows-repeated'])) ? $rowDataTableAttributes['number-rows-repeated'] : 1;
+                            $rowRepeats = self::attributeCount(isset($rowDataTableAttributes['number-rows-repeated']) ? $rowDataTableAttributes['number-rows-repeated'] : null);
                             $columnID = 'A';
                             foreach ($rowData as $key => $cellData) {
                                 if ($this->getReadFilter() !== null) {
@@ -628,8 +739,13 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
 //                                    echo 'Adjusted Formula: ', $cellDataFormula, PHP_EOL;
                                 }
 
-                                $colRepeats = (isset($cellDataTableAttributes['number-columns-repeated'])) ? $cellDataTableAttributes['number-columns-repeated'] : 1;
-                                if ($type !== null) {
+                                $colRepeats = self::attributeCount(isset($cellDataTableAttributes['number-columns-repeated']) ? $cellDataTableAttributes['number-columns-repeated'] : null);
+                                if ($type === PHPExcel_Cell_DataType::TYPE_NULL) {
+                                    //    An empty run makes no cell: stepped over at once rather than a column at a time,
+                                    //        as the run that fills a row out to the last column of the sheet is in most files
+                                    $columnID = self::columnAfter($columnID, $colRepeats - 1);
+                                } elseif ($type !== null) {
+                                    $this->spendCells(max(0, $colRepeats) * max(0, $rowRepeats));
                                     for ($i = 0; $i < $colRepeats; ++$i) {
                                         if ($i > 0) {
                                             ++$columnID;
@@ -658,6 +774,14 @@ class PHPExcel_Reader_OOCalc extends PHPExcel_Reader_Abstract implements PHPExce
                                 //    Merged cells
                                 if ((isset($cellDataTableAttributes['number-columns-spanned'])) || (isset($cellDataTableAttributes['number-rows-spanned']))) {
                                     if (($type !== PHPExcel_Cell_DataType::TYPE_NULL) || (!$this->readDataOnly)) {
+                                        //    mergeCells() lists a reference for every cell the range covers, and walks
+                                        //        a range that ends before it starts, or past column ZZZ, without end
+                                        $columnsSpanned = self::attributeCount(isset($cellDataTableAttributes['number-columns-spanned']) ? $cellDataTableAttributes['number-columns-spanned'] : null);
+                                        $rowsSpanned = self::attributeCount(isset($cellDataTableAttributes['number-rows-spanned']) ? $cellDataTableAttributes['number-rows-spanned'] : null);
+                                        if (($columnsSpanned < 1) || ($rowsSpanned < 1) || (PHPExcel_Cell::columnIndexFromString($columnID) + $columnsSpanned - 1 > 18278)) {
+                                            throw new PHPExcel_Reader_Exception('Merged range at ' . $columnID . $rowID . ' is not a range of the sheet.');
+                                        }
+                                        $this->spendCells($columnsSpanned * $rowsSpanned);
                                         $columnTo = $columnID;
                                         if (isset($cellDataTableAttributes['number-columns-spanned'])) {
                                             $columnTo = PHPExcel_Cell::stringFromColumnIndex(PHPExcel_Cell::columnIndexFromString($columnID) + $cellDataTableAttributes['number-columns-spanned'] -2);
