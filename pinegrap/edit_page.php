@@ -1048,6 +1048,9 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
 
     $page_id = $row['page_id'];
+
+    // The whole row as it was, for the audit trail of the save or delete below.
+    $audit_before = pg_audit_fetch('page', $page_id);
 	$current_page_name = $row['page_name'];
     $current_page_type = $row['page_type'];
     $current_layout_type = $row['layout_type'];
@@ -1116,6 +1119,8 @@ if (!$_POST) {
         // delete page
         $query = "DELETE FROM page WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        pg_audit_record('delete', 'page', $page_id, $audit_before);
         
         // delete regions
         $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($_POST['id'] ?? '') . "'";
@@ -1880,6 +1885,8 @@ if (!$_POST) {
         }
 
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('page'), $name))), $_SESSION['sessionusername']);
+
+        pg_audit_record('update', 'page', $page_id, $audit_before);
         
         $send_to = $_POST['send_to'];
         
