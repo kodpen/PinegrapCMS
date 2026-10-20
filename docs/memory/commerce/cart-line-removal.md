@@ -16,7 +16,7 @@ description: How a line leaves the cart (quantity 0 on the designer or classic c
 - The designer cart works a complete recipient's shipping out again when a line's quantity changes, as the classic cart does.
 - The classic cart's Checkout checks required products against the lines still in the cart: its `$order_items` is read before the posted quantities are saved, so a line set to 0 in the same request no longer adds what it required.
 
-## What was the symptom? (#731)
+## What was the symptom? (#731, PR #930)
 - Designer cart, one recipient: a shippable line set to 0 next to a digital one left an empty recipient, and express order could not be finished; an offer's gift set to 0 came straight back.
 - Classic cart: X (requires Y) set to 0 with Checkout pressed at once added Y with "X requires Y" and sent the shopper back to the cart.
 
