@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; steps 1-2 done, PRs #740, #PRNUM; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
+description: Plan (approved 2026-10-19; steps 1-2 done, PRs #740, #812; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
 ---
 
 ## What did the owner decide?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19; steps 1-2 done, PRs #740, #PRNUM; 2b ope
 
 ## What remains?
 1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740).
-2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #PRNUM): card and Pay With Iyzico drivers, the one branch, tests; the inline iyzico code stays (frozen).
+2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #812): card and Pay With Iyzico drivers, the one branch, tests; the inline iyzico code stays (frozen).
 2b. The iyzico 3-D Secure return (`mode=iyzipay_threedsecure_return`) still runs in the Iyzipay block of `submit_order.php`; moving it into the card driver's `complete()` is open (S).
 3. Stripe PaymentIntents driver + Elements in the express order widget + webhook (L).
 4. PayTR driver (M); PayPal v2 driver (M).
