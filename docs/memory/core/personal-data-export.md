@@ -1,6 +1,6 @@
 ---
 name: personal-data-export
-description: privacy_export.php (PR #PR): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
+description: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 ---
 
 ## What is it?

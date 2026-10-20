@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1, 2, 2b, 3 done: #738, #813, #905, #PRNUM): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1, 2, 2b, 3 done: #738, #813, #905, #938): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19; steps 1, 2, 2b, 3 done: #738, #813, #905
 1. Done (PR #738): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
 2. Done (PR #813): `pg_audit_record()` in the save paths listed in `core/audit-trail-writers.md`.
 2b. Done (PR #905): page editor, order screen, file manager, Recycle Bin, copies; JSON-text secrets masked. Still open there: user edit/delete, Workspace changes (S).
-3. Done (PR #PRNUM): `privacy_export.php`, the JSON pack and the PDF summary; `core/personal-data-export.md`.
+3. Done (PR #938): `privacy_export.php`, the JSON pack and the PDF summary; `core/personal-data-export.md`.
 4. Erasure wizard with dry-run (M).
 5. Audit screen, export, API; retention jobs (S–M).
 
