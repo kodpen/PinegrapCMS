@@ -115,8 +115,6 @@ if ($_POST) {
 
             pg_pb_delete_product($product_id);
 
-            pg_audit_record('delete', 'products', $product_id, $audit_before);
-
             $deleted_message = lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name)));
         }
 
