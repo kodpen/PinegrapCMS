@@ -314,12 +314,14 @@ function pg_notification_display($notification)
 
 		// title is the order number, order_total what happened (requested,
 		// or shipped when the customer sent the goods back) and form_id the
-		// return (pg_return_notify_staff()).
+		// return (pg_return_notify_staff()), whose screen the line opens.
 		$display['title']   = ((string) ($notification['order_total'] ?? '') === 'shipped')
 			? lang('A customer sent back the goods of a return.')
 			: lang('A customer asked to return goods.');
 		$display['details'] = lang('Order Number') . ': #' . h($notification['title']);
-		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
+		$display['url']     = ((int) ($notification['form_id'] ?? 0) > 0)
+			? 'view_return.php?id=' . (int) $notification['form_id']
+			: 'view_order.php?id=' . (int) $notification['order_id'];
 		$display['icon']    = 'assets/images/notification-order.png';
 		$display['badge']   = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
