@@ -14,7 +14,7 @@ description: The Paraşüt e-document driver (includes/erp/edoc/parasut.php): re
 ## How are withholding, exemption and the order sent?
 - Withholding is per line (`details[].vat_withholding_rate`); its code goes in the e-document request as `vat_withholding_params[{detail_id, vat_withholding_code}]` with Paraşüt's line ids (`?include=details`, `erp_edoc_parasut_detail_ids()`, ERP line order).
 - Exemption: one code per document (`vat_exemption_reason_code`); 250/350 need `vat_exemption_reason` in words, from the invoice note (refused without one).
-- `order_no` and `order_date` go together or not at all (the conversion is refused with one); the date is `orders.order_date` as Y-m-d.
+- `order_no` is `orders.order_number` (the row id until #912), `order_date` the day; both or none (the conversion is refused with one).
 
 ## Rate limit and retries?
 - 10 requests per 10 s: `parasut_throttle()` (includes/fn/parasut.php) paces the process; `erp_edoc_parasut_request()` repeats once after a 429 (a window later) and after a 401 (new token).
