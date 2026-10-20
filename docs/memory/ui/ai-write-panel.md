@@ -18,11 +18,11 @@ description: The "Write with AI" button and draft panel (pg_ai_write_button(), p
 - The button opens a panel under its label row, above the field, and asks at once. Clicking it again, the close button or Escape closes it; an answer still on its way is then ignored.
 - Tone select (Informative, Friendly, Formal, Persuasive; a change asks again and is remembered for the next panel on the page), an optional request (Enter asks again), "Use this text", "Try again". Buttons are disabled only while a request runs.
 - Context is read at click time from the element ids in the button's settings, through the CKEditor instance when one runs on the id: unsaved edits count.
-- "Use this text": a one-line draft is set as `.value` with `input` and `change` events (SEO counters, unsaved-changes checks); the html format goes to `CKEDITOR.instances[id].setData()`, or into the textarea when no editor runs. Nothing is saved until the form is.
+- "Use this text": a one-line draft is set as `.value` with `input` and `change` events (SEO counters, unsaved-changes checks); the html format goes to `CKEDITOR.instances[id].setData()`, or into the textarea when no editor runs. Nothing is saved until the form is. Then `pg:ai-write-used` is sent: docs/memory/ui/ai-write-marks.md.
 - The html draft is shown with `innerHTML` only because the server built it from escaped words; one-line drafts and errors are `textContent`. When 20 or fewer drafts are left today the panel says so.
 - On the browser's model (docs/memory/ui/ai-write-browser.md) the title says so and the body shows the download and the translation as they run.
 
 ## What does the server add?
 - A stored product: its group names and attribute choices ("Renk: Kırmızı"). A stored page: its folder name, its h1–h3 headings and its text, from `page_tree_code` for a visual design page or the live regions (`pregion`, collection `a`) of a classic one (`pg_ai_write_facts()`, `pg_ai_write_html_digest()`). Only fields the form left empty are filled.
 - The price gets the store's currency symbol; a zero price is left out (`pg_ai_write_price_text()`).
-- The style note's description in Settings › Languages says Write with AI reads it too.
+- Settings › Languages says the style note is read here too.
