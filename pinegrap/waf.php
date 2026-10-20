@@ -3355,6 +3355,31 @@ function waf_request_names_script($names)
 }
 
 /**
+ * A request path cut after the first segment that names a PHP file - the
+ * script the server runs - so that PATH_INFO behind it is not part of it.
+ * A path with no such segment (an address the router serves) is returned
+ * whole. Case-insensitive, for IIS. The same reading of the path as
+ * waf_request_names_script().
+ *
+ * @param string $path without the query string
+ * @return string
+ */
+function waf_path_to_script($path)
+{
+    $kept = array();
+
+    foreach (explode('/', (string) $path) as $segment) {
+        $kept[] = $segment;
+
+        if (strtolower(substr($segment, -4)) === '.php') {
+            break;
+        }
+    }
+
+    return implode('/', $kept);
+}
+
+/**
  * Operator-defined path exclusions.
  *
  * The realistic need is payment gateway callbacks: a 3-D Secure return posts
@@ -3390,6 +3415,13 @@ function waf_is_excluded()
     if ($question !== false) {
         $url = substr($url, 0, $question);
     }
+
+    // The path stops at the script it runs. What follows it is PATH_INFO,
+    // which the caller writes as freely as a query string: with
+    // "iyzico_callback" excluded, /index.php/iyzico_callback ran index.php
+    // with no firewall at all - the sign-in screen, a banned address, any
+    // payload.
+    $url = waf_path_to_script($url);
 
     $script = waf_script_name();
 
