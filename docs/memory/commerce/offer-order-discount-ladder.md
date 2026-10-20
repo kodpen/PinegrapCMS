@@ -17,7 +17,7 @@ description: Tiered order discount (ladder) and how the order discount is chosen
 - `get_best_offer_id()` (which code-entered offer is best) weighs order discounts with the same `pg_offer_order_discount_value()`.
 - The cart widget's applied-offers list (`widgets_cart.php`) does not list a laddered offer below its first rung.
 
-## What was the symptom? (#726)
+## What was the symptom? (#726, PR #922)
 - The "Kademeli sepet indirimi" template (₺100 → %5, ₺250 → %10, ₺500 → %20, no other condition) gave a ₺50 cart 5%: below the first rung every cart took the first rung's rate, because the ladder's 0 fell back to the action's percentage. A gift that took the cart below the first rung kept the 5% too, and a flat order discount next to the ladder never won below the rung.
 
 Related: docs/memory/ui/offer-editor.md, docs/memory/commerce/offer-discounted-units.md
