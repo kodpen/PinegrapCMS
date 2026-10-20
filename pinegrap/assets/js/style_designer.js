@@ -25135,6 +25135,42 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A link's window or relationship typed in the Attrs panel, or kept there
+    // by an older starter tree, prints on the canvas and on the page (the
+    // server's link and btn cases read _attrs when the prop is empty) while
+    // the Target and Relationship options read the prop and said "Default".
+    // On selection such an entry is folded into the prop when the option can
+    // hold its value - the page prints the prop where it printed the entry,
+    // so nothing moves - and leaves _attrs. Beside a prop that is already set
+    // the entry is the one the page ignores, and it is dropped. A value the
+    // option cannot hold (a named frame, two rel words) stays in _attrs,
+    // where the Attrs panel shows it. Runs silently on node selection — no
+    // undo entry.
+    function migrateNodeLinkProps(node) {
+        if (!node || !node.props || !Array.isArray(node.props._attrs) || !node.props._attrs.length) return;
+        var p = node.props;
+        var rels = ['nofollow', 'noopener', 'noreferrer', 'noopener noreferrer', 'sponsored', 'ugc'];
+        var opts = null;
+        // The values each element's Target and Relationship selects offer
+        // (propsLinkOptions() for the link, the Button's link rows).
+        if (node.type === 'content' && p.contentType === 'link') {
+            opts = { target: ['_blank', '_self', '_parent', '_top'], rel: rels };
+        } else if (node.type === 'component' && p.componentType === 'btn'
+                   && p.btnElement !== 'button' && p.btnElement !== 'input') {
+            opts = { target: ['_blank', '_self'], rel: rels };
+        }
+        if (!opts) return;
+        p._attrs = p._attrs.filter(function (a) {
+            var name = (a && a.name) ? String(a.name).trim().toLowerCase() : '';
+            if (!opts.hasOwnProperty(name)) return true;
+            if (p[name]) return false;
+            var v = String(a.value == null ? '' : a.value).trim();
+            if (opts[name].indexOf(v) === -1) return true;
+            p[name] = v;
+            return false;
+        });
+    }
+
     // ── Multi-select: shared helpers ─────────────────────────────────────────
     // Returns the uniform class within a mutex group across all nodes, or null if mixed.
     function _mcUniformGroup(nodes, groupArr) {
@@ -26591,6 +26627,8 @@ const StyleDesigner = (function () {
         // (fontSize, objectPosition) back into the prop, so the option and
         // the page agree (_sdInlineStyleProps()).
         migrateNodeStyleProps(selectedNode);
+        // The same for a link's window and relationship kept in _attrs.
+        migrateNodeLinkProps(selectedNode);
 
         // Options section (node-specific)
         var optHtml = '';
@@ -48094,8 +48132,8 @@ const StyleDesigner = (function () {
                                 aiBadge(_sdT('Partially paid'), 'text-bg-warning', 'invoice_is_partial', _sdT('Partially Paid Badge')),
                                 aiBadge(_sdT('12 days overdue'), 'text-bg-danger', 'invoice_is_overdue', _sdT('Overdue Badge'), '__invoice_status'),
                                 aiBadge(_sdT('Return'), 'text-bg-info', 'invoice_is_return', _sdT('Return Badge')),
-                                createNode('content', { contentType: 'link', text: _sdT('PDF'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
-                                    _attrs: [{ name: 'target', value: '_blank' }, { name: 'rel', value: 'noopener' }],
+                                createNode('content', { contentType: 'link', text: _sdT('PDF'), href: '#', target: '_blank', cssClass: 'btn btn-sm btn-outline-primary',
+                                    _attrs: [{ name: 'rel', value: 'noopener' }],
                                     _bindings: { href: '__invoice_pdf_url' } })
                             ])
                         ])

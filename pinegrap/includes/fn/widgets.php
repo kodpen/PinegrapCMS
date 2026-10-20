@@ -4674,50 +4674,6 @@ function pg_sw_item_summary($html, $max = 140)
     return rtrim($cut, " ,.;:-") . "\u{2026}";
 }
 
-/**
- * Moves a link's window (and a button link's rel) from its custom attributes
- * into the props the server's renderers read. The content link prints
- * `target` from its props and skips an _attrs entry of that name; the Button
- * component drawn as a link does the same with `target` and `rel`. The
- * editor's canvas and code view print the _attrs entry, so a window written
- * there showed as a new window in the designer and opened in the same one on
- * the page. A prop already set wins and an empty value moves nothing. The
- * semantic <a> prints its _attrs window itself and is left alone. The names
- * are compared the way _render_extra_attrs() skips them (lower case). Walks
- * the whole tree, loop areas included.
- *
- * @param mixed $node A designer node: an array with props and children
- * @return void
- */
-function pg_sw_link_attrs_to_props(&$node)
-{
-    if (!is_array($node)) return;
-    if (isset($node['props']) && is_array($node['props'])) {
-        $type  = isset($node['type']) ? $node['type'] : '';
-        $props = $node['props'];
-        $names = array();
-        if ($type === 'content' && isset($props['contentType']) && $props['contentType'] === 'link') {
-            $names = array('target');
-        } elseif ($type === 'component' && isset($props['componentType']) && $props['componentType'] === 'btn'
-                  && !(isset($props['btnElement']) && in_array($props['btnElement'], array('button', 'input'), true))) {
-            $names = array('target', 'rel');
-        }
-        if ($names && !empty($props['_attrs']) && is_array($props['_attrs'])) {
-            foreach ($props['_attrs'] as $a) {
-                if (!is_array($a) || !isset($a['name']) || !is_scalar($a['name'])) continue;
-                $name  = strtolower((string)$a['name']);
-                $value = (isset($a['value']) && is_scalar($a['value'])) ? (string)$a['value'] : '';
-                if (!in_array($name, $names, true) || trim($value) === '') continue;
-                if (empty($node['props'][$name])) $node['props'][$name] = $value;
-            }
-        }
-    }
-    if (!empty($node['children']) && is_array($node['children'])) {
-        foreach ($node['children'] as &$child) pg_sw_link_attrs_to_props($child);
-        unset($child);
-    }
-}
-
 // Render an 'order_view' system widget. Reads a single completed order via
 // $_GET['order_id'] (or ?oid=) and iterates order_items in loop_area.
 // Security: order must belong to the currently logged-in user (orders.user).
@@ -4835,11 +4791,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // This widget posts no form of its own; an unnamed node would take the
     // messages of a form beside it (the footer's sign-up form among them).
     _pg_inject_messages_node($tree_decoded, 'order_receipt');
-    // The invoice and tracking links of layouts built from the starter tree
-    // keep their new window in _attrs, which the link renderer skips. Moved
-    // before anything renders: the not-found closure below takes the tree
-    // as it is when defined.
-    pg_sw_link_attrs_to_props($tree_decoded);
 
     // NOTE: split + render are DEFERRED to AFTER order data is fetched and
     // visibility bindings are applied. Otherwise nodes with

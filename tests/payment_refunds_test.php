@@ -181,9 +181,9 @@ function payment_refunds_test_legacy_cancel($answer)
 
 // The cancellation's void through the driver, the way
 // process_order_cancellation() runs it.
-function payment_refunds_test_cancel($order)
+function payment_refunds_test_cancel($order, $gateway = 'Iyzipay')
 {
-	$key = pg_payment_cancel_driver($order['payment_method']);
+	$key = pg_payment_cancel_driver($order['payment_method'], $gateway);
 	$answer = pg_payment_call($key, 'cancel', array($order, (string) $order['transaction_id']));
 
 	return pg_payment_cancel_outcome((int) $order['id'], (string) $order['transaction_id'], $answer, pg_payment_log_name($key));
@@ -193,22 +193,36 @@ function payment_refunds_test_cancel($order)
    Which driver
    --------------------------------------------------------------------------- */
 
-function test_payment_refunds_refund_driver_is_the_payment_gateways()
+// Card orders go to the driver of the Payment Gateway value, every other
+// method to its own driver, whichever gateway the store has.
+function payment_refunds_test_driver_cases()
 {
-	pg_assert_same('iyzico', pg_payment_refund_driver('Iyzipay'));
-	pg_assert_same('', pg_payment_refund_driver('Stripe'), 'a legacy gateway has no refund here');
-	pg_assert_same('', pg_payment_refund_driver(''), 'no gateway');
-	pg_assert_same('', pg_payment_refund_driver('Pay With Iyzico'), 'a payment method is not a gateway');
+	return array(
+		'card, iyzico gateway'            => array('Credit/Debit Card', 'Iyzipay', 'iyzico'),
+		'card, legacy gateway'            => array('Credit/Debit Card', 'Stripe', ''),
+		'card, no gateway'                => array('Credit/Debit Card', '', ''),
+		'Pay With Iyzico, iyzico gateway' => array('Pay With Iyzico', 'Iyzipay', 'pay_with_iyzico'),
+		'Pay With Iyzico, legacy gateway' => array('Pay With Iyzico', 'Stripe', 'pay_with_iyzico'),
+		'Pay With Iyzico, no gateway'     => array('Pay With Iyzico', '', 'pay_with_iyzico'),
+		'PayPal Express Checkout'         => array('PayPal Express Checkout', 'Iyzipay', ''),
+		'Offline Payment'                 => array('Offline Payment', 'Iyzipay', ''),
+		'paid with a gift card'           => array('', 'Iyzipay', ''),
+		'a gateway value as the method'   => array('Iyzipay', 'Iyzipay', ''),
+	);
 }
 
-function test_payment_refunds_cancel_driver_follows_the_payment_method()
+function test_payment_refunds_refund_driver_is_the_orders()
 {
-	pg_assert_same('pay_with_iyzico', pg_payment_cancel_driver('Pay With Iyzico'));
-	pg_assert_same('', pg_payment_cancel_driver('Credit/Debit Card'), 'a card order names no gateway');
-	pg_assert_same('', pg_payment_cancel_driver('Iyzipay'), 'a gateway value is not stored as a payment method');
-	pg_assert_same('', pg_payment_cancel_driver('Offline Payment'));
-	pg_assert_same('', pg_payment_cancel_driver('PayPal Express Checkout'));
-	pg_assert_same('', pg_payment_cancel_driver(''));
+	foreach (payment_refunds_test_driver_cases() as $label => $case) {
+		pg_assert_same($case[2], pg_payment_refund_driver($case[0], $case[1]), $label);
+	}
+}
+
+function test_payment_refunds_cancel_driver_is_the_orders()
+{
+	foreach (payment_refunds_test_driver_cases() as $label => $case) {
+		pg_assert_same($case[2], pg_payment_cancel_driver($case[0], $case[1]), $label);
+	}
 }
 
 function test_payment_refunds_log_name()
@@ -233,7 +247,7 @@ function test_payment_refunds_refund_sends_the_order_screens_request()
 	foreach (array(1250 => 12.5, 4714 => 47.14, 1999 => 19.99, 1 => 0.01) as $hundredths => $refund_amount) {
 		$http = payment_refunds_test_http(array('/v2/payment/refund' => payment_refunds_test_success(array('paymentId' => 'r-' . $hundredths))));
 
-		$answer = pg_payment_call(pg_payment_refund_driver('Iyzipay'), 'refund', array(payment_refunds_test_order(array('payment_method' => 'Credit/Debit Card')), $hundredths, array()));
+		$answer = pg_payment_call(pg_payment_refund_driver('Credit/Debit Card', 'Iyzipay'), 'refund', array(payment_refunds_test_order(array('payment_method' => 'Credit/Debit Card')), $hundredths, array()));
 
 		pg_assert_same(1, count($http->posts), (string) $hundredths);
 		pg_assert_same('/v2/payment/refund', $http->posts[0]['path']);
@@ -277,6 +291,25 @@ function test_payment_refunds_cancel_sends_the_cancellations_request()
 	payment_refunds_test_cancel(payment_refunds_test_order(array('cancellation_reason' => '')));
 
 	pg_assert_same(legacy_refunds_cancel_request(438, $order, ''), payment_refunds_test_without_conversation($http->posts[0]['body']), 'no reason, no description');
+}
+
+// A card order is voided through the gateway's card driver with the same
+// request and the same lines as a Pay With Iyzico order.
+function test_payment_refunds_card_order_is_voided_through_the_gateways_driver()
+{
+	$order = payment_refunds_test_order(array('payment_method' => 'Credit/Debit Card'));
+	$http = payment_refunds_test_http(array('/payment/cancel' => payment_refunds_test_success(array('paymentId' => '24680'))));
+
+	$outcome = payment_refunds_test_cancel($order);
+
+	pg_assert_same(1, count($http->posts));
+	pg_assert_same(legacy_refunds_cancel_request(438, $order, 'Müşteri vazgeçti'), payment_refunds_test_without_conversation($http->posts[0]['body']));
+	pg_assert_same(legacy_refunds_cancel_outcome(438, $order, payment_refunds_test_legacy_cancel(payment_refunds_test_success(array('paymentId' => '24680')))), $outcome);
+
+	payment_refunds_test_http(array('/payment/cancel' => array('status' => 'failure', 'errorMessage' => 'İptal süresi geçti')));
+
+	pg_assert_same('manual_required', payment_refunds_test_cancel($order)['refund_status']);
+	pg_assert_same('', pg_payment_cancel_driver('Credit/Debit Card', 'Stripe'), 'a legacy gateway is left to the operator');
 }
 
 function test_payment_refunds_cancel_outcome_keeps_the_cancellations_log()
