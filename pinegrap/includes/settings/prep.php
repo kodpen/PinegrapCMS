@@ -248,6 +248,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // SEO screen needs.
     $product_feeds_ready = array_key_exists('product_feeds', $row);
     $product_feeds_settings = pg_product_feed_settings_parse($product_feeds_ready ? (string) $row['product_feeds'] : '');
+    // AI crawlers and llms.txt (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php):
+    // the card's switches and text, and the two firewall switches it follows.
+    $ai_crawlers = pg_ai_crawler_settings_from_row($row);
     $page_editor_version = $row['page_editor_version'];
     $page_editor_font = $row['page_editor_font'];
     $page_editor_font_size = $row['page_editor_font_size'];
