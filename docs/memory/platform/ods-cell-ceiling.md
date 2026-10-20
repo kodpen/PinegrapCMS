@@ -7,7 +7,7 @@ description: PHPExcel's .ods reader makes cells of repeated rows/columns and mer
 - `PHPExcel_Reader_OOCalc` made a cell for every repeat of `table:number-rows-repeated` × `table:number-columns-repeated`, a reference for every cell a merged range covers (`mergeCells()` → `extractAllCellReferencesInRange()`), and walked an empty run one column at a time. A 745-byte .ods filled 128 MB in 15 s; a merged range did it in 0.2 s; an empty run of 2e9 columns spun for minutes; a span of 0, negative or past ZZZ was walked without end; one value in the far corner made both importers walk 1.7e10 empty cells.
 - #730 measures `content.xml` and `meta.xml` (8 MB); this is what the reader makes of them.
 
-## What does the reader do now?
+## What does the reader do now? (PR #803)
 - `setCellCeiling($n)` (0, the default, sets none): value cells × repeats and merged-range cells are counted over the whole workbook before they are made; one past the ceiling throws `PHPExcel_Reader_Exception` coded `PHPExcel_Reader_OOCalc::CELL_CEILING_REACHED`.
 - An empty run (no `text:p`) moves the column in one step (`columnAfter()`, the string-increment sequence, counted to 2^30: nothing can be placed past ZZZ). The cells are the same as before; LibreOffice's runs that fill each row to column 16,384 now cost nothing.
 - A merged range with a span below 1 or reaching past ZZZ stops the load, with or without a ceiling.
