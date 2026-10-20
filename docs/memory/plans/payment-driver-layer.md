@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; step 1 done): driver layer beside submit_order.php, iyzico port next, Stripe PaymentIntents + wallets, PayTR; legacy gateways frozen, never removed
+description: Plan (approved 2026-10-19; step 1 done, PR #740): driver layer beside submit_order.php, iyzico port next, Stripe PaymentIntents + wallets, PayTR; legacy gateways frozen, never removed
 ---
 
 ## What did the owner decide?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19; step 1 done): driver layer beside submit
 - Saved cards/wallets for customers: tokens stored only as PSP references, never PAN; optional later.
 
 ## What remains?
-1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done; no driver ships yet, `submit_order.php` untouched.
+1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740); no driver ships yet, `submit_order.php` untouched.
 2. iyzico driver port with behaviour tests against today's results (M).
 3. Stripe PaymentIntents driver + Elements in the express order widget + webhook (L).
 4. PayTR driver (M); PayPal v2 driver (M).

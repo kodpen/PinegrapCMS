@@ -1,6 +1,6 @@
 ---
 name: payment-drivers
-description: Payment driver layer (2026.11.0): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect drivers, add-on registration, settings in connect_apps payment_<key>
+description: Payment driver layer (2026.11.0, PR #740): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect drivers, add-on registration, settings in connect_apps payment_<key>
 ---
 
 ## What is a payment driver?
