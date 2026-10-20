@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1, 2, 2b done: #738, #813, 2b PR): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b
 ## What remains?
 1. Done (PR #738): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
 2. Done (PR #813): `pg_audit_record()` in the save paths listed in `core/audit-trail-writers.md`.
-2b. The paths that file lists as not hooked (user edit/delete, page editor, order screen, file manager, Workspace changes, Recycle Bin) (S–M).
+2b. Done (2b PR): page editor, order screen, file manager, Recycle Bin, copies; JSON-text secrets masked. Still open there: user edit/delete, Workspace changes (S).
 3. Export screen + JSON/PDF (M).
 4. Erasure wizard with dry-run (M).
 5. Audit screen, export, API; retention jobs (S–M).
@@ -27,4 +27,4 @@ description: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b
 - Which step hooks the consent writers? None of the steps above names them. `sms-and-iys.md` step 4 covers sign-up, account, checkout and unsubscribe for e-mail and SMS; the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
-- Step 2b (`core/audit-trail-writers.md`, "What is not hooked yet?") or step 3; `core/consent-log-and-audit-trail.md` says what `pg_audit()` keeps. The plan's one `[NEW]` changelog line goes in with the first screen a manager uses (export or erasure).
+- Step 3, or the rest of 2b once #672 / #805 merge (`core/audit-trail-writers.md`); `core/consent-log-and-audit-trail.md` says what `pg_audit()` keeps. The plan's one `[NEW]` changelog line goes in with the first screen a manager uses (export or erasure).
