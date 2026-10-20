@@ -110,13 +110,6 @@ if (!db::$con) {
 
     // Healthy again - close the breaker if a previous request opened it.
     pg_db_guard_clear();
-
-    // check db connected but if it's empty or has no config table.
-    $config_table_result = mysqli_query(db::$con, "SHOW TABLES LIKE 'config'");
-    if (($config_table_result === false) || !mysqli_num_rows($config_table_result)) {
-        router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
-        exit();
-    }
 }
 
 $mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
@@ -141,14 +134,37 @@ if (function_exists('mysqli_set_charset')) {
 // to the collation that we want.
 mysqli_query(db::$con, "SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
 
-// Remember that we connected to the database, so that later if the init.php
-// script is run then it will know it does not need to connect to the database.
-define('DB_CONNECTED', true);
-
 // Pin the session sql_mode instead of inheriting the server default, which differs
 // between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
 // so only NO_ENGINE_SUBSTITUTION is kept.
 mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+// The config row, read here once and handed to the firewall below so that
+// waf_config() does not read it again. It is read after the character set and
+// sql_mode are set, as the firewall's own read was.
+//
+// A database that is empty or has no config table gets the error page. The
+// table is looked for only when the read fails, so a healthy site pays no
+// extra query; a read that fails for another reason (a damaged table) still
+// finds the table and goes on, as it did when the check was a SHOW TABLES of
+// its own. The probe runs last, so router_output_error() logs its error, not
+// the read's. This stays above DB_CONNECTED: the error page reads config
+// itself when that constant is defined.
+$router_config_result = @mysqli_query(db::$con, "SELECT * FROM config LIMIT 1");
+
+if ($router_config_result === false) {
+    $config_table_result = mysqli_query(db::$con, "SHOW TABLES LIKE 'config'");
+    if (($config_table_result === false) || !mysqli_num_rows($config_table_result)) {
+        router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
+        exit();
+    }
+}
+
+$router_config_row = ($router_config_result !== false) ? mysqli_fetch_assoc($router_config_result) : null;
+
+// Remember that we connected to the database, so that later if the init.php
+// script is run then it will know it does not need to connect to the database.
+define('DB_CONNECTED', true);
 
 // If this site has enabled the legacy MySQL connection in the config.php and it is using a version
 // of PHP that supports that (i.e. before PHP 7), then create a legacy DB connection.  Sites might
@@ -241,6 +257,7 @@ define('REQUEST_URL', router_get_request_url());
 // the page's own front-end URL: without knowing whether a designer is logged
 // in, saving a region containing <script> would look exactly like an attack.
 require_once(dirname(__FILE__) . '/waf.php');
+waf_prime_config($router_config_row);
 waf_send_security_headers();
 waf_run('router');
 

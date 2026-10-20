@@ -2229,7 +2229,7 @@ function pg_offer_conditions($offer_id)
     static $table_exists = null;
     $offer_id = (int) $offer_id;
     if ($table_exists === null) {
-        $table_exists = (bool) db_item("SHOW TABLES LIKE 'offer_conditions'");
+        $table_exists = pg_schema_has('offer_conditions');
     }
     if (!$table_exists) {
         return array();

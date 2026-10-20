@@ -405,6 +405,8 @@ function db_items($query, $key_column = '')
 // config.version alone would go on answering for a schema that never arrived.
 // A "not there" answer is remembered as well; pg_schema_cache_clear() drops
 // every file, and runs when an upgrade finishes and from pg_purge_caches().
+// pg_schema_forget() drops the answer for one table, for code that changes
+// the schema and asks about it again in the same request.
 
 /**
  * The cache file name for a database version and a code version. Anything
@@ -493,6 +495,37 @@ function pg_schema_cache_store($cache, $table, $columns)
     return $cache;
 }
 
+/**
+ * The cache without anything it knows about one table, so that the next
+ * question about the table is asked of the database again.
+ *
+ * No database access.
+ *
+ * @param array  $cache
+ * @param string $table
+ * @return array
+ */
+function pg_schema_cache_forget($cache, $table)
+{
+    if (!is_array($cache)) {
+        $cache = array();
+    }
+
+    if (!isset($cache['tables']) || !is_array($cache['tables'])) {
+        $cache['tables'] = array();
+    }
+
+    if (!isset($cache['missing']) || !is_array($cache['missing'])) {
+        $cache['missing'] = array();
+    }
+
+    unset($cache['tables'][$table]);
+
+    $cache['missing'] = array_values(array_diff($cache['missing'], array($table)));
+
+    return $cache;
+}
+
 // What pg_schema_has() knows in this request: the cache and the file it came
 // from ('' when there is no file to keep, see pg_schema_has()).
 function &pg_schema_cache_state()
@@ -500,6 +533,52 @@ function &pg_schema_cache_state()
     static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
 
     return $state;
+}
+
+// Reads the cache file into this request's state, once per request. The file
+// is only used when config.version is known (init.php defines VERSION from
+// it); the installer defines VERSION as true, so an install or an upgrade
+// keeps its answers for the request only.
+function pg_schema_cache_load()
+{
+    $state = &pg_schema_cache_state();
+
+    if ($state['loaded']) {
+        return;
+    }
+
+    $state['loaded'] = true;
+
+    if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
+        $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
+
+        $stored = @json_decode((string) @file_get_contents($state['file']), true);
+
+        if (is_array($stored)) {
+            $state['cache'] = array(
+                'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
+                'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
+            );
+        }
+    }
+}
+
+/**
+ * Forgets what pg_schema_has() knows about one table, for code that has to
+ * see a schema change in the request that made it: the installer creating a
+ * table and then asking whether it is there. The next question about the
+ * table reads it from the database and writes the answer to the cache file.
+ *
+ * @param string $table
+ * @return void
+ */
+function pg_schema_forget($table)
+{
+    pg_schema_cache_load();
+
+    $state = &pg_schema_cache_state();
+
+    $state['cache'] = pg_schema_cache_forget($state['cache'], (string) $table);
 }
 
 /**
@@ -548,24 +627,9 @@ function pg_schema_has($table, $column = null)
         return false;
     }
 
+    pg_schema_cache_load();
+
     $state = &pg_schema_cache_state();
-
-    if (!$state['loaded']) {
-        $state['loaded'] = true;
-
-        if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
-            $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
-
-            $stored = @json_decode((string) @file_get_contents($state['file']), true);
-
-            if (is_array($stored)) {
-                $state['cache'] = array(
-                    'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
-                    'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
-                );
-            }
-        }
-    }
 
     $answer = pg_schema_cache_lookup($state['cache'], $table, $column);
 
