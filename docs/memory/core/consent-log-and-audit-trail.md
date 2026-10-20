@@ -19,9 +19,9 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 
 ## What does pg_audit() keep?
 - Only the fields that differ, compared as text (a DB row and a posted form disagree only on type). A side not given (before a create, after a delete) is `NULL`. An update that changed nothing writes nothing; an event given no fields (a key revoked) is always written.
-- Secrets by field name (`pg_audit_secret_key()`: password, secret, token, key, api_key, `_enc`, `_hash`, card fields…) are stored as `***`, an empty value left empty, so set and cleared still show. Strings over 2000 bytes become `{truncated, length, sha1, start}` (200 bytes, UTF-8 safe); a side over 64 KB keeps only the field names (`pg_audit_limits()`).
+- Secrets by field name (`pg_audit_secret_key()`: password, secret, token, key, api_key, PIN, `_enc`, `_hash`, card fields…) are stored as `***`, an empty value left empty, so set and cleared still show. Strings over 2000 bytes become `{truncated, length, sha1, start}` (200 bytes, UTF-8 safe); a side over 64 KB keeps only the field names (`pg_audit_limits()`).
 - Actor (`pg_audit_actor()`): panel user, API app (owner id, app name) or `job`. `request_id` is the API's `X-Request-Id` inside the API, the ERP trail's id inside the ERP.
-- Callers leave out fields that change on every save (modification time, last editor).
+- Callers leave out fields that change on every save (modification time, last editor); save paths go through `pg_audit_record()`, which does that: `core/audit-trail-writers.md` (who writes, what is left out).
 
 ## Why these column choices?
 - Labels are VARCHAR, not ENUM: a label added later must not become `''` on a server without its step.
@@ -31,4 +31,4 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 ## Tests?
 - `tests/privacy_test.php`, `tests/audit_log_test.php`. The writers were run against MariaDB 10.11 (quotes, Unicode, an unchanged update, a long text).
 
-Related: docs/memory/plans/privacy-data-pack-audit-log.md, docs/memory/platform/cookie-consent-notice.md
+Related: docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md, docs/memory/platform/cookie-consent-notice.md
