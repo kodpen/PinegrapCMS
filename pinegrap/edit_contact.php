@@ -791,7 +791,7 @@ if (!$_POST) {
             $row = mysqli_fetch_assoc($result);
             $original_affiliate_approved = $row['affiliate_approved'];
             
-            $affiliate_code = $_POST['affiliate_code'];
+            $affiliate_code = (string) ($_POST['affiliate_code'] ?? '');
             
             // if an affiliate code was entered check to see if affiliate code is already in use
             if ($affiliate_code) {
@@ -804,7 +804,8 @@ if (!$_POST) {
             }
             
             // if affiliate is approved and affiliate code is blank, generate affiliate code
-            if ($_POST['affiliate_approved'] && (!$affiliate_code)) {
+            // (an unticked Approved box is not posted at all)
+            if (!empty($_POST['affiliate_approved']) && (!$affiliate_code)) {
                 $affiliate_code = generate_affiliate_code();
             }
             
@@ -981,7 +982,7 @@ if (!$_POST) {
         }
         
         // if affiliate program is enabled and there is a group offer and the affiliate has been approved and it was not approved before, then determine if we need to add a key code for group offer for this affiliate
-        if ((AFFILIATE_PROGRAM == TRUE) && (AFFILIATE_GROUP_OFFER_ID != 0) && ($_POST['affiliate_approved'] == 1) && ($original_affiliate_approved == 0)) {
+        if ((AFFILIATE_PROGRAM == TRUE) && (AFFILIATE_GROUP_OFFER_ID != 0) && (($_POST['affiliate_approved'] ?? '') == 1) && ($original_affiliate_approved == 0)) {
             // check if offer exists and get offer code
             $query = "SELECT code FROM offers WHERE id = '" . AFFILIATE_GROUP_OFFER_ID . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
