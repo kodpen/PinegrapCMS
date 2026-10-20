@@ -1,0 +1,121 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Function imagecreatefrombmp not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/edit_file.php
+
+		-
+			message: '#^Undefined variable\: \$output_featured_items$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_image$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_price$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_short_description$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Function render_sub_row not found\.$#'
+			identifier: function.notFound
+			count: 4
+			path: ../pinegrap/includes/dashboard/widgets/widget_14.php
+
+		-
+			message: '#^Inner named functions are not supported by PHPStan\. Consider refactoring to an anonymous function, class method, or a top\-level\-defined function\. See issue \#165 \(https\://github\.com/phpstan/phpstan/issues/165\) for more details\.$#'
+			identifier: function.inner
+			count: 1
+			path: ../pinegrap/includes/dashboard/widgets/widget_14.php
+
+		-
+			message: '#^Function mysql_get_server_info not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/fn/core.php
+
+		-
+			message: '#^Function mysql_select_db not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/fn/core.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value ''å'' \(''å'', ''å''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: ../pinegrap/includes/fn/files.php
+
+		-
+			message: '#^Inner named functions are not supported by PHPStan\. Consider refactoring to an anonymous function, class method, or a top\-level\-defined function\. See issue \#165 \(https\://github\.com/phpstan/phpstan/issues/165\) for more details\.$#'
+			identifier: function.inner
+			count: 5
+			path: ../pinegrap/includes/fn/mail.php
+
+		-
+			message: '#^Function get_access_control_icon_classes not found\.$#'
+			identifier: function.notFound
+			count: 7
+			path: ../pinegrap/includes/panel/explorer.php
+
+		-
+			message: '#^Function get_file_icon not found\.$#'
+			identifier: function.notFound
+			count: 2
+			path: ../pinegrap/includes/panel/explorer.php
+
+		-
+			message: '#^Function get_folder_breadcrumb not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/panel/explorer.php
+
+		-
+			message: '#^Function get_folder_table not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/panel/explorer.php
+
+		-
+			message: '#^Inner named functions are not supported by PHPStan\. Consider refactoring to an anonymous function, class method, or a top\-level\-defined function\. See issue \#165 \(https\://github\.com/phpstan/phpstan/issues/165\) for more details\.$#'
+			identifier: function.inner
+			count: 4
+			path: ../pinegrap/includes/panel/explorer.php
+
+		-
+			message: '#^Function mysql_query not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/router.php
+
+		-
+			message: '#^Function mysql_select_db not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/router.php
+
+		-
+			message: '#^Inner named functions are not supported by PHPStan\. Consider refactoring to an anonymous function, class method, or a top\-level\-defined function\. See issue \#165 \(https\://github\.com/phpstan/phpstan/issues/165\) for more details\.$#'
+			identifier: function.inner
+			count: 2
+			path: ../pinegrap/router.php
+
+		-
+			message: '#^Function pfpro_process not found\.$#'
+			identifier: function.notFound
+			count: 2
+			path: ../pinegrap/submit_order.php

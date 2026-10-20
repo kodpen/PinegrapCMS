@@ -36,6 +36,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
 
 }
@@ -541,6 +542,46 @@ function upgrade_2026_11_0_order_returns() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
+
+}
+
+// Short links as redirects (router.php, includes/fn/short_link_redirects.php).
+//
+// redirect_code says how a link answers: 0 as before (a page, product group,
+// product or file is shown at the short address; an address off the site is
+// sent on with 301 when the link is permanent, 302 otherwise), 301 or 302 to
+// send the visitor to the destination's own address with that status, the
+// way an old address of a moved page should answer. is_pattern marks a name
+// with a * in it ("blog/*"): such a link is tried only when no page answers
+// the address, so it can never hide a live page, and its target may reuse
+// what each * matched as $1, $2. idx_pattern serves that lookup.
+//
+// The name was a 100-character slug and the address 255 characters; an old
+// address brought over from another site needs more of both. name stops at
+// 191 so its index stays within 767 bytes in utf8mb4 (InnoDB without large
+// prefixes, MyISAM's 1000-byte key). A column already that wide is left as it
+// is, so a second run changes nothing.
+function upgrade_2026_11_0_short_link_redirects() {
+
+	install_add_column('short_links', 'redirect_code', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('short_links', 'is_pattern', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_index('short_links', 'idx_pattern', "INDEX idx_pattern (is_pattern)");
+
+	$widen = function ($column, $width, $definition) {
+
+		$info = install_column_info('short_links', $column);
+
+		if (is_array($info) && preg_match('/^varchar\((\d+)\)/i', (string) $info['Type'], $type) && ((int) $type[1] < $width)) {
+			install_modify_column('short_links', $column, $definition);
+		} else {
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'short_links.' . $column . ' ' . $width)));
+		}
+	};
+
+	$widen('name', 191, "VARCHAR(191) NOT NULL DEFAULT ''");
+	$widen('url', 2048, "VARCHAR(2048) NOT NULL DEFAULT ''");
+
+	install_note('Short links: a short link can now send visitors on to its destination with a permanent (301) or temporary (302) redirect, its name can be an old address with Turkish letters, and a * in a name stands for any part of an address that no page answers.');
 
 }
 

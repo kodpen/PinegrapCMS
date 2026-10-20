@@ -133,7 +133,7 @@ function pg_parasut_credentials_for_save()
         
         // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
         if (defined('ENCRYPTION_KEY') == FALSE) {
-            $config_content = str_replace('?>', "define('ENCRYPTION_KEY', '" . $new_encryption_key . "'); // DO NOT MODIFY OR SHARE\r\n?>", $config_content);
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
             
         // else there is an old encryption key in the config.php file, so update it
         } else {
