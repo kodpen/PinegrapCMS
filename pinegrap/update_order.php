@@ -252,6 +252,21 @@ function update_order($request) {
             'data' => array('order' => $order)));
     }
 
+    // A store that invoices orders on their own once they ship (ERP settings)
+    // gets this one's invoice now: a recipient was just shipped, or gained a
+    // tracking number even where the caller keeps the customer's e-mail back.
+    $just_shipped = !empty($order['shipped']);
+
+    foreach ($order['recipients'] as $shipped_recipient) {
+        if (!empty($shipped_recipient['new_tracking_number'])) {
+            $just_shipped = true;
+        }
+    }
+
+    if ($just_shipped) {
+        pg_erp_auto_invoice((int) $order['id'], 'order_shipped');
+    }
+
     return array(
         'status' => 'success',
         'order' => $order);

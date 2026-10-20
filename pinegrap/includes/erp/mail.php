@@ -630,10 +630,16 @@ function erp_mail_defer($mail_id)
 {
     static $queue = null;
 
+    // Emptied as it is taken, like erp_archive_defer()'s: an invoice written
+    // once the response is out (pg_erp_auto_invoice()) registers a new
+    // shutdown function rather than joining a queue that was already sent.
     if ($queue === null) {
         $queue = array();
         register_shutdown_function(function () use (&$queue) {
-            if (empty($queue)) {
+            $ids = (array) $queue;
+            $queue = null;
+
+            if (empty($ids)) {
                 return;
             }
 
@@ -646,7 +652,7 @@ function erp_mail_defer($mail_id)
                 fastcgi_finish_request();
             }
 
-            foreach ($queue as $id) {
+            foreach ($ids as $id) {
                 erp_mail_send_queued($id);
             }
         });

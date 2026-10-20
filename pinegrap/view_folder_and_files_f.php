@@ -774,19 +774,8 @@ function pg_explorer_archive_size($zip)
     return array($total, (int) $zip->numFiles);
 }
 
-// Whether the disk the data folder sits on has room for $bytes plus a
-// margin. Hosts that switch disk_free_space() off answer "unknown", which is
-// not a refusal.
-function pg_explorer_disk_has_room($bytes)
-{
-    if (!function_exists('disk_free_space')) {
-        return true;
-    }
-
-    $free = @disk_free_space(PG_FUNCTIONS_DIR . '/data');
-
-    return ($free === false) || ((float) $free >= ((float) $bytes + 67108864));
-}
+// pg_explorer_disk_has_room() is in includes/fn/files.php: the ZIP importers
+// ask it too (pg_zip_import_open()).
 
 // Names that must never be written into the web root by an extraction.
 //
@@ -2718,8 +2707,11 @@ function pg_short_link_types()
     return array('page', 'product_group', 'product', 'url', 'file');
 }
 
-// The name is a path segment on the live site, so it may only hold what a path
-// segment may hold.  Same rule add_short_link.php applies, in one place.
+// The name is an address on the live site, typed or pasted the way an old
+// address is (pg_short_link_name_from_address(): the path of a full address,
+// no slash at either end), and may hold what the shared rule allows
+// (pg_short_link_name_problem(), includes/fn/short_link_redirects.php): the
+// classic screens and the external API ask the same functions.
 //
 // Square brackets are in the set, for the same reason pg_ascii_file_name()
 // keeps them: they are this software's own suffix for a name that is taken.
@@ -2734,9 +2726,9 @@ function pg_short_link_clean_name($name)
         return '';
     }
 
-    $name = str_replace(' ', '_', trim((string) $name));
+    $name = pg_short_link_name_from_address($name);
 
-    return (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1) ? '' : $name;
+    return (pg_short_link_name_problem($name) === '') ? $name : '';
 }
 
 // A free name, Windows style: the wanted one, then the wanted one with [1],
@@ -2846,6 +2838,7 @@ function pg_short_link_rows($where = '', $recycled = false)
             short_links.created_timestamp,
             short_links.last_modified_timestamp,
             " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at, short_links.use_count, short_links.last_used_at," : "") . "
+            " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
             page.page_name,
             page.page_folder AS folder_id,
             product_groups.address_name AS product_group_address_name,
@@ -2949,6 +2942,11 @@ function pg_short_link_item($row)
     $token = ((string) $row['name'] === '') && ((string) ($row['token_hint'] ?? '') !== '');
     $state = pg_short_link_state($row);
 
+    // A name with a * stands for many addresses and has none to open; a link
+    // that redirects says so beside where it leads.
+    $pattern = !empty($row['is_pattern']);
+    $answer = pg_short_link_answer_label(pg_short_link_status($row));
+
     return array(
         'kind' => 'file',
         'id' => (int) $row['id'],
@@ -2975,7 +2973,7 @@ function pg_short_link_item($row)
         'type' => 'short_link',
         'is_image' => false,
         'size' => 0,
-        'size_label' => $destination . (($state['label'] !== '') ? ' · ' . $state['label'] : ''),
+        'size_label' => $destination . (($answer !== '') ? ' · ' . $answer : '') . (($state['label'] !== '') ? ' · ' . $state['label'] : ''),
         'design' => false,
         'optimized' => false,
         'image_width' => 0,
@@ -2988,7 +2986,7 @@ function pg_short_link_item($row)
         'modified' => get_relative_time(array('timestamp' => $timestamp)),
         'username' => (string) $row['last_modified_username'],
         'permissions' => '',
-        'url' => $token ? '' : OUTPUT_PATH . encode_url_path((string) $row['name']),
+        'url' => ($token || $pattern) ? '' : OUTPUT_PATH . encode_url_path((string) $row['name']),
         'can_edit' => true,
         'edit_url' => 'edit_short_link.php?id=' . (int) $row['id']);
 }
@@ -6056,18 +6054,19 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 'message' => $message));
             break;
 
-        // ── Where a file is used ────────────────────────────────────────
+        // ── A Word or Excel file, read for a preview ────────────────────
         //
-        // "Can I delete this?" is the question the file manager could not
-        // answer, and the way it was answered instead was by deleting it and
-        // waiting to see what broke.
-        //
-        // files.name IS the address -- every reader resolves a file as
         // A Word or Excel file read on the server for the file window and
         // Quick Look (includes/fn/office.php): rows for a workbook, a safe
         // subset of HTML for a document. Reading only, so it is open to
         // whoever may view the folder; a document the ERP module keeps to
         // whoever may read the ERP (get_file.php's rule for those).
+        //
+        // The file window asks for a workbook's cells or a document's
+        // paragraphs to be offered for editing (edit): then the answer also
+        // says which may be changed and carries the version a save must hand
+        // back -- only for someone who may change the file, never for an ERP
+        // document. The changes are written by explorer_file_save.
         case 'explorer_office_preview':
 
             $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
@@ -6076,7 +6075,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('There is no preview for this kind of file.')));
             }
 
-            if (pg_files_include_erp_document(array($office_file['id']))) {
+            $office_erp = pg_files_include_erp_document(array($office_file['id']));
+
+            if ($office_erp) {
                 if (!defined('ERP_ENABLED') || !ERP_ENABLED || (((int) $user['role'] >= 3) && empty($user['manage_erp']))) {
                     respond(array('status' => 'error', 'message' => lang('Access denied')));
                 }
@@ -6084,7 +6085,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
 
-            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name']);
+            $office_edit = !empty($request['edit']) && !$office_erp && pg_explorer_file_editable_by($office_file, $user);
+
+            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name'], $office_edit);
 
             if (!$office['ok']) {
                 respond(array('status' => 'error', 'message' => $office['error']));
@@ -6095,6 +6098,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             respond(array('status' => 'success', 'request' => $type, 'office' => $office));
             break;
 
+        // ── Where a file is used ────────────────────────────────────────
+        //
+        // "Can I delete this?" is the question the file manager could not
+        // answer, and the way it was answered instead was by deleting it and
+        // waiting to see what broke.
+        //
+        // files.name IS the address -- every reader resolves a file as
         // FILE_DIRECTORY_PATH . '/' . name -- so the name is what the content
         // carries, and a LIKE over the places content lives finds it.
         //
@@ -8130,6 +8140,37 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $old_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
             $new_path = FILE_DIRECTORY_PATH . '/' . $name;
+            $size_sql = '';
+
+            // Cell values changed in a workbook's preview, or paragraph texts
+            // in a document's (includes/fn/office_edit.php). They go into the
+            // file before anything else moves, so a refused edit -- the file
+            // changed since it was opened, a cell or a paragraph that may not
+            // be changed -- leaves the file, its name and its record exactly
+            // as they were.
+            if (isset($request['cells']) || isset($request['paragraphs'])) {
+
+                $office_kind = pg_office_kind($file['name']);
+                $office_changes = ($office_kind === 'xlsx') ? ($request['cells'] ?? null) : (($office_kind === 'docx') ? ($request['paragraphs'] ?? null) : null);
+
+                if (!is_array($office_changes)) {
+                    respond(array('status' => 'error', 'message' => lang('This file cannot be edited here.')));
+                }
+
+                // A large sheet takes a few seconds to rewrite.
+                @set_time_limit(120);
+
+                $office_version = isset($request['office_version']) ? (string) $request['office_version'] : '';
+                $office_saved = ($office_kind === 'xlsx')
+                    ? pg_office_xlsx_save($old_path, $office_changes, $office_version)
+                    : pg_office_docx_save($old_path, $office_changes, $office_version);
+
+                if (!$office_saved['ok']) {
+                    respond(array('status' => 'error', 'message' => $office_saved['error']));
+                }
+
+                $size_sql = "size = '" . e((int) $office_saved['size']) . "',";
+            }
 
             // The record's name is the address, so the disk file moves first
             // and the row is only told if it did -- a row pointing at nothing
@@ -8141,7 +8182,6 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             $extension = mb_strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            $size_sql = '';
 
             // Text is written only for a format the editor may write, and only
             // when the window sent some: a window opened on a picture sends
@@ -8518,6 +8558,21 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
             }
 
+            // How it answers and whether its name is a pattern; an address
+            // that would send visitors to the link itself or round a loop is
+            // refused here.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => 0,
+                'name' => $short_link_name,
+                'destination_type' => $short_link_read['type'],
+                'url' => isset($short_link_read['columns']['url']) ? $short_link_read['columns']['url'] : ''), null, 0);
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_read['columns'] = array_merge($short_link_read['columns'], $short_link_answer['columns']);
+
             $short_link_fields = '';
             $short_link_values = '';
 
@@ -8594,7 +8649,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $short_link_name = pg_short_link_clean_name(isset($request['name']) ? $request['name'] : '');
 
             if ($short_link_name == '') {
-                respond(array('status' => 'error', 'message' => lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.')));
+                respond(array('status' => 'error', 'message' => pg_short_link_name_rule_text()));
             }
 
             if (check_name_availability(array(
@@ -8605,8 +8660,27 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('The name that you entered is already in use, so please enter a different name.')));
             }
 
+            // A new name can be the address the link sends visitors to, or a
+            // pattern now.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => (int) $short_link_row['id'],
+                'name' => $short_link_name,
+                'destination_type' => $short_link_row['destination_type'],
+                'url' => $short_link_row['url']), null, (int) ($short_link_row['redirect_code'] ?? 0));
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_sql_answer = '';
+
+            foreach ($short_link_answer['columns'] as $short_link_column => $short_link_value) {
+                $short_link_sql_answer .= $short_link_column . " = '" . e($short_link_value) . "', ";
+            }
+
             db("UPDATE short_links
                 SET name = '" . e($short_link_name) . "',
+                    " . $short_link_sql_answer . "
                     last_modified_user_id = '" . e($user['id']) . "',
                     last_modified_timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . e($short_link_row['id']) . "'");
@@ -8654,7 +8728,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     respond(array(
                         'status' => 'error',
                         'field' => 'name',
-                        'message' => lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.')));
+                        'message' => pg_short_link_name_rule_text()));
                 }
 
                 if ($short_link_name != $short_link_row['name']) {
@@ -8698,8 +8772,26 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $short_link_columns[$short_link_column] = $short_link_value;
             }
 
+            // The answer stays as stored (this window does not offer it); the
+            // pattern flag follows the name, and the new address is checked.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => (int) $short_link_row['id'],
+                'name' => ($short_link_sql_name != '') ? $short_link_name : $short_link_row['name'],
+                'destination_type' => $short_link_read['type'],
+                'url' => $short_link_columns['url']), null, (int) ($short_link_row['redirect_code'] ?? 0));
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_sql_answer = '';
+
+            foreach ($short_link_answer['columns'] as $short_link_column => $short_link_value) {
+                $short_link_sql_answer .= $short_link_column . " = '" . e($short_link_value) . "',";
+            }
+
             db("UPDATE short_links
-                SET " . $short_link_sql_name . "
+                SET " . $short_link_sql_name . $short_link_sql_answer . "
                     destination_type = '" . e($short_link_read['type']) . "',
                     page_id = '" . e($short_link_read['page_id']) . "',
                     product_group_id = '" . e($short_link_columns['product_group_id']) . "',
@@ -8768,17 +8860,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                // A timed link is copied with its time.
+                // A timed link is copied with its time, and every link with its
+                // answer; the pattern flag follows the copy's name.
                 $short_link_copy_modes = pg_short_link_modes_ready() ? ', link_mode, expires_at' : '';
+                $short_link_copy_answer = pg_short_link_redirects_ready() ? ', redirect_code, is_pattern' : '';
+                $short_link_copy_answer_values = pg_short_link_redirects_ready() ? ", redirect_code, '" . (pg_short_link_is_pattern($short_link_name) ? '1' : '0') . "'" : '';
 
                 db("INSERT INTO short_links (
                         name, destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code" . $short_link_copy_modes . ",
+                        url, file_id, tracking_code" . $short_link_copy_modes . $short_link_copy_answer . ",
                         created_user_id, created_timestamp,
                         last_modified_user_id, last_modified_timestamp)
                     SELECT
                         '" . e($short_link_name) . "', destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code" . $short_link_copy_modes . ",
+                        url, file_id, tracking_code" . $short_link_copy_modes . $short_link_copy_answer_values . ",
                         '" . e($user['id']) . "', UNIX_TIMESTAMP(),
                         '" . e($user['id']) . "', UNIX_TIMESTAMP()
                     FROM short_links
