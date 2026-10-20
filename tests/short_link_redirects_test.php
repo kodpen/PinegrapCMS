@@ -6,7 +6,8 @@
  * a name taken from a pasted address and the name rule, names with a * and
  * what each * matched, where an address on this site leads, the checks that
  * keep a link from leading to itself or round a loop, the address a visitor
- * is sent to and the status it is sent with, and the CSV file of links that
+ * is sent to and the status it is sent with, the answer and the name as a
+ * window posts them, and the CSV file of links that
  * the list exports and the import reads. The runner has no connection,
  * so the columns of 2026.11.0 (11.0.12) read as missing: names stop at 100
  * characters and pg_short_link_redirect_columns() writes nothing, as on a
@@ -262,6 +263,38 @@ function test_short_link_redirects_status_and_saved_answer()
 	pg_assert_same(0, pg_short_link_answer_for('abc', 'eski'), 'not a number');
 	pg_assert_same(0, pg_short_link_answer_for(500, 'eski'), 'not an answer');
 	pg_assert_same(0, pg_short_link_answer_for(array(301), 'eski'), 'a list');
+}
+
+function test_short_link_redirects_posted_answer()
+{
+	pg_assert_same(null, pg_short_link_answer_posted(null), 'not sent: the stored answer stays');
+	pg_assert_same(null, pg_short_link_answer_posted(''), 'empty');
+	pg_assert_same(null, pg_short_link_answer_posted('  '), 'blank');
+	pg_assert_same(null, pg_short_link_answer_posted(array('301')), 'a list');
+	pg_assert_same(0, pg_short_link_answer_posted('0'), 'shown at its own address');
+	pg_assert_same(301, pg_short_link_answer_posted('301'), '301');
+	pg_assert_same(302, pg_short_link_answer_posted(302), '302');
+	pg_assert_same(0, pg_short_link_answer_for(pg_short_link_answer_posted('307'), 'eski'), 'not an answer is saved as 0');
+	pg_assert_same(301, pg_short_link_answer_for(pg_short_link_answer_posted('0'), 'eski/*'), 'a pattern still redirects');
+}
+
+function test_short_link_redirects_name_read_says_what_is_wrong()
+{
+	$read = pg_short_link_name_read('https://old.example.com/blog/Ürün Sayfası?x=1');
+
+	pg_assert_same('blog/Ürün_Sayfası', $read['name'], 'the path of a pasted address');
+	pg_assert_same('', $read['problem'], 'which can be used');
+
+	pg_assert_same(pg_short_link_name_problem(''), pg_short_link_name_read('   ')['problem'], 'empty');
+	pg_assert_same(pg_short_link_name_problem(str_repeat('a', 101)), pg_short_link_name_read(str_repeat('a', 101))['problem'], 'too long, said as such');
+	pg_assert_true(pg_short_link_name_read(str_repeat('a', 101))['problem'] !== pg_short_link_name_rule_text(), 'not the whole rule for a length problem');
+	pg_assert_same(pg_short_link_name_rule_text(), pg_short_link_name_read('a<b')['problem'], 'a character outside the rule');
+	pg_assert_same(pg_short_link_name_problem('../gizli'), pg_short_link_name_read('../gizli')['problem'], 'a part that cannot be opened');
+
+	$list = pg_short_link_name_read(array('eski'));
+
+	pg_assert_same('', $list['name'], 'a list is no name');
+	pg_assert_true($list['problem'] !== '', 'and is refused');
 }
 
 function test_short_link_redirects_columns_wait_for_the_upgrade()

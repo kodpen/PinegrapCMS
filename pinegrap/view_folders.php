@@ -456,6 +456,13 @@ $explorer_lang = array(
     'link_done' => lang('Close'),
     'link_no_rename' => lang('A link with a generated address has no name to change.'),
     'link_no_visit' => lang('The address of a one-time link is shown only when it is made.'),
+    // How it answers and the name and address rules, in the words of the
+    // classic add and edit screens.
+    'link_answer' => lang('How it answers'),
+    'link_answer_note' => lang('A redirect sends visitors to the destination\'s own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.'),
+    'short_link_name_rule' => pg_short_link_name_rule_text(),
+    'short_link_name_paste' => lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.'),
+    'short_link_url_stars' => lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.'),
     'select_one' => lang('Select'),
     'create_backup' => lang('Create Backup'),
     'backing_up' => lang('Backing up'),
@@ -1710,8 +1717,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     </div>
 </div>
 
-<!-- The short link wizard. Nothing is written until Create is pressed, so
-     closing this at any point leaves no half-made link behind. -->
 <!-- Upload.
      add_file.php is still the upload screen and view_files.php still goes
      there. This window is the file manager's own, because the manager already
@@ -1860,6 +1865,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     </div>
 </div>
 
+<!-- The short link wizard, which also changes an existing link. Nothing is
+     written until Create or Save is pressed, so closing this at any point
+     leaves no half-made link behind. -->
 <div class="modal fade" id="short_link_modal" tabindex="-1" aria-labelledby="short_link_modal_label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:.9rem;">
@@ -6565,6 +6573,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<tr><th>' + esc(L.name) + '</th><td class="text-break">' + esc(item.name) + '</td></tr>' +
                 '<tr><th>' + esc(L.destination_type) + '</th><td>' + esc(shortLinkTypeLabel(item.destination_type)) + '</td></tr>' +
                 '<tr><th>' + esc(L.destination) + '</th><td class="text-break">' + esc(item.destination || '') + '</td></tr>' +
+                // The answer visitors get, when it is a redirect.
+                (item.answer ? ('<tr><th>' + esc(L.link_answer) + '</th><td>' + esc(item.answer) + '</td></tr>') : '') +
                 (item.tracking_code ? ('<tr><th>' + esc(L.tracking_code) + '</th><td><code>' + esc(item.tracking_code) + '</code></td></tr>') : '') +
                 (item.link_note ? ('<tr><th>' + esc(L.link_state) + '</th><td>' + esc(item.link_note) + '</td></tr>') : '') +
                 ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
@@ -9160,9 +9170,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
 
             case 'url':
+                // As long as the column takes (2048 since 11.0.12, 255 before).
                 html = '<div class="mb-3">' +
                     '<label class="form-label" for="sl_url">' + esc(L.url_word) + '</label>' +
-                    '<input type="text" class="form-control" id="sl_url" maxlength="255" placeholder="' + esc(L.short_link_url_note) + '" />' +
+                    '<input type="text" class="form-control" id="sl_url" maxlength="' + esc(String(options.url_max || 255)) + '" placeholder="' + esc(L.short_link_url_note) + '" />' +
+                    '<div class="form-text">' + esc(L.short_link_url_stars) + '</div>' +
                     '</div>';
                 break;
 
@@ -9262,11 +9274,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // the other way round: its name is the first thing about it, and
             // an operator looking for "rename" opens this window before
             // reaching for the right button.
+            //
+            // The field takes a whole old address, which the server cuts down
+            // to its path, so it is as long as an address may be; the rule
+            // under it is the classic screens'.
             var nameHtml = (shortLinkEditing && !shortLinkEditing.token)
                 ? ('<div class="mb-3">' +
                         '<label class="form-label" for="sl_name">' + esc(L.name) + '</label>' +
-                        '<input type="text" class="form-control" id="sl_name" maxlength="100" value="' + esc(shortLinkEditing.name || '') + '" />' +
+                        '<input type="text" class="form-control" id="sl_name" maxlength="' + esc(String(shortLinkLists.name_max || 255)) + '" value="' + esc(shortLinkEditing.name || '') + '" />' +
                         '<div class="form-text">' + esc(L.short_link_name_note) + '</div>' +
+                        '<div class="form-text">' + esc(L.short_link_name_rule) + '</div>' +
+                        '<div class="form-text">' + esc(L.short_link_name_paste) + '</div>' +
                     '</div>')
                 : '';
 
@@ -9305,10 +9323,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         : '');
             }
 
+            // How it answers (2026.11.0, 11.0.12), for a new link and for one
+            // being changed, as on the classic screens: shown at the short
+            // address, or a 301 or 302 to the destination's own address.
+            // Before the upgrade the server offers none, the field is not
+            // drawn and nothing is sent, so the stored answer stays.
+            var answerHtml = '';
+            var answerOptions = shortLinkLists.answers || [];
+
+            if (answerOptions.length > 0) {
+
+                var answerNow = shortLinkEditing ? String(shortLinkEditing.redirect_code || 0) : '0';
+
+                answerHtml =
+                    '<div class="mb-3">' +
+                        '<label class="form-label" for="sl_answer">' + esc(L.link_answer) + '</label>' +
+                        '<select class="form-select" id="sl_answer">' +
+                            answerOptions.map(function (option) {
+                                return '<option value="' + esc(option.v) + '"' + ((String(option.v) === answerNow) ? ' selected' : '') + '>' + esc(option.t) + '</option>';
+                            }).join('') +
+                        '</select>' +
+                        '<div class="form-text">' + esc(L.link_answer_note) + '</div>' +
+                    '</div>';
+            }
+
             body.innerHTML =
                 '<p class="form-text mt-0">' + esc(L.short_links_note) + '</p>' +
                 nameHtml +
                 modesHtml +
+                answerHtml +
                 '<div class="mb-3">' +
                     '<label class="form-label" for="sl_type">' + esc(L.destination_type) + '</label>' +
                     '<select class="form-select" id="sl_type">' +
@@ -9400,6 +9443,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             lists.modes = !!response.modes;
             lists.durations = response.durations || [];
 
+            // How it answers and how long a name and an address may be
+            // (2026.11.0, 11.0.12).
+            lists.answers = response.answers || [];
+            lists.name_max = parseInt(response.name_max, 10) || 255;
+            lists.url_max = parseInt(response.url_max, 10) || 255;
+
             if (!response.kept) { shortLinkOptions = lists; }
 
             shortLinkLists = lists;
@@ -9475,6 +9524,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (shortLinkEditing && document.getElementById('sl_renew')) {
             payload.renew = value('sl_renew');
+        }
+
+        // Sent only when the field is drawn: without it the server keeps the
+        // stored answer.
+        if (document.getElementById('sl_answer')) {
+            payload.redirect_code = value('sl_answer');
         }
 
         // Only what this type actually uses. Sending every field on every save

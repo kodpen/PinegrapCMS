@@ -164,6 +164,24 @@ function pg_short_link_answer_for($code, $name)
 }
 
 /**
+ * The answer a window posted, or null when it sent none, so the stored answer
+ * stays: a window drawn before the upgrade has no such field, and a list
+ * posted in its place is no answer. A value that is not one of the answers is
+ * saved as 0 by pg_short_link_answer_for(), as on the classic screens.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_short_link_answer_posted($value)
+{
+    if (!is_scalar($value) || (trim((string) $value) === '')) {
+        return null;
+    }
+
+    return (int) $value;
+}
+
+/**
  * A name as an operator types or pastes it, written the way short links are
  * stored: a full address (https://old.example.com/a/b?x=1) gives its path, a
  * query string and a fragment go, the path is decoded (left as it was when
@@ -255,6 +273,22 @@ function pg_short_link_name_problem($name)
     }
 
     return '';
+}
+
+/**
+ * A posted name in the stored form, with what is wrong with it ('' when it
+ * can be used). The classic screens and the external API ask the same two
+ * functions; the file manager asks this, so its errors say what the classic
+ * screens say. A list posted in its place is no name.
+ *
+ * @param mixed $name
+ * @return array array('name' => string, 'problem' => string)
+ */
+function pg_short_link_name_read($name)
+{
+    $name = is_scalar($name) ? pg_short_link_name_from_address($name) : '';
+
+    return array('name' => $name, 'problem' => pg_short_link_name_problem($name));
 }
 
 /**

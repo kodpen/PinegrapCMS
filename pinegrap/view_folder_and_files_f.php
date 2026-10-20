@@ -2719,16 +2719,14 @@ function pg_short_link_types()
 // rejected them refused the very name the create had just given the row --
 // the operator was told the format was illegal by the screen that wrote it.
 //
-// A name posted as a list (name[]=x) counts as not given: it is no name.
+// A name posted as a list (name[]=x) counts as not given: it is no name. The
+// rename and the change ask pg_short_link_name_read() instead, so their error
+// says what is wrong rather than repeating the whole rule.
 function pg_short_link_clean_name($name)
 {
-    if (!is_scalar($name)) {
-        return '';
-    }
+    $read = pg_short_link_name_read($name);
 
-    $name = pg_short_link_name_from_address($name);
-
-    return (pg_short_link_name_problem($name) === '') ? $name : '';
+    return ($read['problem'] === '') ? $read['name'] : '';
 }
 
 // A free name, Windows style: the wanted one, then the wanted one with [1],
@@ -2943,7 +2941,9 @@ function pg_short_link_item($row)
     $state = pg_short_link_state($row);
 
     // A name with a * stands for many addresses and has none to open; a link
-    // that redirects says so beside where it leads.
+    // that redirects says so beside where it leads. The label is the answer
+    // visitors get; redirect_code is the one stored, which the window reopens
+    // with (a timed link saved with 301 answers 302).
     $pattern = !empty($row['is_pattern']);
     $answer = pg_short_link_answer_label(pg_short_link_status($row));
 
@@ -2967,6 +2967,9 @@ function pg_short_link_item($row)
         'product_id' => (int) $row['product_id'],
         'file_id' => (int) $row['file_id'],
         'link_url' => (string) $row['url'],
+        'redirect_code' => (int) ($row['redirect_code'] ?? 0),
+        'is_pattern' => $pattern,
+        'answer' => $answer,
         'name' => $token ? ((string) $row['token_hint'] . '…') : (string) $row['name'],
         'folder_id' => 0,
         'folder_name' => '',
@@ -3138,6 +3141,12 @@ function pg_short_link_read_request($request, $user, $current = null)
             // the site down with it.
             if (preg_match('/\s/', $url) == 1) {
                 return array('error' => 'url', 'message' => lang('Sorry, you may not enter a space in the URL.'));
+            }
+
+            // The column holds this many characters; a longer address would
+            // be cut short in silence. The classic screens refuse it too.
+            if (mb_strlen($url, 'UTF-8') > pg_short_link_url_max()) {
+                return array('error' => 'url', 'message' => lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))));
             }
 
             $columns['url'] = $url;
@@ -8500,7 +8509,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 'modes' => pg_short_link_modes_ready(),
                 'durations' => array_map(function ($seconds, $label) {
                     return array('v' => (string) $seconds, 't' => $label);
-                }, array_keys(pg_short_link_durations()), array_values(pg_short_link_durations()))));
+                }, array_keys(pg_short_link_durations()), array_values(pg_short_link_durations())),
+                // How it answers (2026.11.0, 11.0.12), the choices the classic
+                // screens offer; none before the upgrade, so the window draws
+                // no field and the stored answer stays.
+                'answers' => pg_short_link_redirects_ready()
+                    ? array_map(function ($label, $code) {
+                        return array('v' => (string) $code, 't' => $label);
+                    }, array_keys(pg_short_link_answer_options()), array_values(pg_short_link_answer_options()))
+                    : array(),
+                // The name field takes a whole old address, cut down to its
+                // path on save, so it is as long as an address may be, as on
+                // the classic screens.
+                'name_max' => pg_short_link_url_max(),
+                'url_max' => pg_short_link_url_max()));
 
             break;
 
@@ -8558,14 +8580,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
             }
 
-            // How it answers and whether its name is a pattern; an address
-            // that would send visitors to the link itself or round a loop is
-            // refused here.
+            // How it answers (the window's choice, 0 when it sent none) and
+            // whether its name is a pattern; an address that would send
+            // visitors to the link itself or round a loop is refused here.
             $short_link_answer = pg_short_link_redirect_columns(array(
                 'id' => 0,
                 'name' => $short_link_name,
                 'destination_type' => $short_link_read['type'],
-                'url' => isset($short_link_read['columns']['url']) ? $short_link_read['columns']['url'] : ''), null, 0);
+                'url' => isset($short_link_read['columns']['url']) ? $short_link_read['columns']['url'] : ''),
+                pg_short_link_answer_posted($request['redirect_code'] ?? null),
+                0);
 
             if ($short_link_answer['problem'] !== null) {
                 respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));
@@ -8646,11 +8670,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('A link with a generated address has no name to change.')));
             }
 
-            $short_link_name = pg_short_link_clean_name(isset($request['name']) ? $request['name'] : '');
+            // What is wrong with the name, in the words the classic screens use.
+            $short_link_name_read = pg_short_link_name_read(isset($request['name']) ? $request['name'] : '');
 
-            if ($short_link_name == '') {
-                respond(array('status' => 'error', 'message' => pg_short_link_name_rule_text()));
+            if ($short_link_name_read['problem'] !== '') {
+                respond(array('status' => 'error', 'message' => $short_link_name_read['problem']));
             }
+
+            $short_link_name = $short_link_name_read['name'];
 
             if (check_name_availability(array(
                     'name' => $short_link_name,
@@ -8722,16 +8749,19 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // A name posted as a list is no name given, so the name stays.
             if (array_key_exists('name', $request) && is_scalar($request['name']) && ((string) $short_link_row['name'] !== '')) {
 
-                $short_link_name = pg_short_link_clean_name($request['name']);
+                $short_link_name_read = pg_short_link_name_read($request['name']);
 
-                if ($short_link_name == '') {
+                if ($short_link_name_read['problem'] !== '') {
                     respond(array(
                         'status' => 'error',
                         'field' => 'name',
-                        'message' => pg_short_link_name_rule_text()));
+                        'message' => $short_link_name_read['problem']));
                 }
 
-                if ($short_link_name != $short_link_row['name']) {
+                $short_link_name = $short_link_name_read['name'];
+
+                // Compared as strings: "1e3" and "1000" are equal to ==.
+                if ($short_link_name !== (string) $short_link_row['name']) {
 
                     if (check_name_availability(array(
                             'name' => $short_link_name,
@@ -8772,13 +8802,16 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $short_link_columns[$short_link_column] = $short_link_value;
             }
 
-            // The answer stays as stored (this window does not offer it); the
-            // pattern flag follows the name, and the new address is checked.
+            // The answer the window chose, or the stored one when it sent
+            // none; the pattern flag follows the name, and the new address is
+            // checked.
             $short_link_answer = pg_short_link_redirect_columns(array(
                 'id' => (int) $short_link_row['id'],
                 'name' => ($short_link_sql_name != '') ? $short_link_name : $short_link_row['name'],
                 'destination_type' => $short_link_read['type'],
-                'url' => $short_link_columns['url']), null, (int) ($short_link_row['redirect_code'] ?? 0));
+                'url' => $short_link_columns['url']),
+                pg_short_link_answer_posted($request['redirect_code'] ?? null),
+                (int) ($short_link_row['redirect_code'] ?? 0));
 
             if ($short_link_answer['problem'] !== null) {
                 respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));

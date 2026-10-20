@@ -7,8 +7,10 @@
  * in view_folder_and_files_f.php, and the classic add and edit screens); a
  * product, a product group, a page or a file in the Recycle Bin is refused as
  * a new destination while the one a link already points at stays, in the
- * wizard's lists and on save; and the classic edit screen's Delete puts the
- * link in the Recycle Bin, as the File Manager does.
+ * wizard's lists and on save; the classic edit screen's Delete puts the link
+ * in the Recycle Bin, as the File Manager does; and the File Manager's window
+ * offers the answer and holds the name and the address to the classic
+ * screens' checks.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -198,4 +200,37 @@ function test_short_link_classic_delete_goes_to_the_bin()
 	pg_assert_contains("db(\"UPDATE short_links SET recycled = '1' WHERE id = '\" . e(\$short_link_id) . \"'\");", short_link_requests_test_function_body($explorer, 'pg_short_link_to_bin'), 'the row is flagged');
 
 	pg_assert_contains("' AND ' . pg_short_link_live_filter()", short_link_requests_test_source('view_short_links.php'), 'the classic list leaves binned links out');
+}
+
+// The File Manager's window offers the answer the classic screens offer
+// (shown at the short address, 301 or 302), sends it only when it draws the
+// field, and the create and the change save it through the same check; a
+// window that sends none keeps the stored answer. Its address is held to the
+// column the way the classic screens hold it, and a name it refuses is
+// refused in the classic screens' words.
+function test_short_link_wizard_offers_the_answer_and_the_classic_checks()
+{
+	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+
+	pg_assert_contains("array_keys(pg_short_link_answer_options()), array_values(pg_short_link_answer_options()))", $explorer, 'the classic screens\' choices');
+	pg_assert_same(2, substr_count($explorer, "pg_short_link_answer_posted(\$request['redirect_code'] ?? null)"), 'create and change read the answer');
+	pg_assert_contains("(int) (\$short_link_row['redirect_code'] ?? 0));", $explorer, 'the change falls back on the stored answer');
+	pg_assert_contains("'redirect_code' => (int) (\$row['redirect_code'] ?? 0),", short_link_requests_test_function_body($explorer, 'pg_short_link_item'), 'the window reopens with the stored answer');
+	pg_assert_same(2, substr_count($explorer, '$short_link_name_read = pg_short_link_name_read('), 'rename and change say what is wrong with a name');
+
+	$screen = short_link_requests_test_source('view_folders.php');
+
+	pg_assert_contains("if (document.getElementById('sl_answer')) {", $screen, 'sent only when drawn');
+	pg_assert_contains("payload.redirect_code = value('sl_answer');", $screen, 'the answer goes with the save');
+	pg_assert_contains("String(shortLinkEditing.redirect_code || 0)", $screen, 'a link is opened with its answer chosen');
+	pg_assert_contains("'short_link_name_rule' => pg_short_link_name_rule_text(),", $screen, 'the classic name rule under the name');
+	pg_assert_true(strpos($screen, 'id="sl_name" maxlength="100"') === false, 'the name is not held to the old column');
+
+	$fits = pg_short_link_read_request(array('destination_type' => 'url', 'url' => '/' . str_repeat('a', pg_short_link_url_max() - 1)), null);
+
+	pg_assert_same('url', $fits['type'] ?? '', 'an address as long as the column');
+
+	$long = pg_short_link_read_request(array('destination_type' => 'url', 'url' => '/' . str_repeat('a', pg_short_link_url_max())), null);
+
+	pg_assert_same('url', $long['error'] ?? '', 'a longer address is refused, as on the classic screens');
 }
