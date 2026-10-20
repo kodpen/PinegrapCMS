@@ -424,16 +424,30 @@ function erp_edoc_parasut_party_missing($party, $invoice = array())
 
 /**
  * What the document itself is missing: the internet sale's web address and
- * carrier (VUK 509), which Paraşüt's internet_sale block carries.
+ * carrier (VUK 509). Only an e-Arşiv document carries them (the e_archives
+ * request's internet_sale and shipment blocks); the e_invoices request of a
+ * registered buyer has neither, so an invoice expected to go as e-Fatura is
+ * not held back for them.
  *
- * @param array $invoice  An erp_invoices row
+ * @param array       $invoice  An erp_invoices row
+ * @param string|null $kind     'einvoice' | 'earchive' when the document's kind
+ *                              is decided; null asks erp_edoc_invoice_expected_kind()
+ *                              (the invoice's kind, else the account's e-Invoice answer)
  * @return array  field name => label, empty when nothing is missing
  */
-function erp_edoc_parasut_document_missing($invoice)
+function erp_edoc_parasut_document_missing($invoice, $kind = null)
 {
     $missing = array();
 
     if ((int) ($invoice['is_internet_sale'] ?? 0) !== 1) {
+        return $missing;
+    }
+
+    if (($kind === null) && function_exists('erp_edoc_invoice_expected_kind')) {
+        $kind = erp_edoc_invoice_expected_kind($invoice);
+    }
+
+    if ($kind === 'einvoice') {
         return $missing;
     }
 
@@ -755,7 +769,8 @@ function erp_edoc_parasut_no_product_text($line)
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when it has one, as its amount otherwise.
  *
- * @param array  $invoice
+ * @param array  $invoice     An erp_invoices row; an order's invoice also carries
+ *                            order_number and order_date (Y-m-d)
  * @param array  $lines
  * @param string $contact_id  The Paraşüt contact
  * @return array  The payload, or ['error' => string]
@@ -798,10 +813,14 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         );
     }
 
+    // The order as its buyer knows it: the number on the receipt and in the
+    // account, not the row id behind it.
+    $order_number = ((int) ($invoice['order_id'] ?? 0) > 0) ? trim((string) ($invoice['order_number'] ?? '')) : '';
+
     $currency = strtoupper(trim((string) $invoice['currency']));
     $attributes = array(
         'item_type' => 'invoice',
-        'description' => mb_substr(trim((string) $invoice['full_number'] . (((int) ($invoice['order_id'] ?? 0) > 0) ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => (int) $invoice['order_id'])) : '')), 0, 255),
+        'description' => mb_substr(trim((string) $invoice['full_number'] . (($order_number !== '') ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => $order_number)) : '')), 0, 255),
         'issue_date' => (string) $invoice['issue_date'],
         'due_date' => (((string) $invoice['due_date'] !== '0000-00-00') && ((string) $invoice['due_date'] !== '')) ? (string) $invoice['due_date'] : (string) $invoice['issue_date'],
         'currency' => erp_edoc_parasut_currency($currency),
@@ -811,8 +830,8 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
     // to turn an invoice into an e-document when only one of them is set.
     $order_date = trim((string) ($invoice['order_date'] ?? ''));
 
-    if (((int) ($invoice['order_id'] ?? 0) > 0) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $order_date)) {
-        $attributes['order_no'] = (string) (int) $invoice['order_id'];
+    if (($order_number !== '') && preg_match('/^\d{4}-\d{2}-\d{2}$/', $order_date)) {
+        $attributes['order_no'] = $order_number;
         $attributes['order_date'] = $order_date;
     }
 
@@ -999,10 +1018,19 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail($contact['error']);
     }
 
-    // orders.order_date is a UNIX timestamp; the document wants the day.
-    if (((int) ($invoice['order_id'] ?? 0) > 0) && !isset($invoice['order_date'])) {
-        $stamp = (int) db_value("SELECT order_date FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
-        $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+    // The order's number and day (orders.order_date is a UNIX timestamp; the
+    // document wants the day).
+    if (((int) ($invoice['order_id'] ?? 0) > 0) && (!isset($invoice['order_date']) || !isset($invoice['order_number']))) {
+        $order = db_item("SELECT order_number, order_date FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1");
+
+        if (!isset($invoice['order_number'])) {
+            $invoice['order_number'] = is_array($order) ? trim((string) $order['order_number']) : '';
+        }
+
+        if (!isset($invoice['order_date'])) {
+            $stamp = is_array($order) ? (int) $order['order_date'] : 0;
+            $invoice['order_date'] = ($stamp > 0) ? date('Y-m-d', $stamp) : '';
+        }
     }
 
     $payload = erp_edoc_parasut_invoice_payload($invoice, $lines, $contact['id']);
@@ -1248,6 +1276,21 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
 
     $kind = $decision['kind'];
     $detail_ids = array();
+
+    // GİB's answer decides the kind only now. The invoice may have been sent
+    // as an expected e-Fatura, without the web address and the carrier an
+    // internet sale's e-Arşiv document has to carry; that is refused here
+    // rather than converted without them.
+    if ($kind === 'earchive') {
+        $document_missing = erp_edoc_parasut_document_missing($invoice, 'earchive');
+
+        if (!empty($document_missing)) {
+            return $fail(lang(array(
+                'string' => 'GİB does not list the buyer for e-Invoice, so the invoice goes as e-Archive, and an internet sale needs these on it: {var:1}. The draft at Paraşüt cannot take them any more: cancel the invoice and issue it again once they are on it.',
+                'vars' => implode(', ', $document_missing),
+            )));
+        }
+    }
 
     // A withheld line's code is sent against Paraşüt's own line id.
     foreach ($lines as $line) {
