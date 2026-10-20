@@ -86,6 +86,7 @@ function test_ai_write_plain_reduces_markup_to_text()
 	pg_assert_same('', pg_ai_write_plain(true, 100), 'boolean');
 	pg_assert_same('', pg_ai_write_plain('<script>alert(1)</script>', 100), 'script');
 	pg_assert_same('Hello', pg_ai_write_plain('Hello world', 7), 'cut');
+	pg_assert_same('удобный товар', pg_ai_write_plain('<p>удобный товар для отдыха</p>', 13), 'cut after a cyrillic word');
 	pg_assert_same('x <3 y', pg_ai_write_strip_markup('x <3 y<br/>'), 'heart');
 	pg_assert_same(100, mb_strlen(pg_ai_write_plain(str_repeat('a', 500000), 100)), 'oversized');
 	pg_assert_same(100, mb_strlen(pg_ai_write_plain('a' . str_repeat('ğ', 15000), 100)), 'cut inside a character');
@@ -248,7 +249,8 @@ function test_ai_write_html_builds_safe_blocks()
 }
 
 // A cut never halves a word unless the last space is too far back, and
-// leaves no punctuation hanging.
+// leaves no punctuation hanging. A last character that shares a byte with
+// the dashes (Cyrillic "р", Japanese "ん", an emoji) stays whole.
 function test_ai_write_cut()
 {
 	pg_assert_same('short', pg_ai_write_cut('short', 10), 'fits');
@@ -258,6 +260,13 @@ function test_ai_write_cut()
 	pg_assert_same('a abcdefgh', pg_ai_write_cut('a abcdefghijkl', 10), 'space too far back');
 	pg_assert_same('Çok güzel', pg_ai_write_cut('Çok güzel gömlek', 12), 'multibyte');
 	pg_assert_same('anything', pg_ai_write_cut('anything', 0), 'no limit');
+	pg_assert_same('Linen shirt', pg_ai_write_cut('Linen shirt — for summer', 13), 'trailing em dash');
+	pg_assert_same('Linen shirt', pg_ai_write_cut('Linen shirt – for summer', 13), 'trailing en dash');
+	pg_assert_same('Лёгкая льняная рубашка на лето — удобный и практичный товар', pg_ai_write_cut('Лёгкая льняная рубашка на лето — удобный и практичный товар для отдыха и города', 60), 'cyrillic word boundary');
+	pg_assert_same('удобный товар', pg_ai_write_cut('удобный товар для', 13), 'cyrillic exact space');
+	pg_assert_same('ごはん', pg_ai_write_cut('ごはん です', 3), 'japanese');
+	pg_assert_same('Yeni özellik 🚀', pg_ai_write_cut('Yeni özellik 🚀 yakında', 14), 'emoji');
+	pg_assert_same('Hazır ✓', pg_ai_write_cut('Hazır ✓, gönderildi', 8), 'check mark and comma');
 }
 
 // The daily counter starts again on a new day and takes nothing past the cap.
