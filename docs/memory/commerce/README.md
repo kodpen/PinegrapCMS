@@ -28,6 +28,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, restore cleanup.
+- order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
