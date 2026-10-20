@@ -26,7 +26,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules and the rules for adding functions, paths, PHPMailer use, get_file.php copies and line references.
 - important-files-and-js-twins.md: Key product files and their roles, the .src.js vs .min.js rule (edit both; ENVIRONMENT_SUFFIX decides which is served) and where frontend JS lives.
-- init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and the config.php editing functions of edit_config.php.
+- init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - json-endpoint-rules.md: Rules for endpoints that speak JSON: rejections and CSRF failures must be JSON, and pg_post_body_discarded() must not be used on a JSON body.
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.

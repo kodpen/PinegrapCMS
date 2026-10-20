@@ -10,6 +10,7 @@ description: Awaiting-payment (bank transfer) orders: derived state predicate, p
 
 ## Who records the payment?
 - `pg_order_mark_paid(int $order_id, int $user_id): bool`: `UPDATE orders SET paid_at = time() WHERE id = ? AND paid_at = 0` (second click is a no-op; `log_activity` when a row changed).
+- A recorded payment is the `order_paid` moment of the automatic invoice (`pg_erp_auto_invoice()`): docs/memory/erp/erp-auto-invoice.md.
 - Caller `view_order.php` `submit_mark_paid` (shared `validate_token_field()` + the `pg_order_awaiting_payment` gate; button in `#button_bar` with its own form, only while waiting).
 - `erp_invoice_refresh_paid()` (`includes/erp/settlement.php`) calls the same function when the invoice becomes `paid` and the order is `Offline Payment` (inside the receipt's transaction) and fills the invoice's empty `payment_date` with the closing receipt's `doc_date`: the ERP receipt is the confirmed payment moment of a transfer.
 
