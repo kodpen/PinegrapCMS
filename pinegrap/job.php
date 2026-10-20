@@ -482,6 +482,14 @@ if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_du
     }
 }
 
+// The price visitors are shown under the offers, into the product price
+// history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
+// tick until the pass is through. A tick with nothing due reads one small
+// file; a shop with no offer running reads its offers once an hour.
+if (pg_price_history_offer_pass_due()) {
+    pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
