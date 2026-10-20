@@ -55,7 +55,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - import-zip-url-resolution.md: How the Import ZIP File screen resolves relative references (url_to_absolute.php), the PCRE2 failure that left imported pages with broken images/CSS/JS, and the resolver's rules
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
-- link-target-in-attrs.md: A link's window (target) written in _attrs: the PHP link and button renderers skip it while the canvas prints it; pg_sw_link_attrs_to_props() in the order view, the widget still affected
+- link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
+- member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
 - member-widgets-rendering.md: Membership widget render rules: closed feature = no output, canvas twin _sdMemberBindingOff, Messages node stamping, always render own tree, signed-in state.
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.
@@ -64,7 +65,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-revisions-schedule-api.md: External API and MCP for page revisions and scheduled publishing: the three design routes, how times are read, what a restore keeps, the 409 for a page open in the editor
-- page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when pg_designer_save_page() writes one and when not, the source labels, the two retention rules and the daily sweep in job.php
+- page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, source labels, retention and the daily sweep, the History panel, what is not covered
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what a save does with the two times, the general job's pass, manual moves, the designs list badge, editor fields
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)

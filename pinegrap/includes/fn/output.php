@@ -4107,6 +4107,33 @@ function output_menu($properties = false)
     return $output_all_menu_items;
 }
 
+// Whether license_check() should ask the license server now. $status is the
+// status the session holds from the last attempt ('' when that attempt got no
+// usable answer), $last_check its time (0 when this session has not asked
+// yet). A good answer is trusted for 12 hours; a failed attempt is retried
+// after 15 minutes rather than on every page, since an unreachable server
+// costs each attempt up to the request's 10-second timeout.
+function pg_license_check_due($force, $status, $last_check, $now)
+{
+    if ($force) {
+        return true;
+    }
+
+    $last_check = (int) $last_check;
+
+    if ($last_check <= 0) {
+        return true;
+    }
+
+    $elapsed = (int) $now - $last_check;
+
+    if ((string) $status === '') {
+        return $elapsed >= 900;
+    }
+
+    return $elapsed > 43200;
+}
+
 // license_check()
 // PHP 7.0 - 8.5 compatible helper to validate and display subscription/license status.
 // Improvements:
@@ -4172,9 +4199,21 @@ function license_check($properties = false)
         }
 
         $last_check = isset($_SESSION['software']['settings']['license']['last_check']) ? (int) ($_SESSION['software']['settings']['license']['last_check'] ?? '') : 0;
-        $need_check = $force_check || (empty($_SESSION['software']['settings']['license']['status'])) || ((time() - $last_check) > 43200);
+        $session_status = isset($_SESSION['software']['settings']['license']['status']) ? (string) $_SESSION['software']['settings']['license']['status'] : '';
+        $need_check = pg_license_check_due($force_check, $session_status, $last_check, time());
+
+        // The account menu asks twice on one page (the licence card and the
+        // avatar dot); only the first call may go to the server, so a forced
+        // re-check is not sent twice either.
+        static $license_asked_this_request = false;
+
+        if ($license_asked_this_request) {
+            $need_check = false;
+        }
 
         if ($need_check) {
+            $license_asked_this_request = true;
+
             // Clear previous license indicators (we'll set again below)
             $_SESSION['software']['settings']['license']['status'] = '';
             $_SESSION['software']['settings']['license']['error_code'] = '';
@@ -4262,6 +4301,10 @@ function license_check($properties = false)
                 $response = @file_get_contents($api_url, false, $context);
             }
 
+            // Stamped for every attempt, answered or not: pg_license_check_due()
+            // measures the wait from it, after a failure too.
+            $_SESSION['software']['settings']['license']['last_check'] = time();
+
             // decode result safely
             $decoded = false;
             if ($response !== false && $response !== null && $response !== '') {
@@ -4304,15 +4347,9 @@ function license_check($properties = false)
                         // %a gives total days; ensure format method exists (it does)
                         $countdown = (int) $diff->format('%a');
                         $_SESSION['software']['settings']['license']['countdown'] = $countdown;
-                        $_SESSION['software']['settings']['license']['last_check'] = time();
                     }
-                } else {
-                    // If P_end_d not provided, set last_check to avoid continuous retries
-                    $_SESSION['software']['settings']['license']['last_check'] = time();
                 }
             } else {
-                // mark last_check to avoid hammering remote if it failed repeatedly
-                $_SESSION['software']['settings']['license']['last_check'] = time();
                 // store diagnostic info for admin display
                 $_SESSION['software']['settings']['license']['diag_errno'] = $curl_errno;
                 $_SESSION['software']['settings']['license']['diag_error'] = $curl_error;

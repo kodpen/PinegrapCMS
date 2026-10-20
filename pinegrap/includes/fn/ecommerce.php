@@ -384,12 +384,43 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
     return true;
 }
 
+// Remember that the shopper took an offer's gift out of this order, so the
+// next cart refresh does not put it straight back (pg_offer_gift_refused()).
+function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
+{
+    if (empty($_SESSION['ecommerce']['declined_offer_gifts']) || !is_array($_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'] = array();
+    }
+    $key = $order_id . '_' . $offer_id . '_' . $offer_action_id;
+    if (!in_array($key, $_SESSION['ecommerce']['declined_offer_gifts'])) {
+        $_SESSION['ecommerce']['declined_offer_gifts'][] = $key;
+    }
+}
+
+// The shopper took a line out of the cart: a quantity of 0 on the cart
+// screens. A gift the offer placed by itself is remembered as refused, then
+// the line goes the way every removal does (remove_order_item()): with its
+// gift card and form rows, with its recipient when it was the last line
+// there, and otherwise with the recipient's shipping worked out again.
+function pg_cart_remove_line($order_item_id)
+{
+    $line = db_item("SELECT order_id, offer_id, offer_action_id, added_by_offer FROM order_items WHERE id = '" . e($order_item_id) . "'");
+    if (!$line) {
+        return;
+    }
+    if ($line['added_by_offer'] && $line['offer_id']) {
+        pg_offer_gift_refuse($line['order_id'], $line['offer_id'], $line['offer_action_id']);
+    }
+    remove_order_item($order_item_id);
+}
+
 // Put the product an offer gives away into the cart.
 //
 // The offer already qualified; this only decides how the gift shows up. When
 // the shopper is already paying for that product - a required product added
-// itself, or they simply put one in the basket - the gift is that line's
-// discount, not a second line of the same thing. Otherwise the product is
+// itself, or they simply put one in the basket - the gift is a discount on as
+// many units of that line as the offer gives away, not a second line of the
+// same thing. Otherwise the product is
 // added, marked as put there by the offer, so that the cart takes it back out
 // when the offer stops applying.
 //
@@ -417,7 +448,9 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
             products.name AS product_name,
 
-            products.price AS product_price
+            products.price AS product_price,
+
+            products.shippable AS product_shippable
 
         FROM offer_actions
 
@@ -428,14 +461,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     if (!$action || !$action['add_product_product_id'] || !$action['add_product_quantity'] || ($action['product_name'] === NULL)) {
         return true;
     }
-    if ($action['add_product_discount_amount'] != 0) {
-        $discounted_price = $action['product_price'] - $action['add_product_discount_amount'];
-    } else {
-        $discounted_price = $action['product_price'] - ($action['product_price'] * ($action['add_product_discount_percentage'] / 100));
-    }
-    if ($discounted_price < 0) {
-        $discounted_price = 0;
-    }
+    $discounted_price = pg_offer_gift_price($action['product_price'], $action['add_product_discount_amount'], $action['add_product_discount_percentage']);
     $discounted_by_offer = (($action['add_product_discount_amount'] != 0) || ($action['add_product_discount_percentage'] != 0)) ? 1 : 0;
 
     $sql_ship_to = $ship_to_id ? " AND (ship_to_id = '" . e($ship_to_id) . "')" : "";
@@ -455,7 +481,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item_id = db_value("SELECT id FROM order_items
+    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
 
         WHERE
 
@@ -466,14 +492,20 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
             AND (added_by_offer = '0')" . $sql_ship_to . "
 
         ORDER BY id ASC LIMIT 1");
-    if ($paid_order_item_id) {
+    if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
+        //
+        // The gift is the action's quantity, not the whole line: the other
+        // units keep the price the line stands at (list, member or another
+        // offer's), and a gift never raises that price.
+        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
+        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
 
-                price = '" . e($discounted_price) . "',
+                price = '" . e($line_price) . "',
 
                 offer_id = '" . e($offer_id) . "',
 
@@ -481,13 +513,22 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
                 discounted_by_offer = '1'
 
-            WHERE id = '" . e($paid_order_item_id) . "'");
+            WHERE id = '" . e($paid_order_item['id']) . "'");
         return true;
     }
 
     // A gift the shopper took out of this order is not pushed back in.
     if (pg_offer_gift_refused($offer_id, $offer_action_id)) {
         return true;
+    }
+
+    // With one recipient a shippable gift goes to the buyer's recipient, the
+    // one add_order_item() gives every shippable product, so it is weighed,
+    // charged shipping and checked against the destination with the rest.
+    // Found or created only here, once the gift is placed, so a gift that is
+    // not placed leaves no empty recipient behind.
+    if (!$ship_to_id && (ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'single recipient') && ($action['product_shippable'] == 1)) {
+        $ship_to_id = create_or_get_ship_to('', '');
     }
 
     db("INSERT INTO order_items (
@@ -1412,6 +1453,75 @@ function get_order_subtotal()
     }
     return $order_subtotal;
 }
+
+// Whether a cart line is charged when the order is placed: every line but a
+// recurring one that starts after $today, and every recurring line on the
+// ClearCommerce gateway, which charges recurring payments itself; the test
+// submit_order() puts its lines through. A recurring line gets its start date
+// written when the order is submitted (express_order.php, shopping_cart.php);
+// until then ('0000-00-00' or empty) it starts the product's $start_days after
+// today, the date it will be given.
+function pg_order_line_charged_today($recurring, $start_date, $start_days, $today, $clearcommerce)
+{
+    if (!$recurring) {
+        return true;
+    }
+    if ($clearcommerce) {
+        return false;
+    }
+    $start_date = (string) $start_date;
+    if (($start_date === '') || ($start_date === '0000-00-00')) {
+        $start_date = date('Y-m-d', strtotime($today . ' +' . max(0, (int) $start_days) . ' days'));
+    }
+    return ($start_date <= (string) $today);
+}
+
+// The subtotal of the cart's lines charged today (pg_order_line_charged_today()),
+// in minor units.
+function pg_order_subtotal_charged_today()
+{
+    $clearcommerce = (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+    $today = date('Y-m-d');
+    $subtotal = 0;
+    foreach ((array) db_items("SELECT
+
+            order_items.price,
+
+            order_items.quantity,
+
+            order_items.recurring_start_date,
+
+            products.recurring,
+
+            products.start
+
+        FROM order_items
+
+        LEFT JOIN products ON order_items.product_id = products.id
+
+        WHERE order_items.order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $row) {
+        if (pg_order_line_charged_today($row['recurring'], $row['recurring_start_date'], $row['start'], $today, $clearcommerce)) {
+            $subtotal += $row['price'] * $row['quantity'];
+        }
+    }
+    return $subtotal;
+}
+
+// The part of the order discount that today's charge takes off, in minor
+// units. The cart works the discount out over every line (get_order_subtotal()),
+// but a recurring line that starts later, or any recurring line on the
+// ClearCommerce gateway, is not charged today; $subtotal is what is. The
+// discount is never more than that subtotal and never below zero, so the
+// order total does not drop below its tax and shipping.
+function pg_order_charged_discount($discount, $subtotal)
+{
+    $discount = max(0, (int) round((float) $discount));
+    $subtotal = (int) round((float) $subtotal);
+    if ($discount > $subtotal) {
+        $discount = max(0, $subtotal);
+    }
+    return $discount;
+}
 // Create function that is responsible for removing order items from an order
 // if product no longer exists or is disabled and also updating order item prices.
 function update_order_item_prices()
@@ -2163,6 +2273,57 @@ function pg_offer_action_targets_item($offer_action, $order_item, $ship_to_id = 
     return pg_offer_action_targets_product($offer_action, $order_item['product_id']);
 }
 
+// How many units of a cart line a product discount covers. "The cheapest item
+// is free" frees one item, not every unit of the line that item sits on; a
+// product or group target discounts the whole line.
+function pg_offer_action_discounted_units($offer_action, $quantity)
+{
+    if (pg_offer_action_target($offer_action) == 'cheapest') {
+        return min(1, (int) $quantity);
+    }
+    return (int) $quantity;
+}
+
+// The unit price of a cart line when an offer discounts only some of its
+// units: the cheapest item, or a gift taken from a line the shopper is already
+// paying for. A line carries one unit price, so the discount on those units is
+// spread over the whole line: one free item on a line of two charges each
+// unit half. The spread price rounds down, so the line never costs more than
+// its units at their own prices; the customer keeps at most quantity - 1
+// minor units of the rounding. A line whose every unit is discounted gets the
+// discounted price unchanged.
+function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_price, $discounted_units)
+{
+    $quantity = (int) $quantity;
+    $discounted_units = (int) $discounted_units;
+    if ($discounted_units >= $quantity) {
+        return $discounted_unit_price;
+    }
+    if ($discounted_units <= 0) {
+        return $unit_price;
+    }
+    $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
+// The unit price a gift (an 'add product' result) is charged at: the product's
+// price less the action's amount, or less its percentage, in minor units and
+// rounded. Never below zero: an amount larger than the price, or a price
+// lowered after the offer was set up, would otherwise leave a line that takes
+// money off the order.
+function pg_offer_gift_price($product_price, $discount_amount, $discount_percentage)
+{
+    if ($discount_amount != 0) {
+        $price = $product_price - $discount_amount;
+    } else {
+        $price = $product_price - ($product_price * ($discount_percentage / 100));
+    }
+    if ($price < 0) {
+        $price = 0;
+    }
+    return (int) round($price);
+}
+
 // An action with nothing to discount is skipped before the cart is walked. A
 // group target counts as "has a target" even when the group is empty today;
 // the item loop simply finds nothing to discount.
@@ -2419,6 +2580,59 @@ function pg_offer_tier_percentage($offer_id, $subtotal)
         }
     }
     return 0;
+}
+
+// The percentage an order discount takes off this subtotal. A ladder replaces
+// the action's own percentage: the rung the subtotal has reached, and nothing
+// below the first rung. The action row keeps the first rung's percentage only
+// so the action reads as one that discounts something (edit_offer_f.php), so
+// it must not stand in for a rung the cart has not reached. Without a ladder
+// the action's percentage stands. $tiers is pg_offer_tiers()' list, highest
+// rung first.
+function pg_offer_order_discount_percentage($tiers, $subtotal, $action_percentage)
+{
+    if (!$tiers) {
+        return $action_percentage;
+    }
+    foreach ($tiers as $tier) {
+        if ($subtotal >= $tier['min']) {
+            return $tier['percent'];
+        }
+    }
+    return 0;
+}
+
+// What one 'discount order' action takes off this subtotal, in minor units:
+// its amount when it has one, otherwise its percentage (the ladder's rung when
+// there is a ladder) of the subtotal. Never more than the subtotal, so an order
+// total is never shown below zero.
+function pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)
+{
+    if ($amount != 0) {
+        $discount = $amount;
+    } else {
+        $discount = round($subtotal * (pg_offer_order_discount_percentage($tiers, $subtotal, $percentage) / 100));
+    }
+    if ($discount > $subtotal) {
+        $discount = $subtotal;
+    }
+    return (int) round($discount);
+}
+
+// The order discount that takes the most off this subtotal, as array(offer id,
+// discount); array(0, 0) when none takes anything off. Each candidate is
+// array('offer_id', 'amount', 'percentage', 'tiers'), in the order the offers
+// were weighed; the first one wins a tie.
+function pg_offer_best_order_discount($candidates, $subtotal)
+{
+    $best = array(0, 0);
+    foreach ($candidates as $candidate) {
+        $discount = pg_offer_order_discount_value($candidate['amount'], $candidate['percentage'], $candidate['tiers'], $subtotal);
+        if ($discount > $best[1]) {
+            $best = array($candidate['offer_id'], $discount);
+        }
+    }
+    return $best;
 }
 
 // Conditions about the cart that do not fit the offer_rules row. The answer
@@ -3010,6 +3224,9 @@ function apply_offers_to_cart()
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // The cheapest-item target discounts one unit; the
+                                    // other units of its line keep the line's price.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3138,14 +3355,7 @@ function apply_offers_to_cart()
         // or the product is allowed to be added multiple times,
         // then the order item is valid, so update quantity and discount for product
         if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
-            $discounted_price = 0;
-            // if discount is by amount, get discounted price
-            if ($order_item['offer_action_add_product_discount_amount'] != 0) {
-                $discounted_price = $order_item['product_price'] - $order_item['offer_action_add_product_discount_amount'];
-                // else discount is by percentage, so get discounted price
-            } else {
-                $discounted_price = $order_item['product_price'] - ($order_item['product_price'] * ($order_item['offer_action_add_product_discount_percentage'] / 100));
-            }
+            $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
             $discounted_by_offer = 0;
             // if the product that was added is also being discounted, prepare to mark order item accordingly
             if (($order_item['offer_action_add_product_discount_amount'] != 0) || ($order_item['offer_action_add_product_discount_percentage'] != 0)) {
@@ -3173,10 +3383,9 @@ function apply_offers_to_cart()
             remove_order_item($order_item['id']);
         }
     }
-    $best_order_discount = 0;
-    $best_order_discount_offer_id = 0;
-    $best_order_discount_amount = 0;
-    $best_order_discount_percentage = 0;
+    // Every order discount the cart qualifies for. The winner is chosen after
+    // the loop, against the cart as it then stands (below).
+    $order_discount_candidates = array();
     // pending offers are offers that add product(s) that are ready for the customer to select to add them to the order
     $pending_offers = array();
     $discounted_ship_tos = array();
@@ -3193,45 +3402,14 @@ function apply_offers_to_cart()
                         // if this offer is valid,
                         // then prepare to apply discount
                         if (validate_offer($offer['id']) == true) {
-                            $order_discount = 0;
-                            // if discount is by amount, get order discount
-                            if ($offer_action['discount_order_amount'] != 0) {
-                                $subtotal = get_order_subtotal();
-                                // If the subtotal is greater than or equal to the discount,
-                                // then use the whole discount.
-                                if ($subtotal >= $offer_action['discount_order_amount']) {
-                                    $order_discount = $offer_action['discount_order_amount'];
-                                    // Otherwise the subtotal is less than the possible discount,
-                                    // so just set the discount to the amount of the subtotal.
-                                    // This prevents us from showing a larger discount than
-                                    // was actually applied on the cart, preview, and etc. screens.
-                                    // It also prevents the total from ever showing a negative number,
-                                    // which would be confusing to the customer.
-                                } else {
-                                    $order_discount = $subtotal;
-                                }
-                                // else discount is by percentage, so get order discount
-                            } else {
-                                // A ladder replaces the flat rate; without one
-                                // pg_offer_tier_percentage() answers 0 and the
-                                // action's own percentage stands.
-                                $percentage = pg_offer_tier_percentage($offer['id'], get_order_subtotal());
-                                if ($percentage <= 0) {
-                                    $percentage = $offer_action['discount_order_percentage'];
-                                }
-                                $order_discount = round(get_order_subtotal() * ($percentage / 100));
-                            }
-                            // if this offer provides the best order discount so far then remember that
-                            if ($order_discount > $best_order_discount) {
-                                $best_order_discount = $order_discount;
-                                $best_order_discount_offer_id = $offer['id'];
-                                // Kept so the amount can be worked out again at
-                                // the end: a gift or a product discount further
-                                // down this loop still lowers the subtotal this
-                                // percentage is a percentage of.
-                                $best_order_discount_amount = $offer_action['discount_order_amount'];
-                                $best_order_discount_percentage = $offer_action['discount_order_percentage'];
-                            }
+                            // Weighed after the loop: a gift further down this
+                            // loop can still change the subtotal a percentage
+                            // (or a ladder's rung) is taken from.
+                            $order_discount_candidates[] = array(
+                                'offer_id' => $offer['id'],
+                                'amount' => $offer_action['discount_order_amount'],
+                                'percentage' => $offer_action['discount_order_percentage'],
+                                'tiers' => pg_offer_tiers($offer['id']));
                             // else this offer is not valid, so if an upsell has not already been added for it,
                             // and there is an upsell, then add upsell
                         } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
@@ -3315,6 +3493,12 @@ function apply_offers_to_cart()
                             if ((mysqli_num_rows($result) == 0) || ($offer['multiple_recipients'] == 1)) {
                                 // loop through recipients
                                 foreach ($ship_tos as $ship_to) {
+                                    // The items that are not shipped share the
+                                    // id 0 group; it is no recipient, and a
+                                    // shippable gift cannot be sent with it.
+                                    if (!$ship_to['id']) {
+                                        continue;
+                                    }
                                     // if offer is valid for this recipient
                                     if (validate_offer($offer['id'], $ship_to['id']) == true) {
                                         // check if this offer and action have already been applied to this recipient
@@ -3429,25 +3613,17 @@ function apply_offers_to_cart()
             }
         }
     }
+    // The loop can lower an item's price after an order discount was found - a
+    // gift taken from a paid line - so the best one is chosen against the cart
+    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // is left, and never more than what is left.
+    $best_order_discount_offer_id = 0;
+    $best_order_discount = 0;
+    if ($order_discount_candidates) {
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+    }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
-        // The winning discount was worked out while the loop was still running,
-        // and the loop can lower an item's price after that - a gift, a product
-        // discount. So it is worked out once more against the cart as it now
-        // stands: a percentage of what is left, and never more than what is
-        // left, because an order total is not a negative number.
-        $final_subtotal = get_order_subtotal();
-        $tier_percentage = pg_offer_tier_percentage($best_order_discount_offer_id, $final_subtotal);
-        if ($tier_percentage > 0) {
-            $best_order_discount = round($final_subtotal * ($tier_percentage / 100));
-        } else if ($best_order_discount_percentage != 0) {
-            $best_order_discount = round($final_subtotal * ($best_order_discount_percentage / 100));
-        } else if ($best_order_discount_amount != 0) {
-            $best_order_discount = $best_order_discount_amount;
-        }
-        if ($best_order_discount > $final_subtotal) {
-            $best_order_discount = $final_subtotal;
-        }
         $query = "UPDATE orders SET discount_offer_id = '" . $best_order_discount_offer_id . "' WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
@@ -3473,6 +3649,20 @@ function apply_offers_to_cart()
 
                 WHERE id = '" . $discounted_ship_to['id'] . "'";
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        }
+    }
+    // The order discount was worked out over every line, but today's charge
+    // holds only the lines charged today: a recurring line that starts later
+    // is not. It is never more than that charge, so the cart, the order pages
+    // and submit_order() agree on a total that does not drop below its tax
+    // and shipping. A discount that comes to nothing uses up no offer.
+    if (!empty($_SESSION['ecommerce']['order_discount'])) {
+        $charged_discount = pg_order_charged_discount($_SESSION['ecommerce']['order_discount'], pg_order_subtotal_charged_today());
+        if ($charged_discount > 0) {
+            $_SESSION['ecommerce']['order_discount'] = $charged_discount;
+        } else {
+            db("UPDATE orders SET discount_offer_id = '0' WHERE id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'");
+            unset($_SESSION['ecommerce']['order_discount']);
         }
     }
     return array(
@@ -3776,6 +3966,9 @@ function get_best_offer_id($offer_code, $scope = '')
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // Worked out as apply_offers_to_cart() charges it: the
+                                    // cheapest-item target is worth one unit of its line.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3813,22 +4006,9 @@ function get_best_offer_id($offer_code, $scope = '')
                         // if this offer is valid,
                         // then determine discount amount
                         if (validate_offer($offer['id'], 0, $subtotal) == true) {
-                            $order_discount = 0;
-                            // if discount is by amount, get order discount
-                            if ($offer_action['discount_order_amount'] != 0) {
-                                $order_discount = $offer_action['discount_order_amount'];
-                                // else discount is by percentage, so get order discount
-                            } else {
-                                $percentage = pg_offer_tier_percentage($offer['id'], $subtotal);
-                                if ($percentage <= 0) {
-                                    $percentage = $offer_action['discount_order_percentage'];
-                                }
-                                $order_discount = round($subtotal * ($percentage / 100));
-                            }
-                            // if the order discount is greater than the subtotal, then set the order discount to the subtotal
-                            if ($order_discount > $subtotal) {
-                                $order_discount = $subtotal;
-                            }
+                            // The same value the cart is charged: below a
+                            // ladder's first rung this offer takes nothing off.
+                            $order_discount = pg_offer_order_discount_value($offer_action['discount_order_amount'], $offer_action['discount_order_percentage'], pg_offer_tiers($offer['id']), $subtotal);
                             // if this is the best order discount, then remember that
                             if ($order_discount > $best_order_discount) {
                                 $best_order_discount = $order_discount;
@@ -3846,18 +4026,7 @@ function get_best_offer_id($offer_code, $scope = '')
                             if (validate_offer($offer['id'], 0, $subtotal) == true) {
                                 // If the product is discounted then get discount.
                                 if ($offer_action['add_product_discount_amount'] or $offer_action['add_product_discount_percentage']) {
-                                    $discounted_price = 0;
-                                    // if discount is by amount, then get discounted price
-                                    if ($offer_action['add_product_discount_amount']) {
-                                        $discounted_price = $offer_action['add_product_price'] - $offer_action['add_product_discount_amount'];
-                                        // else discount is by percentage, so get discounted price
-                                    } else {
-                                        $discounted_price = $offer_action['add_product_price'] - ($offer_action['add_product_price'] * ($offer_action['add_product_discount_percentage'] / 100));
-                                    }
-                                    // if the discounted price is less than 0, then set discounted price to 0
-                                    if ($discounted_price < 0) {
-                                        $discounted_price = 0;
-                                    }
+                                    $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
                                     // add discount for this added product to add product discount (multiply discount by quantity)
                                     $add_product_discount = $add_product_discount + (($offer_action['add_product_price'] - $discounted_price) * $offer_action['add_product_quantity']);
                                 }
@@ -3871,18 +4040,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                 if (validate_offer($offer['id'], $ship_to['id'], $subtotal) == true) {
                                     // If the product is discounted then get discount.
                                     if ($offer_action['add_product_discount_amount'] or $offer_action['add_product_discount_percentage']) {
-                                        $discounted_price = 0;
-                                        // if discount is by amount, then get discounted price
-                                        if ($offer_action['add_product_discount_amount']) {
-                                            $discounted_price = $offer_action['add_product_price'] - $offer_action['add_product_discount_amount'];
-                                            // else discount is by percentage, so get discounted price
-                                        } else {
-                                            $discounted_price = $offer_action['add_product_price'] - ($offer_action['add_product_price'] * ($offer_action['add_product_discount_percentage'] / 100));
-                                        }
-                                        // if the discounted price is less than 0, then set discounted price to 0
-                                        if ($discounted_price < 0) {
-                                            $discounted_price = 0;
-                                        }
+                                        $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
                                         // add discount for this added product to discount amount (multiply discount by quantity)
                                         $add_product_discount = $add_product_discount + (($offer_action['add_product_price'] - $discounted_price) * $offer_action['add_product_quantity']);
                                     }
@@ -4316,14 +4474,7 @@ function add_pending_offers($liveform)
                                 $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
                                 // if this offer and action have not already been applied to this order, add pending offer
                                 if (mysqli_num_rows($result) == 0) {
-                                    $discounted_price = 0;
-                                    // if discount is by amount, get discounted price
-                                    if ($offer_action['add_product_discount_amount'] != 0) {
-                                        $discounted_price = $offer_action['add_product_price'] - $offer_action['add_product_discount_amount'];
-                                        // else discount is by percentage, get discounted price
-                                    } else {
-                                        $discounted_price = $offer_action['add_product_price'] - ($offer_action['add_product_price'] * ($offer_action['add_product_discount_percentage'] / 100));
-                                    }
+                                    $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
                                     // if product that is being added is also being discounted, prepare to mark order item accordingly
                                     if (($offer_action['add_product_discount_amount'] > 0) || ($offer_action['add_product_discount_percentage'] > 0)) {
                                         $discounted_by_offer = 1;
@@ -4448,14 +4599,7 @@ function add_pending_offers($liveform)
                                     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
                                     // if offer has not already been applied to this recipient, then add pending offer
                                     if (mysqli_num_rows($result) == 0) {
-                                        $discounted_price = 0;
-                                        // if discount is by amount, get discounted price
-                                        if ($offer_action['add_product_discount_amount'] != 0) {
-                                            $discounted_price = $offer_action['add_product_price'] - $offer_action['add_product_discount_amount'];
-                                            // else discount is by percentage, get discounted price
-                                        } else {
-                                            $discounted_price = $offer_action['add_product_price'] - ($offer_action['add_product_price'] * ($offer_action['add_product_discount_percentage'] / 100));
-                                        }
+                                        $discounted_price = pg_offer_gift_price($offer_action['add_product_price'], $offer_action['add_product_discount_amount'], $offer_action['add_product_discount_percentage']);
                                         // if product that is being added is also being discounted, prepare to mark order item accordingly
                                         if (($offer_action['add_product_discount_amount'] > 0) || ($offer_action['add_product_discount_percentage'] > 0)) {
                                             $discounted_by_offer = 1;
@@ -8049,9 +8193,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
-    // order's payment method has a payment driver that can cancel
-    // (pg_payment_cancel_driver(); a card order gets none), the payment is
-    // voided through it. Failures here MUST NOT roll back the cancellation —
+    // order's payment has a driver that can cancel (pg_payment_cancel_driver():
+    // the gateway's for a card order, the method's own otherwise), the payment
+    // is voided through it. Failures here MUST NOT roll back the cancellation —
     // refunds can be retried manually from the gateway dashboard. We just
     // record the outcome on the order row so the operator can audit.
     $refund_status_outcome = '';
@@ -8195,15 +8339,10 @@ function _order_has_shipped($order_id)
 
 /**
  * Probe orders.refund_status — true only after the 2026.1.27 upgrade has run.
- * Cached per-request so we don't issue SHOW COLUMNS on every cancel.
  */
 function _orders_has_refund_columns()
 {
-    static $cached = null;
-    if ($cached !== null) return $cached;
-    $row = db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
-    $cached = !empty($row);
-    return $cached;
+    return pg_schema_has('orders', 'refund_status');
 }
 
 /**

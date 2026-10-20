@@ -49,29 +49,38 @@ function pg_page_schedule_ready()
 }
 
 /**
+ * The latest time the two columns hold: they are INT UNSIGNED, and MySQL
+ * would clip a later one to this (7 February 2106) without an error.
+ */
+define('PG_PAGE_SCHEDULE_UNIX_MAX', 4294967295);
+
+/**
  * A time as the editor, the API or a form sends it, read in the site's time
  * zone (the PHP default time zone, init.php): empty or 0 for none, a unix
  * time as digits, a date and time as a datetime-local box writes it
  * ("2026-10-21T09:30", seconds and a space instead of the T accepted), or
- * the same with an offset or Z ("2026-10-21T09:30:00+03:00"). A date and
- * time that does not exist ("2026-02-30T10:00") is not one.
+ * the same with an offset or Z ("2026-10-21T09:30:00+03:00"). Fractions of
+ * a second (JavaScript's toISOString() writes ".000Z") are dropped. A date
+ * and time that does not exist ("2026-02-30T10:00"), one before 1970 and one
+ * after PG_PAGE_SCHEDULE_UNIX_MAX are not times.
  *
  * @param mixed $value
  * @return array ok, time (unix, 0 for none)
  */
 function pg_page_schedule_parse($value)
 {
+    $fail = array('ok' => false, 'time' => 0);
+
     if ($value === null || $value === false || $value === 0 || $value === '0') {
         return array('ok' => true, 'time' => 0);
     }
 
     if (is_int($value) || is_float($value)) {
-        $time = (int) $value;
-        return array('ok' => ($time >= 0), 'time' => max(0, $time));
+        return pg_page_schedule_in_range($value);
     }
 
     if (!is_string($value)) {
-        return array('ok' => false, 'time' => 0);
+        return $fail;
     }
 
     $value = trim($value);
@@ -81,39 +90,51 @@ function pg_page_schedule_parse($value)
     }
 
     if (preg_match('/^\d{1,10}$/', $value)) {
-        return array('ok' => true, 'time' => (int) $value);
+        return pg_page_schedule_in_range((int) $value);
     }
 
-    if (preg_match('/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(:\d{2})?$/', $value, $m)) {
-        $text = $m[1] . 'T' . $m[2] . (isset($m[3]) && $m[3] !== '' ? $m[3] : ':00');
+    // Date, hours and minutes, then seconds with an optional fraction, then
+    // an optional offset: Z, +03:00 or +0300.
+    if (!preg_match('/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(:\d{2}(?:\.\d+)?)?([Zz]|[+-]\d{2}:?\d{2})?$/', $value, $m)) {
+        return $fail;
+    }
+
+    $text = $m[1] . 'T' . $m[2] . ((isset($m[3]) && $m[3] !== '') ? substr($m[3], 0, 3) : ':00');
+
+    if (!isset($m[4]) || $m[4] === '') {
         $date = DateTime::createFromFormat('!Y-m-d\TH:i:s', $text);
-
-        if ($date === false || $date->format('Y-m-d\TH:i:s') !== $text) {
-            return array('ok' => false, 'time' => 0);
-        }
-
-        return array('ok' => true, 'time' => max(0, $date->getTimestamp()));
-    }
-
-    if (preg_match('/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?(Z|[+-]\d{2}:?\d{2})$/', $value, $m)) {
-        $text   = $m[1] . 'T' . $m[2] . (isset($m[3]) && $m[3] !== '' ? $m[3] : ':00');
-        $offset = ($m[4] === 'Z') ? '+00:00' : (strlen($m[4]) === 5 ? substr($m[4], 0, 3) . ':' . substr($m[4], 3) : $m[4]);
+    } else {
+        $offset = (strtoupper($m[4]) === 'Z') ? '+00:00' : ((strlen($m[4]) === 5) ? substr($m[4], 0, 3) . ':' . substr($m[4], 3) : $m[4]);
 
         // An offset past fourteen hours is no time zone anybody keeps.
         if ((int) substr($offset, 1, 2) > 14 || (int) substr($offset, 4, 2) > 59) {
-            return array('ok' => false, 'time' => 0);
+            return $fail;
         }
 
         $date = DateTime::createFromFormat('!Y-m-d\TH:i:sP', $text . $offset);
-
-        if ($date === false || $date->format('Y-m-d\TH:i:s') !== $text) {
-            return array('ok' => false, 'time' => 0);
-        }
-
-        return array('ok' => true, 'time' => max(0, $date->getTimestamp()));
     }
 
-    return array('ok' => false, 'time' => 0);
+    if ($date === false || $date->format('Y-m-d\TH:i:s') !== $text) {
+        return $fail;
+    }
+
+    return pg_page_schedule_in_range($date->getTimestamp());
+}
+
+/**
+ * A unix time the columns can hold, or a refusal: none before 1970 (which
+ * would otherwise read as "no time") and none after PG_PAGE_SCHEDULE_UNIX_MAX.
+ *
+ * @param int|float $time
+ * @return array ok, time
+ */
+function pg_page_schedule_in_range($time)
+{
+    if ($time < 0 || $time > PG_PAGE_SCHEDULE_UNIX_MAX) {
+        return array('ok' => false, 'time' => 0);
+    }
+
+    return array('ok' => true, 'time' => (int) $time);
 }
 
 /**
@@ -443,7 +464,7 @@ define('PG_PAGE_SCHEDULE_UNIX_MIN', 1000000000);
  */
 function pg_page_schedule_parse_absolute($value)
 {
-    if (is_string($value) && preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?\s*$/', $value)) {
+    if (is_string($value) && preg_match('/^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*$/', $value)) {
         return array('ok' => false, 'time' => 0, 'error' => 'offset');
     }
 
@@ -463,8 +484,9 @@ function pg_page_schedule_parse_absolute($value)
  * refuses the request, since a 200 that changed nothing reads as done:
  *
  * - 'home': a time sent for the home page, which stays on the site;
- * - 'passed': a publish time that has come, for a page being created - a new
- *   page starts as a draft, and the time would put it on the site at once;
+ * - 'passed': a time that has come, for a page being created - a new page
+ *   starts as a draft, so a publish time would put it on the site at once
+ *   and a time to come off it would be cleared without doing anything;
  * - 'order': the end does not come after the start.
  *
  * A passed time for a page that exists is carried out, as by any save.
@@ -497,10 +519,12 @@ function pg_page_schedule_request_plan($sent, $stored, $draft, $home, $now, $cre
         }
     }
 
-    if ($creating && !empty($sent['publish_at']) && (int) $sent['publish_at'] <= (int) $now) {
-        $out['error'] = 'passed';
-        $out['field'] = 'publish_at';
-        return $out;
+    foreach (array('publish_at', 'unpublish_at') as $key) {
+        if ($creating && !empty($sent[$key]) && (int) $sent[$key] <= (int) $now) {
+            $out['error'] = 'passed';
+            $out['field'] = $key;
+            return $out;
+        }
     }
 
     $plan = pg_page_schedule_plan($times['publish_at'], $times['unpublish_at'], $draft, $home, $now);

@@ -214,7 +214,55 @@ function mp_sync_send_batch($account, &$summary) {
 
 	$task_id = isset($result['data']['task_id']) ? (string)$result['data']['task_id'] : '';
 
-	$summary['pushed'] += count($payload);
+	// Products the connector left out of the request because the marketplace
+	// would refuse them (a barcode against its rules, no price). Each fails
+	// now on its own reason, which also goes on its mapping row, where the
+	// operator looks. The mapping stays active: the next change to the product
+	// queues it again, and is sent once the cause is fixed.
+	$refused = (isset($result['data']['refused']) && is_array($result['data']['refused']))
+		? $result['data']['refused'] : array();
+
+	foreach ($rows as $row) {
+
+		$product_id = (int) $row['product_id'];
+
+		if (!isset($refused[$product_id])) {
+
+			continue;
+
+		}
+
+		mp_sync_finish_row((int)$row['id'], 'failed', (string)$refused[$product_id]);
+
+		db("UPDATE marketplace_product_map
+			SET last_error = '" . e(mb_substr((string)$refused[$product_id], 0, 500)) . "'
+			WHERE (account_id = '" . e($account_id) . "') AND (product_id = '" . e($product_id) . "')");
+
+		$summary['failed']++;
+
+	}
+
+	// Nothing was sent: whatever is left had nothing to say (a product that
+	// does not track stock, on an account that does not send prices). There
+	// is no task to ask about, so those rows are done here.
+	if ($task_id === '') {
+
+		$done = (int) db_value("SELECT COUNT(*) FROM marketplace_sync_queue
+			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'");
+
+		db("UPDATE marketplace_sync_queue
+			SET status = 'done', last_error = '', updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'");
+
+		$summary['done'] += $done;
+
+		mp_account_outcome($account_id, true);
+
+		return true;
+
+	}
+
+	$summary['pushed'] += isset($result['data']['sent']) ? (int)$result['data']['sent'] : count($payload);
 
 	db("UPDATE marketplace_sync_queue
 		SET status = 'sent',
@@ -250,10 +298,20 @@ function mp_sync_batch_failed($ids, $result, &$summary) {
 
 	if (!empty($result['retry'])) {
 
+		// A connector that knows how long the marketplace will keep refusing
+		// (a repeat window) says so; waiting less only spends attempts.
+		$delay = (int)mp_backoff_seconds(1);
+
+		if (isset($result['data']['retry_after']) && is_numeric($result['data']['retry_after'])) {
+
+			$delay = max($delay, min(3600, (int)$result['data']['retry_after']));
+
+		}
+
 		db("UPDATE marketplace_sync_queue
 			SET attempts = attempts + 1,
 				last_error = '" . $error . "',
-				run_after = UNIX_TIMESTAMP() + " . (int)mp_backoff_seconds(1) . ",
+				run_after = UNIX_TIMESTAMP() + " . $delay . ",
 				updated_timestamp = UNIX_TIMESTAMP()
 			WHERE id IN (" . $list . ")");
 
@@ -356,6 +414,20 @@ function mp_sync_send_listings($account, &$summary) {
 			mp_sync_batch_failed($queue_ids, $result, $summary);
 
 			mp_log($account_id, 'create', false, $result['error'], count($assembled['items']));
+
+			// A refusal the connector made before sending (a barcode their rules
+			// reject, a brand they do not have) is about the article, so it is
+			// shown on the article's row, where the operator fixes it. A
+			// momentary failure is not: the row would blame the article for
+			// their outage.
+			if (empty($result['retry'])) {
+
+				db("UPDATE marketplace_category_map
+					SET last_error = '" . e(mb_substr((string)$result['error'], 0, 500)) . "',
+						updated_timestamp = UNIX_TIMESTAMP()
+					WHERE (account_id = '" . e($account_id) . "') AND (group_id = '" . e($group_id) . "')");
+
+			}
 
 			continue;
 

@@ -865,8 +865,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         //   • 'add product' — pending offer (visitor must opt-in via button)
         //     not a passive applied/eligible offer.
         //
-        // Only 'discount order' (always-applies-when-rule-met) and
-        // 'discount product' (when target product is in cart) make the list.
+        // Only 'discount order' (applies when the rule is met and, with a
+        // ladder, the first rung is reached) and 'discount product' (when
+        // target product is in cart) make the list.
         $_pg_auto_ids   = array();
         $_pg_auto_label = array();   // id => 'description'
         $_pg_order_code = (string)db_value(
@@ -934,6 +935,11 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 foreach ($_pg_actions as $_pg_act) {
                     $_pg_at = isset($_pg_act['type']) ? (string)$_pg_act['type'] : '';
                     if ($_pg_at === 'discount order') {
+                        // A ladder discounts nothing below its first rung,
+                        // so the offer is not listed until the cart gets there.
+                        if (pg_offer_tiers($_pg_aid) && (pg_offer_tier_percentage($_pg_aid, $sub_cents) <= 0)) {
+                            continue;
+                        }
                         $_pg_has_applicable = true;
                         break;
                     }

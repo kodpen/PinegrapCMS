@@ -1,0 +1,15 @@
+{
+  "batchRequestId": "fa75dfd5-6ce6-4730-a09e-97563500000-1529391724",
+  "items": [
+    { "requestItem": { "product": { "barcode": "8680000000017", "title": "Muay Thai Kaskı", "productMainId": "PG-KASK", "brandId": 1791, "categoryId": 14609, "quantity": 5 }, "barcode": "8680000000017" }, "status": "SUCCESS", "failureReasons": [] },
+    { "requestItem": { "product": { "barcode": "8680000000024" } }, "status": "FAILED", "failureReasons": [ "Görsel indirilemedi", { "message": "Kategori özelliği eksik: Renk" } ] },
+    { "requestItem": { "barcode": "8680000000031" }, "status": "FAILED", "failureReasons": [] }
+  ],
+  "status": "COMPLETED",
+  "creationDate": 1760961600000,
+  "lastModification": 1760961660000,
+  "sourceType": "API",
+  "itemCount": 3,
+  "failedItemCount": 2,
+  "batchRequestType": "ProductV2OnBoarding"
+}

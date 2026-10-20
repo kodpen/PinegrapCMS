@@ -2230,7 +2230,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.6',
+    'version'     => '1.0.7',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',
