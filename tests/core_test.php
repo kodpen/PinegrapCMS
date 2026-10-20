@@ -84,3 +84,24 @@ function test_core_short_version()
 	pg_assert_same('', pg_short_version(null), 'nothing');
 	pg_assert_same('', pg_short_version(array('2026')), 'not a version');
 }
+
+// A time is drawn in the signed-in person's own zone unless the caller asks for
+// the site's. None of the callers of get_relative_time() names timezone_type,
+// and the rule used to read the missing key as "site", so a person's zone was
+// never applied to a relative time.
+function test_core_time_in_user_zone_is_the_default()
+{
+	pg_assert_true(pg_time_in_user_zone(array('timestamp' => 1), true, 'America/Los_Angeles'), 'nothing asked: the person\'s zone');
+	pg_assert_true(pg_time_in_user_zone(array('timezone_type' => 'user'), true, 'America/Los_Angeles'), 'asked for the person\'s zone');
+	pg_assert_false(pg_time_in_user_zone(array('timezone_type' => 'site'), true, 'America/Los_Angeles'), 'asked for the site\'s zone');
+	pg_assert_false(pg_time_in_user_zone(array(), false, 'America/Los_Angeles'), 'nobody signed in');
+	pg_assert_false(pg_time_in_user_zone(array(), true, ''), 'a person who keeps the site\'s zone');
+	pg_assert_false(pg_time_in_user_zone(null, false, ''), 'no properties at all');
+}
+
+// The runner signs nobody in and defines no USER_* constants: a relative time
+// is then drawn in the site's zone, without an undefined constant error.
+function test_core_relative_time_without_a_signed_in_person()
+{
+	pg_assert_false(pg_time_uses_user_zone(array()), 'nobody signed in');
+}

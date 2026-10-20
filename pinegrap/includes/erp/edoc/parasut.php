@@ -424,16 +424,30 @@ function erp_edoc_parasut_party_missing($party, $invoice = array())
 
 /**
  * What the document itself is missing: the internet sale's web address and
- * carrier (VUK 509), which Paraşüt's internet_sale block carries.
+ * carrier (VUK 509). Only an e-Arşiv document carries them (the e_archives
+ * request's internet_sale and shipment blocks); the e_invoices request of a
+ * registered buyer has neither, so an invoice expected to go as e-Fatura is
+ * not held back for them.
  *
- * @param array $invoice  An erp_invoices row
+ * @param array       $invoice  An erp_invoices row
+ * @param string|null $kind     'einvoice' | 'earchive' when the document's kind
+ *                              is decided; null asks erp_edoc_invoice_expected_kind()
+ *                              (the invoice's kind, else the account's e-Invoice answer)
  * @return array  field name => label, empty when nothing is missing
  */
-function erp_edoc_parasut_document_missing($invoice)
+function erp_edoc_parasut_document_missing($invoice, $kind = null)
 {
     $missing = array();
 
     if ((int) ($invoice['is_internet_sale'] ?? 0) !== 1) {
+        return $missing;
+    }
+
+    if (($kind === null) && function_exists('erp_edoc_invoice_expected_kind')) {
+        $kind = erp_edoc_invoice_expected_kind($invoice);
+    }
+
+    if ($kind === 'einvoice') {
         return $missing;
     }
 
@@ -1248,6 +1262,21 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
 
     $kind = $decision['kind'];
     $detail_ids = array();
+
+    // GİB's answer decides the kind only now. The invoice may have been sent
+    // as an expected e-Fatura, without the web address and the carrier an
+    // internet sale's e-Arşiv document has to carry; that is refused here
+    // rather than converted without them.
+    if ($kind === 'earchive') {
+        $document_missing = erp_edoc_parasut_document_missing($invoice, 'earchive');
+
+        if (!empty($document_missing)) {
+            return $fail(lang(array(
+                'string' => 'GİB does not list the buyer for e-Invoice, so the invoice goes as e-Archive, and an internet sale needs these on it: {var:1}. The draft at Paraşüt cannot take them any more: cancel the invoice and issue it again once they are on it.',
+                'vars' => implode(', ', $document_missing),
+            )));
+        }
+    }
 
     // A withheld line's code is sent against Paraşüt's own line id.
     foreach ($lines as $line) {
