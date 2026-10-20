@@ -4632,6 +4632,11 @@ function pg_sw_item_missing($mark = null)
     if (!empty($sw_ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) {
         return false;
     }
+    // The address may be one that a short link with a * in its name stands
+    // for (includes/fn/short_link_redirects.php); then this does not return.
+    if (function_exists('pg_short_link_not_found')) {
+        pg_short_link_not_found();
+    }
     $missing = true;
     if (!headers_sent()) {
         set_response_code(404);

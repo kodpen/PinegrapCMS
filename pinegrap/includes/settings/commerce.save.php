@@ -133,7 +133,7 @@ function pg_parasut_credentials_for_save()
         
         // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
         if (defined('ENCRYPTION_KEY') == FALSE) {
-            $config_content = str_replace('?>', "define('ENCRYPTION_KEY', '" . $new_encryption_key . "'); // DO NOT MODIFY OR SHARE\r\n?>", $config_content);
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
             
         // else there is an old encryption key in the config.php file, so update it
         } else {
@@ -356,6 +356,18 @@ function pg_parasut_credentials_for_save()
         $sql_erp_due .= "
             erp_number_style = '" . escape($erp_number_style_value) . "',
             erp_tax_name = '" . escape(mb_substr(trim((string) post_value('erp_tax_name')), 0, 30)) . "',";
+    }
+
+    // When a web order's invoice is issued (2026.4.4): from the order screen,
+    // or on its own once the order is paid or shipped. Written only when the
+    // ERP card posted it, so a form without the card keeps the store's choice.
+    if (waf_table_has_column('config', 'erp_auto_invoice_on') && is_string(post_value('erp_auto_invoice_on'))) {
+        $erp_auto_invoice_value = (string) post_value('erp_auto_invoice_on');
+        if (!in_array($erp_auto_invoice_value, array('off', 'order_paid', 'order_shipped'), true)) {
+            $erp_auto_invoice_value = 'off';
+        }
+        $sql_erp_due .= "
+            erp_auto_invoice_on = '" . escape($erp_auto_invoice_value) . "',";
     }
 
     // The walk-in sales account (4.59): an account that exists, or none.

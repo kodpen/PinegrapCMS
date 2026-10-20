@@ -19,6 +19,9 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/install_cli.php');
 
+// config_file_test_values_of(): runs a config.php in a separate process.
+require_once(__DIR__ . '/config_file_test.php');
+
 // The starter sites as install/index.php hands them over: folder => language.
 function install_cli_test_starters()
 {
@@ -108,13 +111,20 @@ function test_install_cli_read_takes_the_database_from_the_config()
 	pg_assert_same('config-pass', $read['fields']['db_password'], 'password from the config');
 }
 
-// The installer writes the database values into data/config.php between single quotes, so a
-// quote or a backslash would leave a file that does not run.
-function test_install_cli_read_refuses_quotes_in_database_values()
+// A quote, a backslash or a closing tag in a database value is taken as it is: the installer writes the
+// values into data/config.php with pg_config_install_content(), which reads them back unchanged.
+function test_install_cli_read_takes_quotes_in_database_values()
 {
-	foreach (array('PG_INSTALL_DB_HOST', 'PG_INSTALL_DB_NAME', 'PG_INSTALL_DB_USER', 'PG_INSTALL_DB_PASSWORD') as $name) {
+	$fields = array(
+		'PG_INSTALL_DB_HOST' => 'db_host',
+		'PG_INSTALL_DB_NAME' => 'db_database',
+		'PG_INSTALL_DB_USER' => 'db_username',
+		'PG_INSTALL_DB_PASSWORD' => 'db_password'
+	);
 
-		foreach (array("it's", 'back\\slash') as $value) {
+	foreach ($fields as $name => $field) {
+
+		foreach (array("it's", 'back\\slash', 'ends\\', 'x?>y') as $value) {
 
 			$env = install_cli_test_env();
 
@@ -122,7 +132,8 @@ function test_install_cli_read_refuses_quotes_in_database_values()
 
 			$read = install_cli_read($env, array(), install_cli_test_starters());
 
-			pg_assert_same(array($name . ' contains a quote or a backslash, which data/config.php cannot hold.'), $read['problems'], $name . ' = ' . $value);
+			pg_assert_same(array(), $read['problems'], $name . ' = ' . $value);
+			pg_assert_same($value, $read['fields'][$field], $name . ' = ' . $value . ' in the form');
 
 		}
 
@@ -137,6 +148,32 @@ function test_install_cli_read_refuses_quotes_in_database_values()
 
 	pg_assert_same(array(), $read['problems'], 'quote in the administrator password');
 	pg_assert_same("o'neil\\1", $read['fields']['admin_password']);
+}
+
+// The fields the command line fills in become a data/config.php that defines the database the
+// variables named, quotes and backslashes included.
+function test_install_cli_fields_write_a_config_that_runs()
+{
+	$env = install_cli_test_env();
+
+	$env['PG_INSTALL_DB_HOST'] = "db'host";
+	$env['PG_INSTALL_DB_USER'] = 'user\\';
+	$env['PG_INSTALL_DB_PASSWORD'] = "p'a\\ss?>\\";
+	$env['PG_INSTALL_DB_NAME'] = 'site';
+
+	$fields = install_cli_read($env, array(), install_cli_test_starters())['fields'];
+
+	$content = pg_config_install_content(function ($name) use ($fields) {
+		return isset($fields[$name]) ? $fields[$name] : '';
+	}, '0123456789abcdef0123456789abcdef');
+
+	pg_assert_same(array(
+		'DB_HOST' => "db'host",
+		'DB_USERNAME' => 'user\\',
+		'DB_PASSWORD' => "p'a\\ss?>\\",
+		'DB_DATABASE' => 'site',
+		'DEFAULT_SOFTWARE_LANGUAGE' => 'en',
+	), config_file_test_values_of($content, array('DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_DATABASE', 'DEFAULT_SOFTWARE_LANGUAGE'), 'command line'));
 }
 
 // The starter site must be one that is there, and the language follows it unless it is set.

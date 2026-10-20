@@ -198,11 +198,21 @@ function erp_bank_read_spreadsheet($path, $extension)
         }
 
         $strings = pg_products_import_xlsx_strings($path, $strings_part);
-        $reader = new XMLReader();
 
-        if (!$reader->open('zip://' . $path . '#' . $part)) {
+        if ($strings === false) {
             return $unreadable;
         }
+
+        $reader = new XMLReader();
+
+        // No further than the sheet's declared size (pg_zip_entry_uri()).
+        if (!$reader->open(pg_zip_entry_uri($path, $part, max(0, pg_zip_entry_size($path, $part))))) {
+            return $unreadable;
+        }
+
+        // A sheet cut at its declared size ends in a parser error; it is
+        // answered below, not printed as a warning.
+        $previous = libxml_use_internal_errors(true);
 
         while ($reader->read() && (count($rows) < ERP_BANK_IMPORT_MAX_ROWS)) {
             if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->name !== 'row')) {
@@ -250,7 +260,15 @@ function erp_bank_read_spreadsheet($path, $extension)
             }
         }
 
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
         $reader->close();
+
+        // A sheet that unpacks past its declared size is a damaged or
+        // doctored file: none of it is taken.
+        if (pg_zip_entry_overran()) {
+            return $unreadable;
+        }
     } else {
         // The older .xls is a binary record stream and an .ods a different
         // zip; PHPExcel reads both, with the reader the product importer
@@ -258,24 +276,15 @@ function erp_bank_read_spreadsheet($path, $extension)
         // importer, because a date cell is known by its format alone; a
         // statement is small enough for it.
         if ($extension === 'ods') {
-            // The OpenDocument reader takes any file for a zip and fails on
-            // the first missing part with warnings; a file that is not one is
-            // turned away here, as a broken .xlsx is above.
-            if (!class_exists('ZipArchive')) {
-                return $unreadable;
-            }
+            // The OpenDocument reader takes any file for a zip, fails on the
+            // first missing part with warnings and reads its parts whole; a
+            // file that is not one, or whose parts are too large or unpack
+            // past their size, is turned away here, as a broken .xlsx is
+            // above.
+            $refused = pg_products_import_ods_check($path);
 
-            $zip = new ZipArchive();
-
-            if ($zip->open($path) !== true) {
-                return $unreadable;
-            }
-
-            $found = ($zip->locateName('content.xml') !== false) && ($zip->locateName('meta.xml') !== false);
-            $zip->close();
-
-            if (!$found) {
-                return $unreadable;
+            if ($refused !== '') {
+                return array('rows' => array(), 'error' => $refused);
             }
         }
 
