@@ -9112,6 +9112,7 @@ function get_tables() {
 		'translation_glossary',
 		'page_translations',
 		'page_drafts',
+		'page_revisions',
 	);
 
 }

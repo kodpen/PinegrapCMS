@@ -448,6 +448,25 @@ if (pg_price_history_offer_pass_due()) {
     pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
 }
 
+// Page revisions (includes/fn/page_revisions.php): once a day the rows of
+// deleted pages go, and every page holding more revisions than the count rule
+// keeps is trimmed by the age rule. A tick with nothing due reads one small
+// file.
+if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_due()) {
+
+    $revision_sweep = pg_page_revisions_sweep();
+
+    if (($revision_sweep['orphans'] + $revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($revision_sweep['orphans'] + $revision_sweep['trimmed'], 0),
+                pg_format_number($revision_sweep['orphans'], 0),
+                pg_format_number($revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a

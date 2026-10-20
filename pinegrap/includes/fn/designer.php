@@ -3064,6 +3064,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         ? "noindex = '$noindex', nofollow = '$nofollow',"
         : '';
 
+    // Whether this save changed the page: a new page did, an existing one
+    // unless its row comes back as stored (decided below).
+    $changed = true;
+
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
         $own = array(
@@ -3105,6 +3109,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             if (!$carried) break;
             if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
         }
+        $changed = !$carried;
         $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
                 $touch_set
@@ -3156,6 +3161,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // Every save that changed the page is kept as a revision
+    // (includes/fn/page_revisions.php); one carried unchanged records nothing.
+    // The caller may name where the tree came from (the importer, the AI
+    // editor, a restore); a save from the editor or the API is a publish.
+    if ($changed && $multi_ready && $page_id > 0 && function_exists('pg_page_revision_record')) {
+        pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
+            isset($page['revision_source']) ? (string)$page['revision_source'] : 'publish');
     }
 
     // The folder a draft returns to, kept while it is a draft. The time and
@@ -7493,6 +7507,8 @@ function pg_design_template_install($template_id, $user, $opts = array())
     $tab_ids = array();
     $id_map  = array();
     foreach ($pages as $p) {
+        // A page built from a template is an import for the revision history.
+        $p['revision_source'] = 'import';
         $r = pg_designer_save_page($style_id, $p, $user, false);
         if (empty($r['ok']) || (int)$r['page_id'] <= 0) {
             $undo();

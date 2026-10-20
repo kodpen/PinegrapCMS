@@ -22127,6 +22127,7 @@
     "No Google account is connected for Search Console.": "Search Console için bağlı Google hesabı yok.",
     "No figures yet. Google publishes them two or three days late; the daily job downloads them as they come.": "Henüz veri yok. Google verileri iki üç gün gecikmeyle yayımlar; günlük iş geldikçe indirir.",
     "No search brought a click in these 28 days.": "Bu 28 günde hiçbir arama tıklama getirmedi.",
+    "general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period": "genel iş {var:1} sayfa sürümünü sildi: {var:2} silinmiş sayfanın, {var:3} saklama süresi dolmuş",
     "None connected": "Bağlı hesap yok",
     "Not submitted yet": "Henüz gönderilmedi",
     "Nothing in this period.": "Bu dönemde kayıt yok.",
