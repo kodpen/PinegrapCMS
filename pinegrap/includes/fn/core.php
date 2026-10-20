@@ -3713,8 +3713,9 @@ function pg_short_version($version)
     return $major_short;
 }
 
-// Editing define() lines in data/config.php. Shared by the settings screens
-// that rewrite the file in place (smtp_settings.php, private_label.php).
+// Writing data/config.php. The installation builds the whole file
+// (pg_config_install_content()); the settings screens that rewrite it in
+// place (smtp_settings.php, private_label.php) edit define() lines.
 //
 // The patterns avoid the /s modifier and a lazy '(.*?)'. A hand-edited config
 // file mixes LF and CRLF line endings; a lazy value match followed by a
@@ -3726,6 +3727,136 @@ function pg_config_define_value_pattern() {
     // A single-quoted PHP string literal: no bare quote, no line break,
     // backslash escapes allowed (update_config_define() writes \' for quotes).
     return "'(?:[^'\\\\\r\n]|\\\\.)*'";
+}
+
+// $value as a single-quoted PHP string that reads back byte for byte. Between
+// single quotes only the backslash and the quote are special; everything else
+// - a closing tag, "$", a line break - is literal there. Written as it is, a
+// quote ended the string early and a trailing backslash escaped the closing
+// quote: either way config.php stopped parsing and the whole site went down.
+function pg_config_php_string($value) {
+    return "'" . addcslashes((string) $value, "\\'") . "'";
+}
+
+// One define() line of data/config.php with a string value. $key is a
+// constant name from the code, never user input.
+function pg_config_define_line($key, $value) {
+    return "define('" . $key . "', " . pg_config_php_string($value) . ");";
+}
+
+// Adds $line to the text of data/config.php: before the closing tag at the
+// end of the file, or after its last line when it has none.
+//
+// Only the tag at the very end is used. A value may itself hold the two
+// characters of a closing tag (a password can), and a str_replace() over every
+// occurrence cut the new line into that string. A closing tag followed by
+// nothing but white space is always the real one: a string still open there
+// would leave the file unparseable anyway.
+//
+// Text that does not start as PHP (empty after a failed read, or not a config
+// file at all) is returned unchanged, so a caller never turns it into a file
+// that prints its defines.
+function pg_config_insert_line($content, $line) {
+    $content = (string) $content;
+
+    if (preg_match('/\?>\s*\z/', $content, $match, PREG_OFFSET_CAPTURE)) {
+        $offset = $match[0][1];
+
+        return substr($content, 0, $offset) . $line . "\r\n" . substr($content, $offset);
+    }
+
+    if (strpos(ltrim($content), '<?php') !== 0) {
+        return $content;
+    }
+
+    if (substr($content, -1) !== "\n") {
+        $content .= "\r\n";
+    }
+
+    return $content . $line . "\r\n";
+}
+
+// The text of the data/config.php a new installation writes, and a
+// reinstallation writes over the old one.
+//
+// $field_value is called with a field name of the installation form and
+// returns its value: install/index.php reads the screen's form, and
+// includes/install_cli.php fills in the same fields from the command line.
+// Every value goes into the file through pg_config_php_string(), exactly as
+// the installer used it to connect, so a database or SMTP password with a
+// quote, a backslash or a closing tag in it is read back as it was typed. The
+// optional settings are written only when the form has a value for them; the
+// switches are real booleans, since the string 'false' would count as true.
+//
+// $encryption_key is the new ENCRYPTION_KEY (generate_encryption_key()).
+function pg_config_install_content($field_value, $encryption_key) {
+    $value = function ($name) use ($field_value) {
+        $found = call_user_func($field_value, $name);
+
+        return is_scalar($found) ? (string) $found : '';
+    };
+
+    $lines = array(
+        '<?php',
+        '// Prevent direct access',
+        'if (php_sapi_name() !== "cli" && basename(__FILE__) === basename($_SERVER["SCRIPT_FILENAME"])) {',
+        '    http_response_code(403);',
+        '    exit("Forbidden");',
+        '}',
+        pg_config_define_line('DB_HOST', $value('db_host')),
+        pg_config_define_line('DB_USERNAME', $value('db_username')),
+        pg_config_define_line('DB_PASSWORD', $value('db_password')),
+        pg_config_define_line('DB_DATABASE', $value('db_database')),
+        pg_config_define_line('ENCRYPTION_KEY', $encryption_key) . ' // DO NOT MODIFY OR SHARE',
+        '// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>',
+        '// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.',
+        "// define('AUTOMATED_UPGRADE_SECRET', 'change-this-to-a-long-random-string');",
+        "define('DYNAMIC_REGIONS', true);",
+        "define('PHP_REGIONS', true);",
+    );
+
+    $optional = array(
+        'default_software_language' => 'DEFAULT_SOFTWARE_LANGUAGE',
+        'system_smtp_hostname' => 'SYSTEM_SMTP_HOSTNAME',
+        'system_smtp_port' => 'SYSTEM_SMTP_PORT',
+        'system_smtp_username' => 'SYSTEM_SMTP_USERNAME',
+        'system_smtp_password' => 'SYSTEM_SMTP_PASSWORD',
+        'logo_url' => 'LOGO_URL',
+    );
+
+    foreach ($optional as $field => $constant) {
+        if ($value($field) !== '') {
+            $lines[] = pg_config_define_line($constant, $value($field));
+        }
+    }
+
+    if ($value('software_update_check') !== '') {
+        $lines[] = "define('SOFTWARE_UPDATE_CHECK', " . (($value('software_update_check') === 'true') ? 'true' : 'false') . ");";
+    }
+
+    if ($value('email_campaign_job') === 'true') {
+        $lines[] = "define('EMAIL_CAMPAIGN_JOB', true);";
+    }
+
+    $campaign = array(
+        'campaign_smtp_hostname' => 'CAMPAIGN_SMTP_HOSTNAME',
+        'campaign_smtp_number_of_emails' => 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
+        'campaign_smtp_port' => 'CAMPAIGN_SMTP_PORT',
+        'campaign_smtp_username' => 'CAMPAIGN_SMTP_USERNAME',
+        'campaign_smtp_password' => 'CAMPAIGN_SMTP_PASSWORD',
+    );
+
+    foreach ($campaign as $field => $constant) {
+        if ($value($field) !== '') {
+            $lines[] = pg_config_define_line($constant, $value($field));
+        }
+    }
+
+    // The settings screens and the CA bundle repair add their lines before
+    // this tag (pg_config_insert_line()).
+    $lines[] = '?>';
+
+    return implode("\n", $lines);
 }
 
 // Update or insert a define() line
@@ -3748,21 +3879,17 @@ function update_config_define($content, $key, $value, $type = 'string') {
                 $content
             );
         }
-        return str_replace('?>', "define('" . $key . "', " . $bool_val . ");\r\n?>", $content);
+        return pg_config_insert_line($content, "define('" . $key . "', " . $bool_val . ");");
     }
 
-    // Backslashes are escaped along with the quote: a value ending in a
-    // backslash would otherwise escape the closing quote and leave config.php
-    // with an unterminated string, which takes the whole site down.
-    $safe_value = addcslashes($value, "\\'");
-    $define = "define('" . $key . "', '" . $safe_value . "');";
+    $define = pg_config_define_line($key, $value);
     $line = "/define\s*\(\s*'" . $safe_key . "'\s*,\s*" . pg_config_define_value_pattern() . "\s*\);/i";
     if (preg_match($line, $content)) {
         // The replacement is user data, so "$1" and "\\" in it must stay
         // literal rather than being read as back-references.
         return preg_replace($line, addcslashes($define, '\\$'), $content);
     }
-    return str_replace('?>', $define . "\r\n?>", $content);
+    return pg_config_insert_line($content, $define);
 }
 
 // Replace data/config.php with $content.
