@@ -115,8 +115,9 @@ function pg_audit_actor()
 
 /**
  * Whether a field holds a secret, by its name: passwords, PINs (the
- * developer lock's user_devpasspin), keys, tokens, encrypted blobs, card
- * data. Its value is never written; that it changed is.
+ * developer lock's user_devpasspin), keys, tokens, private keys
+ * (push_vapid_private), licences, encrypted blobs, card data. Its value is
+ * never written; that it changed is.
  *
  * @param mixed $key
  * @return bool
@@ -133,7 +134,7 @@ function pg_audit_secret_key($key)
         return true;
     }
 
-    return preg_match('/(^|_)(api_?key|key|token|pass|pin|devpasspin|enc|hash|signature|credentials?)$/', $key) === 1;
+    return preg_match('/(^|_)(api_?key|key|token|pass|pin|devpasspin|enc|hash|signature|credentials?|private|license)$/', $key) === 1;
 }
 
 /**
@@ -227,15 +228,22 @@ function pg_audit_compact($value)
 
 /**
  * A text column that holds a JSON object or list, decoded; null for any
- * other value. Such columns (config.product_feeds, backup settings) keep
- * tokens and keys under their own names inside the text.
+ * other value. Such columns (config.product_feeds) keep tokens and keys under
+ * their own names inside the text.
+ *
+ * Text longer than a whole side may be (pg_audit_limits() 'json') is not
+ * decoded: a designer tree (page.page_tree_json) can run to megabytes, and
+ * decoding it costs about ten times its size in memory on a delete. Every
+ * config column that holds a secret in JSON is far below that.
  *
  * @param mixed $value
  * @return array|null
  */
 function pg_audit_json_text($value)
 {
-    if (!is_string($value) || (strlen($value) < 2) || !in_array($value[0], array('{', '['), true)) {
+    $limits = pg_audit_limits();
+
+    if (!is_string($value) || (strlen($value) < 2) || (strlen($value) > $limits['json']) || !in_array($value[0], array('{', '['), true)) {
         return null;
     }
 
@@ -247,8 +255,13 @@ function pg_audit_json_text($value)
 /**
  * One side of a change as it is stored: secrets masked ('***' for a value,
  * an empty value left empty, so "set" and "cleared" still show), long texts
- * compacted, at any depth. JSON text is stored decoded, so the secrets in it
- * are masked by the same names.
+ * compacted, at any depth.
+ *
+ * JSON text is decoded so the secrets in it are masked by the same names,
+ * then kept as the masked structure while its JSON is no longer than a
+ * value may be, and otherwise as the masked text compacted like any long
+ * string. Its stored form is therefore an object, a list or a compacted
+ * text, never the original string; an empty object comes back as [].
  *
  * @param array $values
  * @return array
@@ -256,15 +269,17 @@ function pg_audit_json_text($value)
 function pg_audit_redact(array $values)
 {
     $redacted = array();
+    $limits = pg_audit_limits();
 
     foreach ($values as $key => $value) {
         $json = pg_audit_secret_key($key) ? null : pg_audit_json_text($value);
 
         if ($json !== null) {
-            $value = $json;
-        }
+            $masked = pg_audit_redact($json);
+            $text = json_encode($masked, pg_audit_json_flags());
 
-        if (pg_audit_secret_key($key)) {
+            $redacted[$key] = (is_string($text) && (strlen($text) > $limits['value'])) ? pg_audit_compact($text) : $masked;
+        } elseif (pg_audit_secret_key($key)) {
             $redacted[$key] = (($value === null) || ($value === '') || ($value === array())) ? $value : '***';
         } elseif (is_array($value)) {
             $redacted[$key] = pg_audit_redact($value);
@@ -274,6 +289,23 @@ function pg_audit_redact(array $values)
     }
 
     return $redacted;
+}
+
+/**
+ * The flags every JSON the trail writes is encoded with: readable Unicode and
+ * slashes, and invalid UTF-8 replaced rather than failing the whole side.
+ *
+ * @return int
+ */
+function pg_audit_json_flags()
+{
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
+
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+    }
+
+    return $flags;
 }
 
 /**
@@ -290,11 +322,7 @@ function pg_audit_json(array $values)
     }
 
     $limits = pg_audit_limits();
-    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
-
-    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
-    }
+    $flags = pg_audit_json_flags();
 
     $json = json_encode($values, $flags);
 
@@ -425,7 +453,8 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
  * The tables whose rows the save paths hand to the trail by id: the record
  * type they become, the id column (none for the single config row), the
  * column that names the record, and the columns left out because every save
- * or a background task rewrites them (last editor, usage stamps), by name
+ * or a background task rewrites them (last editor, usage stamps, config
+ * ciphertext encrypted again with a new IV on every save), by name
  * ('skip') or by prefix ('skip_prefix': the SEO scores, flags and check
  * times recalculated after every save of a page or product). Any column
  * ending in "timestamp" is left out as well (pg_audit_volatile()).
@@ -438,7 +467,7 @@ function pg_audit_tables()
     $seo = array('seo_');
 
     return array(
-        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running'), 'skip_prefix' => array()),
+        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running', 'backup_remote_settings', 'parasut_credentials_enc'), 'skip_prefix' => array()),
         'user'     => array('type' => 'user', 'id' => 'user_id', 'label' => array('user_username'), 'skip' => array('user_user', 'token'), 'skip_prefix' => array()),
         'products' => array('type' => 'product', 'id' => 'id', 'label' => array('short_description', 'name'), 'skip' => array('user'), 'skip_prefix' => $seo),
         'page'     => array('type' => 'page', 'id' => 'page_id', 'label' => array('page_name'), 'skip' => array('page_user', 'layout_modified'), 'skip_prefix' => $seo),
