@@ -6327,6 +6327,48 @@ function pg_shipping_carrier($number, $method, $default = '')
 
     // What the shop typed, first. A method code that names the carrier beats
     // any guess made from the number.
+    $named = pg_shipping_method_carrier($method);
+
+    if ($named !== '') {
+        return $named;
+    }
+
+    // The code names no carrier: the one the site names for every such parcel.
+    $default = pg_shipping_carrier_text($default);
+
+    if (($default !== '') && isset($carriers[$default])) {
+        return $default;
+    }
+
+    // No method code, or one this list does not know: the number's own shape.
+    foreach ($carriers as $carrier => $entry) {
+        foreach ($entry['patterns'] as $pattern) {
+            if (preg_match($pattern, $number) == 1) {
+                return $carrier;
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The carrier a shipping method's code, or a carrier's name, spells out.
+ *
+ * The first two of pg_shipping_carrier()'s four readings, on their own: the
+ * whole text against every carrier's key and aliases, then the text a word at
+ * a time. Neither the site's default nor a number's shape takes part, so the
+ * answer is a carrier somebody named - which is what a shipment row keeps
+ * (pg_shipment_record()); a guess stays a guess made at read time.
+ *
+ * @param  string $method ship_tos.shipping_method_code, a carrier key or a
+ *                        carrier's name ("Yurtiçi Kargo")
+ * @return string carrier key from pg_shipping_carriers(), or ''
+ */
+function pg_shipping_method_carrier($method)
+{
+    $carriers = pg_shipping_carriers();
+
     $needle = pg_shipping_carrier_text($method);
 
     if ($needle !== '') {
@@ -6368,22 +6410,6 @@ function pg_shipping_carrier($number, $method, $default = '')
 
         }
 
-    }
-
-    // The code names no carrier: the one the site names for every such parcel.
-    $default = pg_shipping_carrier_text($default);
-
-    if (($default !== '') && isset($carriers[$default])) {
-        return $default;
-    }
-
-    // No method code, or one this list does not know: the number's own shape.
-    foreach ($carriers as $carrier => $entry) {
-        foreach ($entry['patterns'] as $pattern) {
-            if (preg_match($pattern, $number) == 1) {
-                return $carrier;
-            }
-        }
     }
 
     return '';
