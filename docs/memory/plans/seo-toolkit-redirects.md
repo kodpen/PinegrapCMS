@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, in progress: steps 1-2 and 7 done; redirects are short link options with CSV): File Manager choice, slug-change 301, 404 log, canonical, 404 API
+description: Plan (approved 2026-10-19, in progress: steps 1-3 and 7 done; redirects are short link options with CSV and the File Manager choice): slug-change 301, 404 log, canonical, 404 API
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 and 7 done; redir
 ## What remains?
 1. Done (#699): redirects as short link options (11.0.12, router, 404-time patterns, classic screens, File Manager server side, API).
 2. Done (#699): CSV import and export on the short link list.
-3. File Manager short link window: the answer choice (`view_folders.php`, after the open Excel cell edit PR on that file merges) (S).
+3. Done (PR_NUMBER): File Manager short link window offers the answer, with the classic screens' name and address checks.
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).
 6. Page settings fields + render (S).
@@ -29,4 +29,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 and 7 done; redir
 - Should redirects apply before the WAF? No: after the WAF, like every page.
 
 ## Where to start?
-- Step 3 once `view_folders.php` is free, else step 4 or 5; read `docs/memory/platform/short-link-redirects.md` and `router.php`.
+- Step 4 or 5; read `docs/memory/platform/short-link-redirects.md` and `router.php`.

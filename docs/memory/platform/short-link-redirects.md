@@ -14,7 +14,7 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 
 ## What can a name be?
 - `pg_short_link_name_problem()`: letters of any language, numbers, `. _ - / [ ] ~ ( ) + , ! = @ *`; at most 191 characters (100 before the step), at most 9 stars, not stars and slashes alone.
-- `pg_short_link_name_from_address()`: a pasted full address keeps its path (decoded, base path cut, spaces to `_`, no slash at the ends). Classic screens, the File Manager (`pg_short_link_clean_name()`) and the API use both.
+- `pg_short_link_name_from_address()`: a pasted full address keeps its path (decoded, base path cut, spaces to `_`, no slash at the ends). Classic screens, the File Manager (`pg_short_link_name_read()`: the same error text) and the API use both.
 - IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router_utf8_name()` reads it back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before the lookup.
 - Two names compare like the database (`utf8mb4_unicode_ci`): `pg_short_link_key()`, transliterated and lower case.
 
@@ -24,15 +24,12 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - A pattern always redirects: 0 is saved as 301.
 
 ## What do the screens show?
-- `view_short_links.php`: a badge with the answer visitors get (`pg_short_link_status()`) and Wildcard for a pattern; a link to a file shows File and the file name (both cells were empty before).
+- `view_short_links.php`: a badge with the answer visitors get (`pg_short_link_status()`) and Wildcard for a pattern; a link to a file shows File and the file name.
 - Names go into links and QR codes percent-encoded (`encode_url_path()`); a pattern has no Visit link, no QR code, no address in the File Manager and is left out of the editor's link picker.
+- File Manager window (`view_folders.php`): How it answers from `explorer_short_link_options` `answers` (none before the step: no field, stored answer kept, `pg_short_link_answer_posted()`); name and address notes and lengths as on the classic screens; the details pane shows the answer.
 
 ## What is refused on save?
 - `pg_short_link_redirect_columns()` -> `pg_short_link_redirect_problem()` on every entry point: a `$n` beyond the stars (`to_references`), a `$n` in the host of a full address (`to_host`, an open redirect), an address that leads to the link itself (`to_self`), back to it through other links (`to_loop`) or on through more than 10 (`to_chain`). A page, file or the home page ends a chain.
 - Before the step nothing is written or checked and names stay at 100 characters.
 
-## What is left?
-- The File Manager's short link window keeps the stored answer and offers no choice yet (`view_folders.php`).
-- Lists of links as CSV files: `short-link-csv.md`.
-
-Tests: `tests/short_link_redirects_test.php`. PR: #699.
+CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, PR_NUMBER.
