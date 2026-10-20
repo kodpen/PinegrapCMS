@@ -23,7 +23,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Files other open work held: `edit_user.php`, `delete_users.php` (#672), `includes/workspace/changes.php` (#805), `view_orders.php` (export status), `pg_catalog_bin_product()` itself (`includes/fn/ecommerce.php`; its callers are hooked, the Workspace one is not).
 - Not attempted: designer publish (page revisions keep it), imports, `update_order.php` / the order screen's Save (only ship_tos change), API webhooks.
 
-## What did the sandbox show?
+## What did the sandbox show (PR #905)?
 - 2026-10-20, MariaDB: settings, API apps, file manager (files and pages through bin, restore, delete from the bin), catalog, page editor and order cancel/restore each wrote one line with only the changed fields. A first save after an upgrade writes NULL → '' for new columns once. The page editor writes `page_home = ''` (not `no`) for a page that is not home.
 
 ## Personal data?
