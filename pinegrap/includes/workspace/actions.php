@@ -719,12 +719,12 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('changed' => $changed, 'note' => ws_note_present($viewer, ws_note_for($viewer, $note['id'], 'view'))));
 
-        // Text files in a conversation (includes/workspace/file_edits.php):
-        // read, and saved over the person's own file or sent as an edited
-        // copy of somebody else's.
         // A Word or Excel file of a message, read on the server for the
         // preview window (includes/fn/office.php); whoever may read the
-        // channel may look.
+        // channel may look. Asked with edit, a workbook also says which of
+        // its cells may be changed, for someone who may write in the
+        // channel, and whether the edited file takes the old one's place
+        // (their own message) or goes as an edited copy.
         case 'ws_file_office':
             $message = ws_message((int) ($request['message_id'] ?? 0));
             $channel = $message ? ws_channel($message['channel_id']) : null;
@@ -739,7 +739,8 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
-            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name']);
+            $editing = !empty($request['edit']) && (pg_office_kind($message['file_name']) === 'xlsx') && ws_can_post_channel($viewer, $channel);
+            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name'], $editing);
 
             if (!$office['ok']) {
                 return ws_action_error($office['error']);
@@ -747,8 +748,60 @@ function ws_handle_action($action, $request)
 
             unset($office['ok'], $office['error']);
 
-            return ws_action_ok(array('name' => (string) $message['file_name'], 'office' => $office));
+            $answer = array('name' => (string) $message['file_name'], 'office' => $office);
 
+            if ($editing) {
+                $answer['can_replace'] = ws_file_can_replace($viewer, $message, $channel);
+                $answer['can_send'] = true;
+            }
+
+            return ws_action_ok($answer);
+
+        // The cells changed in a workbook's preview, written into a copy of
+        // the file: saved over the person's own file (the old one stays as
+        // an earlier version) or sent as an edited copy of somebody else's,
+        // the way a text file is.
+        case 'ws_file_office_save':
+            $target = ws_file_edit_target($viewer, (int) ($request['message_id'] ?? 0), 'office');
+
+            if (!is_array($target)) {
+                return ws_action_error($target);
+            }
+
+            list($message, $channel) = $target;
+
+            if (!ws_can_post_channel($viewer, $channel)) {
+                return ws_action_error(lang('You cannot post in that channel.'));
+            }
+
+            // A large sheet takes a few seconds to rewrite.
+            @set_time_limit(120);
+
+            $edited = ws_file_office_edited($message, $request['cells'] ?? null, (string) ($request['office_version'] ?? ''));
+
+            if (!$edited['ok']) {
+                return ws_action_error($edited['error']);
+            }
+
+            if (($request['as'] ?? '') === 'replace') {
+                $result = ws_message_file_replace($viewer, $message, $channel, (string) $message['file_name'], $edited['data']);
+
+                if (!$result['ok']) {
+                    return ws_action_error($result['error']);
+                }
+
+                $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+                return ws_action_ok(array('message' => $payload[0]));
+            }
+
+            $result = ws_message_file_send($viewer, $message, $channel, (string) $message['file_name'], $edited['data']);
+
+            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+
+        // Text files in a conversation (includes/workspace/file_edits.php):
+        // read, and saved over the person's own file or sent as an edited
+        // copy of somebody else's.
         case 'ws_file_text':
             $target = ws_file_edit_target($viewer, (int) ($request['message_id'] ?? 0), 'text');
 

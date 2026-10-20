@@ -94,6 +94,35 @@ Tek bir zamanlanmış görev yeterlidir. **Ayarlar › Genel › Cron işleri** 
 
 ---
 
+## Docker ile deneyin
+
+[`docker/`](docker/) klasöründe bir Docker Compose yığını var: nginx, PHP-FPM, genel görev ve MariaDB 10.11, her biri kendi konteynerinde. Pinegrap'i kendi bilgisayarınızda denemenin en hızlı yolu budur; yönettiğiniz bir sunucuda siteyi bununla da çalıştırabilirsiniz. Asıl kurulum yolu yukarıdaki kurulumdur.
+
+```bash
+git clone https://github.com/kodpen/PinegrapCMS.git
+cd PinegrapCMS
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+`http://localhost:8080/pinegrap/install/` adresini açın ve kurulum sihirbazını çalıştırın. Veritabanı adımında **Veritabanı Sunucusu** alanına `db` yazın; veritabanı adı, kullanıcı adı ve parola `pinegrap` (ya da `PG_DB_NAME`, `PG_DB_USER` ve `PG_DB_PASSWORD` ile verdikleriniz).
+
+**Sihirbazsız:** ilk yöneticiyi ilk başlatmadan önce verin, başlangıç sitesi sizin yerinize kurulsun:
+
+```bash
+PG_INSTALL_ADMIN_EMAIL=siz@example.com PG_INSTALL_ADMIN_PASSWORD='uzun bir parola seçin' \
+PG_INSTALL_STARTER=turkish_default \
+  docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml logs install
+```
+
+Site bundan sonra `http://localhost:8080/` adresinde, yönetim paneli `http://localhost:8080/pinegrap/` adresindedir.
+
+* **Ayarlar** kabuktan ya da `docker/.env` dosyasından okunur: `PG_HTTP_PORT` (8080), `PG_DB_PASSWORD` (`pinegrap`; deneme dışında ilk başlatmadan önce kendi parolanızı verin), `PG_INSTALL_STARTER` (`english_default` ya da `turkish_default`) ve [`docker/docker-compose.yml`](docker/docker-compose.yml) dosyasının başında listelenen diğerleri.
+* **Verileriniz** iki Docker biriminde (volume) kalır: `pinegrap_data` (yapılandırma, yüklenen dosyalar, yedekler) ve `pinegrap_db`. `docker compose -f docker/docker-compose.yml down` siteyi durdurur ve birimleri korur; `down -v` siteyi siler.
+* **Güncelleme:** yazılım imajdan gelir. Yeni sürümü alın (`git pull` ya da yeni sürüm dosyaları) ve aynı `up -d --build` komutunu çalıştırın. Veritabanı adımları, yönetim panelinin bir sonraki girişte açtığı yükseltme ekranından ya da hemen `docker compose -f docker/docker-compose.yml exec -u www-data app php pinegrap/install/index.php automated_upgrade` ile çalışır. Yönetim panelinden kurulan bir güncelleme yalnız konteynerler yeniden oluşturulana kadar kalır.
+
+---
+
 ## Güncelleme
 
 Güncellemeler yönetim panelinden (**Yazılım Güncelleme**), Kararlı ya da Beta kanalından kurulur. Veritabanı değişiklikleri kendiliğinden çalışan sürümlü yükseltme adımları olarak gelir; elle SQL gerekmez. Bir güncelleme eksik dosya bırakırsa **Yazılımı Onar** sürüm dosyalarını geri yükler ve veritabanı adımlarını yeniden çalıştırabilir.

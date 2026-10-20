@@ -440,6 +440,14 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// The price visitors are shown under the offers, into the product price
+// history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
+// tick until the pass is through. A tick with nothing due reads one small
+// file; a shop with no offer running reads its offers once an hour.
+if (pg_price_history_offer_pass_due()) {
+    pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
@@ -523,6 +531,18 @@ if (pg_mail_queue_ready()) {
     pg_mail_queue_run(25, 20);
 
     pg_cron_ran('mail_job');
+
+}
+
+// Queued text messages (pg_sms_queue_run() in includes/fn/sms.php). A request
+// only queues a message, since the provider's answer is not worth a visitor's
+// wait, so apart from the queue screen's Run now this pass is what sends
+// them, and it depends on no setting. An empty queue, which is every site
+// without SMS, costs one read. Fewer rows and less time than the mail pass:
+// each message is a paid call that waits on the provider.
+if (pg_sms_queue_ready()) {
+
+    pg_sms_queue_run(10, 15);
 
 }
 

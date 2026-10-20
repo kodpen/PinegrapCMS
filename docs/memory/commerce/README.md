@@ -27,6 +27,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
+- order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
@@ -35,10 +36,12 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
-- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows through the external API and the MCP tools, paging, since and channel filters, what the rows do not contain yet
-- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, API read, compare_at_price, known limits
+- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
+- product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
+- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
+- shipment-row-schema.md: The shipment row since 2026.11.0 (11.0.20): carrier, status, date, source and warning columns on shipping_tracking_numbers, the unique parcel key, shipping_methods.carrier, the order_delivered action
 - shipping-today.md: How shipping works today (checked 2026-10-16): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the single compute function and its JS preview twin.

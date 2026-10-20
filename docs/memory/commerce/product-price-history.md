@@ -1,16 +1,16 @@
 ---
 name: product-price-history
-description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, API read, compare_at_price, known limits
+description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
 ---
 
 ## What is recorded and why?
-- `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time a product's own price changes. The "price before the discount" (TR price label rule: lowest of the last 30 days, last 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
+- `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time the price a product sells at changes, its own or an offer's (offer rows: product-price-history-offers.md). The "price before the discount" (TR price label rule: lowest of the last 30 days, last 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
 - `channel` is `web` for `products.price`, the shop's own price. `pos` / `marketplace:<code>` are reserved for prices kept per channel (a marketplace account selling at its own prices).
-- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer`, `erp` (reserved). VARCHAR, not ENUM, so a later label never turns into `''`.
+- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved). VARCHAR, not ENUM, so a later label never turns into `''`.
 - `products.compare_at_price` (INT NULL), same step: the merchant's "was" price, never in the history.
 
 ## How do writers record a change?
-- After the write, `pg_price_history_record($ids, $source)` (`includes/fn/price_history.php`): it reads the stored price, compares it with the product's newest row (MAX(id)) and writes a row only when price or currency differs. The same price again writes nothing, so a screen that cannot tell whether the price changed calls it on every save.
+- After the write, `pg_price_history_record($ids, $source)` (`includes/fn/price_history.php`): it reads the stored price, compares it with the product's newest row not of source `offer` (MAX(id)) and writes a row only when price or currency differs; comparing with an offer row would write a row on every save during an offer. The same price again writes nothing, so a screen that cannot tell whether the price changed calls it on every save.
 - Bulk writers call `pg_price_history_queue($id, $source)` after each write and `pg_price_history_flush()` after the loop. The queue writes every 500 products and from a shutdown function, so an import stopped by `output_error()` or the time limit keeps the rows of the prices it changed.
 - It never stops the request: `@mysqli_query`, failures go to the error log (`Price history: ... failed`); the next save of that product catches up.
 - `pg_pb_delete_product()` calls `pg_price_history_forget()`: MySQL 5.7 may reuse a deleted product's id after a restart.
@@ -24,15 +24,14 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 
 ## What does the upgrade write?
 - One `initial` row per product at its current price, stamped with the upgrade time (PHP clock); a product with a `web` row is skipped, so a rerun adds nothing. A fresh install loads the starter data first, so its products get the row too.
-- `products.timestamp` is not used as the start: other edits move it and the installer stamps every product.
 - `products` is in `install_heavy_tables()` for 2026.11.0: the column goes in INSTANT where possible, by copy otherwise (MyISAM, MySQL 5.7).
 - A dev database already at `config.version` 2026.11.0 skips the step until the version is set back to 2026.4.10 (release-status.md).
 
 ## What are the known limits?
-- Offer prices are not recorded, so the history alone cannot give a lawful "lowest price" yet (plan file).
+- Offer prices arrive within the hour (offer rows file).
 - A base currency change does not rewrite `products.price`; rows in the new currency appear as products are saved.
 
 ## How was it verified?
-- `tests/price_history_test.php`; on MariaDB 10.11 the step ran twice (second run skipped all), the MyISAM copy fallback, a fresh install, and each writer above over HTTP or directly (dry runs wrote nothing).
+- `tests/price_history_test.php`; on MariaDB 10.11: the step twice (second skipped all), the MyISAM fallback, a fresh install, each writer above (dry runs wrote nothing).
 
 Related: docs/memory/plans/price-history-reference-price.md, docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-compare-at-price.md
