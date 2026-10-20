@@ -2855,9 +2855,9 @@ function pg_designer_page_name_taken_elsewhere($name)
  *   on the site and comes off it, pg_page_schedule_parse(); '' for none)
  *
  * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
- * 'draft' => bool, 'revision_no' => int (the revision written, 0 for none)),
- * with 'publish_at' / 'unpublish_at' (datetime-local text) when the save
- * decided the page's times.
+ * 'draft' => bool), with 'revision_no' (the revision written, 0 for none)
+ * when the save wrote, and 'publish_at' / 'unpublish_at' (datetime-local
+ * text) when the save decided the page's times.
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -3316,9 +3316,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
-    // The revision this save wrote (0 for none): read from the INSERT that
-    // wrote it, not from MAX() afterwards, which another save of the same page
-    // may already have moved.
+    // The revision this save wrote (0 for none), as pg_page_revision_record()
+    // read it back by the row's own id: a MAX() taken here could already be
+    // another save's number.
     $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0),
                     'revision_no' => (int)$revision_no);
     // The times as this save left them, for the editor's tab: a time that
