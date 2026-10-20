@@ -388,8 +388,9 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
 //
 // The offer already qualified; this only decides how the gift shows up. When
 // the shopper is already paying for that product - a required product added
-// itself, or they simply put one in the basket - the gift is that line's
-// discount, not a second line of the same thing. Otherwise the product is
+// itself, or they simply put one in the basket - the gift is a discount on as
+// many units of that line as the offer gives away, not a second line of the
+// same thing. Otherwise the product is
 // added, marked as put there by the offer, so that the cart takes it back out
 // when the offer stops applying.
 //
@@ -455,7 +456,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item_id = db_value("SELECT id FROM order_items
+    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
 
         WHERE
 
@@ -466,14 +467,20 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
             AND (added_by_offer = '0')" . $sql_ship_to . "
 
         ORDER BY id ASC LIMIT 1");
-    if ($paid_order_item_id) {
+    if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
+        //
+        // The gift is the action's quantity, not the whole line: the other
+        // units keep the price the line stands at (list, member or another
+        // offer's), and a gift never raises that price.
+        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
+        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
 
-                price = '" . e($discounted_price) . "',
+                price = '" . e($line_price) . "',
 
                 offer_id = '" . e($offer_id) . "',
 
@@ -481,7 +488,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
                 discounted_by_offer = '1'
 
-            WHERE id = '" . e($paid_order_item_id) . "'");
+            WHERE id = '" . e($paid_order_item['id']) . "'");
         return true;
     }
 
@@ -2163,6 +2170,39 @@ function pg_offer_action_targets_item($offer_action, $order_item, $ship_to_id = 
     return pg_offer_action_targets_product($offer_action, $order_item['product_id']);
 }
 
+// How many units of a cart line a product discount covers. "The cheapest item
+// is free" frees one item, not every unit of the line that item sits on; a
+// product or group target discounts the whole line.
+function pg_offer_action_discounted_units($offer_action, $quantity)
+{
+    if (pg_offer_action_target($offer_action) == 'cheapest') {
+        return min(1, (int) $quantity);
+    }
+    return (int) $quantity;
+}
+
+// The unit price of a cart line when an offer discounts only some of its
+// units: the cheapest item, or a gift taken from a line the shopper is already
+// paying for. A line carries one unit price, so the discount on those units is
+// spread over the whole line: one free item on a line of two charges each
+// unit half. The spread price rounds down, so the line never costs more than
+// its units at their own prices; the customer keeps at most quantity - 1
+// minor units of the rounding. A line whose every unit is discounted gets the
+// discounted price unchanged.
+function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_price, $discounted_units)
+{
+    $quantity = (int) $quantity;
+    $discounted_units = (int) $discounted_units;
+    if ($discounted_units >= $quantity) {
+        return $discounted_unit_price;
+    }
+    if ($discounted_units <= 0) {
+        return $unit_price;
+    }
+    $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
 // An action with nothing to discount is skipped before the cart is walked. A
 // group target counts as "has a target" even when the group is empty today;
 // the item loop simply finds nothing to discount.
@@ -3010,6 +3050,9 @@ function apply_offers_to_cart()
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // The cheapest-item target discounts one unit; the
+                                    // other units of its line keep the line's price.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3776,6 +3819,9 @@ function get_best_offer_id($offer_code, $scope = '')
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // Worked out as apply_offers_to_cart() charges it: the
+                                    // cheapest-item target is worth one unit of its line.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
