@@ -645,6 +645,22 @@ function pg_legal_documents_enabled()
 }
 
 /**
+ * Whether a site installed from a starter site begins with the checkout
+ * documents switched on. Turkish distance-selling rules require both
+ * documents, so a Turkish starter site starts with them; its template
+ * columns stay empty and read the built-in templates. Any other
+ * language, and a restored backup (no starter language), starts off, as an
+ * upgrade does.
+ *
+ * @param string $starter_language  the starter site's language, '' for a backup
+ * @return bool
+ */
+function pg_legal_documents_on_for_new_site($starter_language)
+{
+    return strtolower(trim((string) $starter_language)) === 'tr';
+}
+
+/**
  * The stored template for a type, or the built-in one when none is stored.
  *
  * @param string $type

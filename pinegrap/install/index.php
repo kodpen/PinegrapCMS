@@ -6381,6 +6381,21 @@ else {
 
 		}
 
+		// A Turkish starter site asks for the pre-information form and the distance sales
+		// contract at checkout from its first day (pg_legal_documents_on_for_new_site()). The
+		// upgrade above added the switch off, as it does on every upgraded site, and left the
+		// template columns empty, so the documents read the built-in templates of the site's
+		// language. A restored backup keeps the switch it was taken with.
+		if ((pg_legal_documents_on_for_new_site(get_starter_site_language($install_directory_path))) && (install_column_exists('config', 'ecommerce_legal_documents'))) {
+
+			db("UPDATE config SET ecommerce_legal_documents = 1");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Switched on the pre-information form and the distance sales contract at checkout'), lang('Site Settings › Ecommerce › Legal Documents'));
+
+		}
+
 		// The administrator row above was written as MD5 because the starter
 		// template predates user_password_algo. Now that the upgrades have added
 		// the column, store the modern hash right away instead of leaving the

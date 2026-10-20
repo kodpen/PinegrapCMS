@@ -149,6 +149,36 @@ function test_legal_documents_default_templates()
 	pg_assert_same('', pg_legal_document_default_template('../preinfo', 'tr'), 'no path');
 }
 
+// A Turkish starter site starts with the documents switched on; any other
+// language and a restored backup (no starter language) start off.
+function test_legal_documents_on_for_new_site()
+{
+	pg_assert_true(pg_legal_documents_on_for_new_site('tr'), 'Turkish starter');
+	pg_assert_true(pg_legal_documents_on_for_new_site(' TR '), 'case and spaces');
+	pg_assert_false(pg_legal_documents_on_for_new_site('en'), 'English starter');
+	pg_assert_false(pg_legal_documents_on_for_new_site('de'), 'another language');
+	pg_assert_false(pg_legal_documents_on_for_new_site(''), 'a backup');
+	pg_assert_false(pg_legal_documents_on_for_new_site(null), 'nothing');
+}
+
+// The installer turns the switch on once the upgrades have added its column
+// (before them the update would find no column and change nothing), and
+// before the installation finishes.
+function test_legal_documents_install_switches_on_after_upgrades()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
+
+	$upgrades = strpos($source, 'install_run_upgrades($versions, $installed_version_key');
+	$seed = strpos($source, 'pg_legal_documents_on_for_new_site(get_starter_site_language($install_directory_path))');
+	$done = strpos($source, "add_install_step(lang('The installation is complete')");
+
+	pg_assert_true($upgrades !== false, 'the upgrades of a new site');
+	pg_assert_true($seed !== false, 'the starter language decides');
+	pg_assert_true(($seed > $upgrades) && ($seed < $done), 'after the upgrades, before the end');
+	pg_assert_same(1, substr_count($source, 'UPDATE config SET ecommerce_legal_documents = 1'), 'one write');
+	pg_assert_contains("install_column_exists('config', 'ecommerce_legal_documents')", substr($source, $seed, 400), 'only where the column is');
+}
+
 // Without the setting (constant undefined here) the feature is off.
 function test_legal_documents_off_without_setting()
 {

@@ -5,6 +5,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 
 ## What is built?
 - Settings › Ecommerce › Legal Documents (`pgset-legal`): switch `ECOMMERCE_LEGAL_DOCUMENTS` and two HTML templates (schema 11.0.1, PR #540). Card and save only when the column exists.
+- Starts on only for a site installed from the Turkish starter: `install/index.php` sets it after the upgrades (`pg_legal_documents_on_for_new_site()`, PR #798), templates left NULL. The starter's language decides, not the panel's; English starter, backup and upgrade start off.
 - `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559, kept copy for customer and staff PR #569.
 
 ## How does a template work?
@@ -30,4 +31,4 @@ description: Legal documents (pre-information form, distance sales contract): se
 - The order view widget (My Account, thank-you page) links each kept copy: docs/memory/commerce/order-view-legal-documents.md.
 
 ## What is left?
-- docs/memory/plans/checkout-legal-documents.md (KVKK consent, Turkish seed).
+- docs/memory/plans/checkout-legal-documents.md (KVKK consent, withdrawal timer).
