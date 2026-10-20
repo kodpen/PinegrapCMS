@@ -24089,5 +24089,11 @@
     "Paraşüt takes VAT at {var:1} only; this invoice has {var:2}. It cannot be sent at that rate: cancel it and issue it again at a current rate.": "Paraşüt KDV'yi yalnız {var:1} oranlarıyla alır; bu faturada {var:2} var. Fatura bu oranla gönderilemez: iptal edip güncel bir oranla yeniden kesin.",
     "Down for Maintenance": "Bakımdayız",
     "The site is in maintenance mode (503)": "Site bakım modunda (503)",
-    "Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.": "Varsayılan: sayfanın ilk görseli önce, diğerleri ekrana yaklaştıkça yüklenir. Gecikmeli: bu görsel ekrana yaklaşınca yüklenir. Hemen: sayfa açılırken yüklenir."
+    "Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.": "Varsayılan: sayfanın ilk görseli önce, diğerleri ekrana yaklaştıkça yüklenir. Gecikmeli: bu görsel ekrana yaklaşınca yüklenir. Hemen: sayfa açılırken yüklenir.",
+    "Paraşüt would not list its customers and suppliers: {var:1}": "Paraşüt cari listesini vermedi: {var:1}",
+    "The card has no Paraşüt id.": "Kartın Paraşüt kimliği yok.",
+    "Paraşüt no longer has this card.": "Paraşüt'te bu kart artık yok.",
+    "Paraşüt would not hand over the card: {var:1}": "Paraşüt kartı vermedi: {var:1}",
+    "Paraşüt would not open the card: {var:1}": "Paraşüt kartı açmadı: {var:1}",
+    "Paraşüt took the card but did not say its id. Read the list again to find it.": "Paraşüt kartı aldı ama kimliğini bildirmedi. Bulmak için listeyi yeniden okuyun."
 }
