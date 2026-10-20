@@ -69,6 +69,7 @@ if (!$_POST) {
             page_meta_description,
             sitemap,
             " . (pg_page_noindex_ready() ? "noindex, nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
+            " . (pg_page_seo_extras_ready() ? "canonical_url, noarchive, max_snippet," : "'' AS canonical_url, '0' AS noarchive, NULL AS max_snippet,") . "
             page_type,
             layout_type,
             comments,
@@ -132,6 +133,9 @@ if (!$_POST) {
     $sitemap = $row['sitemap'];
     $noindex = (int) ($row['noindex'] ?? 0);
     $nofollow = (int) ($row['nofollow'] ?? 0);
+    $page_canonical_url = (string) ($row['canonical_url'] ?? '');
+    $page_noarchive = (int) ($row['noarchive'] ?? 0);
+    $page_max_snippet = (($row['max_snippet'] ?? null) === null) ? '' : (string) $row['max_snippet'];
     $page_type = $row['page_type'];
     $layout_type = $row['layout_type'];
     $comments = $row['comments'];
@@ -509,6 +513,50 @@ if (!$_POST) {
             </div>';
     }
 
+    // The page's own canonical address and the robots directives besides
+    // noindex (includes/fn/seo.php), where the columns exist. A value the save
+    // refused comes back as it was typed, with the reason above the form; the
+    // hidden field tells the save that this form carried the three.
+    $output_seo_extra_rows = '';
+
+    if (pg_page_seo_extras_ready() == TRUE) {
+
+        $canonical_invalid = '';
+        $max_snippet_invalid = '';
+
+        if ($liveform->check_field_error('canonical_url')) {
+            $page_canonical_url = (string) $liveform->get_field_value('canonical_url');
+            $canonical_invalid = ' is-invalid';
+        }
+
+        if ($liveform->check_field_error('max_snippet')) {
+            $page_max_snippet = (string) $liveform->get_field_value('max_snippet');
+            $max_snippet_invalid = ' is-invalid';
+        }
+
+        $noarchive_checked = ($page_noarchive == 1) ? ' checked="checked"' : '';
+
+        $output_seo_extra_rows =
+            '<div class="col-12 mt-1 mb-2" id="canonical_url_row">
+                <input type="hidden" name="seo_extras" value="1">
+                <label for="canonical_url" class="form-label">' . lang('Canonical Address') . '</label>
+                <input type="text" value="' . h($page_canonical_url) . '" name="canonical_url" id="canonical_url" class="form-control' . $canonical_invalid . '" maxlength="2000" placeholder="https://" autocomplete="off" spellcheck="false">
+                <div class="form-text">' . lang('Leave empty to use the address of this page. Fill it in when the page repeats another one, to name the address search engines should list instead: a full address starting with https://, or a path on this site such as /about-us. Products, posts and other items shown through this page keep their own address.') . '</div>
+            </div>
+            <div class="col-12 my-3" id="noarchive_row">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="noarchive" name="noarchive" value="1"' . $noarchive_checked . '>
+                    <label class="form-check-label" for="noarchive">' . lang('Do Not Keep a Cached Copy (noarchive)') . '</label>
+                </div>
+                <div class="form-text">' . lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.') . '</div>
+            </div>
+            <div class="col-12 col-md-6 mt-1 mb-2" id="max_snippet_row">
+                <label for="max_snippet" class="form-label">' . lang('Snippet Length (max-snippet)') . '</label>
+                <input type="number" value="' . h($page_max_snippet) . '" name="max_snippet" id="max_snippet" class="form-control' . $max_snippet_invalid . '" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1">
+                <div class="form-text">' . lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.') . '</div>
+            </div>';
+    }
+
     // if sitemap is enabled, then check the checkbox
     $sitemap_checked = '';
 
@@ -740,6 +788,7 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 ' . $output_noindex_rows . '
+                                                ' . $output_seo_extra_rows . '
                                                 <div class="col-12">
                                                     ' . pg_seo_render_checklist($seo_row, 'page', $page_id) . '
                                                     ' . pg_seo_render_run_script() . '
@@ -1222,6 +1271,37 @@ if (!$_POST) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
         }
+
+        // The canonical address and the snippet length are checked before
+        // anything is written (pg_page_canonical_url_check(),
+        // pg_page_max_snippet_check()). A refused value goes back to the form
+        // as typed. The three are written only when the form carried them.
+        $seo_extras_sent = pg_page_seo_extras_ready() && (($_POST['seo_extras'] ?? '') == 1);
+        $canonical_check = array('ok' => true, 'value' => '', 'error' => '');
+        $max_snippet_check = array('ok' => true, 'value' => null, 'error' => '');
+
+        if ($seo_extras_sent) {
+            $canonical_raw = (isset($_POST['canonical_url']) && is_string($_POST['canonical_url'])) ? $_POST['canonical_url'] : '';
+            $max_snippet_raw = $_POST['max_snippet'] ?? '';
+
+            $canonical_check = pg_page_canonical_url_check($canonical_raw);
+            $max_snippet_check = pg_page_max_snippet_check($max_snippet_raw);
+
+            if (!$canonical_check['ok']) {
+                $liveform->mark_error('canonical_url', pg_page_canonical_url_message($canonical_check['error'], $current_page_name));
+                $liveform->assign_field_value('canonical_url', trim($canonical_raw));
+            }
+
+            if (!$max_snippet_check['ok']) {
+                $liveform->mark_error('max_snippet', pg_page_max_snippet_message($current_page_name));
+                $liveform->assign_field_value('max_snippet', is_string($max_snippet_raw) ? trim($max_snippet_raw) : '');
+            }
+
+            if (!$canonical_check['ok'] || !$max_snippet_check['ok']) {
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page_id . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
+                exit();
+            }
+        }
         
         // The gate at the top of the file covers the folder the page is in
         // now; moving the page needs edit rights to the destination as well,
@@ -1668,6 +1748,15 @@ if (!$_POST) {
                 nofollow = '" . $nofollow . "',";
         }
 
+        $sql_seo_extras = "";
+
+        if ($seo_extras_sent) {
+            $sql_seo_extras =
+                "canonical_url = '" . e($canonical_check['value']) . "',
+                noarchive = '" . ((($_POST['noarchive'] ?? '') == 1) ? 1 : 0) . "',
+                max_snippet = " . (($max_snippet_check['value'] === null) ? "NULL" : "'" . (int) $max_snippet_check['value'] . "'") . ",";
+        }
+
         $sql_seo_analysis_current = "";
 
         // If the seo analysis is current and any field the SEO score reads
@@ -1708,6 +1797,7 @@ if (!$_POST) {
                 page_meta_description = '" . escape($_POST['meta_description'] ?? '') . "',
                 sitemap = '" . $sitemap . "',
                 $sql_noindex
+                $sql_seo_extras
                 $sql_seo_analysis_current
                 comments = '" . escape($_POST['comments'] ?? '') . "',
                 comments_label = '" . e($_POST['comments_label'] ?? '') . "',

@@ -41,6 +41,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_page_schedule();          // 11.0.17
 	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 	upgrade_2026_11_0_privacy_logs();           // 11.0.16
+	upgrade_2026_11_0_page_canonical_robots();  // 11.0.22
 
 }
 
@@ -744,5 +745,40 @@ function upgrade_2026_11_0_privacy_logs() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Privacy: a consent log and an audit trail are created. Both start empty; the screens that write and show them come with later updates.');
+
+}
+
+// A page's own canonical address and two more robots directives (2026.11.0,
+// 11.0.22; includes/fn/seo.php, the page settings of edit_page.php and of the
+// visual designer).
+//
+// page.canonical_url replaces the address the page names as canonical when it
+// is drawn at its own address: a full http(s) address, or a path on this site
+// starting with "/"; NULL or '' leaves the automatic one. page.noarchive adds
+// noarchive to the robots tag. page.max_snippet adds max-snippet: NULL leaves
+// the snippet to the search engine, -1 lifts the limit, 0 asks for no text
+// snippet, a number caps it at that many characters.
+//
+// Added without copying the table where the server can do that, like the
+// meta tags of 11.0.3.
+function upgrade_2026_11_0_page_canonical_robots() {
+
+	$columns = array(
+		'canonical_url' => "TEXT NULL",
+		'noarchive'     => "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0",
+		'max_snippet'   => "INT NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('page', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('page', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Search engines: a page can now name its own canonical address and ask search engines not to keep a cached copy (noarchive) or to limit the text they show under its title (max-snippet). The fields are in the page settings and stay empty until filled in.');
 
 }

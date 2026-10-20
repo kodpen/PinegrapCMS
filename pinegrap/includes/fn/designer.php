@@ -2454,6 +2454,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $multi_ready   = pg_multi_page_design_ready();
     $meta_ready    = pg_meta_tags_ready();
     $jsonld_ready  = pg_page_custom_jsonld_ready();
+    $extras_ready  = pg_page_seo_extras_ready();
     $sched_ready   = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
 
     $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
@@ -2468,6 +2469,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.page_timestamp,
              " . ($meta_ready ? "page.page_meta_tags," : "'' AS page_meta_tags,") . "
              " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
+             " . ($extras_ready ? "page.canonical_url, page.noarchive, page.max_snippet," : "'' AS canonical_url, 0 AS noarchive, NULL AS max_snippet,") . "
              " . ($sched_ready ? "page.publish_at, page.unpublish_at," : "0 AS publish_at, 0 AS unpublish_at,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
@@ -2536,6 +2538,12 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'page_meta_tags'        => pg_meta_tags_encode(pg_meta_tags_normalize((string)$r['page_meta_tags'])),
             // The page's own JSON-LD (page.custom_jsonld), as written.
             'page_custom_jsonld'    => (string)$r['custom_jsonld'],
+            // The page's own canonical address and robots directives
+            // (includes/fn/seo.php): the snippet length as the number box
+            // shows it, '' when the page sets none.
+            'page_canonical_url'    => (string)$r['canonical_url'],
+            'page_noarchive'        => !empty($r['noarchive']) ? 1 : 0,
+            'page_max_snippet'      => ($r['max_snippet'] === null) ? '' : (string)(int)$r['max_snippet'],
             // When the page goes on the site and comes off it, as a
             // datetime-local box shows them in the site's time zone ('' for
             // none; includes/fn/page_schedule.php).
@@ -2928,6 +2936,25 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         }
     }
 
+    // The page's own canonical address and snippet length, checked the same
+    // way and written the same way: when the editor sends them.
+    $canonical = null;
+    $max_snippet = null;
+    if (pg_page_seo_extras_ready()) {
+        if (array_key_exists('page_canonical_url', $page)) {
+            $canonical = pg_page_canonical_url_check(is_string($page['page_canonical_url']) ? $page['page_canonical_url'] : '');
+            if (!$canonical['ok']) {
+                $errors[] = pg_page_canonical_url_message($canonical['error'], $name);
+            }
+        }
+        if (array_key_exists('page_max_snippet', $page)) {
+            $max_snippet = pg_page_max_snippet_check($page['page_max_snippet']);
+            if (!$max_snippet['ok']) {
+                $errors[] = pg_page_max_snippet_message($name);
+            }
+        }
+    }
+
     if (!empty($errors)) {
         return array('ok' => false, 'page_id' => $page_id, 'errors' => $errors, 'warnings' => $warnings);
     }
@@ -3107,13 +3134,25 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if ($jsonld !== null && $jsonld['ok']) {
         $c_extra['custom_jsonld'] = e($jsonld['value']);
     }
+    // The canonical address and the robots directives, checked above. A
+    // snippet length left empty is stored as NULL (no directive).
+    if ($canonical !== null && $canonical['ok']) {
+        $c_extra['canonical_url'] = e($canonical['value']);
+    }
+    if (array_key_exists('page_noarchive', $page) && pg_page_seo_extras_ready()) {
+        $c_extra['noarchive'] = $flag('page_noarchive');
+    }
+    if ($max_snippet !== null && $max_snippet['ok']) {
+        $c_extra['max_snippet'] = ($max_snippet['value'] === null) ? null : (string)$max_snippet['value'];
+    }
     $sql_c_extra_set  = '';
     $sql_c_extra_cols = '';
     $sql_c_extra_vals = '';
     foreach ($c_extra as $c_col => $c_val) {
-        $sql_c_extra_set  .= "$c_col = '$c_val',\n";
+        $c_sql = ($c_val === null) ? 'NULL' : "'$c_val'";
+        $sql_c_extra_set  .= "$c_col = $c_sql,\n";
         $sql_c_extra_cols .= "$c_col, ";
-        $sql_c_extra_vals .= "'$c_val', ";
+        $sql_c_extra_vals .= "$c_sql, ";
     }
 
     $multi_ready = pg_multi_page_design_ready();

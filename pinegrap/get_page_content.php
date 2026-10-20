@@ -53,6 +53,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // The page's own meta tags (includes/fn/meta_tags.php); absent before
     // 2026.11.0 (11.0.3), and then there are none.
     $page_meta_tags = (string) ($row['page_meta_tags'] ?? '');
+    // The page's own canonical address and the robots directives besides
+    // noindex (includes/fn/seo.php); absent before 2026.11.0 (11.0.22), and
+    // then there are none.
+    $page_canonical_url = (string) ($row['canonical_url'] ?? '');
+    $page_noarchive = (int) ($row['noarchive'] ?? 0);
+    $page_max_snippet = $row['max_snippet'] ?? null;
     $page_type = $row['page_type'] ?? '';
     $comments = $row['comments'] ?? '';
     $comments_label = $row['comments_label'] ?? '';
@@ -5777,13 +5783,46 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $og_image = pg_og_default_image();
     }
 
+    // The address the canonical link and og:url name: the page's own
+    // canonical address (page.canonical_url) while the page is drawn at its
+    // own address and answers 200. An item the page shows (a product, a
+    // post, an event), a list page with a page number or a query, an error
+    // answer and an address that names nothing keep the automatic one: one
+    // address for all of them would make every item a copy of the same page.
+    $canonical_link_url = $canonical_url;
+
+    if ($page_canonical_url !== '') {
+        $pg_own_url = URL_SCHEME . HOSTNAME_SETTING . (($page_home == 'yes') ? PATH : PATH . encode_url_path($page_name));
+        $pg_status = function_exists('http_response_code') ? http_response_code() : false;
+
+        if (($page_type != 'error')
+            && ($canonical_url === $pg_own_url)
+            && empty($pg_blog_form_id)
+            && empty($pg_og_sw_product_image_name)
+            && !(function_exists('pg_sw_item_missing') && pg_sw_item_missing())
+            && (($pg_status === false) || ((int) $pg_status === 200))
+        ) {
+            $pg_canonical_override = pg_page_canonical_href($page_canonical_url, URL_SCHEME . HOSTNAME_SETTING);
+
+            if ($pg_canonical_override !== '') {
+                $canonical_link_url = $pg_canonical_override;
+            }
+        }
+    }
+
+    // The language pass finds the page it draws from the canonical link; a
+    // page that names another address keeps its own for it.
+    if ($email != TRUE) {
+        pg_page_own_url(($canonical_link_url !== $canonical_url) ? $canonical_url : '');
+    }
+
     // If open graph tags are not disabled, then prepare them.
 
     if (!defined('OPEN_GRAPH') or OPEN_GRAPH) {
 
         $open_graph ='        <meta property="og:title" content="' . h($page_title) . '">' . "\n" .
             '        <meta property="og:type" content="' . $og_type . '">' . "\n" .
-            '        <meta property="og:url" content="' . h($canonical_url) . '">' . "\n" .
+            '        <meta property="og:url" content="' . h($canonical_link_url) . '">' . "\n" .
             '        <meta property="og:site_name" content="' . h(TITLE) . '">' . "\n" .
             '        <meta property="og:locale" content="' . pg_og_locale() . '">' . "\n";
 
@@ -5862,11 +5901,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // An address that names a record or product that is not there answers
     // 404 (pg_sw_item_missing()): it is kept out of the index the same way,
     // and has no canonical address to point at.
+    //
+    // A page in the index can also ask not to be kept as a cached copy
+    // (page.noarchive) and how much text a result may quote from it
+    // (page.max_snippet); both apply to every address the page draws, the
+    // items it shows included (pg_page_robots_content()).
     $pg_item_missing = function_exists('pg_sw_item_missing') && pg_sw_item_missing();
 
-    if ((($page_noindex == 1) || $pg_item_missing) && ($email != TRUE)) {
-        $robots_content = 'noindex, ' . (($page_nofollow == 1) ? 'nofollow' : 'follow');
-        $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+    if ($email != TRUE) {
+        $robots_content = pg_page_robots_content(
+            ($page_noindex == 1) || $pg_item_missing,
+            ($page_nofollow == 1),
+            ($page_noarchive == 1),
+            $page_max_snippet);
+
+        if ($robots_content !== '') {
+            $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+        }
     }
 
     // The site's Google Search Console verification (search_console.php). Google
@@ -5901,7 +5952,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $twitter_card,
             $custom_meta_tags) .
         pg_meta_tags_html($custom_meta_tags) .
-        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_url) . '">');
+        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_link_url) . '">');
 
     // The placeholder is written into every style the software creates, but a
     // designer editing raw style code can delete it, and then none of this block

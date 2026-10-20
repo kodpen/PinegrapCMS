@@ -138,7 +138,7 @@ function pg_page_revision_settings_from_row($row)
         'comments_automatic_publish', 'comments_show_submitted_date_and_time',
         'comments_require_login_to_comment', 'comments_submitter_email_page_id',
         'comments_submitter_email_subject', 'comments_administrator_email_to_email_address',
-        'page_meta_tags', 'custom_jsonld',
+        'page_meta_tags', 'custom_jsonld', 'canonical_url', 'noarchive', 'max_snippet',
     );
 
     $out = array();

@@ -143,6 +143,11 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
             'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
+            // The page's own canonical address and robots directives ('' and 0
+            // for none; the snippet length as typed, '' when not set).
+            'page_canonical_url'    => (string)(isset($p['page_canonical_url']) ? $p['page_canonical_url'] : ''),
+            'page_noarchive'        => (int)(isset($p['page_noarchive']) ? $p['page_noarchive'] : 0),
+            'page_max_snippet'      => (string)(isset($p['page_max_snippet']) ? $p['page_max_snippet'] : ''),
             // When the page goes on the site and comes off it, as the
             // datetime-local boxes of Page Settings take them ('' for none).
             'page_publish_at'       => (string)(isset($p['page_publish_at']) ? $p['page_publish_at'] : ''),
@@ -189,6 +194,9 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => '',
             'page_meta_tags'        => '',
             'page_custom_jsonld'    => '',
+            'page_canonical_url'    => '',
+            'page_noarchive'        => 0,
+            'page_max_snippet'      => '',
             'page_publish_at'       => '',
             'page_unpublish_at'     => '',
             'tree'                  => null,
@@ -2171,6 +2179,30 @@ function pg_designer_settings_modal($ctx)
                 <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_nofollow" id="pg_page_nofollow" value="1" data-page-key="page_nofollow" disabled="disabled"></div>',
                 array('for' => 'pg_page_nofollow', 'switch' => true));
     }
+    // The page's own canonical address and the robots directives besides
+    // noindex (page.canonical_url, page.noarchive, page.max_snippet;
+    // 2026.11.0), where the columns exist. Content like the title: every
+    // level that edits the page writes them. The editor checks the two
+    // boxes as they are typed (_sdSeoExtrasStatus()); the save refuses what
+    // does not pass pg_page_canonical_url_check() / pg_page_max_snippet_check().
+    $seo_extra_rows = '';
+    if (pg_page_seo_extras_ready()) {
+        $seo_extra_rows =
+            pg_designer_setting(lang('Canonical Address'),
+                lang('Leave empty to use the address of this page. Fill it in when the page repeats another one, to name the address search engines should list instead: a full address starting with https://, or a path on this site such as /about-us. Products, posts and other items shown through this page keep their own address.'),
+                '<input type="text" id="pg_page_canonical_url" class="form-control form-control-sm sd-page-field" data-page-key="page_canonical_url" maxlength="2000" placeholder="https://" autocomplete="off" spellcheck="false">
+                <div class="sd-set-status" id="sd-canonical-status" aria-live="polite"></div>',
+                array('for' => 'pg_page_canonical_url', 'wide' => true)) .
+            pg_designer_setting(lang('Do Not Keep a Cached Copy (noarchive)'),
+                lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.'),
+                '<div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" id="pg_page_noarchive" value="1" data-page-key="page_noarchive"></div>',
+                array('for' => 'pg_page_noarchive', 'switch' => true)) .
+            pg_designer_setting(lang('Snippet Length (max-snippet)'),
+                lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.'),
+                '<input type="number" id="pg_page_max_snippet" class="form-control form-control-sm sd-page-field" data-page-key="page_max_snippet" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1" inputmode="numeric">
+                <div class="sd-set-status" id="sd-max-snippet-status" aria-live="polite"></div>',
+                array('for' => 'pg_page_max_snippet'));
+    }
     $seo =
         '<section class="sd-settings-group">
             <h3 class="sd-settings-group-title">' . lang('Search result') . '</h3>
@@ -2202,6 +2234,7 @@ function pg_designer_settings_modal($ctx)
                 <div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" name="page_sitemap" id="pg_page_sitemap" value="1" data-page-key="page_sitemap"></div>',
                 array('for' => 'pg_page_sitemap', 'switch' => true)) . '
             ' . $noindex_rows . '
+            ' . $seo_extra_rows . '
         </section>';
     // The page's own JSON-LD (page.custom_jsonld, 2026.4.4), where the
     // column exists. The editor checks it as it is typed
