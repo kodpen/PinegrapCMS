@@ -550,7 +550,16 @@ $pg_settings_cards[] = '
                         <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
                         <select class="form-select" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
                         <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
-                    </div>
+                    </div>' . ($erp_auto_invoice_ready ? '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_auto_invoice_on">' . lang('The invoice of a web order') . '</label>
+                        <select class="form-select" id="erp_auto_invoice_on" name="erp_auto_invoice_on">
+                            <option value="off"' . (($erp_auto_invoice_on === 'off') ? ' selected' : '') . '>' . lang('Is issued from the order screen') . '</option>
+                            <option value="order_paid"' . (($erp_auto_invoice_on === 'order_paid') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is paid') . '</option>
+                            <option value="order_shipped"' . (($erp_auto_invoice_on === 'order_shipped') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is shipped') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('On its own, the order gets the invoice its screen\'s Issue the Invoice step writes, with the same checks: an order the step cannot invoice yet waits there with the reason, and the panel bell names it. Paid is a card, PayPal or iyzico payment at checkout, a bank transfer recorded with Payment Received, or an order put on the customer\'s account. Counter sales are still invoiced at the till and marketplace orders from their screen; the e-document is still made official from the order screen.') . '</div>
+                    </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
                         <select class="form-select" id="local_sale_prices" name="local_sale_prices">
@@ -598,7 +607,7 @@ $pg_settings_cards[] = '
                             <input value="1"' . $erp_open_account_payment_checked . ' class="form-check-input" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" />
                             <label class="form-check-label" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
                         </div>
-                        <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order is invoiced from its screen as usual and is never cancelled for an unpaid transfer.') . '</div>
+                        <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order counts as paid for an invoice issued on its own and is never cancelled for an unpaid transfer.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>

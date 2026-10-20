@@ -374,17 +374,30 @@ function pg_integrity_http_get($url, $headers)
         ],
     ]);
 
-    $body = @file_get_contents($url, false, $context);
+    // The response headers are taken from the stream: PHP 8.5 deprecates the
+    // variable file_get_contents() leaves them in and reports any read of it
+    // when this file is compiled, on every request that loads it.
+    $stream = @fopen($url, 'rb', false, $context);
 
-    if ($body === false || empty($http_response_header)) {
+    if ($stream === false) {
+        return false;
+    }
+
+    $meta = stream_get_meta_data($stream);
+    $body = stream_get_contents($stream);
+    fclose($stream);
+
+    $response_headers = (isset($meta['wrapper_data']) && is_array($meta['wrapper_data'])) ? $meta['wrapper_data'] : [];
+
+    if ($body === false || empty($response_headers)) {
         return false;
     }
 
     // The last status line is the answer after any redirect.
     $status = 0;
 
-    foreach ($http_response_header as $line) {
-        if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $match)) {
+    foreach ($response_headers as $line) {
+        if (is_string($line) && preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $match)) {
             $status = (int) $match[1];
         }
     }

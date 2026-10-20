@@ -4,10 +4,10 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 ---
 
 ## What sends an SMS?
-- `pg_sms_send($to, $text, $kind)` (`includes/fn/sms.php`) returns `ok, id, code, error, retry`. Before any account is read it refuses an unknown kind, a commercial one (`marketing`, until İYS consent records exist), an unreadable number, an empty text or one over `pg_sms_max_length()` (1000), and a demonstration site (`pg_demo()`, like `email()`).
+- `pg_sms_send($to, $text, $kind)` (`includes/fn/sms.php`) returns `ok, id, code, error, retry, uncertain`. Before any account is read it refuses, in `pg_sms_check()` (shared with the queue), an unknown kind, a commercial one (`marketing`, until İYS consent records exist), an unreadable number, an empty text or one over `pg_sms_max_length()` (1000); then a demonstration site (`pg_demo()`, like `email()`).
 - `pg_sms_text()`: CRLF/CR → `\n`, tab → space, other control characters dropped, non-UTF-8 → empty.
 - `pg_sms_number()` → E.164 digits without the plus; national forms (`05xx…`, `5xx…`, `90 5xx…`) are Turkish mobiles, other countries need `+`/`00`; under 90 only `5xx` (a `0` after `+90` is dropped).
-- It sends at once and waits: background job or an operator's button only. `retry` true means sending again cannot deliver twice (`sms-netgsm-driver.md`).
+- It sends at once and waits: background job or an operator's button only; a request queues with `pg_sms_enqueue()` (`sms-outbox-queue.md`). `retry` true means sending again cannot deliver twice, `uncertain` that the provider may have it (`sms-netgsm-driver.md`).
 
 ## Where is the account and why there?
 - `connect_apps` row `sms_<key>`, as the carriers' API apps (`carrier_api.php`): user code = `client_id`, password sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. Chosen over the plan's config blob on purpose: no migration step (and no step-number race between parallel work), a provider added later needs no column (`pinegrap-dis-api`: zero schema per provider).
@@ -23,4 +23,4 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 ## How was it verified?
 - `tests/sms_test.php`; a sandbox instance through `settings_pane.php` (dialog and page path, marks, save / unchanged / disable / forget, test button). Netgsm itself was not reachable.
 
-Related: docs/memory/platform/sms-netgsm-driver.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-netgsm-driver.md, docs/memory/platform/sms-outbox-queue.md, docs/memory/plans/sms-and-iys.md

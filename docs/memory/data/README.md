@@ -10,5 +10,6 @@ Table structures and SQL pitfalls.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
 - db-helpers-and-error-contract.md: db()/db_items()/db_value()/e()/escape()/escape_like() helpers, singular table names, and why queries return false instead of throwing (mysqli_report OFF).
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
+- menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the order-number lock, and the orders.type values/filter.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the single transliteration point, the lowercase-order rule, and the files.name invariant.

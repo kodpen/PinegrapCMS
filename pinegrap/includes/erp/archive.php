@@ -338,6 +338,12 @@ function erp_archive_send($file, $name, $download = false)
  * rendering waits for the end of the request, when what was committed can
  * be read back, and a writer that rolled back leaves nothing to keep.
  *
+ * A document written at the end of the request itself (an order invoiced on
+ * its own once the response is out, pg_erp_auto_invoice()) can come after
+ * this queue has been worked off: the queue is emptied as it is taken, so
+ * the next document registers a new shutdown function, and PHP runs one
+ * registered during shutdown as well.
+ *
  * @param string $doc_type  'invoice' | 'waybill'
  * @param int    $doc_id
  * @return void
@@ -353,7 +359,10 @@ function erp_archive_defer($doc_type, $doc_id)
     if ($queue === null) {
         $queue = array();
         register_shutdown_function(function () use (&$queue) {
-            foreach ($queue as $key => $entry) {
+            $entries = (array) $queue;
+            $queue = null;
+
+            foreach ($entries as $key => $entry) {
                 if ($entry[0] === 'invoice') {
                     erp_archive_invoice($entry[1], $entry[2]);
                 } elseif ($entry[0] === 'waybill') {

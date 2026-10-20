@@ -1,0 +1,58 @@
+# PHPStan over the product tree (CI step "Static analysis").
+#
+# Level 0: unknown functions, classes and methods, wrong argument counts,
+# variables that are never defined, duplicate array keys, include paths that
+# do not exist, a closing tag followed by output. The product runs on PHP 7.1
+# to 8.5, so a function a version in that range does not have is unknown too
+# (phpVersion). tools/static_analysis.sh phpstan fetches the pinned PHPStan
+# and runs it from the repository root:
+#
+#   php phpstan.phar analyse -c tools/phpstan.neon --memory-limit=3G
+#
+# Vendored libraries are scanned for their classes and functions but not
+# analysed: they ship as they are. data/ holds the starter sites' layouts,
+# which are content. Constants come from data/config.php and the config table
+# at run time (init.php), so "Constant X not found" says nothing about the
+# code and is not reported. tools/phpstan-bootstrap.php puts pinegrap/ on the
+# include path, where the product's relative includes resolve at run time.
+#
+# tools/phpstan-baseline.neon holds what the tree contained when the step was
+# added. After a fix, regenerate it so that it only shrinks
+# (bash tools/static_analysis.sh --generate-baseline phpstan).
+#
+# An entry that no longer matches is not an error, so a fix that lands
+# without the baseline update keeps the step green. Never regenerate it to let
+# a new error through.
+
+includes:
+	- phpstan-baseline.neon
+
+parameters:
+	level: 0
+	phpVersion:
+		min: 70100
+		max: 80599
+	bootstrapFiles:
+		- phpstan-bootstrap.php
+	paths:
+		- ../pinegrap
+		- ../download_assistant.php
+		- ../index.php
+	excludePaths:
+		analyse:
+			- ../pinegrap/includes/phpmailer
+			- ../pinegrap/includes/stripe
+			- ../pinegrap/includes/iyzipay-php
+			- ../pinegrap/includes/phpexcel
+			- ../pinegrap/includes/boxpacker
+			- ../pinegrap/includes/dompdf
+			- ../pinegrap/includes/qrcode
+			- ../pinegrap/pclzip.lib.php
+			- ../pinegrap/excel_reader2.php
+		analyseAndScan:
+			- ../pinegrap/assets/lib
+			- ../pinegrap/data
+	ignoreErrors:
+		-
+			identifier: constant.notFound
+	reportUnmatchedIgnoredErrors: false

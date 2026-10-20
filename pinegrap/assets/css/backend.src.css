@@ -14017,6 +14017,66 @@ a.ws-chip:hover {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* A formula whose result the file does not hold: worked out by the
+   spreadsheet program that opens it (includes/fn/office.php). */
+.office-sheet td.office-calc::before {
+  content: "\0192x";
+  font-style: italic;
+  color: var(--bs-secondary-color);
+  opacity: .7;
+}
+/* A workbook offered for editing (pg_office_view.js). */
+.office-sheet[role="grid"] td {
+  cursor: cell;
+}
+.office-sheet td:focus {
+  outline: none;
+}
+.office-sheet td.office-selected {
+  box-shadow: inset 0 0 0 2px var(--bs-primary);
+}
+.office-sheet td.office-edited {
+  background: var(--bs-warning-bg-subtle);
+}
+.office-sheet[role="grid"] td.office-locked {
+  cursor: default;
+  color: var(--bs-secondary-color);
+}
+.office-sheet td.office-editing {
+  padding: 0;
+  overflow: visible;
+  position: relative;
+}
+.office-editor {
+  display: block;
+  width: 100%;
+  min-width: 10rem;
+  margin: 0;
+  padding: .15rem .45rem;
+  border: 0;
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -2px;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre;
+  resize: none;
+  overflow: hidden;
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+}
+.office-status:empty {
+  display: none;
+}
+.office-tab-edited::after {
+  content: "";
+  display: inline-block;
+  width: .4rem;
+  height: .4rem;
+  margin-left: .35rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--bs-warning);
+}
 .office-doc {
   flex: 1 1 auto;
   min-height: 0;
