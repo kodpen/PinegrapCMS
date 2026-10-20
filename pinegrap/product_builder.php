@@ -1950,7 +1950,11 @@ function pg_pb_delete_product($product_id)
     // alone is not enough to find it in somebody else's system.
     $pg_deleted_name = (string) db_value("SELECT name FROM products WHERE id = '$product_id'");
 
+    $audit_before = pg_audit_fetch('products', $product_id);
+
     db("DELETE FROM products WHERE id = '$product_id'");
+
+    pg_audit_record('delete', 'products', $product_id, $audit_before);
 
     // Queued here rather than at the screens that call this, because every one
     // of them - the product list, the builder, the bulk action - ends up on
@@ -2134,7 +2138,11 @@ function pg_pb_bin_variant_set($group_id, $user_id)
     }
 
     foreach ($products as $product) {
+        $audit_before = pg_audit_fetch('products', $product['id']);
+
         if (pg_catalog_bin_product($product['id'], $user_id, $group_id) !== false) {
+            pg_audit_record('recycle', 'products', (int) $product['id'], $audit_before);
+
             $result['products']++;
         }
     }

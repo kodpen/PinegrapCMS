@@ -584,8 +584,6 @@ if (!$_POST) {
                         $recycled = pg_recycle_page($page_id, $user);
 
                         if ($recycled['status'] == 'binned') {
-                            pg_audit_record('recycle', 'page', $page_id, $audit_before);
-
                             $number_of_binned_pages++;
 
                             if ($recycled['home']) {

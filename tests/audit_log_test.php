@@ -207,4 +207,6 @@ function test_audit_record_without_table()
 	pg_assert_same(array(), pg_audit_fetch_many('page', array(1, 2)), 'no rows');
 	pg_assert_same(array(), pg_audit_fetch('nope', 1), 'unknown table');
 	pg_assert_false(pg_audit_record('update', 'products', 1, array('price' => '1')), 'nothing recorded');
+	pg_assert_same(0, pg_audit_record_many('update', 'files', array(3 => array('folder' => '1'), 4 => array('folder' => '2'))), 'nothing recorded for many');
+	pg_assert_same(0, pg_audit_record_many('update', 'files', array()), 'no rows');
 }
