@@ -7914,7 +7914,8 @@ function get_protected_shipping_method_filter()
  *   4. Expire gift cards that were issued by this order.
  *   5. Log activity + REFUND ACTION REQUIRED reminder for the operator.
  *   6. Optional: customer email notification (ECOMMERCE_CANCEL_EMAIL_NOTIFICATION).
- *   7. Optional: Iyzipay auto-refund (ECOMMERCE_ORDER_CANCEL_AUTO_REFUND) — writes
+ *   7. Optional: automatic refund through the payment method's driver
+ *      (ECOMMERCE_ORDER_CANCEL_AUTO_REFUND) — writes
  *      orders.refund_status / refunded_at / refund_reference when the 2026.1.27
  *      migration has run; otherwise silently skips the columns.
  *
@@ -8020,12 +8021,13 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         ($reason_clean !== '' ? ' Reason: ' . $reason_clean : '')
     );
 
-    // ── Iyzipay auto-refund (opt-in) ────────────────────────────────────
+    // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
-    // payment was made with Iyzipay, attempt a void via the Cancel API.
-    // Failures here MUST NOT roll back the cancellation — refunds can be
-    // retried manually from the gateway dashboard. We just record the
-    // outcome on the order row so the operator can audit.
+    // order's payment method has a payment driver that can cancel
+    // (pg_payment_cancel_driver(); a card order gets none), the payment is
+    // voided through it. Failures here MUST NOT roll back the cancellation —
+    // refunds can be retried manually from the gateway dashboard. We just
+    // record the outcome on the order row so the operator can audit.
     $refund_status_outcome = '';
     $refund_reference      = '';
     $refund_columns_exist  = _orders_has_refund_columns();
@@ -8038,58 +8040,36 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $is_iyzipay  = in_array($order['payment_method'], array('Iyzipay', 'Pay With Iyzico'), true);
     $has_txn     = !empty($order['transaction_id']);
     $order_total = (int) $order['total']; // cents
+    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
+        ? pg_payment_cancel_driver((string) $order['payment_method'])
+        : '';
 
-    if ($auto_refund && $is_iyzipay && $has_txn && defined('ECOMMERCE_IYZIPAY_API_KEY') && $order_total > 0) {
-        try {
-            require_once(PG_FUNCTIONS_DIR . '/includes/iyzipay-php/IyzipayBootstrap.php');
-            IyzipayBootstrap::init();
-
-            $gateway_host = (defined('ECOMMERCE_PAYMENT_GATEWAY_MODE') && ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test')
-                ? 'https://sandbox-api.iyzipay.com'
-                : 'https://api.iyzipay.com';
-
-            $options = new \Iyzipay\Options();
-            $options->setApiKey(ECOMMERCE_IYZIPAY_API_KEY);
-            $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
-            $options->setBaseUrl($gateway_host);
-
-            $request = new \Iyzipay\Request\CreateCancelRequest();
-            $request->setLocale(\Iyzipay\Model\Locale::TR);
-            $request->setConversationId((string) $order_id . '-' . time());
-            $request->setPaymentId((string) $order['transaction_id']);
-            $request->setIp(isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1');
-
-            if ($reason_clean !== '') {
-                $request->setDescription(mb_substr($reason_clean, 0, 240));
-            }
-
-            $cancel = \Iyzipay\Model\Cancel::create($request, $options);
-
-            if ($cancel->getStatus() == 'success') {
-                $refund_status_outcome = 'refunded';
-                $refund_reference      = (string) ($cancel->getPaymentId() ?: $order['transaction_id']);
-                log_activity('Auto-refund SUCCESS via Iyzipay — order #' . $order_id . ' (payment ' . $refund_reference . ').');
-            } else {
-                $refund_status_outcome = 'failed';
-                $err_msg = method_exists($cancel, 'getErrorMessage') ? (string) $cancel->getErrorMessage() : '';
-                log_activity(
-                    'Auto-refund FAILED via Iyzipay — order #' . $order_id .
-                    '. MANUAL REFUND REQUIRED. Gateway message: ' . ($err_msg !== '' ? $err_msg : '(no message)')
-                );
-                $refund_status_outcome = 'manual_required';
-            }
-        } catch (\Throwable $e) {
-            // PHP 7+ — Throwable catches both Exception and Error. Keeps the
-            // cancellation persisted; refund just needs operator follow-up.
-            $refund_status_outcome = 'manual_required';
-            log_activity('Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $e->getMessage());
-        } catch (\Exception $e) {
-            $refund_status_outcome = 'manual_required';
-            log_activity('Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $e->getMessage());
+    if ($cancel_driver !== '') {
+        // The driver is given the orders row as the cancellation left it, so
+        // the reason just typed goes to the service as the description.
+        $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
+        if (!is_array($cancelled_order)) {
+            $cancelled_order = $order;
         }
+        $cancelled_order['cancellation_reason'] = $reason_clean;
+
+        // pg_payment_call() never throws: an exception inside the driver comes
+        // back as a failure, which the outcome logs as an EXCEPTION line.
+        $cancel_outcome = pg_payment_cancel_outcome(
+            $order_id,
+            (string) $order['transaction_id'],
+            pg_payment_call($cancel_driver, 'cancel', array($cancelled_order, (string) $order['transaction_id'])),
+            pg_payment_log_name($cancel_driver)
+        );
+
+        foreach ($cancel_outcome['log'] as $cancel_log_line) {
+            log_activity($cancel_log_line);
+        }
+
+        $refund_status_outcome = $cancel_outcome['refund_status'];
+        $refund_reference      = $cancel_outcome['refund_reference'];
     } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
