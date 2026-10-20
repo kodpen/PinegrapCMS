@@ -276,24 +276,15 @@ function erp_bank_read_spreadsheet($path, $extension)
         // importer, because a date cell is known by its format alone; a
         // statement is small enough for it.
         if ($extension === 'ods') {
-            // The OpenDocument reader takes any file for a zip and fails on
-            // the first missing part with warnings; a file that is not one is
-            // turned away here, as a broken .xlsx is above.
-            if (!class_exists('ZipArchive')) {
-                return $unreadable;
-            }
+            // The OpenDocument reader takes any file for a zip, fails on the
+            // first missing part with warnings and reads its parts whole; a
+            // file that is not one, or whose parts are too large or unpack
+            // past their size, is turned away here, as a broken .xlsx is
+            // above.
+            $refused = pg_products_import_ods_check($path);
 
-            $zip = new ZipArchive();
-
-            if ($zip->open($path) !== true) {
-                return $unreadable;
-            }
-
-            $found = ($zip->locateName('content.xml') !== false) && ($zip->locateName('meta.xml') !== false);
-            $zip->close();
-
-            if (!$found) {
-                return $unreadable;
+            if ($refused !== '') {
+                return array('rows' => array(), 'error' => $refused);
             }
         }
 

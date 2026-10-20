@@ -13269,13 +13269,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // The preview of one file drawn into a box: a spinner while the server
     // reads it, the sheets or the document when it answers, the reason when
     // it cannot.
-    function loadOfficePreview(box, fileId) {
+    //
+    // The file window asks for a workbook's cells or a document's paragraphs
+    // to be offered for editing (editing given); the server answers with what
+    // may be changed, and the view drawn is kept on the window so its Save
+    // sends the changes (saveFileEditor()).
+    function loadOfficePreview(box, fileId, editing) {
 
         if (!box) { return; }
 
         box.innerHTML = '<div class="text-center empty-note"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + esc(L.loading) + '</div>';
 
-        api({ type: 'explorer_office_preview', id: fileId }, function (response) {
+        api({ type: 'explorer_office_preview', id: fileId, edit: editing ? 1 : 0 }, function (response) {
 
             if (!box.isConnected) { return; }
 
@@ -13293,7 +13298,25 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     return;
                 }
 
-                window.pgOfficeView.render(box, response.office, OFFICE_STRINGS);
+                var options = null;
+
+                if (editing) {
+                    options = {
+                        editable: true,
+                        onSave: function () { saveFileEditor(); },
+                        // The unsaved notice steps back when the last change
+                        // is undone, as it does for the fields.
+                        onChange: function () {
+                            if (fileEdit && !fileEditDirty()) { showFileEditUnsaved(false); }
+                        }
+                    };
+                }
+
+                var view = window.pgOfficeView.render(box, response.office, OFFICE_STRINGS, options);
+
+                if (editing && fileEdit && fileEdit.file && (fileEdit.file.id === fileId)) {
+                    fileEdit.office = view;
+                }
             });
         });
     }
@@ -13584,12 +13607,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         disposeFileEditor();
 
-        fileEdit = { item: item, file: file, kind: kind, editor: null, host: null, baseline: null };
+        fileEdit = { item: item, file: file, kind: kind, editor: null, host: null, baseline: null, office: null };
 
         document.getElementById('file_edit_preview').innerHTML = filePreviewHtml(file, kind);
 
+        // A workbook's cells and a document's paragraphs may be changed in
+        // the window; the server decides which, and for whom.
         if ((kind === 'office') && file.on_disk) {
-            loadOfficePreview(document.getElementById('file_edit_office'), file.id);
+            loadOfficePreview(document.getElementById('file_edit_office'), file.id, true);
         }
 
         var editorWrap = document.getElementById('file_edit_editor_wrap');
@@ -13706,7 +13731,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             folder: document.getElementById('file_edit_folder').value,
             description: document.getElementById('file_edit_description').value,
             design: document.getElementById('file_edit_design').checked,
-            content: fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value
+            content: fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value,
+            office: (fileEdit.office && fileEdit.office.count()) ? fileEdit.office.edits() : []
         });
     }
 
@@ -13752,6 +13778,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             payload.content = fileEdit.editor ? fileEdit.editor.getValue() : document.getElementById('file_edit_code').value;
         }
 
+        // The cells changed in a workbook, or the paragraphs in a document,
+        // with the version that was opened: the server writes them only into
+        // that version.
+        if (fileEdit.office && fileEdit.office.count()) {
+            payload[(fileEdit.office.kind === 'docx') ? 'paragraphs' : 'cells'] = fileEdit.office.edits();
+            payload.office_version = fileEdit.office.version;
+        }
+
         error.classList.add('d-none');
         button.disabled = true;
 
@@ -13762,6 +13796,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (response.status !== 'success') {
                 error.textContent = response.message || L.request_failed;
                 error.classList.remove('d-none');
+
+                // Under a sheet or the code editor the message sits below the
+                // fold of the window's body; it is brought up where it is read.
+                if (error.scrollIntoView) { error.scrollIntoView({ block: 'nearest' }); }
                 return;
             }
 

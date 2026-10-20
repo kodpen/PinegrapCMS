@@ -484,7 +484,13 @@ if (!$_POST) {
 
         foreach ($config_keys as $key) {
             $field = strtolower($key);
-            $value = isset($_POST[$field]) ? trim(str_replace("'", '', $_POST[$field])) : '';
+
+            // Saved as typed: update_config_define() escapes quotes and
+            // backslashes, so a password with a quote in it still works. A
+            // text box never sends a control character; one in a forged
+            // request would put a line break inside the define, where the
+            // next save could no longer find it.
+            $value = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $_POST[$field])) : '';
 
             // A connected account is named by its number, and only one that
             // was connected for sending e-mail can be chosen.
@@ -504,7 +510,7 @@ if (!$_POST) {
                 if (preg_match("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", $config_file_content)) {
                     $config_file_content = preg_replace("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", "define('$key', $value);", $config_file_content);
                 } else {
-                    $config_file_content = str_replace('?>', "define('$key', $value);\r\n?>", $config_file_content);
+                    $config_file_content = pg_config_insert_line($config_file_content, "define('$key', $value);");
                 }
 
                 continue;
@@ -528,14 +534,18 @@ if (!$_POST) {
             }
         }
 
-        $handle = fopen(CONFIG_FILE_PATH, 'w');
-        if ($handle) {
-            fwrite($handle, $config_file_content);
-            fclose($handle);
+        // Written only from a successful read: an empty result would replace
+        // config.php with an empty file and take the site down. The write
+        // goes through a temp file and a rename, so a failure leaves the old
+        // file as it was.
+        if (trim($config_file_content) === '') {
+            $liveform_settings->add_error(lang('Config file could not be opened.'));
+        } elseif (!pg_write_config_file($config_file_content)) {
+            $liveform_settings->add_error(lang('The config file could not be written.'));
+        } else {
+            log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
+            $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
         }
-
-        log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
-        $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
 
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');
         exit;

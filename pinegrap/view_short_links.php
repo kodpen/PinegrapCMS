@@ -55,6 +55,37 @@ require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 
 $sql_live = (pg_short_link_live_filter() != '') ? ' AND ' . pg_short_link_live_filter() : '';
 
+// The named links as a CSV file (from,to,code), the form import_short_links.php
+// reads back. A one-time link has no name to list.
+if (($_GET['export'] ?? '') === 'csv') {
+    $export_links = db_items(
+        "SELECT
+            short_links.name,
+            short_links.destination_type,
+            short_links.url,
+            short_links.tracking_code,
+            " . (pg_short_link_redirects_ready() ? "short_links.redirect_code," : "") . "
+            page.page_name,
+            product_groups.address_name AS product_group_address_name,
+            products.address_name AS product_address_name,
+            files.name AS file_name
+        FROM short_links
+        LEFT JOIN page ON short_links.page_id = page.page_id
+        LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
+        LEFT JOIN products ON short_links.product_id = products.id
+        LEFT JOIN files ON short_links.file_id = files.id
+        WHERE short_links.name <> '' AND short_links.destination_type <> 'workspace_guest'" . $sql_live . "
+        ORDER BY short_links.name");
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="short-links-' . date('Y-m-d') . '.csv"');
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store, private');
+
+    echo pg_short_link_csv($export_links, PATH);
+    exit();
+}
+
 // get the total number of short links
 $query = "SELECT COUNT(*) FROM short_links WHERE destination_type <> 'workspace_guest'" . $sql_live;
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -70,10 +101,12 @@ $query =
         short_links.name,
         short_links.destination_type,
         " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at," : "") . "
+        " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
         page.page_name,
         page.page_folder AS folder_id,
         product_groups.address_name AS product_group_address_name,
         products.address_name AS product_address_name,
+        files.name AS file_name,
         short_links.tracking_code,
         short_links.url,
         created_user.user_username AS created_username,
@@ -84,6 +117,7 @@ $query =
     LEFT JOIN page ON short_links.page_id = page.page_id
     LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
     LEFT JOIN products ON short_links.product_id = products.id
+    LEFT JOIN files ON short_links.file_id = files.id
     LEFT JOIN user AS created_user ON short_links.created_user_id = created_user.user_id
     LEFT JOIN user AS last_modified_user ON short_links.last_modified_user_id = last_modified_user.user_id
     WHERE short_links.destination_type <> 'workspace_guest'" . $sql_live . "
@@ -129,6 +163,14 @@ if ($short_links) {
                 $output_destination = h($short_link['url']);
 
                 break;
+
+            // A link to a file had neither cell filled.
+            case 'file':
+                $output_destination_type = lang('File');
+
+                $output_destination = h(encode_url_path($short_link['file_name']));
+
+                break;
         }
 
         // If there is a tracking code and the destination type is a certain type,
@@ -164,6 +206,19 @@ if ($short_links) {
         $short_link_state = pg_short_link_state($short_link);
         $output_name = $short_link_token ? h((string) ($short_link['token_hint'] ?? '')) . '…' : h($short_link['name']);
 
+        // A link that redirects, and a name with a * that stands for many
+        // addresses (and so has none to visit).
+        $short_link_pattern = !empty($short_link['is_pattern']);
+        $short_link_answer = pg_short_link_answer_label(pg_short_link_status($short_link));
+
+        if ($short_link_answer !== '') {
+            $output_name .= ' <span class="badge rounded-pill text-bg-light border">' . h($short_link_answer) . '</span>';
+        }
+
+        if ($short_link_pattern) {
+            $output_name .= ' <span class="badge rounded-pill text-bg-light border">' . h(lang('Wildcard')) . '</span>';
+        }
+
         if ($short_link_state['label'] !== '') {
             $output_name .= '<div class="small text-body-secondary">' . h($short_link_state['label']) . '</div>';
         }
@@ -172,7 +227,7 @@ if ($short_links) {
             '<tr>
                 <td class="align-middle text-start action-buttons">
                     <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_short_link.php?id=' . $short_link['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    ' . ($short_link_token ? '' : '<a href="' . OUTPUT_PATH . h($short_link['name']) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
+                    ' . (($short_link_token || $short_link_pattern) ? '' : '<a href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Visit') . '" ><i class="bi bi-link"></i></a>') . '
                 </td>
                 <td class="align-middle chart_label">' . $output_name . '</td>
                 <td class="align-middle">' . $output_destination_type . '</td>
@@ -207,6 +262,8 @@ pg_page_shell(
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <a class="btn btn-sm btn-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        ' . (pg_short_link_redirects_ready() ? '<a class="btn btn-sm btn-ghost" href="import_short_links.php"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Import') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-ghost" href="view_short_links.php?export=csv"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Export') . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>

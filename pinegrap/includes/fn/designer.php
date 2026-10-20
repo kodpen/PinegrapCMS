@@ -3064,6 +3064,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         ? "noindex = '$noindex', nofollow = '$nofollow',"
         : '';
 
+    // Whether this save changed the page: a new page did, an existing one
+    // unless its row comes back as stored (decided below).
+    $changed = true;
+
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
         $own = array(
@@ -3105,6 +3109,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             if (!$carried) break;
             if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
         }
+        $changed = !$carried;
         $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
                 $touch_set
@@ -3156,6 +3161,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // Every save that changed the page is kept as a revision
+    // (includes/fn/page_revisions.php); one carried unchanged records nothing.
+    // The caller may name where the tree came from (the importer, the AI
+    // editor, a restore); a save from the editor or the API is a publish.
+    if ($changed && $multi_ready && $page_id > 0 && function_exists('pg_page_revision_record')) {
+        pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
+            isset($page['revision_source']) ? (string)$page['revision_source'] : 'publish');
     }
 
     // The folder a draft returns to, kept while it is a draft. The time and
@@ -5668,31 +5682,10 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
     if (is_array($page_names_in_menu_sequence) == false) {
         $page_names_in_menu_sequence = array();
     }
-    $menu_items = array();
-    // get menu items
-    $query = "SELECT 
-
-            menu_items.id,
-
-            menu_items.name,
-
-            page.page_name as link_page_name
-
-        FROM menu_items
-
-        LEFT JOIN page ON page.page_id = menu_items.link_page_id
-
-        WHERE 
-
-           (menu_items.parent_id = '" . escape($parent_id) . "') 
-
-           AND (menu_items.menu_id = '" . escape($menu_id) . "') 
-
-        ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) {
-        $menu_items[] = $row;
-    }
+    // This level's items, from the menu read once for the request
+    // (pg_menu_tree(), includes/fn/content.php).
+    $menu_tree = pg_menu_tree($menu_id);
+    $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     // loop through all menu items in order to get child menu items, and add to the array
     foreach ($menu_items as $menu_item) {
         // if this item has a link page name, and if it does not link to a page that is already in the sequence, then add menu item to array
@@ -5705,12 +5698,8 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
                 'link_page_name' => $menu_item['link_page_name']
             );
         }
-        // find out if sub menu exists
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-        $row = mysqli_fetch_row($result);
         // if sub menu exists, then add sub menu content to the array
-        if ($row[0] > 0) {
+        if (!empty($menu_tree['counts'][(int) $menu_item['id']])) {
             $menu_sequence = get_menu_sequence($menu_id, $menu_item['id'], $menu_sequence);
         }
     }
@@ -7518,6 +7507,8 @@ function pg_design_template_install($template_id, $user, $opts = array())
     $tab_ids = array();
     $id_map  = array();
     foreach ($pages as $p) {
+        // A page built from a template is an import for the revision history.
+        $p['revision_source'] = 'import';
         $r = pg_designer_save_page($style_id, $p, $user, false);
         if (empty($r['ok']) || (int)$r['page_id'] <= 0) {
             $undo();

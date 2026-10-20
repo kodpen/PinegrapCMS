@@ -400,8 +400,14 @@ $short_link_select =
     LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
     LEFT JOIN products ON short_links.product_id = products.id";
 
+// IIS hands PHP a path it decoded and re-encoded in the server's ANSI code
+// page (docs/memory/ui/ascii-names-in-urls-iis.md), so a name with a Turkish
+// letter arrives as bytes that are not UTF-8. Short link names may be old
+// addresses with such letters, so they are looked up in UTF-8.
+$short_link_name = router_utf8_name($item_name);
+
 $query = $short_link_select . "
-    WHERE short_links.name = '" . router_escape($item_name) . "'";
+    WHERE short_links.name = '" . router_escape($short_link_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
 
 // Before that step there is no token_hash to look in and the query fails:
@@ -423,12 +429,25 @@ if ($short_link && !empty($short_link['recycled'])) {
     $short_link = null;
 }
 
+// A name with a * in it (2026.11.0, 11.0.12) stands for many addresses and is
+// never one of them: it is tried only once no page answers (get_page.php,
+// pg_short_link_not_found()).
+if ($short_link && !empty($short_link['is_pattern'])) {
+    $short_link = null;
+}
+
 // If short link was found, then process it.
 if ($short_link) {
 
     // Opened once, until a time, or a guest's way into the workspace: here it
     // is decided whether this visit goes on to where the link leads.
     router_short_link_gate($short_link, $item_name);
+
+    // A link that sends visitors on (2026.11.0, 11.0.12) answers with the
+    // destination's own address instead of showing it here.
+    if (in_array((int) ($short_link['redirect_code'] ?? 0), array(301, 302), true)) {
+        router_short_link_redirect($short_link);
+    }
 
     // Prepare destination differently based on the destination type.
     switch ($short_link['destination_type']) {
@@ -541,12 +560,89 @@ if ($short_link) {
 // If we have gotten here, then that means the item is not a file, short link, or other item,
 // so just assume it is page so run get page script.  If a page does not exist
 // for the item name, then the get page script will deal with that.
+// A short link with a * in its name may still stand for this address: it is
+// asked where get_page.php is about to answer 404, with the name looked up
+// here (includes/fn/short_link_redirects.php), so a page always wins over it.
+define('PG_SHORT_LINK_PATH', $short_link_name);
 $_GET['page'] = $item_name;
 require(dirname(__FILE__) . '/get_page.php');
 exit();
 
 function router_escape($string) {
     return mysqli_real_escape_string(db::$con, $string);
+}
+
+/**
+ * A path segment in UTF-8: as it came when it is UTF-8, else read from the
+ * Turkish Windows code page that IIS re-encodes it in (ISO-8859-9 where
+ * mbstring does not know Windows-1254; the two differ only in 0x80-0x9F).
+ *
+ * @param string $name
+ * @return string
+ */
+function router_utf8_name($name)
+{
+    $name = (string) $name;
+
+    if (($name === '') || mb_check_encoding($name, 'UTF-8')) {
+        return $name;
+    }
+
+    $from = in_array('windows-1254', array_map('strtolower', mb_list_encodings()), true) ? 'Windows-1254' : 'ISO-8859-9';
+
+    return (string) mb_convert_encoding($name, 'UTF-8', $from);
+}
+
+/**
+ * Sends the visitor of a short link that answers with a redirect to the
+ * destination's own address, with the link's status (pg_short_link_status():
+ * 301 or 302, 302 for a link that closes) and the visitor's query string. The
+ * address is written by pg_short_link_location()
+ * (includes/fn/short_link_redirects.php), loaded here on its own: the module
+ * runs no query and needs nothing of functions.php for this. A destination
+ * that is gone (a deleted page or file) is left to the answer the link always
+ * gave.
+ *
+ * @param array $short_link The row with page_name and the catalog address names
+ * @return void
+ */
+function router_short_link_redirect($short_link)
+{
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+    }
+
+    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
+
+    $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
+    $config = mysqli_fetch_assoc($result);
+
+    if ((string) $short_link['destination_type'] === 'file') {
+        $file = mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . (int) $short_link['file_id'] . "'");
+        $file_row = $file ? mysqli_fetch_assoc($file) : null;
+        $short_link['file_name'] = is_array($file_row) ? (string) $file_row['name'] : '';
+    }
+
+    $request = (string) REQUEST_URL;
+    $request = substr($request, 0, strcspn($request, '#'));
+    $mark = strpos($request, '?');
+
+    $location = pg_short_link_location(
+        $short_link,
+        array(),
+        ($mark === false) ? '' : (string) substr($request, $mark + 1),
+        $config['url_scheme'] . $config['hostname'],
+        PATH,
+        defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH);
+
+    $code = pg_short_link_status($short_link);
+
+    if (($location === '') || ($code === 0)) {
+        return;
+    }
+
+    header('Location: ' . $location, true, $code);
+    exit();
 }
 
 /**

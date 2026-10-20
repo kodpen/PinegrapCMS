@@ -3494,6 +3494,7 @@ function pg_design_ai_write_page($user, $page, $tree)
     }
 
     $fields['tree_json'] = pg_designer_tree_encode($tree);
+    $fields['revision_source'] = 'ai';
     $saved = pg_designer_save_page($page['style_id'], $fields, $user);
 
     if (!$saved['ok']) {

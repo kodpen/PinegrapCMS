@@ -19,6 +19,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.
 - designer-canvas-links.md: Canvas links never navigate in the designer, including #fragment, because of the <base> tag; Bootstrap-bound links; why the editor opens dropdowns itself.
 - designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, .sd-loop-area width, two wrapper models, shared component cycle guard.
+- designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
 - designer-code-view-model.md: The designer's code view: range map from one emitter, the document and its lock levels, head/foot rows shared with the HTML tree, what lives in the facade and what in the designer
 - designer-collab-locking.md: Two people in the visual designer: designer_presence / designer_page_lock tables, atomic lock claim, staleness, same-user takeover, and why the lock is enforced on the save path.
@@ -61,6 +62,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, tab switching/menu/rename DOM rules, toolbar overflow, palette order and translation of designer texts.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
+- page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when pg_designer_save_page() writes one and when not, the source labels, the two retention rules and the daily sweep in job.php
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.

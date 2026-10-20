@@ -33,7 +33,11 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_maintenance_mode();       // 11.0.7
 	upgrade_2026_11_0_shared_component_content(); // 11.0.8
 	upgrade_2026_11_0_image_delivery();         // 11.0.9
+	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
+	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
+	upgrade_2026_11_0_page_revisions();         // 11.0.15
 	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 
 }
@@ -319,6 +323,52 @@ function upgrade_2026_11_0_image_delivery() {
 
 }
 
+// The queue of outgoing text messages (2026.11.0, 11.0.10; pg_sms_enqueue()
+// and pg_sms_queue_run() in includes/fn/sms.php, the SMS tab of the mail
+// queue screen).
+//
+// A request that wants an SMS writes a row here and the general job sends it,
+// so no visitor waits on the provider. A row is sent again only when the
+// provider's answer shows it never took the message (the driver's retry);
+// after a timeout, a 5xx or a run that stopped halfway the provider may have
+// it, the row becomes 'uncertain' and is not sent again by itself, since a
+// text message sent twice cannot be taken back. status is a VARCHAR rather
+// than an ENUM so a state added later (a delivery report) needs no step.
+// expires_at (0: none) is the time after which a message is no longer worth
+// sending, a sign-in code above all. reference names what a message is about
+// ('order:438:received'); it is unique, so a writer that runs twice queues
+// one message, and NULL for a message about nothing in particular.
+// provider and provider_id say who took the message and under which id, for
+// a delivery report or a question to the provider. InnoDB, so the claim
+// (UPDATE ... WHERE status = 'queued') is a row lock.
+function upgrade_2026_11_0_sms_outbox() {
+
+	install_create_table('sms_outbox', "CREATE TABLE sms_outbox (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		send_after   INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		status       VARCHAR(16) NOT NULL DEFAULT 'queued',
+		attempts     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		last_error   VARCHAR(500) NOT NULL DEFAULT '',
+		claimed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind         VARCHAR(16) NOT NULL DEFAULT '',
+		recipient    VARCHAR(16) NOT NULL DEFAULT '',
+		body         TEXT NOT NULL,
+		reference    VARCHAR(64) NULL DEFAULT NULL,
+		provider     VARCHAR(32) NOT NULL DEFAULT '',
+		provider_id  VARCHAR(64) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_reference (reference),
+		KEY idx_due (status, send_after),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS: outgoing text messages wait in a queue that the scheduled general job sends, so no visitor waits on the SMS provider. The queue is on the SMS tab of the mail queue, under Settings, Jobs.');
+
+}
+
 // The shipment row (2026.11.0, 11.0.20; docs/memory/commerce/shipment-row-schema.md).
 //
 // shipping_tracking_numbers held one thing per parcel: its number. Which
@@ -430,6 +480,145 @@ function upgrade_2026_11_0_shipments() {
 	}
 
 	install_note('Shipping: each tracking number now keeps its carrier, status, dates and where it was recorded, a number is recorded once per address, a shipping method can name its carrier, and automatic e-mails gain the "order delivered" action.');
+
+}
+
+
+// Customer returns (2026.11.0, 11.0.11; includes/fn/returns.php).
+//
+// order_returns is one request to send back goods of a completed order: the
+// lines of one delivery (ship_to_id), why (reason, a code of
+// pg_return_reasons(), and the customer's own words), and where it stands.
+// status is a VARCHAR checked in code rather than an ENUM, so a status added
+// later needs no step and an older server never turns one into ''. Each status
+// reached has its own time, because the deadlines are read from them: the
+// refund is due 14 days after the goods reached the carrier (shipped_at), or
+// after they arrived (received_at). decision_note is what staff wrote when
+// approving or rejecting, for the customer; carrier and carrier_code say which
+// carrier the goods go back with and the code the customer gives it, and
+// tracking_number is the parcel's. source says who asked (customer, panel,
+// api) and requested_by / decided_by which person.
+//
+// order_return_items lists how many of each order line go back; one row per
+// line and return (uq_return_item). What a line still has to give is its
+// quantity less what the open returns hold, worked out from these rows.
+//
+// Both InnoDB: a request is written in one transaction, so a return without
+// its lines is never left behind.
+function upgrade_2026_11_0_order_returns() {
+
+	install_create_table('order_returns', "CREATE TABLE order_returns (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		status           VARCHAR(16) NOT NULL DEFAULT 'requested',
+		reason           VARCHAR(32) NOT NULL DEFAULT '',
+		customer_note    TEXT NULL,
+		decision_note    TEXT NULL,
+		carrier          VARCHAR(32) NOT NULL DEFAULT '',
+		carrier_code     VARCHAR(64) NOT NULL DEFAULT '',
+		tracking_number  VARCHAR(100) NOT NULL DEFAULT '',
+		source           VARCHAR(16) NOT NULL DEFAULT '',
+		requested_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		requested_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		decided_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		shipped_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		received_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		refunded_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (order_id),
+		KEY idx_status (status, requested_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_return_items', "CREATE TABLE order_return_items (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		return_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_return_item (return_id, order_item_id),
+		KEY idx_order_item (order_item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
+
+}
+
+// Short links as redirects (router.php, includes/fn/short_link_redirects.php).
+//
+// redirect_code says how a link answers: 0 as before (a page, product group,
+// product or file is shown at the short address; an address off the site is
+// sent on with 301 when the link is permanent, 302 otherwise), 301 or 302 to
+// send the visitor to the destination's own address with that status, the
+// way an old address of a moved page should answer. is_pattern marks a name
+// with a * in it ("blog/*"): such a link is tried only when no page answers
+// the address, so it can never hide a live page, and its target may reuse
+// what each * matched as $1, $2. idx_pattern serves that lookup.
+//
+// The name was a 100-character slug and the address 255 characters; an old
+// address brought over from another site needs more of both. name stops at
+// 191 so its index stays within 767 bytes in utf8mb4 (InnoDB without large
+// prefixes, MyISAM's 1000-byte key). A column already that wide is left as it
+// is, so a second run changes nothing.
+function upgrade_2026_11_0_short_link_redirects() {
+
+	install_add_column('short_links', 'redirect_code', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('short_links', 'is_pattern', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_index('short_links', 'idx_pattern', "INDEX idx_pattern (is_pattern)");
+
+	$widen = function ($column, $width, $definition) {
+
+		$info = install_column_info('short_links', $column);
+
+		if (is_array($info) && preg_match('/^varchar\((\d+)\)/i', (string) $info['Type'], $type) && ((int) $type[1] < $width)) {
+			install_modify_column('short_links', $column, $definition);
+		} else {
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'short_links.' . $column . ' ' . $width)));
+		}
+	};
+
+	$widen('name', 191, "VARCHAR(191) NOT NULL DEFAULT ''");
+	$widen('url', 2048, "VARCHAR(2048) NOT NULL DEFAULT ''");
+
+	install_note('Short links: a short link can now send visitors on to its destination with a permanent (301) or temporary (302) redirect, its name can be an old address with Turkish letters, and a * in a name stands for any part of an address that no page answers.');
+
+}
+
+// Page revisions (includes/fn/page_revisions.php).
+//
+// page_revisions keeps one row for every publish of a visual-designer page:
+// the tree as saved, the SHA-1 of the tree and of the HTML drawn from it, the
+// page's settings as JSON, who published, when and from where (publish,
+// restore, import, ai). revision_no counts up per page; the unique key is what
+// makes two saves of one page at the same moment take different numbers. The
+// two config columns are the retention rules: the last N revisions of a page
+// are kept, and so is every revision younger than D days.
+function upgrade_2026_11_0_page_revisions() {
+
+	install_create_table('page_revisions', "CREATE TABLE page_revisions (
+		revision_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		revision_no    INT UNSIGNED NOT NULL DEFAULT 0,
+		page_tree_json LONGTEXT NOT NULL,
+		tree_hash      CHAR(40) NOT NULL DEFAULT '',
+		tree_code_hash CHAR(40) NOT NULL DEFAULT '',
+		settings_json  TEXT NOT NULL,
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		source         VARCHAR(16) NOT NULL DEFAULT 'publish',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (revision_id),
+		UNIQUE KEY idx_page_revision (page_id, revision_no),
+		KEY idx_page_created (page_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'page_revisions_keep', "SMALLINT UNSIGNED NOT NULL DEFAULT 30");
+
+	install_add_column('config', 'page_revisions_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
+
+	install_note('Pages: every publish of a visual-designer page is kept as a revision, with who published it and when; the last 30 revisions of a page and every revision of the last 90 days are kept.');
 
 }
 
