@@ -7,6 +7,7 @@ Visitor statistics, page and article views, search engine index flags.
 - action-links-rel-nofollow.md: Every action link (login, register, reset, subscribe, remove from cart) must carry rel="nofollow"; crawl-budget reason and server-stamped rel.
 - ai-crawlers-llms-txt.md: AI section of robots.txt (Content-Signal, Disallow groups in step with the WAF switches) and llms.txt: settings, where each line goes, which pages llms.txt lists (2026.11.0, 11.0.21, #739).
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
+- page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; pg_seo_output_is_document() gate and the robots splice risk.

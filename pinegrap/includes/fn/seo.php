@@ -939,6 +939,35 @@ function pg_page_custom_jsonld_ready($recheck = false)
 }
 
 /**
+ * True when the page table carries the canonical address and the two robots
+ * directives (page.canonical_url, page.noarchive, page.max_snippet; 2026.11.0,
+ * 11.0.22). All three are probed by name: the step adds them together, and a
+ * database that has only some of them shows no field and writes none.
+ */
+function pg_page_seo_extras_ready($recheck = false)
+{
+    static $cached = null;
+
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(
+        db::$con,
+        "SHOW COLUMNS FROM page WHERE Field IN ('canonical_url', 'noarchive', 'max_snippet')");
+
+    $cached = ($result && @mysqli_num_rows($result) == 3);
+
+    return $cached;
+}
+
+/**
  * The og:locale value for the site's interface language.
  */
 function pg_og_locale()
@@ -1600,6 +1629,227 @@ function pg_page_custom_jsonld_message($error, $page_name)
         default:
             return lang(array('string' => 'The structured data of {var:1} is not valid JSON.', 'vars' => array($page_name)));
     }
+}
+
+/**
+ * Check a page's own canonical address before it is stored (page.canonical_url).
+ *
+ * Two forms are kept, trimmed, as typed: a full http or https address (on
+ * this site or another one, for a page first published elsewhere), or a path
+ * on this site starting with a single "/", which keeps pointing at this site
+ * after a change of host name. Anything a search engine could read as a
+ * relative or scheme-less address is refused, and so are white space, control
+ * characters and the characters no address carries unescaped.
+ *
+ * Returns array('ok' => bool, 'value' => string, 'error' => '' | 'size' |
+ * 'chars' | 'scheme').
+ */
+function pg_page_canonical_url_check($raw)
+{
+    $raw = trim((string) $raw);
+
+    if ($raw === '') {
+        return array('ok' => true, 'value' => '', 'error' => '');
+    }
+
+    $refuse = function ($error) {
+        return array('ok' => false, 'value' => '', 'error' => $error);
+    };
+
+    if (strlen($raw) > 2000) {
+        return $refuse('size');
+    }
+
+    if (preg_match('~[\x00-\x20\x7F"<>\\\\]~', $raw)) {
+        return $refuse('chars');
+    }
+
+    if ($raw[0] === '/') {
+        // "//host/path" is an address on another host without a scheme.
+        if ((strlen($raw) > 1) && ($raw[1] === '/')) {
+            return $refuse('scheme');
+        }
+
+        return array('ok' => true, 'value' => $raw, 'error' => '');
+    }
+
+    if (!preg_match('~^https?://~i', $raw)) {
+        return $refuse('scheme');
+    }
+
+    $host = parse_url($raw, PHP_URL_HOST);
+
+    if (!is_string($host) || ($host === '')) {
+        return $refuse('scheme');
+    }
+
+    return array('ok' => true, 'value' => $raw, 'error' => '');
+}
+
+/**
+ * The sentence for a refused canonical address (pg_page_canonical_url_check()),
+ * naming the page: one save of the visual designer covers every page of a
+ * design.
+ */
+function pg_page_canonical_url_message($error, $page_name)
+{
+    $page_name = ((string) $page_name !== '') ? (string) $page_name : lang('New Page');
+
+    switch ($error) {
+        case 'size':
+            return lang(array('string' => 'The canonical address of {var:1} is too long; it can be at most 2000 characters.', 'vars' => array($page_name)));
+        case 'chars':
+            return lang(array('string' => 'The canonical address of {var:1} cannot contain spaces, quotation marks or angle brackets.', 'vars' => array($page_name)));
+        default:
+            return lang(array('string' => 'The canonical address of {var:1} must be a full address starting with http:// or https://, or a path on this site starting with /.', 'vars' => array($page_name)));
+    }
+}
+
+/**
+ * The longest text snippet, in characters, a page may ask for with
+ * max-snippet. Search engines show far less; a larger number would only be
+ * a roundabout way of writing -1.
+ */
+function pg_page_max_snippet_limit()
+{
+    return 10000;
+}
+
+/**
+ * Check a page's max-snippet value before it is stored (page.max_snippet).
+ *
+ * Empty means no directive (null): the search engine decides. Otherwise a
+ * whole number: -1 for no limit, 0 for no text snippet, or the most
+ * characters to show, up to pg_page_max_snippet_limit(). A stored number
+ * read back as a string passes the same way.
+ *
+ * Returns array('ok' => bool, 'value' => int|null, 'error' => '' | 'number').
+ */
+function pg_page_max_snippet_check($raw)
+{
+    if (is_int($raw)) {
+        $raw = (string) $raw;
+    }
+
+    $raw = is_string($raw) ? trim($raw) : (($raw === null) ? '' : false);
+
+    if ($raw === '') {
+        return array('ok' => true, 'value' => null, 'error' => '');
+    }
+
+    if (($raw === false) || !preg_match('~^(-1|0|[1-9][0-9]{0,4})$~', $raw) || ((int) $raw > pg_page_max_snippet_limit())) {
+        return array('ok' => false, 'value' => null, 'error' => 'number');
+    }
+
+    return array('ok' => true, 'value' => (int) $raw, 'error' => '');
+}
+
+/**
+ * The sentence for a refused max-snippet value, naming the page.
+ */
+function pg_page_max_snippet_message($page_name)
+{
+    $page_name = ((string) $page_name !== '') ? (string) $page_name : lang('New Page');
+
+    return lang(array('string' => 'The snippet length of {var:1} must be a whole number: -1 for no limit, 0 for no text snippet, or at most {var:2} characters.', 'vars' => array($page_name, pg_page_max_snippet_limit())));
+}
+
+/**
+ * The address a page's head names as canonical in place of the automatic
+ * one, from the stored page.canonical_url: a path on this site is put after
+ * $base (scheme and host, URL_SCHEME . HOSTNAME_SETTING), and letters outside
+ * ASCII after the host are percent-encoded, the form the automatic address
+ * has. '' when the page names none, or when what is stored no longer passes
+ * pg_page_canonical_url_check() (written outside the software): the page
+ * then keeps the automatic address rather than naming a broken one.
+ *
+ * @param string|null $stored
+ * @param string      $base
+ * @return string unescaped; the caller escapes it for HTML
+ */
+function pg_page_canonical_href($stored, $base)
+{
+    $check = pg_page_canonical_url_check($stored);
+
+    if (!$check['ok'] || ($check['value'] === '')) {
+        return '';
+    }
+
+    $value = $check['value'];
+
+    if ($value[0] === '/') {
+        $host_part = rtrim((string) $base, '/');
+        $rest = $value;
+    } else {
+        // Scheme and host are left as typed: an internationalised host name
+        // is not percent-encoded.
+        preg_match('~^(https?://[^/?#]*)(.*)$~is', $value, $parts);
+        $host_part = $parts[1];
+        $rest = $parts[2];
+    }
+
+    $rest = preg_replace_callback('~[\x80-\xFF]+~', function ($match) {
+        return rawurlencode($match[0]);
+    }, $rest);
+
+    return $host_part . $rest;
+}
+
+/**
+ * The content of a page's robots meta tag, '' for none.
+ *
+ * A page closed to search engines says only that (noindex, with follow or
+ * nofollow): the other directives describe how an indexed page is shown,
+ * and a page out of the index shows nothing. Otherwise noarchive and
+ * max-snippet are written when the page asks for them; nofollow alone is
+ * never written (page-noindex-switch).
+ *
+ * @param bool            $noindex
+ * @param bool            $nofollow
+ * @param bool            $noarchive
+ * @param int|string|null $max_snippet as stored: null or '' for none
+ * @return string
+ */
+function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet)
+{
+    if ($noindex) {
+        return 'noindex, ' . ($nofollow ? 'nofollow' : 'follow');
+    }
+
+    $directives = array();
+
+    if ($noarchive) {
+        $directives[] = 'noarchive';
+    }
+
+    $snippet = pg_page_max_snippet_check($max_snippet);
+
+    if ($snippet['ok'] && ($snippet['value'] !== null)) {
+        $directives[] = 'max-snippet:' . $snippet['value'];
+    }
+
+    return implode(', ', $directives);
+}
+
+/**
+ * The page's own address, kept while its head names another address as
+ * canonical (page.canonical_url): get_page_content() sets it for the page it
+ * draws, '' when the canonical link is the page's own. The language pass
+ * (pg_tr_render_finalize()) reads the canonical link to find the page it
+ * draws, for its alternates and its index verdict, and asks here first.
+ *
+ * @param string|null $address the address to keep; null only reads it
+ * @return string
+ */
+function pg_page_own_url($address = null)
+{
+    static $own = '';
+
+    if ($address !== null) {
+        $own = (string) $address;
+    }
+
+    return $own;
 }
 
 /**

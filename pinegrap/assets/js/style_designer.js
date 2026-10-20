@@ -43178,6 +43178,10 @@ const StyleDesigner = (function () {
         phpModal.addEventListener('shown.bs.tab', _sdSettingsCodeFields);
         var jsonld = document.getElementById('pg_page_custom_jsonld');
         if (jsonld) jsonld.addEventListener('input', _sdJsonLdStatus);
+        ['pg_page_canonical_url', 'pg_page_max_snippet'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', _sdSeoExtrasStatus);
+        });
 
         // ── Refresh dynamic values on modal open ──
         phpModal.addEventListener('show.bs.modal', function() {
@@ -43263,6 +43267,7 @@ const StyleDesigner = (function () {
         _sdSettingsAccess();
         _sdSettingsSerp();
         _sdJsonLdStatus();
+        _sdSeoExtrasStatus();
     }
 
     // The design's pages, as the tabs hold them, and its last save.
@@ -43447,6 +43452,56 @@ const StyleDesigner = (function () {
         box.textContent = r ? say[r] : '';
         box.classList.toggle('is-ok', r === 'ok');
         box.classList.toggle('is-bad', !!r && r !== 'ok');
+    }
+
+    // The page's canonical address and snippet length, checked as they are
+    // typed: the mirrors of pg_page_canonical_url_check() and
+    // pg_page_max_snippet_check() (includes/fn/seo.php), which the save
+    // applies. '' for an empty box, 'ok', or the reason.
+    function _sdCanonicalCheck(raw) {
+        var v = String(raw == null ? '' : raw).trim();
+        if (!v) return '';
+        var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(v).length : v.length;
+        if (bytes > 2000) return 'size';
+        if (/[\u0000-\u0020\u007F"<>\\]/.test(v)) return 'chars';
+        if (v.charAt(0) === '/') return (v.charAt(1) === '/') ? 'scheme' : 'ok';
+        var m = /^https?:\/\/([^\/?#]*)/i.exec(v);
+        if (!m) return 'scheme';
+        // The host: what is left of the authority without a user and a port.
+        return m[1].replace(/^[^@]*@/, '').replace(/:[0-9]*$/, '') ? 'ok' : 'scheme';
+    }
+
+    function _sdMaxSnippetCheck(raw, limit) {
+        var v = String(raw == null ? '' : raw).trim();
+        if (!v) return '';
+        return (/^(-1|0|[1-9][0-9]{0,4})$/.test(v) && parseInt(v, 10) <= limit) ? 'ok' : 'number';
+    }
+
+    function _sdSeoExtrasStatus() {
+        var box = document.getElementById('sd-canonical-status');
+        var el = document.getElementById('pg_page_canonical_url');
+        if (box && el) {
+            var r = _sdCanonicalCheck(el.value);
+            var say = {
+                'ok':     _sdT('Search engines are asked to list this address instead of the page.'),
+                'size':   _sdT('Too long: the address can be at most 2000 characters.'),
+                'chars':  _sdT('Spaces, quotation marks and angle brackets cannot be part of the address.'),
+                'scheme': _sdT('Write a full address starting with https://, or a path on this site starting with /.')
+            };
+            box.textContent = r ? say[r] : '';
+            box.classList.toggle('is-ok', r === 'ok');
+            box.classList.toggle('is-bad', !!r && r !== 'ok');
+        }
+        var sbox = document.getElementById('sd-max-snippet-status');
+        var sel = document.getElementById('pg_page_max_snippet');
+        if (sbox && sel) {
+            var limit = parseInt(sel.getAttribute('max'), 10) || 10000;
+            // A number box reads '' for what it cannot parse; the browser's
+            // own check still knows the box is not empty.
+            var bad = (_sdMaxSnippetCheck(sel.value, limit) === 'number') || (sel.validity && sel.validity.badInput);
+            sbox.textContent = bad ? _sdT('Write a whole number: -1 for no limit, 0 for no text snippet, or at most {var} characters.', limit) : '';
+            sbox.classList.toggle('is-bad', !!bad);
+        }
     }
 
     // ── Settings > General: turn this design into a template ──
@@ -50956,10 +51011,11 @@ const StyleDesigner = (function () {
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
-        'page_meta_tags', 'page_custom_jsonld'
+        'page_meta_tags', 'page_custom_jsonld',
+        'page_canonical_url', 'page_noarchive', 'page_max_snippet'
     ];
     var _PG_BOOL_FIELDS = {
-        page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1,
+        page_search: 1, page_sitemap: 1, page_home: 1, page_noindex: 1, page_nofollow: 1, page_draft: 1, page_noarchive: 1,
         pg_comments: 1, pg_comments_allow_new: 1, pg_comments_rating: 1,
         pg_comments_auto_publish: 1, pg_comments_show_date: 1, pg_comments_login: 1
     };
@@ -51606,6 +51662,7 @@ const StyleDesigner = (function () {
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: '', page_folder: folder, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
+            page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
             page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0,
             page_noindex: 0, page_nofollow: 0, page_draft: _pgNewPageDraft(),
             pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -51645,6 +51702,8 @@ const StyleDesigner = (function () {
             page_id: 0, page_name: name,
             page_folder: src.page_folder, page_title: src.page_title, page_meta_description: src.page_meta_description,
             page_meta_tags: src.page_meta_tags || '', page_custom_jsonld: src.page_custom_jsonld || '',
+            page_canonical_url: src.page_canonical_url || '', page_noarchive: src.page_noarchive ? 1 : 0,
+            page_max_snippet: (src.page_max_snippet == null) ? '' : String(src.page_max_snippet),
             page_search: src.page_search, page_search_keywords: src.page_search_keywords,
             page_sitemap: src.page_sitemap, page_home: 0,           // never two home pages
             page_noindex: src.page_noindex, page_nofollow: src.page_nofollow,
@@ -51738,6 +51797,8 @@ const StyleDesigner = (function () {
             page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
             page_folder: sp.page_folder || 0, page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
             page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
+            page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
+            page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: 0,           // never two home pages
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -53450,6 +53511,8 @@ const StyleDesigner = (function () {
             page_id: sp.page_id, page_name: sp.page_name || '', savedName: sp.page_name || '', page_folder: sp.page_folder || 0,
             page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '',
             page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
+            page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
+            page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
             page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -53844,6 +53907,7 @@ const StyleDesigner = (function () {
                     key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
                     page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
+                    page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
                     page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                     page_draft: _pgNewPageDraft(),
                     pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
@@ -54103,6 +54167,7 @@ const StyleDesigner = (function () {
                 key: tabKey,
                 page_id: 0, page_name: sp.page_name || '', page_folder: parseInt(sp.page_folder, 10) || 0,
                 page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
+                page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: '', page_sitemap: sp.page_sitemap ? 1 : 0,
                 page_home: isHome ? 1 : 0, page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: 0,
                 page_draft: isHome ? 0 : _pgNewPageDraft(),
@@ -54683,6 +54748,8 @@ const StyleDesigner = (function () {
                 page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
                 page_meta_description: sp.page_meta_description || '',
                 page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
+                page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
+                page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
                 page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
@@ -54710,6 +54777,7 @@ const StyleDesigner = (function () {
         if (!_pages.length) {
             _pages.push({
                 key: 'new1', page_id: 0, page_name: '', page_folder: 0, page_title: '', page_meta_description: '', page_meta_tags: '', page_custom_jsonld: '',
+                page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
                 page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
                 page_draft: _pgNewPageDraft(),
                 pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
