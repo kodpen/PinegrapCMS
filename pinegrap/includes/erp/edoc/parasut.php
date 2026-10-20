@@ -1490,6 +1490,28 @@ function erp_edoc_parasut_cancel_window_open($attributes, $now)
 }
 
 /**
+ * What a status question says about an invoice that Paraşüt holds with no
+ * e-document. A draft that was never handed to GİB is sent there for the
+ * first time; one that was handed over (a conversion job kept, the kind
+ * decided, the row marked sent) and still has none is sent there again.
+ *
+ * @param array $invoice  The erp_invoices row as the question found it
+ * @return string
+ */
+function erp_edoc_parasut_unconverted_message($invoice)
+{
+    $handed_over = (trim((string) ($invoice['parasut_job_id'] ?? '')) !== '')
+        || ((string) ($invoice['edoc_status'] ?? '') === 'sent')
+        || in_array((string) ($invoice['edoc_kind'] ?? ''), array('einvoice', 'earchive'), true);
+
+    if ($handed_over) {
+        return lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    }
+
+    return lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+}
+
+/**
  * Asks after a converted invoice: the trackable job while it still answers,
  * then the sales invoice and the e-document it became.
  *
@@ -1609,12 +1631,13 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     $document_id = trim((string) ($document_reference['id'] ?? ''));
 
     if (($document_id === '') || !in_array($document_type, array('e_archives', 'e_invoices'), true)) {
-        // Converted and still no e-document: the job ran out before it was
-        // read, or failed without a word. Shown as the provider's draft, so
-        // the hand-over button comes back.
+        // No e-document: a draft not handed to GİB yet, or one whose
+        // conversion job ran out before it was read or failed without a
+        // word. Shown as the provider's draft, so the hand-over button
+        // comes back.
         $out['success'] = true;
         $out['status'] = 'created';
-        $out['message'] = lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+        $out['message'] = erp_edoc_parasut_unconverted_message($invoice);
 
         // What Paraşüt computed for the draft, so it can be looked over
         // before the hand-over without opening Paraşüt.

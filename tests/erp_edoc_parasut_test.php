@@ -406,6 +406,25 @@ function test_erp_edoc_parasut_totals()
 	pg_assert_same(7995, erp_edoc_parasut_totals(array('gross_total' => '79.95', 'net_total' => '95.94'))['before_taxes']);
 }
 
+// A status question on an invoice with no e-document yet: a draft that was
+// never handed to GİB is not told to hand it over "again".
+function test_erp_edoc_parasut_unconverted_message()
+{
+	$draft = erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice(array('edoc_status' => 'created', 'edoc_kind' => 'none', 'parasut_job_id' => '')));
+	pg_assert_contains('waiting as a draft at Paraşüt', $draft, 'never handed over');
+	pg_assert_false(strpos($draft, 'again') !== false, 'a draft is not handed over again');
+
+	$handed_over = array(
+		'marked sent' => array('edoc_status' => 'sent'),
+		'job kept' => array('edoc_status' => 'created', 'parasut_job_id' => '1234'),
+		'kind decided' => array('edoc_status' => 'created', 'edoc_kind' => 'earchive'),
+	);
+
+	foreach ($handed_over as $label => $row) {
+		pg_assert_contains('hand it to GİB again', erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice($row)), $label);
+	}
+}
+
 // An e_invoice_inboxes answer: every mailbox once, and the registered name
 // from the first entry that carries one.
 function test_erp_edoc_parasut_inboxes_read()
