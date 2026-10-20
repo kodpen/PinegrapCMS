@@ -531,6 +531,12 @@ function api_design_times_plan_or_fail($sent, $stored, $draft, $home, $name, $cr
 
 	}
 
+	if (($check['error'] === 'passed') && ($check['field'] === 'unpublish_at')) {
+
+		api_fail_validation(lang('unpublish_at has passed. A new page starts as a draft, off the site, so its time to come off it has to be ahead.'), $check['field']);
+
+	}
+
 	if ($check['error'] === 'passed') {
 
 		api_fail_validation(lang('publish_at has passed. A new page starts as a draft, so its publish time has to be ahead.'), $check['field']);
@@ -1211,13 +1217,6 @@ function api_design_restore_schema() {
 
 }
 
-// The newest revision number of a page, 0 for none.
-function api_design_latest_revision_no($page_id) {
-
-	return (int)api_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '" . (int)$page_id . "'");
-
-}
-
 // Puts a published revision's layout back on the page, as the editor's
 // History panel does when the loaded revision is published again: a new
 // publish, recorded with the source 'restore'. The page's settings, its
@@ -1285,8 +1284,6 @@ function api_design_revisions_restore($params) {
 
 	if ($changed) {
 
-		$before = api_design_latest_revision_no($page['page_id']);
-
 		$saved = api_design_save_as_owner($page['style_id'], $fields, $owner);
 
 		if (!$saved['ok']) {
@@ -1297,9 +1294,7 @@ function api_design_revisions_restore($params) {
 
 		$warnings = $saved['warnings'];
 
-		$after = api_design_latest_revision_no($page['page_id']);
-
-		$revision_no = ($after > $before) ? $after : 0;
+		$revision_no = isset($saved['revision_no']) ? (int)$saved['revision_no'] : 0;
 
 		log_activity(lang(array(
 			'string' => 'Page ({var:1}) was restored to revision {var:2} through the API by the application {var:3} (key {var:4}).',

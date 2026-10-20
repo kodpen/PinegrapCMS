@@ -43,7 +43,7 @@ function pg_dashboard_widget_9($request, $user)
     // The refund columns arrive with the 2026.1.27 upgrade. Without them
     // there is nothing to report and nothing is wrong: an installation that
     // has not been upgraded is not one with unpaid refunds.
-    if (db_value("SHOW COLUMNS FROM orders LIKE 'refund_status'") != '') {
+    if (pg_schema_has('orders', 'refund_status')) {
         $lanes['refund'] = pg_dashboard_ops_refunds();
     }
 
@@ -113,7 +113,7 @@ function pg_dashboard_ops_shipping()
     // Save-for-later lines stay in order_items with the flag set. The column
     // arrived in 2026.1.28, so it is probed for before filtering.
     $sql_saved_for_later = '';
-    if (db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'") != '') {
+    if (pg_schema_has('order_items', 'saved_for_later')) {
         $sql_saved_for_later = " AND (order_items.saved_for_later = 0)";
     }
 

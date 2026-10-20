@@ -13,7 +13,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model, My Account side and panel screens done): iyzico refund and ERP return invoice, reminders, staff-recorded requests, API, the classic order view left
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
-- docker-image.md: Plan (approved 2026-10-19, steps 1-5 built: #565, #621, #689, #737, #797): compose stack, unattended install, README section, GHCR images; owner's panel-update question left
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
@@ -35,6 +34,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
+- security-findings-2026-10-api.md: Security findings of the 2026-10-20 external API scan: the forms endpoints skip the folder rule for role 3, page and folder moves between private folders pass the widening check; one PR each
 - security-findings-2026-10.md: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-19 fixed, what still waits (eval re-ordering, form renderers, CVV, gateway secrets), owner questions; item 8 done (#713)
 - seo-toolkit-redirects.md: Plan (approved 2026-10-19, in progress: steps 1-3, 6 and 7 done; redirects are short link options with CSV and the File Manager choice): slug-change 301, 404 log, 404 API
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct

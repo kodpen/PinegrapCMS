@@ -459,7 +459,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         $greeting_saved_sql = '';
 
-        if (db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'") != '') {
+        if (pg_schema_has('order_items', 'saved_for_later')) {
             $greeting_saved_sql = " AND (order_items.saved_for_later = 0)";
         }
 
@@ -494,7 +494,7 @@ function pg_dashboard_brief($user, $changelog_sections)
         // Cancelled orders whose money has not gone back yet: the same three
         // states the orders list files under "Refund Pending". The column came
         // with a later schema step, so it is asked about first.
-        if (db_value("SHOW COLUMNS FROM orders LIKE 'refund_status'") != '') {
+        if (pg_schema_has('orders', 'refund_status')) {
             $sig['refunds_pending'] = (int) db_value(
                 "SELECT COUNT(*) FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
         }
