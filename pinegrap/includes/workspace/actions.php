@@ -722,9 +722,10 @@ function ws_handle_action($action, $request)
         // A Word or Excel file of a message, read on the server for the
         // preview window (includes/fn/office.php); whoever may read the
         // channel may look. Asked with edit, a workbook also says which of
-        // its cells may be changed, for someone who may write in the
-        // channel, and whether the edited file takes the old one's place
-        // (their own message) or goes as an edited copy.
+        // its cells may be changed, and a document which paragraphs, for
+        // someone who may write in the channel, and whether the edited file
+        // takes the old one's place (their own message) or goes as an
+        // edited copy.
         case 'ws_file_office':
             $message = ws_message((int) ($request['message_id'] ?? 0));
             $channel = $message ? ws_channel($message['channel_id']) : null;
@@ -739,7 +740,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
-            $editing = !empty($request['edit']) && (pg_office_kind($message['file_name']) === 'xlsx') && ws_can_post_channel($viewer, $channel);
+            $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel);
             $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name'], $editing);
 
             if (!$office['ok']) {
@@ -757,10 +758,10 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($answer);
 
-        // The cells changed in a workbook's preview, written into a copy of
-        // the file: saved over the person's own file (the old one stays as
-        // an earlier version) or sent as an edited copy of somebody else's,
-        // the way a text file is.
+        // The cells changed in a workbook's preview, or the paragraphs in a
+        // document's, written into a copy of the file: saved over the
+        // person's own file (the old one stays as an earlier version) or
+        // sent as an edited copy of somebody else's, the way a text file is.
         case 'ws_file_office_save':
             $target = ws_file_edit_target($viewer, (int) ($request['message_id'] ?? 0), 'office');
 
@@ -777,7 +778,8 @@ function ws_handle_action($action, $request)
             // A large sheet takes a few seconds to rewrite.
             @set_time_limit(120);
 
-            $edited = ws_file_office_edited($message, $request['cells'] ?? null, (string) ($request['office_version'] ?? ''));
+            $changes = (pg_office_kind($message['file_name']) === 'docx') ? ($request['paragraphs'] ?? null) : ($request['cells'] ?? null);
+            $edited = ws_file_office_edited($message, $changes, (string) ($request['office_version'] ?? ''));
 
             if (!$edited['ok']) {
                 return ws_action_error($edited['error']);

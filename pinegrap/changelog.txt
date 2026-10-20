@@ -25,7 +25,7 @@
 [NEW] Added a backup before every software update and repair: the files it replaces and the database are saved first, and Repair Software can roll the files back to it.
 [NEW] Added a maintenance mode that shows visitors a maintenance page while staff see the site, and a health address for uptime monitors.
 [NEW] Added the pre-information form and the distance sales contract to checkout: the customer accepts both before ordering, and the copy they accepted is kept with the order.
-[NEW] Added Word and Excel previews in the file manager and the Workspace, where the cells of an Excel file can also be edited, and the file manager's files in Workspace channels: a file is sent to a channel from the file manager, or picked from the writing box.
+[NEW] Added Word and Excel previews in the file manager and the Workspace, where the cells of an Excel file and the paragraphs of a Word file can also be edited, and the file manager's files in Workspace channels: a file is sent to a channel from the file manager, or picked from the writing box.
 [NEW] Added Write with AI: Pinegrap AI, or the browser's built-in AI on a site without it, drafts a product's descriptions, the browser title and description of products and pages and the text of form records from what the form holds, and a draft goes into the field only when you use it.
 [NEW] Added responsive images to the visual designer: each picture is sent at the width the screen needs, as AVIF or WebP where the browser reads it, and pictures below the first load as the visitor scrolls to them.
 [NEW] Added product feeds for shopping platforms and AI shopping assistants: the catalog is published every day as an OpenAI product feed (JSON Lines or CSV) and a Google Merchant Center file, each at its own private address.

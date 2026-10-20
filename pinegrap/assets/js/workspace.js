@@ -533,14 +533,15 @@
 
     // A PDF, a video, or a Word or Excel file, large, without leaving the screen.
     //
-    // An Excel workbook is offered for editing to whoever may write in its
-    // channel (ws_file_office with edit): the changed cells are saved over
-    // the person's own file, the old one kept as an earlier version, or sent
-    // as an edited copy of somebody else's (ws_file_office_save), the way a
-    // text file is; onSaved hears the answer.
+    // An Excel workbook or a Word document is offered for editing to whoever
+    // may write in its channel (ws_file_office with edit): the changed cells
+    // or paragraphs are saved over the person's own file, the old one kept
+    // as an earlier version, or sent as an edited copy of somebody else's
+    // (ws_file_office_save), the way a text file is; onSaved hears the
+    // answer.
     var previewModal = null;
     var previewSheets = null;
-    var OFFICE_SHEET_NAME = /\.(xlsx|xlsm|xltx|xltm)$/i;
+    var OFFICE_EDIT_NAME = /\.(xlsx|xlsm|xltx|xltm|docx|docm|dotx|dotm)$/i;
 
     function previewFile(file, onSaved) {
         if ((file.kind || '') === 'image' || file.image) {
@@ -560,12 +561,13 @@
                 + '<div class="modal-body p-0"></div><div class="modal-footer py-2 d-none"></div></div></div>';
             document.body.appendChild(previewModal);
 
-            // Changed cells are not thrown away by a click beside the window
-            // or the cross without asking.
+            // Changed cells or paragraphs are not thrown away by a click
+            // beside the window or the cross without asking.
             previewModal.addEventListener('hide.bs.modal', function (event) {
                 var state = previewSheets;
 
-                if (state && !state.saving && state.view && state.view.count() > 0 && !window.confirm(t('file_cells_unsaved'))) {
+                if (state && !state.saving && state.view && state.view.count() > 0
+                    && !window.confirm(t((state.view.kind === 'docx') ? 'file_paragraphs_unsaved' : 'file_cells_unsaved'))) {
                     event.preventDefault();
                 }
             });
@@ -609,7 +611,7 @@
             box.appendChild(el('div', 'ws-empty', t('loading')));
             body.appendChild(box);
 
-            var editing = OFFICE_SHEET_NAME.test(file.name || '');
+            var editing = OFFICE_EDIT_NAME.test(file.name || '');
 
             Promise.all([api('ws_file_office', { message_id: file.message_id, edit: editing ? 1 : 0 }), loadOfficeView()]).then(function (results) {
                 if (!box.isConnected) {
@@ -657,12 +659,15 @@
                     save.disabled = true;
                     state.saving = true;
 
-                    api('ws_file_office_save', {
+                    var request = {
                         message_id: file.message_id,
-                        cells: state.view.edits(),
                         office_version: state.view.version,
                         as: data.can_replace ? 'replace' : 'send'
-                    }).then(function (result) {
+                    };
+
+                    request[(state.view.kind === 'docx') ? 'paragraphs' : 'cells'] = state.view.edits();
+
+                    api('ws_file_office_save', request).then(function (result) {
                         bootstrap.Modal.getOrCreateInstance(previewModal).hide();
                         toast(data.can_replace ? t('file_replaced') : t('file_copy_sent'), 'success');
 

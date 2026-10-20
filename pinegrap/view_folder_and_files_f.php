@@ -6062,11 +6062,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // whoever may view the folder; a document the ERP module keeps to
         // whoever may read the ERP (get_file.php's rule for those).
         //
-        // The file window asks for a workbook's cells to be offered for
-        // editing (edit): then the answer also says which cells may be
-        // changed and carries the version a save must hand back -- only for
-        // someone who may change the file, never for an ERP document. The
-        // cells are written by explorer_file_save.
+        // The file window asks for a workbook's cells or a document's
+        // paragraphs to be offered for editing (edit): then the answer also
+        // says which may be changed and carries the version a save must hand
+        // back -- only for someone who may change the file, never for an ERP
+        // document. The changes are written by explorer_file_save.
         case 'explorer_office_preview':
 
             $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
@@ -8142,21 +8142,28 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $new_path = FILE_DIRECTORY_PATH . '/' . $name;
             $size_sql = '';
 
-            // Cell values changed in a workbook's preview
-            // (includes/fn/office_edit.php). They go into the file before
-            // anything else moves, so a refused edit -- the file changed since
-            // it was opened, a cell that may not be changed -- leaves the
-            // file, its name and its record exactly as they were.
-            if (isset($request['cells'])) {
+            // Cell values changed in a workbook's preview, or paragraph texts
+            // in a document's (includes/fn/office_edit.php). They go into the
+            // file before anything else moves, so a refused edit -- the file
+            // changed since it was opened, a cell or a paragraph that may not
+            // be changed -- leaves the file, its name and its record exactly
+            // as they were.
+            if (isset($request['cells']) || isset($request['paragraphs'])) {
 
-                if (!is_array($request['cells']) || (pg_office_kind($file['name']) !== 'xlsx')) {
+                $office_kind = pg_office_kind($file['name']);
+                $office_changes = ($office_kind === 'xlsx') ? ($request['cells'] ?? null) : (($office_kind === 'docx') ? ($request['paragraphs'] ?? null) : null);
+
+                if (!is_array($office_changes)) {
                     respond(array('status' => 'error', 'message' => lang('This file cannot be edited here.')));
                 }
 
                 // A large sheet takes a few seconds to rewrite.
                 @set_time_limit(120);
 
-                $office_saved = pg_office_xlsx_save($old_path, $request['cells'], isset($request['office_version']) ? (string) $request['office_version'] : '');
+                $office_version = isset($request['office_version']) ? (string) $request['office_version'] : '';
+                $office_saved = ($office_kind === 'xlsx')
+                    ? pg_office_xlsx_save($old_path, $office_changes, $office_version)
+                    : pg_office_docx_save($old_path, $office_changes, $office_version);
 
                 if (!$office_saved['ok']) {
                     respond(array('status' => 'error', 'message' => $office_saved['error']));
