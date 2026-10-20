@@ -4,7 +4,7 @@ description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/set
 ---
 
 ## What does a cloud session have?
-- PHP 8.3 ready; no Composer. Reading, editing and the checks under `tools/` need no setup.
+- PHP 8.3 ready; no Composer. Reading, editing and the checks under `tools/` need no setup; `bash tools/static_analysis.sh` fetches its pinned PHPStan and PHPCompatibility from GitHub on first use (`static-analysis.md`).
 
 ## When do I need a running instance?
 - Only to reproduce a runtime error. `bash tools/setup_sandbox.sh` installs and starts MariaDB, creates the database, writes `data/config.php`, runs the installer and serves on `127.0.0.1:8000` (no SQL dump; the schema comes from the migration runner).

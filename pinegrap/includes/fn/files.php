@@ -856,6 +856,212 @@ function pg_zip_entry_size($archive, $entry)
 }
 
 /**
+ * One entry of an open zip archive, whole, as a string. Null when the archive
+ * has no such entry, when the entry declares more than $limit bytes, or when
+ * it does not unpack to exactly the size it declares.
+ *
+ * The declared size is what the archive's directory says, and what the
+ * ceilings in front of a read add up (pg_office_open(),
+ * pg_zip_import_open()). getFromIndex() is asked for one byte more than
+ * that: an honest entry returns its size, one that inflates further returns
+ * the extra byte and is refused, so an entry that declares a kilobyte and
+ * inflates to gigabytes costs a kilobyte and one byte. An entry that holds
+ * less than it declares comes back short and is refused as well, and so is
+ * one that declares nothing over compressed data. A size past PHP_INT_MAX
+ * (negative on a 32-bit build) is too large. The checksum is not compared
+ * here.
+ *
+ * @param ZipArchive $zip
+ * @param string|int $entry the entry's name, or its index
+ * @param int|float  $limit the most the entry may declare, in bytes
+ * @param string     $error '' when the entry came back; 'missing', 'large'
+ *                          or 'damaged' when null did
+ * @return string|null
+ */
+function pg_zip_entry_contents($zip, $entry, $limit, &$error)
+{
+    $error = '';
+    $stat = is_int($entry) ? $zip->statIndex($entry) : $zip->statName((string) $entry);
+
+    if (($stat === false) || !isset($stat['size'], $stat['index'])) {
+        $error = 'missing';
+
+        return null;
+    }
+
+    if (((int) $stat['size'] < 0) || ((float) $stat['size'] > (float) $limit)) {
+        $error = 'large';
+
+        return null;
+    }
+
+    $size = (int) $stat['size'];
+
+    // An empty deflate stream is two bytes; anything longer behind a size of
+    // nothing is not an empty file.
+    if (($size === 0) && isset($stat['comp_size']) && ((int) $stat['comp_size'] > 2)) {
+        $error = 'damaged';
+
+        return null;
+    }
+
+    $data = $zip->getFromIndex((int) $stat['index'], $size + 1);
+
+    if (!is_string($data) || (strlen($data) !== $size)) {
+        $error = 'damaged';
+
+        return null;
+    }
+
+    return $data;
+}
+
+/**
+ * A zip that is taken apart entry by entry, each entry read whole into
+ * memory and written out (Import ZIP File, the designer's HTML / ZIP
+ * import): the most entries it may hold, the most one entry may unpack to,
+ * and the most all of them may unpack to together, in bytes. The entry and
+ * byte totals are the file manager's extraction ceilings.
+ */
+define('PG_ZIP_IMPORT_MAX_ENTRIES', 10000);
+define('PG_ZIP_IMPORT_MAX_ENTRY', 64 * 1024 * 1024);
+define('PG_ZIP_IMPORT_MAX_BYTES', 2147483648);
+
+/**
+ * Opens a zip that is to be imported entry by entry, and measures it from
+ * its directory before a byte of it is inflated: more than
+ * PG_ZIP_IMPORT_MAX_ENTRIES entries, more than PG_ZIP_IMPORT_MAX_BYTES
+ * declared, or more than the disk has room for, and it is refused whole.
+ * A single entry past PG_ZIP_IMPORT_MAX_ENTRY is left to the caller, which
+ * may not need it; pg_zip_entry_contents() refuses to read it.
+ *
+ * @param string $path
+ * @param string $error a sentence for the operator when null comes back
+ * @return ZipArchive|null
+ */
+function pg_zip_import_open($path, &$error)
+{
+    $error = '';
+
+    if (!class_exists('ZipArchive')) {
+        $error = lang('Zip support is not available on this server, so the archive cannot be extracted.');
+
+        return null;
+    }
+
+    $zip = new ZipArchive();
+
+    // 22 bytes is the shortest zip (its end record alone); an empty file
+    // would otherwise open as an empty archive. An archive with no entries
+    // is refused the same way.
+    if (!is_file((string) $path) || (filesize((string) $path) < 22) || (@$zip->open((string) $path) !== true)) {
+        $error = lang('The zip file cannot be extracted, because it is not a valid zip file.');
+
+        return null;
+    }
+
+    if ($zip->numFiles < 1) {
+        $zip->close();
+        $error = lang('The zip file cannot be extracted, because it is not a valid zip file.');
+
+        return null;
+    }
+
+    if ($zip->numFiles > PG_ZIP_IMPORT_MAX_ENTRIES) {
+        $zip->close();
+        $error = lang('Sorry, that archive is too large to extract here.');
+
+        return null;
+    }
+
+    $total = 0.0;
+
+    for ($index = 0; $index < $zip->numFiles; $index++) {
+
+        $stat = $zip->statIndex($index);
+
+        // A size that cannot be read cannot be measured: refused, like a
+        // damaged directory in the file manager.
+        if (($stat === false) || !isset($stat['size'])) {
+            $zip->close();
+            $error = lang('The archive could not be opened. It might be damaged.');
+
+            return null;
+        }
+
+        // Negative on a 32-bit build: past PHP_INT_MAX, so past the ceiling.
+        $total += ((int) $stat['size'] < 0) ? (float) PG_ZIP_IMPORT_MAX_BYTES + 1 : (float) $stat['size'];
+    }
+
+    if ($total > PG_ZIP_IMPORT_MAX_BYTES) {
+        $zip->close();
+        $error = lang('Sorry, that archive is too large to extract here.');
+
+        return null;
+    }
+
+    if (!pg_explorer_disk_has_room($total)) {
+        $zip->close();
+        $error = lang('There is not enough free disk space to extract the archive.');
+
+        return null;
+    }
+
+    return $zip;
+}
+
+/**
+ * An entry's name as a path: "." segments and doubled slashes dropped, ".."
+ * resolved and never above the top, no leading slash. A directory keeps its
+ * trailing slash. ("./css//a.css" and "x/../css/a.css" are "css/a.css".)
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_zip_entry_path($name)
+{
+    $name = (string) $name;
+    $out = array();
+
+    foreach (explode('/', $name) as $segment) {
+
+        if (($segment === '') || ($segment === '.')) {
+            continue;
+        }
+
+        if ($segment === '..') {
+            array_pop($out);
+            continue;
+        }
+
+        $out[] = $segment;
+    }
+
+    $path = implode('/', $out);
+
+    return (($path !== '') && (substr($name, -1) === '/')) ? $path . '/' : $path;
+}
+
+/**
+ * Whether the disk the data folder sits on has room for $bytes plus a
+ * margin. Hosts that switch disk_free_space() off answer "unknown", which is
+ * not a refusal.
+ *
+ * @param int|float $bytes
+ * @return bool
+ */
+function pg_explorer_disk_has_room($bytes)
+{
+    if (!function_exists('disk_free_space')) {
+        return true;
+    }
+
+    $free = @disk_free_space(PG_FUNCTIONS_DIR . '/data');
+
+    return ($free === false) || ((float) $free >= ((float) $bytes + 67108864));
+}
+
+/**
  * Whether any of these `files` rows is a document the ERP module keeps.
  *
  * Issued invoices, delivery notes, accepted e-documents and e-mailed

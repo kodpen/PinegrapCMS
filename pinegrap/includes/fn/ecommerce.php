@@ -805,6 +805,9 @@ function pg_order_awaiting_payment(array $order): bool
  * click, or an ERP receipt landing after the operator already pressed the
  * button, a no-op instead of moving the payment date.
  *
+ * The payment is the moment a store that invoices paid orders on their own
+ * gets this one's invoice (pg_erp_auto_invoice()).
+ *
  * @param int $order_id
  * @param int $user_id Operator recording the payment; 0 for a system path
  * @return bool True when this call marked the order paid
@@ -828,7 +831,143 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
         . ($user_id > 0 ? ' recorded by user_id=' . $user_id : ' recorded by the system')
     );
 
+    pg_erp_auto_invoice($order_id, 'order_paid');
+
     return true;
+}
+
+/**
+ * Issue an order's invoice on its own, when the store chose to (ERP settings,
+ * "The invoice of a web order": config.erp_auto_invoice_on) and this is the
+ * moment it chose.
+ *
+ * Called where the moment happens: the end of the checkout (paid by card,
+ * PayPal or iyzico, put on the customer's account, or nothing left to pay),
+ * pg_order_mark_paid() (a bank transfer that arrived) and update_order() (a
+ * recipient that just shipped). Nothing is read and no ERP file is loaded
+ * unless the store invoices at exactly this moment; the rest is
+ * erp_auto_invoice_for_order() (includes/erp/order_bridge.php).
+ *
+ * The checkout passes $after_response: the customer's page is answered first
+ * where the server allows it. Inside an open ERP transaction (a receipt that
+ * marks its order paid) it waits for the end of the request as well, because
+ * a refusal there would roll back the receipt with it.
+ *
+ * Nothing it does stops the caller: an order that could not be invoiced is
+ * logged and announced on the panel bell, and an error is written to the
+ * error log.
+ *
+ * @param int    $order_id
+ * @param string $trigger         'order_paid' | 'order_shipped'
+ * @param bool   $after_response  Run once the response is out
+ * @return array|null  erp_auto_invoice_for_order()'s answer when it ran now;
+ *                     null when it did not run, or runs at the end
+ */
+function pg_erp_auto_invoice($order_id, $trigger, $after_response = false)
+{
+    $order_id = (int) $order_id;
+    $trigger = (string) $trigger;
+
+    if (($order_id <= 0) || !defined('ERP_ENABLED') || !ERP_ENABLED
+        || !defined('ERP_AUTO_INVOICE_ON') || ((string) ERP_AUTO_INVOICE_ON !== $trigger)) {
+        return null;
+    }
+
+    if ($after_response || (function_exists('erp_tx_depth') && (erp_tx_depth() > 0))) {
+        pg_erp_auto_invoice_defer($order_id, $trigger);
+
+        return null;
+    }
+
+    return pg_erp_auto_invoice_run($order_id, $trigger);
+}
+
+/**
+ * pg_erp_auto_invoice() at the end of the request, for every order it was
+ * asked about, from one shutdown function.
+ *
+ * The session is let go and the page answered first (where the server has
+ * fastcgi_finish_request()), so the page the visitor opens next - the
+ * receipt - waits neither for the invoice nor for its PDF. The queue is
+ * emptied as it is taken: an order asked about while it runs gets a shutdown
+ * function of its own.
+ *
+ * @param int    $order_id
+ * @param string $trigger
+ * @return void
+ */
+function pg_erp_auto_invoice_defer($order_id, $trigger)
+{
+    static $queue = null;
+
+    if ($queue === null) {
+        $queue = array();
+
+        register_shutdown_function(function () use (&$queue) {
+            $entries = (array) $queue;
+            $queue = null;
+
+            if (empty($entries)) {
+                return;
+            }
+
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            // A host can disable it, and PHP 8 then has no such function.
+            if (function_exists('ignore_user_abort')) {
+                @ignore_user_abort(true);
+            }
+
+            foreach ($entries as $entry) {
+                pg_erp_auto_invoice_run($entry[0], $entry[1]);
+            }
+        });
+    }
+
+    $queue[(int) $order_id . ':' . (string) $trigger] = array((int) $order_id, (string) $trigger);
+}
+
+/**
+ * Load the ERP and invoice the order, catching anything that goes wrong on
+ * the way: whatever the caller was doing is done already and stays done.
+ *
+ * Refused inside an open ERP transaction: at the end of a request that can
+ * only be one a failure left open, and joining it would commit or roll back
+ * somebody else's half-written work.
+ *
+ * @param int    $order_id
+ * @param string $trigger
+ * @return array|null  erp_auto_invoice_for_order()'s answer, null when it did not run
+ */
+function pg_erp_auto_invoice_run($order_id, $trigger)
+{
+    try {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        if (erp_tx_depth() > 0) {
+            return null;
+        }
+
+        return erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+    } catch (Throwable $error) {
+        if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
+            pg_error_write(pg_error_entry(
+                'error',
+                get_class($error),
+                'Automatic invoice for order ' . (int) $order_id . ': ' . $error->getMessage(),
+                $error->getFile(),
+                $error->getLine(),
+                pg_error_trace_short($error->getTrace())));
+        }
+
+        return null;
+    }
 }
 
 /**

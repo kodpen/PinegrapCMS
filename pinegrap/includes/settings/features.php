@@ -357,46 +357,6 @@ if ($output_image_settings_card !== '') {
     $pg_settings_cards[] = $output_image_settings_card;
 }
 
-// ── Page Revisions ──
-//
-// How long the published revisions of visual-designer pages are kept
-// (includes/fn/page_revisions.php): the last N of each page whatever their
-// age, and every one younger than D days. Shown once the 2026.11.0 columns
-// exist; the defaults (30 and 90) apply meanwhile.
-if (function_exists('pg_page_revisions_retention') && array_key_exists('page_revisions_keep', $row) && array_key_exists('page_revisions_days', $row)) {
-
-    $page_revisions_retention = pg_page_revisions_retention((int) $row['page_revisions_keep'], (int) $row['page_revisions_days']);
-
-    $pg_settings_cards[] = '
-                        <div id="pgset-revisions" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-                                    ' . lang('Page Revisions') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row gy-3">
-                                        <div class="col-12">
-                                            <div class="form-text mt-0">' . lang('Every publish of a visual designer page is kept as a revision, which the History panel of the editor compares and loads back. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="page_revisions_keep" class="form-label">' . lang('Revisions Kept per Page') . '</label>
-                                            <input type="text" name="page_revisions_keep" id="page_revisions_keep" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($page_revisions_retention['keep']) . '" />
-                                            <div class="form-text">' . lang(array('string' => 'The newest ones, however old they are. 1 to {var:1}.', 'vars' => array(PG_PAGE_REVISIONS_KEEP_MAX))) . '</div>
-                                        </div>
-                                        <div class="pg-f-xs">
-                                            <label for="page_revisions_days" class="form-label">' . lang('Revisions Kept for') . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="page_revisions_days" id="page_revisions_days" maxlength="4" inputmode="numeric" class="form-control text-end" value="' . h($page_revisions_retention['days']) . '" />
-                                                <label class="input-group-text" for="page_revisions_days">' . lang('days') . '</label>
-                                            </div>
-                                            <div class="form-text">' . lang(array('string' => 'Every revision younger than this, however many there are. 1 to {var:1}.', 'vars' => array(PG_PAGE_REVISIONS_DAYS_MAX))) . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
-}
-
 // ── Signature Time Stamp ──
 //
 // The address is a setting and not a line in data/config.php because it is an

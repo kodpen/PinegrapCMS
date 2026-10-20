@@ -147,7 +147,12 @@ php tools/check_copies.php      # only the intended get_file.php copies
 php tools/build_js.php --check  # .min.js bundles match their sources
 php tools/build_code_editor.php --check  # code editor bundle matches tools/code_editor/
 php tools/memory_index.php --check  # memory index matches its files
+bash tools/static_analysis.sh   # PHPStan level 0 + PHP 7.1+ compatibility against their baselines
 ```
+
+The last one fetches the pinned PHPStan and PHPCompatibility once (no
+Composer); a newer API used behind a guard gets a `phpcs:ignore` with the
+reason, never a baseline entry: `docs/memory/workflow/static-analysis.md`.
 
 Also: a test in `tests/<topic>_test.php` for a pure function you add or change
 (red first when behaviour changes); a schema step rerun twice on a dev DB;

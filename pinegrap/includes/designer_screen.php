@@ -143,10 +143,6 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => (string)(isset($p['pg_comments_notify_email']) ? $p['pg_comments_notify_email'] : ''),
             'page_meta_tags'        => (string)(isset($p['page_meta_tags']) ? $p['page_meta_tags'] : ''),
             'page_custom_jsonld'    => (string)(isset($p['page_custom_jsonld']) ? $p['page_custom_jsonld'] : ''),
-            // When the page goes on the site and comes off it, as the
-            // datetime-local boxes of Page Settings take them ('' for none).
-            'page_publish_at'       => (string)(isset($p['page_publish_at']) ? $p['page_publish_at'] : ''),
-            'page_unpublish_at'     => (string)(isset($p['page_unpublish_at']) ? $p['page_unpublish_at'] : ''),
             'tree'                  => $tree,
             'treeLoadWarning'       => $warn,
             // The page's form-level settings (name, notification, confirmation).
@@ -189,8 +185,6 @@ function pg_designer_screen_render($ctx)
             'pg_comments_notify_email'  => '',
             'page_meta_tags'        => '',
             'page_custom_jsonld'    => '',
-            'page_publish_at'       => '',
-            'page_unpublish_at'     => '',
             'tree'                  => null,
             'treeLoadWarning'       => false,
             'formSettings'          => array(),
@@ -263,13 +257,6 @@ function pg_designer_screen_render($ctx)
         'drafts'        => array(
             'ready'     => pg_page_draft_ready(),
             'canChange' => pg_page_draft_ready() && ($access === PG_DESIGNER_ACCESS_FULL),
-            // Scheduled publishing (2026.11.0, includes/fn/page_schedule.php).
-            // The times are the site's wall clock; the offset lets the editor
-            // tell a time still ahead from one that has passed.
-            'schedule'  => array(
-                'ready'  => pg_page_draft_ready() && function_exists('pg_page_schedule_ready') && pg_page_schedule_ready(),
-                'offset' => (int)date('Z'),
-            ),
         ),
         // Tab order and groups (2026.4.8): kept in style_tab_layout, written
         // by designer/tab_layout. Without the column the strip is plain.
@@ -634,8 +621,6 @@ function pg_designer_list_designs()
         $rows[$i]['palette'] = '';
         $rows[$i]['draft_count'] = 0;
         $rows[$i]['home_count'] = 0;
-        $rows[$i]['scheduled_count'] = 0;
-        $rows[$i]['scheduled_next'] = 0;
     }
     // Off the site and on it: the drafts and the home page of each design,
     // for the Status column.
@@ -644,15 +629,6 @@ function pg_designer_list_designs()
         foreach ($rows as $i => $r) {
             $c = isset($by_style[(int)$r['style_id']]) ? $by_style[(int)$r['style_id']] : null;
             if ($c) { $rows[$i]['draft_count'] = $c['drafts']; $rows[$i]['home_count'] = $c['home']; }
-        }
-    }
-    // The pages that go on the site or come off it at a set time, and the
-    // next of those times (includes/fn/page_schedule.php).
-    if ($rows && function_exists('pg_page_schedule_design_counts')) {
-        $by_style = pg_page_schedule_design_counts(array_map(function ($r) { return (int)$r['style_id']; }, $rows));
-        foreach ($rows as $i => $r) {
-            $c = isset($by_style[(int)$r['style_id']]) ? $by_style[(int)$r['style_id']] : null;
-            if ($c) { $rows[$i]['scheduled_count'] = $c['scheduled']; $rows[$i]['scheduled_next'] = $c['next']; }
         }
     }
     // The template a design started from, its look and its palette: the
@@ -685,7 +661,7 @@ function pg_designer_list_designs()
  *
  * @param array $style_ids
  * @param array $user
- * @return array style_id => list of array(id, name, home, draft, locked, publish_at, unpublish_at)
+ * @return array style_id => list of array(id, name, home, draft, locked)
  */
 function pg_designer_list_pages($style_ids, $user)
 {
@@ -709,24 +685,7 @@ function pg_designer_list_pages($style_ids, $user)
             'home'   => ((string)$r['page_home'] === 'yes'),
             'draft'  => pg_page_is_draft($r['page_folder']),
             'locked' => ($access !== 'edit'),
-            'publish_at'   => 0,
-            'unpublish_at' => 0,
         );
-    }
-    // The pages' scheduled times, read for the pages listed only.
-    if (function_exists('pg_page_schedule_times')) {
-        $page_ids = array();
-        foreach ($out as $list) foreach ($list as $p) $page_ids[] = $p['id'];
-        $times = pg_page_schedule_times($page_ids);
-        if ($times) {
-            foreach ($out as $sid => $list) {
-                foreach ($list as $k => $p) {
-                    if (!isset($times[$p['id']])) continue;
-                    $out[$sid][$k]['publish_at']   = $times[$p['id']]['publish_at'];
-                    $out[$sid][$k]['unpublish_at'] = $times[$p['id']]['unpublish_at'];
-                }
-            }
-        }
     }
     return $out;
 }
@@ -810,18 +769,7 @@ function pg_designer_list_status_cell($d)
         $note  = h(lang('No pages yet. Open it to add one.'));
     }
 
-    // Beside the state: pages that change state at a set time, and when the
-    // next change comes.
-    $scheduled = isset($d['scheduled_count']) ? (int)$d['scheduled_count'] : 0;
-    if ($scheduled > 0 && $s['state'] !== 'empty') {
-        $badge .= ' <span class="badge rounded-pill text-bg-info sdh-scheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>' . h(lang('On a schedule')) . '</span>';
-        $next  = isset($d['scheduled_next']) ? (int)$d['scheduled_next'] : 0;
-        $note .= ' · ' . h(($next > 0)
-            ? lang(array('string' => '{var:1} scheduled, next change {var:2}', 'vars' => array($scheduled, pg_page_schedule_label($next))))
-            : lang(array('string' => '{var:1} scheduled', 'vars' => array($scheduled))));
-    }
-
-    return '<div class="sdh-status" data-state="' . h($s['state']) . '" data-pages="' . $c['pages'] . '" data-drafts="' . $c['drafts'] . '" data-home="' . $c['home'] . '" data-offable="' . (int)$s['offable'] . '" data-scheduled="' . $scheduled . '">'
+    return '<div class="sdh-status" data-state="' . h($s['state']) . '" data-pages="' . $c['pages'] . '" data-drafts="' . $c['drafts'] . '" data-home="' . $c['home'] . '" data-offable="' . (int)$s['offable'] . '">'
          . $badge . '<span class="sdh-status-note">' . $note . '</span></div>';
 }
 
@@ -1015,23 +963,14 @@ function pg_designer_home_page_chips($d, $pages, $limit)
     $out = '';
     foreach (array_values($pages) as $i => $p) {
         $view  = PATH . encode_url_path($p['name']);
-        // Only the home page, a locked page and a page with a scheduled
-        // time carry an icon; a draft is told by its dashed outline (and in
-        // words to a screen reader). The time is the chip's title.
-        $when  = !empty($p['publish_at']) ? (int)$p['publish_at'] : (!empty($p['unpublish_at']) ? (int)$p['unpublish_at'] : 0);
-        $sched = ($when > 0 && !$p['home']);
-        $sched_text = !$sched ? ''
-            : (!empty($p['publish_at'])
-                ? lang(array('string' => 'Goes on the site {var:1}', 'vars' => array(pg_page_schedule_label($p['publish_at']))))
-                : lang(array('string' => 'Comes off the site {var:1}', 'vars' => array(pg_page_schedule_label($p['unpublish_at'])))));
+        // Only the home page and a locked page carry an icon; a draft is
+        // told by its dashed outline (and in words to a screen reader).
         $state = $p['locked'] ? array('bi-lock', lang('Locked'))
                : ($p['home'] ? array('bi-house-door', lang('Home page'))
-               : ($sched ? array('bi-clock', ($p['draft'] ? lang('Draft') . ', ' : '') . $sched_text)
-               : ($p['draft'] ? array('', lang('Draft')) : array('', ''))));
-        $class = 'sdh-page' . ($p['home'] ? ' is-home' : '') . ($p['draft'] ? ' is-draft' : '') . ($p['locked'] ? ' is-locked' : '') . ($sched ? ' is-scheduled' : '') . ($i >= $limit ? ' is-extra' : '');
+               : ($p['draft'] ? array('', lang('Draft')) : array('', '')));
+        $class = 'sdh-page' . ($p['home'] ? ' is-home' : '') . ($p['draft'] ? ' is-draft' : '') . ($p['locked'] ? ' is-locked' : '') . ($i >= $limit ? ' is-extra' : '');
         $attrs = ' class="' . $class . '" data-page-id="' . (int)$p['id'] . '" data-name="' . h($p['name']) . '" data-view-url="' . h($view) . '"'
-               . ' data-home="' . ($p['home'] ? '1' : '0') . '" data-draft="' . ($p['draft'] ? '1' : '0') . '" data-locked="' . ($p['locked'] ? '1' : '0') . '"'
-               . ' data-scheduled="' . h($sched_text) . '"' . ($sched ? ' title="' . h($sched_text) . '"' : '');
+               . ' data-home="' . ($p['home'] ? '1' : '0') . '" data-draft="' . ($p['draft'] ? '1' : '0') . '" data-locked="' . ($p['locked'] ? '1' : '0') . '"';
         $inner = '<i class="bi ' . $state[0] . ($state[0] === '' ? ' d-none' : '') . '" aria-hidden="true"></i><span class="sdh-page-name">' . h($p['name']) . '</span>'
                . '<span class="visually-hidden sdh-page-state">' . ($state[1] !== '' ? ' (' . h($state[1]) . ')' : '') . '</span>';
         $out .= $p['locked']
@@ -2122,20 +2061,7 @@ function pg_designer_settings_modal($ctx)
                 lang('A draft is kept in the private Drafts folder: visitors cannot open it, administrators can. Once published it goes back to the folder above. Applied when the design is published.'),
                 '<div class="form-check form-switch"><input class="form-check-input sd-page-field" type="checkbox" role="switch" id="pg_page_draft" value="1" data-page-key="page_draft"></div>',
                 array('for' => 'pg_page_draft', 'switch' => true)) : '') . '
-        </section>' . (($full && pg_page_draft_ready() && function_exists('pg_page_schedule_ready') && pg_page_schedule_ready()) ? '
-        <section class="sd-settings-group" id="sd-page-schedule-group">
-            <h3 class="sd-settings-group-title">' . lang('Schedule') . '</h3>
-            ' . pg_designer_setting(lang('Publish at'),
-                lang('The page stays a draft until this time; then the general job puts it on the site, in the folder above. Empty: it is published by hand.'),
-                '<input type="datetime-local" id="pg_page_publish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_publish_at" step="60">',
-                array('for' => 'pg_page_publish_at')) . '
-            ' . pg_designer_setting(lang('Take off the site at'),
-                lang('At this time the general job moves the page back to the private Drafts folder; the folder it returns to is kept. Empty: it stays on the site.'),
-                '<input type="datetime-local" id="pg_page_unpublish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_unpublish_at" step="60">
-                <div class="sd-set-status" id="sd-page-schedule" aria-live="polite"></div>',
-                array('for' => 'pg_page_unpublish_at')) . '
-            <p class="sd-settings-note"><span class="bi bi-clock me-1" aria-hidden="true"></span>' . h(lang(array('string' => 'Times are in the site\'s time zone, {var:1}. Both apply when the design is published; the home page takes neither.', 'vars' => array(date_default_timezone_get())))) . '</p>
-        </section>' : '') . '
+        </section>
         <section class="sd-settings-group">
             <h3 class="sd-settings-group-title">' . lang('On the site') . '</h3>
             ' . (((int)$user['role'] < 3) ? pg_designer_setting(lang('Set As Homepage'),
@@ -2857,13 +2783,7 @@ function pg_designer_screen_post($ctx)
         if ($r['ok']) {
             // `draft`: the state the page ended up in, which is not always
             // the one asked for (the home page stays on the site).
-            $id_entry = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => !empty($r['draft']) ? 1 : 0);
-            // The times as the save left them: one that had come is cleared.
-            if (isset($r['publish_at'])) {
-                $id_entry['publish_at']   = $r['publish_at'];
-                $id_entry['unpublish_at'] = $r['unpublish_at'];
-            }
-            $id_map[] = $id_entry;
+            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => !empty($r['draft']) ? 1 : 0);
             $written[] = (int)$r['page_id'];
             // The page's form. Its fields are the controls its custom_form
             // widget draws, read from the widget tree the editor flushed just

@@ -99,26 +99,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              image_quality_webp = " . (int) $image_delivery['quality']['webp'] . ",
              image_quality_avif = " . (int) $image_delivery['quality']['avif'] . ",";
     }
-    // Page revisions: how many are kept and for how long (2026.11.0), only
-    // once the columns exist. A box left empty or holding no number keeps
-    // the stored value rather than falling to the bottom of the range, which
-    // would let the next daily sweep remove all but one revision of a page.
-    $sql_page_revisions_settings = '';
-
-    if (function_exists('pg_page_revisions_retention') && pg_schema_has('config', 'page_revisions_days')) {
-
-        $page_revisions_keep_posted = trim((string) post_value('page_revisions_keep'));
-        $page_revisions_days_posted = trim((string) post_value('page_revisions_days'));
-
-        $page_revisions_retention = pg_page_revisions_retention(
-            ctype_digit($page_revisions_keep_posted) ? (int) $page_revisions_keep_posted : null,
-            ctype_digit($page_revisions_days_posted) ? (int) $page_revisions_days_posted : null);
-
-        $sql_page_revisions_settings =
-            "page_revisions_keep = " . (int) $page_revisions_retention['keep'] . ",
-             page_revisions_days = " . (int) $page_revisions_retention['days'] . ",";
-    }
-
     // The workspace switch, only once its column exists.
     $sql_workspace_setting = '';
 
@@ -153,7 +133,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             signature_tsa_username = '" . escape(post_value('signature_tsa_username')) . "',
             signature_tsa_password = '" . escape(post_value('signature_tsa_password')) . "',
             " . $sql_image_settings . "
-            " . $sql_page_revisions_settings . "
             " . $sql_workspace_setting . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");

@@ -577,27 +577,18 @@
     }
 
     // A chip drawn again from its data, as pg_designer_home_page_chips()
-    // draws it: an icon for the home page, a locked page and a page with a
-    // scheduled time only, the dashed outline of a draft, the words a screen
-    // reader hears. data-scheduled holds the time in words, '' for none.
+    // draws it: an icon for the home page and a locked page only, the dashed
+    // outline of a draft, the word a screen reader hears.
     function paintChip(chip) {
         var data = chip.dataset;
-        var sched = (data.scheduled || '') !== '' && data.home !== '1';
         var state = (data.locked === '1') ? ['bi-lock', say('locked')]
             : (data.home === '1') ? ['bi-house-door', say('homePage')]
-            : sched ? ['bi-clock', (data.draft === '1' ? say('draft') + ', ' : '') + data.scheduled]
             : (data.draft === '1') ? ['', say('draft')]
             : ['', ''];
         var icon = chip.querySelector('.bi');
         var hidden = chip.querySelector('.sdh-page-state');
 
         chip.classList.toggle('is-draft', data.draft === '1');
-        chip.classList.toggle('is-scheduled', sched);
-        if (sched) {
-            chip.title = data.scheduled;
-        } else {
-            chip.removeAttribute('title');
-        }
         if (icon) {
             icon.className = 'bi ' + (state[0] || 'd-none');
         }
@@ -662,11 +653,9 @@
                         }
                     }
 
-                    var scheduled = (res.scheduled && typeof res.scheduled === 'object') ? res.scheduled : {};
                     card.querySelectorAll('.sdh-page[data-page-id]').forEach(function (chip) {
                         if (chip.dataset.home !== '1') {
                             chip.dataset.draft = off ? '1' : '0';
-                            chip.dataset.scheduled = scheduled[chip.dataset.pageId] || '';
                             paintChip(chip);
                         }
                     });

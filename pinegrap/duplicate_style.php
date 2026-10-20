@@ -164,9 +164,6 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
             if ($col === 'page_name')       { $vals[] = "'" . e($new_page_name) . "'"; continue; }
             if ($col === 'page_style')      { $vals[] = "'" . (int)$new_style_id . "'"; continue; }
             if ($col === 'page_home')       { $vals[] = "''"; continue; }   // never two home pages
-            // A copy does not inherit the original's scheduled times: it
-            // would go on the site, or come off it, beside the original.
-            if ($col === 'publish_at' || $col === 'unpublish_at') { $vals[] = "'0'"; continue; }
             $vals[] = ($val === null) ? 'NULL' : "'" . e($val) . "'";
         }
         db("INSERT INTO page (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");

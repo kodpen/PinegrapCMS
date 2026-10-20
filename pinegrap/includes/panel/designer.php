@@ -719,24 +719,6 @@ function pg_panel_update_toolbar_properties($request, $action)
     respond(array('status' => 'success'));
 }
 
-/**
- * Whether this person may read a page's revisions: the page exists and they
- * may edit it. pg_designer_page_access() answers 'edit' to a designer for
- * any id, so the row is asked for first.
- *
- * @param int   $page_id
- * @param array $user
- * @return bool
- */
-function pg_designer_revision_page_ok($page_id, $user)
-{
-    $page_id = (int)$page_id;
-    if ($page_id <= 0 || !db_value("SELECT COUNT(*) FROM page WHERE page_id = '$page_id'")) {
-        return false;
-    }
-    return pg_designer_page_access($page_id, $user) === 'edit';
-}
-
 function pg_panel_designer($request, $action)
 {
     // VISUAL DESIGNER — PAGE TABS
@@ -768,8 +750,7 @@ function pg_panel_designer($request, $action)
     if (!pg_designer_is_full($user)) {
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
                             'page_load', 'seo_check', 'import_fragment',
-                            'form_fields', 'preview_widgets', 'widget_ghosts',
-                            'revisions_list', 'revision_get');
+                            'form_fields', 'preview_widgets', 'widget_ghosts');
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -1414,28 +1395,12 @@ function pg_panel_designer($request, $action)
                 'draft_count' => $dp_counts[$dp_style_id]['drafts'],
                 'home_count'  => $dp_counts[$dp_style_id]['home'],
             );
-            // A page moved by hand loses the scheduled move it made
-            // unnecessary (pg_page_draft_move()): the badge and the chips'
-            // clocks are drawn from what is stored now.
-            $dp_sched = function_exists('pg_page_schedule_design_counts') ? pg_page_schedule_design_counts(array($dp_style_id)) : array();
-            $dp_row['scheduled_count'] = isset($dp_sched[$dp_style_id]) ? $dp_sched[$dp_style_id]['scheduled'] : 0;
-            $dp_row['scheduled_next']  = isset($dp_sched[$dp_style_id]) ? $dp_sched[$dp_style_id]['next'] : 0;
-            $dp_scheduled = array();
-            if ($dp_row['scheduled_count'] > 0 && function_exists('pg_page_schedule_times')) {
-                $dp_page_ids = array_map('intval', (array)db_values("SELECT page_id FROM page WHERE page_style = '$dp_style_id'"));
-                foreach (pg_page_schedule_times($dp_page_ids) as $dp_pid => $dp_t) {
-                    $dp_scheduled[(string)$dp_pid] = ($dp_t['publish_at'] > 0)
-                        ? lang(array('string' => 'Goes on the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['publish_at']))))
-                        : lang(array('string' => 'Comes off the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['unpublish_at']))));
-                }
-            }
             respond(array(
-                'status'    => 'success',
-                'message'   => $dp_message,
-                'changed'   => $dp['changed'],
-                'drafts'    => $dp_row['draft_count'],
-                'cell'      => pg_designer_list_status_cell($dp_row),
-                'scheduled' => (object)$dp_scheduled,
+                'status'  => 'success',
+                'message' => $dp_message,
+                'changed' => $dp['changed'],
+                'drafts'  => $dp_row['draft_count'],
+                'cell'    => pg_designer_list_status_cell($dp_row),
             ));
             break;
 
@@ -1465,41 +1430,6 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => $dd['error']));
             }
             respond(array('status' => 'success', 'binned' => $dd['binned'], 'folders' => $dd['folders'], 'recycled' => $dd['recycled'], 'message' => pg_designer_delete_design_message($dd)));
-            break;
-
-        // ── REVISIONS ────────────────────────────────────────────────
-        // The published revisions of a page (includes/fn/page_revisions.php):
-        // the list for the History panel, without trees, and one revision
-        // with its tree for compare and restore. Reading the history of a
-        // page takes the right to edit it: a revision carries the whole
-        // tree, which a page's viewers are not entitled to.
-        case 'revisions_list':
-            $rv_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
-            if ($rv_page <= 0 || !pg_designer_revision_page_ok($rv_page, $user)) {
-                respond(array('status' => 'error', 'message' => lang('Page not found.')));
-            }
-            if (!pg_page_revisions_ready()) {
-                respond(array('status' => 'success', 'ready' => false, 'revisions' => array(), 'more' => false));
-            }
-            $rv_before = isset($request['before_no']) ? (int)$request['before_no'] : 0;
-            $rv_list   = pg_page_revisions_list($rv_page, 50, $rv_before);
-            respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => (count($rv_list) === 50)));
-            break;
-
-        case 'revision_get':
-            $rv_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
-            $rv_no   = isset($request['revision_no']) ? (int)$request['revision_no'] : 0;
-            if ($rv_page <= 0 || !pg_designer_revision_page_ok($rv_page, $user)) {
-                respond(array('status' => 'error', 'message' => lang('Page not found.')));
-            }
-            $rv = pg_page_revision_get($rv_page, $rv_no);
-            if (!$rv) {
-                respond(array('status' => 'error', 'message' => lang('The revision could not be found.')));
-            }
-            $rv_tree = json_decode($rv['tree_json']);
-            unset($rv['tree_json'], $rv['revision_id']);
-            $rv['tree'] = is_object($rv_tree) ? $rv_tree : null;
-            respond(array('status' => 'success', 'revision' => $rv));
             break;
 
         // Save a stylesheet as a theme: a design CSS file in the file

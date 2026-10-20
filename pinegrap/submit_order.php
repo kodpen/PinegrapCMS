@@ -7958,6 +7958,13 @@ function submit_order($type) {
     // the order summary; without the query string the widget renders empty.
     $completed_order_id = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
 
+    // A store that invoices paid orders on their own (ERP settings) gets this
+    // one's invoice once the customer has been answered, so the redirect to
+    // the receipt never waits for it. The ERP decides whether the order is
+    // paid: a confirmed gateway payment, the customer's account, or nothing
+    // left to pay.
+    pg_erp_auto_invoice($completed_order_id, 'order_paid', true);
+
     // remove order id from session so shopping cart is emptied, in case user tries to shop again
     unset($_SESSION['ecommerce']['order_id']);
 
