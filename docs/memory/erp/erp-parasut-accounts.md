@@ -10,7 +10,7 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (ac
   - `erp_edoc_parasut_account_save($card, $id)`: `POST contacts` ('' id) or `PUT contacts/{id}`.
 
 ## Which cards do the lists leave out? (live, 2026-10-20)
-- Archived cards: the list leaves them out, so a complete read showed an archived card as gone. `filter[archived]=true` (documented for other lists only) lists them alone; they come in passive.
+- Archived cards: the list leaves them out, so a complete read showed an archived card as gone until #884. `filter[archived]=true` (documented for other lists only) lists them alone; they come in passive.
 - Unlisted cards (`untrackable`, fixed when a card is opened) are in no list and no `filter[tax_number]` search; `filter[untrackable]` is refused ("Acceptable: name, email, tax_number, tax_office, city, updated_at"). Only `GET contacts/{id}` reads one: the invoice path never lands on one; an account linked to one shows it as gone.
 
 ## What does a Paraşüt card look like here?
