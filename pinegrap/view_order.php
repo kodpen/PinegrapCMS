@@ -3126,6 +3126,10 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
+        // Read before the cancellation bookkeeping is cleared below: the gift
+        // cards step needs the order number and the time of the cancellation.
+        $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+
         // Clear the cancellation bookkeeping too. Leaving cancelled_at set
         // would keep an "Order Cancelled" entry on the order_view timeline
         // of an order that is complete again, and would keep the refund
@@ -3142,14 +3146,8 @@ if (!$_POST) {
                 WHERE id = '" . e($order_id) . "' AND refund_status != 'refunded'");
         }
 
-        // Re-enable gift cards that were expired when this order was cancelled.
-        // We restore expiration to 0000-00-00 (no expiration) since the original
-        // value was overwritten during cancellation.
-        db("UPDATE gift_cards
-            SET expiration_date = '0000-00-00'
-            WHERE order_id = '" . e($order_id) . "'
-              AND expiration_date != '0000-00-00'
-              AND expiration_date <= '" . date('Y-m-d') . "'");
+        // Gift cards the cancellation expired get back the date they had.
+        pg_order_restore_gift_cards($order_id, $cancelled_order['order_number'] ?? '', $cancelled_order['cancelled_at'] ?? 0);
 
         log_activity('Restored cancelled order #' . $order_id . ' to complete.');
 

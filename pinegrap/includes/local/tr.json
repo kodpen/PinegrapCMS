@@ -24633,5 +24633,7 @@
     "This does not look like a {var:1} tracking number. It was saved anyway.": "Bu bir {var:1} takip numarasına benzemiyor. Yine de kaydedildi.",
     "Shipping carrier of {var:1}": "{var:1} numarasının kargo firması",
     "Order (#{var:1}) was marked paid.": "Sipariş (#{var:1}) ödendi olarak işaretlendi.",
-    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi."
+    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi.",
+    "This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.": "Bu hediye kartı, #{var:1} numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi yoktu.",
+    "This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.": "Bu hediye kartı, #{var:1} numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi {var:2} idi."
 }
