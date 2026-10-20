@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, in progress: steps 1-2 done, redirects are short link options with CSV): File Manager choice, slug-change 301, 404 log, canonical, llms.txt, AI-bot robots
+description: Plan (approved 2026-10-19, in progress: steps 1-2 and 7 done; redirects are short link options with CSV): File Manager choice, slug-change 301, 404 log, canonical, 404 API
 ---
 
 ## Why?
@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-2 done, redirects a
 4. Slug-change hook in designer save and page edit (S).
 5. 404 logging with retention (S).
 6. Page settings fields + render (S).
-7. `llms.txt`, robots AI section, Content-Signal (S).
+7. Done (#739): `llms.txt`, robots AI section, Content-Signal (`docs/memory/visitors/ai-crawlers-llms-txt.md`, 11.0.21).
 8. API `/seo/not-found` (S).
 
 ## Open questions?

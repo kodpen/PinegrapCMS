@@ -1,6 +1,6 @@
 ---
 name: checkout-legal-documents
-description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, API and typed values built): pre-information form and distance sales contract; left: My Account link, KVKK consent, Turkish seed
+description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, API, typed values and the order view links built): pre-information form and distance sales contract; left: KVKK consent, Turkish seed
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, 
 ## What remains?
 1. Done: settings, templates, `order_documents`, checkboxes on all three checkouts, cart page, server check, `[NEW]` line (docs/memory/commerce/order-legal-documents.md, checkout-legal-checkboxes.md).
 2. Done: designer bindings (`legal_preinfo` / `legal_contract` in the field list and prefill, `has_legal_documents` flag, `__legal_*_url` href tokens, both boxes in the PHP and JS starter trees, PR #570; docs/memory/designer/express-order-legal-documents.md).
-3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents` (`OrderDocument`, docs/memory/commerce/order-legal-documents.md). Left: a link in My Account's order view (`order_view` widget, designer session; `legal_document.php?order_id=N&type=...` is ready).
+3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents` (`OrderDocument`, docs/memory/commerce/order-legal-documents.md); links to the kept copies in the order view widget (PR #736, docs/memory/commerce/order-view-legal-documents.md).
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
 5. Template seed for Turkish sites on install and the withdrawal timer shown on the order (14 days from delivery, see `customer-returns-flow.md`).
 6. Done (PR #648): the document link posts the form's billing fields and payment method to the document page, in the link's own window rather than a modal (classic pages may have no Bootstrap, and a page of its own prints and saves); docs/memory/commerce/checkout-legal-checkboxes.md.
@@ -27,4 +27,4 @@ description: Plan (approved 2026-10-19; checkout, designer bindings, kept copy, 
 - Should the contract PDF be produced (dompdf is already vendored for ERP) or is HTML enough? Start with HTML; PDF later if customers ask.
 
 ## Where to start?
-- Step 4 (KVKK): ask about the config column for the consent text first. The My Account link is the designer session's. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.
+- Step 4 (KVKK): ask about the config column for the consent text first. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.

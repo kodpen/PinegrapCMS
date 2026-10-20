@@ -6134,6 +6134,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     line-height: 1.45;
 }
 .sd-tab.active .sd-tab-draft-badge { color: var(--sd-text, #c9d1d9); border-color: var(--sd-text, #c9d1d9); }
+/* A page that goes on the site or comes off it at a set time: a clock in
+   the same pill, solid rather than dashed; the time is its title. */
+.sd-tab-sched-badge { border-style: solid; padding: 0 .3rem; }
+.sd-tab-sched-badge .bi { font-size: .62rem; }
 .sd-publish-more { display: inline-flex; margin-left: -4px; }
 #sd-publish-more.sd-publish-more-btn {
     width: 22px;

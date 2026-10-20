@@ -1414,12 +1414,28 @@ function pg_panel_designer($request, $action)
                 'draft_count' => $dp_counts[$dp_style_id]['drafts'],
                 'home_count'  => $dp_counts[$dp_style_id]['home'],
             );
+            // A page moved by hand loses the scheduled move it made
+            // unnecessary (pg_page_draft_move()): the badge and the chips'
+            // clocks are drawn from what is stored now.
+            $dp_sched = function_exists('pg_page_schedule_design_counts') ? pg_page_schedule_design_counts(array($dp_style_id)) : array();
+            $dp_row['scheduled_count'] = isset($dp_sched[$dp_style_id]) ? $dp_sched[$dp_style_id]['scheduled'] : 0;
+            $dp_row['scheduled_next']  = isset($dp_sched[$dp_style_id]) ? $dp_sched[$dp_style_id]['next'] : 0;
+            $dp_scheduled = array();
+            if ($dp_row['scheduled_count'] > 0 && function_exists('pg_page_schedule_times')) {
+                $dp_page_ids = array_map('intval', (array)db_values("SELECT page_id FROM page WHERE page_style = '$dp_style_id'"));
+                foreach (pg_page_schedule_times($dp_page_ids) as $dp_pid => $dp_t) {
+                    $dp_scheduled[(string)$dp_pid] = ($dp_t['publish_at'] > 0)
+                        ? lang(array('string' => 'Goes on the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['publish_at']))))
+                        : lang(array('string' => 'Comes off the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['unpublish_at']))));
+                }
+            }
             respond(array(
-                'status'  => 'success',
-                'message' => $dp_message,
-                'changed' => $dp['changed'],
-                'drafts'  => $dp_row['draft_count'],
-                'cell'    => pg_designer_list_status_cell($dp_row),
+                'status'    => 'success',
+                'message'   => $dp_message,
+                'changed'   => $dp['changed'],
+                'drafts'    => $dp_row['draft_count'],
+                'cell'      => pg_designer_list_status_cell($dp_row),
+                'scheduled' => (object)$dp_scheduled,
             ));
             break;
 

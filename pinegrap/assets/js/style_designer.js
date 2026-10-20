@@ -32085,7 +32085,9 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Order history / document'), tokens: [
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
-            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')]
+            ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
+            ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -32591,6 +32593,9 @@ const StyleDesigner = (function () {
             ['has_surcharge',           _sdT('There is a card surcharge')],
             ['has_timeline',            _sdT('The order has a history')],
             ['can_print_invoice',       _sdT('The invoice can be printed')],
+            ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
+            ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
+            ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -47238,6 +47243,43 @@ const StyleDesigner = (function () {
                                     ])
                                 ]),
 
+                                // ── Legal Documents — the copies kept at checkout ──
+                                // has_legal_documents keeps the card off orders
+                                // placed without the documents, and each line
+                                // has its own flag. The server points each href
+                                // at the order's kept copy (legal_document.php),
+                                // which opens only for the order's customer. The
+                                // window is the link's target prop: the server's
+                                // link renderer does not take it from _attrs.
+                                createNode('semantic', { tag: 'div',
+                                    cssClass: 'card mb-3', customName: _sdT('Legal Documents Card'),
+                                    _bindings: { eo_visible_if: 'has_legal_documents' } }, [
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-header' }, [
+                                        createNode('content', { contentType: 'heading', tag: 'h6',
+                                            text: _sdT('Legal Documents'), cssClass: 'mb-0 fw-semibold' })
+                                    ]),
+                                    createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'mb-1',
+                                            customName: _sdT('Pre-Information Form'),
+                                            _bindings: { eo_visible_if: 'has_legal_preinfo' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Pre-Information Form'), href: '#', target: '_blank',
+                                                customName: _sdT('Pre-Information Form Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_preinfo_url' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Distance Sales Contract'),
+                                            _bindings: { eo_visible_if: 'has_legal_contract' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Distance Sales Contract'), href: '#', target: '_blank',
+                                                customName: _sdT('Distance Sales Contract Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_contract_url' } })
+                                        ])
+                                    ])
+                                ]),
+
                                 // ── Print Invoice — logged-in owner only ────
                                 // The endpoint re-checks ownership server-side;
                                 // can_print_invoice keeps the button off guest
@@ -50910,7 +50952,7 @@ const StyleDesigner = (function () {
     var _PG_PAGE_FIELDS = [
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
         'page_search', 'page_search_keywords', 'page_sitemap', 'page_home',
-        'page_noindex', 'page_nofollow', 'page_draft',
+        'page_noindex', 'page_nofollow', 'page_draft', 'page_publish_at', 'page_unpublish_at',
         'pg_comments', 'pg_comments_label', 'pg_comments_allow_new', 'pg_comments_rating',
         'pg_comments_auto_publish', 'pg_comments_show_date', 'pg_comments_login',
         'pg_comments_email_page', 'pg_comments_email_subject', 'pg_comments_notify_email',
@@ -51118,8 +51160,10 @@ const StyleDesigner = (function () {
                 extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
                         esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
             }
-            // A page kept off the site says so on its tab.
+            // A page kept off the site says so on its tab; one that goes on
+            // or comes off at a set time says when.
             var draft = _pgDraftsReady() && !!p.page_draft;
+            var sched = _pgScheduleNote(p);
             html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
                     (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + (folded ? ' sd-tab-folded' : '') + '"' +
                     ' data-key="' + esc(p.key) + '"' +
@@ -51127,7 +51171,8 @@ const StyleDesigner = (function () {
                     ' role="tab" tabindex="0" title="' + esc(name) + '">' +
                     '<span class="sd-tab-dot" aria-hidden="true"></span>' +
                     '<span class="sd-tab-name">' + esc(name) + '</span>' +
-                    (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
+                           : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
                     extra +
                     '</div>';
         });
@@ -51357,6 +51402,20 @@ const StyleDesigner = (function () {
                 _pgTabsRender();
             });
         }
+        // The two times of Page Settings: a publish time still ahead makes
+        // the page a draft at once, on its tab and on the switch.
+        ['pg_page_publish_at', 'pg_page_unpublish_at'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el || el._pgSchedBound) return;
+            el._pgSchedBound = true;
+            el.addEventListener('change', function () {
+                var a = _pgActivePage();
+                if (a) _pgReadFieldsIntoPage(a);
+                _pgSyncDraftBox(a);
+                _pgTabsRender();
+                _sdSettingsSyncSave();
+            });
+        });
         var homeBox = document.getElementById('pg_page_home');
         if (homeBox && draftBox && !homeBox._pgDraftBound) {
             homeBox._pgDraftBound = true;
@@ -54223,6 +54282,12 @@ const StyleDesigner = (function () {
                 // The state the server left the page in: a draft of the home
                 // page is refused (pg_designer_page_draft_plan()).
                 if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // The times as the server left them: one that had come was
+                // carried out by the save and cleared.
+                if (p && typeof m.publish_at !== 'undefined') {
+                    p.page_publish_at   = m.publish_at || '';
+                    p.page_unpublish_at = m.unpublish_at || '';
+                }
                 // A page that joined the design with this save has its place
                 // in the tab layout stored below.
                 if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
@@ -54329,8 +54394,15 @@ const StyleDesigner = (function () {
         var go = function () {
             // The keys as the save sends them: a new page gets its id and a
             // new key once the server answers.
-            var marked = list.map(function (p) { return { page: p, key: p.key, was: p.page_draft ? 1 : 0 }; });
-            list.forEach(function (p) { p.page_draft = on ? 1 : 0; });
+            var marked = list.map(function (p) {
+                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '' };
+            });
+            // A page put on the site by hand no longer waits for its publish
+            // time; one taken off no longer waits for its time to come off.
+            list.forEach(function (p) {
+                p.page_draft = on ? 1 : 0;
+                if (on) p.page_unpublish_at = ''; else p.page_publish_at = '';
+            });
             _pgSyncDraftBox(_pgActivePage());
             _pgTabsRender();
             // The pages the server wrote in the state asked for. One it did
@@ -54345,6 +54417,8 @@ const StyleDesigner = (function () {
             var unmark = function (rows, rebase) {
                 rows.forEach(function (r) {
                     r.page.page_draft = r.was;
+                    r.page.page_publish_at = r.pub;
+                    r.page.page_unpublish_at = r.unpub;
                     if (rebase) r.page.baseline = _pgBaselineOf(r.page);
                 });
                 _pgSyncDraftBox(_pgActivePage());
@@ -54395,9 +54469,91 @@ const StyleDesigner = (function () {
         var homeBox = document.getElementById('pg_page_home');
         var home = homeBox ? homeBox.checked : !!p.page_home;
         if (home && p.page_draft) p.page_draft = 0;
+        // A publish time still ahead keeps the page a draft until then
+        // (pg_page_schedule_plan() decides the same on the server).
+        var waits = !home && _pgScheduleAhead(p.page_publish_at);
+        if (waits) p.page_draft = 1;
         box.checked  = !!p.page_draft;
-        box.disabled = home;
-        box.title    = home ? _sdT('The home page stays on the site.') : '';
+        box.disabled = home || waits;
+        box.title    = home ? _sdT('The home page stays on the site.')
+                     : (waits ? _sdT('The page stays a draft until its publish time.') : '');
+        _pgSyncScheduleFields(p, home);
+    }
+
+    // ── Scheduled publishing ──
+    // A page can carry a time to go on the site and a time to come off it,
+    // the site's wall clock as a datetime-local box writes it
+    // ("2026-10-21T09:30"); the general job makes the move
+    // (includes/fn/page_schedule.php). Both reach the server with a save,
+    // like the draft state.
+    function _pgScheduleReady() { return !!(_design && _design.drafts && _design.drafts.schedule && _design.drafts.schedule.ready); }
+
+    // The site's wall clock now, in the same text form, so a time compares
+    // as text.
+    function _pgScheduleSiteNow() {
+        var off = (_design && _design.drafts && _design.drafts.schedule) ? (parseInt(_design.drafts.schedule.offset, 10) || 0) : 0;
+        var d = new Date(Date.now() + off * 1000);
+        var two = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getUTCFullYear() + '-' + two(d.getUTCMonth() + 1) + '-' + two(d.getUTCDate()) + 'T' + two(d.getUTCHours()) + ':' + two(d.getUTCMinutes());
+    }
+    function _pgScheduleAhead(v) {
+        return _pgScheduleReady() && typeof v === 'string' && v.length >= 16 && v.slice(0, 16) > _pgScheduleSiteNow();
+    }
+
+    // A time in words, for a badge's title: the wall clock it names, read
+    // in the browser's own format.
+    function _pgScheduleLabel(v) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(v || ''));
+        if (!m) return String(v || '');
+        try {
+            return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (e) {
+            return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5];
+        }
+    }
+
+    // What the page's times will do next, in one sentence; '' for nothing.
+    // The home page takes no time.
+    function _pgScheduleNote(p) {
+        if (!p || !_pgScheduleReady() || !_pgDraftsReady() || p.page_home) return '';
+        if (p.page_draft && _pgScheduleAhead(p.page_publish_at)) {
+            return _pgScheduleAhead(p.page_unpublish_at)
+                ? _sdT('Goes on the site {var:1}; comes off it again {var:2}.', [_pgScheduleLabel(p.page_publish_at), _pgScheduleLabel(p.page_unpublish_at)])
+                : _sdT('Goes on the site {var}.', _pgScheduleLabel(p.page_publish_at));
+        }
+        if (!p.page_draft && _pgScheduleAhead(p.page_unpublish_at)) {
+            return _sdT('Comes off the site {var}.', _pgScheduleLabel(p.page_unpublish_at));
+        }
+        return '';
+    }
+
+    // The two boxes of Page Settings show the active page; the home page
+    // takes neither, and an end before the start is said under them (the
+    // save refuses it).
+    function _pgSyncScheduleFields(p, home) {
+        var pub = document.getElementById('pg_page_publish_at');
+        var unpub = document.getElementById('pg_page_unpublish_at');
+        if (!pub || !unpub || !p) return;
+        pub.value   = p.page_publish_at || '';
+        unpub.value = p.page_unpublish_at || '';
+        pub.disabled = unpub.disabled = !!home;
+        var line = document.getElementById('sd-page-schedule');
+        if (!line) return;
+        var text = '', warn = false;
+        if (home) {
+            text = _sdT('The home page stays on the site.');
+        } else if (p.page_publish_at && p.page_unpublish_at && p.page_unpublish_at.slice(0, 16) <= p.page_publish_at.slice(0, 16)) {
+            text = _sdT('The time to take the page off the site has to be after its publish time.');
+            warn = true;
+        } else if (p.page_publish_at && !_pgScheduleAhead(p.page_publish_at)) {
+            text = _sdT('This time has passed: the page is published with the next save.');
+        } else if (p.page_unpublish_at && !_pgScheduleAhead(p.page_unpublish_at)) {
+            text = _sdT('This time has passed: the page is taken off the site with the next save.');
+        } else {
+            text = _pgScheduleNote(p);
+        }
+        line.textContent = text;
+        line.classList.toggle('text-warning', warn);
     }
 
     // The keys of the editor's save, as the panel writes a shortcut.
@@ -54441,7 +54597,9 @@ const StyleDesigner = (function () {
         var icon = btn.querySelector('.bi');
         if (icon) icon.className = 'bi ' + (draft ? 'bi-floppy' : 'bi-rocket-takeoff');
         btn.classList.toggle('sd-publish-draft', draft);
-        var title = (draft ? _sdT('Saves the design. This page stays a draft, off the site.') : _sdT('Publish')) + ' (' + _SD_SAVE_KEYS + ')';
+        var note = _pgScheduleNote(a);
+        var title = (draft ? (note ? _sdT('Saves the design.') + ' ' + note : _sdT('Saves the design. This page stays a draft, off the site.'))
+                           : (note ? _sdT('Publish') + '. ' + note : _sdT('Publish'))) + ' (' + _SD_SAVE_KEYS + ')';
         if (!btn.classList.contains('sd-saving-blocked')) _sdSetButtonTitle(btn, title);
         btn.dataset.origTitle = title;
         // A draft has two actions side by side: Save keeps it off the site,

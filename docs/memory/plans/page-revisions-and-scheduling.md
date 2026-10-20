@@ -1,33 +1,30 @@
 ---
 name: page-revisions-and-scheduling
-description: Plan (approved 2026-10-19; step 1 revisions table and writer done): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages
+description: Plan (approved 2026-10-19; steps 1-3 done, PRs #696, #705, #743): page revision history with compare and restore, retention, scheduled publish and unpublish; API and MCP left
 ---
 
 ## What did the owner decide?
 - 2026-10-19: revision history and scheduled publishing are approved. The earlier decision stands: a live page publishes directly, there is no working copy. A revision is a record of what was published, not a draft; restoring one is a new publish.
 
 ## Why?
-- Today the only history is browser-local: localStorage autosave, 50 undo steps and at most 20 local snapshots (`assets/js/style_designer.js:253,47701`). Nothing survives a cleared browser or a second editor. Every compared builder and headless CMS keeps versions; WordPress 7.0 added a visual revision slider. Scheduling exists for comments, events and campaigns, not for pages.
+- Before this the only history was browser-local (localStorage autosave, 50 undo steps, 20 local snapshots): nothing survived a cleared browser or a second editor. Every compared builder and headless CMS keeps versions. Scheduling existed for comments, events and campaigns, not for pages.
 
 ## What is decided?
-- New table `page_revisions` (page_id, style_id, revision_no, page_tree_json, page_tree_code hash, settings_json for title/meta/folder flags, user_id, created_at, source `publish|restore|import|ai`). A row is written on every successful publish and page import in `includes/panel/designer.php` (save/publish actions), never on autosave.
-- Retention: keep the last 30 revisions per page or 90 days, whichever is more (setting); the general job trims. Draft pages (`page_drafts`) also get revisions once they are saved.
-- Designer UI: a History panel (list with who/when, size delta), "Compare" (text diff of the serialized tree and a side-by-side preview using the existing blob preview), "Restore" = loads the tree into the editor as unsaved work; publishing it writes a new revision with `source='restore'`. Shared components get the same history (`shared_components`), since a page tree references them by id.
-- Scheduling: page settings gain `publish_at` and `unpublish_at`; a scheduled page keeps draft status until the general job publishes it (reusing the draft → publish path) and moves it back to the drafts folder at `unpublish_at`. The design list shows "scheduled" beside live/draft/partly live. Timezone is the site's.
+- Revisions: table `page_revisions`, one row per publish and import, never on autosave; sources `publish|restore|import|ai`; retention the larger of last 30 per page or 90 days (Site Settings › Features › Page Revisions), trimmed daily by the general job. Restore loads the tree as unsaved work; publishing it records `source='restore'`. Details: `docs/memory/designer/page-revisions.md`.
+- Scheduling: `page.publish_at` / `page.unpublish_at`; a scheduled page stays a draft until the general job publishes it through the draft → publish move and takes it back to the drafts at `unpublish_at`; the design list shows "scheduled" beside live/draft/partly live; the site's time zone. A passed time is carried out by the next save, a move by hand clears the move it makes unnecessary, the home page takes no time, binned pages are skipped, a copied design starts without times. Details: `docs/memory/designer/page-schedule.md`.
 - Legacy classic pages: no revisions and no scheduling here; their editor is on its own retirement path (`legacy-page-designer-retirement.md`). The `page_translations` cache is cleared on restore like on publish.
 - API: `GET /design/pages/{id}/revisions`, `POST …/revisions/{no}/restore` (dry-run supported), `publish_at`/`unpublish_at` on page write.
 
 ## What remains?
-1. Done (PR #696): step 11.0.15 (`page_revisions`, `config.page_revisions_keep/days`), `includes/fn/page_revisions.php` (writer in `pg_designer_save_page()`, sources, trim, daily sweep in job.php), `tests/page_revisions_test.php`; `docs/memory/designer/page-revisions.md`.
-2. Done (PR #705): History panel (revisions above local snapshots), compare (side-by-side blob documents + line diff), restore as unsaved work with `revision_source: 'restore'`; actions `revisions_list` / `revision_get`. Shared components have no history yet (open question below).
-3. Scheduling columns, job, list badge, page settings UI (M).
-4. API routes, schema, MCP (S).
-5. Memory: `docs/memory/designer/page-revisions.md` when shipped.
+1. Done (PR #696): step 11.0.15, `includes/fn/page_revisions.php` (writer, sources, trim, daily sweep), `tests/page_revisions_test.php`.
+2. Done (PR #705): History panel, compare (blob documents + line diff), restore as unsaved work; actions `revisions_list` / `revision_get`.
+3. Done (PR #743): step 11.0.17 (two columns, an index each), `includes/fn/page_schedule.php` (save plan, job pass every tick, list counts), `pg_page_draft_move()`, designs list badge and chip clocks, Page Settings › Schedule, retention card; `tests/page_schedule_test.php`.
+4. API routes, schema, MCP (S). Page write takes `publish_at`/`unpublish_at` through `pg_page_schedule_parse()` (ISO 8601 with offset or Z, or unix time) as the save's `page_publish_at`/`page_unpublish_at`; the page read returns them.
+5. Memory: finish `page-revisions.md` / `page-schedule.md`, then delete this plan.
 
 ## Open questions?
 - Shared components (`shared_components`) were to get the same history; their save path (`shared_component` actions) has no writer yet. Same table with a `shared_id` column, or a table of their own?
 - Store `page_tree_code` fully or hash only? Hash only; the tree is re-rendered on restore (render is deterministic).
-- Retention settings (count, days) have columns and constants but no settings card yet; it goes in with step 3's page settings UI (Designer settings pane or the Features card).
 
 ## Where to start?
-- Step 1; read `docs/memory/designer/multi-page-design-model.md` and `designer-collab-view-mode.md` (lock rules apply to restore too).
+- Step 4 once #696, #705 and #743 are merged (stacked in that order); read both memory files above and the `pinegrap-dis-api` skill.
