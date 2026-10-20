@@ -1117,7 +1117,7 @@ if (!$_POST) {
         <body class="design coloron">
             <div id="theme_designer_toolbar">
                 <div id="header" style="    height: 50px;line-height: 50px;">
-                    <img style="height:inherit;height: 37px;width: auto;margin-left: 1rem;" src="' . LOGO_URL . '" width="auto" border="0" alt="logo" title="" /><br />
+                    <img style="height:inherit;height: 37px;width: auto;margin-left: 1rem;" src="' . h(LOGO_URL) . '" width="auto" border="0" alt="logo" title="" /><br />
                 </div>
                 <div id="subnav" style="font-weight: bold">
                     ' . h($file_name) . '
