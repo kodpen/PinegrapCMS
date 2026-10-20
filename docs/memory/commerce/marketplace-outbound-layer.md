@@ -4,8 +4,13 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 ---
 
 ## What is the connector contract?
-- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider.
+- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create and batch result so far (`trendyol-api-facts.md`, `trendyol-listings.md`).
 - The contract is not an interface but a TABLE OF FUNCTION NAMES: `mp_connector('n11')` returns it, `mp_can()` asks, `mp_call()` calls. A connector that does not name a function it cannot do is valid.
+- Nothing is queued for what a connector cannot do: `mp_enqueue()` skips accounts whose provider lacks `push_stock_price`, and the screen hides "List on the marketplace" without `create_listings` (otherwise rows fail six times or wait for ever).
+
+## How are a provider's credential fields declared?
+- `mp_providers()[...]['fields']`: text box by default (`secret` → password); `'type' => 'select'` with `options` and `default` (Trendyol's live/test environment). `mp_provider_credentials()` reads a form and only ever stores one of a select's options; a select is never "required". Optional `help` is drawn under the fields; `shipment_template` shows the account's cargo template field; `key => 'barcode'` (`mp_provider_keys_by_barcode()`) makes the barcode the product's key. The new-account modal draws every provider's block and disables the hidden ones.
+- Trendyol's functions take an optional `$transport` (signature of `api_http_request()`); `mp_call()` never passes it, tests pass a fixture recorder.
 
 ## Which tables does it use?
 - Three tables, ZERO columns added to existing tables: `marketplace_accounts` (one row per connection; a store may hold two accounts on the same provider; credentials are encrypted JSON via `encrypt_string_with_iv`, column `"<ciphertext>:<iv>"`), `marketplace_product_map` (`(account_id, product_id)` UNIQUE), `marketplace_sync_queue` (carries `remote_task_id`).

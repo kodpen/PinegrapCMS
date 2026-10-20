@@ -248,6 +248,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // SEO screen needs.
     $product_feeds_ready = array_key_exists('product_feeds', $row);
     $product_feeds_settings = pg_product_feed_settings_parse($product_feeds_ready ? (string) $row['product_feeds'] : '');
+    // AI crawlers and llms.txt (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php):
+    // the card's switches and text, and the two firewall switches it follows.
+    $ai_crawlers = pg_ai_crawler_settings_from_row($row);
     $page_editor_version = $row['page_editor_version'];
     $page_editor_font = $row['page_editor_font'];
     $page_editor_font_size = $row['page_editor_font_size'];
@@ -582,6 +585,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_storefront_account_prices_checked = ((int) ($row['erp_storefront_account_prices'] ?? 0) === 1) ? ' checked' : '';
     // Putting an order on the account at checkout (10.60).
     $erp_open_account_ready = array_key_exists('erp_open_account_payment', $row);
+    // When a web order's invoice is issued (the column is from 2026.4.4): from
+    // the order screen, or on its own once the order is paid or shipped.
+    $erp_auto_invoice_ready = array_key_exists('erp_auto_invoice_on', $row);
+    $erp_auto_invoice_on = (string) ($row['erp_auto_invoice_on'] ?? 'off');
+    if (!in_array($erp_auto_invoice_on, array('off', 'order_paid', 'order_shipped'), true)) {
+        $erp_auto_invoice_on = 'off';
+    }
     // Checkout legal documents (11.0.1): the switch and the two templates. An
     // empty template is shown as the built-in one, so it is edited rather than
     // written from nothing.

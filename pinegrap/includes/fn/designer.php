@@ -1863,6 +1863,47 @@ function pg_page_draft_publish_folder($page_id)
 }
 
 /**
+ * One page taken off the site into the drafts folder, or put back on it:
+ * the move the designs list makes for every page of a design
+ * (pg_designer_design_set_draft()) and the general job makes for a page whose
+ * scheduled time has come (pg_page_schedule_run()). page_drafts keeps the
+ * folder the page returns to. The move also clears the scheduled move it
+ * makes unnecessary: put on the site, its publish time; taken off, its time
+ * to come off. Nothing is logged; the caller says why the page moved.
+ *
+ * @param int      $page_id
+ * @param bool     $on      true: off the site; false: on it
+ * @param int      $folder  the page's folder now, the one it returns to when taken off
+ * @param int|null $user_id written as the page's author and the draft's; null keeps the author
+ * @return bool whether the page moved
+ */
+function pg_page_draft_move($page_id, $on, $folder, $user_id = null)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !pg_page_draft_ready()) return false;
+
+    $author = ($user_id === null) ? '' : ", page_user = '" . (int)$user_id . "'";
+    $sched  = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
+
+    if ($on) {
+        $draft_folder = pg_page_draft_folder_id(true);
+        if ($draft_folder <= 0) return false;
+        db("UPDATE page SET page_folder = '$draft_folder', page_timestamp = UNIX_TIMESTAMP()$author" . ($sched ? ", unpublish_at = 0" : '') . "
+            WHERE page_id = '$page_id'");
+        db("INSERT INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
+            VALUES ('$page_id', '" . (int)$folder . "', UNIX_TIMESTAMP(), '" . (int)$user_id . "')
+            ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id), drafted_at = VALUES(drafted_at), drafted_by = VALUES(drafted_by)");
+    } else {
+        $to = pg_page_draft_publish_folder($page_id);
+        db("UPDATE page SET page_folder = '$to', page_timestamp = UNIX_TIMESTAMP()$author" . ($sched ? ", publish_at = 0" : '') . "
+            WHERE page_id = '$page_id'");
+        db("DELETE FROM page_drafts WHERE page_id = '$page_id'");
+    }
+
+    return true;
+}
+
+/**
  * What a save does with a page's draft state (pg_designer_save_page()):
  * whether the page ends up a draft, and the warning when a draft is refused.
  * The editor sends the state as page_draft; a save without it - and every
@@ -1870,11 +1911,11 @@ function pg_page_draft_publish_folder($page_id)
  * keeps the stored state. Decided before the dry run returns, so the check
  * of every page reports it before anything is written.
  *
- * @return array ready, was, want, warnings
+ * @return array ready, was, want, home (the page is the home page after this save), warnings
  */
 function pg_designer_page_draft_plan($page_id, $page, $user, $restricted)
 {
-    $plan = array('ready' => pg_page_draft_ready(), 'was' => false, 'want' => false, 'warnings' => array());
+    $plan = array('ready' => pg_page_draft_ready(), 'was' => false, 'want' => false, 'home' => false, 'warnings' => array());
 
     if (!$plan['ready']) return $plan;
 
@@ -1892,6 +1933,8 @@ function pg_designer_page_draft_plan($page_id, $page, $user, $restricted)
     $home = ((int)$user['role'] < 3)
         ? $on(isset($page['page_home']) ? $page['page_home'] : 0)
         : (is_array($stored) && (string)$stored['page_home'] === 'yes');
+
+    $plan['home'] = (bool)$home;
 
     if ($plan['want'] && $home) {
         $plan['want'] = false;
@@ -2006,16 +2049,11 @@ function pg_designer_design_set_draft($style_id, $on, $user)
         if ($on) {
             if ($draft) continue;
             if ((string)$r['page_home'] === 'yes') { $out['home']++; continue; }
-            db("UPDATE page SET page_folder = '$draft_folder', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
-            db("INSERT INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
-                VALUES ('$pid', '" . (int)$r['page_folder'] . "', UNIX_TIMESTAMP(), '$uid')
-                ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id), drafted_at = VALUES(drafted_at), drafted_by = VALUES(drafted_by)");
+            if (!pg_page_draft_move($pid, true, (int)$r['page_folder'], $uid)) continue;
             log_activity(lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($r['page_name']))), $who);
         } else {
             if (!$draft) continue;
-            $folder = pg_page_draft_publish_folder($pid);
-            db("UPDATE page SET page_folder = '$folder', page_timestamp = UNIX_TIMESTAMP(), page_user = '$uid' WHERE page_id = '$pid'");
-            db("DELETE FROM page_drafts WHERE page_id = '$pid'");
+            pg_page_draft_move($pid, false, (int)$r['page_folder'], $uid);
             log_activity(lang(array('string' => 'page ({var:1}) was published', 'vars' => array($r['page_name']))), $who);
         }
         $out['changed']++;
@@ -2416,6 +2454,8 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $multi_ready   = pg_multi_page_design_ready();
     $meta_ready    = pg_meta_tags_ready();
     $jsonld_ready  = pg_page_custom_jsonld_ready();
+    $extras_ready  = pg_page_seo_extras_ready();
+    $sched_ready   = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
 
     $cols = "page.page_id, page.page_name, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2429,6 +2469,8 @@ function pg_designer_load_pages($style_id, $style_name = '')
              page.page_timestamp,
              " . ($meta_ready ? "page.page_meta_tags," : "'' AS page_meta_tags,") . "
              " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
+             " . ($extras_ready ? "page.canonical_url, page.noarchive, page.max_snippet," : "'' AS canonical_url, 0 AS noarchive, NULL AS max_snippet,") . "
+             " . ($sched_ready ? "page.publish_at, page.unpublish_at," : "0 AS publish_at, 0 AS unpublish_at,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2496,6 +2538,17 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'page_meta_tags'        => pg_meta_tags_encode(pg_meta_tags_normalize((string)$r['page_meta_tags'])),
             // The page's own JSON-LD (page.custom_jsonld), as written.
             'page_custom_jsonld'    => (string)$r['custom_jsonld'],
+            // The page's own canonical address and robots directives
+            // (includes/fn/seo.php): the snippet length as the number box
+            // shows it, '' when the page sets none.
+            'page_canonical_url'    => (string)$r['canonical_url'],
+            'page_noarchive'        => !empty($r['noarchive']) ? 1 : 0,
+            'page_max_snippet'      => ($r['max_snippet'] === null) ? '' : (string)(int)$r['max_snippet'],
+            // When the page goes on the site and comes off it, as a
+            // datetime-local box shows them in the site's time zone ('' for
+            // none; includes/fn/page_schedule.php).
+            'page_publish_at'       => $sched_ready ? pg_page_schedule_format($r['publish_at']) : '',
+            'page_unpublish_at'     => $sched_ready ? pg_page_schedule_format($r['unpublish_at']) : '',
             'tree_json'             => (string)$r['tree_json'],
         );
     }
@@ -2798,10 +2851,13 @@ function pg_designer_page_name_taken_elsewhere($name)
  *   page_home, page_noindex, page_nofollow, pg_comments, pg_comments_label,
  *   pg_comments_allow_new, pg_comments_rating, page_draft (1 = keep the page
  *   off the site in the drafts folder; page_folder is then the folder it is
- *   published to)
+ *   published to), page_publish_at and page_unpublish_at (when the page goes
+ *   on the site and comes off it, pg_page_schedule_parse(); '' for none)
  *
  * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
- * 'draft' => bool).
+ * 'draft' => bool), with 'revision_no' (the revision written, 0 for none)
+ * when the save wrote, and 'publish_at' / 'unpublish_at' (datetime-local
+ * text) when the save decided the page's times.
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -2881,6 +2937,25 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         }
     }
 
+    // The page's own canonical address and snippet length, checked the same
+    // way and written the same way: when the editor sends them.
+    $canonical = null;
+    $max_snippet = null;
+    if (pg_page_seo_extras_ready()) {
+        if (array_key_exists('page_canonical_url', $page)) {
+            $canonical = pg_page_canonical_url_check(is_string($page['page_canonical_url']) ? $page['page_canonical_url'] : '');
+            if (!$canonical['ok']) {
+                $errors[] = pg_page_canonical_url_message($canonical['error'], $name);
+            }
+        }
+        if (array_key_exists('page_max_snippet', $page)) {
+            $max_snippet = pg_page_max_snippet_check($page['page_max_snippet']);
+            if (!$max_snippet['ok']) {
+                $errors[] = pg_page_max_snippet_message($name);
+            }
+        }
+    }
+
     if (!empty($errors)) {
         return array('ok' => false, 'page_id' => $page_id, 'errors' => $errors, 'warnings' => $warnings);
     }
@@ -2889,6 +2964,19 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // checks every page reports a refused draft before anything is written.
     $draft_plan = pg_designer_page_draft_plan($page_id, $page, $user, $restricted);
     foreach ($draft_plan['warnings'] as $w) $warnings[] = $w;
+
+    // The time to go on the site and the time to come off it (2026.11.0,
+    // includes/fn/page_schedule.php): a publish time still ahead keeps the
+    // page a draft, a time that has come is carried out by this save. Decided
+    // with the draft state, so the dry run refuses a bad time too.
+    $schedule = function_exists('pg_page_schedule_save_plan')
+        ? pg_page_schedule_save_plan($page_id, $page, $restricted, $draft_plan, $name)
+        : array('apply' => false, 'errors' => array(), 'warnings' => array());
+    if ($schedule['errors']) {
+        return array('ok' => false, 'page_id' => $page_id, 'errors' => $schedule['errors'], 'warnings' => $warnings);
+    }
+    foreach ($schedule['warnings'] as $w) $warnings[] = $w;
+    if ($schedule['apply']) $draft_plan['want'] = $schedule['draft'];
 
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
@@ -3047,13 +3135,25 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     if ($jsonld !== null && $jsonld['ok']) {
         $c_extra['custom_jsonld'] = e($jsonld['value']);
     }
+    // The canonical address and the robots directives, checked above. A
+    // snippet length left empty is stored as NULL (no directive).
+    if ($canonical !== null && $canonical['ok']) {
+        $c_extra['canonical_url'] = e($canonical['value']);
+    }
+    if (array_key_exists('page_noarchive', $page) && pg_page_seo_extras_ready()) {
+        $c_extra['noarchive'] = $flag('page_noarchive');
+    }
+    if ($max_snippet !== null && $max_snippet['ok']) {
+        $c_extra['max_snippet'] = ($max_snippet['value'] === null) ? null : (string)$max_snippet['value'];
+    }
     $sql_c_extra_set  = '';
     $sql_c_extra_cols = '';
     $sql_c_extra_vals = '';
     foreach ($c_extra as $c_col => $c_val) {
-        $sql_c_extra_set  .= "$c_col = '$c_val',\n";
+        $c_sql = ($c_val === null) ? 'NULL' : "'$c_val'";
+        $sql_c_extra_set  .= "$c_col = $c_sql,\n";
         $sql_c_extra_cols .= "$c_col, ";
-        $sql_c_extra_vals .= "'$c_val', ";
+        $sql_c_extra_vals .= "$c_sql, ";
     }
 
     $multi_ready = pg_multi_page_design_ready();
@@ -3063,6 +3163,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     $sql_noindex_set = pg_page_noindex_ready()
         ? "noindex = '$noindex', nofollow = '$nofollow',"
         : '';
+    $sql_schedule_set = $schedule['apply']
+        ? "publish_at = '" . (int)$schedule['publish_at'] . "', unpublish_at = '" . (int)$schedule['unpublish_at'] . "',"
+        : '';
+
+    // Whether this save changed the page: a new page did, an existing one
+    // unless its row comes back as stored (decided below).
+    $changed = true;
 
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
@@ -3086,6 +3193,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             $own['nofollow'] = $nofollow;
         }
         if ($can_set_home) $own['page_home'] = $home_str;
+        if ($schedule['apply']) {
+            $own['publish_at']   = (int)$schedule['publish_at'];
+            $own['unpublish_at'] = (int)$schedule['unpublish_at'];
+        }
         $prev = db_item("SELECT " . implode(', ', array_merge(array_keys($own), array_keys($c_extra))) . " FROM page WHERE page_id = '$page_id' LIMIT 1");
         $home_set = $can_set_home ? "page_home = '" . e($home_str) . "'," : '';
         // A page the editor sends only because a shared component it shows
@@ -3105,6 +3216,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             if (!$carried) break;
             if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
         }
+        $changed = !$carried;
         $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
                 $touch_set
@@ -3117,6 +3229,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 page_search_keywords        = '" . e($keywords) . "',
                 sitemap                     = '$sitemap',
                 $sql_noindex_set
+                $sql_schedule_set
                 $home_set
                 $sql_tree_set
                 $sql_c_extra_set
@@ -3137,11 +3250,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $sql_noindex_vals = pg_page_noindex_ready() ? "'$noindex', '$nofollow'," : '';
         $sql_tree_cols    = $multi_ready ? 'page_tree_json, page_tree_code,' : '';
         $sql_tree_vals    = $multi_ready ? "'" . e($tree_json) . "', '" . e($tree_code) . "'," : '';
+        $sql_schedule_cols = $schedule['apply'] ? 'publish_at, unpublish_at,' : '';
+        $sql_schedule_vals = $schedule['apply'] ? "'" . (int)$schedule['publish_at'] . "', '" . (int)$schedule['unpublish_at'] . "'," : '';
         db("INSERT INTO page (
                 page_name, page_folder, page_type, layout_type, page_home, page_search,
                 page_search_keywords, page_timestamp, page_user, page_style, page_title,
                 page_meta_description, comments_disallow_new_comment_message, sitemap,
                 $sql_noindex_cols
+                $sql_schedule_cols
                 $sql_tree_cols
                 $sql_c_extra_cols
                 comments, comments_label, comments_allow_new_comments, comments_rating)
@@ -3150,12 +3266,23 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 '" . e($keywords) . "', UNIX_TIMESTAMP(), '" . (int)$user['id'] . "', '$style_id', '" . e($title) . "',
                 '" . e($meta_desc) . "', '', '$sitemap',
                 $sql_noindex_vals
+                $sql_schedule_vals
                 $sql_tree_vals
                 $sql_c_extra_vals
                 '$c_on', '" . e($c_label) . "', '$c_allow', '$c_rating')");
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // Every save that changed the page is kept as a revision
+    // (includes/fn/page_revisions.php); one carried unchanged records nothing.
+    // The caller may name where the tree came from (the importer, the AI
+    // editor, a restore); a save from the editor or the API is a publish.
+    $revision_no = 0;
+    if ($changed && $multi_ready && $page_id > 0 && function_exists('pg_page_revision_record')) {
+        $revision_no = pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
+            isset($page['revision_source']) ? (string)$page['revision_source'] : 'publish');
     }
 
     // The folder a draft returns to, kept while it is a draft. The time and
@@ -3189,7 +3316,18 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
-    return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0));
+    // The revision this save wrote (0 for none), as pg_page_revision_record()
+    // read it back by the row's own id: a MAX() taken here could already be
+    // another save's number.
+    $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0),
+                    'revision_no' => (int)$revision_no);
+    // The times as this save left them, for the editor's tab: a time that
+    // had come was carried out and cleared.
+    if ($schedule['apply']) {
+        $result['publish_at']   = pg_page_schedule_format($schedule['publish_at']);
+        $result['unpublish_at'] = pg_page_schedule_format($schedule['unpublish_at']);
+    }
+    return $result;
 }
 
 /**
@@ -4489,7 +4627,15 @@ function _render_component_html($props, $pad, $kids = '')
                     : "\n" . $kids . $pad . $text;
             }
             if ($tag === 'a') {
-                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
+                // The window and the relationship are the Target and
+                // Relationship options' props. When a prop is empty, an
+                // _attrs entry of the same name (typed in the Attrs panel)
+                // prints, as it does on the canvas; a prop that is set wins
+                // and its _attrs entry is skipped, so each prints once.
+                $btn_skip = array('type', 'href');
+                if ($target !== '') $btn_skip[] = 'target';
+                if ($rel !== '')    $btn_skip[] = 'rel';
+                $btn_extra = _render_extra_attrs($props, $btn_skip);
                 $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
@@ -4684,9 +4830,19 @@ function _render_content_html($props, $pad, $kids = '')
             $href   = h(isset($props['href'])     ? $props['href']     : '#');
             $cls    = !empty($props['cssClass'])  ? ' class="' . h($props['cssClass']) . '"' : '';
             $target = !empty($props['target'])    ? ' target="' . h($props['target']) . '"' : '';
+            $rel    = !empty($props['rel'])       ? ' rel="'    . h($props['rel'])    . '"' : '';
             $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props, array('href', 'target'));
-            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target
+            // The window and the relationship are the Link Options' props.
+            // When a prop is empty, an _attrs entry of the same name (typed
+            // in the Attrs panel, or kept there by an older layout) prints,
+            // as it does on the canvas; a prop that is set wins and its
+            // _attrs entry is skipped, so each prints once. A link without
+            // the props draws as before (its _attrs rel keeps its place).
+            $link_skip = array('href');
+            if ($target !== '') $link_skip[] = 'target';
+            if ($rel !== '')    $link_skip[] = 'rel';
+            $extra_attrs = _render_extra_attrs($props, $link_skip);
+            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target . $rel
                 . $style_attr . $extra_attrs . '>' . $text
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
             break;
@@ -5668,31 +5824,10 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
     if (is_array($page_names_in_menu_sequence) == false) {
         $page_names_in_menu_sequence = array();
     }
-    $menu_items = array();
-    // get menu items
-    $query = "SELECT 
-
-            menu_items.id,
-
-            menu_items.name,
-
-            page.page_name as link_page_name
-
-        FROM menu_items
-
-        LEFT JOIN page ON page.page_id = menu_items.link_page_id
-
-        WHERE 
-
-           (menu_items.parent_id = '" . escape($parent_id) . "') 
-
-           AND (menu_items.menu_id = '" . escape($menu_id) . "') 
-
-        ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) {
-        $menu_items[] = $row;
-    }
+    // This level's items, from the menu read once for the request
+    // (pg_menu_tree(), includes/fn/content.php).
+    $menu_tree = pg_menu_tree($menu_id);
+    $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     // loop through all menu items in order to get child menu items, and add to the array
     foreach ($menu_items as $menu_item) {
         // if this item has a link page name, and if it does not link to a page that is already in the sequence, then add menu item to array
@@ -5705,12 +5840,8 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
                 'link_page_name' => $menu_item['link_page_name']
             );
         }
-        // find out if sub menu exists
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-        $row = mysqli_fetch_row($result);
         // if sub menu exists, then add sub menu content to the array
-        if ($row[0] > 0) {
+        if (!empty($menu_tree['counts'][(int) $menu_item['id']])) {
             $menu_sequence = get_menu_sequence($menu_id, $menu_item['id'], $menu_sequence);
         }
     }
@@ -7518,6 +7649,8 @@ function pg_design_template_install($template_id, $user, $opts = array())
     $tab_ids = array();
     $id_map  = array();
     foreach ($pages as $p) {
+        // A page built from a template is an import for the revision history.
+        $p['revision_source'] = 'import';
         $r = pg_designer_save_page($style_id, $p, $user, false);
         if (empty($r['ok']) || (int)$r['page_id'] <= 0) {
             $undo();

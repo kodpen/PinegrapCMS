@@ -12,9 +12,12 @@
  *     since the last notice, from the ERP's scheduled job.
  *   - Quotes about to run out: the open quotes whose date comes within the
  *     days the store chose, from the same job (8.58).
+ *   - An order that was due its automatic invoice and did not get one, with
+ *     the reason (erp_auto_invoice_for_order()).
  *
  * The first two are off until switched on in the ERP settings (4.91); the
- * quote notice is on until switched off. Nothing here
+ * quote notice is on until switched off; the invoice notice comes with the
+ * automatic invoice itself. Nothing here
  * delivers anything itself: the bell row goes through create_notification()
  * and the device banner through the push queue that row feeds, the channels
  * the overdue reminders use (includes/erp/notify.php). The person whose own
@@ -301,4 +304,50 @@ function erp_alert_quote_expiry()
     db("UPDATE erp_quotes SET expiry_notified_at = UNIX_TIMESTAMP() WHERE id IN (" . implode(', ', $ids) . ")");
 
     return $result;
+}
+
+/**
+ * An order that was due its automatic invoice and did not get one
+ * (erp_auto_invoice_for_order()): which order, and the reason the order
+ * screen gives. Once per order and reason, so an order shipped in three
+ * parcels is not announced three times for the same missing field.
+ *
+ * Whoever may use the ERP is told, the person whose action it followed as
+ * well: they are the one who can put it right, and the screen they are on
+ * may not be the order's.
+ *
+ * @param int    $order_id
+ * @param string $order_number
+ * @param string $reason
+ * @return int  The notification's id, 0 when none was written
+ */
+function erp_alert_auto_invoice_refused($order_id, $order_number, $reason)
+{
+    $order_id = (int) $order_id;
+    $title = mb_substr(trim((string) $reason), 0, 250);
+
+    if (($order_id <= 0) || ($title === '')) {
+        return 0;
+    }
+
+    // title is the reason, order_id the order and order_total its number
+    // (includes/notifications.php builds the sentence).
+    $seen = db_value("SELECT id FROM notifications
+        WHERE action = 'erp_auto_invoice' AND order_id = '" . $order_id . "' AND title = '" . escape($title) . "'
+        LIMIT 1");
+
+    if ($seen !== null) {
+        return 0;
+    }
+
+    $actor = erp_alert_current_actor()['username'];
+
+    return erp_alert_create(array(
+        'action' => 'erp_auto_invoice',
+        'type' => 'warning',
+        'title' => $title,
+        'order_id' => $order_id,
+        'order_total' => mb_substr((string) $order_number, 0, 100),
+        'user' => ($actor !== '') ? $actor : 'system',
+    ), false);
 }

@@ -34,6 +34,37 @@
  */
 
 /**
+ * Whether a table has a column, for the sign-in path's probes below.
+ *
+ * pg_schema_has() answers from its cache file, so a signed-in request no
+ * longer asks the database. get_file.php loads this file without
+ * functions.php, so pg_schema_has() is not there; that request asks
+ * information_schema by exact name instead, once per probe as before.
+ *
+ * @param string $table
+ * @param string $column
+ * @return bool
+ */
+function pg_auth_column_exists($table, $column)
+{
+    if (function_exists('pg_schema_has')) {
+        return pg_schema_has($table, $column);
+    }
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = '" . mysqli_real_escape_string(db::$con, (string) $table) . "'
+        AND COLUMN_NAME = '" . mysqli_real_escape_string(db::$con, (string) $column) . "'
+        LIMIT 1");
+
+    return ($result && (mysqli_num_rows($result) > 0));
+}
+
+/**
  * Does the user table carry the ERP permission columns yet?
  *
  * software_update.php replaces the files and runs the upgrade afterwards, and a
@@ -52,8 +83,7 @@ function pg_user_has_erp_columns()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'manage_erp'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_auth_column_exists('user', 'manage_erp');
     }
 
     return $has;
@@ -65,8 +95,7 @@ function pg_user_has_erp_columns()
  * The same gap pg_user_has_erp_columns() covers: new files can be served by
  * the previous version's table until the upgrade runs, and a login query that
  * names a missing column takes the panel down with it. The four columns arrive
- * in one step, so the last of them answers for all four. An exact name match,
- * not LIKE: the underscores in the name are wildcards there.
+ * in one step, so the last of them answers for all four.
  *
  * @return bool
  */
@@ -75,8 +104,7 @@ function pg_user_has_ws_columns()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user WHERE Field = 'manage_workspace_settings'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_auth_column_exists('user', 'manage_workspace_settings');
     }
 
     return $has;
@@ -93,8 +121,7 @@ function pg_user_has_erp_readonly_column()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user WHERE Field = 'manage_erp_readonly'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_auth_column_exists('user', 'manage_erp_readonly');
     }
 
     return $has;
@@ -199,21 +226,15 @@ function pg_auth_token_revoke($selector, $respect_pin = false)
 }
 
 // Whether subscriptions record which browser they belong to yet. Files land
-// before the schema does, so the column is asked for rather than assumed;
-// information_schema rather than SHOW COLUMNS LIKE, because '_' is a wildcard
-// in LIKE and every name here is full of them.
+// before the schema does, so the column is asked for rather than assumed, by
+// exact name: '_' is a wildcard in SHOW COLUMNS LIKE and every name here is
+// full of them.
 function pg_auth_push_bound()
 {
     static $bound = null;
 
     if ($bound === null) {
-
-        $count = db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'push_subscriptions'
-            AND COLUMN_NAME = 'auth_selector'");
-
-        $bound = ((int) $count > 0);
+        $bound = pg_auth_column_exists('push_subscriptions', 'auth_selector');
     }
 
     return $bound;

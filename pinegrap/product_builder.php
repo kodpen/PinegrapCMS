@@ -341,6 +341,51 @@ function pg_pb_cents_to_price($cents)
     return number_format(((int) $cents) / 100, 2, '.', '');
 }
 
+/**
+ * A compare-at price an operator typed (the product screen, the product
+ * list's cell, a product import file), as products.compare_at_price stores
+ * it: read by pg_pb_price_to_cents(), the price box's own reader, so the two
+ * boxes cannot read the same typing two ways, then judged by
+ * pg_compare_at_price_value(). null is none (empty, zero), false an amount
+ * the column cannot hold.
+ *
+ * The figure is refused by its length before it is read: beyond fifteen
+ * digits a float is no longer exact, and turning it into an integer gives a
+ * number nobody typed.
+ *
+ * @param mixed $value
+ * @return int|null|false
+ */
+function pg_pb_compare_at_price_from_input($value)
+{
+    $value = is_scalar($value) ? (string) $value : '';
+
+    if (strlen((string) preg_replace('/[^0-9]/', '', $value)) > 15) {
+        return false;
+    }
+
+    return pg_compare_at_price_value(pg_pb_price_to_cents($value));
+}
+
+/**
+ * The compare-at price the product screen posted, as it is stored: null when
+ * its switch is off or the amount is empty or zero. Only asked once the
+ * column exists (pg_compare_at_price_ready()); pg_pb_validate_product_post()
+ * has already refused an amount the column cannot hold.
+ *
+ * @return int|null
+ */
+function pg_pb_compare_at_price_posted()
+{
+    if (empty($_POST['compare_at_price_enabled'])) {
+        return null;
+    }
+
+    $value = pg_pb_compare_at_price_from_input(isset($_POST['compare_at_price']) ? $_POST['compare_at_price'] : '');
+
+    return is_int($value) ? $value : null;
+}
+
 
 /**
  * The images picked in the image picker, cover first.
@@ -458,7 +503,7 @@ function pg_pb_managed_product_columns()
 {
     return array(
         'name', 'enabled', 'short_description', 'full_description', 'details',
-        'code', 'keywords', 'image_name', 'price', 'taxable', 'tax_rate', 'selection_type',
+        'code', 'keywords', 'image_name', 'price', 'compare_at_price', 'taxable', 'tax_rate', 'selection_type',
         'default_quantity', 'minimum_quantity', 'maximum_quantity',
         'title', 'meta_description', 'address_name',
         'inventory', 'inventory_quantity', 'backorder', 'out_of_stock_message',
@@ -1165,6 +1210,16 @@ function pg_pb_save_new_product()
     $full_description   = isset($_POST['full_description']) ? $_POST['full_description'] : '';
     $details            = isset($_POST['details']) ? $_POST['details'] : '';
 
+    // The texts that came from an accepted "Write with AI" draft and were not
+    // edited by hand since, as the screen posted them; NULL while the column
+    // is missing or when the form sent no list. Each product written below is
+    // marked on the texts it got: all of them, except the short description
+    // of a matrix row, which keeps its mark only while it holds the typed one
+    // (pg_ai_fields_for_variant()).
+    $ai_posted = pg_ai_fields_ready('product')
+        ? pg_ai_fields_posted(isset($_POST['ai_fields']) ? $_POST['ai_fields'] : NULL)
+        : NULL;
+
     /* ---------------------------------------------------------- group mode */
 
     if ($mode === 'group') {
@@ -1266,6 +1321,14 @@ function pg_pb_save_new_product()
                 }
             }
 
+            if ($ai_posted !== NULL) {
+                $product['ai_fields'] = pg_ai_fields_after_save(
+                    'product',
+                    pg_ai_fields_for_variant($ai_posted, $short_description, $product['short_description']),
+                    NULL,
+                    pg_ai_fields_values('product', $product));
+            }
+
             // A variant with no images of its own falls back to the set's
             // images, so the cart and the catalog never show a blank tile.
             $variant_images = $variant['images'] ? $variant['images'] : $images;
@@ -1320,6 +1383,21 @@ function pg_pb_save_new_product()
     $product['inventory']          = empty($_POST['inventory']) ? '' : '1';
     $product['inventory_quantity'] = isset($_POST['inventory_quantity']) ? trim($_POST['inventory_quantity']) : '';
     $product['address_name']       = isset($_POST['address_name']) ? $_POST['address_name'] : '';
+
+    // The "was" price names one article, like the GTIN, so only a single
+    // product takes it from the screen; the field is hidden while a set is
+    // being built, and each variant gets its own on its edit screen.
+    if (pg_compare_at_price_ready()) {
+        $product['compare_at_price'] = pg_pb_compare_at_price_posted();
+    }
+
+    if ($ai_posted !== NULL) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            pg_ai_fields_for_variant($ai_posted, $short_description, $product['short_description']),
+            NULL,
+            pg_ai_fields_values('product', $product));
+    }
 
     $single_images = ($single && $single['images']) ? $single['images'] : $images;
 
@@ -3726,6 +3804,26 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ));
     };
 
+    // A text that came from an accepted draft carries a marker beside its
+    // label while it is as the draft left it: editing it by hand, the
+    // marker's button or saving the field empty takes the mark off
+    // (pg_ai_fields_marker(), assets/js/pg_ai_fields.js); the hidden
+    // ai_fields input carries the list to the save. A mark whose text was
+    // changed elsewhere (the API, an import) is not shown and goes with the
+    // next save (pg_ai_fields_marked()). Shown whether or not this person may
+    // ask for drafts: it says where the text came from. Nothing of it is
+    // drawn while the column is missing.
+    $ai_marks_ready = pg_ai_fields_ready('product');
+    $ai_marks = $ai_marks_ready ? pg_ai_fields_marked('product', $v('ai_fields', NULL), pg_ai_fields_values('product', $values)) : array();
+
+    $ai_marker = function ($column, $field) use ($ai_marks_ready, $ai_marks, $pg_recycled) {
+        if (!$ai_marks_ready) {
+            return '';
+        }
+
+        return pg_ai_fields_marker($column, $field, in_array($column, $ai_marks, TRUE), !$pg_recycled);
+    };
+
     // The submit-form block, moved from edit_product.php (:1368-1453). It keeps
     // the ids the JavaScript in backend.src.js hooks — the field pickers, the
     // "where" selector and the add-field buttons are all driven from there, and
@@ -4101,6 +4199,35 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             'vars'   => $output_tax_rate_placeholder
         ))
         : lang('Leave empty and the tax zone of the delivery address decides.');
+
+    // The merchant's own "was" price (products.compare_at_price). A switch with
+    // the amount under it, as the tax rate sits under Taxable: most articles
+    // never have one, and switching it off is the plain way to take it away.
+    // It names one article, so it is hidden while a variant set is being
+    // built (pg-pb-single-only); each variant gets its own on its edit screen.
+    // Absent on a site without the column.
+    $output_compare_at_price = '';
+
+    if (pg_compare_at_price_ready()) {
+        $output_compare_at_price =
+            '<div class="pg-pb-single-only">' .
+                pg_pb_render_switch(array(
+                    'id'    => 'compare_at_price_enabled',
+                    'name'  => 'compare_at_price_enabled',
+                    'label' => lang('Compare-at Price'),
+                    'help'  => lang('An earlier or list price of this article, higher than the price it sells at.'),
+                    'panel' =>
+                        '<div class="col-12 col-sm-6 col-lg-4">
+                            <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
+                            <div class="input-group">
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask="" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0" style="text-align:right;" />
+                                <label class="input-group-text" for="compare_at_price">' . BASE_CURRENCY_SYMBOL . '</label>
+                            </div>
+                            <div class="form-text">' . lang('Empty or zero is none.') . '</div>
+                        </div>',
+                )) .
+            '</div>';
+    }
 
     // Shipping is a store-wide feature: with it off, the switch and every dimension
     // behind it are noise.
@@ -4548,6 +4675,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         <input type="hidden" id="variants_json" name="variants_json" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
         <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
+        ' . ($ai_marks_ready ? pg_ai_fields_input('product', $ai_marks) : '') . '
 
         <div class="row">
             <!--
@@ -4616,7 +4744,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 col-lg-5 my-2">
-                                        ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
                                         <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
@@ -4648,7 +4776,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 mt-3 mb-2">
-                                        ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description'), $ai_marker('full_description', 'full_description')) . '
                                         <textarea id="full_description" name="full_description">' . h($v('full_description')) . '</textarea>
                                     </div>
 
@@ -4675,6 +4803,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <div class="form-text">' . $output_tax_rate_help . '</div>
                                                     </div>',
                                             )) .
+                                            $output_compare_at_price .
                                             // Recurring lives here rather than in a card of its own:
                                             // it changes what the variant rows offer, so it has to be
                                             // decided before the operator gets to them.
@@ -4941,12 +5070,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
                                     <div class="col-12 col-lg-6 my-2">
-                                        ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title')) . '
+                                        ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title'), $ai_marker('title', 'title')) . '
                                         <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v('title')) . '" />
                                         <div id="seo_c_title"></div>
                                     </div>
                                     <div class="col-12 my-2">
-                                        ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description'), $ai_marker('meta_description', 'meta_description')) . '
                                         <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255">' . h($v('meta_description')) . '</textarea>
                                         <div id="seo_c_meta_description"></div>
                                     </div>
@@ -5483,6 +5612,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
     ' . pg_ai_write_assets() . '
+    ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' . output_footer();
 
     $liveform->remove_form();
@@ -5519,6 +5649,13 @@ function pg_pb_load_product($product_id)
 
     // Prices are stored in cents; the box shows currency.
     $row['price'] = number_format(((int) $row['price']) / 100, 2, '.', '');
+
+    // The "was" price, NULL for none, and the switch that shows it. SELECT *
+    // carries the column only on a site that has it.
+    $compare_at = pg_compare_at_price_value(isset($row['compare_at_price']) ? $row['compare_at_price'] : null);
+
+    $row['compare_at_price_enabled'] = is_int($compare_at);
+    $row['compare_at_price']         = is_int($compare_at) ? pg_pb_cents_to_price($compare_at) : '';
 
     // The cover is products.image_name and the rest live in the xref, in the
     // order they were added. The screen treats them as one list whose first
@@ -5652,6 +5789,11 @@ function pg_pb_update_product($product_id)
     $product['inventory_quantity'] = isset($_POST['inventory_quantity']) ? trim($_POST['inventory_quantity']) : '';
     $product['image_name']         = $images ? $images[0] : '';
 
+    // Its switch off, or the amount emptied, takes the "was" price off.
+    if (pg_compare_at_price_ready()) {
+        $product['compare_at_price'] = pg_pb_compare_at_price_posted();
+    }
+
     // The address is only recalculated when the operator changed it or when the
     // product never had one. Rebuilding it on every save would silently move a
     // published product to a new URL because its short description was edited.
@@ -5685,6 +5827,18 @@ function pg_pb_update_product($product_id)
     // Everything this screen manages feeds the SEO score, so the stored
     // analysis is stale after any save from here.
     $product['seo_analysis_current'] = 0;
+
+    // Which texts are an accepted "Write with AI" draft as it was used: the
+    // columns the screen posts, each marked on the text saved now; without a
+    // list, the stored marks whose text this save leaves as it was. An edited
+    // or emptied text loses its mark (pg_ai_fields_after_save()).
+    if (pg_ai_fields_ready('product')) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            isset($_POST['ai_fields']) ? $_POST['ai_fields'] : NULL,
+            db_value("SELECT ai_fields FROM products WHERE id = '" . e($product_id) . "'"),
+            pg_ai_fields_values('product', $product));
+    }
 
     pg_pb_update_row('products', $product, 'id', $product_id);
 
@@ -5878,6 +6032,15 @@ function pg_pb_validate_product_post($user, $product_id = 0)
             output_error(lang('The e-mail address is invalid.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
+
+    // A "was" price the column cannot hold is refused before anything is
+    // written: the session is not strict, and MySQL would store the top of
+    // the column instead without a word.
+    if (pg_compare_at_price_ready()
+        && !empty($_POST['compare_at_price_enabled'])
+        && (pg_pb_compare_at_price_from_input(isset($_POST['compare_at_price']) ? $_POST['compare_at_price'] : '') === false)) {
+        output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Compare-at Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
 }
 
 
@@ -6011,12 +6174,48 @@ function pg_pb_apply_stock_flag(&$product, $product_id = 0)
  */
 function pg_pb_quick_edit_columns()
 {
-    return array(
+    $columns = array(
         'short_description'  => array('type' => 'text', 'label' => lang('Short Description'), 'max' => 100),
         'enabled'            => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
         'price'              => array('type' => 'money', 'label' => lang('Price')),
-        'inventory_quantity' => array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999),
     );
+
+    // The "was" price may be emptied, which takes it off. Offered where the
+    // column exists; whether the list draws its column is the list's call
+    // (pg_pb_list_shows_compare_at_price()).
+    if (pg_compare_at_price_ready()) {
+        $columns['compare_at_price'] = array('type' => 'money', 'label' => lang('Compare-at Price'), 'empty' => true);
+    }
+
+    $columns['inventory_quantity'] = array('type' => 'integer', 'label' => lang('Inventory Quantity'), 'min' => 0, 'max' => 9999999);
+
+    return $columns;
+}
+
+/**
+ * Whether the product list draws the compare-at price column: only once a
+ * product of the catalogue has one. Most shops never set one (in Turkey a
+ * crossed-out price has to be the lowest of the last 30 days, which the
+ * price history gives rather than the merchant), and an empty column on
+ * every row of the main list would be the price of a feature they do not
+ * use. The first one is set on the product screen, an import or the API.
+ *
+ * @return bool
+ */
+function pg_pb_list_shows_compare_at_price()
+{
+    static $shows = null;
+
+    if ($shows === null) {
+        $shows = pg_compare_at_price_ready()
+            && ((string) db_value(
+                "SELECT products.id
+                FROM products
+                WHERE (products.compare_at_price IS NOT NULL)" . pg_catalog_bin_live_sql('products') . "
+                LIMIT 1") !== '');
+    }
+
+    return $shows;
 }
 
 /**
@@ -6026,7 +6225,8 @@ function pg_pb_quick_edit_columns()
  * the short description take their colour from the enabled flag.
  *
  * @param array $product a products row with at least short_description,
- *                       enabled, price, inventory and inventory_quantity
+ *                       enabled, price, inventory and inventory_quantity, and
+ *                       compare_at_price where the list draws that column
  * @return array cell => array('html', 'class'[, 'title'])
  */
 function pg_pb_list_cells($product)
@@ -6048,11 +6248,16 @@ function pg_pb_list_cells($product)
         );
     }
 
+    // The "was" price, an empty cell when the product has none (or the row was
+    // read without the column).
+    $compare_at = pg_compare_at_price_value(isset($product['compare_at_price']) ? $product['compare_at_price'] : null);
+
     return array(
         'name'               => array('class' => 'align-middle chart_label ' . $state),
         'short_description'  => array('html' => h((string) $product['short_description']), 'class' => 'align-middle ' . $state),
         'enabled'            => array('html' => ((string) $product['enabled'] === '1') ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
         'price'              => array('html' => prepare_amount(((int) $product['price']) / 100), 'class' => 'align-middle text-end'),
+        'compare_at_price'   => array('html' => is_int($compare_at) ? prepare_amount($compare_at / 100) : '', 'class' => 'align-middle text-end text-body-secondary'),
         'inventory_quantity' => $stock,
     );
 }
@@ -6070,6 +6275,13 @@ function pg_pb_quick_edit_value($field, $product)
 {
     if ($field === 'price') {
         return pg_format_input_amount(((int) $product['price']) / 100);
+    }
+
+    // Empty for none, which is also what clears it.
+    if ($field === 'compare_at_price') {
+        $compare_at = pg_compare_at_price_value(isset($product['compare_at_price']) ? $product['compare_at_price'] : null);
+
+        return is_int($compare_at) ? pg_format_input_amount($compare_at / 100) : '';
     }
 
     return (string) $product[$field];
@@ -6101,7 +6313,8 @@ function pg_pb_quick_update($product_id, $field, $value)
     // row left on a page opened before it went there is refused like a
     // missing one, or switching it on would put it back on sale from the bin.
     $current = db_item(
-        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords
+        "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords"
+        . (isset($columns['compare_at_price']) ? ', compare_at_price' : '') . "
         FROM products
         WHERE (id = '" . $product_id . "')" . pg_catalog_bin_live_sql('products'));
 
@@ -6126,6 +6339,21 @@ function pg_pb_quick_update($product_id, $field, $value)
             // products.price is a signed INT of minor units.
             if ($change['price'] > 2147483647) {
                 return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns['price']['label']))));
+            }
+
+            break;
+
+        case 'compare_at_price':
+            // Offered only where the column exists. An empty cell or zero
+            // takes the "was" price off (NULL).
+            if (!isset($columns['compare_at_price'])) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
+            }
+
+            $change['compare_at_price'] = pg_pb_compare_at_price_from_input($value);
+
+            if ($change['compare_at_price'] === false) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns['compare_at_price']['label']))));
             }
 
             break;
@@ -6169,7 +6397,10 @@ function pg_pb_quick_update($product_id, $field, $value)
             pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));
         }
 
-        if (($field !== 'short_description') && function_exists('pg_marketplace_product_changed')) {
+        // No connector sends the "was" price (n11 gets the one price as both
+        // its list and its sale price), so a change of it tells a marketplace
+        // nothing new.
+        if (!in_array($field, array('short_description', 'compare_at_price'), true) && function_exists('pg_marketplace_product_changed')) {
             pg_marketplace_product_changed($product_id);
         }
 
@@ -6179,6 +6410,10 @@ function pg_pb_quick_update($product_id, $field, $value)
                     return ((string) $product['enabled'] === '1') ? lang('Enabled') : lang('Disabled');
                 case 'price':
                     return pg_format_number(((int) $product['price']) / 100, 2);
+                case 'compare_at_price':
+                    $compare_at = pg_compare_at_price_value($product['compare_at_price']);
+
+                    return is_int($compare_at) ? pg_format_number($compare_at / 100, 2) : lang('None');
             }
 
             return (string) $product[$field];

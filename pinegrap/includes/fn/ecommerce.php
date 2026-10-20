@@ -388,8 +388,9 @@ function pg_offer_gift_refused($offer_id, $offer_action_id, $forget = false)
 //
 // The offer already qualified; this only decides how the gift shows up. When
 // the shopper is already paying for that product - a required product added
-// itself, or they simply put one in the basket - the gift is that line's
-// discount, not a second line of the same thing. Otherwise the product is
+// itself, or they simply put one in the basket - the gift is a discount on as
+// many units of that line as the offer gives away, not a second line of the
+// same thing. Otherwise the product is
 // added, marked as put there by the offer, so that the cart takes it back out
 // when the offer stops applying.
 //
@@ -455,7 +456,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item_id = db_value("SELECT id FROM order_items
+    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
 
         WHERE
 
@@ -466,14 +467,20 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
             AND (added_by_offer = '0')" . $sql_ship_to . "
 
         ORDER BY id ASC LIMIT 1");
-    if ($paid_order_item_id) {
+    if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
+        //
+        // The gift is the action's quantity, not the whole line: the other
+        // units keep the price the line stands at (list, member or another
+        // offer's), and a gift never raises that price.
+        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
+        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
 
-                price = '" . e($discounted_price) . "',
+                price = '" . e($line_price) . "',
 
                 offer_id = '" . e($offer_id) . "',
 
@@ -481,7 +488,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
                 discounted_by_offer = '1'
 
-            WHERE id = '" . e($paid_order_item_id) . "'");
+            WHERE id = '" . e($paid_order_item['id']) . "'");
         return true;
     }
 
@@ -805,6 +812,9 @@ function pg_order_awaiting_payment(array $order): bool
  * click, or an ERP receipt landing after the operator already pressed the
  * button, a no-op instead of moving the payment date.
  *
+ * The payment is the moment a store that invoices paid orders on their own
+ * gets this one's invoice (pg_erp_auto_invoice()).
+ *
  * @param int $order_id
  * @param int $user_id Operator recording the payment; 0 for a system path
  * @return bool True when this call marked the order paid
@@ -828,7 +838,143 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
         . ($user_id > 0 ? ' recorded by user_id=' . $user_id : ' recorded by the system')
     );
 
+    pg_erp_auto_invoice($order_id, 'order_paid');
+
     return true;
+}
+
+/**
+ * Issue an order's invoice on its own, when the store chose to (ERP settings,
+ * "The invoice of a web order": config.erp_auto_invoice_on) and this is the
+ * moment it chose.
+ *
+ * Called where the moment happens: the end of the checkout (paid by card,
+ * PayPal or iyzico, put on the customer's account, or nothing left to pay),
+ * pg_order_mark_paid() (a bank transfer that arrived) and update_order() (a
+ * recipient that just shipped). Nothing is read and no ERP file is loaded
+ * unless the store invoices at exactly this moment; the rest is
+ * erp_auto_invoice_for_order() (includes/erp/order_bridge.php).
+ *
+ * The checkout passes $after_response: the customer's page is answered first
+ * where the server allows it. Inside an open ERP transaction (a receipt that
+ * marks its order paid) it waits for the end of the request as well, because
+ * a refusal there would roll back the receipt with it.
+ *
+ * Nothing it does stops the caller: an order that could not be invoiced is
+ * logged and announced on the panel bell, and an error is written to the
+ * error log.
+ *
+ * @param int    $order_id
+ * @param string $trigger         'order_paid' | 'order_shipped'
+ * @param bool   $after_response  Run once the response is out
+ * @return array|null  erp_auto_invoice_for_order()'s answer when it ran now;
+ *                     null when it did not run, or runs at the end
+ */
+function pg_erp_auto_invoice($order_id, $trigger, $after_response = false)
+{
+    $order_id = (int) $order_id;
+    $trigger = (string) $trigger;
+
+    if (($order_id <= 0) || !defined('ERP_ENABLED') || !ERP_ENABLED
+        || !defined('ERP_AUTO_INVOICE_ON') || ((string) ERP_AUTO_INVOICE_ON !== $trigger)) {
+        return null;
+    }
+
+    if ($after_response || (function_exists('erp_tx_depth') && (erp_tx_depth() > 0))) {
+        pg_erp_auto_invoice_defer($order_id, $trigger);
+
+        return null;
+    }
+
+    return pg_erp_auto_invoice_run($order_id, $trigger);
+}
+
+/**
+ * pg_erp_auto_invoice() at the end of the request, for every order it was
+ * asked about, from one shutdown function.
+ *
+ * The session is let go and the page answered first (where the server has
+ * fastcgi_finish_request()), so the page the visitor opens next - the
+ * receipt - waits neither for the invoice nor for its PDF. The queue is
+ * emptied as it is taken: an order asked about while it runs gets a shutdown
+ * function of its own.
+ *
+ * @param int    $order_id
+ * @param string $trigger
+ * @return void
+ */
+function pg_erp_auto_invoice_defer($order_id, $trigger)
+{
+    static $queue = null;
+
+    if ($queue === null) {
+        $queue = array();
+
+        register_shutdown_function(function () use (&$queue) {
+            $entries = (array) $queue;
+            $queue = null;
+
+            if (empty($entries)) {
+                return;
+            }
+
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            // A host can disable it, and PHP 8 then has no such function.
+            if (function_exists('ignore_user_abort')) {
+                @ignore_user_abort(true);
+            }
+
+            foreach ($entries as $entry) {
+                pg_erp_auto_invoice_run($entry[0], $entry[1]);
+            }
+        });
+    }
+
+    $queue[(int) $order_id . ':' . (string) $trigger] = array((int) $order_id, (string) $trigger);
+}
+
+/**
+ * Load the ERP and invoice the order, catching anything that goes wrong on
+ * the way: whatever the caller was doing is done already and stays done.
+ *
+ * Refused inside an open ERP transaction: at the end of a request that can
+ * only be one a failure left open, and joining it would commit or roll back
+ * somebody else's half-written work.
+ *
+ * @param int    $order_id
+ * @param string $trigger
+ * @return array|null  erp_auto_invoice_for_order()'s answer, null when it did not run
+ */
+function pg_erp_auto_invoice_run($order_id, $trigger)
+{
+    try {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        if (erp_tx_depth() > 0) {
+            return null;
+        }
+
+        return erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+    } catch (Throwable $error) {
+        if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
+            pg_error_write(pg_error_entry(
+                'error',
+                get_class($error),
+                'Automatic invoice for order ' . (int) $order_id . ': ' . $error->getMessage(),
+                $error->getFile(),
+                $error->getLine(),
+                pg_error_trace_short($error->getTrace())));
+        }
+
+        return null;
+    }
 }
 
 /**
@@ -2024,6 +2170,39 @@ function pg_offer_action_targets_item($offer_action, $order_item, $ship_to_id = 
     return pg_offer_action_targets_product($offer_action, $order_item['product_id']);
 }
 
+// How many units of a cart line a product discount covers. "The cheapest item
+// is free" frees one item, not every unit of the line that item sits on; a
+// product or group target discounts the whole line.
+function pg_offer_action_discounted_units($offer_action, $quantity)
+{
+    if (pg_offer_action_target($offer_action) == 'cheapest') {
+        return min(1, (int) $quantity);
+    }
+    return (int) $quantity;
+}
+
+// The unit price of a cart line when an offer discounts only some of its
+// units: the cheapest item, or a gift taken from a line the shopper is already
+// paying for. A line carries one unit price, so the discount on those units is
+// spread over the whole line: one free item on a line of two charges each
+// unit half. The spread price rounds down, so the line never costs more than
+// its units at their own prices; the customer keeps at most quantity - 1
+// minor units of the rounding. A line whose every unit is discounted gets the
+// discounted price unchanged.
+function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_price, $discounted_units)
+{
+    $quantity = (int) $quantity;
+    $discounted_units = (int) $discounted_units;
+    if ($discounted_units >= $quantity) {
+        return $discounted_unit_price;
+    }
+    if ($discounted_units <= 0) {
+        return $unit_price;
+    }
+    $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
 // An action with nothing to discount is skipped before the cart is walked. A
 // group target counts as "has a target" even when the group is empty today;
 // the item loop simply finds nothing to discount.
@@ -2090,7 +2269,7 @@ function pg_offer_conditions($offer_id)
     static $table_exists = null;
     $offer_id = (int) $offer_id;
     if ($table_exists === null) {
-        $table_exists = (bool) db_item("SHOW TABLES LIKE 'offer_conditions'");
+        $table_exists = pg_schema_has('offer_conditions');
     }
     if (!$table_exists) {
         return array();
@@ -2871,6 +3050,9 @@ function apply_offers_to_cart()
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // The cheapest-item target discounts one unit; the
+                                    // other units of its line keep the line's price.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -3637,6 +3819,9 @@ function get_best_offer_id($offer_code, $scope = '')
                                         }
                                         $line_price = $member['price'];
                                     }
+                                    // Worked out as apply_offers_to_cart() charges it: the
+                                    // cheapest-item target is worth one unit of its line.
+                                    $discounted_price = pg_offer_spread_unit_price($line_price, $order_item['quantity'], $discounted_price, pg_offer_action_discounted_units($offer_action, $order_item['quantity']));
                                     // if this offer is going to discount the product more than any previous offer so far, use this offer
                                     if ((isset($discounted_order_items[$order_item['id']]) == false) || ($discounted_price < $discounted_order_items[$order_item['id']]['price'])) {
                                         // if this is the first offer that has discounted this order item, then prepare array
@@ -6188,6 +6373,48 @@ function pg_shipping_carrier($number, $method, $default = '')
 
     // What the shop typed, first. A method code that names the carrier beats
     // any guess made from the number.
+    $named = pg_shipping_method_carrier($method);
+
+    if ($named !== '') {
+        return $named;
+    }
+
+    // The code names no carrier: the one the site names for every such parcel.
+    $default = pg_shipping_carrier_text($default);
+
+    if (($default !== '') && isset($carriers[$default])) {
+        return $default;
+    }
+
+    // No method code, or one this list does not know: the number's own shape.
+    foreach ($carriers as $carrier => $entry) {
+        foreach ($entry['patterns'] as $pattern) {
+            if (preg_match($pattern, $number) == 1) {
+                return $carrier;
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The carrier a shipping method's code, or a carrier's name, spells out.
+ *
+ * The first two of pg_shipping_carrier()'s four readings, on their own: the
+ * whole text against every carrier's key and aliases, then the text a word at
+ * a time. Neither the site's default nor a number's shape takes part, so the
+ * answer is a carrier somebody named - which is what a shipment row keeps
+ * (pg_shipment_record()); a guess stays a guess made at read time.
+ *
+ * @param  string $method ship_tos.shipping_method_code, a carrier key or a
+ *                        carrier's name ("Yurtiçi Kargo")
+ * @return string carrier key from pg_shipping_carriers(), or ''
+ */
+function pg_shipping_method_carrier($method)
+{
+    $carriers = pg_shipping_carriers();
+
     $needle = pg_shipping_carrier_text($method);
 
     if ($needle !== '') {
@@ -6229,22 +6456,6 @@ function pg_shipping_carrier($number, $method, $default = '')
 
         }
 
-    }
-
-    // The code names no carrier: the one the site names for every such parcel.
-    $default = pg_shipping_carrier_text($default);
-
-    if (($default !== '') && isset($carriers[$default])) {
-        return $default;
-    }
-
-    // No method code, or one this list does not know: the number's own shape.
-    foreach ($carriers as $carrier => $entry) {
-        foreach ($entry['patterns'] as $pattern) {
-            if (preg_match($pattern, $number) == 1) {
-                return $carrier;
-            }
-        }
     }
 
     return '';
@@ -6565,6 +6776,11 @@ function duplicate_product($id)
     }
     // prepare the address name for the database
     $address_name = prepare_catalog_item_address_name($address_name);
+    // products.compare_at_price (2026.11.0) is copied where the table has it,
+    // which the SELECT * above shows: the copy starts with the original's "was"
+    // price as it starts with its price.
+    $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
+    $compare_at_value = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
     // insert row into product table
     $query = "INSERT INTO products (
 
@@ -6747,6 +6963,8 @@ function duplicate_product($id)
             brand,
 
             mpn,
+
+            " . $compare_at_column . "
 
             user,
 
@@ -6933,6 +7151,8 @@ function duplicate_product($id)
             '" . escape($row['brand']) . "', 
 
             '" . escape($row['mpn']) . "',
+
+            " . $compare_at_value . "
 
             '" . USER_ID . "',
 
@@ -7766,7 +7986,8 @@ function get_protected_shipping_method_filter()
  *   4. Expire gift cards that were issued by this order.
  *   5. Log activity + REFUND ACTION REQUIRED reminder for the operator.
  *   6. Optional: customer email notification (ECOMMERCE_CANCEL_EMAIL_NOTIFICATION).
- *   7. Optional: Iyzipay auto-refund (ECOMMERCE_ORDER_CANCEL_AUTO_REFUND) — writes
+ *   7. Optional: automatic refund through the payment method's driver
+ *      (ECOMMERCE_ORDER_CANCEL_AUTO_REFUND) — writes
  *      orders.refund_status / refunded_at / refund_reference when the 2026.1.27
  *      migration has run; otherwise silently skips the columns.
  *
@@ -7872,12 +8093,13 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         ($reason_clean !== '' ? ' Reason: ' . $reason_clean : '')
     );
 
-    // ── Iyzipay auto-refund (opt-in) ────────────────────────────────────
+    // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
-    // payment was made with Iyzipay, attempt a void via the Cancel API.
-    // Failures here MUST NOT roll back the cancellation — refunds can be
-    // retried manually from the gateway dashboard. We just record the
-    // outcome on the order row so the operator can audit.
+    // order's payment has a driver that can cancel (pg_payment_cancel_driver():
+    // the gateway's for a card order, the method's own otherwise), the payment
+    // is voided through it. Failures here MUST NOT roll back the cancellation —
+    // refunds can be retried manually from the gateway dashboard. We just
+    // record the outcome on the order row so the operator can audit.
     $refund_status_outcome = '';
     $refund_reference      = '';
     $refund_columns_exist  = _orders_has_refund_columns();
@@ -7890,58 +8112,36 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $is_iyzipay  = in_array($order['payment_method'], array('Iyzipay', 'Pay With Iyzico'), true);
     $has_txn     = !empty($order['transaction_id']);
     $order_total = (int) $order['total']; // cents
+    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
+        ? pg_payment_cancel_driver((string) $order['payment_method'])
+        : '';
 
-    if ($auto_refund && $is_iyzipay && $has_txn && defined('ECOMMERCE_IYZIPAY_API_KEY') && $order_total > 0) {
-        try {
-            require_once(PG_FUNCTIONS_DIR . '/includes/iyzipay-php/IyzipayBootstrap.php');
-            IyzipayBootstrap::init();
-
-            $gateway_host = (defined('ECOMMERCE_PAYMENT_GATEWAY_MODE') && ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test')
-                ? 'https://sandbox-api.iyzipay.com'
-                : 'https://api.iyzipay.com';
-
-            $options = new \Iyzipay\Options();
-            $options->setApiKey(ECOMMERCE_IYZIPAY_API_KEY);
-            $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
-            $options->setBaseUrl($gateway_host);
-
-            $request = new \Iyzipay\Request\CreateCancelRequest();
-            $request->setLocale(\Iyzipay\Model\Locale::TR);
-            $request->setConversationId((string) $order_id . '-' . time());
-            $request->setPaymentId((string) $order['transaction_id']);
-            $request->setIp(isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1');
-
-            if ($reason_clean !== '') {
-                $request->setDescription(mb_substr($reason_clean, 0, 240));
-            }
-
-            $cancel = \Iyzipay\Model\Cancel::create($request, $options);
-
-            if ($cancel->getStatus() == 'success') {
-                $refund_status_outcome = 'refunded';
-                $refund_reference      = (string) ($cancel->getPaymentId() ?: $order['transaction_id']);
-                log_activity('Auto-refund SUCCESS via Iyzipay — order #' . $order_id . ' (payment ' . $refund_reference . ').');
-            } else {
-                $refund_status_outcome = 'failed';
-                $err_msg = method_exists($cancel, 'getErrorMessage') ? (string) $cancel->getErrorMessage() : '';
-                log_activity(
-                    'Auto-refund FAILED via Iyzipay — order #' . $order_id .
-                    '. MANUAL REFUND REQUIRED. Gateway message: ' . ($err_msg !== '' ? $err_msg : '(no message)')
-                );
-                $refund_status_outcome = 'manual_required';
-            }
-        } catch (\Throwable $e) {
-            // PHP 7+ — Throwable catches both Exception and Error. Keeps the
-            // cancellation persisted; refund just needs operator follow-up.
-            $refund_status_outcome = 'manual_required';
-            log_activity('Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $e->getMessage());
-        } catch (\Exception $e) {
-            $refund_status_outcome = 'manual_required';
-            log_activity('Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $e->getMessage());
+    if ($cancel_driver !== '') {
+        // The driver is given the orders row as the cancellation left it, so
+        // the reason just typed goes to the service as the description.
+        $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
+        if (!is_array($cancelled_order)) {
+            $cancelled_order = $order;
         }
+        $cancelled_order['cancellation_reason'] = $reason_clean;
+
+        // pg_payment_call() never throws: an exception inside the driver comes
+        // back as a failure, which the outcome logs as an EXCEPTION line.
+        $cancel_outcome = pg_payment_cancel_outcome(
+            $order_id,
+            (string) $order['transaction_id'],
+            pg_payment_call($cancel_driver, 'cancel', array($cancelled_order, (string) $order['transaction_id'])),
+            pg_payment_log_name($cancel_driver)
+        );
+
+        foreach ($cancel_outcome['log'] as $cancel_log_line) {
+            log_activity($cancel_log_line);
+        }
+
+        $refund_status_outcome = $cancel_outcome['refund_status'];
+        $refund_reference      = $cancel_outcome['refund_reference'];
     } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
@@ -8041,15 +8241,10 @@ function _order_has_shipped($order_id)
 
 /**
  * Probe orders.refund_status — true only after the 2026.1.27 upgrade has run.
- * Cached per-request so we don't issue SHOW COLUMNS on every cancel.
  */
 function _orders_has_refund_columns()
 {
-    static $cached = null;
-    if ($cached !== null) return $cached;
-    $row = db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
-    $cached = !empty($row);
-    return $cached;
+    return pg_schema_has('orders', 'refund_status');
 }
 
 /**

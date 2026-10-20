@@ -94,6 +94,35 @@ One scheduled task is enough. In **Settings › General › Cron Jobs**, turn on
 
 ---
 
+## Try it with Docker
+
+The [`docker/`](docker/) folder holds a Docker Compose stack: nginx, PHP-FPM, the general job and MariaDB 10.11, each in its own container. It is the quickest way to try Pinegrap on your own machine and can run a site on a server you manage; the installation above stays the main way.
+
+```bash
+git clone https://github.com/kodpen/PinegrapCMS.git
+cd PinegrapCMS
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Open `http://localhost:8080/pinegrap/install/` and run the installation wizard. On its database step enter `db` as the **Database Hostname**; the database name, username and password are all `pinegrap` (or what you set in `PG_DB_NAME`, `PG_DB_USER` and `PG_DB_PASSWORD`).
+
+**Without the wizard:** name the first administrator before the first start and the starter site is installed for you:
+
+```bash
+PG_INSTALL_ADMIN_EMAIL=you@example.com PG_INSTALL_ADMIN_PASSWORD='choose a long one' \
+  docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml logs install
+```
+
+The site is then at `http://localhost:8080/` and its control panel at `http://localhost:8080/pinegrap/`.
+
+* **Images:** without `--build`, Compose uses the images published for every release, `ghcr.io/kodpen/pinegrap-app` and `ghcr.io/kodpen/pinegrap-web`. It pulls them when they are not on the machine yet, and builds them from the files of your copy only when they cannot be pulled. `docker compose -f docker/docker-compose.yml pull` fetches them ahead of time and replaces older ones on the machine. `PG_IMAGE_TAG` picks the tag: `latest` (the default) follows the newest release, a release tag such as `v2026.11.0` stays on that release. `up -d --build` builds both images from the files of your copy instead, under the same names: use it for a copy you changed yourself. Images built that way are used until the next `pull` replaces them.
+* **Settings** come from the shell or from a `docker/.env` file: `PG_HTTP_PORT` (8080), `PG_DB_PASSWORD` (`pinegrap`; for anything but a trial set your own before the first start), `PG_INSTALL_STARTER` (`english_default` or `turkish_default`) and the others listed at the top of [`docker/docker-compose.yml`](docker/docker-compose.yml).
+* **Your data** stays in two volumes, `pinegrap_data` (configuration, uploads, backups) and `pinegrap_db`. `docker compose -f docker/docker-compose.yml down` stops the site and keeps them; `down -v` deletes the site.
+* **Updates:** the software comes from the image. Update your copy (`git pull`, or the new release files) so the compose file is the new release's, then run `docker compose -f docker/docker-compose.yml pull` and `up -d`: the containers are recreated with the new images. With `PG_IMAGE_TAG` set to a release tag, set the new tag first; with images you build yourself, run `up -d --build` instead. The database steps run from the upgrade screen the control panel opens at the next sign-in, or at once with `docker compose -f docker/docker-compose.yml exec -u www-data app php pinegrap/install/index.php automated_upgrade`. An update installed from the control panel lasts only until the containers are recreated.
+
+---
+
 ## Updating
 
 Updates are installed from the control panel (**Software Update**), on the Stable or Beta channel. Database changes ship as versioned upgrade steps that run on their own, so no manual SQL is needed. If an update leaves files missing, **Repair Software** restores the release files and can re-run the database steps.

@@ -770,7 +770,7 @@ function get_email_campaign_profile_options()
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "order_delivered", "product_ordered"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
 // order_id: Used by order_abandoned action.
@@ -1207,6 +1207,9 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'order_shipped':
                     $log_action = lang('order shipped');
+                    break;
+                case 'order_delivered':
+                    $log_action = lang('order delivered');
                     break;
                 case 'product_ordered':
                     $log_action = lang('product ordered');

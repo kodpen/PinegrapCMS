@@ -1,10 +1,10 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
+description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880) and 2 (#906) done, 2b or 3 next
 ---
 
 ## Why?
-- `includes/api/outbound/connectors/` holds only `base.php` and `n11.php`; Trendyol and Hepsiburada appear only as relay e-mail domains in `includes/api/outbound/orders.php`. They are the two largest Turkish channels and every competitor lists 8–30 marketplaces. Trendyol retired its V1 order endpoints on 15 Oct 2026; a new connector is built on V2 only (webhooks, cursor stream, rate limits tied to listing limits, `channelId`, `paymentMethod`).
+- Before this plan only n11 had a connector; Hepsiburada still appears only as a relay e-mail domain in `includes/api/outbound/orders.php`. Trendyol and Hepsiburada are the two largest Turkish channels and every competitor lists 8–30 marketplaces. Trendyol retired its V1 order endpoints on 15 Oct 2026; a new connector is built on V2 only (webhooks, cursor stream, rate limits tied to listing limits, `channelId`, `paymentMethod`).
 
 ## What is decided?
 - Order: Trendyol first, Hepsiburada second, each its own plan slice set; no intermediary integrator service (Pinegrap keeps its "no outside service" promise).
@@ -16,17 +16,24 @@ description: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) a
 - Payout/settlement reconciliation stays out (ERP roadmap B4, intentionally not done).
 
 ## What remains? (Trendyol; repeat for Hepsiburada)
-1. Driver skeleton, credentials, connection test, category tree + attribute sync (M).
-2. Listing create/update, barcode and VAT checks, status feedback (M).
+1. ~~Driver skeleton, credentials, connection test, category tree + attribute sync (M).~~ Done #880 (`connectors/trendyol.php`; fixtures only, no live call yet).
+2. ~~Listing create, barcode and VAT checks, status feedback (M).~~ Done #906 (V2 create, brand by name, batch result per barcode; `trendyol-listings.md`).
+2b. Listing update (V2 update needs `contentId`), approval/rejection status from the product filter services onto the map row, commission shown read-only (S–M).
 3. Stock/price queue + webhook receiver `marketplace_webhook.php` with signature check (S–M).
 4. Order import, status push, carrier/tracking push, cancel sync (M).
 5. Invoice link push, returns, Q&A (M).
 6. API fields: `/products/{id}/marketplaces`, webhook events `marketplace.order.*` (S).
-7. Memory file `docs/memory/commerce/trendyol-api-facts.md` like `n11-api-facts.md`.
+7. Memory: `trendyol-api-facts.md`, `trendyol-listings.md`; each step adds what it verified.
 
 ## Open questions?
 - Hepsiburada developer portal renders as a JS shell; API facts must be collected from the owner's account documentation before slice 1.
 - Trendyol "Luxe" channel listings: in scope only if the owner sells there.
 
+- Owner: first live call with credentials; whether Kodpen registers as a Trendyol integrator (User-Agent `SelfIntegration` until then).
+- `[NEW]` changelog line when Trendyol becomes usable (stock/price or orders).
+
+## Where are the finished steps' decisions?
+- `docs/memory/commerce/trendyol-api-facts.md` (hosts, auth, environments, categories), `trendyol-listings.md` (barcode key, brand by name, refusals, batch result).
+
 ## Where to start?
-- Slice 1 after reading `n11-api-facts.md`, `marketplace-*.md` and the `pinegrap-dis-api` skill; test credentials from the owner's Trendyol seller account (stage environment).
+- Step 3 (stock/price through the queue: inventory batch, `read_task` already reads a batch without status) or 2b, after `trendyol-api-facts.md` and `trendyol-listings.md`. Every live call waits for the owner's test or live credentials.

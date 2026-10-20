@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19, not started): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1 and 2 done, PR #738 and #813; 2b open): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -14,14 +14,17 @@ description: Plan (approved 2026-10-19, not started): per-person data export, er
 - Retention settings for contacts (inactive N years → anonymise), form submissions and orders (anonymise after N years) are opt-in and off by default.
 
 ## What remains?
-1. `consent_log` + `audit_log` migration steps, helpers, tests (S–M).
-2. `pg_audit()` hooked into the listed save paths (M).
+1. Done (PR #738): `consent_log` + `audit_log` (11.0.16), person token and consent log helpers (`includes/fn/privacy.php`), `pg_audit()` (`includes/fn/audit.php`), tests; docs/memory/core/consent-log-and-audit-trail.md. No writer is hooked yet.
+2. Done (PR #813): `pg_audit_record()` in the save paths listed in `core/audit-trail-writers.md`.
+2b. The paths that file lists as not hooked (user edit/delete, page editor, order screen, file manager, Workspace changes, Recycle Bin) (S–M).
 3. Export screen + JSON/PDF (M).
 4. Erasure wizard with dry-run (M).
 5. Audit screen, export, API; retention jobs (S–M).
 
 ## Open questions?
+- A deleted order or user keeps its whole row in `audit_log.before_json`: anonymise it in step 4 or keep it for the trail's retention?
 - Keep order e-mail for refund disputes after erasure? Keep the hashed token and the PSP reference only; refunds use the PSP reference.
+- Which step hooks the consent writers? None of the steps above names them. `sms-and-iys.md` step 4 covers sign-up, account, checkout and unsubscribe for e-mail and SMS; the cookie notice's server endpoint and a `contract` row next to `order_documents` are not assigned.
 
 ## Where to start?
-- Step 1; read `docs/memory/core/security-helpers-and-secret-storage.md`, `erp/erp-audit-trail.md` and the backup rowless-table list (`data/backup-rowless-tables.md`) to decide which new tables back up without rows.
+- Step 2b (`core/audit-trail-writers.md`, "What is not hooked yet?") or step 3; `core/consent-log-and-audit-trail.md` says what `pg_audit()` keeps. The plan's one `[NEW]` changelog line goes in with the first screen a manager uses (export or erasure).

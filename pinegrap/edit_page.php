@@ -69,6 +69,7 @@ if (!$_POST) {
             page_meta_description,
             sitemap,
             " . (pg_page_noindex_ready() ? "noindex, nofollow," : "'0' AS noindex, '0' AS nofollow,") . "
+            " . (pg_page_seo_extras_ready() ? "canonical_url, noarchive, max_snippet," : "'' AS canonical_url, '0' AS noarchive, NULL AS max_snippet,") . "
             page_type,
             layout_type,
             comments,
@@ -92,6 +93,7 @@ if (!$_POST) {
             comments_watchers_managed_by_submitter,
             seo_score,
             " . (pg_seo_schema_ready() ? "seo_flags, seo_checked_at," : "'0' AS seo_flags, '0' AS seo_checked_at,") . "
+            " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             seo_analysis,
             seo_analysis_current
         FROM page
@@ -109,6 +111,7 @@ if (!$_POST) {
     $mobile_style_id = $row['mobile_style_id'];
     $page_title = $row['page_title'];
     $page_meta_description = $row['page_meta_description'];
+    $page_ai_fields = $row['ai_fields'];
 
     // A visual-editor page (its own style is a visual design) has no
     // regions to edit here; an old bookmark or a hand-typed URL lands in the
@@ -132,6 +135,9 @@ if (!$_POST) {
     $sitemap = $row['sitemap'];
     $noindex = (int) ($row['noindex'] ?? 0);
     $nofollow = (int) ($row['nofollow'] ?? 0);
+    $page_canonical_url = (string) ($row['canonical_url'] ?? '');
+    $page_noarchive = (int) ($row['noarchive'] ?? 0);
+    $page_max_snippet = (($row['max_snippet'] ?? null) === null) ? '' : (string) $row['max_snippet'];
     $page_type = $row['page_type'];
     $layout_type = $row['layout_type'];
     $comments = $row['comments'];
@@ -509,6 +515,50 @@ if (!$_POST) {
             </div>';
     }
 
+    // The page's own canonical address and the robots directives besides
+    // noindex (includes/fn/seo.php), where the columns exist. A value the save
+    // refused comes back as it was typed, with the reason above the form; the
+    // hidden field tells the save that this form carried the three.
+    $output_seo_extra_rows = '';
+
+    if (pg_page_seo_extras_ready() == TRUE) {
+
+        $canonical_invalid = '';
+        $max_snippet_invalid = '';
+
+        if ($liveform->check_field_error('canonical_url')) {
+            $page_canonical_url = (string) $liveform->get_field_value('canonical_url');
+            $canonical_invalid = ' is-invalid';
+        }
+
+        if ($liveform->check_field_error('max_snippet')) {
+            $page_max_snippet = (string) $liveform->get_field_value('max_snippet');
+            $max_snippet_invalid = ' is-invalid';
+        }
+
+        $noarchive_checked = ($page_noarchive == 1) ? ' checked="checked"' : '';
+
+        $output_seo_extra_rows =
+            '<div class="col-12 mt-1 mb-2" id="canonical_url_row">
+                <input type="hidden" name="seo_extras" value="1">
+                <label for="canonical_url" class="form-label">' . lang('Canonical Address') . '</label>
+                <input type="text" value="' . h($page_canonical_url) . '" name="canonical_url" id="canonical_url" class="form-control' . $canonical_invalid . '" maxlength="2000" placeholder="https://" autocomplete="off" spellcheck="false">
+                <div class="form-text">' . lang('Leave empty to use the address of this page. Fill it in when the page repeats another one, to name the address search engines should list instead: a full address starting with https://, or a path on this site such as /about-us. Products, posts and other items shown through this page keep their own address.') . '</div>
+            </div>
+            <div class="col-12 my-3" id="noarchive_row">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="noarchive" name="noarchive" value="1"' . $noarchive_checked . '>
+                    <label class="form-check-label" for="noarchive">' . lang('Do Not Keep a Cached Copy (noarchive)') . '</label>
+                </div>
+                <div class="form-text">' . lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.') . '</div>
+            </div>
+            <div class="col-12 col-md-6 mt-1 mb-2" id="max_snippet_row">
+                <label for="max_snippet" class="form-label">' . lang('Snippet Length (max-snippet)') . '</label>
+                <input type="number" value="' . h($page_max_snippet) . '" name="max_snippet" id="max_snippet" class="form-control' . $max_snippet_invalid . '" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1">
+                <div class="form-text">' . lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.') . '</div>
+            </div>';
+    }
+
     // if sitemap is enabled, then check the checkbox
     $sitemap_checked = '';
 
@@ -626,6 +676,19 @@ if (!$_POST) {
     $ai_title_button = pg_ai_write_button($user, array('target' => 'seo_title', 'record' => 'page', 'record_id' => $page_id, 'field' => 'title', 'context' => $ai_page_context));
     $ai_description_button = pg_ai_write_button($user, array('target' => 'seo_description', 'record' => 'page', 'record_id' => $page_id, 'field' => 'meta_description', 'context' => $ai_page_context));
 
+    // A text that came from an accepted draft carries a marker beside its
+    // label while it is as the draft left it: editing it by hand, the
+    // marker's button or saving the field empty takes the mark off
+    // (pg_ai_fields_marker(), assets/js/pg_ai_fields.js); the hidden
+    // ai_fields input carries the list to the save. A mark whose text was
+    // changed elsewhere is not shown and goes with the next save
+    // (pg_ai_fields_marked()). Nothing of it is drawn while the column is
+    // missing.
+    $ai_marks_ready = pg_ai_fields_ready('page');
+    $ai_marks = $ai_marks_ready ? pg_ai_fields_marked('page', $page_ai_fields, array('page_title' => $page_title, 'page_meta_description' => $page_meta_description)) : array();
+    $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'title', in_array('page_title', $ai_marks, true)) : '';
+    $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'meta_description', in_array('page_meta_description', $ai_marks, true)) : '';
+
     print
     pg_page_shell(
         array(
@@ -666,6 +729,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                    ' . ($ai_marks_ready ? pg_ai_fields_input('page', $ai_marks) : '') . '
                     <div class="row">
                         ' . $output_page_type_selector . '
                         <div class="col-12 col-md" style="min-width:0">
@@ -724,12 +788,12 @@ if (!$_POST) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 mt-1 mb-2">
-                                                    ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button) . '
+                                                    ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button, $ai_title_marker) . '
                                                     <input type="text" value="' . h($page_title) . '" name="title" id="title" class="form-control" maxlength="255"/>
                                                     <div id="seo_c_title"></div>
                                                 </div>
                                                 <div class="col-12 mt-1 mb-2">
-                                                    ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button) . '
+                                                    ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button, $ai_description_marker) . '
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
@@ -740,6 +804,7 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                                 ' . $output_noindex_rows . '
+                                                ' . $output_seo_extra_rows . '
                                                 <div class="col-12">
                                                     ' . pg_seo_render_checklist($seo_row, 'page', $page_id) . '
                                                     ' . pg_seo_render_run_script() . '
@@ -952,6 +1017,7 @@ if (!$_POST) {
     bindPageIndexingSwitches();
     </script>
     ' . pg_ai_write_assets() . '
+    ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' .
     output_footer();
 
@@ -974,6 +1040,7 @@ if (!$_POST) {
             page_search,
             page_search_keywords,
             page_folder,
+            " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             sitemap
         FROM page
         WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
@@ -991,6 +1058,7 @@ if (!$_POST) {
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
     $current_sitemap = $row['sitemap'];
+    $current_ai_fields = $row['ai_fields'];
     
     // if page was selected for delete, check if user has access and then delete page
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
@@ -1221,6 +1289,37 @@ if (!$_POST) {
             $liveform->mark_error('name', lang('The page must have a name. Please type in a name for the page.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
+        }
+
+        // The canonical address and the snippet length are checked before
+        // anything is written (pg_page_canonical_url_check(),
+        // pg_page_max_snippet_check()). A refused value goes back to the form
+        // as typed. The three are written only when the form carried them.
+        $seo_extras_sent = pg_page_seo_extras_ready() && (($_POST['seo_extras'] ?? '') == 1);
+        $canonical_check = array('ok' => true, 'value' => '', 'error' => '');
+        $max_snippet_check = array('ok' => true, 'value' => null, 'error' => '');
+
+        if ($seo_extras_sent) {
+            $canonical_raw = (isset($_POST['canonical_url']) && is_string($_POST['canonical_url'])) ? $_POST['canonical_url'] : '';
+            $max_snippet_raw = $_POST['max_snippet'] ?? '';
+
+            $canonical_check = pg_page_canonical_url_check($canonical_raw);
+            $max_snippet_check = pg_page_max_snippet_check($max_snippet_raw);
+
+            if (!$canonical_check['ok']) {
+                $liveform->mark_error('canonical_url', pg_page_canonical_url_message($canonical_check['error'], $current_page_name));
+                $liveform->assign_field_value('canonical_url', trim($canonical_raw));
+            }
+
+            if (!$max_snippet_check['ok']) {
+                $liveform->mark_error('max_snippet', pg_page_max_snippet_message($current_page_name));
+                $liveform->assign_field_value('max_snippet', is_string($max_snippet_raw) ? trim($max_snippet_raw) : '');
+            }
+
+            if (!$canonical_check['ok'] || !$max_snippet_check['ok']) {
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page_id . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
+                exit();
+            }
         }
         
         // The gate at the top of the file covers the folder the page is in
@@ -1668,6 +1767,15 @@ if (!$_POST) {
                 nofollow = '" . $nofollow . "',";
         }
 
+        $sql_seo_extras = "";
+
+        if ($seo_extras_sent) {
+            $sql_seo_extras =
+                "canonical_url = '" . e($canonical_check['value']) . "',
+                noarchive = '" . ((($_POST['noarchive'] ?? '') == 1) ? 1 : 0) . "',
+                max_snippet = " . (($max_snippet_check['value'] === null) ? "NULL" : "'" . (int) $max_snippet_check['value'] . "'") . ",";
+        }
+
         $sql_seo_analysis_current = "";
 
         // If the seo analysis is current and any field the SEO score reads
@@ -1689,7 +1797,23 @@ if (!$_POST) {
         ) {
             $sql_seo_analysis_current = "seo_analysis_current = '0',";
         }
-        
+
+        // Which of the two texts is an accepted "Write with AI" draft as it
+        // was used: the columns the screen posts, each marked on the text
+        // saved now; without a list, the stored marks whose text this save
+        // leaves as it was. An edited or emptied text loses its mark
+        // (pg_ai_fields_after_save()).
+        $sql_ai_fields = "";
+
+        if (pg_ai_fields_ready('page')) {
+            $ai_fields = pg_ai_fields_after_save('page', $_POST['ai_fields'] ?? null, $current_ai_fields, array(
+                'page_title' => $_POST['title'] ?? '',
+                'page_meta_description' => $_POST['meta_description'] ?? '',
+            ));
+
+            $sql_ai_fields = "ai_fields = " . (($ai_fields === null) ? "NULL" : "'" . e($ai_fields) . "'") . ",";
+        }
+
         // update page
         $query =
             "UPDATE page
@@ -1708,6 +1832,8 @@ if (!$_POST) {
                 page_meta_description = '" . escape($_POST['meta_description'] ?? '') . "',
                 sitemap = '" . $sitemap . "',
                 $sql_noindex
+                $sql_seo_extras
+                $sql_ai_fields
                 $sql_seo_analysis_current
                 comments = '" . escape($_POST['comments'] ?? '') . "',
                 comments_label = '" . e($_POST['comments_label'] ?? '') . "',

@@ -9,9 +9,11 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, exempt table, designer allowlist, read vs write gates on shared_component, and the role number table.
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
+- audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, bundle build
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
+- consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them yet
 - designer-i18n-audit-tool.md: docs/_tools/designer_i18n.php check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
@@ -25,7 +27,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules and the rules for adding functions, paths, PHPMailer use, get_file.php copies and line references.
 - important-files-and-js-twins.md: Key product files and their roles, the .src.js vs .min.js rule (edit both; ENVIRONMENT_SUFFIX decides which is served) and where frontend JS lives.
-- init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and the config.php editing functions of edit_config.php.
+- init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - json-endpoint-rules.md: Rules for endpoints that speak JSON: rejections and CSRF failures must be JSON, and pg_post_body_discarded() must not be used on a JSON body.
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.

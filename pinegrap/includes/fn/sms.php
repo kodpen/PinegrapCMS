@@ -23,7 +23,12 @@
  *
  * pg_sms_send() makes the network call itself and waits for the answer, so it
  * belongs in a background job or behind an operator's button (the settings'
- * test message), never in a request a visitor waits on.
+ * test message), never in a request a visitor waits on. A request calls
+ * pg_sms_enqueue() instead: the message waits in sms_outbox and the general
+ * job sends it (pg_sms_queue_run()). A queued message is sent again only when
+ * the provider's answer shows it never took it; when the provider may have
+ * it (a timeout, a 5xx, a run that stopped while sending) it is left
+ * 'uncertain', since a text message sent twice cannot be taken back.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -243,11 +248,59 @@ function pg_sms_max_length()
  *
  * @param string $error
  * @param bool   $retry
- * @return array ok, id, code, error, retry
+ * @return array ok, id, code, error, retry, uncertain
  */
 function pg_sms_failure($error, $retry = false)
 {
-    return array('ok' => false, 'id' => '', 'code' => '', 'error' => (string) $error, 'retry' => (bool) $retry);
+    return array('ok' => false, 'id' => '', 'code' => '', 'error' => (string) $error, 'retry' => (bool) $retry, 'uncertain' => false);
+}
+
+/**
+ * What every message is checked for before any account is read: a known kind
+ * that is not commercial (until İYS consent records exist), a number an SMS
+ * can be sent to, a text that is not empty and not longer than
+ * pg_sms_max_length().
+ *
+ * @param mixed $to
+ * @param mixed $text
+ * @param mixed $kind
+ * @return array ok, number (E.164 digits), text (as it is sent), error
+ */
+function pg_sms_check($to, $text, $kind)
+{
+    $kinds = pg_sms_kinds();
+    $refused = array('ok' => false, 'number' => '', 'text' => '', 'error' => '');
+
+    if (!is_string($kind) || !isset($kinds[$kind])) {
+        $refused['error'] = lang('Unknown kind of SMS message.');
+        return $refused;
+    }
+
+    if ($kinds[$kind]) {
+        $refused['error'] = lang('Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.');
+        return $refused;
+    }
+
+    $number = pg_sms_number($to);
+
+    if ($number === '') {
+        $refused['error'] = lang('This is not a mobile number an SMS can be sent to.');
+        return $refused;
+    }
+
+    $text = pg_sms_text($text);
+
+    if ($text === '') {
+        $refused['error'] = lang('The message is empty.');
+        return $refused;
+    }
+
+    if (mb_strlen($text, 'UTF-8') > pg_sms_max_length()) {
+        $refused['error'] = lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length())));
+        return $refused;
+    }
+
+    return array('ok' => true, 'number' => $number, 'text' => $text, 'error' => '');
 }
 
 /**
@@ -281,35 +334,21 @@ function pg_sms_driver($provider)
  * @param string $kind one of pg_sms_kinds()
  * @return array ok, id (the provider's id for the message), code (the
  *               provider's result code), error (a sentence for the operator),
- *               retry (whether trying again later may succeed)
+ *               retry (whether sending it again cannot deliver it twice, so
+ *               trying later may succeed), uncertain (the provider may have
+ *               taken it although no success came back: sending it again
+ *               could deliver it twice)
  */
 function pg_sms_send($to, $text, $kind)
 {
-    $kinds = pg_sms_kinds();
+    $check = pg_sms_check($to, $text, $kind);
 
-    if (!is_string($kind) || !isset($kinds[$kind])) {
-        return pg_sms_failure(lang('Unknown kind of SMS message.'));
+    if (!$check['ok']) {
+        return pg_sms_failure($check['error']);
     }
 
-    if ($kinds[$kind]) {
-        return pg_sms_failure(lang('Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.'));
-    }
-
-    $number = pg_sms_number($to);
-
-    if ($number === '') {
-        return pg_sms_failure(lang('This is not a mobile number an SMS can be sent to.'));
-    }
-
-    $text = pg_sms_text($text);
-
-    if ($text === '') {
-        return pg_sms_failure(lang('The message is empty.'));
-    }
-
-    if (mb_strlen($text, 'UTF-8') > pg_sms_max_length()) {
-        return pg_sms_failure(lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length()))));
-    }
+    $number = $check['number'];
+    $text = $check['text'];
 
     // Anyone can sign in to a demonstration site, so it sends nothing, as it
     // sends no e-mail (email() in includes/fn/mail.php).
@@ -388,19 +427,24 @@ function pg_sms_sender_match($sender, $senders, $user = '')
  * A driver's HTTP call. The provider's address is fixed in its driver, never
  * typed by anyone, so this is a plain cURL call with the certificate checks
  * the carriers and the update channel use (pg_curl_tls()); a redirect is not
- * followed. The cURL error number tells a caller whether the request can
- * have reached the provider (pg_sms_http_never_sent()).
+ * followed. The cURL error number and a proxy's answer to the tunnel tell a
+ * caller whether the request can have reached the provider
+ * (pg_sms_http_never_sent()).
  *
  * @param string $method
  * @param array  $request url, headers, body (optional)
  * @return array status (0 when nothing came back), body, error (a transport
  *               problem, '' when the provider answered), errno (cURL's error
- *               number, 0 when the provider answered)
+ *               number, 0 when the provider answered), connect (the HTTP
+ *               status a proxy answered the tunnel request with, 0 without a
+ *               proxy)
  */
 function pg_sms_http($method, $request)
 {
+    // Nothing left the server: reported as cURL's CURLE_FAILED_INIT, which
+    // pg_sms_http_never_sent() counts as a request that reached nobody.
     if (!function_exists('curl_init')) {
-        return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 0);
+        return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 2, 'connect' => 0);
     }
 
     $handle = curl_init((string) $request['url']);
@@ -422,6 +466,7 @@ function pg_sms_http($method, $request)
     $errno = (int) curl_errno($handle);
     $error = curl_error($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    $connect = (int) curl_getinfo($handle, CURLINFO_HTTP_CONNECTCODE);
 
     // The handle is freed with the variable; curl_close() does nothing since
     // PHP 8.0 and is deprecated in 8.5.
@@ -429,30 +474,480 @@ function pg_sms_http($method, $request)
 
     if ($errno !== 0) {
         return array(
-            'status' => 0,
-            'body'   => '',
-            'error'  => trim($error . pg_curl_tls_hint($errno)),
-            'errno'  => $errno,
+            'status'  => 0,
+            'body'    => '',
+            'error'   => trim($error . pg_curl_tls_hint($errno)),
+            'errno'   => $errno,
+            'connect' => $connect,
         );
     }
 
-    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0);
+    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0, 'connect' => $connect);
 }
 
 /**
- * Whether a transport error came before anything reached the provider: the
- * proxy or the provider's name could not be resolved, or no connection was
- * made. After any other one (a timeout above all) the provider may have
- * taken the request, so sending it again could deliver a message twice.
+ * Whether a transport error came before anything reached the provider: cURL
+ * could not start, the proxy or the provider's name could not be resolved,
+ * no connection was made, or a proxy refused the tunnel to the provider.
+ * After any other one (a timeout above all) the provider may have taken the
+ * request, so sending it again could deliver a message twice.
  *
- * @param int $errno cURL's error number
+ * @param int $errno   cURL's error number
+ * @param int $connect the status a proxy answered the tunnel request with
+ *                     (pg_sms_http()), 0 without a proxy
  * @return bool
  */
-function pg_sms_http_never_sent($errno)
+function pg_sms_http_never_sent($errno, $connect = 0)
 {
-    // CURLE_COULDNT_RESOLVE_PROXY, CURLE_COULDNT_RESOLVE_HOST,
-    // CURLE_COULDNT_CONNECT.
-    return in_array((int) $errno, array(5, 6, 7), true);
+    $errno = (int) $errno;
+
+    // CURLE_FAILED_INIT, CURLE_COULDNT_RESOLVE_PROXY,
+    // CURLE_COULDNT_RESOLVE_HOST, CURLE_COULDNT_CONNECT.
+    if (in_array($errno, array(2, 5, 6, 7), true)) {
+        return true;
+    }
+
+    // A proxy that answered the tunnel request with a refusal opened no way
+    // to the provider, whatever number cURL reports it under (cURL 8.5 says
+    // 56, a receive error that on its own could come after the request).
+    return ($errno !== 0) && ((int) $connect >= 300);
+}
+
+
+/* ---------------------------------------------------------------------------
+   The queue (sms_outbox)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether the 2026.11.0 upgrade has created sms_outbox.
+ *
+ * @return bool
+ */
+function pg_sms_queue_ready()
+{
+    return pg_schema_has('sms_outbox');
+}
+
+/**
+ * Whether queued messages are being sent: the general job, the only job that
+ * works this queue, finished within the last fifteen minutes. Asked once per
+ * request.
+ *
+ * @return bool
+ */
+function pg_sms_job_alive()
+{
+    static $alive = null;
+
+    if ($alive === null) {
+        $alive = pg_schema_has('cron_runs')
+            && pg_mail_should_queue((int) db_value("SELECT last_run_at FROM cron_runs WHERE job_name = 'job'"), time());
+    }
+
+    return $alive;
+}
+
+/**
+ * The row pg_sms_enqueue() writes, from a checked message and the caller's
+ * options; no database.
+ *
+ * A reference names what the message is about (order:438:received): letters,
+ * digits and : . _ - /, at most 64. One that is not such a name is refused
+ * rather than dropped, since dropping it would lose the guard against
+ * queueing the same message twice.
+ *
+ * @param array  $check   a pg_sms_check() that passed
+ * @param string $kind
+ * @param array  $options reference, send_after, expires_at
+ * @param int    $now
+ * @return array created_at, send_after, expires_at, status, kind, recipient,
+ *               body, reference (null for none); error alone when an option
+ *               is refused
+ */
+function pg_sms_queue_row($check, $kind, $options, $now)
+{
+    $now = (int) $now;
+    $options = is_array($options) ? $options : array();
+
+    $reference = (isset($options['reference']) && is_scalar($options['reference'])) ? trim((string) $options['reference']) : '';
+
+    if (($reference !== '') && !preg_match('#^[A-Za-z0-9:._/-]{1,64}$#D', $reference)) {
+        return array('error' => lang('The reference of an SMS message has at most 64 letters, digits and the characters : . _ - /'));
+    }
+
+    $send_after = isset($options['send_after']) ? max($now, (int) $options['send_after']) : $now;
+    $expires_at = isset($options['expires_at']) ? max(0, (int) $options['expires_at']) : 0;
+
+    if (($expires_at > 0) && ($expires_at <= $send_after)) {
+        return array('error' => lang('The message would expire before it could be sent.'));
+    }
+
+    return array(
+        'created_at' => $now,
+        'send_after' => $send_after,
+        'expires_at' => $expires_at,
+        'status'     => 'queued',
+        'kind'       => (string) $kind,
+        'recipient'  => (string) $check['number'],
+        'body'       => (string) $check['text'],
+        'reference'  => ($reference === '') ? null : $reference,
+    );
+}
+
+/**
+ * Puts one message in the queue for the general job (pg_sms_queue_run()).
+ * This is what a request calls: it makes no network call and does not wait
+ * for the provider. What pg_sms_send() would refuse is refused here, and so
+ * is any message while SMS is not set up, so nothing collects in the queue
+ * of a site without SMS.
+ *
+ * mysqli_query() rather than db(): db() ends the request on a failed query,
+ * and a request that only wanted to send a text message must not die because
+ * the queue refused a row.
+ *
+ * @param string $to
+ * @param string $text
+ * @param string $kind    one of pg_sms_kinds()
+ * @param array  $options reference (what the message is about; while its
+ *                        row is kept, a second message with the same one is
+ *                        not queued), send_after (not before this time),
+ *                        expires_at (not after it; 0 for no limit)
+ * @return array ok, row (the queue's id), duplicate (a message with this
+ *               reference was already queued; row is that one), error
+ */
+function pg_sms_enqueue($to, $text, $kind, $options = array())
+{
+    $refused = array('ok' => false, 'row' => 0, 'duplicate' => false, 'error' => '');
+
+    $check = pg_sms_check($to, $text, $kind);
+
+    if (!$check['ok']) {
+        $refused['error'] = $check['error'];
+        return $refused;
+    }
+
+    if (function_exists('pg_demo') && pg_demo()) {
+        $refused['error'] = lang('No text message is sent from a demonstration site.');
+        return $refused;
+    }
+
+    if (!pg_sms_queue_ready()) {
+        $refused['error'] = lang('The SMS queue is not available yet; run the upgrade.');
+        return $refused;
+    }
+
+    if (!pg_sms_ready()) {
+        $refused['error'] = lang('SMS is not set up.');
+        return $refused;
+    }
+
+    $row = pg_sms_queue_row($check, $kind, $options, time());
+
+    if (isset($row['error'])) {
+        $refused['error'] = $row['error'];
+        return $refused;
+    }
+
+    $result = mysqli_query(db::$con,
+        "INSERT INTO sms_outbox (created_at, send_after, expires_at, status, kind, recipient, body, reference)
+        VALUES (
+            '" . (int) $row['created_at'] . "',
+            '" . (int) $row['send_after'] . "',
+            '" . (int) $row['expires_at'] . "',
+            'queued',
+            '" . e($row['kind']) . "',
+            '" . e($row['recipient']) . "',
+            '" . e($row['body']) . "',
+            " . (($row['reference'] === null) ? 'NULL' : "'" . e($row['reference']) . "'") . ")");
+
+    if ($result !== false) {
+        return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');
+    }
+
+    // ER_DUP_ENTRY on the reference: this message is already in the queue.
+    if (($row['reference'] !== null) && ((int) mysqli_errno(db::$con) === 1062)) {
+        $existing = (int) db_value("SELECT id FROM sms_outbox WHERE reference = '" . e($row['reference']) . "'");
+
+        return array('ok' => true, 'row' => $existing, 'duplicate' => true, 'error' => '');
+    }
+
+    $refused['error'] = lang('The message could not be queued.');
+    return $refused;
+}
+
+/**
+ * What becomes of a claimed message after its send; no database.
+ *
+ * Sent: the provider took it. Queued again: only when the answer says
+ * sending it again cannot deliver it twice (retry), on the mail queue's
+ * ladder (pg_mail_backoff()), and only while the next attempt comes before
+ * the message expires. Uncertain: the provider may have taken it although no
+ * success came back; it is not sent again by itself. Failed: refused, given
+ * up after the last attempt, or expired before it was sent.
+ *
+ * @param array      $row  attempts, send_after, expires_at
+ * @param array|null $send pg_sms_send(); null when the message expired
+ *                         before it was sent
+ * @param int        $now
+ * @return array status, attempts, send_after, sent_at, last_error,
+ *               provider_id
+ */
+function pg_sms_queue_outcome($row, $send, $now)
+{
+    $now = (int) $now;
+    $expires_at = (int) $row['expires_at'];
+
+    $outcome = array(
+        'status'      => 'failed',
+        'attempts'    => (int) $row['attempts'],
+        'send_after'  => (int) $row['send_after'],
+        'sent_at'     => 0,
+        'last_error'  => '',
+        'provider_id' => '',
+    );
+
+    if ($send === null) {
+        $outcome['last_error'] = lang('The message expired before it could be sent.');
+        return $outcome;
+    }
+
+    $outcome['attempts']++;
+
+    if (!empty($send['ok'])) {
+        $outcome['status'] = 'sent';
+        $outcome['sent_at'] = $now;
+        $outcome['provider_id'] = (string) $send['id'];
+        return $outcome;
+    }
+
+    $outcome['last_error'] = (string) $send['error'];
+
+    if (!empty($send['uncertain'])) {
+        $outcome['status'] = 'uncertain';
+        return $outcome;
+    }
+
+    if (empty($send['retry'])) {
+        return $outcome;
+    }
+
+    $wait = pg_mail_backoff($outcome['attempts']);
+
+    if (($outcome['attempts'] >= pg_mail_max_attempts()) || ($wait === 0)) {
+        return $outcome;
+    }
+
+    if (($expires_at > 0) && (($now + $wait) >= $expires_at)) {
+        $outcome['last_error'] = lang(array(
+            'string' => '{var:1} Not tried again: the message expires before the next attempt.',
+            'vars'   => array((string) $send['error'])));
+        return $outcome;
+    }
+
+    $outcome['status'] = 'queued';
+    $outcome['send_after'] = $now + $wait;
+
+    return $outcome;
+}
+
+/**
+ * Sends what is due in the queue. Called by job.php on every run and by the
+ * Run now button of the queue screen. Bounded by a row count and wall-clock
+ * time: a provider that does not answer costs its timeout per message, and
+ * this must not hold the general job past its next tick.
+ *
+ * @param int $limit
+ * @param int $seconds
+ * @return array sent, failed (sends that did not get through in this run,
+ *               tried again later or not)
+ */
+function pg_sms_queue_run($limit = 10, $seconds = 15)
+{
+    $result = array('sent' => 0, 'failed' => 0);
+
+    if (!pg_sms_queue_ready()) {
+        return $result;
+    }
+
+    // An empty queue, the case of every site that sends no SMS, costs this
+    // one read.
+    if (!db_value("SELECT id FROM sms_outbox LIMIT 1")) {
+        return $result;
+    }
+
+    // A run that stopped while sending (a fatal error, a killed process)
+    // leaves its row in 'sending'. Unlike an e-mail it is not queued again:
+    // the provider may have taken the message. Fifteen minutes is far longer
+    // than a send takes.
+    db(
+        "UPDATE sms_outbox
+        SET
+            status = 'uncertain',
+            claimed_at = 0,
+            last_error = '" . e(pg_mail_clip(lang('The run that was sending this message stopped before the provider\'s answer was recorded, so it may have been sent.'), 500)) . "'
+        WHERE
+            (status = 'sending')
+            AND (claimed_at < " . (time() - 900) . ")");
+
+    $provider = pg_sms_provider();
+
+    $deadline = microtime(true) + $seconds;
+
+    for ($looked = 0; ($looked < (int) $limit) && (microtime(true) < $deadline); $looked++) {
+
+        $id = (int) db_value(
+            "SELECT id
+            FROM sms_outbox
+            WHERE
+                (status = 'queued')
+                AND (send_after <= UNIX_TIMESTAMP())
+            ORDER BY send_after, id
+            LIMIT 1");
+
+        if (!$id) {
+            break;
+        }
+
+        // Claimed before it is sent. The condition on status makes the UPDATE
+        // the arbiter: InnoDB locks the row for the statement, so when two
+        // runs overlap exactly one of them changes it, and the other sees no
+        // affected row and moves on.
+        db(
+            "UPDATE sms_outbox
+            SET status = 'sending', claimed_at = UNIX_TIMESTAMP()
+            WHERE
+                (id = '" . $id . "')
+                AND (status = 'queued')");
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            continue;
+        }
+
+        $row = db_item("SELECT id, attempts, send_after, expires_at, kind, recipient, body FROM sms_outbox WHERE id = '" . $id . "'");
+
+        // Deleted from the queue screen in the moment between.
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $expired = ((int) $row['expires_at'] > 0) && ((int) $row['expires_at'] <= time());
+
+        $send = $expired ? null : pg_sms_send($row['recipient'], $row['body'], $row['kind']);
+
+        $outcome = pg_sms_queue_outcome($row, $send, time());
+
+        db(
+            "UPDATE sms_outbox
+            SET
+                status = '" . e($outcome['status']) . "',
+                attempts = '" . (int) $outcome['attempts'] . "',
+                send_after = '" . (int) $outcome['send_after'] . "',
+                sent_at = '" . (int) $outcome['sent_at'] . "',
+                last_error = '" . e(pg_mail_clip($outcome['last_error'], 500)) . "',
+                provider = '" . e(($send === null) ? '' : pg_mail_clip($provider, 32)) . "',
+                provider_id = '" . e(pg_mail_clip($outcome['provider_id'], 64)) . "',
+                claimed_at = 0
+            WHERE id = '" . $id . "'");
+
+        if ($outcome['status'] === 'sent') {
+            $result['sent']++;
+            continue;
+        }
+
+        $result['failed']++;
+
+        if ($outcome['status'] === 'uncertain') {
+            log_activity(lang(array(
+                'string' => 'The SMS provider may have taken a text message to +{var:1}; it is not sent again by itself: {var:2}',
+                'vars'   => array($row['recipient'], $outcome['last_error']),
+            )), 'UNKNOWN');
+        } elseif (($outcome['status'] === 'failed') && !$expired) {
+            log_activity(lang(array(
+                'string' => 'A text message to +{var:1} was not sent: {var:2}',
+                'vars'   => array($row['recipient'], $outcome['last_error']),
+            )), 'UNKNOWN');
+        }
+    }
+
+    // Sent messages are kept a week and the others a month, as the mail queue
+    // keeps its rows, so the queue screen can show what happened; then they
+    // are swept.
+    db("DELETE FROM sms_outbox WHERE (status = 'sent') AND (sent_at < " . (time() - 604800) . ")");
+    db("DELETE FROM sms_outbox WHERE (status IN ('failed', 'uncertain')) AND (created_at < " . (time() - 2592000) . ")");
+
+    return $result;
+}
+
+/**
+ * Sends a message on the next run: one waiting for a later attempt, one that
+ * failed, or one whose outcome was uncertain (after the operator checked with
+ * the provider that it did not arrive). One being sent, one that was sent and
+ * one past its expiry are left alone.
+ *
+ * @param int $id
+ * @return bool whether the message was put back in the queue
+ */
+function pg_sms_queue_retry($id)
+{
+    db(
+        "UPDATE sms_outbox
+        SET status = 'queued', send_after = 0, attempts = 0, claimed_at = 0
+        WHERE
+            (id = '" . (int) $id . "')
+            AND (status IN ('queued', 'failed', 'uncertain'))
+            AND ((expires_at = 0) OR (expires_at > UNIX_TIMESTAMP()))");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * Removes a message from the queue, sent or not.
+ *
+ * @param int $id
+ * @return bool whether a message was removed
+ */
+function pg_sms_queue_delete($id)
+{
+    db("DELETE FROM sms_outbox WHERE id = '" . (int) $id . "'");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * The queue's figures for its screen.
+ *
+ * @return array queued, sending, sent (in the last 24 hours), failed,
+ *               uncertain
+ */
+function pg_sms_queue_counts()
+{
+    $row = db_item(
+        "SELECT
+            SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) AS queued,
+            SUM(CASE WHEN status = 'sending' THEN 1 ELSE 0 END) AS sending,
+            SUM(CASE WHEN (status = 'sent') AND (sent_at >= " . (time() - 86400) . ") THEN 1 ELSE 0 END) AS sent,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN status = 'uncertain' THEN 1 ELSE 0 END) AS uncertain
+        FROM sms_outbox");
+
+    $counts = array();
+
+    foreach (array('queued', 'sending', 'sent', 'failed', 'uncertain') as $status) {
+        $counts[$status] = (is_array($row) && isset($row[$status])) ? (int) $row[$status] : 0;
+    }
+
+    return $counts;
+}
+
+/**
+ * Whether the queue screen has an SMS tab: SMS is set up, or the queue still
+ * holds messages from when it was.
+ *
+ * @return bool
+ */
+function pg_sms_queue_shown()
+{
+    return pg_sms_queue_ready() && (pg_sms_ready() || (bool) db_value("SELECT id FROM sms_outbox LIMIT 1"));
 }
 
 
@@ -531,6 +1026,11 @@ function pg_sms_settings_fields()
             : lang('SMS is switched on but cannot send until the account is complete.');
     }
 
+    // Messages go out through the general job; without it they only wait.
+    if (($warning === '') && $enabled && pg_sms_queue_ready() && !pg_sms_job_alive()) {
+        $warning = lang('The general job has not run in the last 15 minutes, so text messages wait in the queue until it runs. Schedule it under Cron Jobs.');
+    }
+
     $options = '';
 
     foreach (pg_sms_providers() as $key => $definition) {
@@ -561,6 +1061,13 @@ function pg_sms_settings_fields()
 
     foreach (pg_sms_providers() as $key => $definition) {
         $html .= pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key));
+    }
+
+    if (pg_sms_queue_ready()) {
+        $html .= '
+                                                        <div class="col-12 form-text">' . lang(array(
+                                                            'string' => 'Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.',
+                                                            'vars'   => array('<a href="' . h(PATH . SOFTWARE_DIRECTORY . '/mail_queue.php?tab=sms') . '">' . h(lang('Mail queue')) . '</a>'))) . '</div>';
     }
 
     $html .= '

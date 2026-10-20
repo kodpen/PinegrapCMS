@@ -5,7 +5,7 @@ description: process_order_cancellation as the only cancel path, admin cancel UI
 
 ## What is the single cancel entry point?
 - `process_order_cancellation($order_id, $reason, $is_admin, $user_id, $attempt_refund = null)` (functions.php). Callers: `cancel_order.php` (customer + admin per-row), `edit_orders.php` (`action=cancel` bulk), `view_order.php` (detail modal). There is no other path; legacy `cancel_order()` was REMOVED and the gift-card invalidation logic moved into this function.
-- It does status/shipment gates + DB update + log + optional email + optional Iyzipay refund. Returns `['status' => 'success'|'already'|'shipped'|'not_found'|'error', 'refund_status' => ...]`.
+- It does status/shipment gates + DB update + log + optional email + optional refund through the payment method's driver. Returns `['status' => 'success'|'already'|'shipped'|'not_found'|'error', 'refund_status' => ...]`.
 - 5th param `$attempt_refund`: `null` = follow config, `true`/`false` = force. The detail-screen modal passes `true` (operator confirmed the "payment will be cancelled" modal).
 
 ## Enum spelling

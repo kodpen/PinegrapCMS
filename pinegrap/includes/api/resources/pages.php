@@ -591,6 +591,8 @@ function api_pages_update($params) {
 
 	api_dry_run_stop('updated', 'page', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('page', $id);
+
 	api_exec("UPDATE page SET " . implode(', ', $set) . ",
 			page_timestamp = UNIX_TIMESTAMP(),
 			page_user = '" . (int)$app['owner']['id'] . "'
@@ -615,6 +617,8 @@ function api_pages_update($params) {
 		pg_seo_recalculate('page', array($id));
 
 	}
+
+	pg_audit_record('update', 'page', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Page ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -782,6 +786,8 @@ function api_pages_delete($params) {
 
 		api_dry_run_stop('recycled', 'page', array('id' => $id, 'name' => $page['page_name'], 'folder_id' => $bin_id));
 
+		$audit_before = pg_audit_fetch('page', $id);
+
 		api_exec("UPDATE page SET
 				page_folder = '" . $bin_id . "',
 				page_timestamp = UNIX_TIMESTAMP(),
@@ -797,6 +803,8 @@ function api_pages_delete($params) {
 
 		api_exec("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
 			VALUES ('page', '" . $id . "', '" . (int)$page['page_folder'] . "', UNIX_TIMESTAMP(), '" . (int)$app['owner']['id'] . "')");
+
+		pg_audit_record('recycle', 'page', $id, $audit_before);
 
 		log_activity(lang(array(
 			'string' => 'Page ({var:1}) was moved to the recycle bin through the API by the application {var:2} (key {var:3}).',
@@ -823,6 +831,8 @@ function api_pages_delete($params) {
 	// itself would refuse is not knowable until it runs.
 	api_dry_run_stop('deleted', 'page', array('id' => $id, 'name' => $page['page_name']));
 
+	$audit_before = pg_audit_fetch('page', $id);
+
 	$result = pg_delete_page_record($id, array(
 		'id'           => (int)$app['owner']['id'],
 		'role'         => (int)$app['owner']['role'],
@@ -836,6 +846,8 @@ function api_pages_delete($params) {
 		api_fail(409, 'page_delete_refused', $message);
 
 	}
+
+	pg_audit_record('delete', 'page', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Page ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',

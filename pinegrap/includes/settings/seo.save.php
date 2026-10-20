@@ -278,6 +278,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             cookie_consent_policy_url = '" . escape($cookie_consent_policy_url_input) . "',";
     }
 
+    // AI crawlers and llms.txt (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php):
+    // only once the columns are there and the card's fields were posted. The
+    // firewall switches the card shows are written by the firewall screen.
+    $sql_ai_crawler_fields = '';
+
+    if (pg_schema_has('config', 'robots_ai_rules') && array_key_exists('additional_llms_content', $_POST)) {
+        $sql_ai_crawler_fields =
+            "robots_ai_rules = '" . ((post_value('robots_ai_rules') == '1') ? 1 : 0) . "',
+            robots_ai_training = '" . ((post_value('robots_ai_training') == '1') ? 1 : 0) . "',
+            llms_txt = '" . ((post_value('llms_txt') == '1') ? 1 : 0) . "',
+            additional_llms_content = '" . escape(trim((string) post_value('additional_llms_content'))) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -288,6 +301,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_app_icon_field
             $sql_seo_jsonld_fields
             $sql_cookie_consent_fields
+            $sql_ai_crawler_fields
             $sql_visitor_retention_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
             indexnow_key = '" . escape(post_value('indexnow_key')) . "',

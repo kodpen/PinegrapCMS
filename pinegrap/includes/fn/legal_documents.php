@@ -645,6 +645,22 @@ function pg_legal_documents_enabled()
 }
 
 /**
+ * Whether a site installed from a starter site begins with the checkout
+ * documents switched on. Turkish distance-selling rules require both
+ * documents, so a Turkish starter site starts with them; its template
+ * columns stay empty and read the built-in templates. Any other
+ * language, and a restored backup (no starter language), starts off, as an
+ * upgrade does.
+ *
+ * @param string $starter_language  the starter site's language, '' for a backup
+ * @return bool
+ */
+function pg_legal_documents_on_for_new_site($starter_language)
+{
+    return strtolower(trim((string) $starter_language)) === 'tr';
+}
+
+/**
  * The stored template for a type, or the built-in one when none is stored.
  *
  * @param string $type
@@ -1214,6 +1230,76 @@ function pg_legal_documents_attachments($order_id, $order_number)
 }
 
 /**
+ * The address of a document's copy kept with a placed order: the document
+ * page with the order's id and the type. Unescaped.
+ *
+ * @param int         $order_id
+ * @param string      $type      a key of pg_legal_document_types()
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return string
+ */
+function pg_legal_document_copy_url($order_id, $type, $page_url = null)
+{
+    if ($page_url === null) {
+        $page_url = pg_legal_document_page_url();
+    }
+
+    return $page_url . '?order_id=' . (int) $order_id . '&type=' . rawurlencode((string) $type);
+}
+
+/**
+ * The links a customer's order view gives to the copies kept with the
+ * order: one per document type, '' for a type the order has no copy of.
+ *
+ * @param array       $kept      type => order_documents row (pg_legal_documents_of_order())
+ * @param int         $order_id
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return array  type => address (unescaped), every type of pg_legal_document_types() in its order
+ */
+function pg_legal_document_copy_urls(array $kept, $order_id, $page_url = null)
+{
+    $urls = array();
+
+    foreach (array_keys(pg_legal_document_types()) as $type) {
+        $urls[$type] = isset($kept[$type]) ? pg_legal_document_copy_url($order_id, $type, $page_url) : '';
+    }
+
+    return $urls;
+}
+
+/**
+ * The card an order view gets after it when its layout links neither
+ * document: the kept copies, one link each, opening in a new window. A
+ * layout from before the links existed shows them this way; a layout that
+ * binds a link places them itself.
+ *
+ * @param array $urls  pg_legal_document_copy_urls()
+ * @return string  '' when the order has no kept copy
+ */
+function pg_legal_documents_order_view_block(array $urls)
+{
+    $types = pg_legal_document_types();
+    $items = '';
+
+    foreach ($urls as $type => $url) {
+        if (!isset($types[$type]) || ((string) $url === '')) {
+            continue;
+        }
+
+        $items .= '<li><a href="' . h((string) $url) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a></li>';
+    }
+
+    if ($items === '') {
+        return '';
+    }
+
+    return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
+        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
+        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul></div>'
+        . '</div></div>';
+}
+
+/**
  * The order screen's card listing the documents kept with the order: each
  * one's name, whether and when it was accepted, from which address, and a
  * link to the copy.
@@ -1237,7 +1323,7 @@ function pg_legal_documents_panel_card($order_id)
             : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">
-                        <span class="col text-muted"><a class="link-secondary" href="' . h(PATH . SOFTWARE_DIRECTORY . '/legal_document.php?order_id=' . (int) $order_id . '&type=' . $type) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
+                        <span class="col text-muted"><a class="link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
                         <span class="col text-end" title="' . h((string) $row['ip']) . '">' . $status . '</span>
                     </div>';
     }

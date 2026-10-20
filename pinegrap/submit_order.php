@@ -1808,8 +1808,90 @@ function submit_order($type) {
         }
     }
     
+    // A payment a driver serves (includes/payments/) is taken by the driver,
+    // and the gateway code below does not run for it. The order records the
+    // driver's answer in the same variables the gateway code sets.
+    $payment_driver = ($nonrecurring_transaction == TRUE)
+        ? pg_payment_checkout_driver((string) $liveform->get_field_value('payment_method'), (string) ECOMMERCE_PAYMENT_GATEWAY, (string) ($_GET['mode'] ?? ''))
+        : '';
+
+    if ($payment_driver !== '') {
+        $payment_order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
+        $payment_order = is_array($payment_order) ? $payment_order : array();
+        $payment_return_mode = pg_payment_return_mode($payment_driver);
+
+        if (($payment_return_mode !== '') && (($_GET['mode'] ?? '') === $payment_return_mode)) {
+            $payment_answer = pg_payment_call($payment_driver, 'complete', array(
+                $payment_order,
+                $total,
+                $_POST,
+                $_SESSION['ecommerce']['payment_state'][$payment_driver] ?? array(),
+            ));
+        } else {
+            $payment_answer = pg_payment_call($payment_driver, 'authorize', array($payment_order, $total, array(
+                'card_number'              => isset($card_number) ? $card_number : '',
+                'expiration_month'         => isset($expiration_month) ? $expiration_month : '',
+                'expiration_year'          => isset($expiration_year) ? $expiration_year : '',
+                'card_verification_number' => $liveform->get_field_value('card_verification_number'),
+                'installment'              => (int) $liveform->get_field_value('installment'),
+                'threeds'                  => isset($_POST['threedsecure']),
+                'recurring'                => ($recurring_transaction === TRUE),
+                'subtotal'                 => $subtotal,
+                'discount'                 => $discount,
+                'lines'                    => $products,
+                'ship_to'                  => pg_payment_order_ship_to((int) ($_SESSION['ecommerce']['order_id'] ?? 0)),
+                'customer_id'              => $user_id,
+                'ip'                       => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+                'basket_id'                => (string) $page_id,
+                'return_url'               => ($payment_return_mode !== '')
+                    ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
+                    : '',
+            )));
+        }
+
+        // What the driver keeps for the visitor's return stays in the session,
+        // never in the page; an answer without it ends the wait.
+        if ($payment_answer['state'] !== array()) {
+            $_SESSION['ecommerce']['payment_state'][$payment_driver] = $payment_answer['state'];
+        } else {
+            unset($_SESSION['ecommerce']['payment_state'][$payment_driver]);
+        }
+
+        foreach ($payment_answer['log'] as $payment_log_line) {
+            log_activity($payment_log_line);
+        }
+
+        if (!$payment_answer['success']) {
+            $liveform->mark_error('payment_gateway', h($payment_answer['error']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+            exit();
+        }
+
+        // The bank's 3-D Secure page, or the service's own payment page.
+        if ($payment_answer['status'] === 'redirect') {
+            if ($payment_answer['html'] !== '') {
+                echo $payment_answer['html'];
+            } else {
+                header('Location: ' . $payment_answer['redirect_url']);
+            }
+
+            exit();
+        }
+
+        $payment_totals = pg_payment_checkout_totals($payment_answer, $total);
+        $total = $payment_totals['total'];
+        $installment_charge = $payment_totals['installment_charge'];
+        $total_witout_installment_charge = $payment_totals['total_without_installment_charge'];
+        $payment_installment = $payment_totals['payment_installment'];
+        $transaction_id = $payment_answer['transaction_id'];
+
+        if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
+            $card_type = $payment_answer['card_brand'];
+        }
+    }
+
     // if a non-recurring transaction is required, then process transaction through payment gateway, if there is one
-    if ($nonrecurring_transaction == TRUE) {
+    if (($nonrecurring_transaction == TRUE) && ($payment_driver === '')) {
         
         // process transaction differently based on selected payment method
         switch ($liveform->get_field_value('payment_method')) {
@@ -7957,6 +8039,13 @@ function submit_order($type) {
     // drop an `order_view` system widget on the configured next_page to show
     // the order summary; without the query string the widget renders empty.
     $completed_order_id = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
+
+    // A store that invoices paid orders on their own (ERP settings) gets this
+    // one's invoice once the customer has been answered, so the redirect to
+    // the receipt never waits for it. The ERP decides whether the order is
+    // paid: a confirmed gateway payment, the customer's account, or nothing
+    // left to pay.
+    pg_erp_auto_invoice($completed_order_id, 'order_paid', true);
 
     // remove order id from session so shopping cart is emptied, in case user tries to shop again
     unset($_SESSION['ecommerce']['order_id']);

@@ -287,6 +287,13 @@ if(defined('EDITION')){
 }
 require (dirname(__FILE__) . '/../functions.php');
 
+// The firewall's functions, which the sign-in throttle counts with: the unlock form below
+// goes through pg_login_throttle_guard() and pg_login_record_failure() like the sign-in
+// screen, and without these pg_login_throttle_ready() is false and neither of them counts
+// or locks anything.  Only loaded: the firewall itself (waf_run()) does not run on this
+// screen.
+require_once (dirname(__FILE__) . '/../waf.php');
+
 // The upgrade runner: the version list, the migration files, the schema helpers and the
 // loop that applies them.  It lives under includes/ so that it survives the install
 // directory being removed from a server.
@@ -5664,6 +5671,14 @@ else {
 
 		$install_restore_save();
 
+		// The tables are now the backup's (or the starter site's). What
+		// pg_schema_has() remembered in data/temp was about the replaced ones,
+		// and a backup of the same version runs no upgrade that would clear it;
+		// the sign-in path reads those answers before it names a column.
+		if (function_exists('pg_schema_cache_clear')) {
+			pg_schema_cache_clear();
+		}
+
 		// If the MySQL server supports utf8mb4, then convert all tables that were
 		// created above from utf8 to utf8mb4.  The sql.sql file has utf8 set by default
 		// so that is why this is necessary.  A table that is already in the right character
@@ -6221,117 +6236,16 @@ else {
 
 		}
 
-		// create config.php file
-		
+		// The text of config.php. Every value of the form goes in through
+		// pg_config_install_content(), so a password with a quote, a backslash
+		// or a closing tag in it is written as the installer used it to connect,
+		// and the command-line installation (includes/install_cli.php) writes
+		// the same file from the same fields.
+		$config_data = pg_config_install_content(function ($field) use ($liveform) {
 
-		// if a logo URL was supplied, then use it
-		if ($liveform->get_field_value('logo_url') != '') {
+			return $liveform->get_field_value($field);
 
-			$logo_url = "\r\n" . 'define(\'LOGO_URL\', \'' . $liveform->get_field_value('logo_url') . '\');';
-
-			// else a logo URL was not supplied, so we won't add the logo_url line
-			
-		}
-		else {
-
-			$logo_url = '';
-
-		}
-
-		// if software language was supplied, then use it
-		$default_software_language = '';
-		if ($liveform->get_field_value('default_software_language') != '') {
-			$default_software_language = "\r\n" . 'define(\'DEFAULT_SOFTWARE_LANGUAGE\', \'' . $liveform->get_field_value('default_software_language') . '\');';
-		}else{
-		}
-
-		
-		// if a software update check value was supplied, then use it
-		if ($liveform->get_field_value('software_update_check') != '') {
-
-			// if true value was passed, then prepare value for config file
-			if ($liveform->get_field_value('software_update_check') == 'true') {
-
-				$software_update_check_value = 'TRUE';
-
-				// else a true value was not passed, so prepare different value for config file
-				
-			}
-			else {
-
-				$software_update_check_value = 'FALSE';
-
-			}
-
-			$software_update_check = "\r\n" . 'define(\'SOFTWARE_UPDATE_CHECK\', ' . $software_update_check_value . ');';
-
-			// else a software update check value was not supplied, so we won't add a line for it
-			
-		}
-		else {
-
-			$software_update_check = '';
-
-		}
-
-		$system_smtp ='';
-		if ($liveform->get_field_value('system_smtp_hostname') != '') {
-			$system_smtp .= "\r\n" . 'define(\'SYSTEM_SMTP_HOSTNAME\', \'' . $liveform->get_field_value('system_smtp_hostname') . '\');';
-		}
-		if ($liveform->get_field_value('system_smtp_port') != '') {
-			$system_smtp .= "\r\n" . 'define(\'SYSTEM_SMTP_PORT\', \'' . $liveform->get_field_value('system_smtp_port') . '\');';
-		}
-		if ($liveform->get_field_value('system_smtp_username') != '') {
-			$system_smtp .= "\r\n" . 'define(\'SYSTEM_SMTP_USERNAME\', \'' . $liveform->get_field_value('system_smtp_username') . '\');';
-		}
-		if ($liveform->get_field_value('system_smtp_password') != '') {
-			$system_smtp .= "\r\n" . 'define(\'SYSTEM_SMTP_PASSWORD\', \'' . $liveform->get_field_value('system_smtp_password') . '\');';
-		}
-		
-
-
-		$email_campaign_job ='';
-		if ($liveform->get_field_value('email_campaign_job') == 'true') {
-			$email_campaign_job .= "\r\n" . 'define(\'EMAIL_CAMPAIGN_JOB\', \'' . $liveform->get_field_value('email_campaign_job') . '\');';
-		}
-		if ($liveform->get_field_value('campaign_smtp_hostname') != '') {
-			$email_campaign_job .= "\r\n" . 'define(\'CAMPAIGN_SMTP_HOSTNAME\', \'' . $liveform->get_field_value('campaign_smtp_hostname') . '\');';
-		}
-		if ($liveform->get_field_value('campaign_smtp_number_of_emails') != '') {
-			$email_campaign_job .= "\r\n" . 'define(\'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS\', \'' . $liveform->get_field_value('campaign_smtp_number_of_emails') . '\');';
-		}
-		if ($liveform->get_field_value('campaign_smtp_port') != '') {
-			$email_campaign_job .= "\r\n" . 'define(\'CAMPAIGN_SMTP_PORT\', \'' . $liveform->get_field_value('campaign_smtp_port') . '\');';
-		}
-		if ($liveform->get_field_value('campaign_smtp_username') != '') {
-			$email_campaign_job .= "\r\n" . 'define(\'CAMPAIGN_SMTP_USERNAME\', \'' . $liveform->get_field_value('campaign_smtp_username') . '\');';
-		}
-		if ($liveform->get_field_value('campaign_smtp_password') != '') {
-			$email_campaign_job .= "\r\n" . 'define(\'CAMPAIGN_SMTP_PASSWORD\', \'' . $liveform->get_field_value('campaign_smtp_password') . '\');';
-		}
-
-			
-		// prepare data for config.php file
-		$config_data =
-		'<?php
-// Prevent direct access
-if (php_sapi_name() !== "cli" && basename(__FILE__) === basename($_SERVER["SCRIPT_FILENAME"])) {
-    http_response_code(403);
-    exit("Forbidden");
-}
-define(\'DB_HOST\', \'' . $liveform->get_field_value('db_host') . '\');
-define(\'DB_USERNAME\', \'' . $liveform->get_field_value('db_username') . '\');
-define(\'DB_PASSWORD\', \'' . $liveform->get_field_value('db_password') . '\');
-define(\'DB_DATABASE\', \'' . $liveform->get_field_value('db_database') . '\');
-define(\'ENCRYPTION_KEY\', \'' . generate_encryption_key() . '\'); // DO NOT MODIFY OR SHARE
-// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>
-// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.
-// define(\'AUTOMATED_UPGRADE_SECRET\', \'change-this-to-a-long-random-string\');
-define(\'DYNAMIC_REGIONS\', true);
-define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $logo_url . $software_update_check . $email_campaign_job . '
-?>';
-
-
+		}, generate_encryption_key());
 
 		// A host whose own certificate store cannot verify HTTPS gets the
 		// bundled root list (data/cacert.pem), so updates, Pinegrap AI and
@@ -6354,7 +6268,7 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 			curl_close($ca_probe);
 
 			if (in_array($ca_probe_errno, array(35, 51, 60, 77), true)) {
-				$config_data = preg_replace('/\?>\s*$/', "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');\n?>", $config_data, 1);
+				$config_data = pg_config_insert_line($config_data, "define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem');");
 			}
 		}
 
@@ -6472,6 +6386,21 @@ define(\'PHP_REGIONS\', true);' .  $default_software_language . $system_smtp . $
 				}
 
 			}
+
+		}
+
+		// A Turkish starter site asks for the pre-information form and the distance sales
+		// contract at checkout from its first day (pg_legal_documents_on_for_new_site()). The
+		// upgrade above added the switch off, as it does on every upgraded site, and left the
+		// template columns empty, so the documents read the built-in templates of the site's
+		// language. A restored backup keeps the switch it was taken with.
+		if ((pg_legal_documents_on_for_new_site(get_starter_site_language($install_directory_path))) && (install_column_exists('config', 'ecommerce_legal_documents'))) {
+
+			db("UPDATE config SET ecommerce_legal_documents = 1");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Switched on the pre-information form and the distance sales contract at checkout'), lang('Site Settings › Ecommerce › Legal Documents'));
 
 		}
 
@@ -8910,6 +8839,7 @@ function get_tables() {
 		'api_webhooks',
 		'applied_gift_cards',
 		'arrival_dates',
+		'audit_log',
 		'auth_tokens',
 		'auto_dialogs',
 		'banned_ip_addresses',
@@ -8931,6 +8861,7 @@ function get_tables() {
 		'config',
 		'connect_accounts',
 		'connect_apps',
+		'consent_log',
 		'contact_groups',
 		'contact_groups_email_campaigns_xref',
 		'contacts',
@@ -9035,6 +8966,8 @@ function get_tables() {
 		'order_receipt_pages',
 		'order_report_filters',
 		'order_reports',
+		'order_return_items',
+		'order_returns',
 		'orders',
 		'page',
 		'photo_gallery_pages',
@@ -9071,6 +9004,7 @@ function get_tables() {
 		'shipping_tracking_numbers',
 		'shopping_cart_pages',
 		'short_links',
+		'sms_outbox',
 		'states',
 		'style',
 		'submitted_form_info',
@@ -9203,6 +9137,7 @@ function get_tables() {
 		'translation_glossary',
 		'page_translations',
 		'page_drafts',
+		'page_revisions',
 	);
 
 }

@@ -245,11 +245,7 @@ function create_member_user($data)
 // skipped rather than failing the sign-up it belongs to.
 function pg_user_created_stamp($user_id)
 {
-    static $column_exists = null;
-    if ($column_exists === null) {
-        $column_exists = (bool) db_item("SHOW COLUMNS FROM user LIKE 'user_created'");
-    }
-    if (!$column_exists || !$user_id) {
+    if (!$user_id || !pg_schema_has('user', 'user_created')) {
         return;
     }
     db("UPDATE user SET user_created = UNIX_TIMESTAMP() WHERE (user_id = '" . e($user_id) . "') AND (user_created = '0')");
@@ -1475,8 +1471,7 @@ function pg_user_has_password_algo()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_algo'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_schema_has('user', 'user_password_algo');
     }
 
     return $has;
@@ -1491,8 +1486,7 @@ function pg_user_has_password_changed_at()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_changed_at'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_schema_has('user', 'user_password_changed_at');
     }
 
     return $has;
@@ -1695,8 +1689,7 @@ function pg_auth_tokens_table_exists()
     static $exists = null;
 
     if ($exists === null) {
-        $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'auth_tokens'");
-        $exists = ($result && (mysqli_num_rows($result) > 0));
+        $exists = pg_schema_has('auth_tokens');
     }
 
     return $exists;
@@ -1707,8 +1700,7 @@ function pg_auth_tokens_have_pin()
     static $have = null;
 
     if ($have === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM auth_tokens LIKE 'pinned'");
-        $have = ($result && (mysqli_num_rows($result) > 0));
+        $have = pg_schema_has('auth_tokens', 'pinned');
     }
 
     return $have;

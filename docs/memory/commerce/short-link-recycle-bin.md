@@ -11,6 +11,8 @@ Three entry points share one rule set:
 - Classic screens `add_short_link.php` / `edit_short_link.php` (liveform).
 - External API `includes/api/resources/short_links.php`, which calls
   `pg_short_link_read_request()` through `api_short_link_destination_in()`.
+- The name rule, the 301/302 answer and the loop checks all three share are
+  in `platform/short-link-redirects.md`.
 
 ## What happens with a target in the Recycle Bin?
 Products/groups are binned by the `recycled` flag (`pg_catalog_*_binned()`);

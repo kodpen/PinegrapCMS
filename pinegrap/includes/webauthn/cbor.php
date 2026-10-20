@@ -100,6 +100,7 @@ final class PgWebAuthnList
  * Stops the check that is running with an error code.
  *
  * @param string $code
+ * @return never
  * @throws PgWebAuthnException always
  */
 function pg_webauthn_fail($code)

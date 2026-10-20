@@ -125,6 +125,78 @@ $pg_settings_scripts[] = '
         }
     </script>';
 
+// ── AI Crawlers ──
+// What robots.txt tells AI crawlers, and llms.txt (includes/fn/ai_crawlers.php).
+// Whether assistants and AI search may come is the firewall's pair of
+// switches: shown here and changed there, so robots.txt and the firewall never
+// say different things. The fields are drawn before the 11.0.21 step as well;
+// seo.save.php writes nothing until the columns are there.
+$ai_crawlers_catalog = pg_ai_crawler_catalog();
+$ai_crawlers_agents = implode(', ', $ai_crawlers_catalog['agent']);
+$ai_crawlers_search = implode(', ', $ai_crawlers_catalog['search']);
+
+$ai_crawlers_agents_text = $ai_crawlers['agents']
+    ? lang(array('string' => 'Assistants ({var:1}): let in by the firewall.', 'vars' => array($ai_crawlers_agents)))
+    : lang(array('string' => 'Assistants ({var:1}): turned away by the firewall.', 'vars' => array($ai_crawlers_agents)));
+
+$ai_crawlers_search_text = $ai_crawlers['search']
+    ? lang(array('string' => 'AI search ({var:1}): let in by the firewall.', 'vars' => array($ai_crawlers_search)))
+    : lang(array('string' => 'AI search ({var:1}): turned away by the firewall.', 'vars' => array($ai_crawlers_search)));
+
+$pg_settings_cards[] = '
+                        <div id="pgset-ai" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    ' . lang('AI Crawlers') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-3">
+                                        <div class="col-12">
+                                            <div class="form-text">' . lang('What the site tells AI tools: in robots.txt, how they may use its pages and which of their crawlers should stay away; in llms.txt, where to start reading. Both are requests that well-behaved crawlers follow; the firewall is what turns a crawler away.') . '</div>' . (!$ai_crawlers['ready'] ? '
+                                            <div class="form-text text-warning">' . h(lang('These settings become available once the database upgrade has run.')) . '</div>' : '') . '
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($ai_crawlers['rules'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="robots_ai_rules" name="robots_ai_rules"/>
+                                                <label class="form-check-label" for="robots_ai_rules">' . lang('Write AI crawler rules into robots.txt') . '</label>
+                                                <div class="form-text">' . lang('Adds a Content-Signal line that says how AI tools may use the pages, and a group that asks each AI crawler not allowed here to stay away. A crawler the Additional robots.txt Content field already has a group for is left to that field.') . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($ai_crawlers['training'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="robots_ai_training" name="robots_ai_training"/>
+                                                <label class="form-check-label" for="robots_ai_training">' . lang('Allow AI training') . '</label>
+                                                <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text">' . h($ai_crawlers_agents_text) . '</div>
+                                            <div class="form-text">' . h($ai_crawlers_search_text) . '</div>
+                                            <div class="form-text">' . lang('robots.txt says the same for them.') . ' <a class="link-secondary" href="' . h(pg_settings_link('firewall', 'pgset-waf')) . '">' . lang('Change under Firewall') . '</a></div>
+                                        </div>
+                                        <div class="col-12 mb-0"><h6 class="text-muted text-uppercase">llms.txt</h6></div>
+                                        <div class="col-12">
+                                            <div class="form-check form-switch">
+                                                <input value="1"' . ($ai_crawlers['llms'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="llms_txt" name="llms_txt"/>
+                                                <label class="form-check-label" for="llms_txt">' . lang('Publish llms.txt') . '</label>
+                                                <div class="form-text">' . lang('A short guide to the site for AI tools at /llms.txt: the organization name and the web browser description, then up to 50 of the pages the site map lists, the home page and the most visited first. Google does not read it; some AI tools do. Turned on, it is answered instead of a file of that name in the file manager.') . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="pg-f-lg">
+                                            <label for="additional_llms_content" class="form-label">' . lang('Additional llms.txt Content') . '</label>
+                                            <textarea name="additional_llms_content" id="additional_llms_content" class="form-control" >' . h($ai_crawlers['llms_text']) . '</textarea>
+                                            ' . pg_code_editor_attach(array('id' => 'additional_llms_content', 'code_type' => 'plain')) . '
+                                            <div class="form-text">' . lang('Markdown, written after the description. A part that starts with a ## heading gives AI tools a list of links of your own.') . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
+                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>llms.txt</a>' : '') . '
+                                        </div>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>';
+
 // ── Product Feeds ──
 // The shop's products as files shopping platforms read
 // (includes/fn/product_feeds.php): a switch, an address and the last build per

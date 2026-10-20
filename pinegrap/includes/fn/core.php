@@ -405,6 +405,8 @@ function db_items($query, $key_column = '')
 // config.version alone would go on answering for a schema that never arrived.
 // A "not there" answer is remembered as well; pg_schema_cache_clear() drops
 // every file, and runs when an upgrade finishes and from pg_purge_caches().
+// pg_schema_forget() drops the answer for one table, for code that changes
+// the schema and asks about it again in the same request.
 
 /**
  * The cache file name for a database version and a code version. Anything
@@ -493,6 +495,37 @@ function pg_schema_cache_store($cache, $table, $columns)
     return $cache;
 }
 
+/**
+ * The cache without anything it knows about one table, so that the next
+ * question about the table is asked of the database again.
+ *
+ * No database access.
+ *
+ * @param array  $cache
+ * @param string $table
+ * @return array
+ */
+function pg_schema_cache_forget($cache, $table)
+{
+    if (!is_array($cache)) {
+        $cache = array();
+    }
+
+    if (!isset($cache['tables']) || !is_array($cache['tables'])) {
+        $cache['tables'] = array();
+    }
+
+    if (!isset($cache['missing']) || !is_array($cache['missing'])) {
+        $cache['missing'] = array();
+    }
+
+    unset($cache['tables'][$table]);
+
+    $cache['missing'] = array_values(array_diff($cache['missing'], array($table)));
+
+    return $cache;
+}
+
 // What pg_schema_has() knows in this request: the cache and the file it came
 // from ('' when there is no file to keep, see pg_schema_has()).
 function &pg_schema_cache_state()
@@ -500,6 +533,52 @@ function &pg_schema_cache_state()
     static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
 
     return $state;
+}
+
+// Reads the cache file into this request's state, once per request. The file
+// is only used when config.version is known (init.php defines VERSION from
+// it); the installer defines VERSION as true, so an install or an upgrade
+// keeps its answers for the request only.
+function pg_schema_cache_load()
+{
+    $state = &pg_schema_cache_state();
+
+    if ($state['loaded']) {
+        return;
+    }
+
+    $state['loaded'] = true;
+
+    if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
+        $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
+
+        $stored = @json_decode((string) @file_get_contents($state['file']), true);
+
+        if (is_array($stored)) {
+            $state['cache'] = array(
+                'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
+                'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
+            );
+        }
+    }
+}
+
+/**
+ * Forgets what pg_schema_has() knows about one table, for code that has to
+ * see a schema change in the request that made it: the installer creating a
+ * table and then asking whether it is there. The next question about the
+ * table reads it from the database and writes the answer to the cache file.
+ *
+ * @param string $table
+ * @return void
+ */
+function pg_schema_forget($table)
+{
+    pg_schema_cache_load();
+
+    $state = &pg_schema_cache_state();
+
+    $state['cache'] = pg_schema_cache_forget($state['cache'], (string) $table);
 }
 
 /**
@@ -548,24 +627,9 @@ function pg_schema_has($table, $column = null)
         return false;
     }
 
+    pg_schema_cache_load();
+
     $state = &pg_schema_cache_state();
-
-    if (!$state['loaded']) {
-        $state['loaded'] = true;
-
-        if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
-            $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
-
-            $stored = @json_decode((string) @file_get_contents($state['file']), true);
-
-            if (is_array($stored)) {
-                $state['cache'] = array(
-                    'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
-                    'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
-                );
-            }
-        }
-    }
 
     $answer = pg_schema_cache_lookup($state['cache'], $table, $column);
 
@@ -1075,6 +1139,13 @@ function output_error($error_message, $response_code = 0)
         throw new RuntimeException(trim(strip_tags((string) $error_message)));
     }
 
+    // A missing address may be one that a short link with a * in its name
+    // stands for (includes/fn/short_link_redirects.php); then this does not
+    // return.
+    if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
+        pg_short_link_not_found();
+    }
+
     set_response_code($response_code);
     $mysql_error = '';
     if (db::$con) {
@@ -1136,6 +1207,12 @@ function output_error($error_message, $response_code = 0)
 // and shows the error page, which does not have a toolbar and etc.
 function error($content, $response_code = 0)
 {
+    // The classic catalog reports an item it cannot find this way: the
+    // address may be one a short link with a * stands for.
+    if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
+        pg_short_link_not_found();
+    }
+
     set_response_code($response_code);
     return '<div class="software_error">
             <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_error.png" alt="Error" title="" class="icon" style="float: none; display: inline-block; height: 1em; width: 1em; min-height: 16px; min-width: 16px">
@@ -1220,6 +1297,36 @@ function pg_send_to_url($fallback = '')
 
     return $send_to;
 }
+/**
+ * Whether get_relative_time() and get_absolute_time() show a time in the
+ * signed-in person's own time zone rather than the site's: the caller did not
+ * ask for the site's ("timezone_type" => "site"), somebody is signed in, and
+ * that person has a zone of their own. Leaving timezone_type out means "user",
+ * which is how every caller of both functions leaves it.
+ *
+ * @param array  $properties    the properties the time function was given
+ * @param bool   $signed_in     whether somebody is signed in (USER_LOGGED_IN)
+ * @param string $user_timezone the person's zone, '' when none (USER_TIMEZONE)
+ * @return bool
+ */
+function pg_time_in_user_zone($properties, $signed_in, $user_timezone)
+{
+    $asked = (is_array($properties) && isset($properties['timezone_type'])) ? (string) $properties['timezone_type'] : '';
+
+    return ($asked !== 'site') && $signed_in && ((string) $user_timezone !== '');
+}
+
+// pg_time_in_user_zone() for this request. The constants are read through
+// defined() because an error screen or a command line job can draw a time
+// before init.php has decided who is signed in.
+function pg_time_uses_user_zone($properties)
+{
+    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN;
+    $zone = ($signed_in && defined('USER_TIMEZONE')) ? (string) USER_TIMEZONE : '';
+
+    return pg_time_in_user_zone($properties, $signed_in, $zone);
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -1254,7 +1361,7 @@ function get_relative_time($properties)
     // If the type is "date_and_time" and if the timezone type is not "site",
     // and the visitor is logged in, and the user has a specific timezone set,
     // then get time in user's timezone.
-    if (($type != 'date') && (isset($properties['timezone_type']) && $properties['timezone_type'] != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+    if (($type != 'date') && pg_time_uses_user_zone($properties)) {
         $timezone_type = 'user';
         // Otherwise get the time for the site's timezone.
     } else {
@@ -1476,7 +1583,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -1496,7 +1603,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -3046,13 +3153,13 @@ function create_notification($properties)
 
     // Queue a device notification for everybody allowed to see this one.
     //
-    // Three of the five kinds go out. An out-of-stock line and an available
-    // update are things to find when the panel is next opened; a new order, a
-    // submitted form and a comment are the ones somebody is waiting on. Nothing
-    // is sent from here - this only writes the queue rows, because the request
-    // that caused the notification may be a customer's checkout and must not
-    // wait on a push service.
-    if (($action == 'new_order') || ($action == 'form_submited') || ($action == 'new_comment')) {
+    // An out-of-stock line and an available update are things to find when
+    // the panel is next opened; a new order, a submitted form, a comment and a
+    // customer's return are the ones somebody is waiting on. Nothing is sent
+    // from here - this only writes the queue rows, because the request that
+    // caused the notification may be a customer's checkout and must not wait
+    // on a push service.
+    if (($action == 'new_order') || ($action == 'form_submited') || ($action == 'new_comment') || ($action == 'order_return')) {
 
         include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
 
@@ -3700,8 +3807,9 @@ function pg_short_version($version)
     return $major_short;
 }
 
-// Editing define() lines in data/config.php. Shared by the settings screens
-// that rewrite the file in place (smtp_settings.php, private_label.php).
+// Writing data/config.php. The installation builds the whole file
+// (pg_config_install_content()); the settings screens that rewrite it in
+// place (smtp_settings.php, private_label.php) edit define() lines.
 //
 // The patterns avoid the /s modifier and a lazy '(.*?)'. A hand-edited config
 // file mixes LF and CRLF line endings; a lazy value match followed by a
@@ -3713,6 +3821,136 @@ function pg_config_define_value_pattern() {
     // A single-quoted PHP string literal: no bare quote, no line break,
     // backslash escapes allowed (update_config_define() writes \' for quotes).
     return "'(?:[^'\\\\\r\n]|\\\\.)*'";
+}
+
+// $value as a single-quoted PHP string that reads back byte for byte. Between
+// single quotes only the backslash and the quote are special; everything else
+// - a closing tag, "$", a line break - is literal there. Written as it is, a
+// quote ended the string early and a trailing backslash escaped the closing
+// quote: either way config.php stopped parsing and the whole site went down.
+function pg_config_php_string($value) {
+    return "'" . addcslashes((string) $value, "\\'") . "'";
+}
+
+// One define() line of data/config.php with a string value. $key is a
+// constant name from the code, never user input.
+function pg_config_define_line($key, $value) {
+    return "define('" . $key . "', " . pg_config_php_string($value) . ");";
+}
+
+// Adds $line to the text of data/config.php: before the closing tag at the
+// end of the file, or after its last line when it has none.
+//
+// Only the tag at the very end is used. A value may itself hold the two
+// characters of a closing tag (a password can), and a str_replace() over every
+// occurrence cut the new line into that string. A closing tag followed by
+// nothing but white space is always the real one: a string still open there
+// would leave the file unparseable anyway.
+//
+// Text that does not start as PHP (empty after a failed read, or not a config
+// file at all) is returned unchanged, so a caller never turns it into a file
+// that prints its defines.
+function pg_config_insert_line($content, $line) {
+    $content = (string) $content;
+
+    if (preg_match('/\?>\s*\z/', $content, $match, PREG_OFFSET_CAPTURE)) {
+        $offset = $match[0][1];
+
+        return substr($content, 0, $offset) . $line . "\r\n" . substr($content, $offset);
+    }
+
+    if (strpos(ltrim($content), '<?php') !== 0) {
+        return $content;
+    }
+
+    if (substr($content, -1) !== "\n") {
+        $content .= "\r\n";
+    }
+
+    return $content . $line . "\r\n";
+}
+
+// The text of the data/config.php a new installation writes, and a
+// reinstallation writes over the old one.
+//
+// $field_value is called with a field name of the installation form and
+// returns its value: install/index.php reads the screen's form, and
+// includes/install_cli.php fills in the same fields from the command line.
+// Every value goes into the file through pg_config_php_string(), exactly as
+// the installer used it to connect, so a database or SMTP password with a
+// quote, a backslash or a closing tag in it is read back as it was typed. The
+// optional settings are written only when the form has a value for them; the
+// switches are real booleans, since the string 'false' would count as true.
+//
+// $encryption_key is the new ENCRYPTION_KEY (generate_encryption_key()).
+function pg_config_install_content($field_value, $encryption_key) {
+    $value = function ($name) use ($field_value) {
+        $found = call_user_func($field_value, $name);
+
+        return is_scalar($found) ? (string) $found : '';
+    };
+
+    $lines = array(
+        '<?php',
+        '// Prevent direct access',
+        'if (php_sapi_name() !== "cli" && basename(__FILE__) === basename($_SERVER["SCRIPT_FILENAME"])) {',
+        '    http_response_code(403);',
+        '    exit("Forbidden");',
+        '}',
+        pg_config_define_line('DB_HOST', $value('db_host')),
+        pg_config_define_line('DB_USERNAME', $value('db_username')),
+        pg_config_define_line('DB_PASSWORD', $value('db_password')),
+        pg_config_define_line('DB_DATABASE', $value('db_database')),
+        pg_config_define_line('ENCRYPTION_KEY', $encryption_key) . ' // DO NOT MODIFY OR SHARE',
+        '// Automated upgrade from a cron job over the web: install/index.php?automated_upgrade=true&secret=<this value>',
+        '// Optional. Undefined or shorter than 16 characters means the key path is closed; php from the command line never needs it.',
+        "// define('AUTOMATED_UPGRADE_SECRET', 'change-this-to-a-long-random-string');",
+        "define('DYNAMIC_REGIONS', true);",
+        "define('PHP_REGIONS', true);",
+    );
+
+    $optional = array(
+        'default_software_language' => 'DEFAULT_SOFTWARE_LANGUAGE',
+        'system_smtp_hostname' => 'SYSTEM_SMTP_HOSTNAME',
+        'system_smtp_port' => 'SYSTEM_SMTP_PORT',
+        'system_smtp_username' => 'SYSTEM_SMTP_USERNAME',
+        'system_smtp_password' => 'SYSTEM_SMTP_PASSWORD',
+        'logo_url' => 'LOGO_URL',
+    );
+
+    foreach ($optional as $field => $constant) {
+        if ($value($field) !== '') {
+            $lines[] = pg_config_define_line($constant, $value($field));
+        }
+    }
+
+    if ($value('software_update_check') !== '') {
+        $lines[] = "define('SOFTWARE_UPDATE_CHECK', " . (($value('software_update_check') === 'true') ? 'true' : 'false') . ");";
+    }
+
+    if ($value('email_campaign_job') === 'true') {
+        $lines[] = "define('EMAIL_CAMPAIGN_JOB', true);";
+    }
+
+    $campaign = array(
+        'campaign_smtp_hostname' => 'CAMPAIGN_SMTP_HOSTNAME',
+        'campaign_smtp_number_of_emails' => 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
+        'campaign_smtp_port' => 'CAMPAIGN_SMTP_PORT',
+        'campaign_smtp_username' => 'CAMPAIGN_SMTP_USERNAME',
+        'campaign_smtp_password' => 'CAMPAIGN_SMTP_PASSWORD',
+    );
+
+    foreach ($campaign as $field => $constant) {
+        if ($value($field) !== '') {
+            $lines[] = pg_config_define_line($constant, $value($field));
+        }
+    }
+
+    // The settings screens and the CA bundle repair add their lines before
+    // this tag (pg_config_insert_line()).
+    $lines[] = '?>';
+
+    return implode("\n", $lines);
 }
 
 // Update or insert a define() line
@@ -3735,21 +3973,17 @@ function update_config_define($content, $key, $value, $type = 'string') {
                 $content
             );
         }
-        return str_replace('?>', "define('" . $key . "', " . $bool_val . ");\r\n?>", $content);
+        return pg_config_insert_line($content, "define('" . $key . "', " . $bool_val . ");");
     }
 
-    // Backslashes are escaped along with the quote: a value ending in a
-    // backslash would otherwise escape the closing quote and leave config.php
-    // with an unterminated string, which takes the whole site down.
-    $safe_value = addcslashes($value, "\\'");
-    $define = "define('" . $key . "', '" . $safe_value . "');";
+    $define = pg_config_define_line($key, $value);
     $line = "/define\s*\(\s*'" . $safe_key . "'\s*,\s*" . pg_config_define_value_pattern() . "\s*\);/i";
     if (preg_match($line, $content)) {
         // The replacement is user data, so "$1" and "\\" in it must stay
         // literal rather than being read as back-references.
         return preg_replace($line, addcslashes($define, '\\$'), $content);
     }
-    return str_replace('?>', $define . "\r\n?>", $content);
+    return pg_config_insert_line($content, $define);
 }
 
 // Replace data/config.php with $content.
@@ -3808,6 +4042,72 @@ function remove_config_define($content, $key, $type = 'string') {
         '',
         $content
     );
+}
+
+// A text field of a settings form as it goes into data/config.php: as typed,
+// minus control characters and the white space around it. A text box never
+// sends a control character; one in a forged request would put a line break
+// inside the define, where pg_config_define_value_pattern() no longer finds
+// it and the next save adds a second line. A list or a missing field is ''.
+function pg_config_form_value($value) {
+    if (!is_string($value)) {
+        return '';
+    }
+
+    return trim(preg_replace('/[\x00-\x1F\x7F]/', '', $value));
+}
+
+// The settings of the private label screen (private_label.php): form field
+// => the data/config.php constant it is saved as.
+function pg_private_label_config_keys() {
+    $keys = array(
+        'logo_url' => 'LOGO_URL',
+        'control_panel_stylesheet_url' => 'CONTROL_PANEL_STYLESHEET_URL',
+    );
+
+    for ($i = 1; $i <= 5; $i++) {
+        $keys['footer_link_' . $i . '_label'] = 'FOOTER_LINK_' . $i . '_LABEL';
+        $keys['footer_link_' . $i . '_url'] = 'FOOTER_LINK_' . $i . '_URL';
+    }
+
+    return $keys;
+}
+
+// The text of data/config.php after the private label screen is saved.
+//
+// $posted holds the form (field => value), $current what each constant holds
+// now (constant => value, null when it is not defined; for LOGO_URL and
+// CONTROL_PANEL_STYLESHEET_URL init.php's default when config.php names
+// none). With $enabled false every private label define is removed.
+//
+// A value is stored as typed: update_config_define() escapes quotes and
+// backslashes, so an address or a label with an apostrophe reads back as it
+// was. An empty value removes the define, so the default logo and stylesheet
+// or no link apply. A value the constant already holds leaves the file
+// alone: a line written by hand in another form (double quotes) is not
+// matched by the writer, which would add a second define for it.
+function pg_private_label_config_content($content, $enabled, $posted, $current) {
+    $content = (string) $content;
+
+    foreach (pg_private_label_config_keys() as $field => $constant) {
+        if (!$enabled) {
+            $content = remove_config_define($content, $constant);
+            continue;
+        }
+
+        $value = pg_config_form_value(isset($posted[$field]) ? $posted[$field] : '');
+        $now = isset($current[$constant]) ? (string) $current[$constant] : null;
+
+        if ($now === $value) {
+            continue;
+        }
+
+        $content = ($value === '')
+            ? remove_config_define($content, $constant)
+            : update_config_define($content, $constant, $value);
+    }
+
+    return $content;
 }
 
 

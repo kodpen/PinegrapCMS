@@ -4,6 +4,7 @@
 
 Orders, cart, checkout, shipping, products and variants, express order.
 
+- api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
@@ -21,23 +22,37 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-order-status-sync.md: mp_order_apply_status() rules for shipped/delivered/cancelled marketplace packages: fill-only dates, tracking once, no-refund cancel, stock restore.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - n11-api-facts.md: n11 REST API facts for the connector: headers, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints, GMT+3 dates, discount fields, stockCode.
+- offer-discounted-units.md: How many units of a cart line an offer discounts (cheapest item: one, gift from a paid line: the action's quantity, product or group: all) and the spread unit price that charges it
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
-- order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and Iyzipay auto-refund gates.
+- order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, restore cleanup.
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
+- order-returns-customer.md: Customer side of returns in My Account's order view: the switch, __returns / __return_form and flags, order_return.php, messages, mail, bell, the block for older layouts, the hourly limit
+- order-returns-panel.md: Panel side of returns (PR #808): list and bulk approve, one return's moves, pg_return_staff_move() (audit, log, mail), decision mails, suggested return carrier and code
+- order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
+- order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date), optional columns, status enum, and the fields the external API returns for orders.
+- payment-driver-iyzico.md: iyzico drivers (card for Iyzipay, redirect for Pay With Iyzico), the one submit_order.php branch, the 3-D Secure return still in the Iyzipay block, behaviour tests
+- payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
+- payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
+- product-compare-at-price.md: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
-- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows through the external API and the MCP tools, paging, since and channel filters, what the rows do not contain yet
-- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of products.price, pg_price_history_record() / queue after every writer, initial rows, API read, compare_at_price, known limits
+- product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
+- product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
+- product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
-- shipping-today.md: How shipping works today (checked 2026-10-16): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
+- shipment-row-schema.md: The shipment row since 2026.11.0 (11.0.20): carrier, status, date, source and warning columns on shipping_tracking_numbers, the unique parcel key, shipping_methods.carrier, the order_delivered action
+- shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it
+- shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
+- trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
+- trendyol-listings.md: Trendyol V2 listing create (connectors/trendyol.php): barcode as the key, brand id by name at send time, what is refused before the call, batch result per barcode, what SUCCESS means.
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the single compute function and its JS preview twin.
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).

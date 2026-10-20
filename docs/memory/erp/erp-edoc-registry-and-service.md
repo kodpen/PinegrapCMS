@@ -19,5 +19,6 @@ It loads the bootstrap and is the single owner of the invoice send line:
 - `erp_edoc_invoice_document($id, 'pdf'|'xml')`; `erp_edoc_status_labels()`.
 - Send gate: active provider + `send_invoice`, `direction=sales`, status not draft/cancelled, `edoc_status` ∈ none/error/rejected.
 - Questions about an existing document go to `edoc_provider`, NOT to the active provider.
+- `erp_edoc_account_missing($account)` (account list, the order card's invoice gate, the automatic invoice) asks the driver's `party_missing` with the fields `erp_edoc_invoice_party()` gives for the live card. Until #911 it left out `tax_office` and `country_code`: under Paraşüt every company card read "Tax office" missing, so the order card would not issue a company's invoice.
 
 Related: docs/memory/erp/erp-isbasi-driver.md

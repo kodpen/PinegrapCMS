@@ -112,14 +112,18 @@ function test_erp_edoc_parasut_party_missing()
 	pg_assert_same(array('tax_number'), array_keys(erp_edoc_parasut_party_missing(pg_test_parasut_party(array('tax_number' => '')))));
 }
 
-// The internet sale needs the web address and the carrier on the invoice.
+// The internet sale needs the web address and the carrier on an e-Arşiv
+// document, and on one whose kind is not known yet; a registered buyer's
+// e-Fatura carries neither (the e_invoices request has no such block).
 function test_erp_edoc_parasut_document_missing()
 {
-	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice()));
-	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)))));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(), ''));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), '')));
+	pg_assert_same(array('web_address', 'carrier_title', 'carrier_vkn'), array_keys(erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'earchive')));
+	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array('is_internet_sale' => 1)), 'einvoice'), 'an e-Fatura has no internet-sale block');
 	pg_assert_same(array(), erp_edoc_parasut_document_missing(pg_test_parasut_invoice(array(
 		'is_internet_sale' => 1, 'web_address' => 'https://magaza.example.com', 'carrier_title' => 'Kargo A.Ş.', 'carrier_vkn' => '1234567808',
-	))));
+	)), 'earchive'));
 }
 
 // A company card and a person's card: one identity field, the type decides.
@@ -134,11 +138,20 @@ function test_erp_edoc_parasut_contact_attributes()
 	pg_assert_false($company['is_abroad']);
 	pg_assert_same('muhasebe@example.com', $company['email']);
 
-	$person = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('title' => 'Ayşe Yılmaz', 'is_person' => true, 'tax_office' => '', 'email' => '', 'phone' => '', 'country_code' => 'DE')), '11111111111');
+	// The postal code travels too: the account sync compares it, and a card
+	// opened without it would differ from its account on that field alone.
+	pg_assert_same('35210', $company['postal_code']);
+
+	$person = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('title' => 'Ayşe Yılmaz', 'is_person' => true, 'tax_office' => '', 'email' => '', 'phone' => '', 'country_code' => 'DE', 'postcode' => ' 10115 ')), '11111111111');
 	pg_assert_same('person', $person['contact_type']);
 	pg_assert_same('11111111111', $person['tax_number']);
 	pg_assert_true($person['is_abroad']);
 	pg_assert_false(isset($person['email']));
+	pg_assert_same('10115', $person['postal_code']);
+
+	// A buyer with no postal code is written without one.
+	$none = erp_edoc_parasut_contact_attributes(pg_test_parasut_party(array('postcode' => '')), '1234567808');
+	pg_assert_false(isset($none['postal_code']));
 }
 
 // The sales invoice body: lines with their rate or amount discounts, the
@@ -150,15 +163,19 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 		array('product_id' => 0, 'description' => 'Kargo', 'quantity' => '1.0000', 'unit_price' => 2500, 'discount_rate' => '0.000', 'discount_amount' => 500, 'tax_rate' => '20.000', 'withholding_rate' => '0.000', 'withholding_code' => '', 'vat_exemption_code' => ''),
 	);
 
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '2026-10-18')), $lines, '555');
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '2026-10-18')), $lines, '555');
 
 	pg_assert_same('sales_invoices', $payload['data']['type']);
 	pg_assert_same('invoice', $payload['data']['attributes']['item_type']);
 	pg_assert_same('TRL', $payload['data']['attributes']['currency']);
 	pg_assert_same('2026-10-19', $payload['data']['attributes']['issue_date']);
 	pg_assert_same('2026-10-29', $payload['data']['attributes']['due_date']);
-	pg_assert_same('1172', $payload['data']['attributes']['order_no']);
+
+	// The order goes by the number its buyer knows, not by its row id.
+	pg_assert_same('1172', $payload['data']['attributes']['order_no'], 'order number, not the row id');
 	pg_assert_same('2026-10-18', $payload['data']['attributes']['order_date']);
+	pg_assert_contains('1172', $payload['data']['attributes']['description']);
+	pg_assert_false(strpos($payload['data']['attributes']['description'], '438') !== false, 'no row id in the description');
 	pg_assert_false(isset($payload['data']['attributes']['exchange_rate']));
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
 	pg_assert_same('555', $payload['data']['relationships']['contact']['data']['id']);
@@ -177,9 +194,15 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 
 	// The order number without its date would stop the conversion; neither
 	// is sent then.
-	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 1172, 'order_date' => '')), $lines, '555');
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '')), $lines, '555');
 	pg_assert_false(isset($payload['data']['attributes']['order_no']));
 	pg_assert_false(isset($payload['data']['attributes']['order_date']));
+
+	// Without the order's number nothing names the order: its row id is no
+	// reference the buyer could look up.
+	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_date' => '2026-10-18')), $lines, '555');
+	pg_assert_false(isset($payload['data']['attributes']['order_no']));
+	pg_assert_same('PGF2026000000042', $payload['data']['attributes']['description']);
 
 	// A foreign currency carries its rate.
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('currency' => 'EUR', 'exchange_rate' => '48.250000')), array($lines[0]), '555');
@@ -426,4 +449,289 @@ function test_erp_edoc_taxpayer_message()
 	pg_assert_contains('is not registered for e-Invoice', $not);
 
 	pg_assert_contains('e-Delivery notes', erp_edoc_taxpayer_message('1234567890', array('is_einvoice_user' => true, 'is_edispatch_user' => true)));
+}
+
+// Paraşüt takes 0, 1, 10 and 20 percent; any other rate is refused before
+// anything is sent, each refused rate named once.
+function test_erp_edoc_parasut_vat_rate_refusal()
+{
+	pg_assert_same('', erp_edoc_parasut_vat_rate_refusal(array(array('tax_rate' => 20), array('tax_rate' => '10.000'), array('tax_rate' => 0), array('tax_rate' => 1))));
+	pg_assert_same('', erp_edoc_parasut_vat_rate_refusal(array()));
+
+	$refusal = erp_edoc_parasut_vat_rate_refusal(array(array('tax_rate' => 18), array('tax_rate' => 20), array('tax_rate' => '18.000'), array('tax_rate' => 8)));
+	pg_assert_contains('18%', $refusal);
+	pg_assert_contains('8%', $refusal);
+	pg_assert_same(1, substr_count($refusal, '18%'));
+	pg_assert_contains('0%, 1%, 10%, 20%', $refusal);
+}
+
+// A line without a Pinegrap product goes on the default product/service;
+// with none set the invoice is refused before anything reaches Paraşüt.
+function test_erp_edoc_parasut_product_refusal()
+{
+	$product = array('product_id' => 543, 'description' => 'Deri Kalem Kılıfı');
+	$free = array('product_id' => 0, 'description' => 'Deneme hizmeti');
+
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($product, $free), '9001'));
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($product), ''));
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array(), ''));
+	pg_assert_contains('"Deneme hizmeti"', erp_edoc_parasut_product_refusal(array($product, $free), ' '));
+
+	// Without a default given, the setting answers (the test sets one).
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($free)));
+	pg_assert_same(erp_edoc_parasut_no_product_text($free), erp_edoc_parasut_product_refusal(array($free), ''));
+}
+
+// The driver hands over its customer and supplier cards: the account sync
+// screens ask for the capability and the three operations.
+function test_erp_edoc_parasut_offers_its_cards()
+{
+	pg_assert_true(in_array('accounts', erp_edoc_parasut_info()['capabilities'], true));
+
+	foreach (array('accounts', 'account', 'account_save') as $operation) {
+		pg_assert_true(function_exists('erp_edoc_parasut_' . $operation), $operation);
+	}
+}
+
+// A contact in the card shape: one name, the type from contact_type, the
+// contact's id as its code, a mistyped number left mistyped, no balance.
+function test_erp_edoc_parasut_card()
+{
+	$company = erp_edoc_parasut_card(array(
+		'id' => '7001',
+		'type' => 'contacts',
+		'attributes' => array(
+			'name' => 'Pg  Tevkifat Test A.Ş.',
+			'contact_type' => 'company',
+			'account_type' => 'customer',
+			'tax_number' => '1234567808',
+			'tax_office' => 'Konak',
+			'email' => 'muhasebe@example.com',
+			'phone' => '0232 000 00 00',
+			'address' => 'Cumhuriyet Bulvarı 1',
+			'district' => 'Konak',
+			'city' => 'İzmir',
+			'postal_code' => '35210',
+			'country' => null,
+			'is_abroad' => false,
+			'archived' => false,
+			'balance' => '1180.0',
+			'updated_at' => '2026-10-19T17:52:44.000+03:00',
+		),
+	));
+
+	pg_assert_same('7001', $company['external_id']);
+	pg_assert_same('7001', $company['code']);
+	pg_assert_same('Pg Tevkifat Test A.Ş.', $company['title']);
+	pg_assert_false($company['is_person']);
+	pg_assert_same('1234567808', $company['tax_number']);
+	pg_assert_same('Konak', $company['tax_office']);
+	pg_assert_same('35210', $company['postcode']);
+	pg_assert_same('TR', $company['country_code']);
+	pg_assert_same('customer', $company['kind']);
+	pg_assert_true($company['is_active']);
+	pg_assert_same(strtotime('2026-10-19T17:52:44.000+03:00'), $company['updated_at']);
+	pg_assert_false(isset($company['balance']));
+
+	$person = erp_edoc_parasut_card(array('id' => '7002', 'attributes' => array(
+		'name' => 'Ayşe Yılmaz', 'contact_type' => 'person', 'account_type' => 'supplier',
+		'tax_number' => '1234567890ab', 'country' => 'Türkiye', 'is_abroad' => false, 'archived' => true,
+	)));
+
+	pg_assert_true($person['is_person']);
+	pg_assert_same('1234567890AB', $person['tax_number']);
+	pg_assert_same('supplier', $person['kind']);
+	pg_assert_false($person['is_active']);
+	pg_assert_same('TR', $person['country_code']);
+	pg_assert_same(0, $person['updated_at']);
+}
+
+// Turkey however a card spells it; no country on a domestic card is Turkey,
+// on a foreign one it is not known.
+function test_erp_edoc_parasut_country_code()
+{
+	foreach (array('Türkiye', 'TÜRKİYE', 'Turkey', 'turkiye', 'TURKIYE', 'TR', ' Türkiye  Cumhuriyeti ') as $name) {
+		pg_assert_same('TR', erp_edoc_parasut_country_code($name, false), $name);
+	}
+
+	pg_assert_same('TR', erp_edoc_parasut_country_code('', false));
+	pg_assert_same('', erp_edoc_parasut_country_code('', true));
+	pg_assert_same('DE', erp_edoc_parasut_country_code('de', true));
+	pg_assert_same('Türkiye', erp_edoc_parasut_country_name('TR'));
+	pg_assert_same('Türkiye', erp_edoc_parasut_country_name(''));
+}
+
+// A page of the list: the cards and the counts Paraşüt gives in meta, or
+// the page's own count when it gives none.
+function test_erp_edoc_parasut_contacts_read()
+{
+	$page = erp_edoc_parasut_contacts_read(array(
+		'data' => array(
+			array('id' => '1', 'type' => 'contacts', 'attributes' => array('name' => 'A')),
+			array('id' => '', 'type' => 'contacts', 'attributes' => array('name' => 'No id')),
+			array('id' => '2', 'type' => 'contacts', 'attributes' => array('name' => 'B')),
+		),
+		'meta' => array('current_page' => 1, 'total_pages' => 3, 'total_count' => 52),
+	), 25);
+
+	pg_assert_same(2, count($page['items']));
+	pg_assert_same('B', $page['items'][1]['title']);
+	pg_assert_same(52, $page['total']);
+	pg_assert_same(3, $page['pages']);
+
+	$empty = erp_edoc_parasut_contacts_read(array('data' => array(), 'meta' => array('total_pages' => 0, 'total_count' => 0)), 25);
+	pg_assert_same(array(), $empty['items']);
+	pg_assert_same(0, $empty['total']);
+	pg_assert_same(1, $empty['pages']);
+
+	$no_meta = erp_edoc_parasut_contacts_read(array('data' => array(array('id' => '9', 'attributes' => array('name' => 'C')))), 25);
+	pg_assert_same(1, $no_meta['total']);
+	pg_assert_same(1, $no_meta['pages']);
+	pg_assert_same(1, erp_edoc_parasut_contacts_read(null, 25)['pages']);
+}
+
+// A read goes through the listed cards and the archived ones, which
+// Paraşüt's list leaves out and filter[archived]=true lists alone.
+function test_erp_edoc_parasut_contact_lists()
+{
+	$lists = erp_edoc_parasut_contact_lists();
+
+	pg_assert_same(array('listed', 'archived'), array_keys($lists));
+	pg_assert_same('', $lists['listed']);
+	pg_assert_same('filter[archived]=true&', $lists['archived']);
+}
+
+// A page of a read holds the same page of each list: the cards of both,
+// both counts, the pages of the longer list. The archived list adds only
+// archived cards, so an unfiltered answer brings no card twice.
+function test_erp_edoc_parasut_contacts_merge()
+{
+	$listed = erp_edoc_parasut_contacts_read(array(
+		'data' => array(
+			array('id' => '1', 'attributes' => array('name' => 'A', 'archived' => false)),
+			array('id' => '2', 'attributes' => array('name' => 'B', 'archived' => false)),
+		),
+		'meta' => array('total_pages' => 3, 'total_count' => 52),
+	), 25);
+	$archived = erp_edoc_parasut_contacts_read(array(
+		'data' => array(array('id' => '9', 'attributes' => array('name' => 'Z', 'archived' => true))),
+		'meta' => array('total_pages' => 1, 'total_count' => 1),
+	), 25);
+
+	$page = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => $archived));
+
+	pg_assert_same(array('1', '2', '9'), array_column($page['items'], 'external_id'));
+	pg_assert_true($page['items'][0]['is_active']);
+	pg_assert_false($page['items'][2]['is_active']);
+	pg_assert_same(53, $page['total']);
+	pg_assert_same(3, $page['pages']);
+
+	// Past its last page a list adds no card and is still counted.
+	$later = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => array('items' => array(), 'total' => 1, 'pages' => 1)));
+	pg_assert_same(array('1', '2'), array_column($later['items'], 'external_id'));
+	pg_assert_same(53, $later['total']);
+	pg_assert_same(3, $later['pages']);
+
+	$long_archive = erp_edoc_parasut_contacts_merge(array(
+		'listed' => array('items' => array(), 'total' => 3, 'pages' => 1),
+		'archived' => array('items' => array(), 'total' => 60, 'pages' => 3),
+	));
+	pg_assert_same(63, $long_archive['total']);
+	pg_assert_same(3, $long_archive['pages']);
+
+	$unfiltered = erp_edoc_parasut_contacts_merge(array('listed' => $listed, 'archived' => $listed));
+	pg_assert_same(array('1', '2'), array_column($unfiltered['items'], 'external_id'));
+
+	pg_assert_same(array('items' => array(), 'total' => 0, 'pages' => 1), erp_edoc_parasut_contacts_merge(array()));
+}
+
+// A change is written on the card as Paraşüt keeps it: the given fields
+// change, every other writable attribute goes back as it came, the balances
+// and dates never go.
+function test_erp_edoc_parasut_card_attributes_change()
+{
+	$current = array(
+		'balance' => '1180.0', 'trl_balance' => '1180.0', 'created_at' => '2026-10-19', 'updated_at' => '2026-10-19',
+		'name' => 'Pg Tevkifat Test A.Ş.', 'short_name' => 'Pg Tevkifat Test A.Ş.', 'contact_type' => 'company', 'account_type' => 'customer',
+		'email' => 'eski@example.com', 'tax_office' => 'Konak', 'tax_number' => '1234567808', 'district' => 'Konak', 'city' => 'İzmir',
+		'postal_code' => null, 'country' => null, 'address' => 'Cumhuriyet Bulvarı 1', 'phone' => '', 'fax' => null, 'iban' => 'TR00 0000',
+		'is_abroad' => false, 'archived' => false, 'untrackable' => false, 'invoicing_preferences' => array(),
+	);
+
+	$email = erp_edoc_parasut_card_attributes(array('email' => ' yeni@example.com '), $current);
+	pg_assert_same('yeni@example.com', $email['email']);
+	pg_assert_same('Pg Tevkifat Test A.Ş.', $email['name']);
+	pg_assert_same('customer', $email['account_type']);
+	pg_assert_same('1234567808', $email['tax_number']);
+	pg_assert_same('TR00 0000', $email['iban']);
+	pg_assert_same('', $email['phone']);
+	pg_assert_false($email['untrackable']);
+
+	foreach (array('balance', 'trl_balance', 'created_at', 'updated_at', 'postal_code', 'country', 'fax', 'invoicing_preferences') as $key) {
+		pg_assert_false(array_key_exists($key, $email), $key);
+	}
+
+	// The short name that mirrored the name follows it; the type travels
+	// with the name it applies to.
+	$renamed = erp_edoc_parasut_card_attributes(array('title' => 'Ayşe  Yılmaz', 'is_person' => true), $current);
+	pg_assert_same('Ayşe Yılmaz', $renamed['name']);
+	pg_assert_same('Ayşe Yılmaz', $renamed['short_name']);
+	pg_assert_same('person', $renamed['contact_type']);
+
+	$own_short = erp_edoc_parasut_card_attributes(array('title' => 'Yeni Unvan A.Ş.'), array_merge($current, array('short_name' => 'Pg Tevkifat')));
+	pg_assert_same('Pg Tevkifat', $own_short['short_name']);
+
+	// A field emptied on purpose goes empty; a Turkish number goes as digits.
+	$cleared = erp_edoc_parasut_card_attributes(array('email' => '', 'tax_number' => '123 456 78 08', 'is_active' => false, 'kind' => 'supplier'), $current);
+	pg_assert_same('', $cleared['email']);
+	pg_assert_same('1234567808', $cleared['tax_number']);
+	pg_assert_true($cleared['archived']);
+	pg_assert_same('supplier', $cleared['account_type']);
+
+	pg_assert_same(array('error' => 'Enter a name.'), erp_edoc_parasut_card_attributes(array('title' => '  '), $current));
+}
+
+// A new card from an ERP account: name and type, a Turkish number as
+// digits, empty fields left out, an account that is both as a customer,
+// the ERP's code and e-Invoice answer not sent.
+function test_erp_edoc_parasut_card_attributes_create()
+{
+	$attributes = erp_edoc_parasut_card_attributes(array(
+		'title' => 'Pg Paraşüt Testci', 'is_person' => true, 'tax_number' => '1234567890', 'tax_office' => '',
+		'email' => 'testci@example.com', 'phone' => '', 'address' => 'Atatürk Cd. 5', 'district' => 'Kadıköy', 'city' => 'İstanbul',
+		'postcode' => '34710', 'country_code' => 'TR', 'kind' => 'both', 'is_active' => true,
+		'code' => 'PG-2', 'einvoice_user' => false, 'einvoice_alias' => '',
+	), null);
+
+	pg_assert_same('Pg Paraşüt Testci', $attributes['name']);
+	pg_assert_same('person', $attributes['contact_type']);
+	pg_assert_same('customer', $attributes['account_type']);
+	pg_assert_same('1234567890', $attributes['tax_number']);
+	pg_assert_same('testci@example.com', $attributes['email']);
+	pg_assert_same('34710', $attributes['postal_code']);
+	pg_assert_same('Türkiye', $attributes['country']);
+	pg_assert_false($attributes['is_abroad']);
+	pg_assert_false($attributes['archived']);
+
+	foreach (array('tax_office', 'phone', 'code', 'einvoice_user', 'einvoice_alias', 'short_name') as $key) {
+		pg_assert_false(array_key_exists($key, $attributes), $key);
+	}
+
+	$supplier = erp_edoc_parasut_card_attributes(array('title' => 'Tedarik Ltd.', 'kind' => 'supplier'), null);
+	pg_assert_same('supplier', $supplier['account_type']);
+	pg_assert_same('company', $supplier['contact_type']);
+}
+
+// The linked card carries the invoice while it is the one asked for, not
+// archived and on the buyer's number.
+function test_erp_edoc_parasut_linked_contact_usable()
+{
+	$contact = array('id' => '7001', 'attributes' => array('tax_number' => '1234567808', 'archived' => false));
+
+	pg_assert_true(erp_edoc_parasut_linked_contact_usable($contact, '7001', '1234567808'));
+	pg_assert_false(erp_edoc_parasut_linked_contact_usable($contact, '7001', '1111111111'));
+	pg_assert_false(erp_edoc_parasut_linked_contact_usable($contact, '7002', '1234567808'));
+	pg_assert_false(erp_edoc_parasut_linked_contact_usable(array('id' => '7001', 'attributes' => array('tax_number' => '1234567808', 'archived' => true)), '7001', '1234567808'));
+	pg_assert_false(erp_edoc_parasut_linked_contact_usable(null, '7001', '1234567808'));
+	pg_assert_false(erp_edoc_parasut_linked_contact_usable($contact, '7001', ''));
 }

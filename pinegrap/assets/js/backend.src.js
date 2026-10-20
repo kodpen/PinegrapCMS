@@ -449,6 +449,15 @@ $(document).ready(function () {
 
                     break;
                 case 's':
+                    // A dialog or editor that saves on Ctrl+S itself (Site
+                    // Settings, a code editor dialog) has already taken the
+                    // key. Going on would also submit the screen behind it:
+                    // that form was saved, the page reloaded and the dialog
+                    // closed before its own answer arrived.
+                    if (event.isDefaultPrevented()) {
+                        break;
+                    }
+
                     // A "disable_shortcut" class has been added to forms that purely delete
                     // items, because the shortcut is too dangerous in that case.
                     // We could still allow it for those types of forms, but just show
@@ -4119,6 +4128,15 @@ function show_or_hide_ecommerce_payment_gateway() {
                 break;
         }
     }
+
+    // The fields of the driver-based gateways name the gateway they belong to
+    // (pg_payment_settings_card_rows()), so a new driver needs no case here.
+    var card = document.getElementById('ecommerce_credit_debit_card').checked == true;
+    var gateway = document.getElementById('ecommerce_payment_gateway').value;
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pg-payment-gateway]'), function (row) {
+        row.style.display = (card && (row.getAttribute('data-pg-payment-gateway') === gateway)) ? '' : 'none';
+    });
 }
 
 // Example starter JavaScript for disabling form submissions if there are invalid fields
