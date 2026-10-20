@@ -1177,21 +1177,23 @@ function convert_doc_to_text($file_path)
 
 function convert_docx_to_text($file_path)
 {
-    // Include the pclzip library, because the docx file is a zip file.
-    require_once('pclzip.lib.php');
+    // The package is measured from its directory before anything is inflated
+    // (the office preview's ceilings), and the part is read no further than
+    // the size it declares.
+    $error = '';
+    $zip = pg_office_open($file_path, $error);
 
-    // Create an object for the file.
-    $archive = new PclZip($file_path);
-
-    // Get content for file that contains text.
-    $file = $archive->extract(PCLZIP_OPT_BY_NAME, 'word/document.xml', PCLZIP_OPT_EXTRACT_AS_STRING);
-
-    // If the file that contains the text could not be found in the zip file, then return empty string.
-    if (!$file) {
+    if ($zip === null) {
         return '';
     }
 
-    $content = $file[0]['content'];
+    $content = pg_zip_entry_contents($zip, 'word/document.xml', PG_OFFICE_MAX_PART, $error);
+    $zip->close();
+
+    // No such part, or one that is too large or damaged: no text.
+    if ($content === null) {
+        return '';
+    }
 
     // Replace tags with a space.
     $content = preg_replace('/<[^>]*>/', ' ', $content);
@@ -1233,27 +1235,34 @@ function convert_ppt_to_text($file_path)
 
 function convert_pptx_to_text($file_path)
 {
-    // Include the pclzip library, because the docx file is a zip file.
-    require_once('pclzip.lib.php');
+    // Measured like a docx (convert_docx_to_text()).
+    $error = '';
+    $zip = pg_office_open($file_path, $error);
 
-    // Create an object for the file.
-    $archive = new PclZip($file_path);
+    if ($zip === null) {
+        return '';
+    }
 
     $content = '';
 
-    // Create a loop in order to get content for every slide.
-    for ($slide_number = 1; true; $slide_number++) { 
-        // Get content for slide.
-        $file = $archive->extract(PCLZIP_OPT_BY_NAME, 'ppt/slides/slide' . $slide_number . '.xml', PCLZIP_OPT_EXTRACT_AS_STRING);
+    // The slides together are held to what one part may be.
+    $room = PG_OFFICE_MAX_PART;
 
-        // If the slide does not exist, then that means we have reached the end of the slides,
-        // so end the loop.
-        if (!$file) {
+    // Create a loop in order to get content for every slide.
+    for ($slide_number = 1; true; $slide_number++) {
+        $slide = pg_zip_entry_contents($zip, 'ppt/slides/slide' . $slide_number . '.xml', $room, $error);
+
+        // No such slide is the end of the slides; one past the room left, or
+        // a damaged one, ends the text there.
+        if ($slide === null) {
             break;
         }
 
-        $content .= $file[0]['content'];
+        $room -= strlen($slide);
+        $content .= $slide;
     }
+
+    $zip->close();
 
     // Replace tags with a space.
     $content = preg_replace('/<[^>]*>/', ' ', $content);
@@ -1272,7 +1281,7 @@ function convert_pptx_to_text($file_path)
 
 function convert_xls_to_text($file_path)
 {
-    // Include the pclzip library, because the docx file is a zip file.
+    // The older binary format, read by excel_reader2.
     require_once('excel_reader2.php');
 
     $data = new Spreadsheet_Excel_Reader($file_path);
@@ -1308,21 +1317,21 @@ function convert_xls_to_text($file_path)
 
 function convert_xlsx_to_text($file_path)
 {
-    // Include the pclzip library, because the xlsx file is a zip file.
-    require_once('pclzip.lib.php');
+    // Measured like a docx (convert_docx_to_text()).
+    $error = '';
+    $zip = pg_office_open($file_path, $error);
 
-    // Create an object for the file.
-    $archive = new PclZip($file_path);
-
-    // Get content for file that contains text.
-    $file = $archive->extract(PCLZIP_OPT_BY_NAME, 'xl/sharedStrings.xml', PCLZIP_OPT_EXTRACT_AS_STRING);
-
-    // If the file that contains the text could not be found in the zip file, then return empty string.
-    if (!$file) {
+    if ($zip === null) {
         return '';
     }
 
-    $content = $file[0]['content'];
+    // The shared strings hold the workbook's text.
+    $content = pg_zip_entry_contents($zip, 'xl/sharedStrings.xml', PG_OFFICE_MAX_PART, $error);
+    $zip->close();
+
+    if ($content === null) {
+        return '';
+    }
 
     // Replace tags with a space.
     $content = preg_replace('/<[^>]*>/', ' ', $content);

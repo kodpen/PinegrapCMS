@@ -94,20 +94,15 @@ if (!$_POST) {
     $import_name = $liveform->get_field_value('import_name');
 
     $zip_file_name = $_FILES['file']['name'];
-    
-    require('pclzip.lib.php');
-    
-    // load zip file
-    $archive = new PclZip($_FILES['file']['tmp_name']);
-    
-   
-    
-    // get all items in archive
-    $archive_items = $archive->listContent();
-   
-    // if zip file is invalid, output error
-    if (!$archive_items) {
-        output_error(lang('The zip file cannot be extracted, because it is not a valid zip file.') . '<a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+
+    // The archive is measured from its directory before anything in it is
+    // inflated: a zip bomb declares its size there. Too many entries, too
+    // many bytes, or not enough disk, and nothing is imported.
+    $zip_error = '';
+    $zip = pg_zip_import_open($_FILES['file']['tmp_name'], $zip_error);
+
+    if ($zip === null) {
+        output_error($zip_error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     $folder_id = 0;
@@ -121,18 +116,37 @@ if (!$_POST) {
     // is left in the archive, and the notice at the end says how many were.
     $skipped_blocked = 0;
 
+    // Entries that were not read: too large to read whole, or unpacking to
+    // something other than what they declare. Each is named in a warning.
+    $skipped_unread = array();
+
     // loop through all archive items
-    foreach ($archive_items as $archive_item) {
-        // If this is a directory, then skip to next item.
+    for ($archive_index = 0; $archive_index < $zip->numFiles; $archive_index++) {
 
+        // The name exactly as stored in the archive, undecoded.
+        $stat = $zip->statIndex($archive_index, ZipArchive::FL_ENC_RAW);
+        $archive_item = array('filename' => ($stat === false) ? '' : (string) $stat['name']);
 
-        if (substr($archive_item['filename'], -1) == '/') {
+        // If this is a directory (or a nameless entry), then skip to next item.
+        if (($archive_item['filename'] === '') || (substr($archive_item['filename'], -1) == '/')) {
             continue;
         }
 
         if (pg_upload_name_blocked(basename($archive_item['filename']))) {
             log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $archive_item['filename'])), $_SESSION['sessionusername']);
             $skipped_blocked++;
+            continue;
+        }
+
+        // Read before anything is created for it: no larger than one entry
+        // may be, and no further than its declared size.
+        $content = pg_zip_entry_contents($zip, $archive_index, PG_ZIP_IMPORT_MAX_ENTRY, $read_error);
+
+        // The warning is printed as HTML and the name is the archive's.
+        if ($content === null) {
+            $skipped_unread[] = ($read_error === 'large')
+                ? lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array(h($archive_item['filename']), PG_ZIP_IMPORT_MAX_ENTRY / 1048576)))
+                : lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => h($archive_item['filename'])));
             continue;
         }
 
@@ -258,9 +272,6 @@ if (!$_POST) {
 
         $name = str_replace(' ', '-', $name);
         $name = str_replace('&', '-', $name);
-
-        $extracted_file_contents = $archive->extract(PCLZIP_OPT_BY_NAME, $archive_item['filename'], PCLZIP_OPT_EXTRACT_AS_STRING);
-        $content = $extracted_file_contents[0]['content'];
 
         if ($type == 'html') {
 
@@ -549,6 +560,8 @@ if (!$_POST) {
         }
     }
 
+    $zip->close();
+
     require('update_imported_items.php');
     update_imported_items($imported_items);
 
@@ -559,6 +572,10 @@ if (!$_POST) {
 
     if ($skipped_blocked > 0) {
         $liveform_view_pages->add_warning(lang(array('string' => '{var:1} file(s) in the ZIP were left out because files of that type cannot be uploaded here.', 'vars' => $skipped_blocked)));
+    }
+
+    foreach ($skipped_unread as $warning) {
+        $liveform_view_pages->add_warning($warning);
     }
 
 

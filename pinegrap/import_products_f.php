@@ -66,6 +66,49 @@ function pg_products_import_reader($file_name)
     return '';
 }
 
+// Can PHPExcel's OpenDocument reader be handed this file? '' when it can,
+// otherwise the sentence to show.
+//
+// The reader takes any file for a zip and reads meta.xml and content.xml
+// whole into SimpleXML, as large as the archive says they are: a part that
+// declares gigabytes is gigabytes in memory before a cell is read, and
+// libxml's share of that is not counted against memory_limit. So both parts
+// have to be there, declare no more than an office part may
+// (PG_OFFICE_MAX_PART) and unpack to exactly what they declare; a part that
+// inflates further would reach the reader cut short, as broken XML.
+function pg_products_import_ods_check($path)
+{
+    if (!class_exists('ZipArchive')) {
+        return lang('The file could not be read.');
+    }
+
+    $zip = new ZipArchive();
+
+    if ($zip->open((string) $path) !== true) {
+        return lang('The file could not be read.');
+    }
+
+    $answer = '';
+
+    foreach (array('content.xml', 'meta.xml') as $part) {
+
+        $error = '';
+
+        // Read to be measured, and let go: the reader reads it again.
+        $data = pg_zip_entry_contents($zip, $part, PG_OFFICE_MAX_PART, $error);
+        unset($data);
+
+        if ($error !== '') {
+            $answer = ($error === 'large') ? lang('The file is too large.') : lang('The file could not be read.');
+            break;
+        }
+    }
+
+    $zip->close();
+
+    return $answer;
+}
+
 // One cell, as the text the importer would have read out of a CSV.
 //
 // A file this software wrote holds nothing but strings, so the common case is
@@ -134,6 +177,15 @@ function pg_products_import_to_csv($source_path, $file_name, &$error)
     // worth carrying for.
     if (($reader_name == 'Excel2007') && (class_exists('ZipArchive'))) {
         return pg_products_import_xlsx_to_csv($source_path, $error);
+    }
+
+    // An OpenDocument file is measured before the reader holds its parts.
+    if ($reader_name == 'OOCalc') {
+        $error = pg_products_import_ods_check($source_path);
+
+        if ($error !== '') {
+            return '';
+        }
     }
 
     require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';

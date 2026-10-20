@@ -56,24 +56,27 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
 {
     $res = pg_designer_import_result();
 
-    if (!class_exists('PclZip')) {
-        require_once(dirname(__FILE__) . '/../pclzip.lib.php');
-    }
-    $archive = new PclZip($zip_path);
-    $items   = $archive->listContent();
-    if (!$items) {
-        $res['errors'][] = lang('The zip file cannot be extracted, because it is not a valid zip file.');
+    // Measured from its directory before anything is inflated: too many
+    // entries, too many bytes or not enough disk, and nothing is imported.
+    $zip_error = '';
+    $zip = pg_zip_import_open($zip_path, $zip_error);
+    if ($zip === null) {
+        $res['errors'][] = $zip_error;
         return $res;
     }
 
     // First pass: classify every entry. Nothing is written yet — the final
     // file names have to be known before any HTML or CSS can be rewritten.
     $entries = array();   // path => array('type' => html|css|js|asset|skip, 'name' => basename)
-    foreach ($items as $it) {
-        $path = (string)$it['filename'];
+    $indexes = array();   // normalised path => index of the entry in the archive
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $it = $zip->statIndex($i, ZipArchive::FL_ENC_RAW);
+        $path = ($it === false) ? '' : (string)$it['name'];
         if ($path === '' || substr($path, -1) === '/') continue;
         $norm = pg_di_norm_path('', $path);
-        if ($norm === '' || pg_di_should_skip($norm)) continue;
+        if ($norm === '') continue;
+        $indexes[$norm] = $i;
+        if (pg_di_should_skip($norm)) continue;
         $ext = strtolower(pathinfo($norm, PATHINFO_EXTENSION));
         if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') {
             $entries[$norm] = array('type' => 'html');
@@ -86,6 +89,7 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         }
     }
     if (empty($entries)) {
+        $zip->close();
         $res['errors'][] = lang('The archive contains nothing that can be imported.');
         return $res;
     }
@@ -117,24 +121,21 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     $ctx->keep_framework = $keep_framework;
     $ctx->files      = array();  // archive path => array('name','url','type')
     $ctx->warnings   = array();
-    $ctx->read       = function ($path) use ($archive, $entries) {
-        // PclZip wants the ORIGINAL entry name; entries were re-keyed after
-        // the common prefix was stripped, so map back through the list.
-        static $lookup = null;
-        if ($lookup === null) {
-            $lookup = array();
-            foreach ($archive->listContent() as $it) {
-                $n = pg_di_norm_path('', (string)$it['filename']);
-                $lookup[$n] = (string)$it['filename'];
-            }
+    $ctx->read_error = '';       // why the last read came back null
+    $ctx->read       = function ($path) use ($zip, $indexes, $ctx) {
+        // Entries were re-keyed after the common prefix was stripped, so the
+        // archive's own entry is found back through the full paths.
+        $index = null;
+        foreach ($indexes as $n => $i) {
+            if ($n === $path || substr($n, -strlen('/' . $path)) === '/' . $path) { $index = $i; break; }
         }
-        $orig = null;
-        foreach ($lookup as $n => $o) {
-            if ($n === $path || substr($n, -strlen('/' . $path)) === '/' . $path) { $orig = $o; break; }
-        }
-        if ($orig === null) return null;
-        $x = $archive->extract(PCLZIP_OPT_BY_NAME, $orig, PCLZIP_OPT_EXTRACT_AS_STRING);
-        return (is_array($x) && isset($x[0]['content'])) ? $x[0]['content'] : null;
+        if ($index === null) { $ctx->read_error = 'missing'; return null; }
+        // Whole, but no larger than one entry may be and no further than
+        // the size it declares (pg_di_unread_warning() says which it was).
+        $error = '';
+        $content = pg_zip_entry_contents($zip, $index, PG_ZIP_IMPORT_MAX_ENTRY, $error);
+        $ctx->read_error = $error;
+        return $content;
     };
 
     // A project on another Bootstrap than the design's 5 loses its own copy
@@ -163,7 +164,7 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     foreach ($entries as $path => $e) {
         if ($e['type'] === 'html' || $e['type'] === 'skip') continue;
         $content = call_user_func($ctx->read, $path);
-        if ($content === null) { $res['warnings'][] = lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $path)); continue; }
+        if ($content === null) { $res['warnings'][] = pg_di_unread_warning($path, $ctx); continue; }
         if ($e['type'] === 'css') {
             $content = pg_di_rewrite_css_urls($content, dirname($path), $ctx);
         }
@@ -184,7 +185,7 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     foreach ($entries as $path => $e) {
         if ($e['type'] !== 'html') continue;
         $html = call_user_func($ctx->read, $path);
-        if ($html === null) { $res['warnings'][] = lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $path)); continue; }
+        if ($html === null) { $res['warnings'][] = pg_di_unread_warning($path, $ctx); continue; }
         $page = pg_designer_import_html($html, $path, $ctx);
         $page['page_name'] = $ctx->page_names[$path];
         // Each stylesheet and script remembers the pages that used it, so
@@ -197,6 +198,7 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         unset($page['css'], $page['js'], $page['fonts'], $page['warnings']);
         $res['pages'][] = $page;
     }
+    $zip->close();
     foreach ($ctx->warnings as $w) $res['warnings'][] = $w;
     $res['css']   = pg_di_scope_assets(pg_di_dedupe_assets($res['css']), count($res['pages']));
     $res['js']    = pg_di_scope_assets(pg_di_dedupe_assets($res['js']), count($res['pages']));
@@ -437,6 +439,16 @@ function pg_designer_import_result()
         'folder_id' => 0,         // Import/<project> folder the pages belong in
         'folder_label' => '',
     );
+}
+
+// Why an archive entry was left out, after $ctx->read gave null: larger than
+// one entry may be read (PG_ZIP_IMPORT_MAX_ENTRY), or missing or damaged.
+function pg_di_unread_warning($path, $ctx)
+{
+    if (isset($ctx->read_error) && $ctx->read_error === 'large') {
+        return lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array($path, PG_ZIP_IMPORT_MAX_ENTRY / 1048576)));
+    }
+    return lang(array('string' => '{var:1} could not be read from the archive.', 'vars' => $path));
 }
 
 // ── HTML → page ─────────────────────────────────────────────────────────────
