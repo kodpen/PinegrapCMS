@@ -136,6 +136,23 @@ function test_price_history_newest_sql()
 
 	pg_assert_same('', pg_price_history_newest_sql(array(), 'web'), 'no product');
 	pg_assert_same('', pg_price_history_newest_sql(array(3), "web'"), 'not a channel');
+
+	pg_assert_false(strpos($sql, 'source') !== false, 'every source when none is left out');
+}
+
+// The writers compare the stored price with the newest row they could have
+// written themselves: an offer row is what visitors paid, not products.price,
+// and comparing with it would write a row after every save during an offer.
+function test_price_history_newest_sql_leaves_a_source_out()
+{
+	$sql = pg_price_history_newest_sql(array(3), 'web', 'offer');
+
+	pg_assert_contains("source <> 'offer'", $sql);
+	pg_assert_contains("channel = 'web'", $sql);
+
+	$sql = pg_price_history_newest_sql(array(3), 'web', "offer' OR '1");
+
+	pg_assert_same('', $sql, 'not a label the history keeps');
 }
 
 // One INSERT for the products that changed, every value quoted.
@@ -218,4 +235,56 @@ function test_price_history_queue_flushes_a_full_chunk()
 	$state = pg_price_history_queue_state();
 
 	pg_assert_same(array(), $state['ids'], 'a full chunk is written');
+}
+
+// What a visitor without a code, an account or a cart is shown: the lowest
+// price the open offers give a product, in whole minor units as the cart
+// charges it, and the stored price for a product no offer touches.
+function test_price_history_offer_prices()
+{
+	$prices = array(3 => '1999', 5 => 1000, 9 => '500', 11 => 0);
+
+	// get_discounted_product_prices() works in floats: 10% off 1999.
+	$discounted = array(3 => 1799.1, 9 => 250, 42 => 100);
+
+	pg_assert_same(array(3 => 1799, 5 => 1000, 9 => 250, 11 => 0), pg_price_history_offer_prices($prices, $discounted));
+
+	pg_assert_same(array(3 => 1800), pg_price_history_offer_prices(array(3 => 2000), array(3 => 1799.5)), 'rounded, not cut');
+	pg_assert_same(array(3 => 0), pg_price_history_offer_prices(array(3 => 2000), array(3 => -10)), 'never below nothing');
+	pg_assert_same(array(3 => 2000), pg_price_history_offer_prices(array(3 => 2000), array(3 => 2500)), 'an offer never raises a price');
+	pg_assert_same(array(3 => 2000), pg_price_history_offer_prices(array(3 => 2000), array(3 => 'x')), 'not a figure');
+	pg_assert_same(array(), pg_price_history_offer_prices(array(), $discounted), 'only the products read');
+}
+
+// The marker the pass keeps between ticks, read whatever is in the file.
+function test_price_history_offer_state()
+{
+	$empty = array('after_id' => 0, 'done_at' => 0, 'offers' => true, 'seen' => false);
+
+	pg_assert_same($empty, pg_price_history_offer_state(null), 'no file: a full pass, as if offers had run');
+	pg_assert_same($empty, pg_price_history_offer_state('not json'));
+	pg_assert_same(
+		array('after_id' => 120, 'done_at' => 1760000000, 'offers' => false, 'seen' => true),
+		pg_price_history_offer_state(array('after_id' => '120', 'done_at' => '1760000000', 'offers' => false, 'seen' => 1)));
+	pg_assert_same(0, pg_price_history_offer_state(array('after_id' => -5))['after_id'], 'no negative cursor');
+}
+
+// Hourly, every tick while a pass is under way, and not at all when nothing
+// can have changed: no offer now and none at the end of the last pass.
+function test_price_history_offer_pass_timing()
+{
+	$now = 1760003600;
+	$state = pg_price_history_offer_state(array('after_id' => 0, 'done_at' => $now - 600, 'offers' => true));
+
+	pg_assert_false(pg_price_history_offer_pass_due_at($state, $now), 'ran ten minutes ago');
+	pg_assert_true(pg_price_history_offer_pass_due_at(array('done_at' => $now - PG_PRICE_HISTORY_OFFER_EVERY) + $state, $now), 'an hour ago');
+	pg_assert_true(pg_price_history_offer_pass_due_at(array('after_id' => 500) + $state, $now), 'under way');
+	pg_assert_true(pg_price_history_offer_pass_due_at(pg_price_history_offer_state(null), $now), 'never ran');
+
+	$quiet = pg_price_history_offer_state(array('after_id' => 0, 'done_at' => $now - 7200, 'offers' => false));
+
+	pg_assert_true(pg_price_history_offer_pass_idle($quiet, array()), 'no offer then, none now');
+	pg_assert_false(pg_price_history_offer_pass_idle($quiet, array(3 => 900.0)), 'an offer started');
+	pg_assert_false(pg_price_history_offer_pass_idle(array('offers' => true) + $quiet, array()), 'an offer ended since');
+	pg_assert_false(pg_price_history_offer_pass_idle(array('after_id' => 40) + $quiet, array()), 'a pass under way is finished');
 }
