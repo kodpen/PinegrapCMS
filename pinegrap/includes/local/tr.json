@@ -1454,6 +1454,7 @@
     "Commissionable": "Komisyona Tabi",
     "Full Description": "Tam Açıklama",
     "Authorization Code": "Yetki Kodu",
+    "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "Ship to Name": "İsmine Postalama",
     "View Order": "Siparişi Görüntüle",
     "Delivery Date": "Teslimat Tarihi",
