@@ -45,3 +45,4 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS verification on cURL calls (update channel, payment gateways, Givex, carriers): pg_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
+- zip-entry-declared-size.md: A zip entry read as a stream (office preview, xlsx importers, restore and extract copies) stops at the size its archive declares; pg_zip_entry_uri(), shared string caps

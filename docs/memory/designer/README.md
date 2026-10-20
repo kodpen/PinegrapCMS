@@ -46,10 +46,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: modal-xl from 992px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 992px.
 - designer-sticky-panel-layout.md: Designer left/right panel docking: docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, clamp width, one layer at a time, three-strip bottom panel, rail icons.
+- error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
 - frontend-conventions-layers.md: Palette component vs system widget layers, what is production (legacy) vs development (system widget), and the five invariant principles for system widget work.
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, and why a canvas paste is not an import (no disk, style/script dropped, URLs kept).
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
+- image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
 - import-zip-url-resolution.md: How the Import ZIP File screen resolves relative references (url_to_absolute.php), the PCRE2 failure that left imported pages with broken images/CSS/JS, and the resolver's rules
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
@@ -60,7 +62,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
-- responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, first-image priority, widget pass, variant swap, version stamp, e-mail strip
+- responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.

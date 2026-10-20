@@ -18,7 +18,7 @@ description: Plan (2026-10-19, not started): regions editable in the visual desi
 - R4 Dynamic region stays PHP: region node gains the attribute; its code opens as a code-editor tab in the designer (designer role), like CSS/JS files.
 - R5 Page regions: converting a page moves its `pregion` content into the page tree as `_editable` rich-text blocks; page edit rights unchanged.
 - R6 Widgets for menu / menu sequence (items still edited in the menu screen), ad region (rotation) and tag cloud. Mobile switch and PDF stay region nodes unless asked.
-- Missing system widget types: `system-widget-missing-types.md`.
+- Missing system widget types: `system-widget-missing-types.md`. Custom layouts of classic pages (half the pages of the starting site; `edit_page.php` and the design's page queries hide them): `legacy-layouts-in-designer.md`, Y1 first.
 
 ## Open questions?
 - A role-3 user granted a component but no folder edit right opens no page in the designer, so cannot reach it; today such a user edits a common region in front-end edit mode. Entry for R2: open the component on its own in the designer, or allow it from a page they can view?
