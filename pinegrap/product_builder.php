@@ -1210,6 +1210,16 @@ function pg_pb_save_new_product()
     $full_description   = isset($_POST['full_description']) ? $_POST['full_description'] : '';
     $details            = isset($_POST['details']) ? $_POST['details'] : '';
 
+    // The texts that came from an accepted "Write with AI" draft and were not
+    // edited by hand since, as the screen posted them; NULL while the column
+    // is missing or when the form sent no list. Each product written below is
+    // marked on the texts it got: all of them, except the short description
+    // of a matrix row, which keeps its mark only while it holds the typed one
+    // (pg_ai_fields_for_variant()).
+    $ai_posted = pg_ai_fields_ready('product')
+        ? pg_ai_fields_posted(isset($_POST['ai_fields']) ? $_POST['ai_fields'] : NULL)
+        : NULL;
+
     /* ---------------------------------------------------------- group mode */
 
     if ($mode === 'group') {
@@ -1311,6 +1321,14 @@ function pg_pb_save_new_product()
                 }
             }
 
+            if ($ai_posted !== NULL) {
+                $product['ai_fields'] = pg_ai_fields_after_save(
+                    'product',
+                    pg_ai_fields_for_variant($ai_posted, $short_description, $product['short_description']),
+                    NULL,
+                    pg_ai_fields_values('product', $product));
+            }
+
             // A variant with no images of its own falls back to the set's
             // images, so the cart and the catalog never show a blank tile.
             $variant_images = $variant['images'] ? $variant['images'] : $images;
@@ -1371,6 +1389,14 @@ function pg_pb_save_new_product()
     // being built, and each variant gets its own on its edit screen.
     if (pg_compare_at_price_ready()) {
         $product['compare_at_price'] = pg_pb_compare_at_price_posted();
+    }
+
+    if ($ai_posted !== NULL) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            pg_ai_fields_for_variant($ai_posted, $short_description, $product['short_description']),
+            NULL,
+            pg_ai_fields_values('product', $product));
     }
 
     $single_images = ($single && $single['images']) ? $single['images'] : $images;
@@ -3778,6 +3804,26 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ));
     };
 
+    // A text that came from an accepted draft carries a marker beside its
+    // label while it is as the draft left it: editing it by hand, the
+    // marker's button or saving the field empty takes the mark off
+    // (pg_ai_fields_marker(), assets/js/pg_ai_fields.js); the hidden
+    // ai_fields input carries the list to the save. A mark whose text was
+    // changed elsewhere (the API, an import) is not shown and goes with the
+    // next save (pg_ai_fields_marked()). Shown whether or not this person may
+    // ask for drafts: it says where the text came from. Nothing of it is
+    // drawn while the column is missing.
+    $ai_marks_ready = pg_ai_fields_ready('product');
+    $ai_marks = $ai_marks_ready ? pg_ai_fields_marked('product', $v('ai_fields', NULL), pg_ai_fields_values('product', $values)) : array();
+
+    $ai_marker = function ($column, $field) use ($ai_marks_ready, $ai_marks, $pg_recycled) {
+        if (!$ai_marks_ready) {
+            return '';
+        }
+
+        return pg_ai_fields_marker($column, $field, in_array($column, $ai_marks, TRUE), !$pg_recycled);
+    };
+
     // The submit-form block, moved from edit_product.php (:1368-1453). It keeps
     // the ids the JavaScript in backend.src.js hooks — the field pickers, the
     // "where" selector and the add-field buttons are all driven from there, and
@@ -4629,6 +4675,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         <input type="hidden" id="variants_json" name="variants_json" value="" />
         <input type="hidden" id="attributes_meta_json" name="attributes_meta_json" value="" />
         <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
+        ' . ($ai_marks_ready ? pg_ai_fields_input('product', $ai_marks) : '') . '
 
         <div class="row">
             <!--
@@ -4697,7 +4744,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 col-lg-5 my-2">
-                                        ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
                                         <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
@@ -4729,7 +4776,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
 
                                     <div class="col-12 mt-3 mb-2">
-                                        ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description'), $ai_marker('full_description', 'full_description')) . '
                                         <textarea id="full_description" name="full_description">' . h($v('full_description')) . '</textarea>
                                     </div>
 
@@ -5023,12 +5070,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
                                     <div class="col-12 col-lg-6 my-2">
-                                        ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title')) . '
+                                        ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title'), $ai_marker('title', 'title')) . '
                                         <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v('title')) . '" />
                                         <div id="seo_c_title"></div>
                                     </div>
                                     <div class="col-12 my-2">
-                                        ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description')) . '
+                                        ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description'), $ai_marker('meta_description', 'meta_description')) . '
                                         <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255">' . h($v('meta_description')) . '</textarea>
                                         <div id="seo_c_meta_description"></div>
                                     </div>
@@ -5565,6 +5612,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
     ' . pg_ai_write_assets() . '
+    ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' . output_footer();
 
     $liveform->remove_form();
@@ -5779,6 +5827,18 @@ function pg_pb_update_product($product_id)
     // Everything this screen manages feeds the SEO score, so the stored
     // analysis is stale after any save from here.
     $product['seo_analysis_current'] = 0;
+
+    // Which texts are an accepted "Write with AI" draft as it was used: the
+    // columns the screen posts, each marked on the text saved now; without a
+    // list, the stored marks whose text this save leaves as it was. An edited
+    // or emptied text loses its mark (pg_ai_fields_after_save()).
+    if (pg_ai_fields_ready('product')) {
+        $product['ai_fields'] = pg_ai_fields_after_save(
+            'product',
+            isset($_POST['ai_fields']) ? $_POST['ai_fields'] : NULL,
+            db_value("SELECT ai_fields FROM products WHERE id = '" . e($product_id) . "'"),
+            pg_ai_fields_values('product', $product));
+    }
 
     pg_pb_update_row('products', $product, 'id', $product_id);
 

@@ -17,8 +17,21 @@
  */
 
 // Updates an order (currently just supports updating shipping & tracking for completed order).
+//
+// Tracking numbers and deliveries go through the shipment write path
+// (includes/fn/shipping.php): a number already on the address is updated in
+// place, a number left out of the list is removed, and a delivery is
+// announced once per address. $request['source'] says who is saving
+// (pg_shipment_sources(); the order screen and the Workspace are 'panel', the
+// default).
 
 function update_order($request) {
+
+    $source = pg_shipment_source(isset($request['source']) ? $request['source'] : 'panel');
+
+    // The addresses whose delivery this save records, and whether their
+    // customer is told about it.
+    $deliveries = array();
 
     $order = db_item(
         "SELECT id, billing_email_address, order_number, contact_id FROM orders
@@ -59,15 +72,24 @@ function update_order($request) {
         // If there is a ship date or delivery date in the request, then update recipient.
         if (isset($recipient_request['ship_date']) or isset($recipient_request['delivery_date'])) {
 
-            // A delivery date that was not there a moment ago is the parcel
-            // arriving, and it is announced once - the same rule the tracking
-            // number follows. Read before the write, because afterwards the two
-            // are indistinguishable.
-            $recipient['just_delivered'] = (($recipient['delivery_date'] === '' )
-                    || ($recipient['delivery_date'] === '0000-00-00'))
-                && isset($recipient_request['delivery_date'])
-                && ($recipient_request['delivery_date'] !== '')
-                && ($recipient_request['delivery_date'] !== '0000-00-00');
+            // A delivery date entered, or changed, to a day that has come is
+            // the goods arriving (pg_shipment_delivery_entered()). Read before
+            // the write, because afterwards the two are indistinguishable. It
+            // is recorded once the tracking numbers below are written, so a
+            // number entered in the same save is delivered with the others.
+            if (isset($recipient_request['delivery_date'])
+                && pg_shipment_delivery_entered(
+                    (string) $recipient['delivery_date'],
+                    (string) $recipient_request['delivery_date'],
+                    date('Y-m-d'))
+            ) {
+                // The customer is told unless the caller said not to, the same
+                // switch that keeps the shipping e-mail back.
+                $deliveries[$recipient['id']] = array(
+                    'day'    => pg_shipment_date((string) $recipient_request['delivery_date']),
+                    'notify' => !(isset($recipient_request['shipped']) && !$recipient_request['shipped']),
+                );
+            }
 
             db(
                 "UPDATE ship_tos SET
@@ -79,34 +101,31 @@ function update_order($request) {
             $recipient['delivery_date'] = $recipient_request['delivery_date'];
         }
 
-        // If there are tracking numbers in the request, then handle them.
+        // If there are tracking numbers in the request, then handle them. The
+        // list replaces what the address has: each number is recorded (added,
+        // or its row updated in place), then the rows of numbers that are no
+        // longer listed are removed.
         if (isset($recipient_request['tracking_numbers'])) {
 
-            $sql_delete_exception = '';
+            $kept_numbers = array();
 
-            foreach ($recipient_request['tracking_numbers'] as $number) {
+            foreach ((array) $recipient_request['tracking_numbers'] as $number) {
 
-                $number = trim($number);
+                $number = pg_shipment_number_clean($number);
 
                 // If there is no number then skip to next number.
-                if ($number == '') {
+                if ($number === '') {
                     continue;
                 }
 
-                // If this tracking number does not already exist, then add it.
-                if (!db("SELECT id FROM shipping_tracking_numbers WHERE
-                    ship_to_id = '" . e($recipient['id']) . "'
-                    AND number = '" . e($number) . "'")
-                ) {
-                    db(
-                        "INSERT INTO shipping_tracking_numbers (
-                            order_id,
-                            ship_to_id,
-                            number)
-                        VALUES (
-                            '" . e($order['id']) . "',
-                            '" . e($recipient['id']) . "',
-                            '" . e($number) . "')");
+                $recorded = pg_shipment_record($order['id'], $recipient['id'], $number, array('source' => $source));
+
+                if (!$recorded['ok']) {
+                    return error_response(lang('The tracking numbers could not be saved.'));
+                }
+
+                // If this tracking number did not already exist, then it was just added.
+                if ($recorded['created']) {
 
                     // If we do not already know if this recipient was just shipped, now we know,
                     // so remember for later.
@@ -124,12 +143,11 @@ function update_order($request) {
 
                 $recipient['tracking_numbers'][] = $number;
 
-                $sql_delete_exception .= " AND number != '" . e($number) . "'";
+                $kept_numbers[] = $number;
             }
 
             // Delete old tracking numbers that were not included in this request.
-            db("DELETE FROM shipping_tracking_numbers WHERE ship_to_id = '" . e($recipient['id']) . "'
-                $sql_delete_exception");
+            pg_shipment_prune($recipient['id'], $kept_numbers);
         }
 
         // If there are items in the request, then deal with updating shipped qty for them.
@@ -200,19 +218,6 @@ function update_order($request) {
     // the save.
     foreach ($order['recipients'] as $shipped_recipient) {
 
-        if (!empty($shipped_recipient['just_delivered'])) {
-
-            require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
-
-            api_webhook_enqueue('order.delivered', array(
-                'id'            => (int) $order['id'],
-                'order_number'  => $order['order_number'],
-                'ship_to_id'    => (int) $shipped_recipient['id'],
-                'delivery_date' => (string) $shipped_recipient['delivery_date'],
-            ));
-
-        }
-
         if (empty($shipped_recipient['new_tracking_number'])) {
             continue;
         }
@@ -250,6 +255,25 @@ function update_order($request) {
             'email_address' => $order['billing_email_address'],
             'fields' => $fields,
             'data' => array('order' => $order)));
+    }
+
+    // The deliveries this save recorded, after the shipment so a save that
+    // does both announces them in that order. pg_shipment_delivered() marks
+    // the address's parcels and announces order.delivered (and starts the
+    // order_delivered e-mail) the first time only; 'first' is this save's own
+    // guard for an address without a tracking number to keep the record on.
+    foreach ($order['recipients'] as $key => $delivered_recipient) {
+
+        if (!isset($deliveries[$delivered_recipient['id']])) {
+            continue;
+        }
+
+        $delivery = $deliveries[$delivered_recipient['id']];
+
+        $order['recipients'][$key]['just_delivered'] = pg_shipment_delivered(
+            $delivered_recipient['id'],
+            pg_shipment_day_time($delivery['day'], time()),
+            array('notify' => $delivery['notify'], 'first' => true));
     }
 
     // A store that invoices orders on their own once they ship (ERP settings)

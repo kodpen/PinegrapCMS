@@ -209,11 +209,11 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                 </table>
                             </div>
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="iyzico_refund_all">' . lang('Everything') . '</button>
-                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="iyzico_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="payment_refund_all">' . lang('Everything') . '</button>
+                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="payment_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
                             </div>
                             <div class="small text-body-secondary mt-1">' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . number_format($remaining_cents / 100, 2, '.', ',') . '</div>
-                            <div class="small text-warning-emphasis d-none" id="iyzico_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
+                            <div class="small text-warning-emphasis d-none" id="payment_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
                             <p class="form-text text-muted mt-2">' . (($source['source'] === 'invoice')
                                 ? lang(array('string' => 'After the refund, the return invoice against {var:1} opens with the same lines filled in; check it and save.', 'vars' => h($source['invoice_number'])))
                                 : lang('The order has no invoice yet. Once it is invoiced, issue a return invoice for these lines from the order\'s document card.')) . '</p>
@@ -234,7 +234,7 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                     return top ? Math.round(list[top] / top * count) : 0;
                                 };
                                 var inputs = document.querySelectorAll("[data-refund-line]");
-                                var submit = document.querySelector("#iyzico-refund-modal [name=submit_iyzico_refund]");
+                                var submit = document.querySelector("#payment-refund-modal [name=submit_payment_refund]");
                                 var refresh = function () {
                                     var total = 0;
                                     inputs.forEach(function (input) {
@@ -244,12 +244,12 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                         total += amount;
                                         document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = count ? money(amount) : "-";
                                     });
-                                    document.getElementById("iyzico_refund_total").textContent = money(Math.min(total, max));
-                                    document.getElementById("iyzico_refund_capped").classList.toggle("d-none", total <= max);
+                                    document.getElementById("payment_refund_total").textContent = money(Math.min(total, max));
+                                    document.getElementById("payment_refund_capped").classList.toggle("d-none", total <= max);
                                     if (submit) { submit.disabled = (total <= 0); }
                                 };
                                 inputs.forEach(function (input) { input.addEventListener("input", refresh); });
-                                document.getElementById("iyzico_refund_all").addEventListener("click", function () {
+                                document.getElementById("payment_refund_all").addEventListener("click", function () {
                                     inputs.forEach(function (input) { input.value = input.max; });
                                     refresh();
                                 });
