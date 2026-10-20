@@ -112,16 +112,6 @@ if (!defined('PG_INIT_LOADED')) {
 					autocomplete="email"
 					spellcheck="false">
 			</div>
-			<div class="form-group">
-				<label for="email_verify"><?=h(lang('Confirm Email'))?>*</label>
-				<input
-					type="email"
-					id="email_verify"
-					name="email_verify"
-					class="form-control"
-					autocomplete="email"
-					spellcheck="false">
-			</div>
 			<?php if ($strong_password_help): ?>
 			<?=$strong_password_help?>
 			<?php endif ?>

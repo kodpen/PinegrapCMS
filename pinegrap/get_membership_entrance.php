@@ -188,10 +188,6 @@ function get_membership_entrance($properties = array()) {
                                 <td>' . lang('Email') . '*:</td>
                                 <td>' . $form->output_field(array('type'=>'email', 'name'=>'email_address', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                             </tr>
-                            <tr>
-                                <td>' . lang('Confirm Email') . '*:</td>
-                                <td>' . $form->output_field(array('type'=>'email', 'name'=>'email_address_verify', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
-                            </tr>
                             ' . $output_strong_password_requirement_row . '
                             <tr>
                                 <td>' . lang('Password') . '*:</td>
@@ -280,10 +276,6 @@ function get_membership_entrance($properties = array()) {
                                     <td>' . lang('Email') . '*:</td>
                                     <td>' . $form->output_field(array('type'=>'email', 'name'=>'email_address', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                                 </tr>
-                                <tr>
-                                    <td>' . lang('Confirm Email') . '*:</td>
-                                    <td>' . $form->output_field(array('type'=>'email', 'name'=>'email_address_verify', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
-                                </tr>
                                 ' . $output_strong_password_requirement_row . '
                                 <tr>
                                     <td>' . lang('Password') . '*:</td>
@@ -351,7 +343,6 @@ function get_membership_entrance($properties = array()) {
         $form->set('member_id', 'required', true);
         $form->set('username', 'required', true);
         $form->set('email_address', 'required', true);
-        $form->set('email_address_verify', 'required', true);
 
         // A password is required for a typed sign-up, but not when Google has
         // already proved who this is (see the pending record below). The

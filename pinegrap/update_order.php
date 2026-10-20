@@ -109,16 +109,32 @@ function update_order($request) {
 
             $kept_numbers = array();
 
-            foreach ((array) $recipient_request['tracking_numbers'] as $number) {
+            foreach ((array) $recipient_request['tracking_numbers'] as $entry) {
 
-                $number = pg_shipment_number_clean($number);
+                // A number, or array('number' => ..., 'carrier' => ...) when the
+                // caller chose the parcel's carrier ('' is "Automatic": the
+                // carrier the shipping method names, or none).
+                $opts = array('source' => $source);
+
+                if (is_array($entry)) {
+
+                    $number = pg_shipment_number_clean(isset($entry['number']) ? $entry['number'] : '');
+
+                    if (array_key_exists('carrier', $entry)) {
+                        $opts['carrier'] = is_scalar($entry['carrier']) ? (string) $entry['carrier'] : '';
+                        $opts['carrier_chosen'] = true;
+                    }
+
+                } else {
+                    $number = pg_shipment_number_clean($entry);
+                }
 
                 // If there is no number then skip to next number.
                 if ($number === '') {
                     continue;
                 }
 
-                $recorded = pg_shipment_record($order['id'], $recipient['id'], $number, array('source' => $source));
+                $recorded = pg_shipment_record($order['id'], $recipient['id'], $number, $opts);
 
                 if (!$recorded['ok']) {
                     return error_response(lang('The tracking numbers could not be saved.'));

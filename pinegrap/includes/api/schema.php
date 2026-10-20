@@ -1628,7 +1628,7 @@ function api_schema() {
 			'handler' => 'api_forms_list',
 			'returns' => array('list' => 'Form'),
 			'summary' => 'List forms',
-			'description' => 'Every page that carries a form, with how many fields it has and how much has been filled in on it. A form is a page in this software, so the id here is a page id and the same id reads the page through /pages.',
+			'description' => 'Every page that carries a form, with how many fields it has and how much has been filled in on it. A form is a page in this software, so the id here is a page id and the same id reads the page through /pages. An account with the forms right but the user role sees only the forms on pages in folders it may edit, as on the submitted-form screens.',
 			'params'  => array(
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
 				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
@@ -1643,7 +1643,7 @@ function api_schema() {
 			'handler' => 'api_forms_get',
 			'returns' => 'Form',
 			'summary' => 'One form, with its fields',
-			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen.',
+			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -1657,7 +1657,7 @@ function api_schema() {
 			'handler' => 'api_form_submissions',
 			'returns' => array('list' => 'FormSubmission'),
 			'summary' => 'What came in on a form',
-			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read.',
+			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',              'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submitted_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions sent at or after this moment.'),
@@ -1677,7 +1677,7 @@ function api_schema() {
 			'handler' => 'api_form_submission_get',
 			'returns' => 'FormSubmission',
 			'summary' => 'One submission',
-			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404.',
+			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404, and so is one made on a form in a folder the owner may not edit.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -1694,7 +1694,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'FormSubmission',
 			'summary' => 'Mark a submission complete, or fill in its text answers',
-			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now.',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),

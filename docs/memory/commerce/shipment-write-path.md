@@ -10,7 +10,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 
 ## What does a row get?
 - New row: `status` created, `status_at`/`created_at` now, `shipped_at` now (or `$opts['shipped_at']`), `source`, `tracking_url` only when an absolute http(s) address (`pg_shipment_tracking_url_clean()`: it is printed as a link).
-- `carrier` only when somebody named it: `$opts['carrier']` (key or name, read by `pg_shipping_method_carrier()`), else the row's own, else `shipping_methods.carrier`, else a carrier the method code spells. The site default and the number's shape are NOT stored, so fixing the default still fixes old parcels at read time.
+- `carrier` only when somebody named it: `$opts['carrier']` (key or name, read by `pg_shipping_method_carrier()`), else the row's own (skipped with `carrier_chosen`, the order screen's Automatic), else `shipping_methods.carrier`, else a carrier the method code spells. The site default and the number's shape are NOT stored, so fixing the default still fixes old parcels at read time.
 - An old row with `shipped_at` 0 takes the address's `ship_date` (noon) once that day has come.
 - `format_warning` is recomputed on every write against the carrier the customer is shown (named, else `pg_shipping_carrier()` with the default).
 
@@ -24,4 +24,4 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `notify` false (API `notify` false, marketplace) skips the customer e-mail, not the event. The marketplace import calls it per address on every delivered poll; `first` is its "delivery_date was empty" update.
 
 ## What is still open?
-- Phase 4 (carrier select per number), 5 (mail-merge fields, readers of the row), 7 (API fields, carrier validation) in `plans/shipping-management.md`; `shipping-carrier-labels.md` writes through this path.
+- Phases 5 (mail-merge fields, readers of the row) and 7 (API fields) in `plans/shipping-management.md`; the order screen: `order-screen-shipments.md`.
