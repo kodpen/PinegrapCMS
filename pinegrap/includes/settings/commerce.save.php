@@ -358,6 +358,18 @@ function pg_parasut_credentials_for_save()
             erp_tax_name = '" . escape(mb_substr(trim((string) post_value('erp_tax_name')), 0, 30)) . "',";
     }
 
+    // When a web order's invoice is issued (2026.4.4): from the order screen,
+    // or on its own once the order is paid or shipped. Written only when the
+    // ERP card posted it, so a form without the card keeps the store's choice.
+    if (waf_table_has_column('config', 'erp_auto_invoice_on') && is_string(post_value('erp_auto_invoice_on'))) {
+        $erp_auto_invoice_value = (string) post_value('erp_auto_invoice_on');
+        if (!in_array($erp_auto_invoice_value, array('off', 'order_paid', 'order_shipped'), true)) {
+            $erp_auto_invoice_value = 'off';
+        }
+        $sql_erp_due .= "
+            erp_auto_invoice_on = '" . escape($erp_auto_invoice_value) . "',";
+    }
+
     // The walk-in sales account (4.59): an account that exists, or none.
     if (waf_table_has_column('config', 'erp_walkin_account_id')) {
         $erp_walkin_account_id = (int) post_value('erp_walkin_account_id');

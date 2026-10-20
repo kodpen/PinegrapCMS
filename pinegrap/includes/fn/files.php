@@ -789,6 +789,73 @@ function pg_http_byte_range($header, $size)
 }
 
 /**
+ * An address that reads one entry of a zip archive no further than $limit
+ * bytes, for XMLReader::open() and fopen() wherever
+ * 'zip://' . $archive . '#' . $entry would go.
+ *
+ * Give the entry's own size (pg_zip_entry_size()): an honest entry is read
+ * whole, one that inflates past what the archive declares for it fails at
+ * the first byte too many (includes/zip_stream_cap.php), and
+ * pg_zip_entry_overran() says so once the read is done. Without the limit a
+ * stream reads such an entry to its end before libzip compares the sizes.
+ *
+ * @param string $archive the zip on disk
+ * @param string $entry   the entry's name inside it
+ * @param int    $limit   bytes the read may pass
+ * @return string
+ */
+function pg_zip_entry_uri($archive, $entry, $limit)
+{
+    static $registered = false;
+
+    if (!$registered) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/zip_stream_cap.php');
+        $registered = in_array('pg_zip_cap.*', stream_get_filters(), true) || stream_filter_register('pg_zip_cap.*', 'pg_zip_stream_cap');
+    }
+
+    pg_zip_stream_cap::$overran = false;
+
+    return 'php://filter/read=pg_zip_cap.' . max(0, (int) $limit) . '/resource=zip://' . $archive . '#' . $entry;
+}
+
+/**
+ * Did the stream behind the last pg_zip_entry_uri() go past its limit?
+ * Asked once its read is over; the next address clears the answer.
+ *
+ * @return bool
+ */
+function pg_zip_entry_overran()
+{
+    return class_exists('pg_zip_stream_cap', false) && pg_zip_stream_cap::$overran;
+}
+
+/**
+ * How large an entry of a zip archive says it unpacks, in bytes, or -1 when
+ * the archive cannot be opened or holds no such entry.
+ *
+ * @param string $archive
+ * @param string $entry
+ * @return int
+ */
+function pg_zip_entry_size($archive, $entry)
+{
+    if (!class_exists('ZipArchive')) {
+        return -1;
+    }
+
+    $zip = new ZipArchive();
+
+    if ($zip->open((string) $archive) !== true) {
+        return -1;
+    }
+
+    $stat = $zip->statName((string) $entry);
+    $zip->close();
+
+    return ($stat === false) ? -1 : (int) $stat['size'];
+}
+
+/**
  * Whether any of these `files` rows is a document the ERP module keeps.
  *
  * Issued invoices, delivery notes, accepted e-documents and e-mailed

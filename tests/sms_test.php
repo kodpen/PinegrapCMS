@@ -4,8 +4,10 @@
  *
  * Tests for the SMS layer (includes/fn/sms.php) and the Netgsm driver
  * (includes/sms/netgsm.php): reading a mobile number, the send and sender
- * list requests, Netgsm's answers, the sender name check and what
- * pg_sms_send() refuses before any account is read. Netgsm is not called.
+ * list requests, Netgsm's answers, the sender name check, what pg_sms_send()
+ * and pg_sms_enqueue() refuse before any account is read, and what the queue
+ * does with a message after each kind of answer. Netgsm is not called and no
+ * database is used.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -209,7 +211,9 @@ function test_sms_netgsm_send_parse_transport_and_unreadable()
 
 function test_sms_http_never_sent()
 {
-	foreach (array(5, 6, 7) as $errno) {
+	// cURL could not start (no cURL at all is reported so), a proxy or host
+	// name not resolved, no connection.
+	foreach (array(2, 5, 6, 7) as $errno) {
 		pg_assert_true(pg_sms_http_never_sent($errno), (string) $errno);
 	}
 
@@ -217,6 +221,14 @@ function test_sms_http_never_sent()
 	foreach (array(0, 28, 35, 52, 55, 56, 60) as $errno) {
 		pg_assert_false(pg_sms_http_never_sent($errno), (string) $errno);
 	}
+
+	// A proxy that refused the tunnel let nothing through, whatever the
+	// error number; one that opened it did not stop what followed.
+	pg_assert_true(pg_sms_http_never_sent(56, 403), 'tunnel refused');
+	pg_assert_true(pg_sms_http_never_sent(97, 407), 'proxy wants a sign-in');
+	pg_assert_false(pg_sms_http_never_sent(56, 200), 'tunnel open');
+	pg_assert_false(pg_sms_http_never_sent(28, 200), 'timeout through the tunnel');
+	pg_assert_false(pg_sms_http_never_sent(0, 403), 'no transport error');
 }
 
 // "00" without a job id is no message taken on.
@@ -533,4 +545,252 @@ function test_sms_settings_check_without_the_card()
 
 	pg_assert_same(null, pg_sms_settings_check(array('organization_name' => 'Kodpen'), $liveform));
 	pg_assert_same(array(), $liveform->errors);
+}
+
+// A send result as pg_sms_send() returns it.
+function sms_test_send($ok, $retry = false, $uncertain = false, $error = 'Netgsm said no.')
+{
+	return array(
+		'ok'        => $ok,
+		'id'        => $ok ? '17377215342605050417149344' : '',
+		'code'      => $ok ? '00' : '',
+		'error'     => $ok ? '' : $error,
+		'retry'     => $retry,
+		'uncertain' => $uncertain,
+	);
+}
+
+// A claimed row as pg_sms_queue_run() reads it.
+function sms_test_queued_row($attempts = 0, $expires_at = 0)
+{
+	return array('attempts' => $attempts, 'send_after' => 1000, 'expires_at' => $expires_at);
+}
+
+// The check both pg_sms_send() and pg_sms_enqueue() start with hands back the
+// number and the text in the form they are sent in.
+function test_sms_check_gives_the_sent_form()
+{
+	$check = pg_sms_check('0532 123 45 67', "  Siparişiniz\r\nalındı\t ", 'order');
+
+	pg_assert_true($check['ok']);
+	pg_assert_same('905321234567', $check['number']);
+	pg_assert_same("Siparişiniz\nalındı", $check['text']);
+	pg_assert_same('', $check['error']);
+
+	$refused = pg_sms_check('905321234567', 'Hello', 'marketing');
+	pg_assert_false($refused['ok']);
+	pg_assert_same('', $refused['number']);
+}
+
+// A failure made by the layer itself never claims the provider may have the
+// message.
+function test_sms_failure_is_never_uncertain()
+{
+	$failure = pg_sms_failure('x', true);
+
+	pg_assert_false($failure['ok']);
+	pg_assert_true($failure['retry']);
+	pg_assert_false($failure['uncertain']);
+}
+
+// Uncertain is what may have reached Netgsm without a success coming back:
+// a timeout, a success status or a server error without Netgsm's JSON, and
+// "00" without a job id. A refusal, a limit and a request that reached
+// nobody are not.
+function test_sms_netgsm_send_parse_uncertain()
+{
+	pg_assert_true(pg_sms_netgsm_send_parse(0, '', 'Operation timed out', false)['uncertain'], 'timeout');
+	pg_assert_false(pg_sms_netgsm_send_parse(0, '', 'Could not resolve host', true)['uncertain'], 'unresolved');
+
+	foreach (array(500, 502, 504) as $status) {
+		pg_assert_true(pg_sms_netgsm_send_parse($status, '<html>Bad Gateway</html>')['uncertain'], (string) $status);
+	}
+
+	foreach (array(429, 503) as $status) {
+		pg_assert_false(pg_sms_netgsm_send_parse($status, 'Busy')['uncertain'], (string) $status);
+	}
+
+	pg_assert_true(pg_sms_netgsm_send_parse(200, 'OK')['uncertain'], 'unreadable 200');
+	pg_assert_false(pg_sms_netgsm_send_parse(404, '<html>Not Found</html>')['uncertain'], 'unreadable 404');
+	pg_assert_false(pg_sms_netgsm_send_parse(401, '')['uncertain'], 'bare 401');
+	pg_assert_true(pg_sms_netgsm_send_parse(200, '{"code":"00"}')['uncertain'], 'no job id');
+
+	foreach (array('20', '30', '40', '50', '70', '80', '85', '100', '101') as $code) {
+		pg_assert_false(pg_sms_netgsm_send_parse(200, '{"code":"' . $code . '"}')['uncertain'], $code);
+	}
+
+	pg_assert_false(pg_sms_netgsm_send_parse(406, '{"code":"40"}')['uncertain'], '406 with a code');
+	pg_assert_false(pg_sms_netgsm_send_parse(200, '{"code":"00","jobid":"1"}')['uncertain'], 'success');
+}
+
+// pg_sms_enqueue() refuses what pg_sms_send() would, with the same sentence,
+// before it looks at the queue or the account.
+function test_sms_enqueue_refuses_before_the_queue()
+{
+	$result = pg_sms_enqueue('905321234567', 'Hello', 'newsletter');
+
+	pg_assert_false($result['ok']);
+	pg_assert_same(0, $result['row']);
+	pg_assert_false($result['duplicate']);
+	pg_assert_same(lang('Unknown kind of SMS message.'), $result['error']);
+
+	pg_assert_same(lang('This is not a mobile number an SMS can be sent to.'), pg_sms_enqueue('0212 123 45 67', 'Hello', 'order')['error']);
+
+	// Without a database the queue is not there, and that is said before the
+	// account is looked at.
+	pg_assert_same(lang('The SMS queue is not available yet; run the upgrade.'), pg_sms_enqueue('0532 123 45 67', 'Hello', 'order')['error']);
+}
+
+// The row written: the checked number and text, now as the earliest time, a
+// trimmed reference or none.
+function test_sms_queue_row_columns()
+{
+	$check = pg_sms_check('0532 123 45 67', 'Kargonuz yola çıktı', 'shipping');
+
+	$row = pg_sms_queue_row($check, 'shipping', array('reference' => ' order:438:shipped '), 5000);
+
+	pg_assert_same(5000, $row['created_at']);
+	pg_assert_same(5000, $row['send_after']);
+	pg_assert_same(0, $row['expires_at']);
+	pg_assert_same('queued', $row['status']);
+	pg_assert_same('shipping', $row['kind']);
+	pg_assert_same('905321234567', $row['recipient']);
+	pg_assert_same('Kargonuz yola çıktı', $row['body']);
+	pg_assert_same('order:438:shipped', $row['reference']);
+
+	pg_assert_same(null, pg_sms_queue_row($check, 'shipping', array(), 5000)['reference']);
+	pg_assert_same(null, pg_sms_queue_row($check, 'shipping', array('reference' => '  '), 5000)['reference']);
+	pg_assert_same(null, pg_sms_queue_row($check, 'shipping', 'not options', 5000)['reference']);
+
+	// A time in the past is now; a later one is kept.
+	pg_assert_same(5000, pg_sms_queue_row($check, 'shipping', array('send_after' => 10), 5000)['send_after']);
+	pg_assert_same(9000, pg_sms_queue_row($check, 'shipping', array('send_after' => 9000), 5000)['send_after']);
+	pg_assert_same(5600, pg_sms_queue_row($check, 'shipping', array('expires_at' => 5600), 5000)['expires_at']);
+}
+
+// A reference that is not a plain name, and an expiry that leaves no time to
+// send, are refused rather than dropped.
+function test_sms_queue_row_refusals()
+{
+	$check = pg_sms_check('0532 123 45 67', 'Kod: 123456', 'otp');
+
+	foreach (array('order 438', "order:\n438", 'sipariş:438', str_repeat('a', 65), "x'y") as $reference) {
+		$row = pg_sms_queue_row($check, 'otp', array('reference' => $reference), 5000);
+
+		pg_assert_true(isset($row['error']), json_encode($reference));
+		pg_assert_false(isset($row['recipient']), json_encode($reference));
+	}
+
+	pg_assert_same('order:438:received', pg_sms_queue_row($check, 'otp', array('reference' => 'order:438:received'), 5000)['reference']);
+	pg_assert_same(str_repeat('a', 64), pg_sms_queue_row($check, 'otp', array('reference' => str_repeat('a', 64)), 5000)['reference']);
+
+	pg_assert_same(lang('The message would expire before it could be sent.'), pg_sms_queue_row($check, 'otp', array('expires_at' => 4000), 5000)['error']);
+	pg_assert_same(lang('The message would expire before it could be sent.'), pg_sms_queue_row($check, 'otp', array('expires_at' => 5000), 5000)['error']);
+	pg_assert_true(isset(pg_sms_queue_row($check, 'otp', array('send_after' => 7000, 'expires_at' => 6000), 5000)['error']), 'expires before its own start');
+}
+
+// Taken by the provider: sent, with its id.
+function test_sms_queue_outcome_sent()
+{
+	$outcome = pg_sms_queue_outcome(sms_test_queued_row(2), sms_test_send(true), 7000);
+
+	pg_assert_same('sent', $outcome['status']);
+	pg_assert_same(3, $outcome['attempts']);
+	pg_assert_same(7000, $outcome['sent_at']);
+	pg_assert_same('', $outcome['last_error']);
+	pg_assert_same('17377215342605050417149344', $outcome['provider_id']);
+}
+
+// Refused: failed at once, whatever attempts are left.
+function test_sms_queue_outcome_refused_is_not_tried_again()
+{
+	$outcome = pg_sms_queue_outcome(sms_test_queued_row(), sms_test_send(false, false, false, 'The sender name is not defined.'), 7000);
+
+	pg_assert_same('failed', $outcome['status']);
+	pg_assert_same(1, $outcome['attempts']);
+	pg_assert_same('The sender name is not defined.', $outcome['last_error']);
+	pg_assert_same(0, $outcome['sent_at']);
+}
+
+// The provider may have it: never queued again by itself, even when the
+// answer would otherwise allow it.
+function test_sms_queue_outcome_uncertain_is_not_tried_again()
+{
+	$outcome = pg_sms_queue_outcome(sms_test_queued_row(), sms_test_send(false, false, true, 'Operation timed out'), 7000);
+
+	pg_assert_same('uncertain', $outcome['status']);
+	pg_assert_same(1, $outcome['attempts']);
+	pg_assert_same('Operation timed out', $outcome['last_error']);
+
+	pg_assert_same('uncertain', pg_sms_queue_outcome(sms_test_queued_row(), sms_test_send(false, true, true), 7000)['status']);
+}
+
+// Only a message that never reached the provider is queued again, on the mail
+// queue's ladder, until the last attempt.
+function test_sms_queue_outcome_retry_ladder()
+{
+	$waits = array();
+
+	for ($attempts = 0; $attempts < pg_mail_max_attempts() - 1; $attempts++) {
+		$outcome = pg_sms_queue_outcome(sms_test_queued_row($attempts), sms_test_send(false, true), 7000);
+
+		pg_assert_same('queued', $outcome['status'], 'attempt ' . ($attempts + 1));
+		pg_assert_same($attempts + 1, $outcome['attempts']);
+		pg_assert_same('Netgsm said no.', $outcome['last_error']);
+
+		$waits[] = $outcome['send_after'] - 7000;
+	}
+
+	pg_assert_same(array(60, 300, 1800, 7200, 21600), $waits);
+
+	$last = pg_sms_queue_outcome(sms_test_queued_row(pg_mail_max_attempts() - 1), sms_test_send(false, true), 7000);
+
+	pg_assert_same('failed', $last['status']);
+	pg_assert_same(pg_mail_max_attempts(), $last['attempts']);
+	pg_assert_same(1000, $last['send_after'], 'a failed row keeps its time');
+}
+
+// A message that would expire before its next attempt is not queued again.
+function test_sms_queue_outcome_retry_before_expiry()
+{
+	$kept = pg_sms_queue_outcome(sms_test_queued_row(0, 7061), sms_test_send(false, true), 7000);
+
+	pg_assert_same('queued', $kept['status']);
+	pg_assert_same(7060, $kept['send_after']);
+
+	$dropped = pg_sms_queue_outcome(sms_test_queued_row(0, 7060), sms_test_send(false, true, false, 'Netgsm limits how often it is asked.'), 7000);
+
+	pg_assert_same('failed', $dropped['status']);
+	pg_assert_same(lang(array(
+		'string' => '{var:1} Not tried again: the message expires before the next attempt.',
+		'vars'   => array('Netgsm limits how often it is asked.'))), $dropped['last_error']);
+}
+
+// Expired before its send: failed without an attempt.
+function test_sms_queue_outcome_expired()
+{
+	$outcome = pg_sms_queue_outcome(sms_test_queued_row(1, 6000), null, 7000);
+
+	pg_assert_same('failed', $outcome['status']);
+	pg_assert_same(1, $outcome['attempts']);
+	pg_assert_same(lang('The message expired before it could be sent.'), $outcome['last_error']);
+	pg_assert_same('', $outcome['provider_id']);
+}
+
+// A driver that names no uncertainty is read as certain.
+function test_sms_queue_outcome_without_the_uncertain_key()
+{
+	$send = sms_test_send(false, true);
+	unset($send['uncertain']);
+
+	pg_assert_same('queued', pg_sms_queue_outcome(sms_test_queued_row(), $send, 7000)['status']);
+}
+
+// Without a database the queue is not there: the job's pass and the screen's
+// tab both stay away.
+function test_sms_queue_without_the_table()
+{
+	pg_assert_false(pg_sms_queue_ready());
+	pg_assert_false(pg_sms_queue_shown());
+	pg_assert_same(array('sent' => 0, 'failed' => 0), pg_sms_queue_run());
 }
