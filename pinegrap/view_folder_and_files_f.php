@@ -2718,8 +2718,11 @@ function pg_short_link_types()
     return array('page', 'product_group', 'product', 'url', 'file');
 }
 
-// The name is a path segment on the live site, so it may only hold what a path
-// segment may hold.  Same rule add_short_link.php applies, in one place.
+// The name is an address on the live site, typed or pasted the way an old
+// address is (pg_short_link_name_from_address(): the path of a full address,
+// no slash at either end), and may hold what the shared rule allows
+// (pg_short_link_name_problem(), includes/fn/short_link_redirects.php): the
+// classic screens and the external API ask the same functions.
 //
 // Square brackets are in the set, for the same reason pg_ascii_file_name()
 // keeps them: they are this software's own suffix for a name that is taken.
@@ -2734,9 +2737,9 @@ function pg_short_link_clean_name($name)
         return '';
     }
 
-    $name = str_replace(' ', '_', trim((string) $name));
+    $name = pg_short_link_name_from_address($name);
 
-    return (preg_match('/[^A-Za-z0-9._\-\/\[\]]/', $name) == 1) ? '' : $name;
+    return (pg_short_link_name_problem($name) === '') ? $name : '';
 }
 
 // A free name, Windows style: the wanted one, then the wanted one with [1],
@@ -2846,6 +2849,7 @@ function pg_short_link_rows($where = '', $recycled = false)
             short_links.created_timestamp,
             short_links.last_modified_timestamp,
             " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at, short_links.use_count, short_links.last_used_at," : "") . "
+            " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
             page.page_name,
             page.page_folder AS folder_id,
             product_groups.address_name AS product_group_address_name,
@@ -2949,6 +2953,11 @@ function pg_short_link_item($row)
     $token = ((string) $row['name'] === '') && ((string) ($row['token_hint'] ?? '') !== '');
     $state = pg_short_link_state($row);
 
+    // A name with a * stands for many addresses and has none to open; a link
+    // that redirects says so beside where it leads.
+    $pattern = !empty($row['is_pattern']);
+    $answer = pg_short_link_answer_label(pg_short_link_status($row));
+
     return array(
         'kind' => 'file',
         'id' => (int) $row['id'],
@@ -2975,7 +2984,7 @@ function pg_short_link_item($row)
         'type' => 'short_link',
         'is_image' => false,
         'size' => 0,
-        'size_label' => $destination . (($state['label'] !== '') ? ' · ' . $state['label'] : ''),
+        'size_label' => $destination . (($answer !== '') ? ' · ' . $answer : '') . (($state['label'] !== '') ? ' · ' . $state['label'] : ''),
         'design' => false,
         'optimized' => false,
         'image_width' => 0,
@@ -2988,7 +2997,7 @@ function pg_short_link_item($row)
         'modified' => get_relative_time(array('timestamp' => $timestamp)),
         'username' => (string) $row['last_modified_username'],
         'permissions' => '',
-        'url' => $token ? '' : OUTPUT_PATH . encode_url_path((string) $row['name']),
+        'url' => ($token || $pattern) ? '' : OUTPUT_PATH . encode_url_path((string) $row['name']),
         'can_edit' => true,
         'edit_url' => 'edit_short_link.php?id=' . (int) $row['id']);
 }
@@ -8553,6 +8562,21 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
             }
 
+            // How it answers and whether its name is a pattern; an address
+            // that would send visitors to the link itself or round a loop is
+            // refused here.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => 0,
+                'name' => $short_link_name,
+                'destination_type' => $short_link_read['type'],
+                'url' => isset($short_link_read['columns']['url']) ? $short_link_read['columns']['url'] : ''), null, 0);
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_read['columns'] = array_merge($short_link_read['columns'], $short_link_answer['columns']);
+
             $short_link_fields = '';
             $short_link_values = '';
 
@@ -8629,7 +8653,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             $short_link_name = pg_short_link_clean_name(isset($request['name']) ? $request['name'] : '');
 
             if ($short_link_name == '') {
-                respond(array('status' => 'error', 'message' => lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.')));
+                respond(array('status' => 'error', 'message' => pg_short_link_name_rule_text()));
             }
 
             if (check_name_availability(array(
@@ -8640,8 +8664,27 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 respond(array('status' => 'error', 'message' => lang('The name that you entered is already in use, so please enter a different name.')));
             }
 
+            // A new name can be the address the link sends visitors to, or a
+            // pattern now.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => (int) $short_link_row['id'],
+                'name' => $short_link_name,
+                'destination_type' => $short_link_row['destination_type'],
+                'url' => $short_link_row['url']), null, (int) ($short_link_row['redirect_code'] ?? 0));
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_sql_answer = '';
+
+            foreach ($short_link_answer['columns'] as $short_link_column => $short_link_value) {
+                $short_link_sql_answer .= $short_link_column . " = '" . e($short_link_value) . "', ";
+            }
+
             db("UPDATE short_links
                 SET name = '" . e($short_link_name) . "',
+                    " . $short_link_sql_answer . "
                     last_modified_user_id = '" . e($user['id']) . "',
                     last_modified_timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . e($short_link_row['id']) . "'");
@@ -8689,7 +8732,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     respond(array(
                         'status' => 'error',
                         'field' => 'name',
-                        'message' => lang('The name may only contain letters, numbers, periods, underscores, hyphens, forward slashes and square brackets.')));
+                        'message' => pg_short_link_name_rule_text()));
                 }
 
                 if ($short_link_name != $short_link_row['name']) {
@@ -8733,8 +8776,26 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $short_link_columns[$short_link_column] = $short_link_value;
             }
 
+            // The answer stays as stored (this window does not offer it); the
+            // pattern flag follows the name, and the new address is checked.
+            $short_link_answer = pg_short_link_redirect_columns(array(
+                'id' => (int) $short_link_row['id'],
+                'name' => ($short_link_sql_name != '') ? $short_link_name : $short_link_row['name'],
+                'destination_type' => $short_link_read['type'],
+                'url' => $short_link_columns['url']), null, (int) ($short_link_row['redirect_code'] ?? 0));
+
+            if ($short_link_answer['problem'] !== null) {
+                respond(array('status' => 'error', 'field' => $short_link_answer['problem']['field'], 'message' => $short_link_answer['problem']['message']));
+            }
+
+            $short_link_sql_answer = '';
+
+            foreach ($short_link_answer['columns'] as $short_link_column => $short_link_value) {
+                $short_link_sql_answer .= $short_link_column . " = '" . e($short_link_value) . "',";
+            }
+
             db("UPDATE short_links
-                SET " . $short_link_sql_name . "
+                SET " . $short_link_sql_name . $short_link_sql_answer . "
                     destination_type = '" . e($short_link_read['type']) . "',
                     page_id = '" . e($short_link_read['page_id']) . "',
                     product_group_id = '" . e($short_link_columns['product_group_id']) . "',
@@ -8803,17 +8864,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
-                // A timed link is copied with its time.
+                // A timed link is copied with its time, and every link with its
+                // answer; the pattern flag follows the copy's name.
                 $short_link_copy_modes = pg_short_link_modes_ready() ? ', link_mode, expires_at' : '';
+                $short_link_copy_answer = pg_short_link_redirects_ready() ? ', redirect_code, is_pattern' : '';
+                $short_link_copy_answer_values = pg_short_link_redirects_ready() ? ", redirect_code, '" . (pg_short_link_is_pattern($short_link_name) ? '1' : '0') . "'" : '';
 
                 db("INSERT INTO short_links (
                         name, destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code" . $short_link_copy_modes . ",
+                        url, file_id, tracking_code" . $short_link_copy_modes . $short_link_copy_answer . ",
                         created_user_id, created_timestamp,
                         last_modified_user_id, last_modified_timestamp)
                     SELECT
                         '" . e($short_link_name) . "', destination_type, page_id, product_group_id, product_id,
-                        url, file_id, tracking_code" . $short_link_copy_modes . ",
+                        url, file_id, tracking_code" . $short_link_copy_modes . $short_link_copy_answer_values . ",
                         '" . e($user['id']) . "', UNIX_TIMESTAMP(),
                         '" . e($user['id']) . "', UNIX_TIMESTAMP()
                     FROM short_links
