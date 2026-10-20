@@ -9078,6 +9078,7 @@ function get_tables() {
 		'shipping_tracking_numbers',
 		'shopping_cart_pages',
 		'short_links',
+		'sms_outbox',
 		'states',
 		'style',
 		'submitted_form_info',
