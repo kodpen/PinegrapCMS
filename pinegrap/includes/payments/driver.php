@@ -75,7 +75,11 @@
  *   reply             string  notify(): the body the service expects back
  *   log               array   sentences for the site's activity log, in order;
  *                             the caller writes them, failure or not
- *   raw               array   the service's answer, for the log only
+ *   raw               array   the service's answer, for the log only; a
+ *                             failure keeps the service's own words under
+ *                             message ('' when it gave none), and
+ *                             pg_payment_call() puts a thrown exception's
+ *                             class under exception and its text under message
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

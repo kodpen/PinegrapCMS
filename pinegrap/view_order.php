@@ -2111,21 +2111,28 @@ if (!$_POST) {
 		}
 		if($transaction_id){
             $output_gateway_buttons = '<button type="button" class="btn btn-link link-secondary py-0 mb-2" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/transactions/' . $transaction_id . '\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">account_balance</span>' . lang('View Order') . '</button>';
-            // Show the refund button only when payment completed and the order
-            // is not already cancelled. The cancel button itself is NOT built
-            // here - it must stay gateway-independent (see $output_cancel_button
-            // below) so bank-transfer / cash-on-delivery orders can be cancelled.
-            if ($status != 'cancelled' && $status != 'incomplete') {
-                $iyzico_remaining_cents = $total_cents - $refunded_amount_cents;
-                if ($iyzico_remaining_cents > 0) {
-                    $output_gateway_buttons .= '<button type="button" class="btn btn-link link-secondary py-0 mb-2" data-bs-toggle="modal" data-bs-target="#iyzico-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
-                }
-            }
 		}else{
 		    $output_gateway_buttons = '<button type="button" class="btn btn-link link-secondary py-0 mb-2" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-2">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
 		}
 
 	}
+
+    // The refund goes through the driver of the store's Payment Gateway value
+    // (includes/fn/payments.php), only when the payment completed and the
+    // order is not cancelled and still has money on it. The cancel button is
+    // NOT built here - it stays gateway-independent (see $output_cancel_button
+    // below) so bank-transfer / cash-on-delivery orders can be cancelled.
+    $refund_driver = pg_payment_refund_driver(defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '');
+    $refund_remaining_cents = $total_cents - $refunded_amount_cents;
+    $refund_offered = ($refund_driver !== '')
+        && $transaction_id
+        && ($status != 'cancelled')
+        && ($status != 'incomplete')
+        && ($refund_remaining_cents > 0);
+
+    if ($refund_offered) {
+        $output_gateway_buttons .= '<button type="button" class="btn btn-link link-secondary py-0 mb-2" data-bs-toggle="modal" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
+    }
 
     // With the ERP on, a card refund is chosen by line and quantity instead of
     // typed as an amount: the amount is then the same figure the return
@@ -2142,67 +2149,58 @@ if (!$_POST) {
             : null;
     }
 
-    // Build the iyzico refund modal (separate form, placed outside the main form).
+    // Build the refund modal (separate form, placed outside the main form).
     // The CANCEL modal is built further down and is gateway-independent.
-    $output_iyzico_modals = '';
-    if (
-        defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'
-        && $transaction_id
-        && $status != 'cancelled'
-        && $status != 'incomplete'
-    ) {
-        $iyzico_remaining_cents = $total_cents - $refunded_amount_cents;
+    $output_payment_refund_modal = '';
+    if ($refund_offered) {
+        $refund_service = pg_payment_driver($refund_driver)['label'];
         // The input takes the machine format; the text shows the site's.
-        $iyzico_remaining_value = number_format($iyzico_remaining_cents / 100, 2, '.', '');
-        $iyzico_remaining_formatted = pg_format_money($iyzico_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
-        $iyzico_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
+        $refund_remaining_value = number_format($refund_remaining_cents / 100, 2, '.', '');
+        $refund_remaining_formatted = pg_format_money($refund_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
+        $refund_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
 
         // What the modal asks for: an amount, or - with the ERP - the lines
         // and quantities that came back, the amount worked out from them.
-        $output_iyzico_refund_body = '
-                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $iyzico_remaining_formatted . ')</label>
+        $output_payment_refund_body = '
+                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $refund_remaining_formatted . ')</label>
                                     <div class="input-group">
                                         <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $iyzico_remaining_value . '" value="' . $iyzico_remaining_value . '" required>
+                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $refund_remaining_value . '" value="' . $refund_remaining_value . '" required>
                                     </div>
-                                    <p class="form-text text-muted mt-2">' . lang('This will refund the specified amount via iyzico.') . '</p>';
+                                    <p class="form-text text-muted mt-2">' . lang(array('string' => 'This will refund the specified amount via {var:1}.', 'vars' => h($refund_service))) . '</p>';
 
         if (is_array($erp_refund)) {
-            $erp_refund_dialog = erp_order_refund_dialog($erp_refund, (int) $_GET['id'], $refunded_amount_cents, $iyzico_remaining_cents);
+            $erp_refund_dialog = erp_order_refund_dialog($erp_refund, (int) $_GET['id'], $refunded_amount_cents, $refund_remaining_cents);
             if ($erp_refund_dialog !== '') {
-                $output_iyzico_refund_body = $erp_refund_dialog;
+                $output_payment_refund_body = $erp_refund_dialog;
             }
         }
 
-        // Refund modal
-        if ($iyzico_remaining_cents > 0) {
-            $output_iyzico_modals .=
-                '<div class="modal fade" id="iyzico-refund-modal" tabindex="-1" aria-labelledby="iyzico-refund-modal-label" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <form method="post">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                            <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="iyzico-refund-modal-label">' . lang('Refund via Iyzico') . '</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
-                                </div>
-                                <div class="modal-body">
-                                    ' . ($refunded_amount_cents > 0 ?
-                                        '<p class="text-muted small">' . lang('Total Refunded') . ': ' . $iyzico_refunded_formatted . '</p>'
-                                    : '') . $output_iyzico_refund_body . '
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                                    <button type="submit" name="submit_iyzico_refund" value="refund" class="btn btn-primary">' . lang('Confirm Refund') . '</button>
-                                </div>
+        $output_payment_refund_modal =
+            '<div class="modal fade" id="payment-refund-modal" tabindex="-1" aria-labelledby="payment-refund-modal-label" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                        <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="payment-refund-modal-label">' . lang(array('string' => 'Refund via {var:1}', 'vars' => h($refund_service))) . '</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
                             </div>
-                        </form>
-                    </div>
-                </div>';
-        }
-
+                            <div class="modal-body">
+                                ' . ($refunded_amount_cents > 0 ?
+                                    '<p class="text-muted small">' . lang('Total Refunded') . ': ' . $refund_refunded_formatted . '</p>'
+                                : '') . $output_payment_refund_body . '
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+                                <button type="submit" name="submit_payment_refund" value="refund" class="btn btn-primary">' . lang('Confirm Refund') . '</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>';
     }
 
     // ── Order cancellation (gateway-independent) ────────────────────────
@@ -2813,7 +2811,7 @@ if (!$_POST) {
             </div>
         </div>
     ' .
-        $output_iyzico_modals .
+        $output_payment_refund_modal .
         $output_cancel_modal .
         $output_refund_modal .
         $output_parasut_forms .
@@ -2871,17 +2869,15 @@ if (!$_POST) {
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
-    // if the user submitted the iyzico refund modal
-    } elseif ($liveform->get_field_value('submit_iyzico_refund') == 'refund') {
+    // if the user submitted the refund modal
+    } elseif ($liveform->get_field_value('submit_payment_refund') == 'refund') {
 
         $order_id = (int)$liveform->get('id');
         $refund_amount = (float)$liveform->get_field_value('refund_amount');
 
-        // Load order to validate against remaining refundable amount.
-        $order_row = db_item(
-            "SELECT total, refunded_amount, transaction_id, payment_method, status
-             FROM orders WHERE id = '" . e($order_id) . "'"
-        );
+        // Load order to validate against remaining refundable amount; the
+        // whole row, because it is what the payment driver is given.
+        $order_row = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
 
         if (!$order_row) {
             output_error(lang('Order not found.'));
@@ -2932,30 +2928,31 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Call iyzico AmountBaseRefund API.
-        require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
-        IyzipayBootstrap::init();
+        // The driver of the store's Payment Gateway value gives the money back,
+        // the same one the modal was offered for.
+        $refund_driver = pg_payment_refund_driver(defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '');
 
-        $gateway_host = (ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test')
-            ? 'https://sandbox-api.iyzipay.com'
-            : 'https://api.iyzipay.com';
+        if ($refund_driver === '') {
+            $liveform->mark_error('_error', lang('This payment method cannot do that.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        }
 
-        $options = new \Iyzipay\Options();
-        $options->setApiKey(ECOMMERCE_IYZIPAY_API_KEY);
-        $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
-        $options->setBaseUrl($gateway_host);
+        // The order's lines, for a service that refunds per line; a line saved
+        // for later was not bought.
+        $refund_order_lines = db_items(
+            "SELECT * FROM order_items
+             WHERE order_id = '" . e($order_id) . "'"
+             . (waf_table_has_column('order_items', 'saved_for_later') ? " AND saved_for_later = 0" : '') . "
+             ORDER BY id ASC");
 
-        $refund_request = new \Iyzipay\Request\AmountBaseRefundRequest();
-        $refund_request->setLocale(\Iyzipay\Model\Locale::TR);
-        $refund_request->setConversationId((string)rand(100000000, 999999999));
-        $refund_request->setPaymentId($order_row['transaction_id']);
-        $refund_request->setPrice($refund_amount);
-        $refund_request->setIp($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        $refund_result = pg_payment_call($refund_driver, 'refund', array($order_row, $refund_cents, is_array($refund_order_lines) ? $refund_order_lines : array()));
 
-        $refund_result = \Iyzipay\Model\AmountBaseRefund::create($refund_request, $options);
+        foreach ($refund_result['log'] as $refund_log_line) {
+            log_activity($refund_log_line);
+        }
 
-        if ($refund_result->getStatus() != 'success') {
-            $liveform->mark_error('_error',h($refund_result->getErrorMessage()));
+        if (!$refund_result['success']) {
+            $liveform->mark_error('_error',h($refund_result['error']));
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
@@ -2963,7 +2960,7 @@ if (!$_POST) {
         $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
         db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "' WHERE id = '" . e($order_id) . "'");
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
-            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result->getPaymentId()) . "', NOW())");
+            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
 
         // If full amount has been refunded, mark order as cancelled.
         if ($new_refunded_total >= (int)$order_row['total']) {

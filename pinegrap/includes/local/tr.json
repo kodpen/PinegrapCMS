@@ -6048,6 +6048,8 @@
     "Bot IP list fetch error: {var:1}": "Bot IP listesi çekme hatası: {var:1}",
     "(not selected)": "(seçilmedi)",
     "Social Sharing": "Sosyal Paylaşım",
+    "Refund via {var:1}": "{var:1} ile İade",
+    "This will refund the specified amount via {var:1}.": "Belirtilen tutar {var:1} üzerinden iade edilecektir.",
     "Default Share Image": "Varsayılan Paylaşım Görseli",
     "Used as the social share picture for pages that do not have one of their own.": "Kendi paylaşım görseli olmayan sayfalar için sosyal paylaşım resmi olarak kullanılır.",
     "Organization Logo": "Kuruluş Logosu",
