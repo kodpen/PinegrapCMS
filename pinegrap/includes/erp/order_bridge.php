@@ -504,7 +504,90 @@ function erp_order_payment_date($order)
 }
 
 /**
+ * The name of an order's invoicing lock, as SQL.
+ *
+ * GET_LOCK names belong to the whole MySQL server, so the database is part of
+ * the name and two sites on one server never wait for each other's orders.
+ * Hashed, because a long database name would otherwise push the order id past
+ * the 64 characters a name may have.
+ *
+ * @param int $order_id
+ * @return string  An SQL expression
+ */
+function erp_order_invoice_lock_sql($order_id)
+{
+    return "CONCAT('pg_erp_invoice.', MD5(CONCAT(DATABASE(), '.', '" . (int) $order_id . "')))";
+}
+
+/**
+ * Take or give back an order's invoicing lock.
+ *
+ * Through erp_query(), which reports a failure instead of ending the request:
+ * a server that refuses named locks must not stop an invoice from being
+ * written, it only loses the protection the lock adds.
+ *
+ * @param int  $order_id
+ * @param bool $take  true takes it (waiting up to 10 seconds), false releases it
+ * @return int  1 held, 0 another request holds it, -1 no lock on this server
+ */
+function erp_order_invoice_lock($order_id, $take = true)
+{
+    $result = erp_query($take
+        ? "SELECT GET_LOCK(" . erp_order_invoice_lock_sql($order_id) . ", 10)"
+        : "SELECT RELEASE_LOCK(" . erp_order_invoice_lock_sql($order_id) . ")");
+
+    if (!($result instanceof mysqli_result)) {
+        return -1;
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    if (!is_array($row) || ($row[0] === null)) {
+        return -1;
+    }
+
+    return ((int) $row[0] === 1) ? 1 : 0;
+}
+
+/**
  * Raise the invoice for an order.
+ *
+ * Two requests invoicing the same order at once - a second click, the order
+ * screen's button beside the invoice the order gets on its own
+ * (erp_auto_invoice_for_order()) - would each find no invoice and each write
+ * one. The look and the write run under the order's lock, so the second one
+ * waits and then finds the first one's invoice.
+ *
+ * @param int   $order_id
+ * @param array $options  created_by, series, issue_date
+ * @return array ['success' => bool, 'invoice_id' => int, 'full_number' => string, 'error' => string]
+ */
+function erp_invoice_from_order($order_id, $options = array())
+{
+    $order_id = (int) $order_id;
+
+    $locked = erp_order_invoice_lock($order_id);
+
+    if ($locked === 0) {
+        return array('success' => false, 'invoice_id' => 0, 'full_number' => '',
+            'error' => lang('This order is being invoiced right now. Look at it again in a moment.'));
+    }
+
+    // Given back whatever happens inside: a lock left behind would hold every
+    // later attempt on this order for as long as the connection lives.
+    try {
+        $result = erp_invoice_from_order_locked($order_id, $options);
+    } finally {
+        if ($locked === 1) {
+            erp_order_invoice_lock($order_id, false);
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * erp_invoice_from_order(), once the order's lock is held.
  *
  * Everything lands in one transaction: the number, the header, the lines and
  * the movement on the customer's account. A number taken and then abandoned is
@@ -515,7 +598,7 @@ function erp_order_payment_date($order)
  * @param array $options  created_by, series, issue_date
  * @return array ['success' => bool, 'invoice_id' => int, 'full_number' => string, 'error' => string]
  */
-function erp_invoice_from_order($order_id, $options = array())
+function erp_invoice_from_order_locked($order_id, $options = array())
 {
     $order_id = (int) $order_id;
 
@@ -761,4 +844,193 @@ function erp_invoice_from_order($order_id, $options = array())
     erp_event_invoice($invoice_id, 'erp.invoice.created');
 
     return array('success' => true, 'invoice_id' => $invoice_id, 'full_number' => $numbered['full'], 'error' => '');
+}
+
+/* ------------------------------------------------- invoicing on its own */
+
+/**
+ * Whether an order is invoiced on its own at this moment, and if not, why.
+ *
+ * The store chooses the moment on the ERP settings card
+ * (config.erp_auto_invoice_on): never, once the order is paid, or once it is
+ * shipped. Pure, so the rules can be tested without a database; the caller
+ * reads the order and the state of its last sales invoice.
+ *
+ * Paid means nothing more is owed at checkout: a gateway confirmed the
+ * payment or a bank transfer was marked as received (both write paid_at),
+ * the customer put the order on their account (a sale on credit is invoiced
+ * like a paid one: the invoice is what the account then owes), or a gift
+ * card or a discount left nothing to pay. Shipped asks for no payment: the
+ * invoice is due once the goods leave, whether or not the money is in.
+ *
+ * A counter sale is invoiced at the till as it is made, so it never waits
+ * for this; a marketplace order stays a click on its screen until the
+ * marketplace connectors hand the invoice back to the marketplace. An order
+ * whose invoice was cancelled is left to the operator: whatever made them
+ * cancel it, a second invoice is theirs to issue.
+ *
+ * @param string $setting         ERP_AUTO_INVOICE_ON
+ * @param string $trigger         What just happened: 'order_paid' | 'order_shipped'
+ * @param array  $order           orders row: status, type, paid_at, erp_on_account, total, erp_invoice_id
+ * @param string $invoice_status  Status of the order's last sales invoice, '' when it has none
+ * @return string  '' to invoice it now; otherwise the reason it is left alone:
+ *                 off | trigger | status | counter_sale | marketplace |
+ *                 invoiced | cancelled_before | unpaid
+ */
+function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status)
+{
+    $setting = (string) $setting;
+
+    if (!in_array($setting, array('order_paid', 'order_shipped'), true)) {
+        return 'off';
+    }
+
+    if ((string) $trigger !== $setting) {
+        return 'trigger';
+    }
+
+    if (!in_array((string) ($order['status'] ?? ''), erp_order_billable_statuses(), true)) {
+        return 'status';
+    }
+
+    $type = (string) ($order['type'] ?? '');
+
+    if ($type === 'local') {
+        return 'counter_sale';
+    }
+
+    if ($type === 'marketplace') {
+        return 'marketplace';
+    }
+
+    $invoice_status = (string) $invoice_status;
+
+    if ((($invoice_status !== '') && ($invoice_status !== 'cancelled')) || ((int) ($order['erp_invoice_id'] ?? 0) > 0)) {
+        return 'invoiced';
+    }
+
+    if ($invoice_status === 'cancelled') {
+        return 'cancelled_before';
+    }
+
+    if (($setting === 'order_paid')
+        && ((int) ($order['paid_at'] ?? 0) <= 0)
+        && ((int) ($order['erp_on_account'] ?? 0) !== 1)
+        && ((int) ($order['total'] ?? 0) > 0)) {
+        return 'unpaid';
+    }
+
+    return '';
+}
+
+/**
+ * Issue an order's invoice on its own, when this is the moment the store
+ * chose (erp_auto_invoice_decision()).
+ *
+ * The invoice is the order screen's own step (erp_order_flow_run()), with
+ * its gates: an order the screen would not offer it for - a buyer whose
+ * account card lacks what the e-document provider needs, nobody to bill -
+ * waits there with its reason, and the panel bell says which order and why
+ * (erp_alert_auto_invoice_refused()). The e-document is not sent from here:
+ * making it official stays the order screen's next step.
+ *
+ * Run where nothing else is half written: pg_erp_auto_invoice() keeps it out
+ * of an open ERP transaction, because a refused invoice rolls back the whole
+ * transaction and would take the caller's own work with it.
+ *
+ * @param int    $order_id
+ * @param string $trigger  'order_paid' | 'order_shipped'
+ * @return array ['done' => bool, 'skipped' => reason code or '',
+ *                'invoice_id' => int, 'number' => string, 'error' => string]
+ */
+function erp_auto_invoice_for_order($order_id, $trigger)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
+
+    $order_id = (int) $order_id;
+    $trigger = (string) $trigger;
+    $answer = array('done' => false, 'skipped' => '', 'invoice_id' => 0, 'number' => '', 'error' => '');
+
+    $order = db_item("SELECT * FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
+
+    if (!is_array($order)) {
+        $answer['skipped'] = 'missing';
+        return $answer;
+    }
+
+    $last = erp_order_flow_invoice_row($order);
+
+    $answer['skipped'] = erp_auto_invoice_decision(
+        defined('ERP_AUTO_INVOICE_ON') ? ERP_AUTO_INVOICE_ON : 'off',
+        $trigger,
+        $order,
+        is_array($last) ? (string) $last['status'] : ''
+    );
+
+    if ($answer['skipped'] !== '') {
+        return $answer;
+    }
+
+    // What the screen would offer an operator, and nothing else. A step it
+    // holds back carries the sentence the screen shows beside it.
+    $state = erp_order_flow_state($order_id);
+    $step = (is_array($state) && isset($state['steps']['invoice'])) ? $state['steps']['invoice'] : array();
+
+    if (($step['action'] ?? '') !== 'invoice') {
+        $answer['error'] = trim((string) ($step['reason'] ?? ''));
+
+        if ($answer['error'] === '') {
+            $answer['error'] = lang('The order screen does not offer its invoice.');
+        }
+
+        erp_auto_invoice_refused($order, $answer['error']);
+
+        return $answer;
+    }
+
+    $result = erp_order_flow_run($order_id, 'invoice', 0);
+
+    if (empty($result['success'])) {
+        $answer['error'] = (string) ($result['error'] ?? '');
+        erp_auto_invoice_refused($order, $answer['error']);
+
+        return $answer;
+    }
+
+    $invoice = db_item("SELECT id, full_number FROM erp_invoices WHERE id = '" . erp_invoice_for_order($order_id) . "' LIMIT 1");
+
+    $answer['done'] = true;
+    $answer['invoice_id'] = is_array($invoice) ? (int) $invoice['id'] : 0;
+    $answer['number'] = is_array($invoice) ? (string) $invoice['full_number'] : '';
+
+    $vars = array((string) $order['order_number'], $answer['number']);
+
+    log_activity(($trigger === 'order_shipped')
+        ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
+        : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+
+    return $answer;
+}
+
+/**
+ * Say that an order that was due its invoice did not get one: in the site
+ * log, and once per order and reason on the panel bell of whoever may use
+ * the ERP (erp_alert_auto_invoice_refused()).
+ *
+ * @param array  $order   orders row
+ * @param string $reason  What the order screen says, or why issuing failed
+ * @return void
+ */
+function erp_auto_invoice_refused($order, $reason)
+{
+    $reason = trim((string) $reason);
+
+    log_activity(lang(array(
+        'string' => 'Order (#{var:1}) could not be invoiced automatically: {var:2}',
+        'vars' => array((string) ($order['order_number'] ?? ''), $reason),
+    )));
+
+    if (function_exists('erp_alert_auto_invoice_refused')) {
+        erp_alert_auto_invoice_refused((int) ($order['id'] ?? 0), (string) ($order['order_number'] ?? ''), $reason);
+    }
 }

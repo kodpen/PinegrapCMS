@@ -25,4 +25,4 @@ description: Shipping plan (2026-10-08; phases 1 and 2 done, phase 1 waits for n
 
 ## What must the owner check by hand?
 - Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.
-- Questions to raise in the PRs: `orders.tracking_company`, ShipWorks, old n11 records, unread `ERP_AUTO_INVOICE_ON`.
+- Questions to raise in the PRs: `orders.tracking_company`, ShipWorks, old n11 records.
