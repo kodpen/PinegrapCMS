@@ -8195,15 +8195,10 @@ function _order_has_shipped($order_id)
 
 /**
  * Probe orders.refund_status — true only after the 2026.1.27 upgrade has run.
- * Cached per-request so we don't issue SHOW COLUMNS on every cancel.
  */
 function _orders_has_refund_columns()
 {
-    static $cached = null;
-    if ($cached !== null) return $cached;
-    $row = db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
-    $cached = !empty($row);
-    return $cached;
+    return pg_schema_has('orders', 'refund_status');
 }
 
 /**
