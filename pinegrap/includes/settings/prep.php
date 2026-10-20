@@ -1689,6 +1689,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                         }
                         
                         break;
+
+                    // A driver-based gateway with key fields of its own
+                    // (pg_payment_settings_card_rows()): its keys say whether
+                    // it runs in test or live mode, so the mode row is hidden.
+                    default:
+                        $gateway_driver = pg_payment_driver(pg_payment_driver_for_gateway($ecommerce_payment_gateway));
+                        if (($gateway_driver !== null) && ($gateway_driver['settings'] === 'connect')) {
+                            $ecommerce_payment_gateway_mode_row_style = 'display: none';
+                        }
+                        break;
                 }
             }
         }

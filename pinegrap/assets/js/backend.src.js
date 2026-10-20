@@ -4135,12 +4135,21 @@ function show_or_hide_ecommerce_payment_gateway() {
 
     // The fields of the driver-based gateways name the gateway they belong to
     // (pg_payment_settings_card_rows()), so a new driver needs no case here.
+    // Such a gateway takes the store's Transaction Type; its keys say whether
+    // it runs in test or live mode, so the mode row stays hidden.
     var card = document.getElementById('ecommerce_credit_debit_card').checked == true;
     var gateway = document.getElementById('ecommerce_payment_gateway').value;
+    var driver_gateway = false;
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-pg-payment-gateway]'), function (row) {
-        row.style.display = (card && (row.getAttribute('data-pg-payment-gateway') === gateway)) ? '' : 'none';
+        var own = (card && (row.getAttribute('data-pg-payment-gateway') === gateway));
+        row.style.display = own ? '' : 'none';
+        driver_gateway = driver_gateway || own;
     });
+
+    if (driver_gateway) {
+        document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
+    }
 }
 
 // Example starter JavaScript for disabling form submissions if there are invalid fields

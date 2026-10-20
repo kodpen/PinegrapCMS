@@ -31,13 +31,12 @@ include('init.php');
 // SameSite=None without Secure; on plain http the cookie stays Lax and the
 // cross-site return loses the session.
 //
-// The three gateway callbacks (PayPal Express Checkout, iyzipay 3-D Secure and
-// Pay With Iyzico) arrive as cross-site POSTs, so the cookie re-stamp, the CSRF
-// check and the session field capture below treat them alike.
-$is_gateway_return = in_array(
-    ($_GET['mode'] ?? ''),
-    array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'),
-    true);
+// The gateway callbacks (PayPal Express Checkout and the payment drivers'
+// returns: iyzipay 3-D Secure, Pay With Iyzico, Stripe) arrive from the
+// payment service (cross-site POSTs, or a redirect back), so the cookie
+// re-stamp, the CSRF check and the session field capture below treat them
+// alike (pg_payment_is_return_mode()).
+$is_gateway_return = pg_payment_is_return_mode($_GET['mode'] ?? '');
 
 // CSRF token validation — skipped for ALL three gateway return modes
 // because the cross-site POST from iyzipay/paypal can\'t echo our
@@ -365,9 +364,7 @@ $order_submitted = false;
 // is empty during the iyzico callback — page_id only comes via GET there).
 if (
     (isset($_POST['submit_purchase_now']) == true)
-    || (($_GET['mode'] ?? '') == 'paypal_express_checkout_return')
-    || (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return')
-    || (($_GET['mode'] ?? '') == 'pay_with_iyzico_return')
+    || $is_gateway_return
 ) {
     $order_submitted = true;
 }

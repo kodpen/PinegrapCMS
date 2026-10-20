@@ -2238,6 +2238,11 @@ function waf_csp_policy()
         if ((int) waf_setting('security_frame_protection', 1) === 1) {
             $policy .= "; frame-ancestors 'self'";
         }
+
+        $policy = waf_csp_add_payment_sources(
+            $policy,
+            (string) waf_setting('ecommerce_payment_gateway', ''),
+            ((int) waf_setting('ecommerce', 0) === 1) && ((int) waf_setting('ecommerce_credit_debit_card', 0) === 1));
     }
 
     if (stripos($policy, 'report-uri') === false
@@ -2245,6 +2250,44 @@ function waf_csp_policy()
         && defined('PATH') && defined('SOFTWARE_DIRECTORY')
     ) {
         $policy = rtrim($policy, '; ') . '; report-uri ' . PATH . SOFTWARE_DIRECTORY . '/csp_report.php';
+    }
+
+    return $policy;
+}
+
+/**
+ * The built-in policy with the sources of the payment service the store takes
+ * cards through (pg_payment_csp_sources()): its script, the frames its card
+ * fields are drawn in and the address they talk to. That service is loaded by
+ * the software itself once the operator chooses it as the Payment Gateway, so
+ * it is listed like the software's other hosts rather than reported as
+ * something the site added. frame-src is written out only then, with what
+ * default-src already allows frames from.
+ *
+ * @param string $policy
+ * @param string $gateway config.ecommerce_payment_gateway
+ * @param bool   $card_on the store is on and takes the Credit/Debit Card method
+ * @return string
+ */
+function waf_csp_add_payment_sources($policy, $gateway, $card_on)
+{
+    $sources = function_exists('pg_payment_csp_sources') ? pg_payment_csp_sources($gateway, $card_on) : array();
+
+    foreach ($sources as $directive => $hosts) {
+        $hosts = implode(' ', $hosts);
+
+        if ($hosts === '') {
+            continue;
+        }
+
+        if (preg_match('/(^|;\s*)' . preg_quote($directive, '/') . '\s[^;]*/', $policy, $match, PREG_OFFSET_CAPTURE) === 1) {
+            $end = $match[0][1] + strlen($match[0][0]);
+            $policy = substr($policy, 0, $end) . ' ' . $hosts . substr($policy, $end);
+        } elseif ($directive === 'frame-src') {
+            $policy .= "; frame-src 'self' blob: " . $hosts;
+        } else {
+            $policy .= '; ' . $directive . ' ' . $hosts;
+        }
     }
 
     return $policy;
