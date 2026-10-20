@@ -262,7 +262,10 @@ function pg_db_run($query)
     $counters['ms'] += (microtime(true) - $started) * 1000;
 
     if ($result === false) {
-        // Provide mysqli error to output_error for debugging (output_error may suppress details based on DEBUG).
+        // The database's own message names tables, columns and a piece of the
+        // statement. It goes to the server log; on the page output_error()
+        // shows it only when verbose database errors are on (DEBUG) or during
+        // an install or update, reading it from the connection itself.
         $err = mysqli_error(db::$con);
         // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
         // a failed schema statement can be waved through as "already applied", and anything
@@ -272,7 +275,9 @@ function pg_db_run($query)
         if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
             return null;
         }
-        output_error(lang('Query failed.') . ' ' . h($err));
+        error_log('Pinegrap: query failed: ' . $err);
+
+        output_error(lang('Query failed.'));
     }
 
     return $result;
