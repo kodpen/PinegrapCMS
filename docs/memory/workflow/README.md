@@ -4,6 +4,7 @@
 
 Project overview, owner rules, git and branches, sandbox and dev machine.
 
+- ci-workflows.md: GitHub Actions workflows: what each runs and when, action versions (major tags, node24) and how to bump them, the Node line of the JavaScript checks, runner labels
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, where the Claude Code PR footer comes from and who removes it, editing shared files without conflicts
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
