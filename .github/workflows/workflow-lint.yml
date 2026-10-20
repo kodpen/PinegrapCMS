@@ -1,0 +1,69 @@
+# Lints the workflow files with actionlint: workflow syntax, ${{ }}
+# expressions and their types, job and step references, runner labels, the
+# inputs of the actions actionlint has data for, and every run: script
+# through shellcheck (preinstalled on GitHub's Ubuntu runners). Errors become
+# annotations on the pull request's diff.
+#
+# actionlint is not part of the repository: the job downloads the pinned
+# release and checks it against its SHA-256, as tools/static_analysis.sh does
+# for the PHP analysers. A version change edits both values below.
+name: Workflow lint
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+  push:
+    branches: [development]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actionlint.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: "1.7.12"
+      ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download actionlint
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/actionlint"
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          mkdir -p "$dir"
+          curl -sSfL --retry 3 -o "$dir/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
+          echo "$ACTIONLINT_SHA256  $dir/$archive" | sha256sum -c -
+          tar -xzf "$dir/$archive" -C "$dir" actionlint
+          echo "$dir" >> "$GITHUB_PATH"
+
+      # actionlint skips its shellcheck rule without a word when shellcheck is
+      # missing, so the step asks for it first. A failing run prints the
+      # readable report, then the same errors as annotations.
+      - name: Lint the workflow files (actionlint)
+        env:
+          ANNOTATIONS: '{{range $err := .}}::error file={{$err.Filepath}},line={{$err.Line}},col={{$err.Column}}::{{$err.Message}}%0A```%0A{{replace $err.Snippet "\\n" "%0A"}}%0A```\n{{end}}'
+        run: |
+          set -euo pipefail
+          if ! command -v shellcheck > /dev/null; then
+            echo "::error::shellcheck is not installed on this runner; actionlint would skip the run: scripts"
+            exit 1
+          fi
+          shellcheck --version
+          actionlint -version
+          if ! actionlint -color; then
+            actionlint -format "$ANNOTATIONS" || true
+            exit 1
+          fi
