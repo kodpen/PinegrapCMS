@@ -26,7 +26,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol step 1 done #880, step 2 (listings) next
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
-- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-4 done, PRs #696, #705, #743, #810): page revision history with compare and restore, retention, scheduled publish and unpublish, API and MCP; memory wrap-up left
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants

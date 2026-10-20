@@ -4,6 +4,7 @@ description: Scheduled publishing of visual-designer pages (page.publish_at/unpu
 ---
 
 ## What is stored?
+- Owner, 2026-10-19: pages get the scheduling comments, events and campaigns already had; a scheduled page is a draft until the job publishes it, in the site's time zone. Classic pages are not covered.
 - `page.publish_at` (a draft goes on the site) and `page.unpublish_at` (a page on the site goes back to the drafts): unix times, 0 for none, each indexed (2026.11.0, 11.0.17). Entered as the site's wall clock (`datetime-local`, PHP default zone = site zone); `pg_page_schedule_parse()` also takes digits and ISO with offset/Z (fractions dropped), refuses a date that does not exist and any time outside 1970–4294967295 (the columns are `INT UNSIGNED`; MySQL would clip silently). Module `includes/fn/page_schedule.php`; needs the drafts schema (`pg_page_draft_ready()`).
 
 ## What does a save do with them?
@@ -22,4 +23,4 @@ description: Scheduled publishing of visual-designer pages (page.publish_at/unpu
 - Page Settings, section Schedule (`#sd-page-schedule-group`, designer level only): two boxes, a status line, the site zone. A publish time ahead checks and locks the Draft switch. Tab badge: a clock pill with the next change as title (`_pgScheduleNote()`); the editor compares times as text against the site clock from `drafts.schedule.offset`.
 - Designs list: "On a schedule" badge beside the state plus "{n} scheduled, next change …" (`pg_page_schedule_design_counts()`); chips of scheduled pages get a clock and a title (`data-scheduled`, repainted by `designer_home.js` from `design_publish`'s `scheduled` map). The existing `Scheduled` key means "Kuyrukta" (mail queue), hence the separate key.
 
-Related: docs/memory/designer/page-revisions.md
+Related: docs/memory/designer/page-revisions.md, docs/memory/designer/page-revisions-schedule-api.md
