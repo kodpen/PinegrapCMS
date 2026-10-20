@@ -231,7 +231,7 @@ function test_backup_rowless_tables_scope()
 	$kept_tables = array(
 		'visitor_stats_daily', 'visitor_stats_hourly', 'submitted_form_info', 'visitor_reports', 'orders', 'config',
 		'forms', 'form_data', 'contacts', 'ws_messages', 'perf_stats', 'log', 'cron_runs',
-		'erp_audit_log', 'erp_edoc_log', 'mail_outbox', 'api_webhook_queue',
+		'erp_audit_log', 'erp_edoc_log', 'audit_log', 'consent_log', 'mail_outbox', 'api_webhook_queue',
 		'seo_issue', 'seo_link', 'search_items', 'search_results_pages', 'short_links', 'connect_accounts',
 	);
 
