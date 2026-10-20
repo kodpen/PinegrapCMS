@@ -24632,5 +24632,10 @@
     "This does not look like a {var:1} tracking number. It was saved anyway.": "Bu bir {var:1} takip numarasına benzemiyor. Yine de kaydedildi.",
     "Shipping carrier of {var:1}": "{var:1} numarasının kargo firması",
     "Order (#{var:1}) was marked paid.": "Sipariş (#{var:1}) ödendi olarak işaretlendi.",
-    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi."
+    "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi.",
+    "Smallest order invoiced on its own ({var:1})": "Kendiliğinden faturalanan en küçük sipariş ({var:1})",
+    "A smaller order waits for Issue the Invoice on its screen. The amount is the whole sale the invoice states, a gift card included. 0 invoices every order.": "Daha küçük sipariş kendi ekranında Faturayı Kes adımını bekler. Tutar, faturanın yazdığı satışın tamamıdır, hediye kartı dahil. 0 her siparişi faturalar.",
+    "Only for buyers with a tax number": "Yalnız vergi numarası olan alıcılara",
+    "Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. VKN de TCKN de sayılır; nihai tüketici numarası 11111111111 sayılmaz. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler.",
+    "Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler."
 }
