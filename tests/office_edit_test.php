@@ -534,3 +534,295 @@ function test_office_edit_lock_file_goes()
 	pg_office_edit_unlock($again);
 	pg_assert_false(is_file($file), 'leaving nothing behind');
 }
+
+/* ---------------------------------------------------------------------------
+   Documents
+   --------------------------------------------------------------------------- */
+
+function office_edit_test_w()
+{
+	return 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+}
+
+// One paragraph's element, parsed on its own inside a document element.
+function office_edit_test_paragraph($inner)
+{
+	$document = new DOMDocument('1.0', 'UTF-8');
+	$document->loadXML('<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="' . office_edit_test_w() . '" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p>' . $inner . '</w:p></w:body></w:document>', LIBXML_NONET);
+
+	return $document->getElementsByTagNameNS(office_edit_test_w(), 'p')->item(0);
+}
+
+// The paragraph back as text, without the namespace declaration it borrows.
+function office_edit_test_paragraph_xml($paragraph)
+{
+	return $paragraph->ownerDocument->saveXML($paragraph);
+}
+
+function test_office_edit_text_hunks()
+{
+	pg_assert_same(array(), pg_office_text_hunks('aynı', 'aynı'), 'nothing changed');
+	pg_assert_same(array(array(6, 13, 'iyi günler')), pg_office_text_hunks('Sayın merhaba', 'Sayın iyi günler'), 'one change at the end');
+	pg_assert_same(array(array(0, 5, 'Bugün'), array(15, 20, 'yarın')), pg_office_text_hunks('Dünkü toplantı bitti', 'Bugün toplantı yarın'), 'two changes, the word between left alone');
+	pg_assert_same(array(array(6, 6, 'çok ')), pg_office_text_hunks('Kalem güzel', 'Kalem çok güzel'), 'an addition');
+	pg_assert_same(array(array(6, 10, '')), pg_office_text_hunks('Kalem çok güzel', 'Kalem güzel'), 'a removal');
+	pg_assert_same(array(array(0, 13, 'M')), pg_office_text_hunks('Sayın Ayşe, merhaba.', 'Merhaba.'), 'the letters kept at the ends stay out of the change');
+	pg_assert_same(array(array(0, 0, 'Yeni')), pg_office_text_hunks('', 'Yeni'), 'into an empty paragraph');
+	pg_assert_same(array(array(0, 4, '')), pg_office_text_hunks('Eski', ''), 'everything taken out');
+	pg_assert_same(array(array(0, 20, 'Bugün toplantı yarın')), pg_office_text_hunks('Dünkü toplantı bitti', 'Bugün toplantı yarın', 0), 'past the limit: one change');
+}
+
+function test_office_edit_docx_paragraph_kinds()
+{
+	$simple = pg_office_docx_paragraph_edit(office_edit_test_paragraph('<w:pPr><w:jc w:val="center"/></w:pPr><w:bookmarkStart w:id="0" w:name="_Toc1"/><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:proofErr w:type="spellStart"/><w:r><w:tab/><w:t>x</w:t><w:br/><w:t>y</w:t><w:noBreakHyphen/></w:r><w:bookmarkEnd w:id="0"/>'));
+	pg_assert_same('', $simple['lock'], 'text, bookmarks and proofing marks may change');
+	pg_assert_same("Sayın Ayşe\tx\ny\u{2011}", $simple['text'], 'tabs, line breaks and hyphens as typed characters');
+	pg_assert_same(3, count($simple['runs']), 'three runs');
+
+	$wrapped = pg_office_docx_paragraph_edit(office_edit_test_paragraph("<w:r><w:t>iki\nsatır</w:t></w:r>"));
+	pg_assert_same('iki satır', $wrapped['text'], 'a line end inside the text is a space, as a word processor shows it');
+
+	$link = pg_office_docx_paragraph_edit(office_edit_test_paragraph('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink>'));
+	pg_assert_same(array('', 'Bkz. site'), array($link['lock'], $link['text']), 'a link may change');
+
+	$cases = array(
+		'<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>PAGE</w:instrText></w:r>' => 'field',
+		'<w:fldSimple w:instr="DATE"><w:r><w:t>1</w:t></w:r></w:fldSimple>' => 'field',
+		'<w:r><w:drawing/></w:r>' => 'object',
+		'<w:ins w:id="1" w:author="a"><w:r><w:t>yeni</w:t></w:r></w:ins>' => 'tracked',
+		'<w:r><w:rPr><w:b/><w:rPrChange w:id="2" w:author="a"><w:rPr/></w:rPrChange></w:rPr><w:t>x</w:t></w:r>' => 'tracked',
+		'<w:pPr><w:rPr><w:ins w:id="3" w:author="a"/></w:rPr></w:pPr><w:r><w:t>x</w:t></w:r>' => 'tracked',
+		'<w:r><w:br w:type="page"/></w:r>' => 'break',
+		'<w:commentRangeStart w:id="0"/><w:r><w:t>x</w:t></w:r>' => 'comment',
+		'<w:r><w:footnoteReference w:id="1"/></w:r>' => 'note',
+		'<w:sdt><w:sdtContent><w:r><w:t>x</w:t></w:r></w:sdtContent></w:sdt>' => 'control',
+		'<w:r><w:sym w:font="Wingdings" w:char="F0FC"/></w:r>' => 'object',
+	);
+
+	foreach ($cases as $inner => $reason) {
+		pg_assert_same($reason, pg_office_docx_paragraph_edit(office_edit_test_paragraph($inner))['lock'], $inner);
+	}
+
+	$empty = pg_office_docx_paragraph_edit(office_edit_test_paragraph('<w:pPr><w:pStyle w:val="Normal"/></w:pPr>'));
+	pg_assert_same(array('', '', 0), array($empty['lock'], $empty['text'], count($empty['runs'])), 'an empty paragraph may be given text');
+
+	$formatting = pg_office_docx_paragraph_edit(office_edit_test_paragraph('<w:pPr><w:jc w:val="left"/><w:pPrChange w:id="4" w:author="a"><w:pPr/></w:pPrChange></w:pPr><w:r><w:t>x</w:t></w:r>'));
+	pg_assert_same('tracked', $formatting['lock'], 'a paragraph whose formatting change waits for review');
+}
+
+// A paragraph's place: in a content control, a text box or a cell merged
+// into the one above, it stays as it is however plain its text.
+function test_office_edit_docx_paragraph_places()
+{
+	$w = office_edit_test_w();
+	$document = new DOMDocument('1.0', 'UTF-8');
+	$document->loadXML('<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="' . $w . '"><w:body>'
+		. '<w:sdt><w:sdtPr><w:lock w:val="contentLocked"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Form</w:t></w:r></w:p></w:sdtContent></w:sdt>'
+		. '<w:p><w:r><w:drawing><w:txbxContent><w:p><w:r><w:t>Kutu</w:t></w:r></w:p></w:txbxContent></w:drawing></w:r></w:p>'
+		. '<w:tbl><w:tr><w:tc><w:tcPr><w:vMerge w:val="restart"/></w:tcPr><w:p><w:r><w:t>Üst</w:t></w:r></w:p></w:tc></w:tr>'
+		. '<w:tr><w:tc><w:tcPr><w:vMerge/></w:tcPr><w:p/></w:tc></w:tr></w:tbl>'
+		. '</w:body></w:document>', LIBXML_NONET);
+
+	$locks = array();
+
+	foreach (pg_office_docx_paragraphs($document) as $paragraph) {
+		$locks[] = pg_office_docx_paragraph_edit($paragraph)['lock'];
+	}
+
+	pg_assert_same(array('control', 'object', 'object', '', 'merged'), $locks, 'in order: the control, the drawing, its text box, the first merged cell, the cell merged into it');
+}
+
+function test_office_edit_docx_paragraph_write_keeps_formatting()
+{
+	$write = function ($inner, $text) {
+		$paragraph = office_edit_test_paragraph($inner);
+		pg_office_docx_paragraph_write($paragraph, pg_office_docx_paragraph_edit($paragraph), $text);
+
+		return str_replace(' xmlns:w="' . office_edit_test_w() . '"', '', office_edit_test_paragraph_xml($paragraph));
+	};
+
+	$runs = '<w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r>';
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>, iyi günler.</w:t></w:r></w:p>',
+		$write($runs, 'Sayın Ayşe, iyi günler.'), 'a change in the last run leaves the bold one alone');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Fatma Hanım</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>',
+		$write($runs, 'Sayın Fatma Hanım, merhaba.'), 'the bold name stays bold');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>!</w:t></w:r></w:p>',
+		$write($runs, 'Sayın Ayşe!'), 'a removal inside one run');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:t>merhaba.</w:t></w:r></w:p>',
+		$write($runs, 'Sayın merhaba.'), 'a removal across runs: the run left empty goes');
+
+	pg_assert_same('<w:p><w:r><w:t>M</w:t></w:r><w:r><w:t>erhaba.</w:t></w:r></w:p>',
+		$write($runs, 'Merhaba.'), 'what replaces a selection takes the formatting of its first letter, as in Word');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe Yılmaz</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>',
+		$write($runs, 'Sayın Ayşe Yılmaz, merhaba.'), 'text added after a bold word carries its formatting, as when typing');
+
+	pg_assert_same('<w:p><w:r><w:t>Kalem</w:t><w:tab/><w:t>5</w:t><w:br/><w:t>Silgi</w:t></w:r></w:p>',
+		$write('<w:r><w:t>Kalem 5</w:t></w:r>', "Kalem\t5\nSilgi"), 'a tab and a line break');
+
+	pg_assert_same('<w:p><w:pPr><w:pStyle w:val="Baslik"/><w:rPr><w:i/></w:rPr></w:pPr><w:r><w:rPr><w:i/></w:rPr><w:t>Yeni</w:t></w:r></w:p>',
+		$write('<w:pPr><w:pStyle w:val="Baslik"/><w:rPr><w:i/></w:rPr></w:pPr>', 'Yeni'), 'an empty paragraph gets a run formatted like its mark');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>mağaza</w:t></w:r></w:hyperlink></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink>', 'Bkz. mağaza')),
+		'the words of a link change inside the link');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> hemen ve sayfa.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> ve sayfa.</w:t></w:r>', 'Bkz. site hemen ve sayfa.')),
+		'words typed right after a link stay out of it');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">a  b </w:t></w:r></w:p>',
+		$write('<w:r><w:t>a</w:t></w:r>', 'a  b '), 'spaces kept');
+
+	pg_assert_same('<w:p><w:r><w:t>Ali</w:t><w:noBreakHyphen/><w:t>Veli bilgi</w:t><w:softHyphen/><w:t>sayar</w:t></w:r></w:p>',
+		$write('<w:r><w:t>Ali Veli</w:t></w:r>', "Ali\u{2011}Veli bilgi\u{00AD}sayar"), 'hyphens as their own marks');
+}
+
+// A document package: the parts given, plus what every document has.
+function office_edit_test_docx($body, $settings = '')
+{
+	$w = office_edit_test_w();
+	$rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+	return office_edit_test_package(array(
+		'[Content_Types].xml' => '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+		'word/_rels/document.xml.rels' => '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+			. '<Relationship Id="rId1" Type="' . $rel . '/hyperlink" Target="https://example.test/" TargetMode="External"/>'
+			. '<Relationship Id="rId9" Type="' . $rel . '/settings" Target="settings.xml"/></Relationships>',
+		'word/settings.xml' => '<?xml version="1.0"?><w:settings xmlns:w="' . $w . '">' . $settings . '</w:settings>',
+		'word/styles.xml' => '<?xml version="1.0"?><w:styles xmlns:w="' . $w . '"/>',
+		'word/document.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="' . $w . '" xmlns:r="' . $rel . '"><w:body>' . $body . '<w:sectPr/></w:body></w:document>',
+	));
+}
+
+function test_office_edit_docx_save_and_read_back()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the save is not run');
+		return;
+	}
+
+	$body = '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Teklif</w:t></w:r></w:p>'
+		. '<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>'
+		. '<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText>PAGE</w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>'
+		. '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Hücre</w:t></w:r></w:p></w:tc></w:tr></w:tbl>';
+	$path = office_edit_test_docx($body);
+	$directory = sys_get_temp_dir();
+
+	$read = pg_office_read($path, 'teklif.docx', true);
+	pg_assert_true($read['ok'], 'read for editing: ' . $read['error']);
+	pg_assert_same(array('ok' => true, 'why' => '', 'paragraphs' => array('0' => 'Teklif', '1' => 'Sayın Ayşe, merhaba.', '3' => 'Hücre')), array('ok' => $read['edit']['ok'], 'why' => $read['edit']['why'], 'paragraphs' => (array) $read['edit']['paragraphs']), 'the texts of the paragraphs that may change, by position');
+	pg_assert_contains('<h1 data-p="0">Teklif</h1>', $read['html'], 'a heading carries its position');
+	pg_assert_contains('<p data-p="2" data-lock="field">', $read['html'], 'a field is marked as one that cannot change');
+	pg_assert_contains('<td><p data-p="3">Hücre</p></td>', $read['html'], 'a table cell\'s paragraph too');
+	pg_assert_same(pg_office_version($path), $read['version'], 'the version');
+
+	$plain = pg_office_read($path, 'teklif.docx');
+	pg_assert_false(strpos($plain['html'], 'data-p') !== false, 'a plain preview carries no marks');
+
+	$version = $read['version'];
+
+	$refused = pg_office_docx_save($path, array(array('p' => 2, 'text' => '5')), $version, $directory);
+	pg_assert_same('locked', $refused['code'], 'a field paragraph is refused');
+
+	$refused = pg_office_docx_save($path, array(array('p' => 9, 'text' => 'x')), $version, $directory);
+	pg_assert_same('missing', $refused['code'], 'a paragraph that is not there');
+
+	$refused = pg_office_docx_save($path, array(array('p' => 'bir', 'text' => 'x')), $version, $directory);
+	pg_assert_same('none', $refused['code'], 'not a position');
+
+	$refused = pg_office_docx_save($path, array(array('p' => 1, 'text' => 'x')), sha1('başka'), $directory);
+	pg_assert_same('changed', $refused['code'], 'another version');
+
+	$saved = pg_office_docx_save($path, array(
+		array('p' => 0, 'text' => 'Teklif (Ekim)'),
+		array('p' => 1, 'text' => 'Sayın Ayşe, iyi günler.'),
+		array('p' => 3, 'text' => "Kalem\t5"),
+	), $version, $directory);
+
+	pg_assert_true($saved['ok'], 'saved: ' . $saved['error']);
+	pg_assert_same(3, $saved['changed'], 'three paragraphs');
+
+	$back = pg_office_read($path, 'teklif.docx');
+	pg_assert_contains('<h1>Teklif (Ekim)</h1>', $back['html'], 'the heading, still a heading');
+	pg_assert_contains('<p>Sayın <strong>Ayşe</strong>, iyi günler.</p>', $back['html'], 'the bold name kept');
+	pg_assert_contains('<td><p>Kalem<span class="office-tabchar"> </span>5</p></td>', $back['html'], 'a tab in a cell');
+
+	$zip = new ZipArchive();
+	$zip->open($path);
+	$xml = (string) $zip->getFromName('word/document.xml');
+	$zip->close();
+
+	pg_assert_contains('<w:instrText>PAGE</w:instrText>', $xml, 'the field untouched');
+	pg_assert_contains('<w:sectPr/>', $xml, 'the section properties untouched');
+	pg_assert_contains('standalone="yes"', $xml, 'the declaration kept');
+
+	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
+	unlink($path);
+}
+
+function test_office_edit_docx_refusals()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the save is not run');
+		return;
+	}
+
+	$directory = sys_get_temp_dir();
+	$body = '<w:p><w:r><w:t>Metin</w:t></w:r></w:p>';
+	$cases = array(
+		'protected' => '<w:documentProtection w:edit="readOnly" w:enforcement="1"/>',
+		'tracking'  => '<w:trackRevisions/>',
+	);
+
+	foreach ($cases as $reason => $settings) {
+		$path = office_edit_test_docx($body, $settings);
+		$read = pg_office_read($path, 'x.docx', true);
+
+		pg_assert_same(array('ok' => false, 'why' => $reason), $read['edit'], $reason . ': the preview offers no paragraph');
+		pg_assert_false(strpos($read['html'], 'data-p') !== false, $reason . ': and marks none');
+
+		$result = pg_office_docx_save($path, array(array('p' => 0, 'text' => 'Yeni')), pg_office_version($path), $directory);
+		pg_assert_same($reason, $result['code'], $reason . ': a save is refused');
+
+		@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
+		unlink($path);
+	}
+
+	$path = office_edit_test_docx($body, '<w:documentProtection w:edit="none" w:enforcement="0"/><w:trackRevisions w:val="false"/>');
+	pg_assert_true(pg_office_read($path, 'x.docx', true)['edit']['ok'], 'protection switched off and tracking off are no obstacle');
+	unlink($path);
+
+	$path = office_edit_test_docx($body, '<w:documentProtection w:edit="readOnly"/>');
+	pg_assert_true(pg_office_read($path, 'x.docx', true)['edit']['ok'], 'protection set up but not enforced is no obstacle');
+	unlink($path);
+
+	$path = office_edit_test_package(array(
+		'[Content_Types].xml' => '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+		'word/document.xml' => '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE w:document [<!ENTITY x "y">]><w:document xmlns:w="' . office_edit_test_w() . '"><w:body>' . $body . '</w:body></w:document>',
+	));
+	$read = pg_office_read($path, 'x.docx', true);
+	pg_assert_same(array('ok' => false, 'why' => 'unusual'), $read['edit'], 'a DOCTYPE: nothing offered');
+	pg_assert_same('unusual', pg_office_docx_save($path, array(array('p' => 0, 'text' => 'Yeni')), pg_office_version($path), $directory)['code'], 'and nothing saved');
+	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
+	unlink($path);
+}
+
+function test_office_edit_docx_hyphens_drawn()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: nothing is read');
+		return;
+	}
+
+	$path = office_edit_test_docx('<w:p><w:r><w:t>Ali</w:t><w:noBreakHyphen/><w:t>Veli bilgi</w:t><w:softHyphen/><w:t>sayar</w:t></w:r></w:p>');
+	$read = pg_office_read($path, 'x.docx', true);
+
+	pg_assert_contains('<p data-p="0">Ali&#8209;Veli bilgi&shy;sayar</p>', $read['html'], 'the hyphens drawn as their own characters');
+	pg_assert_same("Ali\u{2011}Veli bilgi\u{00AD}sayar", $read['edit']['paragraphs']->{'0'}, 'and in the text the same');
+	unlink($path);
+}

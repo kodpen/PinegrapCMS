@@ -13,12 +13,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model and the My Account side done): panel screens, approval mail, iyzico refund and ERP return invoice, reminders, API, the classic order view left
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
-- docker-image.md: Plan (approved 2026-10-19, steps 1-4 built in PRs #565, #621 and #689): docker/ compose stack in the release tree, unattended install service, README section; GHCR publishing left
+- docker-image.md: Plan (approved 2026-10-19, steps 1-5 built: #565, #621, #689, #737): compose stack, unattended install, README section, GHCR images; owner's panel-update question left
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder, account name for accounts opened from orders), decisions behind both
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
-- files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use and xlsx cell edits done; docx paragraph edits (D3) and hygiene (D5) left
+- files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
@@ -27,7 +27,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
-- page-revisions-and-scheduling.md: Plan (approved 2026-10-19, not started): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages; live pages still publish directly
+- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; step 1 revisions table and writer done): server-side page revision history with compare and restore, retention, scheduled publish and unpublish for designer pages
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
 - payment-driver-layer.md: Plan (approved 2026-10-19; step 1 done, PR #740): driver layer beside submit_order.php, iyzico port next, Stripe PaymentIntents + wallets, PayTR; legacy gateways frozen, never removed
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants

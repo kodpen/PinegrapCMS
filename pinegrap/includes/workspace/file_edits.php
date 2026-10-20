@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - editing a picture, a text file or a workbook posted in a
- * conversation.
+ * Workspace - editing a picture, a text file, a workbook or a document
+ * posted in a conversation.
  *
  * The person who posted the file may edit it: the edited file takes the old
  * one's place in the message, the message reads "edited", and the file it
@@ -15,9 +15,10 @@
  * Pictures are edited in the panel's image editor (Pintura, through
  * workspace_file_save.php); text files - Markdown, plain text, CSV and the
  * like - in the text window of the channel screen, through ws_file_text and
- * ws_file_text_save; the cells of an Excel workbook in its preview window,
- * through ws_file_office and ws_file_office_save (written into a copy by
- * includes/fn/office_edit.php, never into the file the message carries).
+ * ws_file_text_save; the cells of an Excel workbook and the paragraphs of a
+ * Word document in their preview window, through ws_file_office and
+ * ws_file_office_save (written into a copy by includes/fn/office_edit.php,
+ * never into the file the message carries).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -161,7 +162,7 @@ function ws_file_text_read($file_id, $text_only = false)
  *
  * @param array  $viewer
  * @param int    $message_id
- * @param string $kind image | text | office (an Excel workbook)
+ * @param string $kind image | text | office (a Word document or an Excel workbook)
  * @return array|string [message, channel], or the error
  */
 function ws_file_edit_target($viewer, $message_id, $kind)
@@ -180,7 +181,7 @@ function ws_file_edit_target($viewer, $message_id, $kind)
     if ($kind === 'image') {
         $fits = (ws_file_kind($message['file_name']) === 'image');
     } elseif ($kind === 'office') {
-        $fits = function_exists('pg_office_kind') && (pg_office_kind($message['file_name']) === 'xlsx');
+        $fits = function_exists('pg_office_kind') && (pg_office_kind($message['file_name']) !== '');
     } else {
         $fits = ws_file_is_text($message['file_name']);
     }
@@ -193,18 +194,19 @@ function ws_file_edit_target($viewer, $message_id, $kind)
 }
 
 /**
- * A message's workbook with changed cells written in, as the bytes of a new
- * file. The cells go into a copy (pg_office_xlsx_save(), which also checks
- * them and the version the person opened); the file the message carries is
- * never written to, so it can stay as the earlier version or as the
- * original somebody else's copy answers.
+ * A message's workbook with changed cells written in, or its document with
+ * changed paragraphs, as the bytes of a new file. The changes go into a copy
+ * (pg_office_xlsx_save() or pg_office_docx_save(), which also check them and
+ * the version the person opened); the file the message carries is never
+ * written to, so it can stay as the earlier version or as the original
+ * somebody else's copy answers.
  *
  * @param array  $message
- * @param mixed  $cells   as the preview sends them
+ * @param mixed  $changes the cells or the paragraphs, as the preview sends them
  * @param string $version what the person opened (pg_office_version())
  * @return array ok, error, data (base64, as the panel sends files)
  */
-function ws_file_office_edited($message, $cells, $version)
+function ws_file_office_edited($message, $changes, $version)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'data' => '');
@@ -217,7 +219,9 @@ function ws_file_office_edited($message, $cells, $version)
         return $fail(lang('The file could not be found.'));
     }
 
-    if (!is_array($cells) || empty($cells)) {
+    $kind = pg_office_kind($message['file_name']);
+
+    if (!is_array($changes) || empty($changes) || ($kind === '')) {
         return $fail(lang('Nothing was changed.'));
     }
 
@@ -231,13 +235,15 @@ function ws_file_office_edited($message, $cells, $version)
         @mkdir($directory, 0755, true);
     }
 
-    $copy = $directory . '/office_edit_' . bin2hex(random_bytes(8)) . '.xlsx';
+    $copy = $directory . '/office_edit_' . bin2hex(random_bytes(8)) . '.' . $kind;
 
     if (!@copy($path, $copy)) {
         return $fail(lang('The file could not be saved.'));
     }
 
-    $saved = pg_office_xlsx_save($copy, $cells, (string) $version, $directory);
+    $saved = ($kind === 'xlsx')
+        ? pg_office_xlsx_save($copy, $changes, (string) $version, $directory)
+        : pg_office_docx_save($copy, $changes, (string) $version, $directory);
     $bytes = $saved['ok'] ? @file_get_contents($copy) : false;
     @unlink($copy);
 
@@ -442,5 +448,6 @@ function ws_file_edit_js_strings()
         'file_editor_loading'  => lang('The image editor is loading…'),
         'file_editor_missing'  => lang('The image editor could not be loaded.'),
         'file_cells_unsaved'   => lang('The changed cells are not saved. Close the window anyway?'),
+        'file_paragraphs_unsaved' => lang('The changed paragraphs are not saved. Close the window anyway?'),
     );
 }

@@ -5880,7 +5880,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-motion" aria-pressed="false" title="' + esc(_sdT('Play animations')) + '"><span class="bi bi-play-circle"></span> <span class="sd-vb-txt">' + esc(_sdT('Animations')) + '</span></button>' +
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('Snapshots')) + '"><span class="bi bi-camera"></span> <span class="sd-vb-txt">' + esc(_sdT('Snap')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -48860,13 +48860,17 @@ const StyleDesigner = (function () {
         }
     }
 
-    function generateHTML(styleName, additionalBodyClasses) {
-        if (!tree) return '';
+    // `treeOverride`: another tree drawn with this page's frame (a published
+    // revision, for the History panel's compare); the page's own tree
+    // otherwise.
+    function generateHTML(styleName, additionalBodyClasses, treeOverride) {
+        var root = treeOverride || tree;
+        if (!root) return '';
 
         // The <body> tag. Twin of generate_style_code_from_tree() in
         // functions.php — class, style and id each have two sources (the
         // dedicated control and the Attributes panel) and all of them MERGE.
-        var _body = _sdBodyAttrParts(tree, styleName, additionalBodyClasses);
+        var _body = _sdBodyAttrParts(root, styleName, additionalBodyClasses);
         var bc = _body.cls;
         var bodyStyle = _body.style;
         var bodyExtraAttrs = _body.attrs;
@@ -48876,7 +48880,7 @@ const StyleDesigner = (function () {
         (function walkFonts(n) {
             if (n.props && n.props.fontFamily) usedFonts[n.props.fontFamily] = true;
             if (n.children) n.children.forEach(walkFonts);
-        })(tree);
+        })(root);
         var fontImports = Object.keys(usedFonts).map(function(f) {
             return '        <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
                    '        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
@@ -48892,7 +48896,7 @@ const StyleDesigner = (function () {
             + (bc ? ' class="' + bc + '"' : '')
             + (bodyStyle ? ' style="' + esc(bodyStyle) + '"' : '')
             + bodyExtraAttrs + '>\n';
-        if (tree.children) tree.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
+        if (root.children) root.children.forEach(function (c) { code += _sdEmitNode(c, 2, code.length, null); });
         code += '    </body>\n\n</html>';
         return code;
     }
@@ -50137,6 +50141,35 @@ const StyleDesigner = (function () {
         }, 30);
     }
 
+    // ========================= HISTORY =========================
+    // One panel behind the toolbar's camera button: the page's published
+    // revisions (the server's record of every publish, includes/fn/
+    // page_revisions.php) above, the browser's own snapshots and autosave
+    // below. A revision can be compared with the page as it is now and loaded
+    // into the editor as unsaved work; publishing it then writes a new
+    // revision with source 'restore'.
+    var _sdRevisionSourceLabels = null;
+    function _sdRevisionSourceLabel(source) {
+        if (!_sdRevisionSourceLabels) {
+            _sdRevisionSourceLabels = { publish: _sdT('Published'), restore: _sdT('Restored'), 'import': _sdT('Imported'), ai: _sdT('AI') };
+        }
+        return _sdRevisionSourceLabels[source] || source;
+    }
+    function _sdRevisionBytes(n) {
+        n = Number(n) || 0;
+        if (n < 1024) return _sdT('{var} B', n);
+        if (n < 1024 * 1024) return _sdT('{var} KB', (n / 1024).toLocaleString(_sdLocale(), { maximumFractionDigits: 1 }));
+        return _sdT('{var} MB', (n / (1024 * 1024)).toLocaleString(_sdLocale(), { maximumFractionDigits: 1 }));
+    }
+    function _sdRevisionWhen(ts) {
+        return new Date((Number(ts) || 0) * 1000).toLocaleString(_sdLocale(), { dateStyle: 'short', timeStyle: 'short' });
+    }
+    // The page the panel is about: a saved page has an id, a new tab has none.
+    function _sdRevisionPageId() {
+        var p = _pgActivePage();
+        return (p && p.page_id > 0) ? p.page_id : 0;
+    }
+
     function openSnapshotsPanel() {
         var old = document.getElementById('sd-snapshots-panel');
         if (old) { old.remove(); return; }
@@ -50168,11 +50201,78 @@ const StyleDesigner = (function () {
             } catch (e) { return null; }
         }
 
+        // The revisions section: the rows the server answered, kept here so
+        // "Show more" extends the same list.
+        var revState = { rows: [], more: false, ready: true, loading: false, pageId: _sdRevisionPageId() };
+
+        function revisionsHtml() {
+            var html = '<div class="sd-snap-sect"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('Published revisions')) + '</div>';
+            if (!revState.pageId) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('The page has not been published yet.')) + '</div>';
+            }
+            if (!revState.ready) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('Revisions start with the next update of the database.')) + '</div>';
+            }
+            if (revState.loading && !revState.rows.length) {
+                return html + '<div class="sd-snap-empty"><span class="bi bi-hourglass-split me-1"></span>' + esc(_sdT('Loading…')) + '</div>';
+            }
+            if (!revState.rows.length) {
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
+            }
+            var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+            html += '<div class="sd-snap-list sd-rev-list">';
+            revState.rows.forEach(function (r, i) {
+                // The size against the revision before it in the list (the
+                // older one), so the delta reads as what this publish added.
+                var older = revState.rows[i + 1];
+                var delta = older ? (Number(r.size) - Number(older.size)) : 0;
+                var deltaTxt = older ? ' (' + (delta >= 0 ? '+' : '−') + _sdRevisionBytes(Math.abs(delta)) + ')' : '';
+                var title = (r.settings && r.settings.page_title) ? String(r.settings.page_title) : '';
+                html += '<div class="sd-snap-item sd-rev-item" data-no="' + r.revision_no + '">' +
+                    '<div class="sd-snap-info">' +
+                        '<div class="sd-snap-name">' +
+                            '<span class="sd-rev-no">#' + r.revision_no + '</span> ' +
+                            '<span class="sd-rev-src sd-rev-src-' + esc(r.source) + '">' + esc(_sdRevisionSourceLabel(r.source)) + '</span> ' +
+                            esc(r.user_username || _sdT('Unknown')) +
+                        '</div>' +
+                        '<div class="sd-snap-date">' + esc(_sdRevisionWhen(r.created_at)) + ' · ' + esc(_sdRevisionBytes(r.size)) + esc(deltaTxt) +
+                            (title ? ' · ' + esc(title) : '') + '</div>' +
+                    '</div>' +
+                    '<div class="sd-snap-acts">' +
+                        '<button type="button" class="sd-snap-load sd-rev-compare" data-no="' + r.revision_no + '" title="' + esc(_sdT('Compare with the page now')) + '"><span class="bi bi-arrow-left-right"></span></button>' +
+                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (mayEdit ? '' : ' disabled title="' + esc(_sdT('Another person is editing this page.')) + '"') + '>' + esc(_sdT('Load')) + '</button>' +
+                    '</div></div>';
+            });
+            html += '</div>';
+            if (revState.more) {
+                html += '<button type="button" class="sd-snap-more" id="sd-rev-more">' + esc(_sdT('Show older revisions')) + '</button>';
+            }
+            return html;
+        }
+
+        function loadRevisions(beforeNo) {
+            if (!revState.pageId) return;
+            revState.loading = true;
+            _pgApiPost('revisions_list', { page_id: revState.pageId, before_no: beforeNo || 0 }).then(function (res) {
+                revState.loading = false;
+                if (!res || res.status !== 'success') {
+                    if (res && res.message) sdToast(esc(res.message), 'error');
+                    return;
+                }
+                revState.ready = res.ready !== false;
+                revState.rows  = beforeNo ? revState.rows.concat(res.revisions || []) : (res.revisions || []);
+                revState.more  = !!res.more;
+                renderList();
+            }, function () { revState.loading = false; renderList(); });
+        }
+
         function renderList() {
             var snaps = _loadSnapshots();
             var autosaveSnap = _readAutosaveAsSnapshot();
-            var html = '<div class="sd-snap-hdr"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Snapshots')) + '' +
-                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>' +
+            var html = '<div class="sd-snap-hdr"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '' +
+                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>';
+            html += revisionsHtml();
+            html += '<div class="sd-snap-sect"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Local snapshots')) + '</div>' +
                 '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
             if (!snaps.length && !autosaveSnap) {
                 html += '<div class="sd-snap-empty">' + esc(_sdT('There is no snapshot yet')) + '</div>';
@@ -50216,7 +50316,25 @@ const StyleDesigner = (function () {
             var closeBtn = panel.querySelector('#sd-snap-close-btn');
             if (closeBtn) closeBtn.addEventListener('click', function() { panel.remove(); });
 
-            panel.querySelectorAll('.sd-snap-load').forEach(function(b) {
+            var moreBtn = panel.querySelector('#sd-rev-more');
+            if (moreBtn) moreBtn.addEventListener('click', function () {
+                var last = revState.rows[revState.rows.length - 1];
+                if (last) loadRevisions(last.revision_no);
+            });
+
+            panel.querySelectorAll('.sd-rev-compare').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    _sdRevisionOpenCompare(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                });
+            });
+            panel.querySelectorAll('.sd-rev-restore').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    if (this.disabled) return;
+                    _sdRevisionRestore(revState.pageId, parseInt(this.dataset.no, 10), function () { panel.remove(); });
+                });
+            });
+
+            panel.querySelectorAll('.sd-snap-load:not(.sd-rev-compare):not(.sd-rev-restore)').forEach(function(b) {
                 b.addEventListener('click', function() {
                     var id = this.dataset.id;
                     // Resolve the snapshot record. Autosave is a virtual
@@ -50260,6 +50378,7 @@ const StyleDesigner = (function () {
         }
 
         renderList();
+        loadRevisions(0);
         document.body.appendChild(panel);
         if (btn) {
             var r = btn.getBoundingClientRect();
@@ -50267,9 +50386,239 @@ const StyleDesigner = (function () {
             panel.style.top   = (r.bottom + 4) + 'px';
         }
         function onOutside(ev) {
+            // A compare dialog opened from the panel is its own layer.
+            if (document.getElementById('sd-rev-overlay')) return;
             if (!panel.contains(ev.target) && ev.target !== btn) { panel.remove(); document.removeEventListener('mousedown', onOutside); }
         }
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
+    }
+
+    // One revision from the server, as a tree the editor can hold.
+    function _sdRevisionFetch(pageId, no) {
+        return _pgApiPost('revision_get', { page_id: pageId, revision_no: no }).then(function (res) {
+            if (!res || res.status !== 'success' || !res.revision || !res.revision.tree) {
+                sdToast(esc((res && res.message) || _sdT('The revision could not be read.')), 'error');
+                return null;
+            }
+            var rev = res.revision;
+            rev.tree = _sdTreeObjects(rev.tree);
+            _stripToggleableShowState(rev.tree);
+            return rev;
+        }, function () {
+            sdToast(esc(_sdT('The revision could not be read.')), 'error');
+            return null;
+        });
+    }
+
+    // Loads a revision's tree into the editor as unsaved work. The tree the
+    // operator had is one Ctrl+Z away, and the page is marked so the next
+    // publish records where its tree came from.
+    function _sdRevisionRestore(pageId, no, done) {
+        if (typeof _collab !== 'undefined' && _collab && _collab.mayEdit === false) {
+            sdToast(esc(_sdT('Another person is editing this page.')), 'warning');
+            return;
+        }
+        _sdRevisionFetch(pageId, no).then(function (rev) {
+            if (!rev) return;
+            var p = _pgActivePage();
+            if (!p || p.page_id !== pageId) {
+                sdToast(esc(_sdT('Open the page in its tab first.')), 'warning');
+                return;
+            }
+            var go = function () {
+                saveState();
+                _replaceTreeWithPrefetch(cloneTree(rev.tree));
+                p.restoredFrom = no;
+                if (typeof done === 'function') done();
+                sdToast(esc(_sdT('Revision #{var} is on the canvas as unsaved work. Publish to put it on the site; Ctrl+Z brings the previous tree back.', no)), 'success', 6000);
+            };
+            if (typeof window.pgConfirm === 'function') {
+                window.pgConfirm({
+                    title: _sdT('Load revision #{var}?', no),
+                    message: _sdT('The page on the canvas is replaced by this revision. Nothing is published until you save.'),
+                    confirmText: _sdT('Load'), cancelText: _sdT('Cancel')
+                }).then(function (ok) { if (ok) go(); });
+            } else if (window.confirm(_sdT('The page on the canvas is replaced by this revision. Nothing is published until you save.'))) {
+                go();
+            }
+        });
+    }
+
+    // ── Compare ──
+    // The revision beside the page as it is now: both drawn through the
+    // page's frame (generateHTML() with the revision's tree), shown side by
+    // side as blob documents, and as a line diff of the two HTML texts.
+    // System widgets are not drawn by the server here; they appear as
+    // their placeholders on both sides.
+    function _sdRevisionOpenCompare(pageId, no, done) {
+        _sdRevisionFetch(pageId, no).then(function (rev) {
+            if (!rev) return;
+            var nameEl = document.querySelector('[name="name"]');
+            var bcEl   = document.querySelector('[name="additional_body_classes"]');
+            var styleName = nameEl ? nameEl.value.trim() : '';
+            var addBc     = bcEl ? bcEl.value.trim() : '';
+            var nowHtml = generateHTML(styleName, addBc);
+            var revHtml = generateHTML(styleName, addBc, rev.tree);
+            var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
+            var revDoc  = _sdPreviewDocHtml(null, revHtml);
+            _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+        });
+    }
+
+    function _sdRevisionShowCompare(rev, docs, pageId, done) {
+        var existing = document.getElementById('sd-rev-overlay');
+        if (existing) existing.remove();
+        var overlay = document.createElement('div');
+        overlay.id = 'sd-rev-overlay';
+        overlay.className = 'sd-fr-overlay sd-rev-overlay';
+        var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
+        var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+        overlay.innerHTML =
+            '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
+                '<div class="sd-fr-header">' +
+                    '<span class="bi bi-arrow-left-right me-2"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
+                    '<div class="sd-rev-tabs" role="tablist">' +
+                        '<button type="button" class="sd-rev-tab is-active" data-view="preview">' + esc(_sdT('Preview')) + '</button>' +
+                        '<button type="button" class="sd-rev-tab" data-view="code">' + esc(_sdT('Code')) + '</button>' +
+                    '</div>' +
+                    '<button type="button" class="sd-fr-close" id="sd-rev-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
+                '</div>' +
+                '<div class="sd-rev-body">' +
+                    '<div class="sd-rev-view sd-rev-view-preview">' +
+                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('Revision #{var}', rev.revision_no)) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('Revision #{var}', rev.revision_no)) + '"></iframe></div>' +
+                        '<div class="sd-rev-pane"><div class="sd-rev-pane-hdr">' + esc(_sdT('The page now')) + '</div><iframe class="sd-rev-frame" title="' + esc(_sdT('The page now')) + '"></iframe></div>' +
+                    '</div>' +
+                    '<div class="sd-rev-view sd-rev-view-code" hidden><pre class="sd-rev-diff"></pre></div>' +
+                '</div>' +
+                '<div class="sd-fr-footer">' +
+                    '<span class="sd-rev-summary"></span>' +
+                    '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
+                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (mayEdit ? '' : ' disabled') + '>' + esc(_sdT('Load this revision')) + '</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        var frames = overlay.querySelectorAll('.sd-rev-frame');
+        var urls = [URL.createObjectURL(new Blob([docs.revDoc], { type: 'text/html' })),
+                    URL.createObjectURL(new Blob([docs.nowDoc], { type: 'text/html' }))];
+        frames[0].src = urls[0];
+        frames[1].src = urls[1];
+
+        var diff = _sdLineDiff(docs.revHtml.split('\n'), docs.nowHtml.split('\n'));
+        overlay.querySelector('.sd-rev-diff').innerHTML = _sdLineDiffHtml(diff);
+        overlay.querySelector('.sd-rev-summary').textContent = diff.same
+            ? _sdT('The revision and the page print the same HTML.')
+            : _sdT('{var:1} lines added, {var:2} removed against the revision.', [diff.added, diff.removed]);
+
+        var close = function () {
+            urls.forEach(function (u) { URL.revokeObjectURL(u); });
+            overlay.remove();
+        };
+        overlay.querySelector('#sd-rev-close').addEventListener('click', close);
+        overlay.querySelector('#sd-rev-cancel').addEventListener('click', close);
+        overlay.addEventListener('mousedown', function (ev) { if (ev.target === overlay) close(); });
+        overlay.querySelectorAll('.sd-rev-tab').forEach(function (t) {
+            t.addEventListener('click', function () {
+                overlay.querySelectorAll('.sd-rev-tab').forEach(function (x) { x.classList.toggle('is-active', x === t); });
+                overlay.querySelector('.sd-rev-view-preview').hidden = (t.dataset.view !== 'preview');
+                overlay.querySelector('.sd-rev-view-code').hidden    = (t.dataset.view !== 'code');
+            });
+        });
+        var loadBtn = overlay.querySelector('#sd-rev-load');
+        loadBtn.addEventListener('click', function () {
+            if (loadBtn.disabled) return;
+            close();
+            _sdRevisionRestore(pageId, rev.revision_no, done);
+        });
+    }
+
+    // ── Line diff ──
+    // Myers' O(ND) difference of two arrays of lines, the way diff tools
+    // compute it: the shortest edit script, returned as a list of
+    // { kind: ' ' | '-' | '+', text }. Capped: two documents that differ by
+    // more than the cap are answered with a plain replace, so a huge page
+    // never freezes the editor.
+    function _sdLineDiff(a, b) {
+        var n = a.length, m = b.length;
+        var max = n + m;
+        var cap = 4000;
+        var out = { ops: [], added: 0, removed: 0, same: false };
+        if (n === m) {
+            var equal = true;
+            for (var q = 0; q < n; q++) if (a[q] !== b[q]) { equal = false; break; }
+            if (equal) {
+                out.same = true;
+                for (var e = 0; e < n; e++) out.ops.push({ kind: ' ', text: a[e] });
+                return out;
+            }
+        }
+        // Forward pass: V[k] is the furthest x on diagonal k after d edits;
+        // the V of each round is kept so the script can be walked back.
+        var v = { 1: 0 }, trace = [], found = false;
+        for (var d = 0; d <= max && d <= cap && !found; d++) {
+            var before = {};
+            for (var key in v) if (Object.prototype.hasOwnProperty.call(v, key)) before[key] = v[key];
+            trace.push(before);
+            for (var k = -d; k <= d; k += 2) {
+                var x = (k === -d || (k !== d && before[k - 1] < before[k + 1])) ? before[k + 1] : before[k - 1] + 1;
+                var y = x - k;
+                while (x < n && y < m && a[x] === b[y]) { x++; y++; }
+                v[k] = x;
+                if (x >= n && y >= m) { found = true; break; }
+            }
+        }
+        if (!found) {
+            a.forEach(function (t) { out.ops.push({ kind: '-', text: t }); });
+            b.forEach(function (t) { out.ops.push({ kind: '+', text: t }); });
+            out.removed = n; out.added = m;
+            return out;
+        }
+        // Backward pass, from the end of both texts to their start.
+        var ops = [];
+        var px = n, py = m;
+        for (var td = trace.length - 1; td >= 0; td--) {
+            var vv = trace[td];
+            var kk = px - py;
+            var prevK = (kk === -td || (kk !== td && vv[kk - 1] < vv[kk + 1])) ? kk + 1 : kk - 1;
+            var prevX = vv[prevK];
+            var prevY = prevX - prevK;
+            while (px > prevX && py > prevY) { ops.push({ kind: ' ', text: a[px - 1] }); px--; py--; }
+            if (td > 0) {
+                if (px === prevX) ops.push({ kind: '+', text: b[prevY] });
+                else ops.push({ kind: '-', text: a[prevX] });
+            }
+            px = prevX; py = prevY;
+        }
+        ops.reverse();
+        ops.forEach(function (o) { if (o.kind === '+') out.added++; else if (o.kind === '-') out.removed++; });
+        out.ops = ops;
+        return out;
+    }
+
+    // The diff as markup: changed lines in full, unchanged ones folded to two
+    // lines of context on either side of a change.
+    function _sdLineDiffHtml(diff) {
+        var ops = diff.ops;
+        var keep = new Array(ops.length);
+        for (var i = 0; i < ops.length; i++) {
+            if (ops[i].kind === ' ') continue;
+            for (var c = Math.max(0, i - 2); c <= Math.min(ops.length - 1, i + 2); c++) keep[c] = true;
+        }
+        var html = '';
+        var folded = 0;
+        var flush = function () {
+            if (folded > 0) html += '<span class="sd-rev-fold">' + esc(_sdT('{var} unchanged lines', folded)) + '</span>\n';
+            folded = 0;
+        };
+        for (var j = 0; j < ops.length; j++) {
+            if (!keep[j]) { folded++; continue; }
+            flush();
+            var cls = ops[j].kind === '+' ? 'sd-rev-add' : (ops[j].kind === '-' ? 'sd-rev-del' : 'sd-rev-ctx');
+            html += '<span class="' + cls + '">' + esc(ops[j].kind) + ' ' + esc(ops[j].text) + '</span>\n';
+        }
+        flush();
+        if (!html) html = '<span class="sd-rev-fold">' + esc(_sdT('The revision and the page print the same HTML.')) + '</span>';
+        return html;
     }
 
     // ========================= FORM =========================
@@ -53873,6 +54222,9 @@ const StyleDesigner = (function () {
             // the shared components it shows all count as touching it.
             if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
+            // A tree loaded back from the History panel is recorded as a
+            // restore when it is published (includes/fn/page_revisions.php).
+            if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
@@ -53889,6 +54241,9 @@ const StyleDesigner = (function () {
     // every baseline, and move the URL to the edit screen if this was "add".
     function _pgTabsAfterSave(data) {
         var layoutFresh = false;
+        // What was published is on the site; a later publish of the same
+        // tree is a publish, not a restore.
+        _pages.forEach(function (p) { delete p.restoredFrom; });
         if (data && Array.isArray(data.pages)) {
             // Page pickers that named an unsaved tab (`tab:<key>`) now get
             // the id the server handed out — in the widget configs and in

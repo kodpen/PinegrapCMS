@@ -21,7 +21,7 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), Ma
 - Every `PG_CRON_INTERVAL` seconds (60), one run at a time, only while `pinegrap-job-ready` (`docker/job-ready.php`) says the database `config.version` equals the last version of `versions.php`. The installer writes config.php before it runs the upgrade steps; a job started then would work on half-built tables. A database behind or ahead of the code waits too.
 
 ## What about updates?
-- The software is in the image: a release is installed by building or pulling the new image and recreating the containers. An update installed from the panel lasts until the app container is recreated, and the web container keeps the old static files; recreating then leaves the code older than the database (the cron service stops running the job).
+- The software is in the image: a release is installed by pulling (docker-image-publishing.md) or building the new image and recreating the containers. A panel update lasts until the app container is recreated, and the web container keeps the old static files; recreating then leaves the code older than the database (the cron service stops running the job).
 
 ## How is it checked?
 - `tools/check_docker.sh` (CI: `.github/workflows/docker-check.yml`, every push to development, pull requests that touch docker/ or the files the images depend on): build, a file planted in `pinegrap/data/files/` must not reach the image, extensions and settings, 403 for data/, includes/ and dumps, a static file, the install service (idle without an administrator, installs the starter site with one, `skipped:` the next time), home page, control panel, an uploaded picture over nginx, a recreated app container, a job.php run from the cron container.

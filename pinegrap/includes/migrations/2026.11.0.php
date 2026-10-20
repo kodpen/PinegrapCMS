@@ -37,6 +37,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
+	upgrade_2026_11_0_page_revisions();         // 11.0.15
 
 }
 
@@ -581,5 +582,41 @@ function upgrade_2026_11_0_short_link_redirects() {
 	$widen('url', 2048, "VARCHAR(2048) NOT NULL DEFAULT ''");
 
 	install_note('Short links: a short link can now send visitors on to its destination with a permanent (301) or temporary (302) redirect, its name can be an old address with Turkish letters, and a * in a name stands for any part of an address that no page answers.');
+
+}
+
+// Page revisions (includes/fn/page_revisions.php).
+//
+// page_revisions keeps one row for every publish of a visual-designer page:
+// the tree as saved, the SHA-1 of the tree and of the HTML drawn from it, the
+// page's settings as JSON, who published, when and from where (publish,
+// restore, import, ai). revision_no counts up per page; the unique key is what
+// makes two saves of one page at the same moment take different numbers. The
+// two config columns are the retention rules: the last N revisions of a page
+// are kept, and so is every revision younger than D days.
+function upgrade_2026_11_0_page_revisions() {
+
+	install_create_table('page_revisions', "CREATE TABLE page_revisions (
+		revision_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		revision_no    INT UNSIGNED NOT NULL DEFAULT 0,
+		page_tree_json LONGTEXT NOT NULL,
+		tree_hash      CHAR(40) NOT NULL DEFAULT '',
+		tree_code_hash CHAR(40) NOT NULL DEFAULT '',
+		settings_json  TEXT NOT NULL,
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		source         VARCHAR(16) NOT NULL DEFAULT 'publish',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (revision_id),
+		UNIQUE KEY idx_page_revision (page_id, revision_no),
+		KEY idx_page_created (page_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'page_revisions_keep', "SMALLINT UNSIGNED NOT NULL DEFAULT 30");
+
+	install_add_column('config', 'page_revisions_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
+
+	install_note('Pages: every publish of a visual-designer page is kept as a revision, with who published it and when; the last 30 revisions of a page and every revision of the last 90 days are kept.');
 
 }
