@@ -5,7 +5,8 @@
  * Tests for the toolbar helpers in includes/fn/output.php: the list filter
  * (pg_filter_select() - the selected option, the values carried along from
  * the address, escaping), the period navigator (pg_period_unit(),
- * pg_period_nav()) and the cancel button's handler (pg_output_go_script()).
+ * pg_period_nav()), the cancel button's handler (pg_output_go_script()) and
+ * when the licence check asks the server again (pg_license_check_due()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -107,4 +108,30 @@ function test_output_go_script_keeps_the_address_a_string()
 
 	pg_assert_same('pgSettingsGo("/x\u0027);alert(1);//\u0022\u003Cb\u003E");', $decoded, 'quotes and tags stay escaped for the script');
 	pg_assert_same($attack, json_decode(substr($decoded, strlen('pgSettingsGo('), -2)), 'the script gets the address back unchanged');
+}
+
+// A session that has not asked yet asks, and a forced check always asks.
+function test_output_license_check_due_first_and_forced()
+{
+	pg_assert_true(pg_license_check_due(false, '', 0, 1000000), 'never asked in this session');
+	pg_assert_true(pg_license_check_due(true, 'success', 1000000, 1000000), 'forced right after a good answer');
+	pg_assert_true(pg_license_check_due(true, '', 1000000, 1000000), 'forced right after a failure');
+}
+
+// A failed attempt (no usable answer, status '') waits 15 minutes before the
+// next one. It used to be retried on every call, two per panel page.
+function test_output_license_check_due_waits_after_a_failure()
+{
+	pg_assert_false(pg_license_check_due(false, '', 1000000, 1000000), 'the same moment');
+	pg_assert_false(pg_license_check_due(false, '', 1000000, 1000000 + 899), 'just before the wait ends');
+	pg_assert_true(pg_license_check_due(false, '', 1000000, 1000000 + 900), 'the wait is over');
+	pg_assert_false(pg_license_check_due(false, null, 1000000, 1000000 + 60), 'a missing status counts as a failure');
+}
+
+// An answer from the server, valid licence or not, is trusted for 12 hours.
+function test_output_license_check_due_trusts_an_answer_for_twelve_hours()
+{
+	pg_assert_false(pg_license_check_due(false, 'success', 1000000, 1000000 + 43200), 'twelve hours exactly');
+	pg_assert_true(pg_license_check_due(false, 'success', 1000000, 1000000 + 43201), 'past twelve hours');
+	pg_assert_false(pg_license_check_due(false, 'error', 1000000, 1000000 + 3600), 'a refused key is not asked again within the hour');
 }
