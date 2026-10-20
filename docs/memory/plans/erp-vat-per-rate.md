@@ -19,7 +19,7 @@ description: Plan (owner's decision 2026-10-21, not started): the ERP takes VAT 
 2. Manual documents: `erp_manual_lines_build()` (includes/erp/invoice_manual.php; invoices, quotes, purchase orders, the API) and the editor preview (M).
 3. Returns: `includes/erp/returns.php` takes the returned lines' VAT per rate of the return (M).
 4. Orders, after the first open question: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
-5. The old order path (`parasut_create_invoice()`, includes/fn/parasut.php, from view_order.php) issues the e-document at once and only reports the variance: the driver's shift, or retire it for the ERP path (M).
+5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue the e-document at once and only report the variance: the driver's shift there too until they are removed (erp-edocument-leftovers.md) (M).
 6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
 
 ## Open questions?
