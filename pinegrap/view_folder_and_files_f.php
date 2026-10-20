@@ -478,6 +478,8 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                     '" . e($user['id']) . "',
                     UNIX_TIMESTAMP())");
 
+            pg_audit_record('create', 'files', (int) mysqli_insert_id(db::$con));
+
             $copied++;
         }
     }
@@ -1455,7 +1457,11 @@ function pg_recycle_is_inside($folder_id)
 // same side effects the files screen bulk delete performs.
 function pg_delete_file_record($file)
 {
+    $audit_before = pg_audit_fetch('files', $file['id']);
+
     db("DELETE FROM files WHERE id = '" . e($file['id']) . "'");
+
+    pg_audit_record('delete', 'files', (int) $file['id'], $audit_before);
     db("DELETE FROM system_theme_css_rules WHERE file_id = '" . e($file['id']) . "'");
     db("DELETE FROM preview_styles WHERE theme_id = '" . e($file['id']) . "'");
     @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -1511,7 +1517,11 @@ function pg_delete_page_record($page_id, $user)
         }
     }
 
+    $audit_before = pg_audit_fetch('page', $page_id);
+
     db("DELETE FROM page WHERE page_id = '" . e($page_id) . "'");
+
+    pg_audit_record('delete', 'page', (int) $page_id, $audit_before);
 
     // Stored SEO findings for this page; links matter in both directions.
     if (db_item("SHOW TABLES LIKE 'seo_issue'")) {
@@ -2163,6 +2173,8 @@ function pg_recycle_page($page_id, $user)
         return array('status' => 'error', 'message' => lang('The Recycle Bin is not available yet. Please run the upgrade.'), 'home' => false);
     }
 
+    $audit_before = pg_audit_fetch('page', $page['page_id']);
+
     db(
         "UPDATE page SET
             page_folder = '" . e($bin_id) . "',
@@ -2177,6 +2189,8 @@ function pg_recycle_page($page_id, $user)
     db(
         "INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
         VALUES ('page', '" . e($page['page_id']) . "', '" . e((int) $page['page_folder']) . "', UNIX_TIMESTAMP(), '" . e($user['id']) . "')");
+
+    pg_audit_record('recycle', 'page', (int) $page['page_id'], $audit_before);
 
     return array('status' => 'binned', 'message' => '', 'home' => ($page['page_home'] === 'yes'));
 }
@@ -5015,7 +5029,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             } elseif ($item_kind == 'product') {
 
+                $audit_before = pg_audit_fetch('products', $item_id);
                 db("UPDATE products SET name = '" . e($name) . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
+                pg_audit_record('update', 'products', $item_id, $audit_before);
 
             } else {
 
@@ -5296,11 +5312,15 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     // The same move every screen that deletes a product makes,
                     // product.deleted with recycled: true included. False for a
                     // product that is gone or already in the bin.
+                    $audit_before = pg_audit_fetch('products', $item_id);
+
                     $product_name = pg_catalog_bin_product($item_id, $user['id']);
 
                     if ($product_name === false) {
                         continue;
                     }
+
+                    pg_audit_record('recycle', 'products', $item_id, $audit_before);
 
                     log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product_name))), $_SESSION['sessionusername']);
 
@@ -5383,11 +5403,15 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                         $sql_variant_ids = implode(',', $variant_ids);
 
+                        $audit_before = pg_audit_fetch_many('products', $variant_ids);
+
                         db(
                             "UPDATE products
                             SET recycled = '0',
                                 enabled = recycled_enabled
                             WHERE (id IN (" . $sql_variant_ids . ")) AND (recycled = '1')");
+
+                        pg_audit_record_many('restore', 'products', $audit_before);
 
                         db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id IN (" . $sql_variant_ids . "))");
                     }
@@ -5396,11 +5420,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 } elseif ($item_kind == 'product') {
 
+                    $audit_before = pg_audit_fetch('products', $item_id);
                     db(
                         "UPDATE products
                         SET recycled = '0',
                             enabled = recycled_enabled
                         WHERE id = '" . e($item_id) . "'");
+                    pg_audit_record('restore', 'products', $item_id, $audit_before);
 
                     db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . e($item_id) . "')");
 
@@ -5568,12 +5594,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         continue;
                     }
 
+                    $audit_before = pg_audit_fetch('products', $item_id);
                     db(
                         "UPDATE products
                         SET enabled = '" . e($enabled) . "',
                             timestamp = UNIX_TIMESTAMP(),
                             user = '" . e($user['id']) . "'
                         WHERE id = '" . e($item_id) . "'");
+                    pg_audit_record('update', 'products', $item_id, $audit_before);
 
                     log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array(h($product['name'])))), $_SESSION['sessionusername']);
 
@@ -5960,6 +5988,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 if ((count($sql_parts) > 0) || ($bulk_tax_sql !== '')) {
 
+                    $audit_before = pg_audit_fetch('products', $product_id);
                     db(
                         "UPDATE products
                         SET
@@ -5968,6 +5997,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             timestamp = UNIX_TIMESTAMP(),
                             user = '" . e($user['id']) . "'
                         WHERE id = '" . e($product_id) . "'");
+                    pg_audit_record('update', 'products', $product_id, $audit_before);
 
                     if ($bulk_price_method !== '') {
                         pg_price_history_queue($product_id, 'panel');
@@ -6468,12 +6498,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // short description when a product is created, but by the time it
             // is being edited here it is a published address -- rewriting it
             // from a typo correction would break every link to the page.
+            $audit_before = pg_audit_fetch('products', $quick_id);
             db(
                 "UPDATE products
                 SET " . $quick_sql . ",
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($quick_id) . "'");
+            pg_audit_record('update', 'products', $quick_id, $audit_before);
 
             if ($quick_field === 'price') {
                 pg_price_history_record($quick_id, 'panel');
@@ -6826,6 +6858,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $file_id = mysqli_insert_id(db::$con);
 
+            pg_audit_record('create', 'files', (int) $file_id);
+
             log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $name)), $_SESSION['sessionusername']);
 
             respond(array(
@@ -6895,12 +6929,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             respond(array('status' => 'error', 'message' => lang('That name is already in use. Please choose a different name.')));
                         }
 
+                        $audit_before = pg_audit_fetch('page', $item_id);
                         db(
                             "UPDATE page SET
                                 page_name = '" . e($name) . "',
                                 page_timestamp = UNIX_TIMESTAMP(),
                                 page_user = '" . e($user['id']) . "'
                             WHERE page_id = '" . e($item_id) . "'");
+                        pg_audit_record('update', 'page', $item_id, $audit_before);
 
                         log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
                     }
@@ -6962,6 +6998,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     $file_extension = mb_strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
+                    $audit_before = pg_audit_fetch('files', $item_id);
                     db(
                         "UPDATE files SET
                             name = '" . e($name) . "',
@@ -6969,6 +7006,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             timestamp = UNIX_TIMESTAMP(),
                             user = '" . e($user['id']) . "'
                         WHERE id = '" . e($item_id) . "'");
+                    pg_audit_record('update', 'files', $item_id, $audit_before);
 
                     log_activity(lang(array('string' => 'file ({var:1}) was modified', 'vars' => $name)), $_SESSION['sessionusername']);
 
@@ -7036,12 +7074,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                         if ((int) $file['folder'] != $target_id) {
 
+                            $audit_before = pg_audit_fetch('files', $item_id);
                             db(
                                 "UPDATE files SET
                                     folder = '" . e($target_id) . "',
                                     timestamp = UNIX_TIMESTAMP(),
                                     user = '" . e($user['id']) . "'
                                 WHERE id = '" . e($item_id) . "'");
+                            pg_audit_record('update', 'files', $item_id, $audit_before);
 
                             $moved++;
                         }
@@ -7063,12 +7103,14 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                         if ((int) $page['page_folder'] != $target_id) {
 
+                            $audit_before = pg_audit_fetch('page', $item_id);
                             db(
                                 "UPDATE page SET
                                     page_folder = '" . e($target_id) . "',
                                     page_timestamp = UNIX_TIMESTAMP(),
                                     page_user = '" . e($user['id']) . "'
                                 WHERE page_id = '" . e($item_id) . "'");
+                            pg_audit_record('update', 'page', $item_id, $audit_before);
 
                             $moved++;
                         }
@@ -7249,6 +7291,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                         $created[] = array('kind' => 'file', 'id' => (int) mysqli_insert_id(db::$con));
 
+                        pg_audit_record('create', 'files', $created[count($created) - 1]['id']);
+
                         log_activity(lang(array('string' => '{var:1} ({var:2}) was duplicated', 'vars' => array(lang('file'), $file['name']))), $_SESSION['sessionusername']);
 
                         $copied++;
@@ -7340,7 +7384,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
+                $audit_before = pg_audit_fetch('files', $file_id);
+
                 db("DELETE FROM files WHERE id = '" . e($file_id) . "'");
+
+                pg_audit_record('delete', 'files', (int) $file_id, $audit_before);
 
                 // A file can carry theme css rules and preview styles; those
                 // rows die with it, the same way the files screen deletes.
@@ -7605,6 +7653,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $file_id = mysqli_insert_id(db::$con);
 
+            pg_audit_record('create', 'files', (int) $file_id);
+
             log_activity(lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => h($name))), $_SESSION['sessionusername']);
 
             // What was done to the picture is worth its own line: the file on
@@ -7846,6 +7896,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 // The engine already recompressed, so the optimized flag is
                 // set — running the optimize button over the result would
                 // only degrade it a second time.
+                $audit_before = pg_audit_fetch('files', $file['id']);
                 db(
                     "UPDATE files
                     SET
@@ -7859,6 +7910,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         timestamp = UNIX_TIMESTAMP(),
                         user = '" . USER_ID . "'
                     WHERE id = '" . e($file['id']) . "'");
+                pg_audit_record('update', 'files', $file['id'], $audit_before);
 
                 @unlink($old_path);
 
@@ -8013,6 +8065,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             if (count($allowed) > 0) {
+                $audit_before = pg_audit_fetch_many('files', $allowed);
+
                 db(
                     "UPDATE files
                     SET
@@ -8020,6 +8074,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         timestamp = UNIX_TIMESTAMP(),
                         user = '" . USER_ID . "'
                     WHERE id IN (" . implode(',', $allowed) . ")");
+
+                pg_audit_record_many('update', 'files', $audit_before);
 
                 log_activity(lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);
             }
@@ -8205,6 +8261,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $size_sql = "size = '" . e((int) filesize($new_path)) . "',";
             }
 
+            $audit_before = pg_audit_fetch('files', $file_id);
             db(
                 "UPDATE files SET
                     name = '" . e($name) . "',
@@ -8216,6 +8273,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($file_id) . "'");
+            pg_audit_record('update', 'files', $file_id, $audit_before);
 
             log_activity(lang(array('string' => 'file ({var:1}) was modified', 'vars' => $name)), $_SESSION['sessionusername']);
 
@@ -8295,6 +8353,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // Its edges swapped and its bytes changed; and it has been
             // re-encoded outside the site's picture profile, so the optimized
             // mark no longer holds and the button is offered again.
+            $audit_before = pg_audit_fetch('files', $file_id);
             db(
                 "UPDATE files SET
                     size = '" . e((int) filesize($path)) . "',
@@ -8304,6 +8363,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($file_id) . "'");
+            pg_audit_record('update', 'files', $file_id, $audit_before);
 
             log_activity(lang(array('string' => 'image ({var:1}) was rotated', 'vars' => $file['name'])), $_SESSION['sessionusername']);
 
@@ -9888,6 +9948,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         '" . e($user['id']) . "',
                         UNIX_TIMESTAMP())");
 
+                pg_audit_record('create', 'files', (int) mysqli_insert_id(db::$con));
+
                 $extracted++;
             }
 
@@ -10330,6 +10392,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             }
 
             if (count($allowed) > 0) {
+                $audit_before = pg_audit_fetch_many('files', $allowed);
+
                 db(
                     "UPDATE files
                     SET
@@ -10337,6 +10401,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         timestamp = UNIX_TIMESTAMP(),
                         user = '" . e($user['id']) . "'
                     WHERE id IN (" . implode(',', $allowed) . ")");
+
+                pg_audit_record_many('update', 'files', $audit_before);
 
                 log_activity(lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);
             }
@@ -10728,6 +10794,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 $original_parent_id = 0;
 
+                // Files and pages are recorded in the audit trail once the
+                // row has its bin folder and its parked name.
+                $audit_table = ($item_kind === 'file') ? 'files' : (($item_kind === 'page') ? 'page' : '');
+                $audit_before = ($audit_table !== '') ? pg_audit_fetch($audit_table, $item_id) : array();
+
                 switch ($item_kind) {
 
                     case 'file':
@@ -10876,6 +10947,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             '" . e($original_parent_id) . "',
                             UNIX_TIMESTAMP(),
                             '" . e($user['id']) . "')");
+
+                    if ($audit_table !== '') {
+                        pg_audit_record('recycle', $audit_table, $item_id, $audit_before);
+                    }
                 }
             }
 
@@ -11024,6 +11099,9 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     continue;
                 }
 
+                $audit_table = ($item_kind === 'file') ? 'files' : (($item_kind === 'page') ? 'page' : '');
+                $audit_before = ($audit_table !== '') ? pg_audit_fetch($audit_table, $item_id) : array();
+
                 switch ($item_kind) {
 
                     case 'file':
@@ -11064,6 +11142,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 pg_recycle_release_name($item_kind, $item_id, $user);
 
                 db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
+
+                if ($audit_table !== '') {
+                    pg_audit_record('restore', $audit_table, $item_id, $audit_before);
+                }
+
                 $restored++;
             }
 

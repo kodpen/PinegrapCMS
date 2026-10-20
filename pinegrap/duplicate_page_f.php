@@ -751,6 +751,8 @@ function duplicate_page($request) {
     
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('page'), $original_page_name) )), $_SESSION['sessionusername']);
 
+    pg_audit_record('create', 'page', (int) $new_page['id']);
+
     return array(
         'status' => 'success',
         'page' => $new_page);
