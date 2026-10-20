@@ -64,7 +64,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-revisions-schedule-api.md: External API and MCP for page revisions and scheduled publishing: the three design routes, how times are read, what a restore keeps, the 409 for a page open in the editor
-- page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when pg_designer_save_page() writes one and when not, the source labels, the two retention rules and the daily sweep in job.php
+- page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, source labels, retention and the daily sweep, the History panel, what is not covered
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what a save does with the two times, the general job's pass, manual moves, the designs list badge, editor fields
 - palette-component-atomic.md: Palette components either explode into a real node tree or are atomic (only btn and badge have render/toHTML); button two models and propsButtonLinkOptions.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
