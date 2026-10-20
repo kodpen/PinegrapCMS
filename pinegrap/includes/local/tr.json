@@ -20563,6 +20563,7 @@
     "This application registered itself with the site. Connect it only if you started this from the application yourself.": "Bu uygulama siteye kendini kaydetti. Yalnız bu işlemi uygulamadan kendiniz başlattıysanız bağlayın.",
     "Signed in as": "Giriş yapan",
     "Answer goes to": "Yanıtın gideceği yer",
+    "order delivered": "sipariş teslim edildi",
     "It will be able to:": "Şunları yapabilecek:",
     "It never gets more than your own account may do. You can end the connection at any time by signing out everywhere or changing your password.": "Kendi hesabınızın yapabileceğinden fazlasını asla alamaz. Bağlantıyı istediğiniz an her yerden çıkış yaparak ya da parolanızı değiştirerek sonlandırabilirsiniz.",
     "Connect {var:1}": "{var:1} uygulamasını bağla",
