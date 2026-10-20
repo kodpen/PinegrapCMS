@@ -56,7 +56,7 @@ function check_for_products_in_cart($request) {
     $items = db_items("
         SELECT product_id, SUM(quantity) AS quantity FROM order_items
         WHERE
-            order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'
+            order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'" . pg_order_item_active_sql() . "
             $sql_recipient
         GROUP BY product_id");
 
