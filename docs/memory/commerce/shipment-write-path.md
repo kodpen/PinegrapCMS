@@ -4,7 +4,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 ---
 
 ## What writes shipping_tracking_numbers?
-- Only `includes/fn/shipping.php` (2026.11.0, PR #PRNUM): `pg_shipment_record($order_id, $ship_to_id, $number, $opts)` adds a row or updates the one with the same (`ship_to_id`, `number`) in place (never delete + insert, so id, source and dates survive); `pg_shipment_prune($ship_to_id, $numbers)` removes the address's rows not in the list (the list-replace of the order screen and the API); `pg_shipment_delivered($ship_to_id, $time, $opts)` marks an address delivered.
+- Only `includes/fn/shipping.php` (2026.11.0, PR #879): `pg_shipment_record($order_id, $ship_to_id, $number, $opts)` adds a row or updates the one with the same (`ship_to_id`, `number`) in place (never delete + insert, so id, source and dates survive); `pg_shipment_prune($ship_to_id, $numbers)` removes the address's rows not in the list (the list-replace of the order screen and the API); `pg_shipment_delivered($ship_to_id, $time, $opts)` marks an address delivered.
 - Callers: `update_order()` (order screen, panel AJAX, Workspace: source `panel`; `api_orders_ship()` passes `source => api`), `mp_order_apply_tracking()` / `mp_order_mark_dates()` (source `marketplace`). `shipworks.php` still inserts directly (unchanged; owner question). `delete_order.php` deletes an order's rows.
 - Before step 11.0.20 has run (`pg_shipment_rows_ready()`: all nine columns plus `shipping_methods.carrier`) the record writes the number alone and the delivery has only the caller's guard.
 
