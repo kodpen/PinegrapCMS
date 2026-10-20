@@ -38,6 +38,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_returns();          // 11.0.11
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
+	upgrade_2026_11_0_page_schedule();          // 11.0.17
 	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 
 }
@@ -619,6 +620,38 @@ function upgrade_2026_11_0_page_revisions() {
 	install_add_column('config', 'page_revisions_days', "SMALLINT UNSIGNED NOT NULL DEFAULT 90");
 
 	install_note('Pages: every publish of a visual-designer page is kept as a revision, with who published it and when; the last 30 revisions of a page and every revision of the last 90 days are kept.');
+
+}
+
+// Scheduled publishing of visual-designer pages (includes/fn/page_schedule.php).
+//
+// page.publish_at is the moment a draft goes on the site and page.unpublish_at
+// the moment a page on the site is taken back off it, both unix times, 0 for
+// none. The general job (job.php) makes the move when the time has come and
+// clears the column, so a time is a one-off event. Each column has an index:
+// the job asks for the due rows on every tick, and nearly every row holds 0.
+function upgrade_2026_11_0_page_schedule() {
+
+	$columns = array(
+		'publish_at'   => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'unpublish_at' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('page', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('page', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('page', 'idx_publish_at', "INDEX idx_publish_at (publish_at)");
+
+	install_add_index('page', 'idx_unpublish_at', "INDEX idx_unpublish_at (unpublish_at)");
+
+	install_note('Pages: a visual-designer page can be given a time to go on the site and a time to come off it under Settings, Page; the general job makes the move. How many revisions of a page are kept is set under Site Settings, Features, Page Revisions.');
 
 }
 

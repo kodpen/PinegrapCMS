@@ -509,3 +509,55 @@ function test_legal_documents_page_reads_posted_values_with_the_token()
 	pg_assert_true(($kept !== false) && ($kept < $checked), 'the kept copy is read in the branch before');
 	pg_assert_false(strpos($page, 'validate_token_field()'), 'a wrong token falls back instead of failing');
 }
+
+// A kept copy's address is the document page with the order's id and the type.
+function test_legal_documents_copy_url()
+{
+	pg_assert_same('/pinegrap/legal_document.php?order_id=42&type=preinfo', pg_legal_document_copy_url('42', 'preinfo', '/pinegrap/legal_document.php'));
+	pg_assert_same('/p/legal_document.php?order_id=0&type=a%26b', pg_legal_document_copy_url('x', 'a&b', '/p/legal_document.php'), 'id cast, type encoded');
+}
+
+// The order view gets an address for each document the order has a copy
+// of, '' for the others, in the documents' order; a stored type the
+// documents do not name (kvkk) gets none.
+function test_legal_documents_copy_urls()
+{
+	$kept = array(
+		'kvkk'     => array('type' => 'kvkk', 'html' => '<p>K</p>'),
+		'contract' => array('type' => 'contract', 'html' => '<p>C</p>'),
+	);
+
+	pg_assert_same(
+		array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract'),
+		pg_legal_document_copy_urls($kept, 7, '/p/legal_document.php')
+	);
+	pg_assert_same(array('preinfo' => '', 'contract' => ''), pg_legal_document_copy_urls(array(), 7, '/p/legal_document.php'), 'nothing kept');
+}
+
+// The card after a layout that links neither document lists the kept copies
+// with their names, the addresses escaped; no copy, no card.
+function test_legal_documents_order_view_block()
+{
+	pg_assert_same('', pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '')), 'nothing kept');
+
+	$block = pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract', 'kvkk' => '/x'));
+	$types = pg_legal_document_types();
+
+	pg_assert_contains('<a href="/p/legal_document.php?order_id=7&amp;type=contract" target="_blank" rel="noopener">' . h($types['contract']) . '</a>', $block, 'the contract');
+	pg_assert_false(strpos($block, h($types['preinfo'])) !== false, 'no line for a copy that is not kept');
+	pg_assert_false(strpos($block, 'href="/x"') !== false, 'no line for an unnamed type');
+	pg_assert_contains('<h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6>', $block, 'the heading');
+}
+
+// The order view links the kept copies, never in the receipt e-mail (it
+// attaches them), and adds the card only to a layout that binds no link.
+function test_legal_documents_order_view_links()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php'), '_render_system_widget_order_view');
+
+	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_documents_of_order((int)\$order['id']) : array()", $section, 'no copies in the e-mail');
+	pg_assert_contains("'__legal_preinfo_url'       => h(\$legal_urls['preinfo'])", $section, 'the pre-information form link');
+	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
+	pg_assert_contains("strpos((string)\$tree_json, '__legal_preinfo_url') === false", $section, 'a bound link keeps the card away');
+	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
+}
