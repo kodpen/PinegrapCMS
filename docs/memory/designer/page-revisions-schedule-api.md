@@ -5,13 +5,13 @@ description: External API and MCP for page revisions and scheduled publishing: t
 
 ## Which routes are there?
 - `GET /design/pages/{id}/revisions` (`design:read`, `design.revisions.list`): `DesignRevision` rows newest first, cursor = the last `revision_no`, limit 1–100; no tree. `name`/`title` come from the revision's `settings_json`, `user`/`user_id` null for the job or an importer.
-- `POST /design/pages/{id}/revisions/{no}/restore` (`design:write`, dry run): answers `DesignRestore` = `page` (`DesignPage`), `restored_from`, `revision_no` (the new row, null when nothing was written), `changed`, `warnings`.
+- `POST /design/pages/{id}/revisions/{no}/restore` (`design:write`, dry run): answers `DesignRestore` = `page` (`DesignPage`), `restored_from`, `revision_no` (the new row as `pg_designer_save_page()` returns it, null when nothing was written), `changed`, `warnings`.
 - `POST /design/pages/{id}` (also PATCH; `design:write`, dry run): only `publish_at` / `unpublish_at`, answers `DesignPage`. `POST /design/pages` takes the same two fields.
 - `DesignPage` and `DesignView` carry `publish_at` / `unpublish_at` (ISO, null for none); `DesignView` also `draft`. All three are MCP tools by themselves (routes are tools).
 
 ## How is a time read?
-- `pg_page_schedule_parse_absolute()` (includes/fn/page_schedule.php): digits (unix, at least 1000000000, so `20261021` or `1` is refused) or ISO 8601 with an offset or Z. A date and time without an offset is refused (`offset`): a client cannot see the site's zone. null or "" clears (the params are nullable strings).
-- `pg_page_schedule_request_plan()` (pure) lays the sent times over the stored ones and refuses what the editor would only note: a time for the home page (`home`), a passed `publish_at` on create (`passed`: the new draft would go live at once), and `order`. On an existing page a passed time is carried out by the save, as in the editor; a publish time ahead takes a live page off the site until then. Tests: `tests/page_schedule_test.php`.
+- `pg_page_schedule_parse_absolute()` (includes/fn/page_schedule.php): digits (unix, at least 1000000000, so `20261021` or `1` is refused) or ISO 8601 with an offset or Z, T or a space, fractions of a second dropped (`toISOString()`). A date and time without an offset is refused (`offset`): a client cannot see the site's zone. null or "" clears (the params are nullable strings). Above 4294967295 is refused (`INT UNSIGNED` would clip it to 2106).
+- `pg_page_schedule_request_plan()` (pure) lays the sent times over the stored ones and refuses what the editor would only note: a time for the home page (`home`), a passed time on create (`passed`: a publish time would put the new draft live at once, a time to come off would be cleared doing nothing), and `order`. On an existing page a passed time is carried out by the save, as in the editor; a publish time ahead takes a live page off the site until then. Tests: `tests/page_schedule_test.php`.
 
 ## How is the page written?
 - Through `pg_designer_save_page()` with the stored fields (`pg_design_ai_page_fields()`), in the owner's name (`api_design_save_as_owner()`, session user name swapped like the create). The stored times are unset from the fields, so a time not sent keeps its exact value (the editor's copy is minute-rounded).

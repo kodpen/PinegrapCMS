@@ -2855,8 +2855,9 @@ function pg_designer_page_name_taken_elsewhere($name)
  *   on the site and comes off it, pg_page_schedule_parse(); '' for none)
  *
  * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
- * 'draft' => bool), with 'publish_at' / 'unpublish_at' (datetime-local text)
- * when the save decided the page's times.
+ * 'draft' => bool, 'revision_no' => int (the revision written, 0 for none)),
+ * with 'publish_at' / 'unpublish_at' (datetime-local text) when the save
+ * decided the page's times.
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -3170,10 +3171,6 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // unless its row comes back as stored (decided below).
     $changed = true;
 
-    // Whether this save changed the page: a new page did, an existing one
-    // unless its row comes back as stored (decided below).
-    $changed = true;
-
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
         $own = array(
@@ -3282,8 +3279,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // (includes/fn/page_revisions.php); one carried unchanged records nothing.
     // The caller may name where the tree came from (the importer, the AI
     // editor, a restore); a save from the editor or the API is a publish.
+    $revision_no = 0;
     if ($changed && $multi_ready && $page_id > 0 && function_exists('pg_page_revision_record')) {
-        pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
+        $revision_no = pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
             isset($page['revision_source']) ? (string)$page['revision_source'] : 'publish');
     }
 
@@ -3318,7 +3316,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
-    $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0));
+    // The revision this save wrote (0 for none): read from the INSERT that
+    // wrote it, not from MAX() afterwards, which another save of the same page
+    // may already have moved.
+    $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0),
+                    'revision_no' => (int)$revision_no);
     // The times as this save left them, for the editor's tab: a time that
     // had come was carried out and cleared.
     if ($schedule['apply']) {
