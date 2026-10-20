@@ -98,6 +98,8 @@ if ($_POST) {
 
         $deleted_name = $product['name'];
 
+        $audit_before = pg_audit_fetch('products', $product_id);
+
         // To the Recycle Bin, as the Catalog Manager deletes: a product deleted
         // by mistake has to be one restore away, not a database backup away.
         // Emptying the bin is what runs the permanent delete below.
@@ -105,11 +107,15 @@ if ($_POST) {
 
             pg_catalog_bin_product($product_id, $user['id']);
 
+            pg_audit_record('recycle', 'products', $product_id, $audit_before);
+
             $deleted_message = lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($deleted_name)));
 
         } else {
 
             pg_pb_delete_product($product_id);
+
+            pg_audit_record('delete', 'products', $product_id, $audit_before);
 
             $deleted_message = lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name)));
         }
@@ -135,7 +141,11 @@ if ($_POST) {
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 
+    $audit_before = pg_audit_fetch('products', $product_id);
+
     $result = pg_pb_update_product($product_id);
+
+    pg_audit_record('update', 'products', $product_id, $audit_before);
 
     log_activity(
         lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))),

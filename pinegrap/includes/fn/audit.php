@@ -114,8 +114,9 @@ function pg_audit_actor()
 }
 
 /**
- * Whether a field holds a secret, by its name: passwords, keys, tokens,
- * encrypted blobs, card data. Its value is never written; that it changed is.
+ * Whether a field holds a secret, by its name: passwords, PINs (the
+ * developer lock's user_devpasspin), keys, tokens, encrypted blobs, card
+ * data. Its value is never written; that it changed is.
  *
  * @param mixed $key
  * @return bool
@@ -132,7 +133,7 @@ function pg_audit_secret_key($key)
         return true;
     }
 
-    return preg_match('/(^|_)(api_?key|key|token|pass|enc|hash|signature|credentials?)$/', $key) === 1;
+    return preg_match('/(^|_)(api_?key|key|token|pass|pin|devpasspin|enc|hash|signature|credentials?)$/', $key) === 1;
 }
 
 /**
@@ -392,4 +393,178 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
     }
 
     return (bool) @mysqli_query(db::$con, "INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")");
+}
+
+/**
+ * The tables whose rows the save paths hand to the trail by id: the record
+ * type they become, the id column (none for the single config row), the
+ * column that names the record, and the columns left out because every save
+ * or a background task rewrites them (last editor, derived SEO score, usage
+ * stamps). Any column ending in "timestamp" is left out as well
+ * (pg_audit_volatile()).
+ *
+ * @return array  table => type, id, label (column names, first non-empty
+ *                wins), skip
+ */
+function pg_audit_tables()
+{
+    $seo = array('seo_score', 'seo_analysis', 'seo_analysis_current');
+
+    return array(
+        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running')),
+        'user'     => array('type' => 'user', 'id' => 'user_id', 'label' => array('user_username'), 'skip' => array('user_user', 'token')),
+        'products' => array('type' => 'product', 'id' => 'id', 'label' => array('short_description', 'name'), 'skip' => array_merge(array('user'), $seo)),
+        'page'     => array('type' => 'page', 'id' => 'page_id', 'label' => array('page_name'), 'skip' => array_merge(array('page_user', 'layout_modified'), $seo)),
+        'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error')),
+        'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user')),
+        'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user')),
+        'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip')),
+    );
+}
+
+/**
+ * A row without the columns that change on every save, so two reads around a
+ * save differ only where the save changed something.
+ *
+ * @param string $table  a key of pg_audit_tables()
+ * @param array  $row
+ * @return array
+ */
+function pg_audit_volatile($table, array $row)
+{
+    $tables = pg_audit_tables();
+    $skip = isset($tables[$table]) ? $tables[$table]['skip'] : array();
+
+    foreach (array_keys($row) as $column) {
+        if (in_array($column, $skip, true) || (preg_match('/(^|_)timestamp$/', (string) $column) === 1)) {
+            unset($row[$column]);
+        }
+    }
+
+    return $row;
+}
+
+/**
+ * The name a row is recorded under: the first non-empty label column.
+ *
+ * @param string $table
+ * @param array  $row
+ * @return string
+ */
+function pg_audit_label_of($table, array $row)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table])) {
+        return '';
+    }
+
+    foreach ($tables[$table]['label'] as $column) {
+        if (isset($row[$column]) && (trim((string) $row[$column]) !== '')) {
+            return (string) $row[$column];
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Rows of a pg_audit_tables() table as the trail compares them, keyed by id.
+ * Read with the plain connection: a failed read gives no rows and stops
+ * nothing. The config table has one row, returned under key 0.
+ *
+ * @param string $table
+ * @param array  $ids
+ * @return array  id => row
+ */
+function pg_audit_fetch_many($table, array $ids)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table]) || !pg_audit_ready()) {
+        return array();
+    }
+
+    $key = $tables[$table]['id'];
+
+    if ($key === '') {
+        $sql = "SELECT * FROM `" . $table . "` LIMIT 1";
+    } else {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), function ($id) {
+            return $id > 0;
+        })));
+
+        if (!$ids) {
+            return array();
+        }
+
+        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', $ids) . ")";
+    }
+
+    $result = @mysqli_query(db::$con, $sql);
+
+    if (!$result) {
+        return array();
+    }
+
+    $rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[($key === '') ? 0 : (int) $row[$key]] = pg_audit_volatile($table, $row);
+    }
+
+    return $rows;
+}
+
+/**
+ * One row of a pg_audit_tables() table as the trail compares it; an empty
+ * array when there is none.
+ *
+ * @param string $table
+ * @param int    $id     ignored for config
+ * @return array
+ */
+function pg_audit_fetch($table, $id = 0)
+{
+    $rows = pg_audit_fetch_many($table, array($id));
+
+    return $rows ? reset($rows) : array();
+}
+
+/**
+ * Record a change to one row of a pg_audit_tables() table. The caller reads
+ * the row before the save (pg_audit_fetch()); the row after is read here,
+ * except after a delete. A row found on neither side (a failed insert, a
+ * delete of nothing) writes nothing.
+ *
+ *   $before = pg_audit_fetch('products', $id);
+ *   // … UPDATE products …
+ *   pg_audit_record('update', 'products', $id, $before);
+ *
+ * @param string $action
+ * @param string $table
+ * @param int    $id      0 for config
+ * @param array  $before  empty for a create
+ * @param string $label   the record's name; by default its label column
+ * @return bool  whether a line was written
+ */
+function pg_audit_record($action, $table, $id, array $before = array(), $label = null)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table]) || !pg_audit_ready()) {
+        return false;
+    }
+
+    $after = ($action === 'delete') ? array() : pg_audit_fetch($table, $id);
+
+    if (!$before && !$after) {
+        return false;
+    }
+
+    if ($label === null) {
+        $label = pg_audit_label_of($table, $after ? $after : $before);
+    }
+
+    return pg_audit($action, $tables[$table]['type'], $id, $before, $after, $label);
 }

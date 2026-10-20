@@ -649,6 +649,8 @@ function api_files_create($params) {
 
 	$id = api_insert_id();
 
+	pg_audit_record('create', 'files', (int)$id);
+
 	log_activity(lang(array(
 		'string' => 'File ({var:1}) was uploaded through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($file_name, $app['name'], $app['api_key'])
@@ -702,12 +704,16 @@ function api_files_update($params) {
 
 	api_dry_run_stop('updated', 'file', array('id' => $id, 'name' => $file['name']));
 
+	$audit_before = pg_audit_fetch('files', $id);
+
 	api_exec("UPDATE files SET
 			description = '" . escape($params['description']) . "',
 			user = '" . (int)$app['owner']['id'] . "',
 			timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . $id . "'
 		LIMIT 1");
+
+	pg_audit_record('update', 'files', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'File ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -778,6 +784,8 @@ function api_files_delete($params) {
 
 	$original_folder = (int)$file['folder'];
 
+	$audit_before = pg_audit_fetch('files', $id);
+
 	api_exec("UPDATE files SET folder = '" . $bin_id . "' WHERE id = '" . $id . "' LIMIT 1");
 
 	// The name goes out of circulation with the row, so the same file can be
@@ -789,6 +797,8 @@ function api_files_delete($params) {
 
 	api_exec("INSERT INTO recycle_bin (item_type, item_id, original_parent_id, deleted_at, deleted_by)
 		VALUES ('file', '" . $id . "', '" . $original_folder . "', UNIX_TIMESTAMP(), '" . (int)$app['owner']['id'] . "')");
+
+	pg_audit_record('recycle', 'files', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'File ({var:1}) was moved to the recycle bin through the API by the application {var:2} (key {var:3}).',

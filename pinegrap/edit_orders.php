@@ -509,6 +509,8 @@ if (!empty($_POST['orders'])) {
                         $card_verification_number = protect_card_verification_number($card_verification_number);
                     }
                     
+                    $audit_before = pg_audit_fetch('orders', $order_id);
+
                     // update credit card data for order
                     $query =
                         "UPDATE orders
@@ -517,7 +519,9 @@ if (!empty($_POST['orders'])) {
                             card_verification_number = '" . escape($card_verification_number) . "'
                         WHERE id = '" . escape($order_id) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    
+
+                    pg_audit_record('update', 'orders', $order_id, $audit_before);
+
                     $number_of_orders++;
                 }
             }
@@ -581,12 +585,16 @@ if (!empty($_POST['orders'])) {
             $bulk_failed = 0;
 
             foreach ($_POST['orders'] as $order_id) {
+                $audit_before = pg_audit_fetch('orders', $order_id);
                 $res = process_order_cancellation(
                     (int) $order_id,
                     '',                       // operator-typed reason not collected for bulk
                     true,                     // is_admin
                     $cancel_admin_user_id
                 );
+                if ($res['status'] === 'success') {
+                    pg_audit_record('cancel', 'orders', $order_id, $audit_before);
+                }
                 switch ($res['status']) {
                     case 'success': $bulk_cancelled++;       break;
                     case 'already': $bulk_skipped_already++; break;

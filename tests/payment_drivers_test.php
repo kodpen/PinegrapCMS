@@ -290,7 +290,7 @@ function test_payment_drivers_register_and_find()
 	pg_assert_same('Test Card', pg_payment_driver('pgtestcard')['label']);
 	pg_assert_same('pgtestcard', pg_payment_driver_for_gateway('Pg Test Gateway'));
 	pg_assert_same('pgtestredirect', pg_payment_driver_for_method('Pay With Pg Test'));
-	pg_assert_same('', pg_payment_driver_for_gateway('Iyzipay'), 'a legacy gateway with no driver');
+	pg_assert_same('', pg_payment_driver_for_gateway('Sage'), 'a legacy gateway with no driver');
 	pg_assert_same('', pg_payment_driver_for_method('Credit/Debit Card'));
 	pg_assert_same(null, pg_payment_driver('nosuchdriver'));
 

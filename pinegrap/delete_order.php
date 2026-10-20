@@ -26,7 +26,11 @@ function delete_order($request) {
         return error_response(lang('The order could not be found.'));
     }
 
+    $audit_before = pg_audit_fetch('orders', $order['id']);
+
     db("DELETE FROM orders WHERE id = '" . e($order['id']) . "'");
+
+    pg_audit_record('delete', 'orders', (int) $order['id'], $audit_before);
     db("DELETE FROM order_items WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM ship_tos WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM order_item_gift_cards WHERE order_id = '" . e($order['id']) . "'");
