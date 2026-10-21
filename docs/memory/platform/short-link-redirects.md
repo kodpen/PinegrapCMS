@@ -1,6 +1,6 @@
 ---
 name: short-link-redirects
-description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, old addresses and any letters as names, * patterns tried only at 404, loop checks on every entry point, IIS name recovery.
+description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 ---
 
 ## Why are redirects short links and not a manager of their own?
@@ -12,11 +12,8 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - A timed or one-time link answers 302 even when saved with 301 (`pg_short_link_status()`): a browser keeps a 301 for good.
 - `router.php` answers an exact name itself (`router_short_link_redirect()`), loading `includes/fn/short_link_redirects.php` alone: the router has no `functions.php` (`router-no-functions-php.md`) and the address builders call no `lang()`.
 
-## What can a name be?
-- `pg_short_link_name_problem()`: letters of any language, numbers, `. _ - / [ ] ~ ( ) + , ! = @ *`; at most 191 characters (100 before the step), at most 9 stars, not stars and slashes alone.
-- `pg_short_link_name_from_address()`: a pasted full address keeps its path (decoded, base path cut, spaces to `_`, no slash at the ends). Classic screens, the File Manager (`pg_short_link_name_read()`: the same error text) and the API use both.
-- IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router_utf8_name()` reads it back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before the lookup.
-- Two names compare like the database (`utf8mb4_unicode_ci`): `pg_short_link_key()`, transliterated and lower case.
+## What can a name be, and how does a request find its link?
+- `short-link-names.md`: the name rule, a pasted old address as a name, the lookup as it came and in the stored form, IIS name recovery, how two names compare.
 
 ## How do * patterns work?
 - `is_pattern = 1` for a name with `*`; the router never takes it as an exact name. It is tried only when the page is about to answer 404: `output_error()` and `error()` with 404 and `pg_sw_item_missing()` call `pg_short_link_not_found()`, so a live page always wins. GET and HEAD only, not while the SEO pass renders, not after output started, at most 5000 patterns.
