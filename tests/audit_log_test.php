@@ -53,6 +53,33 @@ function test_audit_secret_key_names()
 	}
 }
 
+// Security settings and password bookkeeping named after passwords hold no
+// secret: on/off flags, a hashing scheme, a time, a job cursor. The trail
+// shows their values; the user's own hint text stays masked.
+function test_audit_password_setting_flags_are_plain()
+{
+	foreach (array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done') as $plain) {
+		pg_assert_false(pg_audit_secret_key($plain), $plain);
+	}
+
+	foreach (array('user_password', 'user_password_hint', 'ups_password', 'signature_tsa_password') as $secret) {
+		pg_assert_true(pg_audit_secret_key($secret), $secret);
+	}
+
+	$row = pg_audit_row(
+		'update',
+		'settings',
+		0,
+		array('strong_password' => '1', 'password_hint' => '1', 'forgot_password_link' => '1', 'smtp_password' => 'old'),
+		array('strong_password' => '0', 'password_hint' => '', 'forgot_password_link' => '0', 'smtp_password' => 'new'),
+		'security',
+		1
+	);
+
+	pg_assert_same('{"strong_password":"1","password_hint":"1","forgot_password_link":"1","smtp_password":"***"}', $row['before_json'], 'before: flags readable, secret masked');
+	pg_assert_same('{"strong_password":"0","password_hint":"","forgot_password_link":"0","smtp_password":"***"}', $row['after_json'], 'after: flags readable, secret masked');
+}
+
 // A secret's value is never kept, only that it is set or cleared; nested fields too.
 function test_audit_redact_masks_secrets()
 {
