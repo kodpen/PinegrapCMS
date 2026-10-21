@@ -217,10 +217,23 @@ function test_sms_http_never_sent()
 		pg_assert_true(pg_sms_http_never_sent($errno), (string) $errno);
 	}
 
-	// Timeout, send error, receive error, TLS: the request may have arrived.
-	foreach (array(0, 28, 35, 52, 55, 56, 60) as $errno) {
+	// The TLS handshake and certificate checks fail before the request is
+	// written: a missing CA bundle, a broken TLS proxy.
+	foreach (array(35, 58, 59, 60, 66, 77, 83, 90, 91) as $errno) {
+		pg_assert_true(pg_sms_http_never_sent($errno), 'TLS ' . $errno);
+	}
+
+	// Timeout, send error, receive error: the request may have arrived.
+	foreach (array(0, 28, 52, 55, 56) as $errno) {
 		pg_assert_false(pg_sms_http_never_sent($errno), (string) $errno);
 	}
+
+	// Not a byte of the request went out: a timeout before the connection
+	// was made. Once the request was written, a timeout is uncertain.
+	pg_assert_true(pg_sms_http_never_sent(28, 0, 0), 'timeout, nothing written');
+	pg_assert_false(pg_sms_http_never_sent(28, 0, 250), 'timeout after the request');
+	pg_assert_false(pg_sms_http_never_sent(56, 0, 250), 'receive error after the request');
+	pg_assert_false(pg_sms_http_never_sent(0, 0, 0), 'no transport error');
 
 	// A proxy that refused the tunnel let nothing through, whatever the
 	// error number; one that opened it did not stop what followed.

@@ -443,9 +443,9 @@ function pg_sms_sender_match($sender, $senders, $user = '')
  * A driver's HTTP call. The provider's address is fixed in its driver, never
  * typed by anyone, so this is a plain cURL call with the certificate checks
  * the carriers and the update channel use (pg_curl_tls()); a redirect is not
- * followed. The cURL error number and a proxy's answer to the tunnel tell a
- * caller whether the request can have reached the provider
- * (pg_sms_http_never_sent()).
+ * followed. The cURL error number, a proxy's answer to the tunnel and the
+ * bytes of the request that went out tell a caller whether the request can
+ * have reached the provider (pg_sms_http_never_sent()).
  *
  * @param string $method
  * @param array  $request url, headers, body (optional)
@@ -453,14 +453,15 @@ function pg_sms_sender_match($sender, $senders, $user = '')
  *               problem, '' when the provider answered), errno (cURL's error
  *               number, 0 when the provider answered), connect (the HTTP
  *               status a proxy answered the tunnel request with, 0 without a
- *               proxy)
+ *               proxy), request_size (bytes of request headers written; 0
+ *               when no request went out)
  */
 function pg_sms_http($method, $request)
 {
     // Nothing left the server: reported as cURL's CURLE_FAILED_INIT, which
     // pg_sms_http_never_sent() counts as a request that reached nobody.
     if (!function_exists('curl_init')) {
-        return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 2, 'connect' => 0);
+        return array('status' => 0, 'body' => '', 'error' => lang('cURL is not available on this server.'), 'errno' => 2, 'connect' => 0, 'request_size' => 0);
     }
 
     $handle = curl_init((string) $request['url']);
@@ -483,6 +484,7 @@ function pg_sms_http($method, $request)
     $error = curl_error($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
     $connect = (int) curl_getinfo($handle, CURLINFO_HTTP_CONNECTCODE);
+    $request_size = (int) curl_getinfo($handle, CURLINFO_REQUEST_SIZE);
 
     // The handle is freed with the variable; curl_close() does nothing since
     // PHP 8.0 and is deprecated in 8.5.
@@ -495,31 +497,54 @@ function pg_sms_http($method, $request)
             'error'   => trim($error . pg_curl_tls_hint($errno)),
             'errno'   => $errno,
             'connect' => $connect,
+            'request_size' => $request_size,
         );
     }
 
-    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0, 'connect' => $connect);
+    return array('status' => $status, 'body' => (string) $body, 'error' => '', 'errno' => 0, 'connect' => $connect, 'request_size' => $request_size);
 }
 
 /**
  * Whether a transport error came before anything reached the provider: cURL
  * could not start, the proxy or the provider's name could not be resolved,
- * no connection was made, or a proxy refused the tunnel to the provider.
- * After any other one (a timeout above all) the provider may have taken the
- * request, so sending it again could deliver a message twice.
+ * no connection was made, the TLS handshake failed, a proxy refused the
+ * tunnel to the provider, or not a byte of the request went out. After any
+ * other one (a timeout once the request was written above all) the provider
+ * may have taken the request, so sending it again could deliver a message
+ * twice.
  *
- * @param int $errno   cURL's error number
- * @param int $connect the status a proxy answered the tunnel request with
- *                     (pg_sms_http()), 0 without a proxy
+ * @param int $errno        cURL's error number
+ * @param int $connect      the status a proxy answered the tunnel request
+ *                          with (pg_sms_http()), 0 without a proxy
+ * @param int $request_size bytes of request headers written (pg_sms_http()),
+ *                          -1 when not known
  * @return bool
  */
-function pg_sms_http_never_sent($errno, $connect = 0)
+function pg_sms_http_never_sent($errno, $connect = 0, $request_size = -1)
 {
     $errno = (int) $errno;
 
     // CURLE_FAILED_INIT, CURLE_COULDNT_RESOLVE_PROXY,
     // CURLE_COULDNT_RESOLVE_HOST, CURLE_COULDNT_CONNECT.
     if (in_array($errno, array(2, 5, 6, 7), true)) {
+        return true;
+    }
+
+    // The TLS handshake and the certificate checks end before the request is
+    // written: CURLE_SSL_CONNECT_ERROR, CURLE_SSL_CERTPROBLEM,
+    // CURLE_SSL_CIPHER, CURLE_PEER_FAILED_VERIFICATION,
+    // CURLE_SSL_ENGINE_INITFAILED, CURLE_SSL_CACERT_BADFILE,
+    // CURLE_SSL_ISSUER_ERROR, CURLE_SSL_PINNEDPUBKEYNOTMATCH,
+    // CURLE_SSL_INVALIDCERTSTATUS. A server without an up-to-date CA bundle
+    // fails here on every message until the bundle is fixed.
+    if (in_array($errno, array(35, 58, 59, 60, 66, 77, 83, 90, 91), true)) {
+        return true;
+    }
+
+    // No request was written: a connection that timed out before it was
+    // made among others. cURL 8 does not count a proxy's tunnel request
+    // here; older versions do, which only makes this answer more cautious.
+    if (($errno !== 0) && ((int) $request_size === 0)) {
         return true;
     }
 
