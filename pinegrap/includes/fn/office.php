@@ -1012,7 +1012,8 @@ function pg_office_xlsx_read($path, $edit = false)
     }
 
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread));
+    $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904($workbook_xml);
 
     if (empty($sheets)) {
         $zip->close();
@@ -1033,6 +1034,8 @@ function pg_office_xlsx_read($path, $edit = false)
     $any_cut = false;
     $edit = $edit && function_exists('pg_office_xlsx_sheet_edit_info');
     $signed = $edit && pg_office_signed($zip);
+    // A password to modify closes the whole workbook, whatever its sheets.
+    $reserved = $edit && !$signed && pg_office_xlsx_write_reserved($workbook_xml);
     $styles = $edit ? pg_office_xlsx_style_kinds($zip) : array();
 
     foreach ($sheets as $sheet) {
@@ -1048,9 +1051,11 @@ function pg_office_xlsx_read($path, $edit = false)
 
         if ($edit) {
             $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];
-            $entry['edit'] = $signed
-                ? array('ok' => false, 'why' => 'signed')
-                : pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
+            if ($signed || $reserved) {
+                $entry['edit'] = array('ok' => false, 'why' => $signed ? 'signed' : 'password');
+            } else {
+                $entry['edit'] = pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
+            }
         }
 
         $out[] = $entry;
@@ -1821,6 +1826,7 @@ function pg_office_view_strings()
         'locked_protected'  => lang('The sheet is protected and this cell is locked.'),
         'sheet_protected'   => lang('The sheet is protected: only its unlocked cells can be changed.'),
         'sheet_signed'      => lang('The file is digitally signed, so its cells are not changed here.'),
+        'sheet_password'    => lang('The file has a password to change it, so its cells are not changed here.'),
         'sheet_kind'        => lang('This sheet has no cells to change.'),
         'sheet_large'       => lang('This sheet is too large to change here.'),
         'sheet_unusual'     => lang('This sheet cannot be changed here.'),

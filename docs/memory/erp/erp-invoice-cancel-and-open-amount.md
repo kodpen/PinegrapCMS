@@ -13,7 +13,7 @@ description: When an ERP invoice can be cancelled, what cancel does to ledger an
 - `erp_invoice_open_amount()` deducts both settlements and returns.
 - `erp_invoice_refresh_paid()` measures settlements against the same figure (total − returns), so the two cannot diverge.
 - Still only money makes an invoice "paid": a fully returned invoice that never saw a collection stays `issued`.
-- Opening a return and cancelling a return both recompute the parent invoice status (`returns.php`, inside the transaction).
+- Opening a return and cancelling a return both recompute the parent invoice status (`returns.php`, inside the transaction); on a foreign-currency parent the exchange difference is posted when it reaches `paid` and reversed when it leaves it (#1071, erp-money-and-currency).
 
 
 ## Can a receipt be allocated to a return?
