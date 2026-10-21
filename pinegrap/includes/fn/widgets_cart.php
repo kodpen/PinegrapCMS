@@ -571,7 +571,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // as "the item was removed").
     $_pg_cart_oid   = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
     $_pg_cart_empty = ($_pg_cart_oid <= 0)
-        || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'") === 0);
+        || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'" . pg_order_item_active_sql()) === 0);
     if ($_pg_cart_empty) {
         $_pg_cart_empty_msg = (string)(isset($cfg['empty_message']) ? $cfg['empty_message'] : lang('Your cart is empty.'));
         if (strpos((string)$tree_json, '"has_items"') === false && function_exists('_pg_sw_render_message_only')) {
@@ -791,7 +791,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         //       very close, modulo state/region overrides at checkout).
         // tax_total is the tax on the whole line, so this is a plain sum.
         $tax_cents = (int)db_value(
-            "SELECT COALESCE(SUM(tax_total), 0) FROM order_items WHERE order_id = '$oid_esc'"
+            "SELECT COALESCE(SUM(tax_total), 0) FROM order_items WHERE order_id = '$oid_esc'" . pg_order_item_active_sql()
         );
         if ($tax_cents <= 0 && (!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX == true) && function_exists('get_tax_rate_for_address')) {
             $_pg_def_rate = get_default_tax_rate();
@@ -806,7 +806,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     "SELECT COALESCE(SUM(ROUND(oi.price * oi.quantity * COALESCE(p.tax_rate, " . (float)$_pg_def_rate . ") / 100)), 0)
                      FROM order_items oi
                      LEFT JOIN products p ON oi.product_id = p.id
-                     WHERE oi.order_id = '$oid_esc' AND p.taxable = 1"
+                     WHERE oi.order_id = '$oid_esc' AND p.taxable = 1" . pg_order_item_active_sql('oi')
                 );
             }
         }
@@ -841,7 +841,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         $_pg_doi = (int)db_value("SELECT discount_offer_id FROM orders WHERE id = '$oid_esc' LIMIT 1");
         if ($_pg_doi > 0) $_pg_applied_ids[$_pg_doi] = 1;
         $_pg_oi_offers = db_items(
-            "SELECT DISTINCT offer_id FROM order_items WHERE order_id = '$oid_esc' AND offer_id > 0"
+            "SELECT DISTINCT offer_id FROM order_items WHERE order_id = '$oid_esc' AND offer_id > 0" . pg_order_item_active_sql()
         );
         if (is_array($_pg_oi_offers)) {
             foreach ($_pg_oi_offers as $_pg_oi) { $_pg_applied_ids[(int)$_pg_oi['offer_id']] = 1; }
@@ -893,7 +893,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             // 'discount product' offers.
             $_pg_cart_pids = array();
             $_pg_cart_pid_rows = db_items(
-                "SELECT DISTINCT product_id FROM order_items WHERE order_id = '$oid_esc' AND product_id > 0"
+                "SELECT DISTINCT product_id FROM order_items WHERE order_id = '$oid_esc' AND product_id > 0" . pg_order_item_active_sql()
             );
             if (is_array($_pg_cart_pid_rows)) {
                 foreach ($_pg_cart_pid_rows as $_pg_cpr) {
@@ -1071,7 +1071,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
              FROM order_items oi
              LEFT JOIN products p ON oi.product_id = p.id
              LEFT JOIN ship_tos st ON oi.ship_to_id = st.id
-             WHERE oi.order_id = '$oid_esc'
+             WHERE oi.order_id = '$oid_esc'" . pg_order_item_active_sql('oi') . "
              ORDER BY oi.ship_to_id ASC, oi.id ASC"
         );
 
@@ -2184,21 +2184,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // custom form (e.g. "Üyelik Bilgisi", "Katılımcı Bilgileri"). Without
         // it the form fields appear under the row with no context — visitors
         // see floating labels and can't tell why they're being asked.
-        // "Save for later" filter — when feature is enabled AND the column
-        // exists (upgrade 2026.1.28), hide rows the visitor has explicitly
-        // parked. Defensive: missing column or disabled feature means the
-        // legacy "show everything" behaviour wins.
-        $_eo_sfl_filter = '';
-        if (defined('ECOMMERCE_SAVE_FOR_LATER') && ECOMMERCE_SAVE_FOR_LATER === true) {
-            static $_eo_sfl_has_col = null;
-            if ($_eo_sfl_has_col === null) {
-                $_p = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
-                $_eo_sfl_has_col = ($_p !== '' && $_p !== null);
-            }
-            if ($_eo_sfl_has_col) {
-                $_eo_sfl_filter = " AND oi.saved_for_later = 0";
-            }
-        }
+        // A line saved for later is not in the cart, whether or not the
+        // feature is still switched on: submit_order.php does not charge it
+        // and every other cart reader leaves it out the same way.
         $items = db_items(
             "SELECT oi.id AS item_id, oi.product_id, oi.quantity, oi.price, oi.tax_total,
                     oi.ship_to_id, p.name AS product_name, p.short_description, p.full_description,
@@ -2213,7 +2201,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                     oi.recurring_number_of_payments
              FROM order_items oi
              INNER JOIN products p ON p.id = oi.product_id
-             WHERE oi.order_id = '" . (int)$order_id . "'" . $_eo_sfl_filter . "
+             WHERE oi.order_id = '" . (int)$order_id . "'" . pg_order_item_active_sql('oi') . "
              ORDER BY oi.id ASC"
         );
         if (is_array($items)) {
@@ -2273,7 +2261,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // differ (this one on the line, the checkout per unit) and the visitor's
     // total could fail the recheck at submit with a "tutar değişti" rejection.
     $tax_cents = $order_id > 0
-        ? (int)db_value("SELECT COALESCE(SUM(tax_total),0) FROM order_items WHERE order_id = '" . (int)$order_id . "'")
+        ? (int)db_value("SELECT COALESCE(SUM(tax_total),0) FROM order_items WHERE order_id = '" . (int)$order_id . "'" . pg_order_item_active_sql())
         : 0;
     $ship_cents = $order_id > 0 && $needs_shipping
         ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
@@ -3770,7 +3758,7 @@ function _render_system_widget_cart_link($tree_json, $widget_id, $cfg = array(),
     $sub_cents = 0;
     if ($order_id > 0) {
         $row = db_item("SELECT SUM(quantity) AS qty, SUM(price * quantity) AS subtotal
-                        FROM order_items WHERE order_id = '" . $order_id . "'");
+                        FROM order_items WHERE order_id = '" . $order_id . "'" . pg_order_item_active_sql());
         if (is_array($row)) {
             $count     = (int)$row['qty'];
             $sub_cents = (int)round((float)$row['subtotal']);

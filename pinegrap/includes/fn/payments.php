@@ -1052,7 +1052,7 @@ function pg_payment_order_ship_to($order_id)
     $shippable = db_value(
         "SELECT COUNT(*) FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
-        WHERE (order_items.order_id = '" . $order_id . "') AND (products.shippable = '1')");
+        WHERE (order_items.order_id = '" . $order_id . "') AND (products.shippable = '1')" . pg_order_item_active_sql());
 
     if ((int) $shippable <= 0) {
         return null;

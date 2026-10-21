@@ -1413,8 +1413,18 @@ function pg_safe_back_url($candidate, $fallback)
         return $fallback;
     }
 
-    // Reject protocol-relative URLs and dangerous schemes outright
-    if (strpos($candidate, '//') === 0) {
+    // Control characters are refused anywhere, before any other reading: a
+    // browser drops tabs and line breaks from an address before it parses it,
+    // so "/<TAB>/evil.com" is followed as "//evil.com" and "java<TAB>script:"
+    // as "javascript:", and CR/LF would split a Location header.
+    if (preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+        return $fallback;
+    }
+
+    // Reject protocol-relative URLs and dangerous schemes outright. A
+    // backslash counts as a slash here: browsers read "/\evil.com" (and
+    // "\\evil.com") as "//evil.com", another host.
+    if ((strpos($candidate, '//') === 0) || (strpos($candidate, '/\\') === 0) || (strpos($candidate, '\\') === 0)) {
         return $fallback;
     }
     $lower = strtolower($candidate);
@@ -1428,16 +1438,20 @@ function pg_safe_back_url($candidate, $fallback)
     }
 
     // Root-relative path — e.g. "/siparis", "/dukkan/urun-1?q=foo".
-    // The protocol-relative "//host" form was already rejected above, so
-    // a single leading "/" is unambiguously same-origin. Reject anything
-    // that contains control characters, which would let an attacker hide
-    // CRLF / NUL sequences inside a Location header.
-    if (strlen($candidate) > 0 && $candidate[0] === '/'
-        && !preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+    // The protocol-relative "//host" and "/\host" forms and control
+    // characters were already rejected above, so a single leading "/" is
+    // unambiguously same-origin.
+    if (strlen($candidate) > 0 && $candidate[0] === '/') {
         return $candidate;
     }
 
-    // Absolute URL: only allow if host matches current request host
+    // Absolute URL: only allow if host matches current request host. Not with
+    // a backslash in it: parse_url() reads "https://evil.com\@site/" as user
+    // "evil.com\" on host "site", a browser as host "evil.com".
+    if (strpos($candidate, '\\') !== false) {
+        return $fallback;
+    }
+
     $parts = @parse_url($candidate);
     if (is_array($parts) && isset($parts['host'])) {
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
@@ -3266,6 +3280,12 @@ function output_menu($properties = false)
         $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-rolodex bi-me-2\'>' . lang('All Contact Groups') . '</a>';
         $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+
+        // CONTACTS > Personal data export (staff only: it reads users and orders too)
+        if ($user['role'] < 3) {
+            $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
+        }
     }
 
     if ($user['role'] < 3) {
@@ -3769,6 +3789,7 @@ function output_menu($properties = false)
         case 'add_contact_group.php':
         case 'edit_contact_group.php':
         case 'organize_contacts.php':
+        case 'privacy_export.php':
             $active_menu = 7;
             break;
         case 'view_users.php':

@@ -208,6 +208,13 @@ if (!$_POST) {
 
             <form name="form" action="' . h($pg_settings_self) . '" method="post" autocomplete="off">
                 <!--
+                    Return in a text field presses the first submit button of
+                    the form. This one stands first and has no name, so Return
+                    saves like the Save button below and never presses a card
+                    button such as "New address" or "Update Bot IP Lists".
+                -->
+                <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
+                <!--
                     The following two fields are used to workaround a Safari bug where it incorrectly
                     autofills the member id label field and payment service password field.
                     https://discussions.apple.com/thread/5476502

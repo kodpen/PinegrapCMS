@@ -59,7 +59,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             AND (ship_to_id = '" . escape($ship_to_id) . "')
             AND (calendar_event_id = '" . escape($calendar_event_id) . "')
             AND (recurrence_number = '" . escape($recurrence_number) . "')
-            AND (added_by_offer = '0')";
+            AND (added_by_offer = '0')" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     // if product has already been added to order, update order item
     if (mysqli_num_rows($result) > 0) {
@@ -76,7 +76,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     AND (product_id = '" . escape($product_id) . "')
                     AND (ship_to_id = '" . escape($ship_to_id) . "')
                     AND (calendar_event_id = '" . escape($calendar_event_id) . "')
-                    AND (recurrence_number = '" . escape($recurrence_number) . "')";
+                    AND (recurrence_number = '" . escape($recurrence_number) . "')" . pg_order_item_active_sql();
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
             // else this product is not a donation product, so update quantity
         } else {
@@ -88,7 +88,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
                     AND (product_id = '" . escape($product_id) . "')
                     AND (ship_to_id = '" . escape($ship_to_id) . "')
                     AND (calendar_event_id = '" . escape($calendar_event_id) . "')
-                    AND (recurrence_number = '" . escape($recurrence_number) . "')";
+                    AND (recurrence_number = '" . escape($recurrence_number) . "')" . pg_order_item_active_sql();
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
             // if there is a ship to for this order item
             if ($ship_to_id) {
@@ -323,7 +323,7 @@ function get_ship_to_id_for_offer_gift($offer_id, $allowed_ship_to_ids = array()
 
             AND (price > 0)
 
-            AND (added_by_offer = '0')" . $sql_products);
+            AND (added_by_offer = '0')" . pg_order_item_active_sql() . $sql_products);
     // The required product may sit in a recipient of its own; when it is not in
     // the cart at all (an offer that only asks for a subtotal), every paying
     // recipient is a candidate.
@@ -340,7 +340,7 @@ function get_ship_to_id_for_offer_gift($offer_id, $allowed_ship_to_ids = array()
 
                 AND (price > 0)
 
-                AND (added_by_offer = '0')");
+                AND (added_by_offer = '0')" . pg_order_item_active_sql());
     }
     if ($allowed_ship_to_ids) {
         $narrowed = array();
@@ -489,7 +489,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
             AND (product_id = '" . e($action['add_product_product_id']) . "')
 
-            AND (added_by_offer = '0')" . $sql_ship_to . "
+            AND (added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
 
         ORDER BY id ASC LIMIT 1");
     if ($paid_order_item) {
@@ -1283,7 +1283,7 @@ function get_valid_zones($ship_to_id, $country_code, $state_code)
 
              FROM order_items
 
-             WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . escape($ship_to_id) . "'";
+             WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND ship_to_id = '" . escape($ship_to_id) . "'" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_items = array();
     // add all items in cart to array
@@ -1459,9 +1459,53 @@ function validate_product_for_destination($product_id, $country_code, $state_cod
     }
     return false;
 }
+
+// The condition that keeps a query to the lines that are in the cart. A line
+// the shopper saved for later (order_items.saved_for_later, cart_action.php)
+// stays on the order but is not listed, totalled, taxed, counted towards an
+// offer, a shipping rate, a stock or a reservation check, or charged.
+// Appended to a WHERE clause; $table is the name or alias order_items has in
+// the query. Empty while the column does not exist yet (2026.1.28).
+function pg_order_item_active_sql($table = 'order_items')
+{
+    if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $table) !== 1) {
+        $table = 'order_items';
+    }
+    if (!pg_schema_has('order_items', 'saved_for_later')) {
+        return '';
+    }
+    return " AND (" . $table . ".saved_for_later = 0)";
+}
+
+// Takes the saved-for-later lines off an order that has just been placed,
+// with their gift card and product form rows. They were not charged, and the
+// shopper cannot reach them once the order has left the session, so the
+// placed order holds what was bought: receipts, print-outs, the API, reorders
+// and reviews read its lines without knowing about the flag. Recipients and
+// shipping stay as they were charged.
+function pg_order_drop_saved_lines($order_id)
+{
+    $order_id = (int) $order_id;
+    if (($order_id <= 0) || !pg_schema_has('order_items', 'saved_for_later')) {
+        return;
+    }
+    $ids = array_map('intval', (array) db_values("SELECT id FROM order_items WHERE (order_id = '" . $order_id . "') AND (saved_for_later = 1)"));
+    if (!$ids) {
+        return;
+    }
+    $list = implode(', ', $ids);
+    db("DELETE FROM order_item_gift_cards WHERE order_item_id IN (" . $list . ")");
+    db("DELETE FROM form_data WHERE (order_item_id IN (" . $list . ")) AND (order_item_id != '0')");
+    db("DELETE FROM order_items WHERE id IN (" . $list . ")");
+}
+
 function get_order_subtotal()
 {
-    $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+    // The guest view (pg_offer_guest_view()) has an empty cart.
+    if (pg_offer_guest_view()) {
+        return 0;
+    }
+    $query = "SELECT price, quantity FROM order_items WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $order_subtotal = 0;
     while ($row = mysqli_fetch_assoc($result)) {
@@ -1515,7 +1559,7 @@ function pg_order_subtotal_charged_today()
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $row) {
+        WHERE order_items.order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql()) as $row) {
         if (pg_order_line_charged_today($row['recurring'], $row['recurring_start_date'], $row['start'], $today, $clearcommerce)) {
             $subtotal += $row['price'] * $row['quantity'];
         }
@@ -2272,7 +2316,7 @@ function pg_offer_cheapest_item_id($ship_to_id = 0)
     $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
     return (int) db_value("SELECT id FROM order_items
 
-        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0') AND (price > 0) $sql_recipient
+        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0') AND (price > 0)" . pg_order_item_active_sql() . " $sql_recipient
 
         ORDER BY price ASC, id ASC
 
@@ -2425,15 +2469,18 @@ function pg_offer_customer_conditions_met($offer_id)
 {
     static $answers = array();
     $offer_id = (int) $offer_id;
-    if (isset($answers[$offer_id])) {
-        return $answers[$offer_id];
+    // The guest view (pg_offer_guest_view()) has its own answers: the same
+    // request can ask for the visitor in front of it as well.
+    $key = $offer_id . (pg_offer_guest_view() ? ':guest' : '');
+    if (isset($answers[$key])) {
+        return $answers[$key];
     }
     $conditions = pg_offer_conditions($offer_id);
     if (!$conditions) {
-        $answers[$offer_id] = true;
+        $answers[$key] = true;
         return true;
     }
-    $user_id = (defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
+    $user_id = (!pg_offer_guest_view() && defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
     $met = true;
     foreach ($conditions as $condition) {
         switch ($condition['type']) {
@@ -2485,7 +2532,7 @@ function pg_offer_customer_conditions_met($offer_id)
             break;
         }
     }
-    $answers[$offer_id] = $met;
+    $answers[$key] = $met;
     return $met;
 }
 
@@ -2512,15 +2559,16 @@ function pg_offer_usage_counts($offer_id)
 {
     static $answers = array();
     $offer_id = (int) $offer_id;
-    if (isset($answers[$offer_id])) {
-        return $answers[$offer_id];
+    $key = $offer_id . (pg_offer_guest_view() ? ':guest' : '');
+    if (isset($answers[$key])) {
+        return $answers[$key];
     }
     $used = "(orders.status IN ('complete', 'exported'))
 
         AND (
             (orders.discount_offer_id = '" . e($offer_id) . "')
 
-            OR (orders.id IN (SELECT order_id FROM order_items WHERE offer_id = '" . e($offer_id) . "'))
+            OR (orders.id IN (SELECT order_id FROM order_items WHERE offer_id = '" . e($offer_id) . "'" . pg_order_item_active_sql() . "))
 
             OR (orders.id IN (SELECT order_id FROM ship_tos WHERE offer_id = '" . e($offer_id) . "'))
         )";
@@ -2529,13 +2577,16 @@ function pg_offer_usage_counts($offer_id)
     $counts['total'] = (int) db_value("SELECT COUNT(DISTINCT orders.id) FROM orders WHERE " . $used);
 
     $who = '';
-    $user_id = (defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
+    // The guest view (pg_offer_guest_view()) has no account and no cart, so
+    // it is nobody in particular.
+    $guest = pg_offer_guest_view();
+    $user_id = (!$guest && defined('USER_ID') && USER_ID) ? (int) USER_ID : 0;
     if ($user_id) {
         $who = "(orders.user_id = '" . e($user_id) . "')";
     } else {
         // No account: the billing address of the cart in hand is the only
         // thing that ties this visitor to an earlier order.
-        $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+        $order_id = $guest ? 0 : (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
         if ($order_id > 0) {
             $email = trim((string) db_value("SELECT billing_email_address FROM orders WHERE id = '" . e($order_id) . "'"));
             if ($email != '') {
@@ -2546,7 +2597,7 @@ function pg_offer_usage_counts($offer_id)
     if ($who != '') {
         $counts['customer'] = (int) db_value("SELECT COUNT(DISTINCT orders.id) FROM orders WHERE " . $used . " AND " . $who);
     }
-    $answers[$offer_id] = $counts;
+    $answers[$key] = $counts;
     return $counts;
 }
 
@@ -2711,13 +2762,13 @@ function pg_offer_cart_conditions_met($offer_id, $ship_to_id = 0)
 function pg_offer_cart_quantity($ship_to_id = 0)
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
-    if ($order_id <= 0) {
+    if (($order_id <= 0) || pg_offer_guest_view()) {
         return 0;
     }
     $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
     return (int) db_value("SELECT SUM(quantity) FROM order_items
 
-        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0') $sql_recipient");
+        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0')" . pg_order_item_active_sql() . " $sql_recipient");
 }
 
 function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
@@ -2796,7 +2847,7 @@ function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
 
                 FROM order_items
 
-                WHERE ship_to_id = '" . e($ship_to_id) . "'");
+                WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql());
             if ($recipient_subtotal >= $required_subtotal) {
                 $required_subtotal_valid = true;
             }
@@ -2897,7 +2948,7 @@ function apply_offers_to_cart()
 {
     // An empty cart is a fresh start: gifts the shopper refused earlier in this
     // order are forgotten with the items they belonged to.
-    if (!db_value("SELECT id FROM order_items WHERE order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "' LIMIT 1")) {
+    if (!db_value("SELECT id FROM order_items WHERE order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'" . pg_order_item_active_sql() . " LIMIT 1")) {
         unset($_SESSION['ecommerce']['declined_offer_gifts']);
     }
     // get all order items that are discounted by an offer in order to remove discount so we can add discounts later
@@ -3108,7 +3159,7 @@ function apply_offers_to_cart()
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -3819,6 +3870,9 @@ function get_best_offer_id($offer_code, $scope = '')
     }
     $best_order_discount = 0;
     $best_order_discount_offer_id = 0;
+    // The guest view (pg_offer_guest_view()) weighs the offers against an
+    // empty cart.
+    $cart_order_id = pg_offer_guest_view() ? '' : ($_SESSION['ecommerce']['order_id'] ?? '');
     // get order items so we can prepare array for ship tos and order items so we can loop through them later to determine discounts
     $query = "SELECT
 
@@ -3848,7 +3902,7 @@ function get_best_offer_id($offer_code, $scope = '')
 
         LEFT JOIN products ON order_items.product_id = products.id
 
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+        WHERE order_items.order_id = '" . e($cart_order_id) . "'" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
@@ -5169,22 +5223,55 @@ function protect_givex_gift_card_code($gift_card_code)
     // first 6 digits + next 5 digits hidden + next variable number of digits up until the last digit + last digit hidden
     return mb_substr($gift_card_code, 0, 6) . '*****' . mb_substr($gift_card_code, 11, -1) . '*';
 }
+/**
+ * Whether the offer checks are working out prices for everybody: the view of
+ * a visitor with no account, no offer code and an empty cart, whoever's
+ * request runs them. get_discounted_product_prices(false) switches it on
+ * while it runs; the checks that read the signed-in user or the shopping
+ * session (pg_offer_customer_conditions_met(), pg_offer_usage_counts(),
+ * pg_offer_cart_quantity(), get_order_subtotal(),
+ * check_for_products_in_cart(), get_best_offer_id()) read neither while it
+ * is on.
+ *
+ * @param bool|null $on true or false switches it, null only reads it
+ * @return bool
+ */
+function pg_offer_guest_view($on = null)
+{
+    static $guest = false;
+    if ($on !== null) {
+        $guest = (bool) $on;
+    }
+    return $guest;
+}
 // create function that will be used to get discounted product prices based on products that are discounted by offers
 // $for_member: also the signed-in member's agreed prices (pg_erp_member_prices()); false
-// for what is published to everyone, such as the product feeds.
+// for what is published to everyone, such as the product feeds: the prices of
+// a visitor with no account, no offer code and an empty cart
+// (pg_offer_guest_view()), whoever's request builds them, so a manager's
+// session never reaches a feed.
 function get_discounted_product_prices($for_member = true)
 {
+    if (!$for_member && !pg_offer_guest_view()) {
+        pg_offer_guest_view(true);
+        try {
+            return get_discounted_product_prices(false);
+        } finally {
+            pg_offer_guest_view(false);
+        }
+    }
     $discounted_product_prices = array();
     $special_offer_code = '';
     $offer_code = '';
+    $guest = pg_offer_guest_view();
     // if the visitor has an order, then get special offer code from order in database
-    if (isset($_SESSION['ecommerce']['order_id']) == true) {
+    if (!$guest && (isset($_SESSION['ecommerce']['order_id']) == true)) {
         $query = "SELECT special_offer_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $special_offer_code = $row['special_offer_code'] ?? '';
         // else the visitor does not have an order, so if there is a special offer code in the visitor's session (e.g. passed via the query string), then set special offer code
-    } else if (isset($_SESSION['ecommerce']['special_offer_code']) == true) {
+    } else if (!$guest && (isset($_SESSION['ecommerce']['special_offer_code']) == true)) {
         $special_offer_code = $_SESSION['ecommerce']['special_offer_code'];
     }
     // if there is a special offer code for this order, then get offer code because the special offer code might just be a key code
@@ -5704,7 +5791,7 @@ function check_quantity($liveform)
 
         WHERE 
 
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
 
             AND
 
@@ -5818,7 +5905,7 @@ function check_inventory($liveform)
 
             AND (products.inventory = '1')
 
-            AND (products.backorder = '0')";
+            AND (products.backorder = '0')" . pg_order_item_active_sql();
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $products = array();
     // loop through products in order to add them to array
@@ -5847,7 +5934,7 @@ function check_inventory($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
 
                 AND (order_items.product_id = '" . $product['id'] . "')
 
@@ -5949,7 +6036,7 @@ function check_reservations($liveform)
 
             WHERE
 
-                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
 
                 AND (order_items.calendar_event_id != '0')";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));

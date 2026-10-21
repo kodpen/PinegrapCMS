@@ -94,7 +94,7 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
          FROM order_items
          LEFT JOIN products ON products.id = order_items.product_id
          WHERE
-            (order_items.ship_to_id = '" . escape($ship_to_id) . "')
+            (order_items.ship_to_id = '" . escape($ship_to_id) . "')" . pg_order_item_active_sql() . "
             AND (products.free_shipping = '0')
          ORDER BY order_items.id ASC");
 
@@ -259,7 +259,7 @@ function get_delivery_date($properties) {
         "SELECT MAX(products.preparation_time)
         FROM order_items
         LEFT JOIN products on products.id = order_items.product_id
-        WHERE ship_to_id = '" . e($ship_to_id) . "'");
+        WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql());
 
     $excluded_transit_dates = db_values(
         "SELECT date FROM excluded_transit_dates
@@ -370,7 +370,7 @@ function get_delivery_date($properties) {
                     "SELECT MAX(products.weight)
                     FROM order_items
                     LEFT JOIN products on products.id = order_items.product_id
-                    WHERE ship_to_id = '" . e($ship_to_id) . "'");
+                    WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql());
 
                 $response = get_fedex_delivery_date(array(
                     'service' => $service,
@@ -1525,7 +1525,7 @@ function get_shipping_method_base_rate($properties) {
     $recipient_subtotal = db_value(
         "SELECT SUM(price * CAST(quantity AS signed))
         FROM order_items
-        WHERE ship_to_id = '" . e($ship_to_id) . "'");
+        WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql());
 
     // If there is not a 2nd base rate, or if the recipient total is less than
     // the 2nd base rate, then return the base rate.
@@ -1655,7 +1655,7 @@ function get_shipping_methods($properties) {
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE
-            (order_items.order_id = '" . e($order_id) . "')
+            (order_items.order_id = '" . e($order_id) . "')" . pg_order_item_active_sql() . "
             AND (order_items.ship_to_id = '" . e($ship_to_id) . "')
         ORDER BY order_items.id");
 

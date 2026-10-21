@@ -6,19 +6,19 @@ Open the index of the folder the task needs, then only the files you need.
 
 ## Memory folders (docs/memory/)
 
-- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (61)
-- core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters (38)
-- data/README.md: Table structures and SQL pitfalls (10)
-- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (80)
-- erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (43)
-- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (43)
-- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (51)
-- release/README.md: Versions, migrations and upgrade steps, change log rules, release status (14)
-- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (47)
-- visitors/README.md: Visitor statistics, page and article views, search engine index flags (18)
-- waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (22)
-- workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine (7)
-- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (17)
+- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order
+- core/README.md: Code rules, file layout, translation, roles and access, security, api.php, request parameters
+- data/README.md: Table structures and SQL pitfalls
+- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import
+- erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start
+- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates
+- release/README.md: Versions, migrations and upgrade steps, change log rules, release status
+- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls
+- visitors/README.md: Visitor statistics, page and article views, search engine index flags
+- waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers
+- workflow/README.md: Project overview, owner rules, git and branches, sandbox and dev machine
+- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels
 
 ## Other documents (docs/)
 

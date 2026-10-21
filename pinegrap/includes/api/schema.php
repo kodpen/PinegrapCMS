@@ -625,6 +625,7 @@ function api_schema() {
 			'handler' => 'api_customers_list',
 			'returns' => array('list' => 'Customer'),
 			'summary' => 'List customers',
+			'description' => 'From the manager role up an application reaches every customer; one whose owner has the user role reaches only those filed in the contact groups given to that account, as on the contact screens, and every customers route answers 404 for the rest.',
 			'params'  => array(
 				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name, the email address or the member number.'),
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
@@ -1467,7 +1468,7 @@ function api_schema() {
 			'returns' => 'Customer',
 			'status'  => 201,
 			'summary' => 'Add a customer',
-			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, contact groups, the affiliate record and the ERP columns are not written here.',
+			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, the affiliate record and the ERP columns are not written here, and contact groups only as contact_group_id says.',
 			'params'  => array(
 				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'first_name',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
@@ -1483,7 +1484,8 @@ function api_schema() {
 				array('name' => 'zip',         'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'country',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
-				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; this endpoint does not subscribe anyone to a contact group.')
+				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; it is also the choice recorded for the e-mail of the group in contact_group_id, which is otherwise recorded as not opted in.'),
+				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required.')
 			)
 		),
 
@@ -1496,7 +1498,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Customer',
 			'summary' => 'Change a customer',
-			'description' => 'Only the fields you send are changed. The same set the create takes.',
+			'description' => 'Only the fields you send are changed. The same set the create takes, without contact_group_id: groups are changed through POST /contact-groups/{id}/members.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
@@ -1539,7 +1541,7 @@ function api_schema() {
 			'handler' => 'api_reports_sales',
 			'returns' => 'SalesReport',
 			'summary' => 'Sales by day or month',
-			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day, and at most 400 periods come back.',
+			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day. Only periods that hold orders come back, at most 400: a window whose orders fall on more days (or months) is refused with 422 rather than answered short, so totals always cover the whole window.',
 			'params'  => array(
 				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'Start of the window. Defaults to thirty days before to.'),
 				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),

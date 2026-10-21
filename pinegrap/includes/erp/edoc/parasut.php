@@ -747,6 +747,11 @@ function erp_edoc_parasut_product_refusal($lines, $default = null)
         }
     }
 
+    // A rounding line (erp_edoc_parasut_vat_shift()) has no product either.
+    if (erp_edoc_parasut_vat_shift($lines)['extra'] !== array()) {
+        return erp_edoc_parasut_no_product_text(array('description' => lang('Rounding difference')));
+    }
+
     return '';
 }
 
@@ -765,9 +770,188 @@ function erp_edoc_parasut_no_product_text($line)
 }
 
 /**
+ * The amount before VAT that comes to the total once Paraşüt adds the VAT
+ * at the rate on the whole of it, half up to the kurus; null when no amount
+ * does. There is one at most: a kurus more on the amount puts one or two on
+ * the total, so at 20% one total in six (3 kurus off a multiple of 6, such
+ * as 57.93) is never reached.
+ *
+ * @param int   $total  Kurus, VAT included
+ * @param float $rate   The VAT rate in percent
+ * @return int|null
+ */
+function erp_edoc_parasut_rate_amount($total, $rate)
+{
+    $total = (int) $total;
+    $near = (int) round($total * 100 / (100 + (float) $rate));
+
+    foreach (array($near, $near - 1, $near + 1) as $amount) {
+        if (($amount >= 0) && (($amount + erp_apply_rate($amount, $rate)) === $total)) {
+            return $amount;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * What the lines need at Paraşüt so that its total is the ERP's.
+ *
+ * Paraşüt takes the VAT of each rate on the whole amount of its lines, half
+ * up to the kurus. The ERP takes it line by line, as the checkout does, and
+ * an order's VAT-inclusive prices are split line by line too
+ * (erp_split_gross()). Where a rate's line VAT does not come to the VAT on
+ * its whole amount (1.02 + 1.02 at 20%: 0.20 + 0.20 against 0.41 on 2.04),
+ * the rate's amount at Paraşüt moves by the kurus that bring amount and VAT
+ * to the ERP's total for that rate (2.03 + 0.41 = 2.44). The total stays the
+ * ERP's; the rate's amount and VAT at Paraşüt are that many kurus off the
+ * ERP's, the one up and the other down.
+ *
+ * Down, the kurus come off the rate's largest line as discount. Up, they
+ * come back off a discount the rate's lines carry, else onto the price of
+ * its largest single unit, else onto a rounding line of their own at the
+ * rate (written after every line of the invoice).
+ *
+ * Some totals no amount reaches at a rate (erp_edoc_parasut_rate_amount());
+ * such a rate is refused with the totals on either side. A rate with
+ * withholding is left as it is, as is one whose VAT is further from its
+ * amount's than line roundings take it (two kurus a line): the total check
+ * then says what differs.
+ *
+ * @param array $lines  erp_invoice_items rows, in the invoice's order
+ * @return array ['lines' => [index => ['discount' => kurus more, 'unit_price' => kurus more]],
+ *                'extra' => [['kurus' => int, 'rate' => float]],
+ *                'refusal' => [] or ['rate' => float, 'total' => int, 'below' => int, 'above' => int]]
+ */
+function erp_edoc_parasut_vat_shift($lines)
+{
+    $out = array('lines' => array(), 'extra' => array(), 'refusal' => array());
+    $groups = array();
+
+    foreach (array_values((array) $lines) as $index => $line) {
+        $rate = is_array($line) ? round((float) ($line['tax_rate'] ?? 0), 3) : 0.0;
+
+        if ($rate > 0) {
+            $groups[number_format($rate, 3, '.', '')][$index] = $line;
+        }
+    }
+
+    foreach ($groups as $key => $group) {
+        $rate = (float) $key;
+        $base = 0;
+        $vat = 0;
+        $withheld = false;
+
+        foreach ($group as $line) {
+            $base += (int) ($line['line_total'] ?? 0) - (int) ($line['discount_amount'] ?? 0);
+            $vat += (int) ($line['tax_total'] ?? 0) - (int) ($line['tax2_amount'] ?? 0);
+            $withheld = $withheld || ((float) ($line['withholding_rate'] ?? 0) > 0);
+        }
+
+        $gap = $vat - erp_apply_rate($base, $rate);
+
+        if ($withheld || ($base <= 0) || ($gap === 0) || (abs($gap) > 2 * count($group))) {
+            continue;
+        }
+
+        $total = $base + $vat;
+        $amount = erp_edoc_parasut_rate_amount($total, $rate);
+
+        if ($amount === null) {
+            $below = $total - 1;
+            $above = $total + 1;
+
+            while (($below > 0) && (erp_edoc_parasut_rate_amount($below, $rate) === null)) {
+                $below--;
+            }
+
+            while (($above < $total + 100) && (erp_edoc_parasut_rate_amount($above, $rate) === null)) {
+                $above++;
+            }
+
+            $out['refusal'] = array('rate' => $rate, 'total' => $total, 'below' => $below, 'above' => $above);
+
+            return $out;
+        }
+
+        // The rate's largest line, its largest single unit, and its largest
+        // line whose discount can give the kurus back; the first of equals.
+        $shift = $amount - $base;
+        $bases = array();
+        $largest = null;
+        $single = null;
+        $discounted = null;
+
+        foreach ($group as $index => $line) {
+            $discount = (int) ($line['discount_amount'] ?? 0);
+            $bases[$index] = (int) ($line['line_total'] ?? 0) - $discount;
+
+            if (($largest === null) || ($bases[$index] > $bases[$largest])) {
+                $largest = $index;
+            }
+
+            if (((float) ($line['quantity'] ?? 0) == 1)
+                && (($single === null) || ($bases[$index] > $bases[$single]))) {
+                $single = $index;
+            }
+
+            if (($shift > 0) && ($discount >= $shift)
+                && (($discounted === null) || ($bases[$index] > $bases[$discounted]))) {
+                $discounted = $index;
+            }
+        }
+
+        if ($shift < 0) {
+            if ($bases[$largest] + $shift >= 0) {
+                $out['lines'][$largest] = array('discount' => -$shift, 'unit_price' => 0);
+            }
+        } elseif ($discounted !== null) {
+            $out['lines'][$discounted] = array('discount' => -$shift, 'unit_price' => 0);
+        } elseif ($single !== null) {
+            $out['lines'][$single] = array('discount' => 0, 'unit_price' => $shift);
+        } else {
+            $out['extra'][] = array('kurus' => $shift, 'rate' => $rate);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Why an invoice cannot go to Paraşüt with its total, or '': a rate whose
+ * lines come to a total no amount reaches with Paraşüt's VAT
+ * (erp_edoc_parasut_vat_shift()).
+ *
+ * @param array  $lines     erp_invoice_items rows
+ * @param string $currency  The invoice's currency
+ * @return string
+ */
+function erp_edoc_parasut_total_refusal($lines, $currency)
+{
+    $refusal = erp_edoc_parasut_vat_shift($lines)['refusal'];
+
+    if ($refusal === array()) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The lines at {var:1} VAT come to {var:2} with VAT, a total Paraşüt cannot reach: it takes the VAT on their whole amount, and no amount with that VAT comes to it (the nearest are {var:3} and {var:4}). Nothing was sent to Paraşüt.',
+        'vars' => array(
+            erp_percent_text($refusal['rate']),
+            erp_money_out_currency($refusal['total'], $currency),
+            erp_money_out_currency($refusal['below'], $currency),
+            erp_money_out_currency($refusal['above'], $currency),
+        ),
+    ));
+}
+
+/**
  * The sales_invoices body for an invoice, field for field from the
  * documentation. Unit prices are VAT-exclusive; the discount travels as the
  * line's rate when that rate is its only discount, as its amount otherwise.
+ * Where Paraşüt's VAT on a rate's whole amount is not the ERP's line VAT, the
+ * rate's amount moves by a kurus or so to keep the ERP's total
+ * (erp_edoc_parasut_vat_shift()); a total it cannot keep is refused.
  *
  * @param array  $invoice     An erp_invoices row; an order's invoice also carries
  *                            order_number and order_date (Y-m-d)
@@ -778,8 +962,14 @@ function erp_edoc_parasut_no_product_text($line)
 function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
 {
     $details = array();
+    $lines = array_values((array) $lines);
+    $shift = erp_edoc_parasut_vat_shift($lines);
 
-    foreach ($lines as $line) {
+    if ($shift['refusal'] !== array()) {
+        return array('error' => erp_edoc_parasut_total_refusal($lines, (string) ($invoice['currency'] ?? '')));
+    }
+
+    foreach ($lines as $index => $line) {
         $product = erp_edoc_parasut_line_product($line);
 
         if ($product['error'] !== '') {
@@ -801,6 +991,16 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
             'discount_value' => $as_rate ? $discount_rate : erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0)),
         );
 
+        // The kurus this line carries for its rate's VAT
+        // (erp_edoc_parasut_vat_shift()). Its discount goes as the amount: a
+        // rate on a changed price would not move the line by the kurus.
+        if (isset($shift['lines'][$index])) {
+            $moved = $shift['lines'][$index];
+            $attributes['unit_price'] = erp_edoc_parasut_money((int) $line['unit_price'] + (int) $moved['unit_price']);
+            $attributes['discount_type'] = 'amount';
+            $attributes['discount_value'] = erp_edoc_parasut_money((int) ($line['discount_amount'] ?? 0) + (int) $moved['discount']);
+        }
+
         // Withholding is a line attribute at Paraşüt (details[].vat_withholding_rate),
         // so lines with different rates share one document. The rate is the
         // withheld share of the VAT in percent, as Pinegrap keeps it (4/10 =
@@ -812,6 +1012,33 @@ function erp_edoc_parasut_invoice_payload($invoice, $lines, $contact_id)
         $details[] = array(
             'type' => 'sales_invoice_details',
             'attributes' => $attributes,
+            'relationships' => array(
+                'product' => array('data' => array('type' => 'products', 'id' => $product['id'])),
+            ),
+        );
+    }
+
+    // A rounding line of the rate's moved kurus, after every line of the
+    // invoice, so Paraşüt's lines up to there are the ERP's in order
+    // (erp_edoc_parasut_detail_ids()).
+    foreach ($shift['extra'] as $extra) {
+        $description = lang('Rounding difference');
+        $product = erp_edoc_parasut_line_product(array('product_id' => 0, 'description' => $description));
+
+        if ($product['error'] !== '') {
+            return array('error' => $product['error']);
+        }
+
+        $details[] = array(
+            'type' => 'sales_invoice_details',
+            'attributes' => array(
+                'quantity' => 1.0,
+                'unit_price' => erp_edoc_parasut_money((int) $extra['kurus']),
+                'vat_rate' => (float) $extra['rate'],
+                'description' => $description,
+                'discount_type' => 'amount',
+                'discount_value' => 0.0,
+            ),
             'relationships' => array(
                 'product' => array('data' => array('type' => 'products', 'id' => $product['id'])),
             ),
@@ -973,13 +1200,20 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail(lang('The invoice has no lines.'));
     }
 
-    // Refused before anything reaches Paraşüt: a rate it does not take, or a
-    // line with no product to go on, used to open the buyer's card there
-    // first and only then fail on the invoice.
+    // Refused before anything reaches Paraşüt, so that the buyer's card is
+    // not opened there for an invoice that cannot follow: a rate it does
+    // not take, a total its VAT cannot come to, a line with no product to
+    // go on.
     $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
 
     if ($rate_refusal !== '') {
         return $fail($rate_refusal);
+    }
+
+    $total_refusal = erp_edoc_parasut_total_refusal($lines, (string) ($invoice['currency'] ?? ''));
+
+    if ($total_refusal !== '') {
+        return $fail($total_refusal);
     }
 
     $product_refusal = erp_edoc_parasut_product_refusal($lines);
@@ -1518,21 +1752,72 @@ function erp_edoc_parasut_cancel_window_open($attributes, $now)
  * e-document. A draft that was never handed to GİB is sent there for the
  * first time; one that was handed over (a conversion job kept, the kind
  * decided, the row marked sent) and still has none is sent there again.
+ * Why the conversion failed, when its job said so, comes first.
  *
- * @param array $invoice  The erp_invoices row as the question found it
+ * @param array  $invoice  The erp_invoices row as the question found it
+ * @param string $why      The failed conversion job's words, or ''
  * @return string
  */
-function erp_edoc_parasut_unconverted_message($invoice)
+function erp_edoc_parasut_unconverted_message($invoice, $why = '')
 {
     $handed_over = (trim((string) ($invoice['parasut_job_id'] ?? '')) !== '')
         || ((string) ($invoice['edoc_status'] ?? '') === 'sent')
         || in_array((string) ($invoice['edoc_kind'] ?? ''), array('einvoice', 'earchive'), true);
+    $why = trim((string) $why);
 
-    if ($handed_over) {
-        return lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    if ($why !== '') {
+        $why .= preg_match('/[.!?]$/u', $why) ? ' ' : '. ';
     }
 
-    return lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+    if ($handed_over) {
+        return $why . lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    }
+
+    return $why . lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+}
+
+/**
+ * What a conversion job's answer says: still running, finished, or failed,
+ * and Paraşüt's own words for a failure (errors[], strings or JSON:API
+ * error objects).
+ *
+ * @param array $attributes  data.attributes of GET trackable_jobs/{id}
+ * @return array ['state' => 'running'|'done'|'error', 'message' => string]
+ */
+function erp_edoc_parasut_job_reading($attributes)
+{
+    $attributes = (array) $attributes;
+    $state = mb_strtolower(trim((string) ($attributes['status'] ?? '')), 'UTF-8');
+    $said = array();
+
+    foreach ((array) ($attributes['errors'] ?? array()) as $error) {
+        if (is_array($error)) {
+            $title = trim((string) (is_scalar($error['title'] ?? null) ? $error['title'] : ''));
+            $detail = trim((string) (is_scalar($error['detail'] ?? null) ? $error['detail'] : ''));
+            $line = (($title !== '') || ($detail !== ''))
+                ? ((($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title))
+                : trim(implode(' ', array_map('strval', array_filter($error, 'is_scalar'))));
+        } else {
+            $line = is_scalar($error) ? trim((string) $error) : '';
+        }
+
+        if (($line !== '') && !in_array($line, $said, true)) {
+            $said[] = $line;
+        }
+    }
+
+    if (preg_match('/error|fail|abort/u', $state)) {
+        return array(
+            'state' => 'error',
+            'message' => ($said !== array()) ? implode(' | ', $said) : lang('Paraşüt could not convert the invoice into an e-document.'),
+        );
+    }
+
+    if (preg_match('/done|complet|success|finish/u', $state)) {
+        return array('state' => 'done', 'message' => '');
+    }
+
+    return array('state' => 'running', 'message' => '');
 }
 
 /**
@@ -1557,8 +1842,13 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     }
 
     // 1. The conversion job, while its window is open. A job that failed
-    // is the one place Paraşüt says why in words.
+    // is the one place Paraşüt says why in words. A failed job leaves the
+    // sales invoice at Paraşüt as it was, so what the row becomes is read
+    // from the invoice below (a record with no e-document is 'created' and
+    // is handed over again, never created a second time); the job's words
+    // go with it.
     $tracked = trim((string) ($invoice['parasut_job_id'] ?? ''));
+    $job_words = '';
 
     if (($tracked !== '') && ((int) ($invoice['parasut_job_expires_at'] ?? 0) > time())) {
         $job = erp_edoc_parasut_request('GET', '/trackable_jobs/' . rawurlencode($tracked), null, $context);
@@ -1569,23 +1859,9 @@ function erp_edoc_parasut_poll($invoice, $job_id)
         }
 
         if (erp_edoc_parasut_ok($job)) {
-            $attributes = (array) ($job['body']['data']['attributes'] ?? array());
-            $state = mb_strtolower(trim((string) ($attributes['status'] ?? '')), 'UTF-8');
-            $said = array();
+            $reading = erp_edoc_parasut_job_reading($job['body']['data']['attributes'] ?? array());
 
-            foreach ((array) ($attributes['errors'] ?? array()) as $error) {
-                $said[] = is_array($error) ? implode(' ', array_map('strval', $error)) : (string) $error;
-            }
-
-            if (preg_match('/error|fail|abort/u', $state)) {
-                erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
-                $out['success'] = true;
-                $out['status'] = 'error';
-                $out['message'] = ($said !== array()) ? implode(' | ', array_filter(array_map('trim', $said), 'strlen')) : lang('Paraşüt could not convert the invoice into an e-document.');
-                return $out;
-            }
-
-            if (!preg_match('/done|complet|success|finish/u', $state)) {
+            if ($reading['state'] === 'running') {
                 $out['success'] = true;
                 $out['status'] = 'sent';
                 $out['message'] = lang('Paraşüt is still converting the invoice; ask again in a minute.');
@@ -1593,6 +1869,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
             }
 
             erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
+            $job_words = (string) $reading['message'];
         }
     }
 
@@ -1656,12 +1933,11 @@ function erp_edoc_parasut_poll($invoice, $job_id)
 
     if (($document_id === '') || !in_array($document_type, array('e_archives', 'e_invoices'), true)) {
         // No e-document: a draft not handed to GİB yet, or one whose
-        // conversion job ran out before it was read or failed without a
-        // word. Shown as the provider's draft, so the hand-over button
-        // comes back.
+        // conversion job failed or ran out before it was read. Shown as the
+        // provider's draft, so the hand-over button comes back.
         $out['success'] = true;
         $out['status'] = 'created';
-        $out['message'] = erp_edoc_parasut_unconverted_message($invoice);
+        $out['message'] = erp_edoc_parasut_unconverted_message($invoice, $job_words);
 
         // What Paraşüt computed for the draft, so it can be looked over
         // before the hand-over without opening Paraşüt.

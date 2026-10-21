@@ -178,7 +178,7 @@ function pg_geo_server_country()
     $none = array('code' => '', 'source' => '');
     $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
 
-    if (($remote === '') || (waf_client_ip() !== $remote)) {
+    if (($remote === '') || (waf_client_ip() !== waf_ip_normalize($remote))) {
         return $none;
     }
 

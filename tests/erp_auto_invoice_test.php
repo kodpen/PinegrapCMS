@@ -173,3 +173,71 @@ function test_erp_auto_invoice_notification()
 
 	pg_assert_same(defined('ERP_ENABLED') && ERP_ENABLED, pg_notification_visible($row, $rights));
 }
+
+// The smallest order the store invoices on its own: the amount is the whole
+// sale the invoice states, a gift card included; the minimum itself is
+// invoiced and 0 means no minimum.
+function test_erp_auto_invoice_minimum_amount()
+{
+	$order = erp_auto_invoice_test_order(array('total' => '9999', 'gift_card_discount' => '0'));
+
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('min_total' => 10000)));
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', array('min_total' => '10000')), 'as stored');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('min_total' => 9999)), 'the minimum itself');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('min_total' => 0)), 'no minimum');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array()), 'no filters');
+
+	// 40.00 paid, 80.00 by gift card: a sale of 120.00.
+	$gift = erp_auto_invoice_test_order(array('total' => '4000', 'gift_card_discount' => '8000'));
+
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $gift, '', array('min_total' => 10000)), 'gift card counts');
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_paid', 'order_paid', $gift, '', array('min_total' => 12001)));
+}
+
+// Only buyers with a tax number: a VKN or a TCKN counts, spaces aside; no
+// number, or the final consumer's 11111111111, does not.
+function test_erp_auto_invoice_tax_number_only()
+{
+	$order = erp_auto_invoice_test_order();
+	$only = array('tax_number_only' => true);
+
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only, '1234567890'), 'VKN');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only, '10000000146'), 'TCKN');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only, ' 123 456 7890 '), 'spaces');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('tax_number_only' => '1'), 'DE123456789'), 'as stored, abroad');
+
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only, ''));
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', $only, '   '));
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only, '11111111111'), 'final consumer');
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $only), 'not given');
+
+	// Off, a buyer without a number is invoiced like any other.
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('tax_number_only' => false), ''));
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('tax_number_only' => '0'), ''));
+}
+
+// The filters come after what is known of the order's invoice and before the
+// payment: an invoiced order is "invoiced" whatever its amount, and an order
+// the store never invoices on its own says so before it says "unpaid".
+function test_erp_auto_invoice_filter_reasons_in_order()
+{
+	$small = erp_auto_invoice_test_order(array('total' => '500', 'gift_card_discount' => '0', 'paid_at' => '0'));
+	$both = array('tax_number_only' => true, 'min_total' => 1000);
+
+	pg_assert_same('invoiced', erp_auto_invoice_decision('order_paid', 'order_paid', $small, 'issued', $both, ''));
+	pg_assert_same('cancelled_before', erp_auto_invoice_decision('order_paid', 'order_paid', $small, 'cancelled', $both, ''));
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_paid', 'order_paid', $small, '', $both, ''));
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_paid', 'order_paid', $small, '', array('tax_number_only' => true), ''));
+	pg_assert_same('unpaid', erp_auto_invoice_decision('order_paid', 'order_paid', $small, '', array('tax_number_only' => true), '1234567890'));
+	pg_assert_same('counter_sale', erp_auto_invoice_decision('order_paid', 'order_paid', array_merge($small, array('type' => 'local')), '', $both, ''));
+}
+
+// What the two settings read before the step that adds them has run: off.
+function test_erp_auto_invoice_filters_before_the_step()
+{
+	if (defined('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY') || defined('ERP_AUTO_INVOICE_MIN_TOTAL')) {
+		return;
+	}
+
+	pg_assert_same(array('tax_number_only' => false, 'min_total' => 0), erp_auto_invoice_filters());
+}

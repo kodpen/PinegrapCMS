@@ -61,3 +61,26 @@ function test_api_idempotency_takes_over_a_stale_reservation()
 
 	pg_assert_same('stale', api_idempotency_decision($row, 'h1', 991 + api_idempotency_pending_ttl()));
 }
+
+// A body JSON can write keeps the text its fingerprint has always been taken
+// over, so a key recorded before still matches its retry.
+function test_api_idempotency_input_text_is_json_for_a_readable_body()
+{
+	$input = array('name' => 'Çay', 'price' => 1250, 'tags' => array('a', 'b'));
+
+	pg_assert_same(json_encode($input), api_idempotency_input_text($input));
+}
+
+// Bytes that are not UTF-8 (a form field from a client encoding Windows-1254)
+// made json_encode() fail, and every such body read as the same request: the
+// same key with another body was answered from the first one's record.
+function test_api_idempotency_input_text_tells_apart_bodies_json_cannot_write()
+{
+	$first = api_idempotency_input_text(array('name' => "x\xFDy"));
+	$second = api_idempotency_input_text(array('name' => "x\xFEy"));
+
+	pg_assert_true(is_string($first) && ($first !== ''), 'a text to hash');
+	pg_assert_true($first !== $second, 'two bodies, two fingerprints');
+	pg_assert_same($first, api_idempotency_input_text(array('name' => "x\xFDy")), 'the same body, the same fingerprint');
+	pg_assert_true(api_idempotency_input_text(array('n' => INF)) !== api_idempotency_input_text(array('n' => -INF)), 'INF and -INF too');
+}

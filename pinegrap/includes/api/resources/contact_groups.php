@@ -624,7 +624,9 @@ function api_contact_group_member_changes($add, $remove, $members) {
 
 // Contacts to put in have to exist. Any contact may be put in, as on the screen
 // where a contact is added: an integration that has just made one through
-// POST /customers files it here next.
+// POST /customers files it here next. Below the manager role only a contact
+// the account already reaches through one of its groups counts as existing,
+// as on the contact screen, so a contact cannot be pulled into reach this way.
 function api_contact_group_contacts_or_fail($ids, $field) {
 
 	if (empty($ids)) {
@@ -633,9 +635,14 @@ function api_contact_group_contacts_or_fail($ids, $field) {
 
 	}
 
+	$app = api_current_app();
+
+	$owner = api_customer_owner_filter($app['owner']);
+
 	$found = array();
 
-	foreach (api_rows("SELECT id FROM contacts WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+	foreach (api_rows("SELECT id FROM contacts WHERE id IN (" . implode(',', $ids) . ")"
+		. (($owner === '') ? '' : ' AND ' . $owner)) as $row) {
 
 		$found[] = (int)$row['id'];
 
