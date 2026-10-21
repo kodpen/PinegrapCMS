@@ -79,12 +79,14 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
   satırda kalanla sınırlar.
 - `erp_invoice_items.tax_total` satırın **toplam** vergisidir;
   `order_items.tax` **birim** vergidir. Ad farkı bilinçlidir.
-- `submit_order.php` indirimi toplamdan önce KDV'den düşer ama
-  `order_items.tax_total` indirimsiz kalır — sipariş satırlarını olduğu gibi
-  faturaya taşımak fazla faturalamaktır.
-- `erp_order_lines()` indirimli satırda KDV'yi kalan matrahtan yeniden alır
-  (`erp_apply_rate($line_total-$pay,$oran)`); `oran × matrah = KDV` bozulursa
-  e-fatura denetimi düşer.
+- Siparişin KDV'si oran başına alınır (Paraşüt gibi): ödeme sayfası aynı
+  oranlı satırların toplamından (`update_order_item_taxes()`,
+  `pg_tax_by_rate()`), indirimden sonra indirimin bıraktığından yeniden
+  (`pg_order_charged_tax()`); `order_items.tax_total` indirimsiz kalır —
+  sipariş satırlarını olduğu gibi faturaya taşımak fazla faturalamaktır.
+- `erp_order_lines()` indirimli siparişte KDV'yi kalan matrahlardan oran
+  başına yeniden alır (`erp_rate_vat()`); satırın KDV'si kendi oran ×
+  matrahından bir kuruş sapabilir, oranın satırları oranın KDV'sini tutar.
 - Satır KDV oranını `erp_line_tax_rate()` ile **yasal oran** olarak taşı,
   yuvarlanmış kuruşun bölümü olarak değil (361/2008 → 18, 17.978 değil).
 - Sipariş başlık tutarlarını (`shipping`, `discount`, `surcharge`,

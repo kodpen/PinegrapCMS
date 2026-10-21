@@ -120,7 +120,11 @@ function get_order_preview($properties) {
             // so we can keep track of remaining inventory quantity as we loop through order items,
             // so that we can determine if out of stock message should be shown for an order item
             $inventory_quantities = array();
-            
+
+            // The lines charged today, for their tax after the order discount
+            // (pg_order_items_charged_tax()).
+            $charged_item_ids = array();
+
             // loop through all ship tos
             foreach ($ship_tos as $ship_to_id) {
                 // get ship to information
@@ -531,6 +535,7 @@ function get_order_preview($properties) {
                     // if product is in non-recurring order
                     if ($in_nonrecurring) {
                         $subtotal = $subtotal + $total_price;
+                        $charged_item_ids[] = $order_item['id'];
                         $grand_tax = $grand_tax + $total_tax;
                         
                         $output_recurring_schedule_row = '';
@@ -1034,7 +1039,9 @@ function get_order_preview($properties) {
         if (ECOMMERCE_TAX == true) {
             // if there is an order discount, adjust tax
             if (($subtotal > 0) && ($order_discount > 0)) {
-                $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
+                // Taken again per rate on what the discount leaves of the lines,
+                // as submit_order.php charges it.
+                $grand_tax = pg_order_items_charged_tax($charged_item_ids, (int) round($order_discount * 100)) / 100;
             }
 
             // If the tax is negative then set it to zero.  The tax might be negative
@@ -1969,6 +1976,9 @@ function get_order_preview($properties) {
         $discount = 0;
         $discount_info = '';
         $tax = 0;
+        // The lines charged today, for their tax after the order discount
+        // (pg_order_items_charged_tax()).
+        $charged_item_ids = array();
         $tax_info = '';
         $shipping = 0;
         $shipping_info = '';
@@ -2330,6 +2340,7 @@ function get_order_preview($properties) {
                         $item['in_nonrecurring'] = true;
 
                         $subtotal += $item['amount'];
+                        $charged_item_ids[] = $item['id'];
                         $tax += $item['tax'];
                         
                         if ($item['selection_type'] == 'donation') {
@@ -2547,7 +2558,9 @@ function get_order_preview($properties) {
             if (ECOMMERCE_TAX) {
                 // if there is an order discount, adjust tax
                 if ($subtotal and $discount) {
-                    $tax -= $tax * ($discount / $subtotal);
+                    // Taken again per rate on what the discount leaves of the lines,
+                    // as submit_order.php charges it.
+                    $tax = pg_order_items_charged_tax($charged_item_ids, (int) round($discount * 100)) / 100;
                 }
 
                 // If the tax is negative then set it to zero.  The tax might be negative
