@@ -71,10 +71,15 @@ function pg_tr_hash($normalized, $format = 'text')
 
 /**
  * Whether a text is worth translating: it has letters, it is not only a
- * token the renderer fills in later, and it is not placeholder Latin.
+ * token the renderer fills in later, it is not a data value
+ * (pg_tr_data_value()), and it is not placeholder Latin.
  */
 function pg_tr_translatable($text)
 {
+    if (pg_tr_data_value($text)) {
+        return false;
+    }
+
     $plain = trim(strip_tags((string) $text));
 
     if ($plain === '') {
@@ -97,6 +102,60 @@ function pg_tr_translatable($text)
     }
 
     return !pg_tr_placeholder_latin($plain);
+}
+
+/**
+ * Whether a text is a value kept as text rather than words: a data: URI (an
+ * inline SVG icon, an image), a JSON object or array, a lone address (a URL,
+ * an e-mail address) or a block of code. A form record or a field holds
+ * such values, and an engine has nothing to translate in them: it answers
+ * with the value itself or breaks it. Read on the raw value, markup
+ * included, since stripping the tags would leave "data:image/svg+xml," or
+ * a script's statements behind as words. Only whole values are data: a
+ * sentence with an address or a link in it is still a sentence.
+ *
+ * @param string $text
+ * @return bool
+ */
+function pg_tr_data_value($text)
+{
+    $value = trim((string) $text);
+
+    if ($value === '') {
+        return false;
+    }
+
+    // data:[<media type>][;<parameter>]...,<data> - the media type and the
+    // comma tell it from a label such as "Data: 2024".
+    if (preg_match('~^data:(?:[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+)?(?:;[^,;\s]*)*,~i', $value)) {
+        return true;
+    }
+
+    if ((($value[0] === '{') || ($value[0] === '[')) && is_array(json_decode($value, true))) {
+        return true;
+    }
+
+    // An address alone, in a link of its own or not.
+    $plain = trim(strip_tags($value));
+
+    if (preg_match('~^(?:(?:https?|ftp)://|//[^\s/]+\.|www\.[^\s.]+\.|(?:mailto|tel):)\S+$~i', $plain)
+        || preg_match('~^[^\s@<>"]+@[^\s@<>"]+\.\p{L}{2,}$~u', $plain)) {
+        return true;
+    }
+
+    // Code, read on unmistakable marks only: a script or style element, a
+    // function with its body, an arrow function with a block or ending a
+    // statement, a CSS rule. An inline text has its > escaped, hence the
+    // &gt; spellings.
+    if (preg_match('~<(?:script|style)\b~i', $value)
+        || preg_match('~\bfunction\s*[a-z0-9_$]*\s*\([^()]*\)\s*\{~i', $value)
+        || preg_match('~(?:\)|[a-z0-9_$])\s*=(?:>|&gt;)\s*\{~i', $value)
+        || (preg_match('~(?:\)|[a-z0-9_$])\s*=(?:>|&gt;)~i', $value) && (substr($value, -1) === ';'))
+        || preg_match('~[^\s{}][^{}]*\{\s*[a-z-]+\s*:\s*[^{};]+;[^{}]*\}~i', $value)) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
