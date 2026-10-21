@@ -780,6 +780,15 @@ function mp_sync_approve($account, $package, $order_id) {
 
 	}
 
+	// Only an open package is accepted. One that arrived already shipped or
+	// delivered is past the step acceptance moves it to, and the marketplace
+	// refuses it.
+	if (mp_order_stage($account, $package) !== 'open') {
+
+		return;
+
+	}
+
 	$line_ids = array();
 
 	foreach ((array)$package['lines'] as $line) {
