@@ -16287,6 +16287,23 @@ const StyleDesigner = (function () {
                     var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
                     var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
                     var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+                    var _bkTime = function (datetime, text, cls, name) {
+                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+                    };
+                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+                    var _bkRegion = function (label) {
+                        return [
+                            { name: 'role',       value: 'region' },
+                            { name: 'aria-label', value: label },
+                            { name: 'tabindex',   value: '0' }
+                        ];
+                    };
+                    // An icon-only link (social, share, email), named by its aria-label.
+                    var _bkIconLink = function (icon, label, cls, href) {
+                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
+                    };
                     // Pause control of a pg-marquee block: one wrapper (hidden
                     // under reduced motion) around a btn-check and its label.
                     // The label must follow the input: Bootstrap styles it
@@ -17158,25 +17175,16 @@ const StyleDesigner = (function () {
                     // opens: no links into the site, only contact and social links.
 
                     if (/^(maintenance|coming-soon)-/.test(ctype)) {
-                        // Icon-only social link; the label names the network for screen readers.
-                        var _mtSocialLink = function (icon, label) {
-                            return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', href: '#', target: '', customName: label,
-                                _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon, '', '20') ]);
-                        };
-                        var _mtSocial = function (cls) {
+                        var _mnSocial = function (cls) {
                             return _bkDiv('d-flex gap-3 ' + cls, _sdT('Social Links'), [
-                                _mtSocialLink('bi-linkedin',  _sdT('ACME on LinkedIn')),
-                                _mtSocialLink('bi-instagram', _sdT('ACME on Instagram')),
-                                _mtSocialLink('bi-twitter-x', _sdT('ACME on X'))
+                                _bkIconLink('bi-linkedin',  _sdT('ACME on LinkedIn'),  'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-instagram', _sdT('ACME on Instagram'), 'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-twitter-x', _sdT('ACME on X'),         'fs-5 text-body-secondary')
                             ]);
-                        };
-                        // A fixed date or time the operator edits; datetime keeps it machine-readable.
-                        var _mtTime = function (datetime, text, name, cls) {
-                            return _bkTag('time', cls || '', name, [ _bkH('span', text) ], [{ name: 'datetime', value: datetime }]);
                         };
                         // Email-only notify form: a visually hidden label, the field and a submit
                         // button, either side by side in an input group or stacked on phones.
-                        var _mtNotify = function (cls, grouped) {
+                        var _mnNotify = function (cls, grouped) {
                             var id = _bkUid('mt_email');
                             var label = createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                 _attrs: [{ name: 'for', value: id }] }, [ _bkH('span', _sdT('Email address')) ]);
@@ -17210,7 +17218,7 @@ const StyleDesigner = (function () {
                                     _bkTag('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mb-4', _sdT('Return Time'), [
                                         _bkIcon('bi-clock', 'text-primary'),
                                         _bkH('span', _sdT('Expected back:'), 'fw-semibold'),
-                                        _mtTime('2026-11-14T09:00', _sdT('Saturday, 14 November 2026, 09:00'), _sdT('Return Date'))
+                                        _bkTime('2026-11-14T09:00+03:00', _sdT('Saturday, 14 November 2026, 09:00'), '', _sdT('Return Date'))
                                     ]),
                                     _bkDiv('mb-4 text-start', _sdT('Upgrade Progress'), [
                                         _bkDiv('d-flex justify-content-between mb-1 small', _sdT('Progress Label'), [
@@ -17225,11 +17233,11 @@ const StyleDesigner = (function () {
                                             { name: 'aria-valuemax', value: '100' }
                                         ])
                                     ]),
-                                    _bkTag('p', 'mb-4 text-body-secondary', _sdT('Contact Line'), [
+                                    _bkDiv('mb-4 text-body-secondary', _sdT('Contact Line'), [
                                         _bkH('span', _sdT('Need help in the meantime? Write to us at'), 'me-1'),
                                         _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary fw-semibold', _sdT('Email Link'))
                                     ]),
-                                    _mtSocial('justify-content-center')
+                                    _mnSocial('justify-content-center')
                                 ], '7', '9', '', 'mx-auto text-center')
                             ])
                         ]);
@@ -17237,7 +17245,7 @@ const StyleDesigner = (function () {
 
                     // Maintenance: Split — what the work is and where it stands (done / in progress / next), help contacts, a picture beside it
                     if (ctype === 'maintenance-split') {
-                        var _mtStep = function (n, icon, iconCls, text, status, badgeCls) {
+                        var _mnStep = function (n, icon, iconCls, text, status, badgeCls) {
                             return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
                                 _bkIcon(icon, 'flex-shrink-0 fs-5 ' + iconCls),
                                 _bkH('span', text, 'flex-grow-1'),
@@ -17252,9 +17260,9 @@ const StyleDesigner = (function () {
                                     _bkP(_sdT('The site is closed for a few hours while we move to faster servers. Here is where the work stands.'), 'lead text-body-secondary mb-4'),
                                     _bkDiv('card mb-4 border-0 shadow-sm overflow-hidden', _sdT('Work Card'), [
                                         _bkTag('ul', 'list-group list-group-flush', _sdT('Work List'), [
-                                            _mtStep(1, 'bi-check-circle-fill', 'text-success',        _sdT('Back up all data'),           _sdT('Done'),        'bg-success-subtle text-success-emphasis'),
-                                            _mtStep(2, 'bi-arrow-repeat',      'text-primary',        _sdT('Move to the new servers'),    _sdT('In progress'), 'bg-primary-subtle text-primary-emphasis'),
-                                            _mtStep(3, 'bi-hourglass-split',   'text-body-secondary', _sdT('Final checks and reopening'), _sdT('Up next'),     'bg-body-tertiary text-body-secondary border')
+                                            _mnStep(1, 'bi-check-circle-fill', 'text-success',        _sdT('Back up all data'),           _sdT('Done'),        'bg-success-subtle text-success-emphasis'),
+                                            _mnStep(2, 'bi-arrow-repeat',      'text-primary',        _sdT('Move to the new servers'),    _sdT('In progress'), 'bg-primary-subtle text-primary-emphasis'),
+                                            _mnStep(3, 'bi-hourglass-split',   'text-body-secondary', _sdT('Final checks and reopening'), _sdT('Up next'),     'bg-body-tertiary text-body-secondary border')
                                         ])
                                     ]),
                                     _bkP(_sdT('Need help in the meantime?'), 'fw-semibold mb-2'),
@@ -17278,7 +17286,7 @@ const StyleDesigner = (function () {
 
                     // Maintenance: Status Board — the maintenance window, each service's state, a timed update log and a notify-me form
                     if (ctype === 'maintenance-status') {
-                        var _mtService = function (name, up) {
+                        var _mnService = function (name, up) {
                             return _bkTag('li', 'list-group-item d-flex align-items-center justify-content-between gap-2 px-0', name, [
                                 _bkH('span', name),
                                 _bkTag('span', 'badge text-wrap ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
@@ -17287,9 +17295,9 @@ const StyleDesigner = (function () {
                                 ])
                             ]);
                         };
-                        var _mtUpdate = function (n, datetime, time, text, cls) {
+                        var _mnUpdate = function (n, datetime, time, text, cls) {
                             return _bkTag('li', 'd-flex gap-3' + (cls ? ' ' + cls : ''), _sdT('Update {var}', n), [
-                                _mtTime(datetime, time, _sdT('Update Time'), 'small fw-semibold text-body-secondary text-nowrap'),
+                                _bkTime(datetime, time, 'small fw-semibold text-body-secondary text-nowrap', _sdT('Update Time')),
                                 _bkP(text, 'small mb-0')
                             ]);
                         };
@@ -17313,13 +17321,13 @@ const StyleDesigner = (function () {
                                                 _bkDiv('card-body p-4', _sdT('Card Body'), [
                                                     _bkH('h2', _sdT('Maintenance window'), 'h5 fw-bold mb-3'),
                                                     _bkTag('dl', 'mb-0', _sdT('Window Times'), [
-                                                        _bkH('dt', _sdT('Starts'), 'small fw-normal text-body-secondary'),
+                                                        _bkH('dt', _sdT('Start'), 'small fw-normal text-body-secondary'),
                                                         _bkTag('dd', 'fw-semibold mb-3', _sdT('Start Time'), [
-                                                            _mtTime('2026-11-14T09:00+03:00', _sdT('14 November 2026, 09:00'), _sdT('Start Date'))
+                                                            _bkTime('2026-11-14T09:00+03:00', _sdT('14 November 2026, 09:00'), '', _sdT('Start Date'))
                                                         ]),
-                                                        _bkH('dt', _sdT('Ends'), 'small fw-normal text-body-secondary'),
+                                                        _bkH('dt', _sdT('End'), 'small fw-normal text-body-secondary'),
                                                         _bkTag('dd', 'fw-semibold mb-3', _sdT('End Time'), [
-                                                            _mtTime('2026-11-14T15:00+03:00', _sdT('14 November 2026, 15:00'), _sdT('End Date'))
+                                                            _bkTime('2026-11-14T15:00+03:00', _sdT('14 November 2026, 15:00'), '', _sdT('End Date'))
                                                         ]),
                                                         _bkH('dt', _sdT('Time zone'), 'small fw-normal text-body-secondary'),
                                                         _bkH('dd', _sdT('Istanbul (UTC+3)'), 'fw-semibold mb-0')
@@ -17332,9 +17340,9 @@ const StyleDesigner = (function () {
                                                 _bkDiv('card-body p-4', _sdT('Card Body'), [
                                                     _bkH('h2', _sdT('Our services'), 'h5 fw-bold mb-2'),
                                                     _bkTag('ul', 'list-group list-group-flush', _sdT('Service List'), [
-                                                        _mtService(_sdT('Website'), false),
-                                                        _mtService(_sdT('Mobile app'), false),
-                                                        _mtService(_sdT('Phone support'), true)
+                                                        _mnService(_sdT('Website'), false),
+                                                        _mnService(_sdT('Mobile app'), false),
+                                                        _mnService(_sdT('Phone support'), true)
                                                     ])
                                                 ])
                                             ])
@@ -17344,9 +17352,9 @@ const StyleDesigner = (function () {
                                         _bkDiv('card-body p-4', _sdT('Card Body'), [
                                             _bkH('h2', _sdT('Latest updates'), 'h5 fw-bold mb-3'),
                                             _bkTag('ol', 'list-unstyled mb-0', _sdT('Update Log'), [
-                                                _mtUpdate(1, '2026-11-14T11:20+03:00', '11:20', _sdT('The new servers are running; we are testing the shop and the customer accounts.'), 'mb-3'),
-                                                _mtUpdate(2, '2026-11-14T10:05+03:00', '10:05', _sdT('All data has been copied to the new servers and checked.'), 'mb-3'),
-                                                _mtUpdate(3, '2026-11-14T09:00+03:00', '09:00', _sdT('Maintenance started. The site is closed to visitors.'), '')
+                                                _mnUpdate(1, '2026-11-14T11:20+03:00', '11:20', _sdT('The new servers are running; we are testing the shop and the customer accounts.'), 'mb-3'),
+                                                _mnUpdate(2, '2026-11-14T10:05+03:00', '10:05', _sdT('All data has been copied to the new servers and checked.'), 'mb-3'),
+                                                _mnUpdate(3, '2026-11-14T09:00+03:00', '09:00', _sdT('Maintenance started. The site is closed to visitors.'), '')
                                             ])
                                         ])
                                     ]),
@@ -17354,7 +17362,7 @@ const StyleDesigner = (function () {
                                         _bkDiv('card-body p-4', _sdT('Card Body'), [
                                             _bkH('h2', _sdT('Get an email when we are back'), 'h5 fw-bold mb-1'),
                                             _bkP(_sdT('One email when the site reopens, nothing else.'), 'small text-body-secondary mb-3'),
-                                            _mtNotify('', true)
+                                            _mnNotify('', true)
                                         ])
                                     ])
                                 ], '8', '10', '', 'mx-auto')
@@ -17364,7 +17372,7 @@ const StyleDesigner = (function () {
 
                     // Maintenance: Dark — a dark full-height band: a soft pulse, the brand, a short promise, three reassurances and an email button
                     if (ctype === 'maintenance-dark') {
-                        var _mtPill = function (icon, text) {
+                        var _mnPill = function (icon, text) {
                             return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal text-wrap bg-body-tertiary text-body border rounded-pill', text, [
                                 _bkIcon(icon, 'text-primary'),
                                 _bkH('span', text)
@@ -17380,9 +17388,9 @@ const StyleDesigner = (function () {
                                         _bkH('h1', _sdT('Down for a quick tune-up'), 'display-4 fw-bold mb-3'),
                                         _bkP(_sdT('We are making a few improvements behind the scenes and will be back online shortly.'), 'lead text-body-secondary mb-4'),
                                         _bkDiv('d-flex flex-wrap justify-content-center gap-2 mb-5', _sdT('Assurances'), [
-                                            _mtPill('bi-shield-check',  _sdT('Your data is safe')),
-                                            _mtPill('bi-truck',         _sdT('Orders keep shipping')),
-                                            _mtPill('bi-clock-history', _sdT('Back within hours'))
+                                            _mnPill('bi-shield-check',  _sdT('Your data is safe')),
+                                            _mnPill('bi-truck',         _sdT('Orders keep shipping')),
+                                            _mnPill('bi-clock-history', _sdT('Back within hours'))
                                         ]),
                                         createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
                                     ], '7', '9', '', 'mx-auto text-center')
@@ -17393,7 +17401,7 @@ const StyleDesigner = (function () {
 
                     // Coming Soon: Launch Date — badge, h1, the launch date as day / month / year tiles, a notify form and social links
                     if (ctype === 'coming-soon-launch') {
-                        var _mtTile = function (value, label) {
+                        var _mnTile = function (value, label) {
                             return _bkTag('span', 'd-flex flex-column align-items-center px-3 px-sm-4 py-3 bg-body-tertiary border rounded-4', label, [
                                 _bkH('span', value, 'display-6 fw-bold lh-1'),
                                 _bkH('span', label, 'mt-2 small text-uppercase text-body-secondary')
@@ -17407,14 +17415,14 @@ const StyleDesigner = (function () {
                                     _bkP(_sdT('ACME is building a new home for everything you like about us. The doors open on launch day.'), 'lead text-body-secondary mb-4'),
                                     _bkP(_sdT('Launch day'), 'mb-2 small fw-semibold text-uppercase text-body-secondary pg-tracking'),
                                     _bkTag('time', 'd-flex flex-wrap justify-content-center gap-3 mb-5', _sdT('Launch Date'), [
-                                        _mtTile('01',   _sdT('Day')),
-                                        _mtTile('12',   _sdT('Month')),
-                                        _mtTile('2026', _sdT('Year'))
+                                        _mnTile('01',   _sdT('Day')),
+                                        _mnTile('12',   _sdT('Month')),
+                                        _mnTile('2026', _sdT('Year'))
                                     ], [{ name: 'datetime', value: '2026-12-01' }]),
                                     _bkP(_sdT('Be the first to know when we open.'), 'fw-semibold mb-2'),
-                                    _mtNotify('mb-2', false),
+                                    _mnNotify('mb-2', false),
                                     _bkP(_sdT('We only use your email to tell you about the launch. Unsubscribe at any time.'), 'mb-4 small text-body-secondary'),
-                                    _mtSocial('justify-content-center')
+                                    _mnSocial('justify-content-center')
                                 ], '6', '8', '', 'mx-auto text-center')
                             ])
                         ]);
@@ -17422,7 +17430,7 @@ const StyleDesigner = (function () {
 
                     // Coming Soon: Split — brand, h1, three promises and a notify form beside a picture with one offer card on it
                     if (ctype === 'coming-soon-split') {
-                        var _mtFeature = function (text) {
+                        var _mnFeature = function (text) {
                             return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
                         };
                         return _bkSection('py-5', _sdT('Coming Soon (Split)'), [
@@ -17434,12 +17442,12 @@ const StyleDesigner = (function () {
                                     ]),
                                     _bkH('h1', _sdT('Our new online shop opens in December'), 'display-5 fw-bold mb-3'),
                                     _bkP(_sdT('A faster shop, a simpler checkout and a few surprises. Leave your email and we will tell you the moment it opens.'), 'lead text-body-secondary mb-4'),
-                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Features'), [
-                                        _mtFeature(_sdT('Free delivery on your first order')),
-                                        _mtFeature(_sdT('Checkout in three steps')),
-                                        _mtFeature(_sdT('Early access for everyone on the list'))
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _mnFeature(_sdT('Free delivery on your first order')),
+                                        _mnFeature(_sdT('Checkout in three steps')),
+                                        _mnFeature(_sdT('Early access for everyone on the list'))
                                     ]),
-                                    _mtNotify('mb-2', true),
+                                    _mnNotify('mb-2', true),
                                     _bkP(_sdT('One email on launch day, nothing else.'), 'small text-body-secondary mb-0')
                                 ], '6'),
                                 _bkCol(_sdT('Image Col'), [
@@ -17468,20 +17476,9 @@ const StyleDesigner = (function () {
                     var _nbBand = function (cls, name, flexCls, kids) {
                         return _bkDiv(cls, name, [createNode('container', { fluid: false, cssClass: flexCls }, kids)]);
                     };
-                    // A <time> whose text the operator edits; datetime keeps the machine-readable value.
-                    var _nbTime = function (datetime, text, cls, name) {
-                        return createNode('semantic', { tag: 'time', cssClass: cls, text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
-                    };
                     // A column that takes its width from the row's row-cols-* classes.
                     var _nbCol = function (name, kids, cls) {
                         return createNode('col', { xs: 'col', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _nbRegion = function (label) {
-                        return [
-                            { name: 'role',       value: 'region' },
-                            { name: 'aria-label', value: label },
-                            { name: 'tabindex',   value: '0' }
-                        ];
                     };
 
                     // News: Ticker — a Breaking badge and five headlines sliding past, paused by hover, focus or the pause button
@@ -17490,7 +17487,7 @@ const StyleDesigner = (function () {
                             _sdT('London opens three new cycle lanes along the river'),
                             _sdT('Istanbul adds late-night ferry crossings for the weekend'),
                             _sdT('Berlin tech fair welcomes a record 80,000 visitors'),
-                            _sdT('Tokyo marathon places sell out in under an hour'),
+                            _sdT('Tokyo city fun run places sell out in under an hour'),
                             _sdT('New York libraries extend opening hours through December')
                         ];
                         // The second group repeats the first so the loop is
@@ -17514,7 +17511,7 @@ const StyleDesigner = (function () {
                             ]),
                             _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Marquee Viewport'), [
                                 _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [_nbTkGroup(false), _nbTkGroup(true)])
-                            ], _nbRegion(_sdT('Latest headlines'))),
+                            ], _bkRegion(_sdT('Latest headlines'))),
                             _bkMarqueePause('ticker_pause', _sdT('Pause the ticker'), 'btn-outline-secondary', 'flex-shrink-0')
                         ]);
                     }
@@ -17524,9 +17521,9 @@ const StyleDesigner = (function () {
                         var _nbRtId = _bkUid('headlines');
                         var _nbRtSlide = function (n, active, title, datetime, clock) {
                             return _bkDiv('carousel-item' + (active ? ' active' : ''), _sdT('Carousel Item {var}', n), [
-                                _bkDiv('d-flex flex-column flex-sm-row align-items-sm-baseline gap-1 gap-sm-3', _sdT('Headline'), [
+                                _bkDiv('d-flex flex-column flex-sm-row align-items-sm-baseline gap-1 gap-sm-3', _sdT('Headline Line'), [
                                     _bkLink(title, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link')),
-                                    _nbTime(datetime, clock, 'small text-nowrap text-body-secondary', _sdT('Publish Time'))
+                                    _bkTime(datetime, clock, 'small text-nowrap text-body-secondary', _sdT('Publish Time'))
                                 ])
                             ]);
                         };
@@ -17587,7 +17584,7 @@ const StyleDesigner = (function () {
                                 _nbTrTopic(_sdT('Startup Awards')),
                                 _nbTrTopic(_sdT('Winter Markets')),
                                 _nbTrTopic(_sdT('Book Fair'))
-                            ], _nbRegion(_sdT('Trending topics')))
+                            ], _bkRegion(_sdT('Trending topics')))
                         ]);
                     }
 
@@ -17604,7 +17601,7 @@ const StyleDesigner = (function () {
                         var _nbWcHour = function (n, datetime, clock, icon, sky, temp) {
                             return _bkDiv('col', _sdT('Hour {var}', n), [
                                 _bkDiv('h-100 py-2 rounded-3 bg-body-tertiary', _sdT('Hour Tile'), [
-                                    _nbTime(datetime, clock, 'd-block small text-body-secondary', _sdT('Hour')),
+                                    _bkTime(datetime, clock, 'd-block small text-body-secondary', _sdT('Hour')),
                                     _bkIcon(icon, 'd-block fs-5 my-1 text-primary'),
                                     _bkH('span', sky, 'visually-hidden'),
                                     _bkH('span', temp, 'd-block fw-semibold')
@@ -17619,7 +17616,7 @@ const StyleDesigner = (function () {
                                             _bkDiv('d-flex align-items-start justify-content-between gap-3 mb-3', _sdT('Card Head'), [
                                                 _bkDiv('', _sdT('Weather Place'), [
                                                     _bkH('h2', _sdT('London'), 'h5 fw-bold mb-1'),
-                                                    _nbTime('2026-10-21T09:00', _sdT('Wednesday, 21 October · 09:00'), 'small text-body-secondary', _sdT('Date'))
+                                                    _bkTime('2026-10-21T09:00', _sdT('Wednesday, 21 October · 09:00'), 'small text-body-secondary', _sdT('Date'))
                                                 ]),
                                                 _bkIcon('bi-cloud-sun', 'fs-1 lh-1 text-primary')
                                             ]),
@@ -17669,12 +17666,14 @@ const StyleDesigner = (function () {
                             // absolutely placed and must be clipped by this scroller.
                             _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
                                 _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
-                                _nbWsCity(2, 'bi-sun',           _sdT('New York City'), _sdT('Sunny'),         '15°'),
+                                // Raw on purpose: the 'New York' key is the sample billing
+                                // city and reads İstanbul in Turkish, a city already listed.
+                                _nbWsCity(2, 'bi-sun',           'New York',            _sdT('Sunny'),         '15°'),
                                 _nbWsCity(3, 'bi-cloud-sun',     _sdT('Istanbul'),      _sdT('Partly cloudy'), '18°'),
                                 _nbWsCity(4, 'bi-cloud',         _sdT('Berlin'),        _sdT('Cloudy'),        '9°'),
                                 _nbWsCity(5, 'bi-sun',           _sdT('Tokyo'),         _sdT('Sunny'),         '20°')
-                            ], _nbRegion(_sdT('Weather in five cities'))),
-                            _nbTime('2026-10-21', _sdT('Wednesday, 21 October 2026'), 'd-none d-xl-inline flex-shrink-0 text-nowrap text-body-secondary', _sdT('Date')),
+                            ], _bkRegion(_sdT('Weather in five cities'))),
+                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October 2026'), 'd-none d-xl-inline flex-shrink-0 text-nowrap text-body-secondary', _sdT('Date')),
                             _bkLink(_sdT('Full forecast'), '#', 'flex-shrink-0 fw-semibold text-nowrap link-primary text-decoration-none', _sdT('Forecast Link'))
                         ]);
                     }
@@ -17687,7 +17686,7 @@ const StyleDesigner = (function () {
                             return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Day {var}', n), [
                                 _bkIcon(icon, 'flex-shrink-0 fs-3 text-primary'),
                                 _bkDiv('flex-grow-1', _sdT('Day Copy'), [
-                                    _nbTime(datetime, day, 'd-block fw-semibold', _sdT('Date')),
+                                    _bkTime(datetime, day, 'd-block fw-semibold', _sdT('Date')),
                                     _bkH('span', sky, 'd-block small text-body-secondary'),
                                     _bkDiv('progress pg-progress-8 mt-2', _sdT('Range Bar'), [
                                         _bkDiv('progress-bar ' + width, _sdT('Range Fill'))
@@ -17706,7 +17705,7 @@ const StyleDesigner = (function () {
                                     _bkDiv('card h-100 border-0 rounded-4 shadow-sm text-bg-primary', _sdT('Today Card'), [
                                         _bkDiv('card-body p-4', _sdT('Today Body'), [
                                             _bkH('span', _sdT('Today'), 'd-block small fw-semibold text-uppercase mb-1'),
-                                            _nbTime('2026-10-21', _sdT('Wednesday, 21 October'), 'd-block mb-4', _sdT('Date')),
+                                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October'), 'd-block mb-4', _sdT('Date')),
                                             _bkDiv('d-flex align-items-center gap-3 mb-3', _sdT('Temperature'), [
                                                 _bkIcon('bi-sun', 'fs-1 lh-1'),
                                                 _bkH('span', '18°', 'display-3 fw-bold lh-1')
@@ -17749,16 +17748,16 @@ const StyleDesigner = (function () {
                         return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
                             _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Section Header'), [
                                 _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
-                                _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Time'), [
+                                _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Line'), [
                                     _bkIcon('bi-clock'),
                                     _bkH('span', _sdT('Last updated')),
-                                    _nbTime('2026-10-21T17:45', _sdT('21 October, 17:45'), '', _sdT('Date'))
+                                    _bkTime('2026-10-21T17:45', _sdT('21 October, 17:45'), '', _sdT('Update Time'))
                                 ])
                             ]),
                             _bkRow(_sdT('Markets Row'), [
-                                _nbMkTile(1, 'USD/TRY',           _sdT('41.85'),     _sdT('+0.42%'), true),
-                                _nbMkTile(2, 'EUR/TRY',           _sdT('48.62'),     _sdT('+0.18%'), true),
-                                _nbMkTile(3, 'GBP/TRY',           _sdT('55.30'),     _sdT('−0.11%'), false),
+                                _nbMkTile(1, _sdT('USD/TRY'),     _sdT('41.85'),     _sdT('+0.42%'), true),
+                                _nbMkTile(2, _sdT('EUR/TRY'),     _sdT('48.62'),     _sdT('+0.18%'), true),
+                                _nbMkTile(3, _sdT('GBP/TRY'),     _sdT('55.30'),     _sdT('−0.11%'), false),
                                 _nbMkTile(4, _sdT('Gold (gram)'), _sdT('4,215.40'),  _sdT('+0.65%'), true),
                                 _nbMkTile(5, 'BIST 100',          _sdT('10,482.57'), _sdT('−0.37%'), false),
                                 _nbMkTile(6, 'Bitcoin',           _sdT('$108,350'),  _sdT('+1.24%'), true)
@@ -17771,21 +17770,11 @@ const StyleDesigner = (function () {
                     // Story layouts of a news or magazine site: lead grid, latest
                     // lists, category columns, live coverage, article header, author box.
 
-                    // A <time> whose text the operator edits next to its machine-readable datetime
-                    var _nsTime = function (datetime, text, cls, name) {
-                        return createNode('semantic', { tag: 'time', cssClass: cls || '', customName: name || _sdT('Publish Time'), text: text,
-                            _attrs: [{ name: 'datetime', value: datetime }] });
-                    };
                     // A story heading whose link covers its whole story card (the card is position-relative)
                     var _nsHeadline = function (tag, cls, text) {
                         return _bkTag(tag, cls, _sdT('Headline'), [
                             _bkLink(text, '#', 'text-reset text-decoration-none stretched-link', _sdT('Headline Link'))
                         ]);
-                    };
-                    // An icon-only link (share or social), named by its aria-label
-                    var _nsIconLink = function (icon, label, cls, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
-                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
                     };
 
                     // News: Lead Story Grid — a lead photo story with its text on a dark scrim, beside a 2×2 grid of small stories
@@ -17796,7 +17785,7 @@ const StyleDesigner = (function () {
                                     _bkImg(seed, 600, 338, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
                                     _bkH('span', cat, 'd-block small fw-semibold text-uppercase text-primary mb-1'),
                                     _nsHeadline('h3', 'h6 fw-bold mb-1', title),
-                                    _nsTime(datetime, time, 'small text-body-secondary')
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
                                 ])
                             ], '', '', '6');
                         };
@@ -17813,7 +17802,7 @@ const StyleDesigner = (function () {
                                             _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'd-none d-sm-block mb-3'),
                                             _bkDiv('d-flex flex-wrap align-items-center gap-2 small text-body-secondary', _sdT('Byline'), [
                                                 _bkH('span', _sdT('By {var}', _sdT('Jane Cooper')), 'fw-semibold'),
-                                                _nsTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'))
+                                                _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time'))
                                             ])
                                         ], [{ name: 'data-bs-theme', value: 'dark' }])
                                     ])
@@ -17838,7 +17827,7 @@ const StyleDesigner = (function () {
                                 _bkDiv('flex-grow-1', _sdT('Story Copy'), [
                                     _bkDiv('d-flex flex-wrap align-items-center gap-2 small mb-1', _sdT('Story Meta'), [
                                         _bkH('span', cat, 'fw-semibold text-primary'),
-                                        _nsTime(datetime, time, 'text-body-secondary')
+                                        _bkTime(datetime, time, 'text-body-secondary', _sdT('Publish Time'))
                                     ]),
                                     _nsHeadline('h3', 'h6 fw-bold mb-1', title),
                                     _bkP(excerpt, 'd-none d-md-block small text-body-secondary mb-0')
@@ -17890,10 +17879,10 @@ const StyleDesigner = (function () {
                                     _bkH('h2', cat, 'h5 fw-bold mb-0'),
                                     _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
                                 ]),
-                                _bkTag('article', 'position-relative mb-3', _sdT('Lead Story'), [
+                                _bkTag('article', 'position-relative mb-3', _sdT('Column Lead'), [
                                     _bkImg(seed, 800, 450, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
                                     _nsHeadline('h3', 'h6 fw-bold mb-1', title),
-                                    _nsTime(datetime, time, 'small text-body-secondary')
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
                                 ]),
                                 _bkTag('ul', 'list-unstyled mb-0', _sdT('Headline List'), links.map(function (t) {
                                     return _bkTag('li', 'py-2 border-top', _sdT('Headline Item'), [
@@ -17921,7 +17910,7 @@ const StyleDesigner = (function () {
                     if (ctype === 'news-live-blog') {
                         var _nsUpdate = function (n, datetime, time, kids) {
                             return _bkTag('li', 'mb-4', _sdT('Update {var}', n), [
-                                _nsTime(datetime, time, 'd-block small fw-bold text-primary mb-1', _sdT('Update Time'))
+                                _bkTime(datetime, time, 'd-block small fw-bold text-primary mb-1', _sdT('Update Time'))
                             ].concat(kids));
                         };
                         return _bkSection('py-5', _sdT('News (Live Coverage)'), [
@@ -17934,7 +17923,7 @@ const StyleDesigner = (function () {
                                                 _bkH('span', _sdT('Live'))
                                             ]),
                                             _bkH('span', _sdT('Last updated'), 'small text-body-secondary'),
-                                            _nsTime('2026-11-14T21:40', '21:40', 'small fw-semibold', _sdT('Update Time'))
+                                            _bkTime('2026-11-14T21:40', '21:40', 'small fw-semibold', _sdT('Update Time'))
                                         ]),
                                         _bkH('h2', _sdT('Riverside Lights Festival opens in London'), 'fw-bold mb-2'),
                                         _bkP(_sdT('Lanterns, street food and music along the river all weekend. Follow the opening night here.'), 'lead text-body-secondary mb-0')
@@ -17962,7 +17951,7 @@ const StyleDesigner = (function () {
                                                     _bkP(_sdT('We started with ten volunteers three years ago. Tonight more than three hundred are helping out.'), 'fst-italic mb-0')
                                                 ]),
                                                 _bkTag('figcaption', 'blockquote-footer ps-3 mt-0 mb-0 text-body-secondary', _sdT('Quote Source'), [
-                                                    _bkH('span', _sdT('Emily Turner, festival director'))
+                                                    _bkH('span', _sdT('{var}, festival director', _sdT('Emily Turner')))
                                                 ])
                                             ])
                                         ]),
@@ -17993,7 +17982,7 @@ const StyleDesigner = (function () {
                             ]);
                         };
                         var _nsShare = function (icon, label) {
-                            return _nsIconLink(icon, label, 'btn btn-sm btn-outline-secondary rounded-circle');
+                            return _bkIconLink(icon, label, 'btn btn-sm btn-outline-secondary rounded-circle');
                         };
                         return _bkSection('pt-5 pb-4', _sdT('News (Article Header)'), [
                             _bkRow(_sdT('Article Row'), [
@@ -18015,7 +18004,7 @@ const StyleDesigner = (function () {
                                                 _bkLink(_sdT('Jane Cooper'), '#', 'd-block fw-semibold link-primary text-decoration-none', _sdT('Author Link')),
                                                 _bkH('span', _sdT('Technology Editor'), 'd-block text-body-secondary'),
                                                 _bkDiv('d-flex flex-wrap gap-2 text-body-secondary', _sdT('Article Dates'), [
-                                                    _nsTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30')),
+                                                    _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time')),
                                                     _bkH('span', _sdT('{var} min read', '6'))
                                                 ])
                                             ])
@@ -18057,9 +18046,9 @@ const StyleDesigner = (function () {
                                                 _bkP(_sdT('Jane writes about start-ups, robots and the apps that make city life easier. Before ACME she spent ten years reporting from London and Tokyo.'), 'mb-4'),
                                                 _bkDiv('d-flex flex-wrap align-items-center justify-content-between gap-3', _sdT('Author Actions'), [
                                                     _bkDiv('d-flex gap-3', _sdT('Social Links'), [
-                                                        _nsIconLink('bi-twitter-x', _sdT('{var} on X', _sdT('Jane Cooper')), 'link-primary fs-5'),
-                                                        _nsIconLink('bi-linkedin',  _sdT('{var} on LinkedIn', _sdT('Jane Cooper')), 'link-primary fs-5'),
-                                                        _nsIconLink('bi-envelope',  _sdT('Email {var}', _sdT('Jane Cooper')), 'link-primary fs-5', 'mailto:jane@example.com')
+                                                        _bkIconLink('bi-twitter-x', _sdT('{var} on X', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-linkedin',  _sdT('{var} on LinkedIn', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-envelope',  _sdT('Email {var}', _sdT('Jane Cooper')), 'link-primary fs-5', 'mailto:jane@example.com')
                                                     ]),
                                                     createNode('component', { componentType: 'btn', text: _sdT('More from {var}', _sdT('Jane Cooper')), variant: 'outline-primary', size: 'sm', href: '#', cssClass: '' })
                                                 ])
@@ -18167,11 +18156,7 @@ const StyleDesigner = (function () {
                         return _bkSection('pg-marquee py-4 text-bg-primary', _sdT('Marquee (Big Words)'), [
                             _bkDiv('pg-marquee-viewport', _sdT('Marquee Viewport'), [
                                 _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMwGroup(false), _crMwGroup(true) ])
-                            ], [
-                                { name: 'role',       value: 'region' },
-                                { name: 'aria-label', value: _sdT('What we do') },
-                                { name: 'tabindex',   value: '0' }
-                            ]),
+                            ], _bkRegion(_sdT('What we do'))),
                             _bkMarqueePause('mqw', _sdT('Pause the animation'), 'text-reset', 'mt-2 text-end')
                         ]);
                     }
@@ -18192,11 +18177,7 @@ const StyleDesigner = (function () {
                             ]),
                             _bkDiv('pg-marquee-viewport pg-marquee-fade', _sdT('Marquee Viewport'), [
                                 _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMlGroup(false), _crMlGroup(true) ])
-                            ], [
-                                { name: 'role',       value: 'region' },
-                                { name: 'aria-label', value: _sdT('Customer logos') },
-                                { name: 'tabindex',   value: '0' }
-                            ])
+                            ], _bkRegion(_sdT('Customer logos')))
                         ]);
                     }
 
@@ -18214,7 +18195,7 @@ const StyleDesigner = (function () {
                             ]);
                         };
                         var _crSfPoint = function (text) {
-                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('List Item'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
                         };
                         return _bkSection('py-5', _sdT('Showcase (Floating Badges)'), [
                             _bkRow(_sdT('Showcase Row'), [
@@ -18353,7 +18334,7 @@ const StyleDesigner = (function () {
                                     _bkImg(seed, 600, 600, alt, 'd-block w-100 object-fit-cover pg-ratio-1x1'),
                                     _bkTag('figcaption', 'mt-3 text-center', _sdT('Caption'), [
                                         _bkH('span', caption, 'd-block fw-semibold'),
-                                        _bkTag('time', 'd-block small fw-semibold text-primary', _sdT('Date'), [ _bkH('span', date) ], [{ name: 'datetime', value: datetime }])
+                                        _bkTime(datetime, date, 'd-block small fw-semibold text-primary', _sdT('Date'))
                                     ])
                                 ])
                             ], '3', '', '6');
@@ -18402,11 +18383,7 @@ const StyleDesigner = (function () {
                                 _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
                                 _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
                                 _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
-                            ], [
-                                { name: 'role',       value: 'region' },
-                                { name: 'aria-label', value: _sdT('Customer stories') },
-                                { name: 'tabindex',   value: '0' }
-                            ])
+                            ], _bkRegion(_sdT('Customer stories')))
                         ]);
                     }
 
