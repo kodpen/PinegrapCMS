@@ -57378,8 +57378,6 @@ const StyleDesigner = (function () {
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
         'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
-        // Maintenance and launch blocks
-
         // News: stories and articles
         // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
         // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
@@ -57397,10 +57395,10 @@ const StyleDesigner = (function () {
         // pg-tilt-left or pg-tilt-right); hover straightens the card.
         'pg-tilt':         '@media (min-width: 768px) { .pg-tilt { transition: transform .3s ease; } .pg-tilt-left { transform: rotate(-3deg); } .pg-tilt-right { transform: rotate(2deg); } .pg-tilt:hover { transform: none; } }\n' +
                            '@media (prefers-reduced-motion: reduce) { .pg-tilt { transition: none; } }',
-        // A sideways card row that stops on a card edge after each swipe.
         // Large round portrait (the image's own width/height props are
         // not a size the browser applies).
         'pg-circle-160':   '.pg-circle-160 { width: 160px; height: 160px; }',
+        // A sideways card row that stops on a card edge after each swipe.
         'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
         'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
 
