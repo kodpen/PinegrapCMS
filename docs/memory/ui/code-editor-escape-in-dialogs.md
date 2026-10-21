@@ -14,7 +14,7 @@ description: Escape inside a code editor that sits in a dialog: an Escape the ed
 - The rich text Source dialog's own `keepKeys()` (`pg_ckeditor_source.js`) still stops Enter, Tab and used keys for CKEditor's dialog.
 
 ## What was the symptom?
-- Typing `<di` in the designer's code window and pressing Escape to close the completion list (or Escape in its search box) closed the whole window and ran `onCancel`: the typed code was lost without a question. In Site Settings › Custom CSS, Escape in the search box or after F11 asked "Unsaved changes… close?" or closed the dialog. Fixed in #780.
+- Typing `<di` in the designer's code window and pressing Escape to close the completion list (or Escape in its search box) closed the whole window and ran `onCancel`: the typed code was lost without a question. In Site Settings › Custom CSS, Escape in the search box or after F11 asked "Unsaved changes… close?" or closed the dialog. Fixed in #1050 (issue #780).
 
 ## How was it checked?
 - `tests/code_editor_test.php` (`test_code_editor_escape_it_used_stays_in_the_editor`).
