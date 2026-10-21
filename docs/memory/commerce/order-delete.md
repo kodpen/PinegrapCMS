@@ -12,5 +12,5 @@ description: What deleting an order removes (delete_order.php, the only DELETE F
 - A ready or paused "order abandoned" e-mail campaign of the order is set to cancelled, not deleted. The session's active order is dropped when it is the one deleted.
 
 ## Why are the legal document copies deleted?
-- They hold the buyer's name, address, phone, e-mail, IP and browser. Before PR #PR766 (issue #766) they stayed after the order was gone: personal data nothing could reach (not the panel, not the API), kept through a deletion request. And MySQL 5.7 does not keep AUTO_INCREMENT across a restart, so a new order could get the deleted one's id; `pg_legal_documents_store()` then found copies "already stored" and the new customer's receipt and document page showed the old customer's documents.
+- They hold the buyer's name, address, phone, e-mail, IP and browser. Before PR #1088 (issue #766) they stayed after the order was gone: personal data nothing could reach (not the panel, not the API), kept through a deletion request. And MySQL 5.7 does not keep AUTO_INCREMENT across a restart, so a new order could get the deleted one's id; `pg_legal_documents_store()` then found copies "already stored" and the new customer's receipt and document page showed the old customer's documents.
 - Test: `test_legal_documents_deleted_with_the_order` (`tests/legal_documents_test.php`).
