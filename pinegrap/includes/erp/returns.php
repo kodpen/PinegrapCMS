@@ -116,8 +116,8 @@ function erp_returnable_lines($invoice_id)
  * rounded once, the second tax per its own rate - each capped by what is
  * still on its line. The piece that empties a line whose earlier returns are
  * known takes exactly what is left on it, so the returns of a line add up to
- * the line. An order's lines (erp_order_refund_lines()) carry no earlier
- * returns and take the group taxes alone.
+ * the line. An order's lines (erp_order_refund_lines()) carry nothing given
+ * back yet, so a line given back whole takes the tax the order charged on it.
  *
  * @param array $parent_lines  from erp_returnable_lines()
  * @param array $quantities    line id => quantity
