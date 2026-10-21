@@ -224,6 +224,46 @@ function test_legal_documents_cart_order_amounts()
 	pg_assert_same(0, $unchosen['discount'], 'a stale shipping row is no discount');
 }
 
+// An order discount lowers the tax in its own proportion, as the checkout
+// and submit_order.php do, so the document's discount and tax are the
+// checkout's and not the tax difference added to the discount.
+function test_legal_documents_cart_order_discount_lowers_the_tax()
+{
+	$lines = array(array('line_total' => 10000, 'tax' => 1800));
+
+	$order = pg_legal_document_cart_order(array(), $lines, array(), array('total' => 10620, 'order_discount' => 1000));
+
+	pg_assert_same(10000, $order['subtotal'], 'subtotal');
+	pg_assert_same(1000, $order['discount'], 'the order discount');
+	pg_assert_same(1620, $order['tax'], 'tax after the discount: 1800 - round(1800 * 1000 / 10000)');
+	pg_assert_same(10620, $order['total'], 'checkout total');
+
+	$no_total = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 1000));
+
+	pg_assert_same(10620, $no_total['total'], 'without a drawn total the sums agree with the checkout');
+	pg_assert_same(1000, $no_total['discount'], 'and the discount is the order discount');
+
+	$gift_card = pg_legal_document_cart_order(array(), $lines, array(array('cost' => 500)), array('total' => 10120, 'order_discount' => 1000));
+
+	pg_assert_same(500, $gift_card['shipping'], 'shipping kept');
+	pg_assert_same(2000, $gift_card['discount'], 'what else the checkout took off (a gift card) adds to it');
+	pg_assert_same(1620, $gift_card['tax'], 'the tax is still the discounted one');
+
+	$stale = pg_legal_document_cart_order(array(), $lines, array(array('cost' => 500)), array('total' => 10620, 'order_discount' => 1000));
+
+	pg_assert_same(0, $stale['shipping'], 'discounted goods and tax only: no shipping chosen yet');
+	pg_assert_same(1000, $stale['discount'], 'a stale shipping row adds no discount');
+
+	$capped = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 99999));
+
+	pg_assert_same(10000, $capped['discount'], 'never more than the subtotal');
+	pg_assert_same(0, $capped['tax'], 'nothing left to tax');
+
+	$odd = pg_legal_document_cart_order(array(), array(array('line_total' => 2990, 'tax' => 538)), array(), array('order_discount' => 299));
+
+	pg_assert_same(484, $odd['tax'], 'rounded as submit_order.php: 538 - round(538 * 299 / 2990)');
+}
+
 // Typed billing values replace the row's; empty ones and the country code do not.
 function test_legal_documents_cart_order_billing()
 {
