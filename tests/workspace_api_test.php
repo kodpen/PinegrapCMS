@@ -1566,11 +1566,13 @@ function test_ws_api_rehearsal_stops_before_the_write()
 
 	pg_assert_same(4, substr_count($answer, 'api_dry_run_stop('), 'every kind of request rehearses');
 
-	foreach (array('pg_design_ai_request_answer(', "UPDATE ws_ai_requests", 'ws_task_delegation_answer(', 'ws_message_send($viewer') as $write) {
+	// The answer in a channel is written through ws_assistant_writer(): the
+	// owner of the application, or the person who asked.
+	foreach (array('pg_design_ai_request_answer(', "UPDATE ws_ai_requests", 'ws_task_delegation_answer(', 'ws_message_send($place[\'writer\']') as $write) {
 		$before = substr($answer, 0, (int) strpos($answer, $write));
 
 		pg_assert_true(strrpos($before, 'api_dry_run_stop(') > (int) strrpos($before, 'api_fail_validation('), $write . ' follows its own stop');
 	}
 
-	pg_assert_true(strpos($answer, 'ws_message_send_check(') < strpos($answer, 'ws_message_send($viewer'), 'the answer in a channel is checked as a message first');
+	pg_assert_true(strpos($answer, 'ws_message_send_check(') < strpos($answer, 'ws_message_send($place[\'writer\']'), 'the answer in a channel is checked as a message first');
 }
