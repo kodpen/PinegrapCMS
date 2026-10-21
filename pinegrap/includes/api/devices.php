@@ -395,13 +395,21 @@ function api_device_rotate_pair($refresh_token) {
 	// it gives. A request that read the row before a concurrent exchange and
 	// is only now writing finds the app already one exchange further on, and
 	// leaves that newer pair in place rather than putting the older one back.
+	//
+	// The exchange time is the time of the first exchange of the presented
+	// token. A repeat of that token within the grace period, or a concurrent
+	// writer that finds the row already on the derived pair, keeps that time,
+	// so presenting a used token again cannot extend the grace period and a
+	// copy seen after it still ends the device. It is assigned before
+	// refresh_hash because MySQL evaluates single-table UPDATE assignments
+	// left to right: placed after, the IF would see the new hash.
 	api_exec("UPDATE api_devices SET
+			refresh_rotated_at = IF(refresh_hash = '" . escape($refresh_hash) . "', refresh_rotated_at, '" . $now . "'),
 			access_hash = '" . escape(api_secret_hash($access)) . "',
 			access_expires = '" . $access_expires . "',
 			refresh_prev_hash = '" . escape($hash) . "',
 			refresh_hash = '" . escape($refresh_hash) . "',
 			refresh_expires = '" . $refresh_expires . "',
-			refresh_rotated_at = '" . $now . "',
 			last_used_timestamp = '" . $now . "',
 			last_used_ip = '" . escape(mb_substr(api_client_ip(), 0, 45)) . "'
 		WHERE id = '" . (int)$row['id'] . "'
