@@ -977,6 +977,64 @@ function ws_note_import_merge($body, $original, $refs, $base, $file_maps = array
 }
 
 /**
+ * The name of a zip entry as UTF-8, from the bytes the zip holds.
+ *
+ * A zip entry carries its name in whatever bytes the program that made it
+ * wrote, with one flag that says "this is UTF-8". Windows' built-in
+ * "Compressed folder" and 7-Zip on a Turkish system write the name in the
+ * OEM code page CP857 and leave the flag off; libzip (ZipArchive's
+ * statIndex() and the default of getNameIndex()) then takes such a name for
+ * CP437 and converts it, which turns ı into ì, ş into ƒ and İ into ÿ. The
+ * result is valid UTF-8, so nothing downstream can tell it went wrong, the
+ * note is named "Toplantì notlarì" and a link to "Ekler/şartname.pdf" finds
+ * no such entry.
+ *
+ * So the raw bytes (getNameIndex() with ZipArchive::FL_ENC_RAW) are read
+ * here: valid UTF-8 is used as it is, whether the flag was set (7-Zip with
+ * -mcu, every zip made on Linux or a Mac, our own export) or not; anything
+ * else is taken as CP857. The Western European letters of CP437 and CP850
+ * sit on the same bytes in CP857 (é, ü, ö, ç, ñ ...), so a zip from such a
+ * system still reads right; only the handful of positions CP857 gives to
+ * ı, İ, ş, Ş, ğ and Ğ differ. The table is used rather than iconv() because
+ * not every host's iconv knows CP857 and mbstring never does.
+ *
+ * @param string|false $raw      the entry's name bytes; false when the zip
+ *                               library could not give them
+ * @param string       $fallback the name libzip guessed, used without raw bytes
+ * @return string
+ */
+function ws_note_import_zip_name($raw, $fallback)
+{
+    if (!is_string($raw) || ($raw === '')) {
+        return (string) $fallback;
+    }
+
+    if (mb_check_encoding($raw, 'UTF-8')) {
+        return $raw;
+    }
+
+    // CP857 bytes 0x80-0xFF in order; U+FFFD where the code page defines
+    // nothing (0xD5, 0xE7, 0xF2).
+    static $table = null;
+
+    if ($table === null) {
+        $table = preg_split('//u',
+            'ÇüéâäàåçêëèïîıÄÅ' . 'ÉæÆôöòûùİÖÜø£ØŞş' . 'áíóúñÑĞğ¿®¬½¼¡«»' . '░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐'
+            . '└┴┬├─┼ãÃ╚╔╩╦╠═╬¤' . "ºªÊËÈ\u{FFFD}ÍÎÏ┘┌█▄¦Ì▀" . "ÓßÔÒõÕµ\u{FFFD}×ÚÛÙìÿ¯´" . "\u{00AD}±\u{FFFD}¾¶§÷¸°¨·¹³²■\u{00A0}",
+            -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    $out = '';
+
+    for ($i = 0, $length = strlen($raw); $i < $length; $i++) {
+        $byte = ord($raw[$i]);
+        $out .= ($byte < 0x80) ? $raw[$i] : $table[$byte - 0x80];
+    }
+
+    return $out;
+}
+
+/**
  * A path inside an upload as the importer keeps it: forward slashes, no
  * leading slash or ./, UTF-8, no control characters.
  *

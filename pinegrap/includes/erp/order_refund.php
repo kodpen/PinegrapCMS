@@ -58,26 +58,60 @@ function erp_order_refund_lines($order_id)
     }
 
     $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
+            products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
         ORDER BY order_items.id ASC");
 
+    // Only what the order charged can be given back: a recurring line that
+    // had not started yet took no money (erp_order_charged_items()).
+    $items = erp_order_charged_items($order, $items);
     $built = erp_order_lines($order, $items);
+
+    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '',
+        'lines' => erp_order_refund_order_lines($built['lines'], $items));
+}
+
+/**
+ * The order's built lines as erp_return_build() reads a parent's lines.
+ *
+ * Each line gets the id its quantity is posted under: the item lines keep the
+ * id of their order_items row, in the order the lines were built from the
+ * rows; the lines that have none (shipping, surcharge) come after them with
+ * -1, -2, ... Nothing has been given back yet, so returned_qty is 0 and so is
+ * each tax given back so far.
+ *
+ * Those three zeros are what make the refund meet the order. A line's tax is
+ * the order's figure: tied to the order's header by erp_order_lines(), or
+ * split out of a gross charge (shipping), so it can sit a kurus from its rate
+ * on its amount. With the taxes given back so far known, erp_return_build()
+ * lets a line given back whole take exactly the line's tax and caps a piece
+ * of it by that tax; without them it took every line's tax again, per rate
+ * group of the return, and "Everything" came a kurus short or over the
+ * amount collected - the card got one less, and the order, refunded a kurus
+ * below its total, was never marked cancelled.
+ *
+ * @param array $built_lines  erp_order_lines()['lines']
+ * @param array $items        The order_items rows the lines were built from, indexed from 0
+ * @return array
+ */
+function erp_order_refund_order_lines($built_lines, $items)
+{
     $lines = array();
     $extra = -1;
 
-    foreach ($built['lines'] as $index => $line) {
-        // Item lines keep the index of their order_items row; the two lines
-        // that have none come after them.
+    foreach ((array) $built_lines as $index => $line) {
         $line['id'] = isset($items[$index]) ? (int) $items[$index]['id'] : $extra--;
         $line['returned_qty'] = 0;
         $line['remaining_qty'] = (float) $line['quantity'];
+        $line['returned_tax'] = 0;
+        $line['returned_withholding'] = 0;
+        $line['returned_tax2'] = 0;
         $lines[] = $line;
     }
 
-    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '', 'lines' => $lines);
+    return $lines;
 }
 
 /**

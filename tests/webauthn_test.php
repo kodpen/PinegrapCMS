@@ -1827,6 +1827,24 @@ function test_webauthn_rp_id_is_the_host_alone()
 	}
 }
 
+// An international host name is converted as the browser converts it (WHATWG
+// URL: UTS #46 non-transitional): ß and final sigma keep their own letters,
+// transitional processing would turn straße.de into strasse.de, another
+// domain, which the browser refuses as the relying party and whose origin
+// the signed answer never names.
+function test_webauthn_international_host_as_the_browser_writes_it()
+{
+	if (!function_exists('idn_to_ascii')) {
+		return;
+	}
+
+	pg_assert_same('xn--strae-oqa.de', pg_webauthn_rp_id('straße.de'), 'ß is kept, not strasse.de');
+	pg_assert_same('xn--foo-lzc.gr', pg_webauthn_rp_id('ςfoo.gr'), 'final sigma is kept');
+	pg_assert_same('https://xn--strae-oqa.de:8443', pg_webauthn_origin('https://', 'straße.de:8443'), 'the origin too');
+	pg_assert_same('xn--rnek-4qa.com', pg_webauthn_rp_id('örnek.com'), 'Turkish letters as before');
+	pg_assert_same('xn--k-ekaa7p.com.tr', pg_webauthn_rp_id('ışık.com.tr'), 'dotless i as the browser writes it');
+}
+
 function test_webauthn_origin_as_the_browser_writes_it()
 {
 	$cases = array(

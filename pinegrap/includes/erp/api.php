@@ -748,10 +748,10 @@ function erp_api_routes()
             'handler' => 'erp_api_receipts_cancel',
             'returns' => 'ErpReceipt',
             'summary' => 'Cancel a receipt or a payment',
-            'description' => 'Reverses the movement rather than deleting it: the till and the account each get the opposite entry, dated today, and every invoice the receipt had closed is open again by that amount. The receipt then answers with cancelled true. A receipt already cancelled is refused. The reason is kept on the reversal, the way the panel asks for it.',
+            'description' => 'Reverses the movement rather than deleting it: the till and the account each get the opposite entry, dated today, and every invoice the receipt had closed is open again by that amount. The receipt then answers with cancelled true. A receipt already cancelled is refused. A movement of a cheque or note (the one that took it in or gave it, or the one that passed it on or sent it back) answers 409 receipt_belongs_to_cheque: it changes only by the cheque\'s steps. The reason is kept on the reversal, the way the panel asks for it.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'Why it is cancelled: a bounced cheque, a bank line posted twice, the wrong account.'),
+                array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'Why it is cancelled: a bank line posted twice, the wrong account.'),
             ),
         ),
 
