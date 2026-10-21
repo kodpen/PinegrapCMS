@@ -1,6 +1,6 @@
 ---
 name: php-compatibility-and-bugs
-description: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; items 3 (#972) and 4 (#PRNUM) done
+description: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; items 3 (#972) and 4 (#1039) done
 ---
 
 ## Where does this come from?
@@ -10,7 +10,7 @@ description: Open items of the 2026-10-19 static analysis (CI baselines): undefi
 1. `get_catalog.php:556-568`: `$output_featured_items`, `$output_image`, `$output_short_description`, `$output_price` used before assignment in the "top items" branch; legacy custom style layer, ask before touching.
 2. Duplicate array key: `includes/fn/files.php:199` (`'å'` twice, the second mapping is dead; which letter was meant?).
 3. Done (#972): the named functions declared inside functions are closures or plain values; the PHPStan baseline holds none (`code-audit-2026-10-followups.md` item 2).
-4. Done (#PRNUM): the unguarded `imagecreatefrombmp()` of `edit_file.php`'s WebP conversion is gone with the screen's own GD code; its Rotate and WebP buttons go through `pg_process_image_file()` (`platform/image-processing-engine.md`).
+4. Done (#1039): the unguarded `imagecreatefrombmp()` of `edit_file.php`'s WebP conversion is gone with the screen's own GD code; its Rotate and WebP buttons go through `pg_process_image_file()` (`platform/image-processing-engine.md`).
 
 ## Which deprecations matter for "PHP 7.1-8.5"?
 - PHP 8.5 deprecated: `curl_close()` 49 calls (`submit_order.php` 17), `imagedestroy()` 12 (`includes/image_engine.php` 7), `finfo_close()` 6; PHP 8.4: `mysqli_ping()` `core.php:77`, `openssl_x509_free()` `update.php:553`, `CURLOPT_BINARYTRANSFER` `includes/panel/software.php:499`, `fgetcsv()`/`fputcsv()` without the `$escape` argument in 26 calls (the six `import_*.php`, `includes/translate/jobs.php`, `erp/audit.php`, `erp/bank_import.php`, `add_theme_file.php`, `view_visitor_report.php`). PHP 8.1: `auto_detect_line_endings` in the six importers; `htmlentities()`/`html_entity_decode()` default flags changed (`cloudflare.php` 23 calls, `download_assistant.php` 3) - pass the flags explicitly.
