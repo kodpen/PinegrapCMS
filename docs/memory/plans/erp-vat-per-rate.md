@@ -1,6 +1,6 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decisions 2026-10-21; step 1 done, #1001): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 2-6 remain
+description: Plan (owner's decisions 2026-10-21; steps 1-2 done, #1001, #1004): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 3-6 remain
 ---
 
 ## Why?
@@ -14,14 +14,15 @@ description: Plan (owner's decisions 2026-10-21; step 1 done, #1001): the ERP ta
 
 ## How does it work?
 - `erp_rate_vat()` (includes/erp/money.php, #1001): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
+- Typed documents (#1004): `erp_manual_lines_build()` takes the discounts per line, then the taxes from `erp_rate_vat()`; the editor's `rateTaxes()` / `allocate()` (assets/js/erp_invoice_editor.js) copy it to the kurus, ties to the first line as PHP 8's stable `arsort()`.
 
 ## What remains?
 1. Done: `erp_rate_vat()` and its tests (#1001).
-2. Manual documents: `erp_manual_lines_build()` (includes/erp/invoice_manual.php; invoices, purchase invoices, quotes, purchase orders, the API, the inbox through it) takes the taxes from `erp_rate_vat()`; the editor preview (assets/js/erp_invoice_editor.js, `applyRate()` and the totals) follows it to the kurus (M).
+2. Done: typed documents and the editor preview (#1004).
 3. Returns: `includes/erp/returns.php` takes the returned lines' taxes per rate of the return (M).
 4. Orders: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary; the kurus-below rule above) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
 5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue at once and only report the variance: the driver's shift there too until they go (erp-edocument-leftovers.md) (M).
 6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
 
 ## Where to start?
-- Step 2: read `erp_manual_lines_build()` and the editor's `applyRate()`; the preview must give the saved figures.
+- Step 3: read `erp_return_build()` and how a partial return splits a line (includes/erp/returns.php, erp-return-documents.md).
