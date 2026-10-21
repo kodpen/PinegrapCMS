@@ -1805,6 +1805,29 @@ function pg_product_feed_status_text($entry)
     return implode(' ', $parts);
 }
 
+// The seller fields of a Product Feeds card save, as they are stored. The
+// name and the brand are cut at the 255 characters their boxes allow. An
+// address is never cut: a shortened address points somewhere else (a privacy
+// policy URL that lost its query string), and the setup is kept as JSON in a
+// TEXT column, so the 2000 characters pg_product_feed_valid_url() accepts
+// fit. An address that check refuses is stored empty; seo.save.php refuses
+// such a save with a message before this point.
+function pg_product_feed_seller_from_input($input)
+{
+    $seller = array();
+
+    foreach (array('seller_name', 'default_brand') as $key) {
+        $seller[$key] = mb_substr(trim(isset($input[$key]) ? (string) $input[$key] : ''), 0, 255, 'UTF-8');
+    }
+
+    foreach (array('seller_url', 'privacy_policy_url', 'terms_url') as $key) {
+        $url = trim(isset($input[$key]) ? (string) $input[$key] : '');
+        $seller[$key] = pg_product_feed_valid_url($url) ? $url : '';
+    }
+
+    return $seller;
+}
+
 // Reads a save of the Product Feeds card into the stored setup: the seller
 // fields, the excluded groups, the switches, a new address asked for, and a
 // build when one was asked for or a feed was just switched on. Called by
@@ -1824,9 +1847,7 @@ function pg_product_feed_save_from_screen($input)
     $switched_on = false;
     $renewed = '';
 
-    foreach (array('seller_name', 'seller_url', 'privacy_policy_url', 'terms_url', 'default_brand') as $key) {
-        $settings[$key] = mb_substr(trim((string) $input[$key]), 0, 255, 'UTF-8');
-    }
+    $settings = array_merge($settings, pg_product_feed_seller_from_input($input));
 
     $settings['excluded_group_ids'] = array_values(array_map('intval', (array) $input['excluded_group_ids']));
 

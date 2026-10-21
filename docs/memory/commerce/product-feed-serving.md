@@ -23,11 +23,11 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 - `waf_is_api_request()` lists `feed.php` like `workspace_ical.php`: platform fetchers send generic or empty user agents and must not meet the bot policy.
 
 ## How is it set up on the screen?
-- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand, seller/privacy/terms URLs (absolute http(s) or empty, refused before any write), excluded groups (multi-select of the groups the catalogs show; `lists` entry in the registry), "Save and build now".
+- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand (both cut at 255), seller/privacy/terms URLs (absolute http(s) up to 2000 chars or empty, refused before any write, never cut: `pg_product_feed_seller_from_input()`; a 255 cut used to store a shortened privacy URL, PR #NNN), excluded groups (groups the catalogs show; `lists` registry entry), "Save and build now".
 - `seo.save.php` calls `pg_product_feed_save_from_screen()` after the screen's columns: a feed switched on gets a token and is built at once; otherwise changes wait for the daily job. An address that cannot be sealed (no site key) is shown once in a notice.
 
 ## What does System Status show?
 - A "Product Feeds" tile (actions column, not scored) only while a feed is on: red when a last build failed, yellow when one was never built or not for 2 days (`PG_PRODUCT_FEED_STALE_AFTER`), green otherwise; one detail row per feed. Logic: `pg_product_feed_health()`.
 
 ## How was it verified?
-- `tests/product_feeds_test.php`; sandbox: step twice, job, feed.php (200/304/HEAD/404/405), the card over HTTP, the tile in all three states.
+- `tests/product_feeds_test.php`; sandbox: step twice, job, feed.php (200/304/HEAD/404/405), the card, the tile's three states.
