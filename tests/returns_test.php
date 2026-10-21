@@ -650,3 +650,39 @@ function test_returns_refund_mail_body()
 	$by_hand = pg_return_refund_mail_body(array('order_number' => '9', 'amount' => '₺5,00', 'by_payment' => false));
 	pg_assert_false(strpos($by_hand, 'the way you paid') !== false, 'a refund made another way');
 }
+
+// The same form sent twice within the window answers with the first request:
+// same reason, note and lines, still waiting for an answer.
+function test_returns_repeat_of_the_same_form()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1))),
+	);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array('464' => '1'), 1001), 'a double click');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => '0'), 1000 + PG_RETURN_REPEAT_SECONDS), 'zeros left out, last second of the window');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => ' 1 ', 465 => ''), 1001), 'an empty box is not a line');
+}
+
+// Anything that differs is a request of its own.
+function test_returns_repeat_of_differs()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1), array('order_item_id' => 465, 'quantity' => 2))),
+	);
+
+	$lines = array(464 => 1, 465 => 2);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(465 => 2, 464 => 1), 1010), 'line order does not matter');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 1001 + PG_RETURN_REPEAT_SECONDS), 'after the window');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 999), 'before the first one');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'wrong_item', 'double', $lines, 1010), 'another reason');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'other words', $lines, 1010), 'another note');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1), 1010), 'fewer lines');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => 1), 1010), 'another quantity');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 0), 1010), 'nothing asked for');
+	pg_assert_same(0, pg_return_repeat_of(array(), 'damaged', 'double', $lines, 1010), 'no recent request');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', 'x', 1010), 'not a list');
+}
