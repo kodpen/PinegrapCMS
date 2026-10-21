@@ -7,7 +7,7 @@ description: Paraşüt e-document driver (includes/erp/edoc/parasut.php): reques
 - `send_invoice` → refused before any request: a VAT rate Paraşüt does not take (#690, `erp_edoc_parasut_vat_rate_refusal()`); a line without a Pinegrap product and no default product/service (#885, `erp_edoc_parasut_product_refusal()`). Then the buyer's contact (linked card, else `filter[tax_number]`, else `POST contacts`), then `POST sales_invoices`. Paraşüt's `net_total` ("Genel Toplam", after withholding) must equal the ERP's `grand_total` (`erp_edoc_parasut_total_check()`), else the record is `DELETE`d. Answers `created`.
 - `submit_invoice` → `erp_edoc_parasut_decide_kind()`: final consumer / no number → e-Arşiv; else fresh `e_invoice_inboxes?filter[vkn]`; registered → `POST e_invoices` (rel `invoice`, `scenario`, `to`), else `POST e_archives` (rel `sales_invoice`, `internet_sale` + `shipment`). Job id + 15 min window → `parasut_job_id` / `_expires_at`. Answers `sent`.
 - An internet sale's web address and carrier go on e-Arşiv only: `erp_edoc_parasut_document_missing()` skips them for an invoice expected as e-Fatura (`erp_edoc_invoice_expected_kind()`); `submit_invoice` asks once GİB says e-Arşiv (#900).
-- `poll` → the job (`pending|running|done|error`, `errors[]`) while open, then `GET sales_invoices/{id}?include=active_e_document,contact`; `erp_edoc_parasut_edoc_state()`: e-Arşiv bounced|sent|printed|legalized (all signed) → `accepted`; e-Fatura `waiting`→sent, `failed`→error, `successful`→accepted, `response_type` rejected→rejected. GİB number: the e-document's `invoice_number`, else series + id. No e-document → `created`; `erp_edoc_parasut_unconverted_message()` says "again" only after a hand-over (#939).
+- `poll` → the job while open, then `GET sales_invoices/{id}?include=active_e_document,contact` (a failed step: erp-parasut-send-failures.md); `erp_edoc_parasut_edoc_state()`: e-Arşiv bounced|sent|printed|legalized (all signed) → `accepted`; e-Fatura `waiting`→sent, `failed`→error, `successful`→accepted, `response_type` rejected→rejected. GİB number: the e-document's `invoice_number`, else series + id. No e-document → `created`; `erp_edoc_parasut_unconverted_message()` says "again" only after a hand-over (#939).
 - `fetch_document` → `GET e_archives|e_invoices/{id}/pdf`; 204 = not drawn yet; 200 → signed `url` (1 h), no token.
 - `cancel_invoice` → no e-document: `DELETE sales_invoices/{id}`; e-Arşiv: `DELETE sales_invoices/{id}/cancel` while `cancellable_until` holds; e-Fatura: refused (return invoice).
 
@@ -18,7 +18,7 @@ description: Paraşüt e-document driver (includes/erp/edoc/parasut.php): reques
 - `order_no` is `orders.order_number` (the row id until #912), `order_date` the day; both or none (one alone is refused).
 
 ## Rate limit and retries?
-- 10 requests per 10 s: `parasut_throttle()` (includes/fn/parasut.php) paces each process; `erp_edoc_parasut_request()` retries once after a 429 (next window) or a 401 (new token).
+- 10 requests per 10 s: `parasut_throttle()` paces each process; `erp_edoc_parasut_request()` retries once after a 429 (next window) or a 401 (new token).
 
 ## What did the live API show? (demo company)
 - Seen: a person's TCKN in `tax_number` (201); VAT 0, 1, 10, 20 only (18 → 422); `include`s, `e_invoice_inboxes`, `DELETE sales_invoices/{id}` (204) as documented; errors repeat the detail as title.
