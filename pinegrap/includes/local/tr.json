@@ -24707,5 +24707,6 @@
     "This field asks again for what the form already asked: fill it in for the visitor or let them pick it": "Bu alan formun zaten sorduğu bilgiyi yeniden soruyor: ziyaretçi için doldurun ya da seçmesine izin verin",
     "For a signed-in user, remembers whether pages show their editing tools.": "Oturum açmış kullanıcı için sayfaların düzenleme araçlarıyla gösterilip gösterilmeyeceğini hatırlar.",
     "Remembers the language you chose for the site.": "Site için seçtiğiniz dili hatırlar.",
-    "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir."
+    "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
+    "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin."
 }
