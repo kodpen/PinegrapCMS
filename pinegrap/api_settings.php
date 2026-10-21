@@ -733,12 +733,14 @@ $queue_state = array();
 
 if (is_array($hooks) && !empty($hooks)) {
 
-	// waiting: still on the ladder. given_up: out of attempts, and the reason the
-	// subscription went to 'failing'. The last error carried on the newest row is
-	// what actually tells the operator what is wrong.
+	// waiting: still on the ladder, or held for a failing subscription until
+	// it is retried (attempts 0, api_webhook_queue_hold()). given_up: out of
+	// attempts, and the reason the subscription went to 'failing'. The last
+	// error carried on the newest row is what actually tells the operator what
+	// is wrong.
 	$queue = db_items("SELECT webhook_id,
-			SUM(CASE WHEN next_attempt_at > 0 THEN 1 ELSE 0 END) AS waiting,
-			SUM(CASE WHEN next_attempt_at = 0 THEN 1 ELSE 0 END) AS given_up,
+			SUM(CASE WHEN next_attempt_at > 0 OR attempts = 0 THEN 1 ELSE 0 END) AS waiting,
+			SUM(CASE WHEN next_attempt_at = 0 AND attempts > 0 THEN 1 ELSE 0 END) AS given_up,
 			MAX(id) AS newest
 		FROM api_webhook_queue
 		GROUP BY webhook_id");
