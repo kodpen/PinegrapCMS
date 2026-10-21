@@ -102,7 +102,41 @@ function api_send($status_code, $body, $error_code = '') {
 
 	}
 
-	$json = ($status_code !== 204) ? json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+	$json = ($status_code !== 204) ? api_json_encode($body) : '';
+
+	// An answer that cannot be written as JSON at all (INF, NAN) would go out
+	// with its status and no body: no code, no request id, and on a read an
+	// ETag every such answer shared. The operator finds the reason in the
+	// error log; the client gets the contract's shape.
+	if ($json === null) {
+
+		if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
+
+			pg_error_write(pg_error_entry(
+				'warning',
+				'E_USER_WARNING',
+				'API: the answer to ' . api_request_method() . ' ' . api_request_path() . ' could not be encoded as JSON: ' . json_last_error_msg(),
+				__FILE__,
+				__LINE__,
+				array()));
+
+		}
+
+		$status_code = 500;
+
+		$error_code = 'server_error';
+
+		$read = false;
+
+		$body = array('error' => array(
+			'code'       => 'server_error',
+			'message'    => lang('A system error occurred.'),
+			'request_id' => api_request_id()
+		));
+
+		$json = (string)api_json_encode($body);
+
+	}
 
 	if ($read) {
 
@@ -159,6 +193,35 @@ function api_send($status_code, $body, $error_code = '') {
 	}
 
 	exit();
+
+}
+
+// The answer as JSON text, or null when it cannot be written as JSON.
+//
+// A string that is not valid UTF-8 - a form field from a client that encodes
+// Windows-1254, a value read back from a damaged row - made json_encode()
+// return false for the whole answer. Such bytes are written as U+FFFD from PHP
+// 7.2 on; on 7.1, which lacks that flag, the broken value alone becomes null.
+// What still cannot be encoded (INF, NAN) answers null.
+function api_json_encode($body) {
+
+	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+	if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+
+		$flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+
+	}
+
+	$json = json_encode($body, $flags);
+
+	if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
+
+		$json = json_encode($body, $flags | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+	}
+
+	return is_string($json) ? $json : null;
 
 }
 

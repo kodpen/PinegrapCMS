@@ -11,6 +11,7 @@ description: ERP e-document driver layer (migration 4.61): registry gate, adding
 ## What is the driver contract?
 - `info()` (label, description, docs_url, capabilities, settings_note); `fields()` (name, label, type text|password, help, required); `ping($credentials)` → `['success','message','details']` (`details['pending']=true` = "not connecting yet, but setup is done"; the screen prints it in the info colour); `check_taxpayer($vkn)` → is_einvoice_user + aliases; `send_invoice`, `poll`, `cancel_invoice`, `fetch_document`, `send_waybill` → all `['success' => bool, 'error' => string, …]`.
 - An undefined operation = unsupported.
+- Capabilities (`erp_edoc_has_capability()`): `einvoice`, `earchive`, `ewaybill`, `inbox`, `accounts`, `return`, `ubl` (`fetch_document` hands back the UBL, not only the PDF; the invoice screen draws the UBL button by it). Screens ask the capability, never the provider's name.
 
 ## How are credentials and the active provider handled?
 - Credentials: `erp_edoc_providers.credentials_enc` ("cipher:iv", AES-256-CBC, `encrypt_string_with_iv` / `decode_ssl_keys`, `ENCRYPTION_KEY`). The Paraşüt driver declares NO fields; it uses the `PARASUT_*` constants and `parasut_get_token()` (the phase -1 card is the source). A password-type field sent empty keeps the stored value (`erp_edoc_credentials_save`). Credentials are NOT written to `config` (row size, see docs/memory/data/config-table-no-varchar.md).
