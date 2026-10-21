@@ -266,7 +266,7 @@ if (!$translations_is_import && !$translations_is_export) {
                 translations_respond(array('status' => 'success', 'string_id' => $string_id, 'text' => '', 'engine' => '', 'state' => 'pending', 'suspicious' => 0));
             }
 
-            $check = pg_tr_result_check($string['source_text'], $clean, $string['format']);
+            $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
 
             if (!$check['ok']) {
                 switch ($check['error']) {

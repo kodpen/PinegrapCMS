@@ -745,6 +745,12 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     $source_width  = imagesx($source);
     $source_height = imagesy($source);
 
+    // A GIF decodes as a palette with at most one transparent index. The
+    // resize canvas and imagerotate() are truecolor, and the GIF writer only
+    // gets that transparency back when told which truecolor value stands for
+    // it (see the GIF case below), so whether there was one is noted here.
+    $gif_transparent = ($type == IMAGETYPE_GIF) && (imagecolortransparent($source) >= 0);
+
     $image = $source;
 
     if ($resize) {
@@ -865,6 +871,20 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
             break;
 
         case IMAGETYPE_GIF:
+            // A truecolor canvas (after a resize or a turn) reaches imagegif()
+            // with its transparent pixels as rgb 0,0,0 alpha 127: that is what
+            // imagepalettetotruecolor() writes for the transparent index and
+            // what resampling leaves where every source pixel was transparent.
+            // libgd's palette quantizer drops alpha, so those pixels would
+            // land on the nearest opaque colour (a black background); it only
+            // maps pixels that equal the image's transparent value to the
+            // GIF's transparent index. imagepalettetotruecolor() sets that
+            // value to the hidden colour under the index instead, which no
+            // pixel has, so it is pointed at the pixels' actual value here.
+            if ($gif_transparent && function_exists('imageistruecolor') && imageistruecolor($image)) {
+                imagecolortransparent($image, imagecolorallocatealpha($image, 0, 0, 0, 127));
+            }
+
             $written = imagegif($image);
             break;
 

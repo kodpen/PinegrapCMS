@@ -989,18 +989,29 @@ function local_sale_complete($user, $input)
             ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR'] ?? '') . "'), 0)
         WHERE id = '" . $order_id . "'");
 
-    // 5. Stock goes down for tracked products.
+    // 5. Stock goes down for tracked products. Each one then tells the
+    //    outside the same way a web sale does: the stamp for updated_since
+    //    listings, inventory.changed (stock.low on the crossing) and the
+    //    marketplace queue. The stock left is carried from line to line, so
+    //    a product on two lines announces its second from what the first
+    //    left.
+    $stock_left = array();
+
     foreach ($lines as $line) {
+        $product_id = (int) $line['product_id'];
+
         if (((int) $line['inventory'] === 1) && ((int) $line['inventory_quantity'] > 0)) {
-            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . (int) $line['product_id'] . "'");
+            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
 
             if ((int) $line['quantity'] >= (int) $line['inventory_quantity']) {
-                db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int) $line['product_id'] . "'");
+                db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP() WHERE id = '" . $product_id . "'");
             }
 
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed((int) $line['product_id']);
-            }
+            $stock_left[$product_id] = pg_product_stock_changed(
+                $product_id,
+                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $line['inventory_quantity'],
+                null,
+                'local_sale');
         }
     }
 

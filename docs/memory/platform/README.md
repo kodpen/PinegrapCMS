@@ -23,7 +23,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, files that get none
-- image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the eight invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels).
+- image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
@@ -32,9 +32,12 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
 - ods-cell-ceiling.md: PHPExcel's .ods reader makes cells of repeated rows/columns and merged ranges only up to a ceiling, steps over empty runs at once; both importers also cap the first sheet's used range
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
+- office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
+- office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119)
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs, refused documents
+- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
 - performance-monitor-cost.md: Request-path cost rules for perf_monitor_shutdown(): fastcgi_finish_request, row cap, index cost, p95 without big OFFSET, PERF_MONITOR_SAMPLE_RATE.
