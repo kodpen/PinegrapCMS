@@ -1,21 +1,23 @@
 ---
 name: erp-discounted-order-vat
-description: How a discounted order's VAT is computed at checkout vs on the ERP invoice, and why order header amounts are not line items.
+description: How the checkout takes an order's VAT (per rate, again per rate after a discount) and the ERP invoice the same, and why order header amounts are not line items.
 ---
 
-## How does checkout treat VAT on a discounted order?
-- `submit_order.php:851` subtracts the discount from VAT before computing the total: `$tax - round($tax * ($discount / $subtotal))`, because a discount shrinks the tax base.
+## How does the checkout take an order's VAT?
+- Per rate, as Paraşüt and the ERP do (#1168): `update_order_item_taxes()` takes each rate's VAT once on the sum of the lines charged with the order and spreads it back by largest remainder, lines in id order (`pg_order_line_taxes()`, `pg_tax_by_rate()`, `pg_tax_spread()` = `erp_allocate()`'s rule). A recurring line starting later and a line saved for later are taxed alone. A line's VAT can be a kuruş off its rate × amount (1.02 + 1.02 at 20%: 0.21 + 0.20).
+- After an order discount the VAT is taken again per rate on what the discount leaves of the lines, shared as `erp_order_lines()` shares it (`pg_order_charged_tax()`): `submit_order.php`, the express order widget, the legal documents, the legacy preview and receipt pages (`pg_order_items_charged_tax()`). It was `$tax - round($tax * $discount / $subtotal)`: 1.01 at 20% + 1.27 at 10% less 1.00 gave 0.19, the invoice 0.18. A line without a stored rate (before 11.0.59) keeps that header share.
+- Live (dev, Paraşüt demo, 2026-10-22): #1178, 14.95 + 499.95 at 10% and 125.95 + 45.00 at 20%, VAT 85.68 (per line 85.69); #1179 with a 10% code, 77.11 (header share 77.12). Paraşüt equal, unshifted.
 - `order_items.tax_total` still holds the undiscounted line tax. Any read that mixes the two produces a wrong invoice.
 - Demo data did not follow this rule: `_seed_demo.php` was fixed and existing rows repaired by `_seed_fix_discount_tax.php` (only rows with the error signature; safe to rerun).
 
 ## How does `erp_order_lines()` build a discounted line?
-- VAT is re-taken from the remaining base (`erp_apply_rate($line_total - $pay, $rate)`), not reduced by a share: `rate × base = VAT` must hold per line because e-invoice is checked against it.
-- Then the line total is tied to the order header VAT: a difference at rounding scale only (≤1 kuruş per VAT-bearing line) is spread over the lines; a wider one makes the gate reject.
+- The discount is spread over the lines by value (`erp_allocate()`), then the VAT is taken again per rate on what is left (`erp_rate_vat()`, #1168): the checkout's figure.
+- Then the lines are tied to the order header VAT: a gap of at most a kuruş per VAT-bearing line (orders taxed line by line before #1168) is spread over them; a wider one makes the gate reject.
 - The gate runs BEFORE `erp_next_number()`, so a rejected attempt consumes no number.
 
 ## Why are order header amounts not line items?
 - `orders.shipping`, `orders.discount`, `orders.surcharge`, `orders.gift_card_discount` live only on the header; the `order_items` sum is NOT the order total. Any code sending to an invoice or outside must handle each separately.
-- `discount` is also subtracted from VAT on the header (`submit_order.php:850`) while `order_items.tax` stays undiscounted, so sending the lines as-is over-invoices.
+- `discount` also lowers the header VAT (`orders.tax`) while the lines' tax stays undiscounted, so sending the lines as-is over-invoices.
 
 ## Which order lines does the invoice carry?
 - Only the lines the checkout charged: `erp_order_charged_items($order, $items)` (`order_bridge.php`) keeps a line unless it is recurring (`order_items.recurring_payment_period` set) and starts after the **order day** (or any recurring line on ClearCommerce), the rule `submit_order.php` totals the order by (`pg_order_line_charged_today()`). Then `erp_order_lines()` spreads the discount and the shipping tax over those alone.
