@@ -246,11 +246,14 @@ function pg_office_xlsx_parse_number($text)
 }
 
 /**
- * A typed date as the day count the sheet stores, or null. The forms read
- * are the one the preview shows (2026-10-19, with an optional time) and the
- * Turkish one (19.10.2026). Day 0 is 30 December 1899, or 1 January 1904 in
- * a workbook that counts from there; days before 1 March 1900 are not
- * written, since the 1900 count of spreadsheets holds a day that never was.
+ * A typed date or time as the day count the sheet stores, or null. The
+ * forms read are the one the preview shows (2026-10-19, with an optional
+ * time), the Turkish one (19.10.2026) and a time alone (08:45, 8:45:30,
+ * 25:30 for a duration), which is a fraction of a day. Day 0 is 30 December
+ * 1899, or 1 January 1904 in a workbook that counts from there, and is read
+ * (the preview shows a time cell as day 0 with its time); the days between
+ * it and 1 March 1900 are not written, since the 1900 count of spreadsheets
+ * holds a day that never was.
  *
  * @param string $text
  * @param bool   $date1904
@@ -268,6 +271,17 @@ function pg_office_xlsx_parse_date($text, $date1904)
         $year = (int) $match[3];
         $month = (int) $match[2];
         $day = (int) $match[1];
+    } elseif (preg_match('/^(\d{1,4}):(\d{2})(?::(\d{2}))?$/', $text, $match)) {
+        // A time alone, as a time or duration cell shows it: a fraction of
+        // a day, and over 24 hours (an [h] format) whole days with it.
+        $minute = (int) $match[2];
+        $second = isset($match[3]) ? (int) $match[3] : 0;
+
+        if (($minute > 59) || ($second > 59)) {
+            return null;
+        }
+
+        return pg_office_xlsx_day_fraction(0, ((int) $match[1] * 3600) + ($minute * 60) + $second);
     } else {
         return null;
     }
@@ -282,12 +296,26 @@ function pg_office_xlsx_parse_date($text, $date1904)
 
     $days = (int) floor(gmmktime(0, 0, 0, $month, $day, $year) / 86400) + ($date1904 ? 24107 : 25569);
 
-    if ($days < ($date1904 ? 0 : 61)) {
+    // Day 0 (30 December 1899, or 1 January 1904) is how the preview shows
+    // a time cell; the days of the 1900 leap-year bug between it and 1 March
+    // 1900 are not written.
+    if (($days < 0) || (!$date1904 && ($days > 0) && ($days < 61))) {
         return null;
     }
 
-    $seconds = ($hour * 3600) + ($minute * 60) + $second;
+    return pg_office_xlsx_day_fraction($days, ($hour * 3600) + ($minute * 60) + $second);
+}
 
+/**
+ * A day count with seconds into the day, as a cell stores it: whole when
+ * there are no seconds, else with up to ten decimals and no trailing zeros.
+ *
+ * @param int $days
+ * @param int $seconds
+ * @return string
+ */
+function pg_office_xlsx_day_fraction($days, $seconds)
+{
     if ($seconds === 0) {
         return (string) $days;
     }
@@ -319,7 +347,8 @@ function pg_office_xlsx_parse_bool($text)
 /**
  * What a typed text becomes in a cell. A cell keeps the kind it has when the
  * text fits it: a text cell stays text whatever is typed, a yes/no cell
- * stays one for TRUE/FALSE, a cell formatted as a date takes a date. An
+ * stays one for TRUE/FALSE, a cell formatted as a date or a time takes a
+ * date or a time (pg_office_xlsx_parse_date()). An
  * empty cell, or one holding a number, takes a number when the text is one.
  * A cell formatted as text (@) always takes text. A leading "=" is kept as
  * text: no formula is written here.
@@ -378,6 +407,22 @@ function pg_office_xlsx_typed($text, $was, $format, $date1904)
 function pg_office_xlsx_date1904($workbook_xml)
 {
     return (bool) preg_match('/<(?:[A-Za-z_][\w.\-]*:)?workbookPr\b[^>]*\sdate1904\s*=\s*["\'](?:1|true)["\']/', (string) $workbook_xml);
+}
+
+/**
+ * Does the workbook ask for a password before it is changed? Excel's
+ * "password to modify" is a fileSharing element with the password's hash
+ * (hashValue, or reservationPassword in older files); read-only recommended
+ * alone is advice and no password. A workbook so reserved is not changed
+ * here, as a document with writeProtection is not
+ * (pg_office_docx_restriction()).
+ *
+ * @param string $workbook_xml xl/workbook.xml
+ * @return bool
+ */
+function pg_office_xlsx_write_reserved($workbook_xml)
+{
+    return (bool) preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b[^>]*\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
 }
 
 /**
@@ -520,10 +565,18 @@ function pg_office_xlsx_patch_workbook($xml)
  * preview needs them for the part of the sheet it shows, a save only needs
  * the sheet-wide facts (it looks at the cells it changes itself).
  *
+ * A cell the file does not hold takes the row's own style (customFormat)
+ * when there is one, else its column's (pg_office_xlsx_new_cell_style()):
+ * so that the preview can tell which empty cells of a protected sheet are
+ * open, the rows with a style of their own, the columns whose style is
+ * unlocked and the cells in the file that keep a locked style although
+ * that rule would open them are listed too.
+ *
  * @param XMLReader $reader     opened on the sheet
  * @param int       $until_row  list the cells of rows up to this one; 0 for none
  * @param array     $open_styles style number => true for unlocked styles
- * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value), formulas (ref => text), open (ref => true)
+ * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value),
+ *               formulas (ref => text), open (ref => true), closed (ref => true), rows (row => open?), columns ([first, last] 0-based)
  */
 function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 {
@@ -537,9 +590,14 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
         'locked' => array(),
         'formulas' => array(),
         'open' => array(),
+        'closed' => array(),
+        'rows' => array(),
+        'columns' => array(),
     );
 
     $row = 0;
+    $row_open = null;
+    $open_columns = array();
     $cell = '';
     $record = false;
     $ranges = 0;
@@ -579,6 +637,32 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 
                 $row = (int) $number;
                 $cell = '';
+                $row_open = null;
+
+                if (in_array(strtolower((string) $reader->getAttribute('customFormat')), array('1', 'true'), true) && ((string) $reader->getAttribute('s') !== '')) {
+                    $row_open = isset($open_styles[(int) $reader->getAttribute('s')]);
+
+                    if (($until_row > 0) && ($row <= $until_row)) {
+                        $out['rows'][$row] = $row_open;
+                    }
+                }
+                break;
+
+            case 'col':
+                // The styles of whole columns come before the rows.
+                $style = (int) $reader->getAttribute('style');
+                $first = (int) $reader->getAttribute('min');
+                $last = min((int) $reader->getAttribute('max'), PG_OFFICE_MAX_COLUMNS);
+
+                if (($first < 1) || ($last < $first) || !isset($open_styles[$style])) {
+                    break;
+                }
+
+                $out['columns'][] = array($first - 1, $last - 1);
+
+                for ($column = $first - 1; $column < $last; $column++) {
+                    $open_columns[$column] = true;
+                }
                 break;
 
             case 'c':
@@ -599,6 +683,8 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                         $out['locked'][$reference] = 'value';
                     } elseif (isset($open_styles[(int) $reader->getAttribute('s')])) {
                         $out['open'][$reference] = true;
+                    } elseif (($row_open === null) ? isset($open_columns[$position[1]]) : $row_open) {
+                        $out['closed'][$reference] = true;
                     }
                 }
                 break;
@@ -618,7 +704,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 
                 if ($record) {
                     $out['locked'][$cell] = 'formula';
-                    unset($out['open'][$cell]);
+                    unset($out['open'][$cell], $out['closed'][$cell]);
 
                     // Read node by node, and only as much as the label
                     // shows (four bytes a character at most).
@@ -804,11 +890,11 @@ function pg_office_signed($zip)
  * @param array      $sheet     pg_office_xlsx_sheets() entry
  * @param int        $until_row the last row number the preview shows
  * @param array      $styles    pg_office_xlsx_style_kinds()
- * @return array ok, why, protected, locked, formulas, open, ranges
+ * @return array ok, why, protected, locked, formulas, open, closed, rows, columns, ranges
  */
 function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
 {
-    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'ranges' => array());
+    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'closed' => array(), 'rows' => array(), 'columns' => array(), 'ranges' => array());
 
     if ($sheet['type'] !== 'worksheet') {
         $out['why'] = 'kind';
@@ -868,7 +954,10 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
     $out['protected'] = $scan['protected'];
     $out['locked'] = $scan['locked'];
     $out['formulas'] = $scan['formulas'];
-    $out['open'] = $scan['protected'] ? $scan['open'] : array();
+    // What opens a cell matters only under protection.
+    foreach (array('open', 'closed', 'rows', 'columns') as $name) {
+        $out[$name] = $scan['protected'] ? $scan[$name] : array();
+    }
 
     $ranges = array();
 
@@ -1566,6 +1655,8 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang('The file is being saved by someone else. Try again in a moment.');
         case 'signed':
             return lang('The file is digitally signed. Changing it here would break the signature.');
+        case 'password':
+            return lang('The file has a password to change it, so its cells are not changed here.');
         case 'many':
             return lang(array('string' => 'Too many cells were changed at once. Save at most {var:1} cells at a time.', 'vars' => array(PG_OFFICE_EDIT_MAX_CHANGES)));
         case 'long':
@@ -1811,6 +1902,11 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
     }
 
     $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+
+    if (pg_office_xlsx_write_reserved($workbook)) {
+        return $fail('password');
+    }
+
     $date1904 = pg_office_xlsx_date1904($workbook);
     $parts = array();
     $changed = 0;
@@ -2247,11 +2343,15 @@ function pg_office_text_tokens($text)
  * Where two texts differ, as changes to the first: [start, end, insert] in
  * characters of the old text, in order and not overlapping.
  *
- * The common beginning and end are set aside first; what lies between is
- * compared word by word, so two separate changes come out as two and the
- * runs between them (with their formatting) are left alone. A middle too
- * long to compare word by word (the product of the two word counts above
- * $limit) is one change.
+ * The texts are compared as words (pg_office_text_tokens()), never as
+ * letters: the common beginning and end are set aside whole words at a
+ * time, so a word added before one that starts with the same letters
+ * ("BIG" before "BOLD") goes before that word, not into it and its
+ * formatting, and a word changed in part is changed whole. What lies
+ * between is compared word by word, so two separate changes come out as
+ * two and the runs between them (with their formatting) are left alone. A
+ * middle too long to compare word by word (the product of the two word
+ * counts above $limit) is one change.
  *
  * @param string $old
  * @param string $new
@@ -2264,8 +2364,8 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         return array();
     }
 
-    $a = preg_split('//u', $old, -1, PREG_SPLIT_NO_EMPTY);
-    $b = preg_split('//u', $new, -1, PREG_SPLIT_NO_EMPTY);
+    $a = pg_office_text_tokens($old);
+    $b = pg_office_text_tokens($new);
     $n = count($a);
     $m = count($b);
     $prefix = 0;
@@ -2280,13 +2380,16 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         $suffix++;
     }
 
-    $old_middle = pg_office_text_tokens(implode('', array_slice($a, $prefix, $n - $prefix - $suffix)));
-    $new_middle = pg_office_text_tokens(implode('', array_slice($b, $prefix, $m - $prefix - $suffix)));
+    $old_middle = array_slice($a, $prefix, $n - $prefix - $suffix);
+    $new_middle = array_slice($b, $prefix, $m - $prefix - $suffix);
     $rows = count($old_middle);
     $columns = count($new_middle);
 
+    // Positions are in characters of the old text.
+    $prefix = mb_strlen(implode('', array_slice($a, 0, $prefix)), 'UTF-8');
+
     if (($rows * $columns) > $limit) {
-        return array(array($prefix, $n - $suffix, implode('', $new_middle)));
+        return array(array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
     }
 
     // The longest run of words both share, filled in from the end.
@@ -2344,10 +2447,11 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
  * change starts in (or, for text only added, the run of the character before
  * it, whose formatting carries on as it does when typing; at the very start,
  * the first run with text). Text added right after a link goes into the run
- * after it, as a word processor types it, rather than into the link. Runs
- * the change does not reach keep their text.
+ * after it, as a word processor types it, rather than into the link; when
+ * the link ends the paragraph, into a new run after it, formatted like the
+ * paragraph mark. Runs the change does not reach keep their text.
  *
- * @param array  $runs   [run, text] in order, the texts updated
+ * @param array  $runs   [run, text] in order, the texts updated (a run may be added)
  * @param int    $start  in characters of the paragraph's text
  * @param int    $end
  * @param string $insert
@@ -2377,9 +2481,22 @@ function pg_office_docx_apply_hunk(&$runs, $start, $end, $insert)
                 $target = $index;
                 $next = isset($keys[$place + 1]) ? $runs[$keys[$place + 1]]['run'] : null;
 
-                if (($start === $offset + $length) && ($next !== null)
-                    && pg_office_docx_in_link($run['run']) && !pg_office_docx_in_link($next)) {
-                    $target = $keys[$place + 1];
+                if (($start === $offset + $length) && pg_office_docx_in_link($run['run'])) {
+                    if ($next === null) {
+                        $paragraph = $run['run']->parentNode;
+
+                        while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
+                            $paragraph = $paragraph->parentNode;
+                        }
+
+                        if ($paragraph instanceof DOMElement) {
+                            $runs[] = array('run' => pg_office_docx_new_run($paragraph), 'text' => '', 'changed' => true);
+                            end($runs);
+                            $target = key($runs);
+                        }
+                    } elseif (!pg_office_docx_in_link($next)) {
+                        $target = $keys[$place + 1];
+                    }
                 }
             }
         }
@@ -2518,8 +2635,9 @@ function pg_office_docx_paragraph_write($paragraph, $edit, $text, $limit = 25000
 }
 
 /**
- * A new, empty run at the end of a paragraph that has none, with the
- * formatting of the paragraph mark.
+ * A new, empty run at the end of a paragraph, with the formatting of the
+ * paragraph mark: for a paragraph that has no run, or text typed after a
+ * link that ends it.
  *
  * @param DOMElement $paragraph
  * @return DOMElement
