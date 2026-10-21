@@ -1137,7 +1137,7 @@ if (((string) $invoice['direction'] === 'sales')
                             <div class="' . (in_array($edoc_status, array('error', 'rejected'), true) ? 'text-danger' : '') . '">' . h($invoice['edoc_error']) . '</div>
                         </div>'
                             : '') . '
-                        ' . ((!$edoc_gate['ok'] && ($edoc_status === 'none'))
+                        ' . ((!$edoc_gate['ok'] && in_array($edoc_status, array('none', 'error'), true))
                             ? '<div class="col-12 my-2"><div class="form-text">' . h($edoc_gate['reason']) . '</div></div>'
                             : '') . '
                     </div>

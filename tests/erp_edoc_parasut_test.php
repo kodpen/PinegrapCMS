@@ -629,6 +629,39 @@ function test_erp_edoc_parasut_unconverted_message()
 	foreach ($handed_over as $label => $row) {
 		pg_assert_contains('hand it to GİB again', erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice($row)), $label);
 	}
+
+	// A failed conversion job's words come first, as their own sentence.
+	$failed = erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice(array('edoc_status' => 'sent', 'parasut_job_id' => '1234')), 'Alıcı adresi GİB tarafından reddedildi');
+	pg_assert_same('Alıcı adresi GİB tarafından reddedildi. ', mb_substr($failed, 0, 40), 'the reason, closed with a full stop');
+	pg_assert_contains('hand it to GİB again', $failed);
+	pg_assert_same(0, strpos(erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice(array('edoc_status' => 'sent')), 'Done.'), 'Done. The'), 'no second full stop');
+}
+
+// A conversion job's answer: running, done, or failed with Paraşüt's words,
+// whatever shape its errors come in.
+function test_erp_edoc_parasut_job_reading()
+{
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'pending')));
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'running')));
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array()));
+	pg_assert_same(array('state' => 'done', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'done', 'errors' => array())));
+
+	pg_assert_same(
+		array('state' => 'error', 'message' => 'Alıcı adresi GİB tarafından reddedildi'),
+		erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array('Alıcı adresi GİB tarafından reddedildi')))
+	);
+	pg_assert_same(
+		array('state' => 'error', 'message' => 'Geçersiz alan: VKN hatalı | Zaman aşımı'),
+		erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(
+			array('title' => 'Geçersiz alan', 'detail' => 'VKN hatalı', 'source' => array('pointer' => '/data/attributes/vkn')),
+			array('title' => 'Zaman aşımı', 'detail' => 'Zaman aşımı'),
+			'Zaman aşımı',
+		))),
+		'JSON:API error objects, a repeated line once, no notice from a nested array'
+	);
+	pg_assert_same('error', erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(array('code' => 'E1', 'meta' => array('x' => 1)))))['state']);
+	pg_assert_same('E1', erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(array('code' => 'E1', 'meta' => array('x' => 1)))))['message']);
+	pg_assert_same('Paraşüt could not convert the invoice into an e-document.', erp_edoc_parasut_job_reading(array('status' => 'failed'))['message']);
 }
 
 // An e_invoice_inboxes answer: every mailbox once, and the registered name
