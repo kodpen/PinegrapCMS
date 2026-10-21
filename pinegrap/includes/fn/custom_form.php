@@ -2686,3 +2686,141 @@ function submit_custom_form($properties)
         }
     }
 }
+
+/**
+ * What a check box variable written as ^^name^^%%Yes|No%% prints.
+ *
+ * The text before the first | is printed when the box was ticked, the text
+ * after it when it was not; either may be empty. A box counts as ticked when
+ * any of its values is something other than blank or 0, so a group of boxes
+ * prints the first text when at least one of them was ticked. Returns null
+ * when the format holds no |: then it is not a yes/no pair and the caller
+ * prints the value the usual way.
+ */
+function pg_cf_checkbox_format_text($data, $format)
+{
+    $format = (string)$format;
+    if (strpos($format, '|') === false) return null;
+
+    list($ticked_text, $empty_text) = explode('|', $format, 2);
+
+    $values = is_array($data) ? $data : array($data);
+    foreach ($values as $value) {
+        $value = trim((string)$value);
+        if ($value !== '' && $value !== '0') return $ticked_text;
+    }
+
+    return $empty_text;
+}
+
+/**
+ * The variables a form item view layout can use, shaped for the screen.
+ *
+ * $fields are form_fields rows (name, label, type), $standard_fields the
+ * list get_standard_fields_for_view() returns. Each entry carries the token
+ * (^^name^^), a label, the field type and, for check box and date fields, an
+ * example of the format that goes with them ($yes / $no fill the check box
+ * one). Information fields and fields without a name print nothing and are
+ * left out. 'syntax' holds one sample line per format (conditional, date,
+ * checkbox), taken from the first fitting form field.
+ */
+function pg_cf_variables_help_build($fields, $standard_fields, $yes = 'Yes', $no = 'No')
+{
+    $example = function ($name, $type) use ($yes, $no) {
+        switch ($type) {
+            case 'check box':     return '^^' . $name . '^^%%' . $yes . '|' . $no . '%%';
+            case 'date':          return '^^' . $name . '^^%%d.m.Y%%';
+            case 'date and time': return '^^' . $name . '^^%%d.m.Y H:i%%';
+        }
+        return '';
+    };
+
+    $help = array('fields' => array(), 'standard' => array());
+
+    foreach ((array)$fields as $field) {
+        $name = (string)($field['name'] ?? '');
+        $type = (string)($field['type'] ?? '');
+        if ($name === '' || $type === 'information') continue;
+        $label = trim((string)($field['label'] ?? ''));
+        $help['fields'][] = array(
+            'token'   => '^^' . $name . '^^',
+            'label'   => ($label !== '') ? $label : $name,
+            'type'    => $type,
+            'example' => $example($name, $type),
+        );
+    }
+
+    foreach ((array)$standard_fields as $field) {
+        $name = (string)($field['value'] ?? '');
+        if ($name === '') continue;
+        $type = (string)($field['type'] ?? '');
+        $help['standard'][] = array(
+            'token'   => '^^' . $name . '^^',
+            'label'   => (string)($field['name'] ?? $name),
+            'type'    => $type,
+            'example' => $example($name, $type),
+        );
+    }
+
+    // Ready-made lines for the three formats, on the form's own fields when
+    // it has a fitting one: a conditional block, a date format, a check box.
+    $help['syntax'] = array(
+        'conditional' => '[[example: ^^example^^ || -]]',
+        'date'        => '^^submitted_date_and_time^^%%d.m.Y H:i%%',
+        'checkbox'    => $example('example', 'check box'),
+    );
+    if (!empty($help['fields'])) {
+        $first = $help['fields'][0];
+        $help['syntax']['conditional'] = '[[' . $first['label'] . ': ' . $first['token'] . ' || -]]';
+    }
+    foreach (array_reverse($help['fields']) as $item) {
+        if ($item['type'] === 'date' || $item['type'] === 'date and time') $help['syntax']['date'] = $item['example'];
+        if ($item['type'] === 'check box') $help['syntax']['checkbox'] = $item['example'];
+    }
+
+    return $help;
+}
+
+/**
+ * The variables of the form on page $page_id plus the standard fields, for
+ * the form item view screen (see pg_cf_variables_help_build()). Each entry
+ * also gets a translated name for its type (type_label, empty when the type
+ * says nothing worth showing).
+ */
+function pg_cf_variables_help($page_id)
+{
+    $page_id = (int)$page_id;
+
+    $fields = array();
+    if ($page_id > 0) {
+        $rows = db_items(
+            "SELECT name, label, type
+             FROM form_fields
+             WHERE page_id = '$page_id' AND type != 'information' AND name != ''
+             ORDER BY sort_order ASC, id ASC");
+        if (is_array($rows)) $fields = $rows;
+    }
+
+    $help = pg_cf_variables_help_build($fields, get_standard_fields_for_view(), lang('Yes'), lang('No'));
+
+    $type_labels = array(
+        'text box'      => lang('Text Box'),
+        'text area'     => lang('Text Area'),
+        'pick list'     => lang('Pick List'),
+        'radio button'  => lang('Radio Button'),
+        'check box'     => lang('Check Box'),
+        'file upload'   => lang('File Upload'),
+        'date'          => lang('Date'),
+        'date and time' => lang('Date & Time'),
+        'time'          => lang('Time'),
+        'email address' => lang('E-mail Address'),
+        'signature'     => lang('Signature'),
+    );
+    foreach (array('fields', 'standard') as $group) {
+        foreach ($help[$group] as $i => $item) {
+            $help[$group][$i]['type_label'] = $type_labels[$item['type']] ?? '';
+        }
+    }
+
+    return $help;
+}
