@@ -110,6 +110,15 @@ function erp_returnable_lines($invoice_id)
 /**
  * Build the lines of a return from the quantities somebody chose.
  *
+ * The lines given back in part take their taxes the way a document does
+ * (erp_rate_vat()): the VAT per group of one VAT rate and one withholding
+ * rate of the return, on the group's sum, the withholding over the groups
+ * rounded once, the second tax per its own rate - each capped by what is
+ * still on its line. The piece that empties a line whose earlier returns are
+ * known takes exactly what is left on it, so the returns of a line add up to
+ * the line. An order's lines (erp_order_refund_lines()) carry no earlier
+ * returns and take the group taxes alone.
+ *
  * @param array $parent_lines  from erp_returnable_lines()
  * @param array $quantities    line id => quantity
  * @return array ['lines' => array, 'totals' => array, 'is_full' => bool, 'error' => string]
@@ -117,6 +126,10 @@ function erp_returnable_lines($invoice_id)
 function erp_return_build($parent_lines, $quantities)
 {
     $lines = array();
+    // What erp_rate_vat() takes for the lines given back in part, and what is
+    // left on each line, under the line's key in $lines.
+    $taxed = array();
+    $left = array();
     $is_full = true;
 
     foreach ($parent_lines as $parent) {
@@ -145,39 +158,33 @@ function erp_return_build($parent_lines, $quantities)
 
         $line_total = (int) round((int) $parent['unit_price'] * $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
-        // A second tax (tax2_amount, part of tax_total) comes back the same
-        // way as the whole: at its rate, capped by what is left of it, the
-        // last piece taking exactly the rest.
         $tax2_rate = (float) ($parent['tax2_rate'] ?? 0);
-        $tax2 = ($tax2_rate > 0) ? erp_apply_rate($line_total - $discount, $tax2_rate) : 0;
-
-        if (($tax2_rate > 0) && isset($parent['returned_tax2'])) {
-            $tax2_left = max(0, (int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2']);
-            $tax2 = ($wanted >= ($remaining - 0.00001)) ? $tax2_left : min($tax2, $tax2_left);
-        }
-
-        $tax = erp_apply_rate($line_total - $discount, (float) $parent['tax_rate']) + $tax2;
-
-        // The parent line's tax is one rounded figure, and the pieces given
-        // back cannot add up to more than it: two halves of 361 kurus both
-        // round to 181. Each piece is taken at the rate, capped by what is
-        // still on the line, and the piece that empties the line takes exactly
-        // what is left - the same tie-back erp_order_lines does against the
-        // order's header, so that the returns of a line sum to its tax.
-        if (isset($parent['returned_tax'])) {
-            $tax_left = max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']);
-            $tax = ($wanted >= ($remaining - 0.00001)) ? $tax_left : min($tax, $tax_left);
-        }
-
-        // The withholding comes back the same way: the share of the VAT
-        // given back, capped by what the line withheld, the last piece taking
-        // exactly what is left.
         $withholding_rate = (float) ($parent['withholding_rate'] ?? 0);
-        $withholding = ($withholding_rate > 0) ? erp_apply_rate(max(0, $tax - $tax2), $withholding_rate) : 0;
 
-        if (($withholding_rate > 0) && isset($parent['returned_withholding'])) {
-            $withholding_left = max(0, (int) ($parent['withholding_amount'] ?? 0) - (int) $parent['returned_withholding']);
-            $withholding = ($wanted >= ($remaining - 0.00001)) ? $withholding_left : min($withholding, $withholding_left);
+        // The parent line's taxes are rounded figures, and the pieces given
+        // back cannot add up to more than them: two halves of 361 kurus both
+        // round to 181. Each piece is capped by what is still on the line,
+        // and the piece that empties the line takes exactly what is left -
+        // the same tie-back erp_order_lines does against the order's header,
+        // so that the returns of a line sum to its taxes. tax_total holds the
+        // second tax too; the withholding is a share of the VAT alone.
+        $known = isset($parent['returned_tax']);
+        $left[count($lines)] = array(
+            'empties' => $known && ($wanted >= ($remaining - 0.00001)),
+            'tax' => $known ? max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']) : null,
+            'tax2' => (($tax2_rate > 0) && isset($parent['returned_tax2']))
+                ? max(0, (int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2']) : null,
+            'withholding' => (($withholding_rate > 0) && isset($parent['returned_withholding']))
+                ? max(0, (int) ($parent['withholding_amount'] ?? 0) - (int) $parent['returned_withholding']) : null,
+        );
+
+        if (!$left[count($lines)]['empties']) {
+            $taxed[count($lines)] = array(
+                'net' => $line_total - $discount,
+                'tax_rate' => (float) $parent['tax_rate'],
+                'withholding_rate' => $withholding_rate,
+                'tax2_rate' => $tax2_rate,
+            );
         }
 
         $lines[] = array(
@@ -189,13 +196,13 @@ function erp_return_build($parent_lines, $quantities)
             'unit_price' => (int) $parent['unit_price'],
             'discount_amount' => $discount,
             'tax_rate' => (float) $parent['tax_rate'],
-            'tax_total' => $tax,
+            'tax_total' => 0,
             'tax2_rate' => $tax2_rate,
-            'tax2_amount' => min($tax2, $tax),
+            'tax2_amount' => 0,
             'withholding_code' => (string) ($parent['withholding_code'] ?? ''),
             'vat_exemption_code' => (string) ($parent['vat_exemption_code'] ?? ''),
             'withholding_rate' => $withholding_rate,
-            'withholding_amount' => $withholding,
+            'withholding_amount' => 0,
             'line_total' => $line_total,
         );
     }
@@ -203,6 +210,39 @@ function erp_return_build($parent_lines, $quantities)
     if (empty($lines)) {
         return array('lines' => array(), 'totals' => array(), 'is_full' => false,
             'error' => lang('Choose at least one line to return.'));
+    }
+
+    $taxes = erp_rate_vat($taxed);
+
+    foreach ($lines as $index => $line) {
+        $cap = $left[$index];
+
+        if ($cap['empties']) {
+            $tax2 = ($cap['tax2'] !== null) ? $cap['tax2'] : 0;
+            $tax = $cap['tax'];
+            $withholding = ($cap['withholding'] !== null) ? $cap['withholding']
+                : (($line['withholding_rate'] > 0) ? erp_apply_rate(max(0, $tax - $tax2), $line['withholding_rate']) : 0);
+        } else {
+            $tax2 = $taxes['lines'][$index]['tax2'];
+            if ($cap['tax2'] !== null) {
+                $tax2 = min($tax2, $cap['tax2']);
+            }
+
+            $tax = $taxes['lines'][$index]['vat'] + $tax2;
+            if ($cap['tax'] !== null) {
+                $tax = min($tax, $cap['tax']);
+            }
+
+            // Never more than the VAT this piece gives back.
+            $withholding = min($taxes['lines'][$index]['withholding'], max(0, $tax - $tax2));
+            if ($cap['withholding'] !== null) {
+                $withholding = min($withholding, $cap['withholding']);
+            }
+        }
+
+        $lines[$index]['tax_total'] = $tax;
+        $lines[$index]['tax2_amount'] = min($tax2, $tax);
+        $lines[$index]['withholding_amount'] = $withholding;
     }
 
     $subtotal = 0;

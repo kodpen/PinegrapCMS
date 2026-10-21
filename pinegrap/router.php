@@ -427,6 +427,20 @@ $query = $short_link_select . "
     WHERE short_links.name = '" . router_escape($short_link_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
 
+// A name is stored the way a pasted old address is written into one
+// (pg_short_link_path_name(): no / at either end, one / between parts, _ for
+// a space), so the old address itself (/blog/post/, /Old%20Page, //post) is
+// looked up in that form too when it is no name as it came.
+if (mysqli_num_rows($result) == 0) {
+    router_short_link_module();
+    $short_link_stored_name = pg_short_link_path_name($short_link_name);
+
+    if (($short_link_stored_name !== '') && ($short_link_stored_name !== $short_link_name)) {
+        $result = mysqli_query(db::$con, $short_link_select . "
+            WHERE short_links.name = '" . router_escape($short_link_stored_name) . "'") or router_output_error('Query failed.');
+    }
+}
+
 // Before that step there is no token_hash to look in and the query fails:
 // the name was all there was.
 if ((mysqli_num_rows($result) == 0) && (preg_match('/^[A-Za-z0-9_-]{43}$/', $item_name) == 1)) {
@@ -625,11 +639,7 @@ function router_utf8_name($name)
  */
 function router_short_link_redirect($short_link)
 {
-    if (!defined('PG_FUNCTIONS_DIR')) {
-        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
-    }
-
-    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
+    router_short_link_module();
 
     $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
     $config = mysqli_fetch_assoc($result);
@@ -660,6 +670,22 @@ function router_short_link_redirect($short_link)
 
     header('Location: ' . $location, true, $code);
     exit();
+}
+
+/**
+ * Loads includes/fn/short_link_redirects.php on its own: its functions run no
+ * query and need nothing of functions.php, which loads the same file again
+ * later without effect (require_once).
+ *
+ * @return void
+ */
+function router_short_link_module()
+{
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+    }
+
+    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
 }
 
 /**

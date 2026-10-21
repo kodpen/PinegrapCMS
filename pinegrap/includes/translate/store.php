@@ -165,6 +165,18 @@ function pg_tr_inline_tags()
 }
 
 /**
+ * The attributes an inline tag of a translated text may carry: the editor's
+ * own list as well (pg_design_ai_clean_inline()).
+ */
+function pg_tr_inline_attrs()
+{
+    static $attrs = array('class' => 1, 'title' => 1, 'href' => 1, 'target' => 1, 'rel' => 1, 'aria-label' => 1,
+                          'aria-hidden' => 1, 'lang' => 1, 'dir' => 1, 'datetime' => 1, 'style' => 1);
+
+    return $attrs;
+}
+
+/**
  * Inline markup reduced to the allowed tags and attributes, text escaped.
  *
  * Mirrors the editor's cleaner (pg_design_ai_clean_inline()): a block element
@@ -202,7 +214,7 @@ function pg_tr_clean_inline($html)
 function pg_tr_clean_inline_walk($node)
 {
     $inline = pg_tr_inline_tags();
-    $keep_attrs = array('class', 'title', 'href', 'target', 'rel', 'aria-label', 'aria-hidden', 'lang', 'dir', 'datetime', 'style');
+    $keep_attrs = pg_tr_inline_attrs();
     $out = '';
 
     foreach ($node->childNodes as $child) {
@@ -233,7 +245,7 @@ function pg_tr_clean_inline_walk($node)
         foreach ($child->attributes as $attr) {
             $name = strtolower($attr->name);
 
-            if (!in_array($name, $keep_attrs, true)) {
+            if (!isset($keep_attrs[$name])) {
                 continue;
             }
 

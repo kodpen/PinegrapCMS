@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
-- erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21; steps 1-2 done, #1001, #1004): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 3-6 remain
+- erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21; steps 1-3 done, #1001, #1004, #1020): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 4-6 remain
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints

@@ -82,11 +82,12 @@ function erp_order_refund_lines($order_id)
 
 /**
  * What giving back a number of one line comes to, for every count that can
- * be chosen, so the screen can show the exact total as the boxes change.
+ * be chosen, so the screen can answer at once as the boxes change.
  *
- * Each line is worked out on its own by erp_return_build(), which is what
- * the total is on the server too: a return's figures are the sums of its
- * lines, so the screen's sum and the server's agree to the kurus.
+ * Each line is worked out on its own by erp_return_build(): exact while it is
+ * the only line chosen. With several lines the taxes of the pieces given back
+ * in part are taken per group of the return, and the dialog takes the
+ * figures for the whole choice from the server (erp_refund_preview).
  *
  * @param array $line  One line from erp_order_refund_lines()
  * @param int   $cap   Most counts to list; beyond it the screen scales
@@ -118,11 +119,13 @@ function erp_quantity_out($quantity)
 }
 
 /**
- * The refund for the chosen quantities.
+ * The refund for the chosen quantities, and what each chosen line comes to
+ * within it (its taxes are its share of the return's groups).
  *
  * @param array $source      from erp_order_refund_lines()
  * @param array $quantities  line id => count, as posted
- * @return array ['amount' => int kurus, 'quantities' => array, 'is_full' => bool, 'error' => string]
+ * @return array ['amount' => int kurus, 'quantities' => array, 'lines' => [line id => kurus],
+ *                'is_full' => bool, 'error' => string]
  */
 function erp_order_refund_amount($source, $quantities)
 {
@@ -138,12 +141,20 @@ function erp_order_refund_amount($source, $quantities)
     $built = erp_return_build($source['lines'], $chosen);
 
     if ($built['error'] !== '') {
-        return array('amount' => 0, 'quantities' => array(), 'is_full' => false, 'error' => $built['error']);
+        return array('amount' => 0, 'quantities' => array(), 'lines' => array(), 'is_full' => false, 'error' => $built['error']);
+    }
+
+    $lines = array();
+
+    foreach ($built['lines'] as $line) {
+        $lines[(int) $line['parent_line_id']] = (int) $line['line_total'] - (int) $line['discount_amount']
+            + (int) $line['tax_total'] - (int) $line['withholding_amount'];
     }
 
     return array(
         'amount' => (int) $built['totals']['grand_total'],
         'quantities' => $chosen,
+        'lines' => $lines,
         'is_full' => (bool) $built['is_full'],
         'error' => '',
     );
@@ -151,8 +162,10 @@ function erp_order_refund_amount($source, $quantities)
 
 /**
  * The body of the card refund dialog: the lines, a quantity box on each, and
- * the total as the boxes change - worked out in the page from the same
- * per-line figures the server uses, so what is shown is what is refunded.
+ * the total as the boxes change - each line priced alone at once
+ * (erp_order_refund_line_prices()), then the server's figures for the whole
+ * choice (api.php, erp_refund_preview: erp_order_refund_amount(), what the
+ * refund itself is worked out with), so what is shown is what is refunded.
  *
  * @param array $source         from erp_order_refund_lines()
  * @param int   $order_id
@@ -235,18 +248,53 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                 };
                                 var inputs = document.querySelectorAll("[data-refund-line]");
                                 var submit = document.querySelector("#payment-refund-modal [name=submit_payment_refund]");
-                                var refresh = function () {
-                                    var total = 0;
-                                    inputs.forEach(function (input) {
-                                        var id = input.getAttribute("data-refund-line");
-                                        var count = Math.max(0, Math.min(parseInt(input.value || "0", 10) || 0, parseInt(input.max, 10)));
-                                        var amount = line(id, count);
-                                        total += amount;
-                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = count ? money(amount) : "-";
+                                var orderId = ' . (int) $order_id . ';
+                                var asked = 0;
+                                var timer = null;
+                                var show = function (total, amounts, counts) {
+                                    Object.keys(counts).forEach(function (id) {
+                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = counts[id] ? money(amounts[id] || 0) : "-";
                                     });
                                     document.getElementById("payment_refund_total").textContent = money(Math.min(total, max));
                                     document.getElementById("payment_refund_capped").classList.toggle("d-none", total <= max);
                                     if (submit) { submit.disabled = (total <= 0); }
+                                };
+                                // Several lines given back in part take their taxes per
+                                // group, so the whole is the server\'s figure, not the sum
+                                // of the lines priced alone.
+                                var ask = function (counts) {
+                                    var number = ++asked;
+                                    var quantities = {};
+                                    Object.keys(counts).forEach(function (id) {
+                                        if (counts[id] > 0) { quantities[id] = counts[id]; }
+                                    });
+                                    if (!Object.keys(quantities).length || !window.fetch) { return; }
+                                    fetch("api.php", {
+                                        method: "POST",
+                                        credentials: "same-origin",
+                                        headers: {"Content-Type": "application/json"},
+                                        body: JSON.stringify({action: "erp_refund_preview", token: (typeof software_token !== "undefined") ? software_token : "", order_id: orderId, quantities: quantities})
+                                    }).then(function (response) {
+                                        return response.json();
+                                    }).then(function (answer) {
+                                        if ((number !== asked) || !answer || (answer.status !== "success") || !answer.data) { return; }
+                                        show(parseInt(answer.data.amount, 10) || 0, answer.data.lines || {}, counts);
+                                    }).catch(function () {});
+                                };
+                                var refresh = function () {
+                                    var total = 0;
+                                    var amounts = {};
+                                    var counts = {};
+                                    inputs.forEach(function (input) {
+                                        var id = input.getAttribute("data-refund-line");
+                                        var count = Math.max(0, Math.min(parseInt(input.value || "0", 10) || 0, parseInt(input.max, 10)));
+                                        counts[id] = count;
+                                        amounts[id] = line(id, count);
+                                        total += amounts[id];
+                                    });
+                                    show(total, amounts, counts);
+                                    window.clearTimeout(timer);
+                                    timer = window.setTimeout(function () { ask(counts); }, 200);
                                 };
                                 inputs.forEach(function (input) { input.addEventListener("input", refresh); });
                                 document.getElementById("payment_refund_all").addEventListener("click", function () {
