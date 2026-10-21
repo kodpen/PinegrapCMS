@@ -24721,5 +24721,8 @@
     "The return invoice for {var:1} is not issued here: someone who uses the ERP must issue it after the refund.": "{var:1} için iade faturası buradan kesilmez: ücret iadesinden sonra ERP'yi kullanan birinin kesmesi gerekir.",
     "The file has a password to change it, so its cells are not changed here.": "Dosyanın değiştirme parolası var; hücreleri burada değiştirilmiyor.",
     "None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.": "Bu siparişin hiçbir kalemi sipariş verilirken tahsil edilmedi; henüz faturalanacak bir şey yok.",
-    "No revision has been recorded yet; the next publish first records the page as it is now.": "Henüz kaydedilmiş bir sürüm yok; bir sonraki yayın önce sayfanın şimdiki hâlini kaydeder."
+    "No revision has been recorded yet; the next publish first records the page as it is now.": "Henüz kaydedilmiş bir sürüm yok; bir sonraki yayın önce sayfanın şimdiki hâlini kaydeder.",
+    "REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.": "İADE İŞLEMİ GEREKLİ — #{var:1} numaralı sipariş iptal edildi. Ödeme yöntemi: {var:2}. Tutar: {var:3}. İadeyi ödeme sağlayıcısının panelinden yapın.",
+    "REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.": "İADE İŞLEMİ GEREKLİ — #{var:1} numaralı sipariş iptal edildi. Siparişin {var:2} tutarındaki kısmı hediye kartlarıyla ödendi: {var:3}. Tutarları kartlara geri yükleyin.",
+    "Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.": "Bu siparişin {var:1} tutarındaki kısmı hediye kartlarıyla ödendi. Tutarları kartlara geri yükleyin; kartlar site günlüğünde yazılı."
 }

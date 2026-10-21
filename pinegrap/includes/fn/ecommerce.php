@@ -8591,10 +8591,14 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // one) both passed the check above: both voided the payment, mailed the
     // customer and announced order.cancelled, and the second void's failure
     // overwrote the first one's refund status.
+    // One clock read: restore finds the expired gift cards by the day before
+    // cancelled_at, so both must come from the same instant (a read on each
+    // side of midnight would set the cards one day off).
+    $now = time();
     db(
         "UPDATE orders SET
             status              = 'cancelled',
-            cancelled_at        = '" . time() . "',
+            cancelled_at        = '" . $now . "',
             cancelled_by        = '" . (int) $user_id . "',
             cancellation_reason = '" . escape($reason_clean) . "'
          WHERE id = '" . e($order_id) . "'
@@ -8611,7 +8615,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // The note names the order and the date the card had, which is what a
     // restore of the order puts back (pg_gift_card_expiration_before_cancel()).
     // Rows that already expired earlier are left untouched.
-    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $yesterday = date('Y-m-d', strtotime('-1 day', $now));
     $expiring_gift_cards = db_items(
         "SELECT id, expiration_date
          FROM gift_cards
@@ -8695,23 +8699,25 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
-        log_activity(
-            'REFUND ACTION REQUIRED — order #' . $order_id . ' was cancelled. ' .
-            'Payment method: ' . $order['payment_method'] . '. ' .
-            'Amount: ' . number_format($order_total / 100, 2, '.', ',') . '. ' .
-            'Process refund in the gateway dashboard.'
-        );
+        log_activity(lang(array(
+            'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
+            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($order_total / 100, 2, '.', ',')))));
     }
 
     // What gift cards paid of the order does not go back to them by itself,
     // and orders.total has it taken off already: an order paid by gift card
     // alone raised no flag above. The operator is told what to return to
-    // which card.
+    // which card. The refund status stays what the payment step reported (a
+    // successful void keeps 'refunded', so the customer email, the webhook
+    // and the restore keep the record of it); only an order the payment step
+    // left without an outcome is flagged here.
     $gift_card_refund_line = pg_order_gift_card_refund_line($order_id, (array) db_items(
         "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "'"));
     if ($gift_card_refund_line !== '') {
-        $refund_status_outcome = 'manual_required';
         log_activity($gift_card_refund_line);
+        if ($refund_status_outcome === '') {
+            $refund_status_outcome = 'manual_required';
+        }
     }
 
     if ($refund_columns_exist && $refund_status_outcome !== '') {
@@ -8782,9 +8788,9 @@ function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
     if (!$parts) {
         return '';
     }
-    return 'REFUND ACTION REQUIRED — order #' . (int) $order_id . ' was cancelled. '
-        . 'Gift cards paid ' . number_format($total / 100, 2, '.', ',') . ' of it: ' . implode(', ', $parts) . '. '
-        . 'Return the amounts to the cards.';
+    return lang(array(
+        'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.',
+        'vars'   => array((int) $order_id, number_format($total / 100, 2, '.', ','), implode(', ', $parts))));
 }
 
 // Restoring a cancelled order: the gift cards it issued that the cancellation
@@ -8827,32 +8833,81 @@ function pg_order_restore_gift_cards($order_id, $order_number, $cancelled_at)
     return $restored;
 }
 
+// The note templates a cancellation writes on the gift cards it expires
+// (process_order_cancellation()), as pairs of 'dated' ({var:1} the order
+// number, {var:2} the old date) and 'none' ({var:1} the order number): the
+// English source and its wording in the current language and in Turkish, so a
+// note written under another panel language is still recognised.
+function pg_gift_card_cancel_note_templates()
+{
+    $dated = 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.';
+    $none  = 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.';
+
+    $templates = array(array('dated' => $dated, 'none' => $none));
+
+    foreach (array_unique(array((string) lang(array('info' => true)), 'tr')) as $language) {
+        if ($language === '' || $language === 'en') {
+            continue;
+        }
+        $dated_translated = lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.', 'language' => $language, 'if_known' => true));
+        $none_translated  = lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.', 'language' => $language, 'if_known' => true));
+        if (is_string($dated_translated) && is_string($none_translated)) {
+            $templates[] = array('dated' => $dated_translated, 'none' => $none_translated);
+        }
+    }
+
+    return $templates;
+}
+
 // The expiration date a gift card had before the cancellation of order
-// $order_number expired it, read from the note line that cancellation added
-// (process_order_cancellation()): 'Y-m-d', '0000-00-00' when the card had
-// none, null when no line names that order. The line is found by the order
-// number and the date in it, both written as they are in every language. The
-// last such line wins: an order cancelled, restored and cancelled again.
-function pg_gift_card_expiration_before_cancel($notes, $order_number)
+// $order_number expired it, read from the note line that cancellation added:
+// 'Y-m-d', '0000-00-00' when the card had none, null when there is no such
+// line or its date is not a real one. A line counts only when it is, after
+// trimming, one of the cancellation templates filled with the order number
+// (and, for the dated one, the ISO date in the line); any other line, an
+// operator's line naming the order included, is skipped. Notes are free
+// text, so matching the order number alone let such a line set the date or
+// make the card non-expiring. The last matching line wins: an order
+// cancelled, restored and cancelled again. $templates defaults to
+// pg_gift_card_cancel_note_templates().
+function pg_gift_card_expiration_before_cancel($notes, $order_number, $templates = null)
 {
     $order_number = trim((string) $order_number);
     if ($order_number === '') {
         return null;
     }
 
+    if ($templates === null) {
+        $templates = pg_gift_card_cancel_note_templates();
+    }
+
     $lines = preg_split('/\r\n|\r|\n/', (string) $notes);
 
     for ($i = count($lines) - 1; $i >= 0; $i--) {
-        if (!preg_match('/#' . preg_quote($order_number, '/') . '(?![0-9])/', $lines[$i])) {
+        $line = trim($lines[$i]);
+        if ($line === '' || strpos($line, '#' . $order_number) === false) {
             continue;
         }
 
-        if (preg_match('/(?<![0-9])([0-9]{4})-([0-9]{2})-([0-9]{2})(?![0-9])/', $lines[$i], $date)
-            && checkdate((int) $date[2], (int) $date[3], (int) $date[1])) {
-            return $date[0];
-        }
+        preg_match_all('/(?<![0-9])([0-9]{4})-([0-9]{2})-([0-9]{2})(?![0-9])/', $line, $dates, PREG_SET_ORDER);
 
-        return '0000-00-00';
+        foreach ((array) $templates as $template) {
+            if (isset($template['none'])
+                && $line === trim(str_replace('{var:1}', $order_number, (string) $template['none']))) {
+                return '0000-00-00';
+            }
+
+            if (!isset($template['dated'])) {
+                continue;
+            }
+
+            foreach ($dates as $date) {
+                $filled = str_replace(array('{var:1}', '{var:2}'), array($order_number, $date[0]), (string) $template['dated']);
+                if ($line === trim($filled)) {
+                    return checkdate((int) $date[2], (int) $date[3], (int) $date[1]) ? $date[0] : null;
+                }
+            }
+        }
     }
 
     return null;

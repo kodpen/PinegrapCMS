@@ -36,16 +36,30 @@ function test_order_cancel_gift_cards_line()
 	pg_assert_false(strpos($line, 'ABCD1234EFGH5678') !== false, 'no full code in the log');
 }
 
+// The two note templates the cancellation writes, as tr.json has them.
+function pg_test_order_cancel_gift_card_templates_tr()
+{
+	return array(array(
+		'dated' => lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.', 'language' => 'tr', 'if_known' => true)),
+		'none'  => lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.', 'language' => 'tr', 'if_known' => true)),
+	));
+}
+
 function test_order_cancel_gift_card_expiration_before()
 {
 	$en = "Bought for a colleague.\nThis gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-01-31.";
 	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($en, '1042'), 'the date the card had');
 
-	$tr = "Bu hediye kartının süresi #1042 numaralı sipariş iptal edildiği için kendiliğinden doldu. Son kullanma tarihi 2027-01-31 idi.";
-	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($tr, 1042), 'the line in another language');
+	$tr = "Bu hediye kartı, #1042 numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi 2027-01-31 idi.";
+	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($tr, 1042, pg_test_order_cancel_gift_card_templates_tr()), 'the line in Turkish, templates given');
+	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($tr, 1042), 'the line in Turkish, default templates');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel($en, '1042', pg_test_order_cancel_gift_card_templates_tr()), 'only the given templates count');
 
 	$none = "This gift card was automatically expired because order #1042 was cancelled. It had no expiration date.";
 	pg_assert_same('0000-00-00', pg_gift_card_expiration_before_cancel($none, '1042'), 'a card without a date');
+
+	$tr_none = "Bu hediye kartı, #1042 numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi yoktu.";
+	pg_assert_same('0000-00-00', pg_gift_card_expiration_before_cancel($tr_none, '1042', pg_test_order_cancel_gift_card_templates_tr()), 'a card without a date, in Turkish');
 }
 
 function test_order_cancel_gift_card_expiration_before_other_lines()
@@ -53,13 +67,24 @@ function test_order_cancel_gift_card_expiration_before_other_lines()
 	$old = "This gift card was automatically expired because the associated order was cancelled.";
 	pg_assert_same(null, pg_gift_card_expiration_before_cancel($old, '1042'), 'a note written before the date was kept');
 	pg_assert_same(null, pg_gift_card_expiration_before_cancel('', '1042'), 'no note');
-	pg_assert_same(null, pg_gift_card_expiration_before_cancel("Expired because order #10421 was cancelled. Its expiration date was 2027-01-31.", '1042'), 'another order whose number starts the same');
-	pg_assert_same(null, pg_gift_card_expiration_before_cancel("Order #1042 was cancelled. 2027-01-31.", ''), 'an order without a number');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel("This gift card was automatically expired because order #10421 was cancelled. Its expiration date was 2027-01-31.", '1042'), 'another order whose number starts the same');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel("This gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-01-31.", ''), 'an order without a number');
 
 	$twice = "This gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-01-31.\r\n"
 		. "Extended by phone.\r\n"
 		. "This gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-06-30.";
 	pg_assert_same('2027-06-30', pg_gift_card_expiration_before_cancel($twice, '1042'), 'the last cancellation wins');
 
-	pg_assert_same('0000-00-00', pg_gift_card_expiration_before_cancel("Order #1042 was cancelled. Its expiration date was 2027-02-30.", '1042'), 'an impossible date is not put back');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel("This gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-02-30.", '1042'), 'an impossible date is not put back');
+}
+
+function test_order_cancel_gift_card_expiration_before_operator_lines()
+{
+	$cancelled = "This gift card was automatically expired because order #1042 was cancelled. Its expiration date was 2027-01-31.";
+
+	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($cancelled . "\nCustomer called about #1042", '1042'), 'an operator line naming the order, without a date');
+	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel($cancelled . "\n#1042 refund promised by 2026-11-05", '1042'), 'an operator line naming the order, with a date');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel("Customer called about #1042", '1042'), 'an operator line alone');
+	pg_assert_same(null, pg_gift_card_expiration_before_cancel("Order #1042 was cancelled. Its expiration date was 2027-01-31.", '1042'), 'a line that only looks like the note');
+	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel("  " . $cancelled . "  ", '1042'), 'spaces around the line');
 }

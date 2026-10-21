@@ -7,7 +7,7 @@ description: process_order_cancellation as the only cancel path, admin cancel UI
 - `process_order_cancellation($order_id, $reason, $is_admin, $user_id, $attempt_refund = null)` (functions.php). Callers: `cancel_order.php` (customer + admin per-row), `edit_orders.php` (`action=cancel` bulk), `view_order.php` (detail modal). There is no other path; legacy `cancel_order()` was REMOVED and the gift-card invalidation logic moved into this function.
 - It does status/shipment gates + DB update + log + optional email + optional refund through the payment method's driver. Returns `['status' => 'success'|'already'|'shipped'|'not_found'|'error', 'refund_status' => ...]`.
 - 5th param `$attempt_refund`: `null` = follow config, `true`/`false` = force. The detail-screen modal passes `true` (operator confirmed the "payment will be cancelled" modal).
-- Cancels once: the status UPDATE carries `AND status <> 'cancelled'` and a request that changes no row returns `already`. Two cancellations at once (double submit, row and bulk Cancel) used to both void the payment, mail the customer and announce `order.cancelled`; the second void's failure overwrote the first one's `refunded` (#733).
+- Cancels once: the status UPDATE carries `AND status <> 'cancelled'` and a request that changes no row returns `already`. Two cancellations at once (double submit, row and bulk Cancel) used to both void the payment, mail the customer and announce `order.cancelled`; the second void's failure overwrote the first one's `refunded` (#733, #962).
 - Gift cards (issued by the order, or that paid it) on cancel and restore: docs/memory/commerce/order-cancel-gift-cards.md
 
 ## Enum spelling
