@@ -25437,5 +25437,11 @@
     "This product group has groups inside it in the Recycle Bin. Delete those from the Recycle Bin first.": "Bu ürün grubunun Geri Dönüşüm Kutusu'nda alt grupları var. Önce onları Geri Dönüşüm Kutusu'ndan silin.",
     "The attributes of this category could not be read from the marketplace: {var:1}": "Bu kategorinin öznitelikleri pazaryerinden okunamadı: {var:1}",
     "Orders are not brought in from {var:1} yet.": "{var:1} üzerinden siparişler henüz içe aktarılmıyor.",
-    "An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz: sepet yalnızca ödeme adımıyla siparişe dönüşür, sipariş de sepete geri dönmez."
+    "An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz: sepet yalnızca ödeme adımıyla siparişe dönüşür, sipariş de sepete geri dönmez.",
+    "We have created a new account for you on our site.": "Sitemizde sizin için yeni bir hesap oluşturduk.",
+    "A new account was created with this submission: {var:1}": "Bu gönderimle yeni bir hesap oluşturuldu: {var:1}",
+    "Set your password: {var:1}": "Parolanızı belirleyin: {var:1}",
+    "Set your password": "Parolanızı belirleyin",
+    "You can set a password with \"Forgot password\" on the sign-in page.": "Giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilirsiniz.",
+    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}"
 }

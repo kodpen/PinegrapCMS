@@ -2301,9 +2301,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the
-        // legacy custom form confirmation screen did.
-        $new_account = isset($_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']])
-            ? (array)$_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']] : array();
+        // legacy custom form confirmation screen did. No password is handed
+        // out; the password token carries the set password link instead
+        // (pg_cf_new_account_password_note()), for the visitor alone.
+        $new_account_email = pg_cf_new_account_email((int)$form_row['id']);
+        $new_account_note  = ($new_account_email !== '')
+            ? pg_cf_new_account_password_note(pg_cf_new_account_link((int)$form_row['id']), pg_cf_new_account_for_submitter()) : '';
 
         $extra = array(
             'form_item_view'         => $self_url !== '' ? $self_url : '#',
@@ -2311,8 +2314,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitter_user_id'      => (string)$form_row['user_id'],
             'not_found'              => '',  // empty when found — the not_found region renders empty
             '__not_found_message'    => '',
-            '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
-            '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
+            '__new_account_email'    => h($new_account_email),
+            '__new_account_password' => h($new_account_note),
             // The record's edit screen, for whoever may edit this form's
             // submissions (the legacy form item view's Edit button).
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
