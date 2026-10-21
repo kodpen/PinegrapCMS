@@ -2855,8 +2855,9 @@ function pg_designer_page_name_taken_elsewhere($name)
  *   on the site and comes off it, pg_page_schedule_parse(); '' for none)
  *
  * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
- * 'draft' => bool), with 'publish_at' / 'unpublish_at' (datetime-local text)
- * when the save decided the page's times.
+ * 'draft' => bool), with 'revision_no' (the revision written, 0 for none)
+ * when the save wrote, and 'publish_at' / 'unpublish_at' (datetime-local
+ * text) when the save decided the page's times.
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -3170,10 +3171,6 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // unless its row comes back as stored (decided below).
     $changed = true;
 
-    // Whether this save changed the page: a new page did, an existing one
-    // unless its row comes back as stored (decided below).
-    $changed = true;
-
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
         $own = array(
@@ -3220,6 +3217,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
         }
         $changed = !$carried;
+        // A page with no revision yet (published before the table arrived,
+        // or copied row by row by duplicate_page_f.php / duplicate_style.php)
+        // is recorded as stored before this save writes over it, so the
+        // publish below becomes revision 2 and History can bring back the
+        // state before it (includes/fn/page_revisions.php).
+        if ($changed && $multi_ready && function_exists('pg_page_revision_seed')) {
+            pg_page_revision_seed($page_id);
+        }
         $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
                 $touch_set
@@ -3282,8 +3287,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // (includes/fn/page_revisions.php); one carried unchanged records nothing.
     // The caller may name where the tree came from (the importer, the AI
     // editor, a restore); a save from the editor or the API is a publish.
+    $revision_no = 0;
     if ($changed && $multi_ready && $page_id > 0 && function_exists('pg_page_revision_record')) {
-        pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
+        $revision_no = pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, (int)($user['id'] ?? 0),
             isset($page['revision_source']) ? (string)$page['revision_source'] : 'publish');
     }
 
@@ -3318,7 +3324,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
-    $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0));
+    // The revision this save wrote (0 for none), as pg_page_revision_record()
+    // read it back by the row's own id: a MAX() taken here could already be
+    // another save's number.
+    $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0),
+                    'revision_no' => (int)$revision_no);
     // The times as this save left them, for the editor's tab: a time that
     // had come was carried out and cleared.
     if ($schedule['apply']) {
@@ -4625,7 +4635,15 @@ function _render_component_html($props, $pad, $kids = '')
                     : "\n" . $kids . $pad . $text;
             }
             if ($tag === 'a') {
-                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
+                // The window and the relationship are the Target and
+                // Relationship options' props. When a prop is empty, an
+                // _attrs entry of the same name (typed in the Attrs panel)
+                // prints, as it does on the canvas; a prop that is set wins
+                // and its _attrs entry is skipped, so each prints once.
+                $btn_skip = array('type', 'href');
+                if ($target !== '') $btn_skip[] = 'target';
+                if ($rel !== '')    $btn_skip[] = 'rel';
+                $btn_extra = _render_extra_attrs($props, $btn_skip);
                 $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
@@ -4820,9 +4838,19 @@ function _render_content_html($props, $pad, $kids = '')
             $href   = h(isset($props['href'])     ? $props['href']     : '#');
             $cls    = !empty($props['cssClass'])  ? ' class="' . h($props['cssClass']) . '"' : '';
             $target = !empty($props['target'])    ? ' target="' . h($props['target']) . '"' : '';
+            $rel    = !empty($props['rel'])       ? ' rel="'    . h($props['rel'])    . '"' : '';
             $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props, array('href', 'target'));
-            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target
+            // The window and the relationship are the Link Options' props.
+            // When a prop is empty, an _attrs entry of the same name (typed
+            // in the Attrs panel, or kept there by an older layout) prints,
+            // as it does on the canvas; a prop that is set wins and its
+            // _attrs entry is skipped, so each prints once. A link without
+            // the props draws as before (its _attrs rel keeps its place).
+            $link_skip = array('href');
+            if ($target !== '') $link_skip[] = 'target';
+            if ($rel !== '')    $link_skip[] = 'rel';
+            $extra_attrs = _render_extra_attrs($props, $link_skip);
+            $html  .= $pad . '<a href="' . $href . '"' . $cls . $target . $rel
                 . $style_attr . $extra_attrs . '>' . $text
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
             break;

@@ -10,13 +10,20 @@
  * one after each save that changed the page (a save carried unchanged because
  * only a shared component moved writes none), the importer and the AI editor
  * name their source, and a restore is a new publish with source 'restore'.
- * Nothing is written on the editor's autosave, which is browser-local.
+ * Nothing is written on the editor's autosave, which is browser-local. A page
+ * that has no revision when its first changing save comes (published before
+ * the table arrived, or copied from another page) is first recorded as it is
+ * stored (pg_page_revision_seed()), so there is no migration backfill and
+ * the state before the first change can still be brought back.
  *
  * A row keeps the tree (page_tree_json, what the editor opens again), the
- * SHA-1 of the HTML drawn from it (the body is drawn again on restore; the
- * renderer is deterministic, so the hash is enough to tell two revisions
- * apart) and the page's settings as JSON (title, description, folder, flags,
- * meta tags, structured data), with who published and when.
+ * SHA-1 of the HTML drawn from it (the body is drawn again on restore, so
+ * the hash is a record of what went out, not a copy of it) and the page's
+ * settings as JSON (title, description, folder, flags, meta tags, structured
+ * data), with who published and when. Two revisions are told apart by the
+ * tree and the settings alone: the body is derived from the tree, and the
+ * renderer is not deterministic (a navbar or carousel gets a fresh element
+ * id on every draw), so the drawn hash differs between two draws of one tree.
  *
  * Retention is the larger of two rules, both settings on the config row: the
  * last PAGE_REVISIONS_KEEP revisions of a page are kept, and so is every
@@ -170,25 +177,125 @@ function pg_page_revision_settings($page_id)
 }
 
 /**
- * Whether the newest revision already records this state: the same tree, the
- * same drawn HTML and the same settings. Such a save (a settings save that
- * changed nothing the revision records, say) writes no row.
+ * Whether the newest revision already records this state: the same tree and
+ * the same settings. Such a save (a schedule-only save, or a settings save
+ * that changed nothing the revision records) writes no row.
  *
- * @param array|null $latest the newest row (tree_hash, tree_code_hash, settings_json)
+ * The drawn HTML is not compared: it is derived from the tree, and the
+ * renderer gives a navbar or carousel a fresh element id on every draw, so
+ * two draws of one tree hash differently and would pass for two states.
+ *
+ * @param array|null $latest the newest row (tree_hash, settings_json)
  * @param string     $tree_hash
- * @param string     $code_hash
  * @param string     $settings_json
  * @return bool
  */
-function pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)
+function pg_page_revision_identical($latest, $tree_hash, $settings_json)
 {
     if (!is_array($latest)) {
         return false;
     }
 
     return (string) $latest['tree_hash'] === (string) $tree_hash
-        && (string) $latest['tree_code_hash'] === (string) $code_hash
         && (string) $latest['settings_json'] === (string) $settings_json;
+}
+
+/**
+ * The values an initial revision takes from a stored page row: the tree and
+ * the body the page has now, its settings, and who last saved it and when.
+ * Null when the row has no tree (a classic page, or one the designer never
+ * saved): there is nothing a restore could bring back.
+ *
+ * @param array|null $row a page row, as SELECT * returns it
+ * @param int        $now the time to date the row when the page has none
+ * @return array|null style_id, tree_json, tree_hash, code_hash, settings_json, user_id, created_at
+ */
+function pg_page_revision_seed_values($row, $now)
+{
+    if (!is_array($row) || !isset($row['page_tree_json'])) {
+        return null;
+    }
+
+    $tree_json = (string) $row['page_tree_json'];
+
+    if (trim($tree_json) === '') {
+        return null;
+    }
+
+    $settings   = pg_page_revision_settings_from_row($row);
+    $created_at = isset($row['page_timestamp']) ? (int) $row['page_timestamp'] : 0;
+
+    return array(
+        'style_id'      => isset($row['page_style']) ? (int) $row['page_style'] : 0,
+        'tree_json'     => $tree_json,
+        'tree_hash'     => sha1($tree_json),
+        'code_hash'     => sha1(isset($row['page_tree_code']) ? (string) $row['page_tree_code'] : ''),
+        'settings_json' => (string) json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'user_id'       => isset($row['page_user']) ? (int) $row['page_user'] : 0,
+        'created_at'    => ($created_at > 0) ? $created_at : (int) $now,
+    );
+}
+
+/**
+ * Records a page that has no revision yet as it is stored, before a save
+ * writes over it: a page published before the table arrived (2026.11.0,
+ * 11.0.15), or one that duplicate_page_f.php / duplicate_style.php copied
+ * row by row, would otherwise have its first revision be the state after
+ * the first change, with no way back to the state before it. The row is
+ * revision 1 with source 'publish', dated and signed by the page's last
+ * save, so the publish that follows becomes revision 2.
+ *
+ * Returns 1 when the row was written, 0 otherwise (table not there, the
+ * page has revisions, no tree to record, or a failed statement). Two saves
+ * of one page at the same moment both find no row; the unique key refuses
+ * the second's revision 1, which is not an error.
+ *
+ * @param int $page_id
+ * @return int
+ */
+function pg_page_revision_seed($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if ($page_id <= 0 || !pg_page_revisions_ready()) {
+        return 0;
+    }
+
+    if ((int) db_value("SELECT revision_id FROM page_revisions WHERE page_id = '$page_id' LIMIT 1") > 0) {
+        return 0;
+    }
+
+    $values = pg_page_revision_seed_values(
+        db_item("SELECT * FROM page WHERE page_id = '$page_id' LIMIT 1"), time());
+
+    if ($values === null) {
+        return 0;
+    }
+
+    $ok = @mysqli_query(db::$con,
+        "INSERT INTO page_revisions
+            (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
+         VALUES (
+            '$page_id',
+            '" . (int) $values['style_id'] . "',
+            1,
+            '" . e($values['tree_json']) . "',
+            '" . e($values['tree_hash']) . "',
+            '" . e($values['code_hash']) . "',
+            '" . e($values['settings_json']) . "',
+            '" . (int) $values['user_id'] . "',
+            'publish',
+            '" . (int) $values['created_at'] . "')");
+
+    if ($ok) {
+        return 1;
+    }
+
+    if (mysqli_errno(db::$con) !== 1062) {
+        pg_page_revisions_log_failure('writing the initial revision of page ' . $page_id);
+    }
+
+    return 0;
 }
 
 /**
@@ -220,13 +327,13 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
     $source        = pg_page_revision_source($source);
 
     $latest = db_item(
-        "SELECT revision_no, tree_hash, tree_code_hash, settings_json
+        "SELECT revision_no, tree_hash, settings_json
          FROM page_revisions
          WHERE page_id = '$page_id'
          ORDER BY revision_no DESC
          LIMIT 1");
 
-    if (pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)) {
+    if (pg_page_revision_identical($latest, $tree_hash, $settings_json)) {
         return 0;
     }
 
@@ -252,7 +359,12 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
              WHERE page_id = '$page_id'");
 
         if ($ok) {
-            $revision_no = (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$page_id'");
+            // The row this INSERT wrote, by its own id: MAX() could already be
+            // the number of another save of the same page.
+            $revision_id = (int) mysqli_insert_id(db::$con);
+            $revision_no = ($revision_id > 0)
+                ? (int) db_value("SELECT revision_no FROM page_revisions WHERE revision_id = '$revision_id' LIMIT 1")
+                : (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$page_id'");
 
             pg_page_revisions_trim($page_id);
 

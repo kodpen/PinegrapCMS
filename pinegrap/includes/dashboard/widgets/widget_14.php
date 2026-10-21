@@ -145,8 +145,7 @@ function pg_dashboard_widget_14($request, $user)
             $P_day_dif = $P_interval_dif->format('%a');
 
             // Render a single subscription row (Bootstrap Icons, linear progress bar)
-            function render_sub_row($end_date, $total_days, $remaining_days, $bs_icon, $heading, $subline = '')
-            {
+            $render_sub_row = function ($end_date, $total_days, $remaining_days, $bs_icon, $heading, $subline = '') {
                 if (!$end_date)
                     return '';
                 $today_dt = date_create(date('Y-m-d'));
@@ -184,23 +183,23 @@ function pg_dashboard_widget_14($request, $user)
                         <div class="rounded-pill h-100" style="width:' . $pct . '%;background:' . $color . '"></div>
                     </div>
                 </div>';
-            }
+            };
 
             $OUTPUT_DOMAIN_ROWS = '';
             if ($D_Host && $D_name) {
-                $OUTPUT_DOMAIN_ROWS = render_sub_row($D_end_d, $D_day_dif, $D_countdown, 'bi-globe2', lang('Domain'), $D_name);
+                $OUTPUT_DOMAIN_ROWS = $render_sub_row($D_end_d, $D_day_dif, $D_countdown, 'bi-globe2', lang('Domain'), $D_name);
             }
             $OUTPUT_HOSTING_ROWS = '';
             if ($H_Host && $Hosting) {
-                $OUTPUT_HOSTING_ROWS = render_sub_row($H_end_d, $H_day_dif, $H_countdown, 'bi-server', lang('Hosting'), $H_Host);
+                $OUTPUT_HOSTING_ROWS = $render_sub_row($H_end_d, $H_day_dif, $H_countdown, 'bi-server', lang('Hosting'), $H_Host);
             }
             $OUTPUT_SSL_ROWS = '';
             if ($SSL_author && $SSL_Domain) {
-                $OUTPUT_SSL_ROWS = render_sub_row($SSL_end_d, $SSL_day_dif, $SSL_countdown, 'bi-shield-lock-fill', lang('SSL Certificate'), $SSL_Domain);
+                $OUTPUT_SSL_ROWS = $render_sub_row($SSL_end_d, $SSL_day_dif, $SSL_countdown, 'bi-shield-lock-fill', lang('SSL Certificate'), $SSL_Domain);
             }
             $OUTPUT_P_ROWS = '';
             if ($P_KEY) {
-                $OUTPUT_P_ROWS = render_sub_row($P_end_d, $P_day_dif, $P_countdown, 'bi-award-fill', lang('Software License'));
+                $OUTPUT_P_ROWS = $render_sub_row($P_end_d, $P_day_dif, $P_countdown, 'bi-award-fill', lang('Software License'));
             }
 
             $output_data = '

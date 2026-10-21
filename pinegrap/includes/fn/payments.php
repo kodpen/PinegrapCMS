@@ -30,7 +30,10 @@
  * sealed with the site's key and never drawn back into a form, the others
  * among the options, the switch of a redirect driver as enabled. A driver
  * added later needs no schema change for them. A driver that declares no
- * fields keeps its settings where they already are.
+ * fields keeps its settings where they already are; a shipped driver that
+ * took over a legacy payment says so with 'settings' => 'config', and the
+ * card draws nothing for it, not even a redirect driver's switch, because
+ * the card's own rows for that service are its settings.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -76,13 +79,35 @@ function pg_payment_legacy_gateways()
  *       'method'  => 'Pay With Example',       // redirect: the orders.payment_method value
  *       'file'    => 'example.php',            // under includes/payments/
  *       'portal'  => 'https://example.com/',   // where the operator finds the keys
+ *       'log_name' => 'ExamplePay',            // how the activity log names the
+ *                                              // service (default: the label)
+ *       'settings' => 'config',                // shipped drivers only: keeps the
+ *                                              // config columns and switch the card
+ *                                              // already draws (default 'connect')
  *   ),
  *
  * @return array
  */
 function pg_payment_builtin_drivers()
 {
-    return array();
+    return array(
+        'iyzico' => array(
+            'label'    => 'iyzico',
+            'log_name' => 'Iyzipay',
+            'kind'     => 'card',
+            'gateway'  => 'Iyzipay',
+            'file'     => 'iyzico.php',
+            'settings' => 'config',
+        ),
+        'pay_with_iyzico' => array(
+            'label'    => 'Pay with iyzico',
+            'log_name' => 'Iyzipay',
+            'kind'     => 'redirect',
+            'method'   => 'Pay With Iyzico',
+            'file'     => 'iyzico.php',
+            'settings' => 'config',
+        ),
+    );
 }
 
 /**
@@ -92,7 +117,8 @@ function pg_payment_builtin_drivers()
  * @param mixed  $definition
  * @param string $directory where a relative file name is looked for; '' to
  *                          take absolute paths only (an add-on names its own)
- * @return array|null key, label, kind, gateway, method, file, portal
+ * @return array|null key, label, log_name, kind, gateway, method, file, portal,
+ *                    settings
  */
 function pg_payment_driver_definition_normalize($key, $definition, $directory)
 {
@@ -105,6 +131,7 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
     };
 
     $label = $text('label');
+    $log_name = $text('log_name');
     $kind = $text('kind');
     $gateway = $text('gateway');
     $method = $text('method');
@@ -150,14 +177,20 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
         $portal = '';
     }
 
+    // Only a shipped driver keeps settings outside connect_apps: an add-on has
+    // no config column of its own.
+    $settings = (($text('settings') === 'config') && ($directory !== '')) ? 'config' : 'connect';
+
     return array(
-        'key'     => $key,
-        'label'   => $label,
-        'kind'    => $kind,
-        'gateway' => $gateway,
-        'method'  => $method,
-        'file'    => $file,
-        'portal'  => $portal,
+        'key'      => $key,
+        'label'    => $label,
+        'log_name' => ($log_name !== '') ? $log_name : $label,
+        'kind'     => $kind,
+        'gateway'  => $gateway,
+        'method'   => $method,
+        'file'     => $file,
+        'portal'   => $portal,
+        'settings' => $settings,
     );
 }
 
@@ -872,7 +905,7 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        $fields = ($definition['kind'] === 'card') ? pg_payment_fields($key) : array();
+        $fields = (($definition['kind'] === 'card') && ($definition['settings'] === 'connect')) ? pg_payment_fields($key) : array();
 
         if (!$fields) {
             continue;
@@ -900,7 +933,7 @@ function pg_payment_settings_redirect_rows()
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        if ($definition['kind'] !== 'redirect') {
+        if (($definition['kind'] !== 'redirect') || ($definition['settings'] !== 'connect')) {
             continue;
         }
 
@@ -925,4 +958,218 @@ function pg_payment_settings_redirect_rows()
     }
 
     return $html;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Checkout (submit_order.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The value of the mode parameter that brings the visitor back from a
+ * driver's 3-D Secure or hosted page. The shipped drivers keep the addresses
+ * submit_order.php and order_preview.php already treat as a return.
+ *
+ * @param string $key
+ * @return string '' for a driver that has none
+ */
+function pg_payment_return_mode($key)
+{
+    $modes = array(
+        'iyzico'          => 'iyzipay_threedsecure_return',
+        'pay_with_iyzico' => 'pay_with_iyzico_return',
+    );
+
+    return (is_string($key) && isset($modes[$key])) ? $modes[$key] : '';
+}
+
+/**
+ * The driver that takes the payment of a checkout request.
+ *
+ * The card method goes to the driver of the Payment Gateway value, any other
+ * method to the driver of that method. A return its driver does not finish
+ * (no complete()) is finished by the code in submit_order.php that has always
+ * handled that return. A driver that is registered but cannot be loaded is
+ * still the answer, so the payment is refused rather than taken by no one.
+ *
+ * @param string $method  the posted payment method
+ * @param string $gateway ECOMMERCE_PAYMENT_GATEWAY
+ * @param string $mode    the request's mode parameter
+ * @return string driver key, '' when submit_order.php's gateway code takes it
+ */
+function pg_payment_checkout_driver($method, $gateway, $mode)
+{
+    $key = pg_payment_order_driver((string) $method, (string) $gateway);
+
+    if ($key === '') {
+        return '';
+    }
+
+    if (((string) $mode !== '') && ((string) $mode === pg_payment_return_mode($key)) && pg_payment_load($key) && !pg_payment_can($key, 'complete')) {
+        return '';
+    }
+
+    return $key;
+}
+
+/**
+ * What an order records from a payment a driver took, in the variables the
+ * gateway code has always set: the amount above the order total is the
+ * instalment charge.
+ *
+ * @param array $answer pg_payment_answer() of authorize() or complete()
+ * @param int   $total  hundredths: the order total before any instalment charge
+ * @return array total, installment_charge, total_without_installment_charge
+ *               (0 when there is no charge), payment_installment (1 or more)
+ */
+function pg_payment_checkout_totals($answer, $total)
+{
+    $total = (int) $total;
+    $amount = (isset($answer['amount']) && is_int($answer['amount'])) ? $answer['amount'] : $total;
+    $charge = ($amount > $total) ? $amount - $total : 0;
+    $installments = (isset($answer['installments']) && is_int($answer['installments'])) ? $answer['installments'] : 0;
+
+    return array(
+        'total'                            => $total + $charge,
+        'installment_charge'               => $charge,
+        'total_without_installment_charge' => ($charge > 0) ? $total : 0,
+        'payment_installment'              => ($installments > 1) ? $installments : 1,
+    );
+}
+
+/**
+ * The order's delivery address when it has exactly one and something to
+ * ship, for a service that asks for the address the goods go to.
+ *
+ * @param int $order_id
+ * @return array|null first_name, last_name, address_1, address_2, city,
+ *                    state, zip_code, country
+ */
+function pg_payment_order_ship_to($order_id)
+{
+    $order_id = (int) $order_id;
+
+    $shippable = db_value(
+        "SELECT COUNT(*) FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE (order_items.order_id = '" . $order_id . "') AND (products.shippable = '1')" . pg_order_item_active_sql());
+
+    if ((int) $shippable <= 0) {
+        return null;
+    }
+
+    $recipients = db_items(
+        "SELECT first_name, last_name, address_1, address_2, city, state, zip_code, country
+        FROM ship_tos
+        WHERE order_id = '" . $order_id . "'");
+
+    return (is_array($recipients) && (count($recipients) === 1)) ? $recipients[0] : null;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Money back on an order (view_order.php, process_order_cancellation())
+   --------------------------------------------------------------------------- */
+
+/**
+ * How the activity log names the service behind a driver.
+ *
+ * @param string $key
+ * @return string '' for a key no driver answers to
+ */
+function pg_payment_log_name($key)
+{
+    $definition = pg_payment_driver($key);
+
+    return ($definition === null) ? '' : $definition['log_name'];
+}
+
+/**
+ * The driver that took an order's payment: a card order (the method
+ * 'Credit/Debit Card') goes to the driver of the Payment Gateway value, any
+ * other method to the driver of that method, whichever gateway the store has.
+ * The order records the method and not the gateway, so a card order is
+ * credited to the gateway the store has now.
+ *
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway the Payment Gateway value; null for the store's
+ *                             own (ECOMMERCE_PAYMENT_GATEWAY)
+ * @return string driver key, '' when no driver serves the order
+ */
+function pg_payment_order_driver($method, $gateway = null)
+{
+    if ($gateway === null) {
+        $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? ECOMMERCE_PAYMENT_GATEWAY : '';
+    }
+
+    return ((string) $method === 'Credit/Debit Card')
+        ? pg_payment_driver_for_gateway((string) $gateway)
+        : pg_payment_driver_for_method((string) $method);
+}
+
+/**
+ * The driver the order screen gives an order's money back through.
+ *
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway as in pg_payment_order_driver()
+ * @return string driver key, '' when the order's driver cannot refund
+ */
+function pg_payment_refund_driver($method, $gateway = null)
+{
+    $key = pg_payment_order_driver($method, $gateway);
+
+    return (($key !== '') && pg_payment_can($key, 'refund')) ? $key : '';
+}
+
+/**
+ * The driver that voids an order's payment when the order is cancelled. A
+ * gateway that is not driver-based leaves the refund to the operator.
+ *
+ * @param string      $method  orders.payment_method
+ * @param string|null $gateway as in pg_payment_order_driver()
+ * @return string driver key, '' when the order's driver cannot cancel
+ */
+function pg_payment_cancel_driver($method, $gateway = null)
+{
+    $key = pg_payment_order_driver($method, $gateway);
+
+    return (($key !== '') && pg_payment_can($key, 'cancel')) ? $key : '';
+}
+
+/**
+ * What a cancellation records after asking a driver to void the payment, and
+ * the activity log lines that say so: the driver's own lines first, then the
+ * cancellation's.
+ *
+ * @param int    $order_id
+ * @param string $transaction_id orders.transaction_id, the reference when the
+ *                               service names none
+ * @param array  $answer         pg_payment_call() of cancel()
+ * @param string $service        pg_payment_log_name()
+ * @return array refund_status ('refunded' or 'manual_required'),
+ *               refund_reference, log
+ */
+function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service)
+{
+    $order_id = (int) $order_id;
+    $answer = pg_payment_answer('cancel', $answer);
+    $log = $answer['log'];
+
+    if ($answer['success']) {
+        $reference = ($answer['refund_reference'] !== '') ? $answer['refund_reference'] : (string) $transaction_id;
+        $log[] = 'Auto-refund SUCCESS via ' . $service . ' — order #' . $order_id . ' (payment ' . $reference . ').';
+
+        return array('refund_status' => 'refunded', 'refund_reference' => $reference, 'log' => $log);
+    }
+
+    $message = (isset($answer['raw']['message']) && is_scalar($answer['raw']['message'])) ? (string) $answer['raw']['message'] : '';
+
+    if (isset($answer['raw']['exception'])) {
+        $log[] = 'Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $message;
+    } else {
+        $log[] = 'Auto-refund FAILED via ' . $service . ' — order #' . $order_id .
+            '. MANUAL REFUND REQUIRED. Gateway message: ' . ($message !== '' ? $message : '(no message)');
+    }
+
+    return array('refund_status' => 'manual_required', 'refund_reference' => '', 'log' => $log);
 }

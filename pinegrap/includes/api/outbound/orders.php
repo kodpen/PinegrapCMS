@@ -63,11 +63,14 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   shipping_address   the same shape, or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
-//                      price, tax, discount)
+//                      price, tax, discount, and optionally discount_total)
 //
 // price, tax and discount are minor units PER UNIT, because that is what
 // order_items stores and converting once here is better than three connectors
-// each getting it wrong differently.
+// each getting it wrong differently. discount_total, when a connector gives it,
+// is the whole line's discount and is used instead of discount x quantity: a
+// marketplace that discounts the line rather than the unit has an amount that
+// does not always divide by the quantity.
 function mp_import_order($account, $package) {
 
 	$account_id = (int) $account['id'];
@@ -209,11 +212,15 @@ function mp_order_apply_status($account, $package, $map) {
 }
 
 // The number and the carrier, written where the order screen looks for them.
+//
+// Through the shipment write path (pg_shipment_record()), with the carrier's
+// name and its own tracking page as the marketplace gives them, so the row
+// says which courier took the parcel and links where the marketplace does.
 function mp_order_apply_tracking($order_id, $package) {
 
 	$tracking = isset($package['tracking']) ? (array)$package['tracking'] : array();
 
-	$number = isset($tracking['number']) ? trim((string)$tracking['number']) : '';
+	$number = isset($tracking['number']) ? pg_shipment_number_clean($tracking['number']) : '';
 
 	if ($number === '') {
 
@@ -223,19 +230,22 @@ function mp_order_apply_tracking($order_id, $package) {
 
 	$ship_to_id = (int) db_value("SELECT id FROM ship_tos WHERE order_id = '" . e((int)$order_id) . "' ORDER BY id ASC LIMIT 1");
 
-	// Written once. The feed hands the same number back on every poll for as
-	// long as the package is in the window, and the table has no unique key.
-	$exists = db_value("SELECT id FROM shipping_tracking_numbers
-		WHERE (order_id = '" . e((int)$order_id) . "') AND (number = '" . e($number) . "')");
+	$carrier = isset($tracking['carrier']) ? trim((string)$tracking['carrier']) : '';
 
-	if ($exists) {
+	// Written once. The feed hands the same number back on every poll for as
+	// long as the package is in the window; the write path updates the row it
+	// already has and says whether the number is new.
+	$recorded = pg_shipment_record((int)$order_id, $ship_to_id, $number, array(
+		'carrier'      => $carrier,
+		'tracking_url' => isset($tracking['link']) ? (string)$tracking['link'] : '',
+		'source'       => 'marketplace'
+	));
+
+	if (!$recorded['created']) {
 
 		return;
 
 	}
-
-	db("INSERT INTO shipping_tracking_numbers (order_id, ship_to_id, number)
-		VALUES ('" . e((int)$order_id) . "', '" . e($ship_to_id) . "', '" . e(mb_substr($number, 0, 100)) . "')");
 
 	// The same event the order screen and the API produce. Nothing is mailed
 	// from here - the marketplace tells its own buyer - but an integration
@@ -246,11 +256,9 @@ function mp_order_apply_tracking($order_id, $package) {
 		'id'               => (int)$order_id,
 		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
 		'ship_to_id'       => (int)$ship_to_id,
-		'tracking_numbers' => array(mb_substr($number, 0, 100)),
+		'tracking_numbers' => array($recorded['number']),
 		'ship_date'        => null
 	));
-
-	$carrier = isset($tracking['carrier']) ? trim((string)$tracking['carrier']) : '';
 
 	if (($carrier !== '') && $ship_to_id) {
 
@@ -261,11 +269,18 @@ function mp_order_apply_tracking($order_id, $package) {
 
 }
 
-// The two dates the timeline reads.
+// The two dates the timeline reads, and the delivery itself.
 //
 // Only ever filled in, never moved: the marketplace re-sends a delivered
 // package for as long as it is inside the polling window, and re-stamping the
 // date each time would make every order look like it shipped this morning.
+//
+// A delivered package is recorded through pg_shipment_delivered(), address by
+// address, on every poll that reports it: the parcels carry the record, so
+// order.delivered is announced the first time and never again. No e-mail is
+// started (the marketplace tells its own buyer). An address without a parcel
+// number has no row to keep that record on, so it is announced only by the
+// poll whose update filled in its empty delivery date.
 function mp_order_mark_dates($order_id, $stage) {
 
 	db("UPDATE ship_tos SET ship_date = CURDATE()
@@ -277,8 +292,18 @@ function mp_order_mark_dates($order_id, $stage) {
 
 	}
 
-	db("UPDATE ship_tos SET delivery_date = CURDATE(), complete = 1
-		WHERE (order_id = '" . e((int)$order_id) . "') AND (delivery_date = '0000-00-00')");
+	$now = time();
+
+	foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e((int)$order_id) . "' ORDER BY id ASC") as $ship_to_id) {
+
+		db("UPDATE ship_tos SET delivery_date = CURDATE(), complete = 1
+			WHERE (id = '" . e((int)$ship_to_id) . "') AND (delivery_date = '0000-00-00')");
+
+		$first = (mysqli_affected_rows(db::$con) > 0);
+
+		pg_shipment_delivered((int)$ship_to_id, $now, array('notify' => false, 'first' => $first));
+
+	}
 
 }
 
@@ -427,27 +452,18 @@ function mp_order_write($account, $package, $map_id) {
 
 	$contact_id = mp_order_contact($customer, $billing);
 
-	$subtotal = 0;
+	$totals = mp_order_totals(array_column($matched, 'line'),
+		isset($package['shipping_cost']) ? $package['shipping_cost'] : 0);
 
-	$tax = 0;
+	$subtotal = $totals['subtotal'];
 
-	$discount = 0;
+	$tax = $totals['tax'];
 
-	foreach ($matched as $entry) {
+	$discount = $totals['discount'];
 
-		$quantity = max(1, (int)$entry['line']['quantity']);
+	$shipping = $totals['shipping'];
 
-		$subtotal += ((int)$entry['line']['price']) * $quantity;
-
-		$tax      += ((int)$entry['line']['tax']) * $quantity;
-
-		$discount += ((int)$entry['line']['discount']) * $quantity;
-
-	}
-
-	$shipping = isset($package['shipping_cost']) ? (int)$package['shipping_cost'] : 0;
-
-	$total = $subtotal - $discount + $tax + $shipping;
+	$total = $totals['total'];
 
 	$placed_at = isset($package['placed_at']) ? (int)$package['placed_at'] : time();
 
@@ -566,6 +582,43 @@ function mp_order_write($account, $package, $map_id) {
 	}
 
 	return $order_id;
+
+}
+
+// What the lines add up to, in minor units: array(subtotal, discount, tax,
+// shipping, total). The discount is each line's discount_total where the
+// connector gave one, and its unit discount times the quantity otherwise.
+function mp_order_totals($lines, $shipping = 0) {
+
+	$subtotal = 0;
+
+	$tax = 0;
+
+	$discount = 0;
+
+	foreach ((array)$lines as $line) {
+
+		$quantity = max(1, (int)$line['quantity']);
+
+		$subtotal += ((int)$line['price']) * $quantity;
+
+		$tax      += ((int)$line['tax']) * $quantity;
+
+		$discount += isset($line['discount_total'])
+			? (int)$line['discount_total']
+			: ((int)$line['discount']) * $quantity;
+
+	}
+
+	$shipping = (int) $shipping;
+
+	return array(
+		'subtotal' => $subtotal,
+		'discount' => $discount,
+		'tax'      => $tax,
+		'shipping' => $shipping,
+		'total'    => $subtotal - $discount + $tax + $shipping
+	);
 
 }
 

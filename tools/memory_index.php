@@ -262,6 +262,10 @@ function memory_index_frontmatter($content) {
 /**
  * The top index: one line per memory folder (its index and what it holds),
  * then the other documents.
+ *
+ * A folder's line carries no file count: two branches that each add a file
+ * to the same folder would merge cleanly into a count that matches neither,
+ * and the --check of the merged tree (CI on every pull request) would fail.
  */
 function memory_index_top($folders, $others) {
 
@@ -278,7 +282,7 @@ function memory_index_top($folders, $others) {
 
 	foreach (FOLDERS as $folder => $about) {
 		if (isset($folders[$folder])) {
-			$lines[] = '- ' . $folder . '/README.md: ' . $about . ' (' . count($folders[$folder]) . ')';
+			$lines[] = '- ' . $folder . '/README.md: ' . $about;
 		}
 	}
 

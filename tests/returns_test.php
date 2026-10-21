@@ -162,6 +162,35 @@ function test_returns_window_from_ship_date()
 	pg_assert_true($expected_only['estimated']);
 }
 
+// The parcels of a delivery: delivered when every one of them arrived, on the
+// day the last one did; until then the latest arrival is only a lower bound.
+function test_returns_parcel_delivery()
+{
+	pg_assert_same(array('delivered' => '2026-10-06', 'latest' => '2026-10-06'), pg_return_parcel_delivery(array('2026-10-04', '2026-10-06')), 'every parcel arrived');
+	pg_assert_same(array('delivered' => '', 'latest' => '2026-10-04'), pg_return_parcel_delivery(array('2026-10-04', '')), 'one still on its way');
+	pg_assert_same(array('delivered' => '', 'latest' => ''), pg_return_parcel_delivery(array('', '')), 'none known');
+	pg_assert_same(array('delivered' => '', 'latest' => ''), pg_return_parcel_delivery(array()), 'no parcels');
+	pg_assert_same(array('delivered' => '', 'latest' => '2026-10-04'), pg_return_parcel_delivery(array('2026-10-04', '0000-00-00')), 'a zero date is unknown');
+}
+
+// A parcel known to have arrived while another has not moves the estimate
+// later, never earlier.
+function test_returns_window_from_one_parcel()
+{
+	$window = pg_return_window(array('parcel_delivered' => '2026-10-09', 'ship_date' => '2026-10-01'), '2026-10-10');
+
+	pg_assert_same('2026-10-09', $window['delivered'], 'the parcel that arrived');
+	pg_assert_true($window['estimated'], 'still an estimate');
+	pg_assert_same('2026-10-23', $window['deadline']);
+
+	$early = pg_return_window(array('parcel_delivered' => '2026-10-02', 'ship_date' => '2026-10-01', 'delivery_date' => '2026-10-07'), '2026-10-10');
+	pg_assert_same('2026-10-07', $early['delivered'], 'the later planned date stays');
+
+	$known = pg_return_window(array('delivered' => '2026-10-05', 'parcel_delivered' => '2026-10-09'), '2026-10-10');
+	pg_assert_same('2026-10-05', $known['delivered'], 'a known delivery wins');
+	pg_assert_false($known['estimated']);
+}
+
 // The last day is still inside; the day after is not. No date, no window.
 function test_returns_window_edges()
 {
@@ -230,6 +259,13 @@ function test_returns_check_lines()
 	pg_assert_false(pg_return_check_lines(array(11 => -1), $lines)['ok'], 'negative');
 	pg_assert_false(pg_return_check_lines(array(11 => '1.5'), $lines)['ok'], 'a fraction');
 	pg_assert_false(pg_return_check_lines(array(11 => array(1)), $lines)['ok'], 'not a number');
+	pg_assert_false(pg_return_check_lines(array(11 => '', 12 => ' '), $lines)['ok'], 'only empty boxes');
+
+	// A cleared number box arrives as an empty string and asks for nothing,
+	// like 0; the other lines still go through.
+	$result = pg_return_check_lines(array('11' => '', '12' => '1'), $lines);
+	pg_assert_true($result['ok'], 'an empty box beside a filled one');
+	pg_assert_same(array(12 => 1), $result['lines'], 'the empty box is left out');
 	pg_assert_false(pg_return_check_lines('11', $lines)['ok'], 'not a list');
 
 	$result = pg_return_check_lines(array(11 => 3), $lines);
@@ -380,4 +416,307 @@ function test_returns_request_mail_body()
 	pg_assert_contains('It arrived damaged', $html, 'reason');
 	pg_assert_contains('Box torn<br', $html, 'note line breaks');
 	pg_assert_contains('ACME', $html, 'sender');
+}
+
+// The list filter: open by default (also for anything unknown), one status,
+// or all.
+function test_returns_filter_statuses()
+{
+	pg_assert_same(array('requested', 'approved', 'shipped', 'received'), pg_return_filter_statuses('open'));
+	pg_assert_same(array('requested', 'approved', 'shipped', 'received'), pg_return_filter_statuses('nonsense'), 'unknown');
+	pg_assert_same(array('requested', 'approved', 'shipped', 'received'), pg_return_filter_statuses(array('all')), 'not a string');
+	pg_assert_same(array('rejected'), pg_return_filter_statuses('rejected'));
+	pg_assert_same(pg_return_statuses(), pg_return_filter_statuses('all'));
+}
+
+// Each filter choice carries how many returns it holds.
+function test_returns_filter_options()
+{
+	$options = pg_return_filter_options(array('requested' => 2, 'shipped' => 1, 'closed' => 4));
+
+	pg_assert_same(array_merge(array('open'), pg_return_statuses(), array('all')), array_keys($options), 'open, each status, all');
+	pg_assert_contains('3', $options['open'], 'requested and shipped are open');
+	pg_assert_contains('2', $options['requested']);
+	pg_assert_contains('0', $options['approved'], 'none');
+	pg_assert_contains('7', $options['all']);
+
+	pg_assert_contains('0', pg_return_filter_options(array())['all'], 'no returns at all');
+}
+
+// The approval form starts with the delivery's carrier, else the site's,
+// else the last one used, and the code last given with that carrier.
+function test_returns_approval_defaults()
+{
+	$previous = array(
+		array('carrier' => 'aras', 'carrier_code' => 'AR-77'),
+		array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'),
+		array('carrier' => 'yurtici', 'carrier_code' => 'YK-OLD'),
+	);
+
+	pg_assert_same(array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'), pg_return_approval_defaults('yurtici', 'aras', $previous), 'the delivery\'s carrier, its latest code');
+	pg_assert_same(array('carrier' => 'aras', 'carrier_code' => 'AR-77'), pg_return_approval_defaults('', 'aras', $previous), 'the site default');
+	pg_assert_same(array('carrier' => 'aras', 'carrier_code' => 'AR-77'), pg_return_approval_defaults('', '', $previous), 'the last one used');
+	pg_assert_same(array('carrier' => 'mng', 'carrier_code' => ''), pg_return_approval_defaults('mng', '', $previous), 'no code yet for that carrier');
+	pg_assert_same(array('carrier' => '', 'carrier_code' => ''), pg_return_approval_defaults('', '', array()), 'nothing to go on');
+	pg_assert_same(array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'), pg_return_approval_defaults('YURTICI', '', $previous), 'a key in capitals');
+
+	$typed = array(array('carrier' => 'Kendi Kargomuz', 'carrier_code' => 'KK-1'));
+	pg_assert_same(array('carrier' => 'Kendi Kargomuz', 'carrier_code' => 'KK-1'), pg_return_approval_defaults('', '', $typed), 'a carrier typed by hand');
+}
+
+// From its screen staff may make every move but the refund.
+function test_returns_staff_actions()
+{
+	pg_assert_same(array('approved', 'rejected', 'closed'), pg_return_staff_actions('requested'));
+	pg_assert_same(array('shipped', 'received', 'closed'), pg_return_staff_actions('approved'));
+	pg_assert_same(array('received', 'closed'), pg_return_staff_actions('shipped'));
+	pg_assert_same(array('closed'), pg_return_staff_actions('received'), 'no refund here');
+	pg_assert_same(array('closed'), pg_return_staff_actions('refunded'));
+	pg_assert_same(array(), pg_return_staff_actions('rejected'));
+	pg_assert_same(array(), pg_return_staff_actions('closed'));
+}
+
+// The audit trail compares what a move changes, not its time stamps.
+function test_returns_audit_fields()
+{
+	$row = array('id' => 4, 'status' => 'approved', 'decision_note' => 'OK', 'carrier' => 'aras', 'carrier_code' => 'A1', 'tracking_number' => '', 'decided_at' => 1760000000);
+
+	pg_assert_same(array('status' => 'approved', 'decision_note' => 'OK', 'carrier' => 'aras', 'carrier_code' => 'A1', 'tracking_number' => ''), pg_return_audit_fields($row));
+	pg_assert_same(array('status' => '', 'decision_note' => '', 'carrier' => '', 'carrier_code' => '', 'tracking_number' => ''), pg_return_audit_fields(null), 'no row');
+}
+
+// The refund is due while the goods are on their way back or arrived.
+function test_returns_refund_due()
+{
+	$shipped = gmmktime(12, 0, 0, 10, 10, 2026);
+	$received = gmmktime(12, 0, 0, 10, 13, 2026);
+
+	pg_assert_same('2026-10-24', pg_return_refund_due(array('status' => 'shipped', 'shipped_at' => $shipped, 'received_at' => 0)), 'sent back');
+	pg_assert_same('2026-10-24', pg_return_refund_due(array('status' => 'received', 'shipped_at' => $shipped, 'received_at' => $received)), 'arrived, counted from the carrier');
+	pg_assert_same('2026-10-27', pg_return_refund_due(array('status' => 'received', 'shipped_at' => 0, 'received_at' => $received)), 'arrived unannounced');
+	pg_assert_same('', pg_return_refund_due(array('status' => 'refunded', 'shipped_at' => $shipped, 'received_at' => $received)), 'paid');
+	pg_assert_same('', pg_return_refund_due(array('status' => 'approved', 'shipped_at' => 0, 'received_at' => 0)), 'not yet');
+}
+
+// Dates as the panel prints them, day first unless the site says otherwise.
+function test_returns_day_text()
+{
+	if (!defined('DATE_FORMAT')) {
+		pg_assert_same('9/10/2026', pg_return_day_text('2026-10-09'));
+	}
+
+	pg_assert_same('', pg_return_day_text('0000-00-00'), 'no date');
+	pg_assert_same('', pg_return_time_text(0), 'no time');
+}
+
+// The answer tells the customer how to send the goods, or why not, escaped.
+function test_returns_decision_mail_body()
+{
+	$approved = pg_return_decision_mail_body(array(
+		'status'        => 'approved',
+		'customer'      => 'Jane <Cooper>',
+		'order_number'  => '1172',
+		'lines'         => array(array('name' => 'Mug <XL>', 'quantity' => 1)),
+		'carrier'       => 'Yurtiçi Kargo',
+		'carrier_code'  => 'YK<1>',
+		'decision_note' => "Pack it well\nthanks",
+		'can_mark_sent' => true,
+		'from_name'     => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $approved, 'name, escaped');
+	pg_assert_contains('1172', $approved, 'order number');
+	pg_assert_contains('Mug &lt;XL&gt;', $approved, 'line, escaped');
+	pg_assert_contains('Yurtiçi Kargo', $approved, 'carrier');
+	pg_assert_contains('<strong>YK&lt;1&gt;</strong>', $approved, 'code, escaped');
+	pg_assert_contains('Pack it well<br', $approved, 'note line breaks');
+	pg_assert_contains('order page', $approved, 'may say it is on its way');
+
+	$quiet = pg_return_decision_mail_body(array('status' => 'approved', 'order_number' => '9', 'can_mark_sent' => false));
+	pg_assert_contains('You can send the goods back now.', $quiet, 'no carrier, no code');
+	pg_assert_false(strpos($quiet, 'order page') !== false, 'the customer cannot say so there');
+
+	$rejected = pg_return_decision_mail_body(array(
+		'status'        => 'rejected',
+		'order_number'  => '1172',
+		'carrier'       => 'Yurtiçi Kargo',
+		'carrier_code'  => 'YK-1',
+		'decision_note' => 'Used <goods>',
+	));
+
+	pg_assert_contains('could not accept', $rejected, 'refused');
+	pg_assert_contains('Used &lt;goods&gt;', $rejected, 'the reason, escaped');
+	pg_assert_false(strpos($rejected, 'YK-1') !== false, 'no return code on a refusal');
+}
+
+// The order screen lists the order's returns, linked to their screens.
+function test_returns_panel_card_html()
+{
+	pg_assert_same('', pg_returns_panel_card_html(array()), 'no returns, no card');
+
+	$html = pg_returns_panel_card_html(array(
+		array('id' => 7, 'status' => 'approved', 'requested_at' => gmmktime(12, 0, 0, 10, 9, 2026), 'items' => array(array('quantity' => 2), array('quantity' => 1))),
+		array('id' => 3, 'status' => 'closed', 'requested_at' => 0, 'items' => array()),
+	));
+
+	pg_assert_contains('href="view_return.php?id=7"', $html, 'linked');
+	pg_assert_contains('href="view_return.php?id=3"', $html, 'every return');
+	pg_assert_contains('3 item(s)', $html, 'quantities added up');
+	pg_assert_contains('text-bg-info', $html, 'status badge');
+	pg_assert_contains('view_returns.php', $html, 'to the list');
+}
+
+// Amounts typed as money become minor units; anything else is refused.
+function test_returns_amount_cents()
+{
+	pg_assert_same(12000, pg_return_amount_cents('120'));
+	pg_assert_same(12050, pg_return_amount_cents('120.5'), 'one decimal');
+	pg_assert_same(12050, pg_return_amount_cents(' 120,50 '), 'comma and spaces');
+	pg_assert_same(7, pg_return_amount_cents('0.07'));
+	pg_assert_same(0, pg_return_amount_cents('0'), 'zero is an amount');
+	pg_assert_same(500, pg_return_amount_cents(5), 'an integer');
+	pg_assert_same(-1, pg_return_amount_cents('-5'), 'negative');
+	pg_assert_same(-1, pg_return_amount_cents('1.234,56'), 'thousands separator');
+	pg_assert_same(-1, pg_return_amount_cents('12.345'), 'three decimals');
+	pg_assert_same(-1, pg_return_amount_cents(''), 'empty');
+	pg_assert_same(-1, pg_return_amount_cents(array('5')), 'not a string');
+}
+
+// The goods' share of what the customer paid: price, tax, less the order
+// discount spread over the lines.
+function test_returns_refund_estimate()
+{
+	$lines = array(
+		11 => array('price' => 10000, 'quantity' => 2, 'tax_total' => 4000),
+		12 => array('price' => 5000, 'quantity' => 1, 'tax_total' => 500),
+	);
+
+	pg_assert_same(12000, pg_return_refund_estimate($lines, array(11 => 1), 0), 'one unit with its tax');
+	pg_assert_same(29500, pg_return_refund_estimate($lines, array(11 => 2, 12 => 1), 0), 'everything');
+	pg_assert_same(24000, pg_return_refund_estimate($lines, array(11 => 5), 0), 'never more than was sold');
+	pg_assert_same(0, pg_return_refund_estimate($lines, array(99 => 1), 0), 'not a line of the order');
+	pg_assert_same(0, pg_return_refund_estimate($lines, array(), 0), 'nothing');
+
+	// 2500 off 25000 of goods: the first unit carries 1000 of it, and its
+	// tax is taken on the 9000 left.
+	pg_assert_same(10800, pg_return_refund_estimate($lines, array(11 => 1), 2500), 'with the order discount');
+}
+
+// Order lines against the ERP's refund lines: the same ids on the order's
+// own lines, position and product on an invoice.
+function test_returns_erp_line_map()
+{
+	$items = array(11 => 70, 12 => 71);
+
+	$order = array('source' => 'order', 'lines' => array(array('id' => 11, 'product_id' => 70), array('id' => 12, 'product_id' => 71), array('id' => -1, 'product_id' => 0)));
+	pg_assert_same(array(11 => 11, 12 => 12), pg_return_erp_line_map($items, $order), 'the order\'s own lines');
+
+	$invoice = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 70), array('id' => 502, 'product_id' => 71), array('id' => 503, 'product_id' => 0)));
+	pg_assert_same(array(11 => 501, 12 => 502), pg_return_erp_line_map($items, $invoice), 'an invoice made from the order');
+
+	$swapped = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 71), array('id' => 502, 'product_id' => 70)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $swapped), 'products do not line up');
+
+	$short = array('source' => 'invoice', 'lines' => array(array('id' => 501, 'product_id' => 70)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $short), 'a line missing');
+
+	pg_assert_same(null, pg_return_erp_line_map(array(13 => 72), $order), 'not on the order\'s lines');
+	pg_assert_same(null, pg_return_erp_line_map($items, null), 'no source');
+}
+
+// Reminded from three days before the deadline, again after it.
+function test_returns_reminder_stage()
+{
+	pg_assert_same('', pg_return_reminder_stage('2026-10-24', '2026-10-20'), 'four days left');
+	pg_assert_same('due', pg_return_reminder_stage('2026-10-23', '2026-10-20'), 'three days left');
+	pg_assert_same('due', pg_return_reminder_stage('2026-10-20', '2026-10-20'), 'the last day');
+	pg_assert_same('overdue', pg_return_reminder_stage('2026-10-19', '2026-10-20'), 'late');
+	pg_assert_same('', pg_return_reminder_stage('', '2026-10-20'), 'not due yet');
+	pg_assert_same('', pg_return_reminder_stage('2026-10-19', 'today'), 'no valid today');
+}
+
+// The refund mail names the amount and the lines, escaped, and says how the
+// money travels only when it went back the way it was paid.
+function test_returns_refund_mail_body()
+{
+	$html = pg_return_refund_mail_body(array(
+		'customer'     => 'Jane <Cooper>',
+		'order_number' => '1172',
+		'lines'        => array(array('name' => 'Mug <XL>', 'quantity' => 1)),
+		'amount'       => '₺120,00',
+		'by_payment'   => true,
+		'from_name'    => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $html, 'name, escaped');
+	pg_assert_contains('1172', $html, 'order number');
+	pg_assert_contains('₺120,00', $html, 'amount');
+	pg_assert_contains('Mug &lt;XL&gt;', $html, 'line, escaped');
+	pg_assert_contains('the way you paid', $html, 'back to the payment');
+
+	$by_hand = pg_return_refund_mail_body(array('order_number' => '9', 'amount' => '₺5,00', 'by_payment' => false));
+	pg_assert_false(strpos($by_hand, 'the way you paid') !== false, 'a refund made another way');
+}
+
+// The same form sent twice within the window answers with the first request:
+// same reason, note and lines, still waiting for an answer.
+function test_returns_repeat_of_the_same_form()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1))),
+	);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array('464' => '1'), 1001), 'a double click');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => '0'), 1000 + PG_RETURN_REPEAT_SECONDS), 'zeros left out, last second of the window');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => ' 1 ', 465 => ''), 1001), 'an empty box is not a line');
+}
+
+// Anything that differs is a request of its own.
+function test_returns_repeat_of_differs()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1), array('order_item_id' => 465, 'quantity' => 2))),
+	);
+
+	$lines = array(464 => 1, 465 => 2);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(465 => 2, 464 => 1), 1010), 'line order does not matter');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 1001 + PG_RETURN_REPEAT_SECONDS), 'after the window');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 999), 'before the first one');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'wrong_item', 'double', $lines, 1010), 'another reason');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'other words', $lines, 1010), 'another note');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1), 1010), 'fewer lines');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => 1), 1010), 'another quantity');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 0), 1010), 'nothing asked for');
+	pg_assert_same(0, pg_return_repeat_of(array(), 'damaged', 'double', $lines, 1010), 'no recent request');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', 'x', 1010), 'not a list');
+}
+
+// Each reminder stage is stamped on the return in its own column, so a bell
+// row that staff delete cannot bring the same reminder back.
+function test_returns_reminder_stamp_column()
+{
+	pg_assert_same('refund_due_notified_at', pg_return_reminder_stamp_column('due'));
+	pg_assert_same('refund_overdue_notified_at', pg_return_reminder_stamp_column('overdue'));
+	pg_assert_same('', pg_return_reminder_stamp_column(''), 'no stage');
+	pg_assert_same('', pg_return_reminder_stamp_column('refund_due'), 'the event name is not a stage');
+	pg_assert_same('', pg_return_reminder_stamp_column(array('due')), 'not a string');
+}
+
+// Who goes on to the ERP return invoice after a refund: the ERP must be on
+// and the person must be allowed to use it (role below 3 or manage_erp).
+function test_returns_erp_hand_off()
+{
+	$manager = array('role' => 2, 'manage_erp' => 0);
+	$staff = array('role' => 3, 'manage_erp' => 0);
+	$erp_staff = array('role' => 3, 'manage_erp' => 1);
+
+	pg_assert_true(pg_return_erp_hand_off($manager, true), 'a manager with the ERP on');
+	pg_assert_true(pg_return_erp_hand_off($erp_staff, true), 'staff with the ERP right');
+	pg_assert_true(pg_return_erp_hand_off(array('role' => '1'), true), 'role as a string, no right column');
+	pg_assert_false(pg_return_erp_hand_off($staff, true), 'staff without the ERP right');
+	pg_assert_false(pg_return_erp_hand_off($manager, false), 'the ERP is off');
+	pg_assert_false(pg_return_erp_hand_off('x', true), 'not a user row');
 }

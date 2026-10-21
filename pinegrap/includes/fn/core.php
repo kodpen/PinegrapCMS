@@ -152,8 +152,10 @@ function db_connect()
             pg_db_guard_unavailable();
         }
 
+        // A 500, so an uptime monitor that reads the status code (health.php
+        // included) sees the outage; the page still tells the operator why.
         $err = $connect_error;
-        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''));
+        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''), 500);
     }
 
     // Pin the session sql_mode instead of inheriting the server default, which differs
@@ -262,7 +264,10 @@ function pg_db_run($query)
     $counters['ms'] += (microtime(true) - $started) * 1000;
 
     if ($result === false) {
-        // Provide mysqli error to output_error for debugging (output_error may suppress details based on DEBUG).
+        // The database's own message names tables, columns and a piece of the
+        // statement. It goes to the server log; on the page output_error()
+        // shows it only when verbose database errors are on (DEBUG) or during
+        // an install or update, reading it from the connection itself.
         $err = mysqli_error(db::$con);
         // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
         // a failed schema statement can be waved through as "already applied", and anything
@@ -272,7 +277,9 @@ function pg_db_run($query)
         if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
             return null;
         }
-        output_error(lang('Query failed.') . ' ' . h($err));
+        error_log('Pinegrap: query failed: ' . $err);
+
+        output_error(lang('Query failed.'));
     }
 
     return $result;
@@ -405,6 +412,8 @@ function db_items($query, $key_column = '')
 // config.version alone would go on answering for a schema that never arrived.
 // A "not there" answer is remembered as well; pg_schema_cache_clear() drops
 // every file, and runs when an upgrade finishes and from pg_purge_caches().
+// pg_schema_forget() drops the answer for one table, for code that changes
+// the schema and asks about it again in the same request.
 
 /**
  * The cache file name for a database version and a code version. Anything
@@ -493,6 +502,37 @@ function pg_schema_cache_store($cache, $table, $columns)
     return $cache;
 }
 
+/**
+ * The cache without anything it knows about one table, so that the next
+ * question about the table is asked of the database again.
+ *
+ * No database access.
+ *
+ * @param array  $cache
+ * @param string $table
+ * @return array
+ */
+function pg_schema_cache_forget($cache, $table)
+{
+    if (!is_array($cache)) {
+        $cache = array();
+    }
+
+    if (!isset($cache['tables']) || !is_array($cache['tables'])) {
+        $cache['tables'] = array();
+    }
+
+    if (!isset($cache['missing']) || !is_array($cache['missing'])) {
+        $cache['missing'] = array();
+    }
+
+    unset($cache['tables'][$table]);
+
+    $cache['missing'] = array_values(array_diff($cache['missing'], array($table)));
+
+    return $cache;
+}
+
 // What pg_schema_has() knows in this request: the cache and the file it came
 // from ('' when there is no file to keep, see pg_schema_has()).
 function &pg_schema_cache_state()
@@ -500,6 +540,52 @@ function &pg_schema_cache_state()
     static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
 
     return $state;
+}
+
+// Reads the cache file into this request's state, once per request. The file
+// is only used when config.version is known (init.php defines VERSION from
+// it); the installer defines VERSION as true, so an install or an upgrade
+// keeps its answers for the request only.
+function pg_schema_cache_load()
+{
+    $state = &pg_schema_cache_state();
+
+    if ($state['loaded']) {
+        return;
+    }
+
+    $state['loaded'] = true;
+
+    if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
+        $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
+
+        $stored = @json_decode((string) @file_get_contents($state['file']), true);
+
+        if (is_array($stored)) {
+            $state['cache'] = array(
+                'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
+                'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
+            );
+        }
+    }
+}
+
+/**
+ * Forgets what pg_schema_has() knows about one table, for code that has to
+ * see a schema change in the request that made it: the installer creating a
+ * table and then asking whether it is there. The next question about the
+ * table reads it from the database and writes the answer to the cache file.
+ *
+ * @param string $table
+ * @return void
+ */
+function pg_schema_forget($table)
+{
+    pg_schema_cache_load();
+
+    $state = &pg_schema_cache_state();
+
+    $state['cache'] = pg_schema_cache_forget($state['cache'], (string) $table);
 }
 
 /**
@@ -548,24 +634,9 @@ function pg_schema_has($table, $column = null)
         return false;
     }
 
+    pg_schema_cache_load();
+
     $state = &pg_schema_cache_state();
-
-    if (!$state['loaded']) {
-        $state['loaded'] = true;
-
-        if (defined('VERSION') && is_string(VERSION) && (preg_match('/^\d{4}(\.\d+)*$/', VERSION) === 1)) {
-            $state['file'] = PG_FUNCTIONS_DIR . '/data/temp/' . pg_schema_cache_name(VERSION, pg_code_version());
-
-            $stored = @json_decode((string) @file_get_contents($state['file']), true);
-
-            if (is_array($stored)) {
-                $state['cache'] = array(
-                    'tables' => (isset($stored['tables']) && is_array($stored['tables'])) ? $stored['tables'] : array(),
-                    'missing' => (isset($stored['missing']) && is_array($stored['missing'])) ? array_values($stored['missing']) : array(),
-                );
-            }
-        }
-    }
 
     $answer = pg_schema_cache_lookup($state['cache'], $table, $column);
 
@@ -1233,6 +1304,36 @@ function pg_send_to_url($fallback = '')
 
     return $send_to;
 }
+/**
+ * Whether get_relative_time() and get_absolute_time() show a time in the
+ * signed-in person's own time zone rather than the site's: the caller did not
+ * ask for the site's ("timezone_type" => "site"), somebody is signed in, and
+ * that person has a zone of their own. Leaving timezone_type out means "user",
+ * which is how every caller of both functions leaves it.
+ *
+ * @param array  $properties    the properties the time function was given
+ * @param bool   $signed_in     whether somebody is signed in (USER_LOGGED_IN)
+ * @param string $user_timezone the person's zone, '' when none (USER_TIMEZONE)
+ * @return bool
+ */
+function pg_time_in_user_zone($properties, $signed_in, $user_timezone)
+{
+    $asked = (is_array($properties) && isset($properties['timezone_type'])) ? (string) $properties['timezone_type'] : '';
+
+    return ($asked !== 'site') && $signed_in && ((string) $user_timezone !== '');
+}
+
+// pg_time_in_user_zone() for this request. The constants are read through
+// defined() because an error screen or a command line job can draw a time
+// before init.php has decided who is signed in.
+function pg_time_uses_user_zone($properties)
+{
+    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN;
+    $zone = ($signed_in && defined('USER_TIMEZONE')) ? (string) USER_TIMEZONE : '';
+
+    return pg_time_in_user_zone($properties, $signed_in, $zone);
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -1267,7 +1368,7 @@ function get_relative_time($properties)
     // If the type is "date_and_time" and if the timezone type is not "site",
     // and the visitor is logged in, and the user has a specific timezone set,
     // then get time in user's timezone.
-    if (($type != 'date') && (isset($properties['timezone_type']) && $properties['timezone_type'] != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+    if (($type != 'date') && pg_time_uses_user_zone($properties)) {
         $timezone_type = 'user';
         // Otherwise get the time for the site's timezone.
     } else {
@@ -1489,7 +1590,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -1509,7 +1610,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {

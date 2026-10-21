@@ -45,6 +45,15 @@ function test_webhook_channel_group_event_channel()
 	pg_assert_same(0, ws_webhook_event_channel_id(array('id' => 3)), 'no channel');
 	pg_assert_same(0, ws_webhook_event_channel_id(array('channel_id' => -4)), 'never below 0');
 	pg_assert_same(0, ws_webhook_event_channel_id(array('task' => 'x')), 'a task that is not an object');
+
+	// A discussion is a channel in no group: it is heard where the channel
+	// it is about is.
+	pg_assert_same(7, ws_webhook_event_channel_id(array('id' => 3, 'channel_id' => 40, 'thread' => array('channel_id' => 7, 'message_id' => 9))), 'a discussion: the channel it is about');
+	pg_assert_same(7, ws_webhook_event_channel_id(array('channel_id' => 40, 'thread' => array('channel_id' => '7'))), 'an id read as text');
+	pg_assert_same(40, ws_webhook_event_channel_id(array('channel_id' => 40, 'thread' => null)), 'no discussion');
+	pg_assert_same(40, ws_webhook_event_channel_id(array('channel_id' => 40, 'thread' => array('channel_id' => 0))), 'a discussion of no channel');
+	pg_assert_same(40, ws_webhook_event_channel_id(array('channel_id' => 40, 'thread' => array('channel_id' => array(7)))), 'a list is no channel');
+	pg_assert_same(40, ws_webhook_event_channel_id(array('channel_id' => 40, 'thread' => 'x')), 'a discussion that is not an object');
 }
 
 // An order or a product happens in no channel: a narrowed subscription is
@@ -91,7 +100,8 @@ function test_webhook_channel_group_every_workspace_event_names_its_channel()
 		pg_assert_true(!empty($sites[$event]), $event . ' is announced');
 
 		foreach ((array) ($sites[$event] ?? array()) as $payload) {
-			pg_assert_true((strpos($payload, "'channel_id'") !== false) || (strpos($payload, 'ws_task_event_payload(') !== false), $event . ' names its channel');
+			pg_assert_true((strpos($payload, "'channel_id'") !== false) || (strpos($payload, 'ws_task_event_payload(') !== false)
+				|| (strpos($payload, 'ws_app_mention_payload(') !== false), $event . ' names its channel');
 		}
 	}
 
@@ -100,6 +110,7 @@ function test_webhook_channel_group_every_workspace_event_names_its_channel()
 	}
 
 	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_task_event_payload'), 'a task event carries its channel');
+	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_app_mention_payload'), 'a mention carries its channel');
 	pg_assert_contains('ws_group_event_payload($group)', webhook_channel_group_test_source('ws_group_announce'), 'a group event carries its group');
 }
 

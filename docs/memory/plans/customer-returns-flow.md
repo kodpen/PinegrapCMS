@@ -1,6 +1,6 @@
 ---
 name: customer-returns-flow
-description: Plan (approved 2026-10-19, in progress: model and the My Account side done): panel screens, approval mail, iyzico refund and ERP return invoice, reminders, API, the classic order view left
+description: Plan (approved 2026-10-19, in progress: model, My Account, panel, refund and reminders done): API and webhooks, staff-recorded requests, the classic order view left
 ---
 
 ## Why?
@@ -18,12 +18,12 @@ description: Plan (approved 2026-10-19, in progress: model and the My Account si
 ## What remains?
 1. Done (PR #650): tables (step 11.0.11), `includes/fn/returns.php` (statuses and moves, held quantities, withdrawal window, refund deadline, create, move, read, delete with the order), `tests/returns_test.php`. Behaviour and what was added to the column list (`decision_note`, `source`, `requested_by`, `decided_by`, `shipped_at`, `closed_at`): docs/memory/commerce/order-returns.md.
 2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
-3. Panel screens `view_returns.php`, `view_return.php` (M).
-4. Refund and ERP bridge, reminders job (S–M).
+3. Done (PR #808): list and bulk approve, one return's moves, decision mails, audit trail, bell, order card, delivery date from the parcel rows: docs/memory/commerce/order-returns-panel.md. Left: a form for staff to record a request (`pg_return_create()` source `panel`).
+4. Done (PR #936): refund by driver or recorded, ERP return invoice hand-off, refund mail, reminder job, `[NEW]` line: docs/memory/commerce/order-returns-refund.md.
 5. API, webhooks, trigger (S).
 
 ## Open questions?
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
 
 ## Where to start?
-- Step 3 (panel screens, approval and rejection mails, the `order_return` bell pointing at the return, the `[NEW]` changelog line once returns work end to end); read `docs/memory/commerce/order-returns.md` and `order-returns-customer.md`, `erp/erp-return-documents.md`, `commerce/order-cancellation-flow.md` and `checkout-legal-documents.md` (the contract names the return carrier).
+- Step 5: `order.return.*` webhooks from the moves (`pg_return_move()`, `pg_return_refund()`), `GET/POST /orders/{id}/returns`, the `order.return.requested` trigger. Read `commerce/order-returns-refund.md` and the `pinegrap-dis-api` rules.

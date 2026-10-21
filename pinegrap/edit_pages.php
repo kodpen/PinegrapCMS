@@ -187,6 +187,8 @@ if (!$_POST) {
                 
                 // loop through each page and process actions
                 foreach ($_POST['pages'] as $page_id) {
+                    $audit_before = pg_audit_fetch('page', $page_id);
+
                     // get folder that page is in, in order to validate access
                     $query = 
                         "SELECT
@@ -358,7 +360,9 @@ if (!$_POST) {
                                 WHERE page_id = '" . escape($page_id) . "'";
                             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         }
-                        
+
+                        pg_audit_record('update', 'page', $page_id, $audit_before);
+
                         $number_of_pages++;
                     
                     // else output error
@@ -574,6 +578,8 @@ if (!$_POST) {
                         $access_error_exists = true;
                     }
 
+                    $audit_before = pg_audit_fetch('page', $page_id);
+
                     if (($access_granted == true) && ($recycle_pages == true)) {
                         $recycled = pg_recycle_page($page_id, $user);
 
@@ -614,6 +620,8 @@ if (!$_POST) {
                     if (($access_granted == true) && ($submitted_forms == false)) {
                         $query = "DELETE FROM page WHERE page_id = '" . escape($page_id) . "'";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+                        pg_audit_record('delete', 'page', $page_id, $audit_before);
 
                         // Stored SEO findings for this page. The single-page
                         // delete in edit_page.php clears these; this screen

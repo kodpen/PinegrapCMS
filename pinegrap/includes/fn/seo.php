@@ -326,8 +326,8 @@ function pg_sync_mysql_timezone()
  * True when the visitor rollup tables exist.
  *
  * Installs that take a code update without running the database upgrade must
- * keep serving pages, so every rollup write is gated on this. Probed once per
- * request; mirrors waf_table_has_column() and _orders_has_refund_columns().
+ * keep serving pages, so every rollup write is gated on this. Asked of
+ * pg_schema_has(), which answers most requests from its cache file.
  */
 function pg_visitor_rollup_ready($recheck = false)
 {
@@ -337,6 +337,8 @@ function pg_visitor_rollup_ready($recheck = false)
     // already loaded this file. Without a way to re-probe, a "no" cached from
     // earlier in the same request would make the backfill skip itself and
     // report success, which is the sort of failure nobody finds for months.
+    // pg_schema_has() keeps a "no" for the request as well, so a recheck
+    // makes it forget the table.
     if ($cached !== null && !$recheck) {
         return $cached;
     }
@@ -347,8 +349,11 @@ function pg_visitor_rollup_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'visitor_content_hourly'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('visitor_content_hourly');
+    }
+
+    $cached = pg_schema_has('visitor_content_hourly');
 
     return $cached;
 }
@@ -680,7 +685,7 @@ function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck 
  *
  * Installs that take a code update without running the database upgrade keep
  * writing to the legacy per-view table, so the feature works either way.
- * Mirrors pg_visitor_rollup_ready() and waf_table_has_column().
+ * Mirrors pg_visitor_rollup_ready().
  */
 function pg_sfv_stats_ready($recheck = false)
 {
@@ -700,40 +705,15 @@ function pg_sfv_stats_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_view_stats'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('submitted_form_view_stats');
+    }
+
+    $cached = pg_schema_has('submitted_form_view_stats');
 
     return $cached;
 }
 
-/**
- * True when the page table carries the search engine indexing columns.
- *
- * An installation that takes a code update without running the database
- * upgrade keeps the old behaviour: every page is indexable and robots.txt is
- * built the way it always was. Mirrors pg_sfv_stats_ready().
- *
- * Both columns are probed. They are added by one upgrade step, but the step
- * issues two statements, and a half-applied ALTER would otherwise leave the
- * readiness check saying yes to a query that selects a column that is not
- * there.
- */
-/**
- * The Recycle Bin folder's id, or 0 when there is no bin.
- *
- * The bin is an ordinary folder row (that is what keeps clean_up.php from
- * deleting the files inside it), which means every folder picker on the site
- * would list it and offer to file new content there or grant a user rights
- * over it. It is not a place anybody chooses; it is where deleted things wait.
- * So the pickers hide it - select_folder() and get_acl_folder_tree() drop the
- * row, and dropping it also hides everything below it, because a binned
- * subtree is only reachable through the bin as its parent.
- *
- * The File Manager is the exception and reads the id through its own helper:
- * showing the bin, and what is in it, is the whole point of that screen.
- *
- * Guarded per column: before the 2026.4.4 upgrade there is no bin at all.
- */
 // Where a screen without a folder picker should file the images and documents it receives.  A file
 // row with folder zero is in no folder at all: it never shows up in the file manager or on the files
 // screen again, which is what used to happen to everything that arrived through the chat.  A site
@@ -757,9 +737,7 @@ function pg_default_upload_folder($setting)
     $folder_id = 0;
 
     // the column only exists after the 2026.4.4 upgrade
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE '" . $setting . "'");
-
-    if (($result != false) && (mysqli_num_rows($result) > 0)) {
+    if (pg_schema_has('config', $setting)) {
         $folder_id = (int) db_value("SELECT " . $setting . " FROM config");
     }
 
@@ -779,7 +757,22 @@ function pg_default_upload_folder($setting)
     return $folder_id;
 }
 
-
+/**
+ * The Recycle Bin folder's id, or 0 when there is no bin.
+ *
+ * The bin is an ordinary folder row (that is what keeps clean_up.php from
+ * deleting the files inside it), which means every folder picker on the site
+ * would list it and offer to file new content there or grant a user rights
+ * over it. It is not a place anybody chooses; it is where deleted things wait.
+ * So the pickers hide it - select_folder() and get_acl_folder_tree() drop the
+ * row, and dropping it also hides everything below it, because a binned
+ * subtree is only reachable through the bin as its parent.
+ *
+ * The File Manager is the exception and reads the id through its own helper:
+ * showing the bin, and what is in it, is the whole point of that screen.
+ *
+ * Guarded per column: before the 2026.4.4 upgrade there is no bin at all.
+ */
 function pg_recycle_bin_folder_id($recheck = false)
 {
     static $cached = null;
@@ -794,9 +787,11 @@ function pg_recycle_bin_folder_id($recheck = false)
         return 0;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'recycle_folder_id'");
+    if ($recheck) {
+        pg_schema_forget('config');
+    }
 
-    if (!$result || (@mysqli_num_rows($result) == 0)) {
+    if (!pg_schema_has('config', 'recycle_folder_id')) {
         return 0;
     }
 
@@ -812,6 +807,18 @@ function pg_recycle_bin_folder_id($recheck = false)
     return $cached;
 }
 
+/**
+ * True when the page table carries the search engine indexing columns.
+ *
+ * An installation that takes a code update without running the database
+ * upgrade keeps the old behaviour: every page is indexable and robots.txt is
+ * built the way it always was. Mirrors pg_sfv_stats_ready().
+ *
+ * Both columns are probed. They are added by one upgrade step, but the step
+ * issues two statements, and a half-applied ALTER would otherwise leave the
+ * readiness check saying yes to a query that selects a column that is not
+ * there.
+ */
 function pg_page_noindex_ready($recheck = false)
 {
     static $cached = null;
@@ -826,11 +833,11 @@ function pg_page_noindex_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM page WHERE Field IN ('noindex', 'nofollow')");
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
 
-    $cached = ($result && @mysqli_num_rows($result) == 2);
+    $cached = pg_schema_has('page', 'noindex') && pg_schema_has('page', 'nofollow');
 
     return $cached;
 }
@@ -842,7 +849,7 @@ function pg_page_noindex_ready($recheck = false)
  * Probes BOTH halves of the swap — the page-side tree columns and the
  * style-side asset columns — because the upgrade runs five separate ALTERs
  * and a half-applied state must read as "not ready". Same shape as
- * pg_page_noindex_ready(): one probe per request, cached.
+ * pg_page_noindex_ready(): asked once per request, cached.
  *
  * Code that takes the new files before the upgrade has run keeps working on
  * the old layout (tree on the style, assets on the page); nothing below
@@ -862,15 +869,16 @@ function pg_multi_page_design_ready($recheck = false)
         return false;
     }
 
-    $page_cols = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM page WHERE Field IN ('page_tree_json', 'page_tree_code')");
-    $style_cols = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM style WHERE Field IN ('style_custom_css', 'style_custom_js', 'style_custom_fonts')");
+    if ($recheck) {
+        pg_schema_forget('page');
+        pg_schema_forget('style');
+    }
 
-    $cached = ($page_cols && @mysqli_num_rows($page_cols) == 2)
-           && ($style_cols && @mysqli_num_rows($style_cols) == 3);
+    $cached = pg_schema_has('page', 'page_tree_json')
+           && pg_schema_has('page', 'page_tree_code')
+           && pg_schema_has('style', 'style_custom_css')
+           && pg_schema_has('style', 'style_custom_js')
+           && pg_schema_has('style', 'style_custom_fonts');
 
     return $cached;
 }
@@ -932,8 +940,11 @@ function pg_page_custom_jsonld_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM page LIKE 'custom_jsonld'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
+
+    $cached = pg_schema_has('page', 'custom_jsonld');
 
     return $cached;
 }
@@ -958,11 +969,13 @@ function pg_page_seo_extras_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM page WHERE Field IN ('canonical_url', 'noarchive', 'max_snippet')");
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
 
-    $cached = ($result && @mysqli_num_rows($result) == 3);
+    $cached = pg_schema_has('page', 'canonical_url')
+           && pg_schema_has('page', 'noarchive')
+           && pg_schema_has('page', 'max_snippet');
 
     return $cached;
 }
@@ -1646,21 +1659,35 @@ function pg_page_custom_jsonld_message($error, $page_name)
  */
 function pg_page_canonical_url_check($raw)
 {
-    $raw = trim((string) $raw);
+    $refuse = function ($error) {
+        return array('ok' => false, 'value' => '', 'error' => $error);
+    };
+
+    // An address pasted from a document or a web page brings Unicode white
+    // space and invisible characters along (a no-break space at the end, a
+    // byte order mark at the start): trimmed at both ends like ASCII space,
+    // where trim() alone kept them and the page printed ...%C2%A0. The same
+    // set as the designer's live check (_sdCanonicalCheck(), JS \s plus the
+    // zero-width ones). Not UTF-8 is not an address.
+    $raw = preg_replace('~^[\x00\x09-\x0D\p{Z}\x{FEFF}\x{200B}-\x{200D}\x{2060}]+|[\x00\x09-\x0D\p{Z}\x{FEFF}\x{200B}-\x{200D}\x{2060}]+$~u', '', (string) $raw);
+
+    if ($raw === null) {
+        return $refuse('chars');
+    }
 
     if ($raw === '') {
         return array('ok' => true, 'value' => '', 'error' => '');
     }
 
-    $refuse = function ($error) {
-        return array('ok' => false, 'value' => '', 'error' => $error);
-    };
-
     if (strlen($raw) > 2000) {
         return $refuse('size');
     }
 
-    if (preg_match('~[\x00-\x20\x7F"<>\\\\]~', $raw)) {
+    // Inside: ASCII space and control characters, the characters no address
+    // carries unescaped, and every Unicode separator or format character
+    // (no-break and ideographic spaces, line separators, zero-width and
+    // direction marks), none of which a visitor can see in the address.
+    if (preg_match('~[\x00-\x20\x7F"<>\\\\]|[\p{Z}\p{Cf}]~u', $raw)) {
         return $refuse('chars');
     }
 
@@ -1996,8 +2023,11 @@ function pg_sfv_legacy_table_exists($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_views'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('submitted_form_views');
+    }
+
+    $cached = pg_schema_has('submitted_form_views');
 
     return $cached;
 }

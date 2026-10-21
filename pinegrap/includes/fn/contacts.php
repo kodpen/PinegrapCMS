@@ -859,3 +859,81 @@ function pg_contact_photo_store($user_id, $data)
 
     return array('ok' => true, 'error' => '', 'file_id' => $file_id);
 }
+
+/**
+ * The tax fields a checkout writes onto a contact card that is not updated
+ * from the billing block: a signed-in customer who unticked "Update my
+ * contact info with this billing info", or a checkout layout without that
+ * box. Only a card with no tax number takes the one typed at checkout (and
+ * the tax office typed beside it); a card that already names a number keeps
+ * it. The order keeps no tax number of its own, so otherwise the number is
+ * lost and the account its invoice goes to opens without one.
+ *
+ * Spaces, dots and dashes typed as separators go, as on the express order
+ * screen; both values are cut to their contacts columns.
+ *
+ * @param array  $card    The contact row (tax_number, tax_office)
+ * @param string $number  Typed at checkout
+ * @param string $office  Typed at checkout
+ * @return array  Column => value to write; empty when nothing is written
+ */
+function pg_checkout_contact_tax_fill(array $card, string $number, string $office): array
+{
+    $number = mb_substr((string) preg_replace('/[\s.\-]+/u', '', $number), 0, 20);
+    $office = mb_substr(trim($office), 0, 100);
+
+    if (($number === '') || (trim((string) ($card['tax_number'] ?? '')) !== '')) {
+        return array();
+    }
+
+    $fill = array('tax_number' => $number);
+
+    if ($office !== '') {
+        $fill['tax_office'] = $office;
+    }
+
+    return $fill;
+}
+
+/**
+ * Writes what pg_checkout_contact_tax_fill() decides onto the checkout's
+ * contact card.
+ *
+ * @param int    $contact_id
+ * @param string $number   Typed at checkout
+ * @param string $office   Typed at checkout
+ * @param int    $user_id  The signed-in customer, recorded as the card's last editor
+ * @return bool  True when the card took the number
+ */
+function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $office, int $user_id): bool
+{
+    if ($contact_id <= 0) {
+        return false;
+    }
+
+    $card = db_item("SELECT tax_number, tax_office FROM contacts WHERE id = '" . $contact_id . "'");
+
+    if (!is_array($card)) {
+        return false;
+    }
+
+    $fill = pg_checkout_contact_tax_fill($card, $number, $office);
+
+    if ($fill === array()) {
+        return false;
+    }
+
+    $set = array();
+
+    foreach ($fill as $column => $value) {
+        $set[] = $column . " = '" . e($value) . "'";
+    }
+
+    // The empty-number condition again: a card that took a number since it
+    // was read keeps it.
+    db("UPDATE contacts
+        SET " . implode(', ', $set) . ", user = '" . $user_id . "', timestamp = UNIX_TIMESTAMP()
+        WHERE id = '" . $contact_id . "' AND tax_number = ''");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}

@@ -394,6 +394,38 @@ function api_products_get($params) {
 
 }
 
+// The name a product is written with. It is the merchant SKU, so it has to be
+// there and has to be free; trimmed, as the product screen trims it. Names are
+// compared the way the catalogue compares them, which is the collation of the
+// column - a case difference is not a different SKU. $except_id is the product
+// being renamed, whose own row does not count as taken.
+function api_products_name_or_fail($raw, $except_id = 0) {
+
+	$name = trim((string)$raw);
+
+	if ($name === '') {
+
+		api_fail_validation(lang(array('string' => '{var:1} is required', 'vars' => array('name'))), 'name');
+
+	}
+
+	$taken = api_value("SELECT id FROM products
+		WHERE name = '" . escape($name) . "'" . (($except_id > 0) ? " AND id != '" . (int)$except_id . "'" : '') . "
+		LIMIT 1");
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang(array(
+			'string' => 'A product with the name {var:1} already exists (id {var:2}).',
+			'vars'   => array($name, (int)$taken)
+		)), 'name');
+
+	}
+
+	return $name;
+
+}
+
 // Add a product.
 //
 // The row and its cross-references are written by pg_pb_create_product()
@@ -421,26 +453,7 @@ function api_products_create($params) {
 
 	require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/product_builder.php');
 
-	$name = trim((string)$params['name']);
-
-	if ($name === '') {
-
-		api_fail_validation(lang(array('string' => '{var:1} is required', 'vars' => array('name'))), 'name');
-
-	}
-
-	// Names are compared the way the catalogue compares them, which is the
-	// collation of the column - a case difference is not a different SKU.
-	$taken = api_value("SELECT id FROM products WHERE name = '" . escape($name) . "' LIMIT 1");
-
-	if ($taken) {
-
-		api_fail(409, 'name_taken', lang(array(
-			'string' => 'A product with the name {var:1} already exists (id {var:2}).',
-			'vars'   => array($name, (int)$taken)
-		)), 'name');
-
-	}
+	$name = api_products_name_or_fail($params['name']);
 
 	$app = api_current_app();
 
@@ -629,6 +642,8 @@ function api_products_create($params) {
 	}
 
 	api_products_rescore($id);
+
+	pg_audit_record('create', 'products', $id);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
@@ -972,6 +987,22 @@ function api_products_update($params) {
 		'height' => 'height'
 	);
 
+	// The name is the SKU and is held to the rule POST /products applies: two
+	// products of one name leave the import and every lookup by name not
+	// knowing which one is meant, and an empty one is a product nobody can
+	// find. The product's own name sent again is not checked, so a catalogue
+	// that already holds a duplicate (the product screen does not refuse one
+	// on edit) still takes an update that resends the whole record.
+	if (array_key_exists('name', $params)) {
+
+		$name = trim((string)$params['name']);
+
+		$params['name'] = (($name !== '') && ($name === (string)$existing['name']))
+			? $name
+			: api_products_name_or_fail($name, $id);
+
+	}
+
 	$set = array();
 
 	// tax_rate is nullable and an empty string clears it, which is how an
@@ -1062,6 +1093,7 @@ function api_products_update($params) {
 
 	api_dry_run_stop('updated', 'product', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('products', $id);
 
 	api_exec("UPDATE products SET " . implode(', ', $set) . ",
 			user = '" . (int)$app['owner']['id'] . "',
@@ -1152,6 +1184,8 @@ function api_products_update($params) {
 	}
 
 	api_products_rescore($id);
+
+	pg_audit_record('update', 'products', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -1248,6 +1282,8 @@ function api_products_delete($params) {
 
 		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
 
+		$audit_before = pg_audit_fetch('products', $id);
+
 		// The statements every panel screen writes when it bins a product.
 		// "AND recycled = '0'" in them keeps a second request that raced this
 		// one from writing recycled_enabled from an enabled that is already
@@ -1258,6 +1294,8 @@ function api_products_delete($params) {
 			api_exec($statement);
 
 		}
+
+		pg_audit_record('recycle', 'products', $id, $audit_before);
 
 		log_activity(lang(array(
 			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
@@ -1298,6 +1336,43 @@ function api_products_delete($params) {
 	)), $app['owner']['username']);
 
 	api_ok(array('id' => $id, 'deleted' => true, 'recycled' => false));
+
+}
+
+// The largest price a product takes, in minor units: products.price is a
+// signed INT. The single-product routes declare the same bound
+// (products.create and products.update in includes/api/schema.php), where the
+// router enforces it; a batch item is not a route parameter and is read by
+// api_price_batch_price() instead. Past it the session's non-strict mode cut
+// the value to the column's top in silence: 3000000000 was answered "ok" and
+// stored as 2147483647.
+if (!defined('API_PRODUCT_PRICE_MAX')) {
+	define('API_PRODUCT_PRICE_MAX', 2147483647);
+}
+
+// A batch item's price: whole minor units, as a JSON number or a numeric
+// string. Returns the int, null when it is not a whole number, false when it
+// is one below 0 or above API_PRODUCT_PRICE_MAX.
+function api_price_batch_price($raw) {
+
+	// A decimal is refused rather than rounded: rounding somebody's price
+	// quietly is worse than telling them the format is wrong, and this is the
+	// endpoint where it would happen a hundred times before anyone noticed.
+	if (($raw === null) || !is_numeric($raw) || ((string)(int)$raw !== (string)$raw)) {
+
+		return null;
+
+	}
+
+	$price = (int)$raw;
+
+	if (($price < 0) || ($price > API_PRODUCT_PRICE_MAX)) {
+
+		return false;
+
+	}
+
+	return $price;
 
 }
 
@@ -1359,11 +1434,9 @@ function api_products_prices($params) {
 
 		}
 
-		// Minor units, whole. A decimal is refused rather than rounded: rounding
-		// somebody's price quietly is worse than telling them the format is
-		// wrong, and this is the endpoint where it would happen a hundred times
-		// before anyone noticed.
-		if (!isset($item['price']) || !is_numeric($item['price']) || ((string)(int)$item['price'] !== (string)$item['price'])) {
+		$price = api_price_batch_price(isset($item['price']) ? $item['price'] : null);
+
+		if ($price === null) {
 
 			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
 				'message' => lang('price must be a whole number of minor units.'));
@@ -1372,10 +1445,14 @@ function api_products_prices($params) {
 
 		}
 
-		if ((int)$item['price'] < 0) {
+		if ($price === false) {
 
+			// The single-product routes answer a price past the top with the
+			// router's own sentence; a batch item says the same.
 			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
-				'message' => lang('price cannot be negative.'));
+				'message' => ((int)$item['price'] < 0)
+					? lang('price cannot be negative.')
+					: lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => 'price')));
 
 			continue;
 
@@ -1389,7 +1466,7 @@ function api_products_prices($params) {
 		}
 
 		$product = ($id > 0)
-			? api_row("SELECT id, name, price FROM products WHERE id = '" . $id . "' LIMIT 1")
+			? api_row("SELECT id, name, short_description, price FROM products WHERE id = '" . $id . "' LIMIT 1")
 			: null;
 
 		if ($product === null) {
@@ -1400,12 +1477,12 @@ function api_products_prices($params) {
 
 		}
 
-		$price = (int)$item['price'];
-
 		if (((int)$product['price'] !== $price) && (!$dry)) {
 
 			api_exec("UPDATE products SET price = '" . $price . "', timestamp = '" . time() . "'
 				WHERE id = '" . (int)$product['id'] . "' LIMIT 1");
+
+			pg_audit('update', 'product', (int)$product['id'], array('price' => $product['price']), array('price' => $price), pg_audit_label_of('products', $product));
 
 			pg_price_history_queue((int)$product['id'], 'api');
 

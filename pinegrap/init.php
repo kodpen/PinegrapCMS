@@ -139,19 +139,17 @@ if (($_SERVER['HTTP_HOST'] ?? '') != '') {
 
         // else the software root index.php file was not requested, so get the path in a different way
     } else {
-        // if this is at least PHP 5.0.0, then use strrpos to get the position of the last occurrence of the software directory in the path
-        // PHP 4 does not support multicharacter needle for strrpos
-        if (version_compare(PHP_VERSION, '5.0.0', '>=') == TRUE) {
-            $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
+        // The last occurrence of the software directory in the address, in
+        // any case: SOFTWARE_DIRECTORY is the folder's name on disk, the
+        // address is spelled as it was typed, and on Windows (and macOS)
+        // /shop/Pinegrap/ reaches the same folder as /shop/pinegrap/.
+        $position = mb_strripos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
 
-            // else this is PHP 4, so use mb_strrpos, which supports a multicharacter needle
-        } else {
-            $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-        }
-
-        // if the software directory could not be found in the path (should never happen), then set the path to /
+        // Not found (should never happen): this request is drawn from the
+        // root, but the guess is not stored as the site's path.
         if ($position === FALSE) {
             $url_path = '/';
+            $pg_path_guessed = true;
 
             // else the software directory was found, so set the path to everything up to the software directory
         } else {
@@ -279,6 +277,12 @@ if ($result === false) {
     if (defined('OUTPUT_PATH')) {
         $config_error .= ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/">'
             . lang('Install or Reinstall Software') . '</a>';
+    }
+
+    // A 500 like the other database failures: a monitor reading the status
+    // code sees a site that cannot serve.
+    if (!headers_sent()) {
+        http_response_code(500);
     }
 
     print $config_error;
@@ -677,6 +681,11 @@ define('ERP_ENABLED', isset($row['erp_enabled']) ? (int) $row['erp_enabled'] : 0
 define('ERP_PARASUT_ENABLED', isset($row['erp_parasut_enabled']) ? (int) $row['erp_parasut_enabled'] : 0);
 define('ERP_DEFAULT_SERIES', $row['erp_default_series'] ?? 'PGF');
 define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
+// The two filters of that invoice (2026.11.0, 11.0.58): buyers with a tax
+// number only, and the smallest order in minor units of the base currency.
+// Off and 0 until the step has run.
+define('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY', isset($row['erp_auto_invoice_tax_number_only']) ? (int) $row['erp_auto_invoice_tax_number_only'] : 0);
+define('ERP_AUTO_INVOICE_MIN_TOTAL', isset($row['erp_auto_invoice_min_total']) ? (int) $row['erp_auto_invoice_min_total'] : 0);
 define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
 // The account a counter sale with no customer is billed to (4.59); 0 = none named.
 define('ERP_WALKIN_ACCOUNT_ID', isset($row['erp_walkin_account_id']) ? (int) $row['erp_walkin_account_id'] : 0);
@@ -846,7 +855,7 @@ if (defined('PATH') == FALSE) {
     // else the path is defined, so if the defined path is different from the path in the database,
 // then update the path in the database, so that the next time the e-mail campaign job runs,
 // it will have the correct path
-} else if (PATH != $row['path']) {
+} else if ((PATH != $row['path']) && empty($pg_path_guessed)) {
     $query = "UPDATE config SET path = '" . escape(PATH) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 }

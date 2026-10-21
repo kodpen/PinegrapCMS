@@ -293,7 +293,7 @@ function mp_listing_items($account, $group_id) {
 	$products = (array) db_items("SELECT products.id, products.name, products.title,
 			products.short_description, products.full_description, products.price,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
-			products.enabled, products.tax_rate, products.image_name
+			products.enabled, products.tax_rate, products.image_name, products.brand
 		FROM products
 		INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
 		WHERE products_groups_xref.product_group = '" . e($group_id) . "'
@@ -358,9 +358,38 @@ function mp_listing_items($account, $group_id) {
 			? $product['full_description']
 			: (($group['full_description'] !== '') ? $group['full_description'] : (string)$product['short_description']);
 
+		// The key the marketplace will know this product by, which is also what
+		// the mapping row stores and every later stock line and verdict is
+		// matched on. A marketplace keyed on barcodes gets one, or the article
+		// is refused: a listing without one cannot be opened there, and a
+		// barcode made up here would be a number the shop never printed.
+		$code = (string)$product['name'];
+
+		$barcode = '';
+
+		if (mp_provider_keys_by_barcode((string)$account['provider'])) {
+
+			$barcode = mp_listing_barcode($account_id, (int)$product['id']);
+
+			if ($barcode === '') {
+
+				return array('ok' => false, 'items' => array(), 'error' => lang(array(
+					'string' => '{var:1} has no barcode. {var:2} lists products by barcode; give it one first.',
+					'vars'   => array((string)$product['name'], mp_provider_name((string)$account['provider']))
+				)));
+
+			}
+
+			$code = $barcode;
+
+		}
+
 		$items[] = array(
 			'product_id'  => (int)$product['id'],
-			'code'        => (string)$product['name'],
+			'code'        => $code,
+			'stock_code'  => (string)$product['name'],
+			'barcode'     => $barcode,
+			'brand'       => trim((string)$product['brand']),
 			'group_code'  => (string)$group['name'],
 			'title'       => ($product['title'] !== '') ? (string)$product['title'] : (string)$group['title'],
 			'description' => (string)$description,
@@ -375,6 +404,38 @@ function mp_listing_items($account, $group_id) {
 	}
 
 	return array('ok' => true, 'items' => $items, 'error' => '');
+
+}
+
+// The barcode one product is listed under on a barcode-keyed marketplace.
+//
+// A product already matched on this account keeps the code it was matched by:
+// that is the barcode the marketplace already knows, and listing it under a
+// second one would leave stock lines and verdicts matched against a code the
+// listing does not carry. Otherwise the product's first barcode, the oldest
+// one, because a product may carry several and the first is the one printed
+// on its label.
+function mp_listing_barcode($account_id, $product_id) {
+
+	$mapped = trim((string) db_value("SELECT remote_code FROM marketplace_product_map
+		WHERE (account_id = '" . e((int)$account_id) . "') AND (product_id = '" . e((int)$product_id) . "')"));
+
+	if ($mapped !== '') {
+
+		return $mapped;
+
+	}
+
+	return mp_product_first_barcode($product_id);
+
+}
+
+function mp_product_first_barcode($product_id) {
+
+	return trim((string) db_value("SELECT barcode FROM product_barcodes
+		WHERE product_id = '" . e((int)$product_id) . "'
+		ORDER BY id ASC
+		LIMIT 1"));
 
 }
 

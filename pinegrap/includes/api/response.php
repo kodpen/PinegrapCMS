@@ -102,7 +102,41 @@ function api_send($status_code, $body, $error_code = '') {
 
 	}
 
-	$json = ($status_code !== 204) ? json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+	$json = ($status_code !== 204) ? api_json_encode($body) : '';
+
+	// An answer that cannot be written as JSON at all (INF, NAN) would go out
+	// with its status and no body: no code, no request id, and on a read an
+	// ETag every such answer shared. The operator finds the reason in the
+	// error log; the client gets the contract's shape.
+	if ($json === null) {
+
+		if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
+
+			pg_error_write(pg_error_entry(
+				'warning',
+				'E_USER_WARNING',
+				'API: the answer to ' . api_request_method() . ' ' . api_request_path() . ' could not be encoded as JSON: ' . json_last_error_msg(),
+				__FILE__,
+				__LINE__,
+				array()));
+
+		}
+
+		$status_code = 500;
+
+		$error_code = 'server_error';
+
+		$read = false;
+
+		$body = array('error' => array(
+			'code'       => 'server_error',
+			'message'    => lang('A system error occurred.'),
+			'request_id' => api_request_id()
+		));
+
+		$json = (string)api_json_encode($body);
+
+	}
 
 	if ($read) {
 
@@ -162,6 +196,35 @@ function api_send($status_code, $body, $error_code = '') {
 
 }
 
+// The answer as JSON text, or null when it cannot be written as JSON.
+//
+// A string that is not valid UTF-8 - a form field from a client that encodes
+// Windows-1254, a value read back from a damaged row - made json_encode()
+// return false for the whole answer. Such bytes are written as U+FFFD from PHP
+// 7.2 on; on 7.1, which lacks that flag, the broken value alone becomes null.
+// What still cannot be encoded (INF, NAN) answers null.
+function api_json_encode($body) {
+
+	$flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+	if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+
+		$flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+
+	}
+
+	$json = json_encode($body, $flags);
+
+	if (($json === false) && (json_last_error() === JSON_ERROR_UTF8)) {
+
+		$json = json_encode($body, $flags | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+	}
+
+	return is_string($json) ? $json : null;
+
+}
+
 // Where api_send() hands its answer instead of sending it, when set.
 function api_send_hook($hook = null) {
 
@@ -180,13 +243,13 @@ function api_send_hook($hook = null) {
 // The fields a read asked for, applied to its answer.
 //
 // ?fields=id,name,price keeps those top-level fields of each record - of every
-// row of a listing, or of the one record a single read returns - and drops the
-// rest before the answer is encoded. It is how a phone on a slow connection
-// asks a listing for the three columns its screen draws rather than the forty
-// the record has. id is always kept, because a row without it cannot be told
-// apart from the others. A name the record does not have is not an error: it
-// is simply not there, which is also what an older site answers for a field a
-// newer one added.
+// row of a listing (api_route_returns_listing()), or of the one record a
+// single read returns - and drops the rest before the answer is encoded. It
+// is how a phone on a slow connection asks a listing for the three columns its
+// screen draws rather than the forty the record has. id is always kept,
+// because a row without it cannot be told apart from the others. A name the
+// record does not have is not an error: it is simply not there, which is also
+// what an older site answers for a field a newer one added.
 //
 // The descriptions of the API are left whole; they are documents, not records.
 function api_response_fields($body) {
@@ -227,7 +290,12 @@ function api_response_fields($body) {
 
 	};
 
-	if (isset($body['data']) && is_array($body['data']) && array_key_exists('page', $body)) {
+	// A listing is trimmed row by row and keeps the rest of its envelope: page,
+	// and what a route declares beside data, such as the event catalogue of
+	// GET /webhooks. Read as one record, that answer kept neither data nor
+	// events, and ?fields=url came back as [].
+	if (isset($body['data']) && is_array($body['data'])
+		&& (array_key_exists('page', $body) || api_route_returns_listing($route))) {
 
 		$body['data'] = array_map($trim, $body['data']);
 

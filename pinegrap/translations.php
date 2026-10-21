@@ -107,6 +107,13 @@ $url = function ($changes = array()) use ($self, $language, $page_id, $group, $f
 };
 
 $pages = pg_tr_translatable_pages();
+
+// A page deleted or put in the recycle bin since the last update draws
+// nothing: its texts leave the counts before they are read.
+if ($language !== '') {
+    pg_tr_uses_prune(array_column($pages, 'page_id'));
+}
+
 $stats = ($language !== '') ? pg_tr_page_stats($language) : array();
 $site_stats = ($language !== '') ? pg_tr_language_stats($language) : array('total' => 0, 'translated' => 0, 'reviewed' => 0, 'machine' => 0, 'pending' => 0);
 $language_row = ($language !== '') ? $targets[$language] : null;
@@ -391,13 +398,30 @@ if ($total_pages > 1) {
     $output_pagination .= '</ul></nav>';
 }
 
-// Recent jobs.
+// Recent jobs, each with what it covered: the whole site, a group of the
+// list (the catalog, the forms, the cookie window) or one page by its name.
 $output_jobs = '';
+$job_groups = pg_tr_owner_groups();
+$job_page_names = array();
+
+foreach ($pages as $job_page) {
+    $job_page_names[(int) $job_page['page_id']] = (string) $job_page['page_name'];
+}
 
 foreach ($jobs as $job) {
+    $job_scope = lang('One page');
+
+    if ($job['scope'] === 'all') {
+        $job_scope = lang('All pages');
+    } elseif (preg_match('/^group:([a-z]+)$/', (string) $job['scope'], $job_match) && isset($job_groups[$job_match[1]])) {
+        $job_scope = $job_groups[$job_match[1]]['label'];
+    } elseif (preg_match('/^page:(\d+)$/', (string) $job['scope'], $job_match) && isset($job_page_names[(int) $job_match[1]])) {
+        $job_scope = $job_page_names[(int) $job_match[1]];
+    }
+
     $output_jobs .= '<div class="d-flex align-items-center gap-2 py-2 border-top small" data-job-id="' . (int) $job['id'] . '">'
         . '<span class="badge ' . (in_array($job['status'], array('done'), true) ? 'text-bg-success' : (in_array($job['status'], array('failed', 'cancelled'), true) ? 'text-bg-danger' : 'text-bg-warning')) . '">' . h(isset($status_labels[$job['status']]) ? $status_labels[$job['status']] : $job['status']) . '</span>'
-        . '<span class="flex-grow-1 text-truncate">' . h(isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : $job['engine']) . ' · ' . h(($job['scope'] === 'all') ? lang('All pages') : lang('One page')) . '</span>'
+        . '<span class="flex-grow-1 text-truncate">' . h(isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : $job['engine']) . ' · ' . h($job_scope) . '</span>'
         . '<span class="text-body-secondary">' . (int) $job['done_count'] . '/' . (int) $job['total'] . (((int) $job['failed_count'] > 0) ? ' <span class="text-danger">(' . (int) $job['failed_count'] . ')</span>' : '') . '</span>'
         . '<span class="text-body-secondary">' . get_relative_time(array('timestamp' => (int) $job['created_at'])) . '</span>'
         . (($job['error'] !== null && $job['error'] !== '') ? '<i class="bi bi-exclamation-circle text-danger" title="' . h($job['error']) . '" aria-hidden="true"></i>' : '')

@@ -93,6 +93,7 @@ if (!$_POST) {
             comments_watchers_managed_by_submitter,
             seo_score,
             " . (pg_seo_schema_ready() ? "seo_flags, seo_checked_at," : "'0' AS seo_flags, '0' AS seo_checked_at,") . "
+            " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             seo_analysis,
             seo_analysis_current
         FROM page
@@ -110,6 +111,7 @@ if (!$_POST) {
     $mobile_style_id = $row['mobile_style_id'];
     $page_title = $row['page_title'];
     $page_meta_description = $row['page_meta_description'];
+    $page_ai_fields = $row['ai_fields'];
 
     // A visual-editor page (its own style is a visual design) has no
     // regions to edit here; an old bookmark or a hand-typed URL lands in the
@@ -674,6 +676,19 @@ if (!$_POST) {
     $ai_title_button = pg_ai_write_button($user, array('target' => 'seo_title', 'record' => 'page', 'record_id' => $page_id, 'field' => 'title', 'context' => $ai_page_context));
     $ai_description_button = pg_ai_write_button($user, array('target' => 'seo_description', 'record' => 'page', 'record_id' => $page_id, 'field' => 'meta_description', 'context' => $ai_page_context));
 
+    // A text that came from an accepted draft carries a marker beside its
+    // label while it is as the draft left it: editing it by hand, the
+    // marker's button or saving the field empty takes the mark off
+    // (pg_ai_fields_marker(), assets/js/pg_ai_fields.js); the hidden
+    // ai_fields input carries the list to the save. A mark whose text was
+    // changed elsewhere is not shown and goes with the next save
+    // (pg_ai_fields_marked()). Nothing of it is drawn while the column is
+    // missing.
+    $ai_marks_ready = pg_ai_fields_ready('page');
+    $ai_marks = $ai_marks_ready ? pg_ai_fields_marked('page', $page_ai_fields, array('page_title' => $page_title, 'page_meta_description' => $page_meta_description)) : array();
+    $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'title', in_array('page_title', $ai_marks, true)) : '';
+    $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'meta_description', in_array('page_meta_description', $ai_marks, true)) : '';
+
     print
     pg_page_shell(
         array(
@@ -714,6 +729,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
+                    ' . ($ai_marks_ready ? pg_ai_fields_input('page', $ai_marks) : '') . '
                     <div class="row">
                         ' . $output_page_type_selector . '
                         <div class="col-12 col-md" style="min-width:0">
@@ -772,12 +788,12 @@ if (!$_POST) {
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 mt-1 mb-2">
-                                                    ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button) . '
+                                                    ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_title_button, $ai_title_marker) . '
                                                     <input type="text" value="' . h($page_title) . '" name="title" id="title" class="form-control" maxlength="255"/>
                                                     <div id="seo_c_title"></div>
                                                 </div>
                                                 <div class="col-12 mt-1 mb-2">
-                                                    ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button) . '
+                                                    ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_description_button, $ai_description_marker) . '
                                                     <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($page_meta_description) . '</textarea>
                                                     <div id="seo_c_meta_description"></div>
                                                 </div>
@@ -1001,6 +1017,7 @@ if (!$_POST) {
     bindPageIndexingSwitches();
     </script>
     ' . pg_ai_write_assets() . '
+    ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' .
     output_footer();
 
@@ -1023,6 +1040,7 @@ if (!$_POST) {
             page_search,
             page_search_keywords,
             page_folder,
+            " . (pg_ai_fields_ready('page') ? "ai_fields," : "NULL AS ai_fields,") . "
             sitemap
         FROM page
         WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
@@ -1030,6 +1048,9 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
 
     $page_id = $row['page_id'];
+
+    // The whole row as it was, for the audit trail of the save or delete below.
+    $audit_before = pg_audit_fetch('page', $page_id);
 	$current_page_name = $row['page_name'];
     $current_page_type = $row['page_type'];
     $current_layout_type = $row['layout_type'];
@@ -1040,6 +1061,7 @@ if (!$_POST) {
     $current_search_keywords = $row['page_search_keywords'];
     $current_page_folder = $row['page_folder'];
     $current_sitemap = $row['sitemap'];
+    $current_ai_fields = $row['ai_fields'];
     
     // if page was selected for delete, check if user has access and then delete page
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
@@ -1097,6 +1119,8 @@ if (!$_POST) {
         // delete page
         $query = "DELETE FROM page WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        pg_audit_record('delete', 'page', $page_id, $audit_before);
         
         // delete regions
         $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($_POST['id'] ?? '') . "'";
@@ -1778,7 +1802,23 @@ if (!$_POST) {
         ) {
             $sql_seo_analysis_current = "seo_analysis_current = '0',";
         }
-        
+
+        // Which of the two texts is an accepted "Write with AI" draft as it
+        // was used: the columns the screen posts, each marked on the text
+        // saved now; without a list, the stored marks whose text this save
+        // leaves as it was. An edited or emptied text loses its mark
+        // (pg_ai_fields_after_save()).
+        $sql_ai_fields = "";
+
+        if (pg_ai_fields_ready('page')) {
+            $ai_fields = pg_ai_fields_after_save('page', $_POST['ai_fields'] ?? null, $current_ai_fields, array(
+                'page_title' => $_POST['title'] ?? '',
+                'page_meta_description' => $_POST['meta_description'] ?? '',
+            ));
+
+            $sql_ai_fields = "ai_fields = " . (($ai_fields === null) ? "NULL" : "'" . e($ai_fields) . "'") . ",";
+        }
+
         // update page
         $query =
             "UPDATE page
@@ -1798,6 +1838,7 @@ if (!$_POST) {
                 sitemap = '" . $sitemap . "',
                 $sql_noindex
                 $sql_seo_extras
+                $sql_ai_fields
                 $sql_seo_analysis_current
                 comments = '" . escape($_POST['comments'] ?? '') . "',
                 comments_label = '" . e($_POST['comments_label'] ?? '') . "',
@@ -1844,6 +1885,8 @@ if (!$_POST) {
         }
 
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('page'), $name))), $_SESSION['sessionusername']);
+
+        pg_audit_record('update', 'page', $page_id, $audit_before);
         
         $send_to = $_POST['send_to'];
         

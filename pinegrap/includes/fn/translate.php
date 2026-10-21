@@ -200,17 +200,18 @@ function pg_tr_language_row($code)
 }
 
 /**
- * The address prefix of a language: its own prefix, or its code.
+ * The address prefix of a language: its own prefix, or its code, lower-cased
+ * as the router matches it (pt-BR is served under /pt-br/).
  */
 function pg_tr_prefix($code)
 {
     $row = pg_tr_language_row($code);
 
     if (is_array($row) && ($row['prefix'] !== '')) {
-        return (string) $row['prefix'];
+        return strtolower((string) $row['prefix']);
     }
 
-    return (string) $code;
+    return strtolower((string) $code);
 }
 
 /**
@@ -235,7 +236,7 @@ function pg_tr_prefix_map()
         }
 
         $parts = explode('=', $pair, 2);
-        $prefix = trim($parts[0]);
+        $prefix = strtolower(trim($parts[0]));
         $code = isset($parts[1]) ? trim($parts[1]) : $prefix;
 
         if ($prefix !== '') {
@@ -488,6 +489,42 @@ function pg_tr_record_fields($fields)
     }
 
     return $fields;
+}
+
+/**
+ * A product's own texts in the current language, for an answer the page's
+ * scripts write into a page drawn in that language (api.php get_product,
+ * the variant chooser's refresh): the name the visitor reads
+ * (short_description) as one text, the rich-text fields by their blocks, as
+ * the page itself has them translated (pg_tr_render_db_texts()). Unchanged in
+ * the source language and for a field without a translation.
+ *
+ * @param array $product a products row
+ * @return array
+ */
+function pg_tr_product_fields($product)
+{
+    if (!pg_tr_active() || !is_array($product)) {
+        return $product;
+    }
+
+    pg_tr_load();
+
+    if (isset($product['short_description']) && ((string) $product['short_description'] !== '')) {
+        $found = pg_tr_db_text((string) $product['short_description'], array('text'));
+
+        if ($found !== null) {
+            $product['short_description'] = $found[0];
+        }
+    }
+
+    foreach (array('full_description', 'details', 'out_of_stock_message') as $field) {
+        if (isset($product[$field]) && ((string) $product[$field] !== '')) {
+            $product[$field] = pg_tr_render_html_value((string) $product[$field]);
+        }
+    }
+
+    return $product;
 }
 
 /**

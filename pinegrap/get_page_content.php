@@ -2560,6 +2560,18 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 }
                             }
 
+                            // The rating of the product's verified reviews, on
+                            // the page that shows them with their stars: markup
+                            // may only describe reviews a visitor can read here
+                            // (includes/fn/reviews.php).
+                            if (
+                                ($system_region_properties['comments'] == '1')
+                                && !empty($system_region_properties['comments_rating'])
+                                && (($aggregate_rating = pg_review_product_aggregate_jsonld($item['id'])) !== null)
+                            ) {
+                                $jsonld['aggregateRating'] = $aggregate_rating;
+                            }
+
                         // A product group page is a list, and its markup should
                         // say so. The old code looped the group's products into a
                         // single Product whose every field was whatever the LAST
@@ -3934,6 +3946,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         comments.publish_cancel,
                         comments.featured,
                         comments.rating,
+                        " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+                        " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
                         user.user_username as username,
                         user.user_role,
                         user.user_id,
@@ -4227,7 +4241,21 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                             $output_badge = ' <span class="software_badge ' . h(get_class_name($badge_label)) . '">' . h($badge_label) . '</span>';
                         }
-                        
+
+                        // A review written from a verified purchase says so
+                        // beside the name (includes/fn/reviews.php).
+                        $output_verified_purchase = '';
+
+                        if ((int) $comment['verified_order_id'] > 0) {
+                            $output_verified_purchase = ' <span class="software_verified_purchase' . ($cm_bs ? ' badge rounded-pill text-bg-success ms-1' : '') . '">' . h(lang('Verified purchase')) . '</span>';
+                        }
+
+                        // The store's reply, under the review it answers.
+                        $output_seller_reply = pg_review_reply_html(
+                            $comment['seller_reply'],
+                            ((int) $comment['seller_reply_at'] > 0) ? get_relative_time(array('timestamp' => $comment['seller_reply_at'])) : '',
+                            $cm_bs);
+
                         $output_submitted_date_and_time = '';
                         
                         // if the page is set so that the submitted date & time should be shown, then output it
@@ -4282,11 +4310,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 						                ' . ($output_comment_rating !== '' ? str_replace('class="rating"', 'class="rating text-warning mb-1"', $output_comment_rating) : '') . '
 						                <div class="name_line d-flex flex-wrap align-items-center gap-1 pe-4">
 						                    <span class="name fw-semibold">' . h($comment['name']) . '</span>' . $output_submitter_name
-						                    . str_replace('class="software_badge ', 'class="software_badge badge rounded-pill text-bg-secondary ms-1 ', $output_badge) . '
+						                    . str_replace('class="software_badge ', 'class="software_badge badge rounded-pill text-bg-secondary ms-1 ', $output_badge)
+						                    . $output_verified_purchase . '
 						                </div>
 						                ' . str_replace('class="date_and_time"', 'class="date_and_time small text-body-secondary"', $output_submitted_date_and_time) . '
 						                <div class="message mt-2">' . convert_text_to_html($comment['message']) . '</div>
 						                ' . $output_file_attachment . '
+						                ' . $output_seller_reply . '
 						            </div>
 						            <a href="javascript:void(0)" class="share btn btn-link btn-sm text-body-secondary position-absolute top-0 end-0 m-2 p-1 lh-1" title="' . lang('Share') . ': ' . $output_comment_label . '" aria-label="' . lang('Share') . '" data-id="' . $comment['id'] . '">
 						                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.5 2.5 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5m-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3"/></svg>
@@ -4306,12 +4336,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 ' . $output_comment_rating . '
                                 <div class="name_line">
                                     ' . lang(array('string'=>'{var:1} {var:2}','vars'=>array('<span class="added_by">' . lang('Added by') . '</span>','<span class="name">' . h($comment['name']) . '</span>') )) .
-                                    $output_submitter_name . $output_badge . '
+                                    $output_submitter_name . $output_badge . $output_verified_purchase . '
                                 </div>
                                 ' . $output_submitted_date_and_time . '
                                 <br />
                                 <div class="message">' . convert_text_to_html($comment['message']) . '</div>
                                 ' . $output_file_attachment . '
+                                ' . $output_seller_reply . '
                                 <a href="javascript:void(0)" class="share" style="position: absolute; top: 1em; right: 1em; padding: .25em" title="' . lang('Share') . ': ' . $output_comment_label . '" data-id="' . $comment['id'] . '">
                                         <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/share.png" width="20" height="20" alt="' . lang('Share') . '" style="opacity: 0.15">
                                 </a>
@@ -4421,6 +4452,18 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $output_disallow_new_comment_message = '';
                 $add_comment_login_message_shown = false;
                 $add_comment_heading ='';
+
+                // A review of a product comes only from somebody who bought it
+                // (includes/fn/reviews.php): a visitor is asked to sign in, and a
+                // customer with no purchase of it left to review is told so, before
+                // anything is typed that add_comment.php would turn away. Staff,
+                // who may edit the page, are not asked.
+                $review_refusal = '';
+
+                if (($allow_new_comments == TRUE) && !$edit_access && pg_review_gate_applies($item_type, $item_id)) {
+                    $review_refusal = pg_review_eligibility(USER_LOGGED_IN ? (int) USER_ID : 0, $item_type, $item_id)['refusal'];
+                }
+
                 // if new comments are allowed, then prepare to output add comment form.
                 if ($allow_new_comments == TRUE) {
                     // add the stuff at the start of the comment form
@@ -4438,7 +4481,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         <div class="add_comment_message">' . h($system_region_properties['comments_message']) . '</div>';
                     
                     // if the user is not logged in and a login is required to comment, then output the login message
-                    if ((isset($_SESSION['sessionusername']) == FALSE) && ($system_region_properties['comments_require_login_to_comment'] == 1)) {
+                    if ((isset($_SESSION['sessionusername']) == FALSE) && (($system_region_properties['comments_require_login_to_comment'] == 1) || ($review_refusal === 'sign_in'))) {
                         $link_url = '';
                         
                         // find if there is a registration entrance page
@@ -4483,7 +4526,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         //
                         // Signing in is an action, not a document. Nothing on
                         // the other side of this link belongs in an index.
-                        if ($system_region_properties['comments_watcher_email_page_id'] != 0) {
+                        if ($review_refusal === 'sign_in') {
+                            $output_link = lang(array('string'=>'Please {var:1} to review a product you bought.','vars'=>array('<a style="font-weight: bold;" rel="nofollow" href="' . $link_url . '">' . lang('login or register') . '</a>')));
+                        } elseif ($system_region_properties['comments_watcher_email_page_id'] != 0) {
                             $output_link = lang(array('string'=>'Please {var:1} to add your {var:2} or get notified when a {var:2} is added.','vars'=>array('<a style="font-weight: bold;" rel="nofollow" href="' . $link_url . '">' . lang('login or register') . '</a>',$output_comment_label_lowercase)));
                         // else output the standard link
                         } else {
@@ -4498,7 +4543,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $output_comment_form .= $cm_bs
                             ? '<div class="text-box-notice alert alert-secondary">' . $output_link . '</div>'
                             : '<div class="text-box-notice" style="display: inline-block; margin-bottom: 1em;">' . $output_link . '</div>';
-                        
+
+                    // A signed-in customer who has nothing bought left to review
+                    // is told why instead of being given the form.
+                    } elseif ($review_refusal !== '') {
+                        $output_comment_form .= $cm_bs
+                            ? '<div class="text-box-notice alert alert-secondary">' . h(pg_review_refusal_message($review_refusal)) . '</div>'
+                            : '<div class="text-box-notice" style="display: inline-block; margin-bottom: 1em;">' . h(pg_review_refusal_message($review_refusal)) . '</div>';
+
                     // else prepare and output the comment form
                     } else {
                         // assume that we don't need to set enctype for HTML form until we find out otherwise
