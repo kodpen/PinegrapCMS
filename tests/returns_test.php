@@ -259,6 +259,13 @@ function test_returns_check_lines()
 	pg_assert_false(pg_return_check_lines(array(11 => -1), $lines)['ok'], 'negative');
 	pg_assert_false(pg_return_check_lines(array(11 => '1.5'), $lines)['ok'], 'a fraction');
 	pg_assert_false(pg_return_check_lines(array(11 => array(1)), $lines)['ok'], 'not a number');
+	pg_assert_false(pg_return_check_lines(array(11 => '', 12 => ' '), $lines)['ok'], 'only empty boxes');
+
+	// A cleared number box arrives as an empty string and asks for nothing,
+	// like 0; the other lines still go through.
+	$result = pg_return_check_lines(array('11' => '', '12' => '1'), $lines);
+	pg_assert_true($result['ok'], 'an empty box beside a filled one');
+	pg_assert_same(array(12 => 1), $result['lines'], 'the empty box is left out');
 	pg_assert_false(pg_return_check_lines('11', $lines)['ok'], 'not a list');
 
 	$result = pg_return_check_lines(array(11 => 3), $lines);
