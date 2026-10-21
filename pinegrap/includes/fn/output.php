@@ -1578,6 +1578,24 @@ function pg_default_control_panel_stylesheet_url()
         @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 }
 
+// Cloudflare's Email Address Obfuscation rewrites every address in an HTML
+// response into "[email protected]" and a script that decodes it in the
+// browser. On the software's own screens that breaks what the script does
+// not reach (table cells drawn again by DataTables, title attributes, text
+// copied into inputs) and shows staff the placeholder instead of the
+// address. Cloudflare leaves alone what sits between these two comments, so
+// the panel chrome wraps the whole body in them. Pages built in the
+// designer do not pass through here and keep the protection.
+function pg_output_email_off_open()
+{
+    return '<!--email_off-->';
+}
+
+function pg_output_email_off_close()
+{
+    return '<!--/email_off-->';
+}
+
 function output_header_secure($properties = false)
 {
     $software_page_title = '';
@@ -1625,7 +1643,8 @@ function output_header_secure($properties = false)
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
     ' . output_control_panel_header_includes(false) . '
 </head>
-<body' . $output_body_class . '>';
+<body' . $output_body_class . '>
+' . pg_output_email_off_open();
 
     return $output;
 }
@@ -2120,6 +2139,7 @@ function output_header($properties = false)
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>
     <body class="' . $output_body_class . '">
+    ' . pg_output_email_off_open() . '
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
     <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '">
@@ -2693,6 +2713,7 @@ function output_footer($properties = false)
         </div>
         </div>
         ' . $output_chat_launcher . '
+        ' . pg_output_email_off_close() . '
         </body>
         </html>';
 
@@ -2704,6 +2725,7 @@ function output_footer_secure($properties = false)
     $output = '
         </div>
         </div>
+        ' . pg_output_email_off_close() . '
         </body>
         </html>';
 
