@@ -5,7 +5,7 @@ description: Key code CSV import (import_key_codes.php): a code already there is
 
 ## What does the import do with a code that is already there?
 - It is updated in the columns the file has, and only when one of them differs; then `user` and `timestamp` become the importer's. Nothing differs: the row is left alone and counted "unchanged".
-- Before #735 (PR #<PR>) every code in the file was deleted and inserted again, `enabled = 1` when the file had no enabled column: re-importing a file reopened used single-use codes (checkout sets `enabled = 0`) and stamped every row.
+- Before #735 (PR #1060) every code in the file was deleted and inserted again, `enabled = 1` when the file had no enabled column: re-importing a file reopened used single-use codes (checkout sets `enabled = 0`) and stamped every row.
 - `key_codes.code` is not unique: the update writes every row with that code.
 
 ## And a new code?
