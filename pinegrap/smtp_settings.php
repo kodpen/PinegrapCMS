@@ -482,15 +482,42 @@ if (!$_POST) {
             'SYSTEM_MAIL_CONNECTION','CAMPAIGN_MAIL_CONNECTION'
         ];
 
+        // The defines as this request loaded them and as they are written,
+        // for the audit trail.
+        $smtp_audit_before = array();
+        $smtp_audit_after = array();
+
         foreach ($config_keys as $key) {
             $field = strtolower($key);
-            $value = isset($_POST[$field]) ? trim(str_replace("'", '', $_POST[$field])) : '';
+
+            // Saved as typed: update_config_define() escapes quotes and
+            // backslashes, so a password with a quote in it still works. A
+            // text box never sends a control character; one in a forged
+            // request would put a line break inside the define, where the
+            // next save could no longer find it.
+            $value = (isset($_POST[$field]) && is_string($_POST[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $_POST[$field])) : '';
 
             // A connected account is named by its number, and only one that
             // was connected for sending e-mail can be chosen.
             if (($key === 'SYSTEM_MAIL_CONNECTION') || ($key === 'CAMPAIGN_MAIL_CONNECTION')) {
                 $chosen = pg_connect_account((int) $value);
                 $value = (is_array($chosen) && ($chosen['user_id'] === 0) && in_array('mail', $chosen['purposes'], true)) ? (string) (int) $chosen['id'] : '';
+            }
+
+            $smtp_audit_was = defined($key) ? (string) constant($key) : '';
+
+            if ($key === 'EMAIL_CAMPAIGN_JOB') {
+                $smtp_audit_was = (defined($key) && ((constant($key) === true) || (constant($key) === 'true'))) ? 'true' : 'false';
+            }
+
+            $smtp_audit_before[$field] = $smtp_audit_was;
+
+            if ($key === 'EMAIL_CAMPAIGN_JOB') {
+                $smtp_audit_after[$field] = ($value === 'true') ? 'true' : 'false';
+            } elseif (($value === '') && (($key === 'SYSTEM_SMTP_PASSWORD') || ($key === 'CAMPAIGN_SMTP_PASSWORD'))) {
+                $smtp_audit_after[$field] = $smtp_audit_was;
+            } else {
+                $smtp_audit_after[$field] = $value;
             }
 
             // The job switch is stored as a real boolean. The quoted forms
@@ -504,7 +531,7 @@ if (!$_POST) {
                 if (preg_match("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", $config_file_content)) {
                     $config_file_content = preg_replace("/define\s*\(\s*'$key'\s*,\s*(?:true|false)\s*\);/i", "define('$key', $value);", $config_file_content);
                 } else {
-                    $config_file_content = str_replace('?>', "define('$key', $value);\r\n?>", $config_file_content);
+                    $config_file_content = pg_config_insert_line($config_file_content, "define('$key', $value);");
                 }
 
                 continue;
@@ -528,14 +555,19 @@ if (!$_POST) {
             }
         }
 
-        $handle = fopen(CONFIG_FILE_PATH, 'w');
-        if ($handle) {
-            fwrite($handle, $config_file_content);
-            fclose($handle);
+        // Written only from a successful read: an empty result would replace
+        // config.php with an empty file and take the site down. The write
+        // goes through a temp file and a rename, so a failure leaves the old
+        // file as it was.
+        if (trim($config_file_content) === '') {
+            $liveform_settings->add_error(lang('Config file could not be opened.'));
+        } elseif (!pg_write_config_file($config_file_content)) {
+            $liveform_settings->add_error(lang('The config file could not be written.'));
+        } else {
+            log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
+            pg_audit('update', 'settings', 0, $smtp_audit_before, $smtp_audit_after, 'smtp');
+            $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
         }
-
-        log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
-        $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
 
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');
         exit;

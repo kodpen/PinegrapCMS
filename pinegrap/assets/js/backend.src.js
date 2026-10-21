@@ -3242,7 +3242,11 @@ function tagin(el, option = {}) {
     const transform = eval(el.dataset.transform) || option.transform || defaultTransform
     const placeholder = el.dataset.placeholder || option.placeholder || defaultPlaceholder
 
-    const templateTag = value => `<span class="${classTag}"><span class="${classTag}_text">${value}</span><span class="${classRemove}"></span></span>`
+    // A tag's text is data (a tracking number from the API or a marketplace,
+    // a class name), so it is escaped before it becomes markup; getTags()
+    // reads it back with textContent, unescaped.
+    const escapeTag = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+    const templateTag = value => `<span class="${classTag}"><span class="${classTag}_text">${escapeTag(value)}</span><span class="${classRemove}"></span></span>`
 
     const getValue = () => el.value
     const getValues = () => getValue().split(separator)
@@ -4128,6 +4132,15 @@ function show_or_hide_ecommerce_payment_gateway() {
                 break;
         }
     }
+
+    // The fields of the driver-based gateways name the gateway they belong to
+    // (pg_payment_settings_card_rows()), so a new driver needs no case here.
+    var card = document.getElementById('ecommerce_credit_debit_card').checked == true;
+    var gateway = document.getElementById('ecommerce_payment_gateway').value;
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pg-payment-gateway]'), function (row) {
+        row.style.display = (card && (row.getAttribute('data-pg-payment-gateway') === gateway)) ? '' : 'none';
+    });
 }
 
 // Example starter JavaScript for disabling form submissions if there are invalid fields
@@ -9981,10 +9994,13 @@ var pgSettingsModal = (function () {
         // Which card button asked for this save, if it was a card button at
         // all. Delegated because the cards arrive by AJAX. The dialog's own
         // Save is type="button" and never lands here, which is what keeps a
-        // plain save plain.
-        $(el).on('click', '#pg_settings_modal_pane [type="submit"]', function () {
+        // plain save plain; Return presses the form's first, nameless submit
+        // button (modal.php), which clears it. A click whose default was
+        // cancelled -- an inline confirm() answered with Cancel -- submits
+        // nothing, so it is not remembered for the next save either.
+        $(el).on('click', '#pg_settings_modal_form [type="submit"]', function (event) {
 
-            pressed = (this.name && !this.disabled)
+            pressed = (!event.isDefaultPrevented() && this.name && !this.disabled)
                 ? { name: this.name, value: this.value }
                 : null;
         });
@@ -10034,7 +10050,9 @@ var pgSettingsModal = (function () {
 
         }, true);
 
-        $(el).on('click', '#pg_settings_modal_save', save);
+        $(el).on('click', '#pg_settings_modal_save', function () {
+            save();
+        });
 
         // A dialog a card brings with it opens ON TOP of the settings, not
         // instead of them. Bootstrap's own data-api would close the settings
@@ -10124,10 +10142,16 @@ var pgSettingsModal = (function () {
         $('#pg_settings_modal_pane').on('change input', review);
 
         // Return in a text field submits a form. There is nowhere for this one
-        // to go, so it saves instead.
+        // to go, so it saves instead. Only a submit carries the card button
+        // that started it: the button is taken here and handed over, so a
+        // remembered button never rides along with a later Save or Ctrl+S.
         $(form).on('submit', function (event) {
             event.preventDefault();
-            save();
+
+            var button = pressed;
+
+            pressed = null;
+            save(button);
         });
 
         el.addEventListener('keydown', function (event) {
@@ -10945,7 +10969,12 @@ window.pgCodeEditorReady = function (markup, done) {
     }
 
 
-    function save() {
+    /**
+     * @param {?{name: string, value: string}} [button] the card button that
+     *     submitted the form (the submit handler); none for the dialog's Save
+     *     and Ctrl+S
+     */
+    function save(button) {
 
         if (!pane || working()) {
             return;
@@ -10961,9 +10990,7 @@ window.pgCodeEditorReady = function (markup, done) {
         // settings and fetched nothing, and said "saved" as though it had:
         // the save module asks for post_value('waf_refresh_ranges') and it was
         // never in the body. On a page the browser had always sent it.
-        var button = pressed;
-
-        pressed = null;
+        button = button || null;
 
         busy++;
         setDirty(dirty);

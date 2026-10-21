@@ -6,6 +6,7 @@ description: What the per-page noindex/nofollow switch does in three places, whi
 ## What does the page `noindex` switch do?
 Three things at once; if one is missing it is a bug:
 - Emits `<meta name="robots" content="noindex, follow">` at the start of the `$meta_tags` block in `get_page_content.php`.
+  On an indexed page the same tag carries noarchive / max-snippet instead (`pg_page_robots_content()`).
 - Adds `Disallow` lines to `robots.txt`: `pg_build_robots_disallow_rules()` (functions.php) -> `get_robots.txt.php`.
 - Drops the page from the sitemap: `get_sitemap_info.php` + `sitemap = 0` forced on the save side.
 
@@ -30,4 +31,4 @@ Three things at once; if one is missing it is a bug:
 ## Known trade-off
 - A page blocked by `robots.txt` is not crawled, so its `noindex` meta is never read. Right for pages not yet in results (no crawl budget spent); a slow way to drop an already-listed page. Shown as a warning on the screen.
 
-Related: docs/memory/visitors/robots-txt-disallow-rules.md
+Related: docs/memory/visitors/robots-txt-disallow-rules.md, docs/memory/visitors/page-canonical-robots-directives.md

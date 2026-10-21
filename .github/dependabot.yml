@@ -1,0 +1,21 @@
+# Version updates for the actions the workflows use.
+#
+# GitHub reads this file from the default branch (main), so it takes effect
+# once a release carries it there. target-branch makes Dependabot read the
+# workflow files of development and open its pull requests against it.
+#
+# The workflows name actions by major tag (actions/checkout@v7), so every
+# pull request Dependabot opens is a major version bump. They are not
+# grouped: each bump is reviewed against its own changelog.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: development
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Istanbul
+    commit-message:
+      prefix: CI

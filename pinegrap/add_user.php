@@ -714,6 +714,8 @@ $login"));
 
     log_activity(lang(array('string'=>'user ({var:1}) was created','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
 
+    pg_audit_record('create', 'user', (int) $user_id);
+
     // If the user was notified, then prepare password message related to that.
     if ($_POST['notify_user'] == 1) {
         $password_message = lang(array('string'=>'A password, \'{var:1}\', has been emailed to the user.','vars'=>h($random_password)));

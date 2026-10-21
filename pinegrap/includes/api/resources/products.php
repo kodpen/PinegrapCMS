@@ -630,6 +630,8 @@ function api_products_create($params) {
 
 	api_products_rescore($id);
 
+	pg_audit_record('create', 'products', $id);
+
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($name, $app['name'], $app['api_key'])
@@ -1062,6 +1064,7 @@ function api_products_update($params) {
 
 	api_dry_run_stop('updated', 'product', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('products', $id);
 
 	api_exec("UPDATE products SET " . implode(', ', $set) . ",
 			user = '" . (int)$app['owner']['id'] . "',
@@ -1152,6 +1155,8 @@ function api_products_update($params) {
 	}
 
 	api_products_rescore($id);
+
+	pg_audit_record('update', 'products', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -1248,6 +1253,8 @@ function api_products_delete($params) {
 
 		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
 
+		$audit_before = pg_audit_fetch('products', $id);
+
 		// The statements every panel screen writes when it bins a product.
 		// "AND recycled = '0'" in them keeps a second request that raced this
 		// one from writing recycled_enabled from an enabled that is already
@@ -1258,6 +1265,8 @@ function api_products_delete($params) {
 			api_exec($statement);
 
 		}
+
+		pg_audit_record('recycle', 'products', $id, $audit_before);
 
 		log_activity(lang(array(
 			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
@@ -1389,7 +1398,7 @@ function api_products_prices($params) {
 		}
 
 		$product = ($id > 0)
-			? api_row("SELECT id, name, price FROM products WHERE id = '" . $id . "' LIMIT 1")
+			? api_row("SELECT id, name, short_description, price FROM products WHERE id = '" . $id . "' LIMIT 1")
 			: null;
 
 		if ($product === null) {
@@ -1406,6 +1415,8 @@ function api_products_prices($params) {
 
 			api_exec("UPDATE products SET price = '" . $price . "', timestamp = '" . time() . "'
 				WHERE id = '" . (int)$product['id'] . "' LIMIT 1");
+
+			pg_audit('update', 'product', (int)$product['id'], array('price' => $product['price']), array('price' => $price), pg_audit_label_of('products', $product));
 
 			pg_price_history_queue((int)$product['id'], 'api');
 
@@ -1511,11 +1522,12 @@ function api_price_history_entry_present($row) {
 // table answers an empty list rather than an error: the product exists, it
 // simply has no history yet.
 //
-// What is not here, on purpose: an offer's reduced price. The history keeps
-// what products.price was set to; an offer changes what the visitor pays
-// without changing that column, and recording it is a step of its own (the
-// price-history plan). Until then a client must not read the lowest row of a
-// window as the lawful "price before the discount".
+// Offer rows (source 'offer') are the price the open offers gave a visitor
+// with no offer code, no account and an empty cart, written by the general job
+// within the hour an offer began, ended or changed
+// (pg_price_history_offer_pass_run()); the other rows are products.price as
+// its writers set it. The newest row at or before a moment is what such a
+// visitor paid then.
 function api_products_price_history($params) {
 
 	$id = (int)$params['id'];

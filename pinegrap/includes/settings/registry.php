@@ -134,11 +134,13 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
                 'pgset-images'   => lang('Image Optimization'),
+                'pgset-revisions' => lang('Page Revisions'),
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
+                'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-signature' => pg_settings_keywords(lang('signature, timestamp, time stamp, tsa, rfc 3161, credit, kamusm, kamu sm, e-guven, e-tugra, contract, evidence, proof')),
             ),
         ),
@@ -149,12 +151,14 @@ function pg_settings_categories()
             'description' => lang('Search engines, structured data and visitor tracking.'),
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
+                'pgset-ai'        => lang('AI Crawlers'),
                 'pgset-feeds'     => lang('Product Feeds'),
                 'pgset-analytics' => lang('Visitor Tracking'),
                 'pgset-cookies'   => lang('Cookie Consent'),
             ),
             'keywords' => array(
                 'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
+                'pgset-ai'        => pg_settings_keywords(lang('ai, artificial intelligence, llms.txt, robots, crawler, bot, gptbot, claudebot, chatgpt, content signal, training')),
                 'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv')),
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
@@ -262,7 +266,7 @@ function pg_settings_categories()
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
-                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder')),
+                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),

@@ -18,5 +18,6 @@ description: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() ve
 
 ## Adding a new provider
 - `waf_ai_bots()` + `pg_waf_ai_range_sources()` + the token overlap test (two-way substring against the bad/attack lists).
+- `pg_ai_crawler_catalog()` too: robots.txt names the same bots per switch (docs/memory/visitors/ai-crawlers-llms-txt.md); `tests/seo_ai_crawlers_test.php` fails until it does.
 
 Related: docs/memory/waf/waf-score-calibration-and-bot-order.md

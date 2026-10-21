@@ -982,7 +982,8 @@ function pg_product_feed_catalog_roots()
 // pg_product_feed_group_index()), none of them under one of
 // $options['excluded_group_ids'], and pg_product_feed_row_skip() finds
 // nothing against it. Offer prices are the ones any visitor gets, without a
-// code (get_discounted_product_prices(false)), as on the catalog page.
+// code, an account or a cart (get_discounted_product_prices(false)), as on
+// the catalog page, whoever's request builds the feed.
 //
 // $options: 'excluded_group_ids', 'default_brand'.
 // Returns array('error' => '' | 'ecommerce_off' | 'no_catalog' | a

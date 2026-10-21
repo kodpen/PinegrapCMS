@@ -608,10 +608,12 @@ function pg_tr_render_finalize($content)
 
     // The canonical address of the page as the pipeline wrote it: the source
     // address, from which the alternates are derived. Unescaped here, so an
-    // address with a query string is not escaped twice on its way out.
-    $canonical = '';
+    // address with a query string is not escaped twice on its way out. A page
+    // whose canonical link names another address (page.canonical_url) is
+    // still this page: its own address is kept aside (pg_page_own_url()).
+    $canonical = function_exists('pg_page_own_url') ? pg_page_own_url() : '';
 
-    if (preg_match('~<link\s+rel="canonical"\s+href="([^"]+)"~i', $content, $m)) {
+    if (($canonical === '') && preg_match('~<link\s+rel="canonical"\s+href="([^"]+)"~i', $content, $m)) {
         $canonical = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 

@@ -9,7 +9,9 @@
  * importer reads one), the document with DOMDocument, and what comes out is
  * plain data - rows of text for a workbook, a small safe subset of HTML for
  * a document - that the file manager and the Workspace draw. The files are
- * never written to here; the preview is read-only.
+ * never written to here; changing a workbook's cells is the business of
+ * includes/fn/office_edit.php, which the preview asks which cells it may
+ * offer.
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
@@ -39,6 +41,15 @@ define('PG_OFFICE_MAX_PACKAGE', 256 * 1024 * 1024);
 define('PG_OFFICE_MAX_ROWS', 2000);
 define('PG_OFFICE_MAX_COLUMNS', 200);
 define('PG_OFFICE_MAX_CELLS', 120000);
+
+/**
+ * How much of a workbook's shared string table is kept: strings, and their
+ * bytes together. The table is read whole before any sheet, since a cell
+ * names its text by number, so these bound the memory a table within the
+ * part limit can take.
+ */
+define('PG_OFFICE_MAX_STRINGS', 500000);
+define('PG_OFFICE_MAX_STRING_BYTES', 32 * 1024 * 1024);
 
 /**
  * How much of a document the preview shows: characters of HTML, and the
@@ -260,7 +271,9 @@ function pg_office_part_name($folder, $target)
    --------------------------------------------------------------------------- */
 
 /**
- * The sheets of a workbook in their order: name, part, hidden.
+ * The sheets of a workbook in their order: name, part, hidden, and type
+ * (worksheet; a chart sheet, a dialog sheet or a macro sheet has no cells to
+ * change).
  *
  * @param ZipArchive $zip
  * @return array[]
@@ -293,6 +306,7 @@ function pg_office_xlsx_sheets($zip)
             'name'   => (string) $sheet->getAttribute('name'),
             'part'   => $part,
             'hidden' => in_array(strtolower((string) $sheet->getAttribute('state')), array('hidden', 'veryhidden'), true),
+            'type'   => $rels[$id]['type'],
         );
     }
 
@@ -324,9 +338,15 @@ function pg_office_zip_stream()
 /**
  * The shared string table, as a list.
  *
+ * Read no further than the size the package declares for the table
+ * (pg_zip_entry_uri()): a stream would otherwise inflate a table that
+ * declares a kilobyte to whatever it holds. A table that unpacks past its
+ * declared size is damaged; one past PG_OFFICE_MAX_STRINGS strings or
+ * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show.
+ *
  * @param string $path the package on disk
  * @param string $part '' when the workbook has none
- * @return string[]
+ * @return string[]|false|null false when damaged, null when too large
  */
 function pg_office_xlsx_strings($path, $part)
 {
@@ -336,23 +356,47 @@ function pg_office_xlsx_strings($path, $part)
         return $strings;
     }
 
+    $size = pg_zip_entry_size($path, $part);
+
+    if ($size < 0) {
+        return $strings;
+    }
+
     pg_office_zip_stream();
 
     $reader = new XMLReader();
 
-    if (!$reader->open('zip://' . $path . '#' . $part, null, LIBXML_NONET)) {
+    if (!$reader->open(pg_zip_entry_uri($path, $part, $size), null, LIBXML_NONET)) {
         return $strings;
     }
 
+    $previous = libxml_use_internal_errors(true);
+    $bytes = 0;
+    $too_large = false;
+
     while ($reader->read()) {
         if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->name === 'si')) {
-            $strings[] = $reader->readString();
+            $string = $reader->readString();
+            $bytes += strlen($string);
+
+            if ((count($strings) >= PG_OFFICE_MAX_STRINGS) || ($bytes > PG_OFFICE_MAX_STRING_BYTES)) {
+                $too_large = true;
+                break;
+            }
+
+            $strings[] = $string;
         }
     }
 
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
     $reader->close();
 
-    return $strings;
+    if (pg_zip_entry_overran()) {
+        return false;
+    }
+
+    return $too_large ? null : $strings;
 }
 
 /**
@@ -426,14 +470,16 @@ function pg_office_xlsx_column($reference)
 
 /**
  * A day count as a date, or a date and time when it has a fraction. Day 0
- * is 30 December 1899.
+ * is 30 December 1899, or 1 January 1904 in a workbook that counts from
+ * there (old Mac files).
  *
  * @param float|string $serial
+ * @param bool         $date1904
  * @return string
  */
-function pg_office_xlsx_date($serial)
+function pg_office_xlsx_date($serial, $date1904 = false)
 {
-    $stamp = ((float) $serial - 25569) * 86400;
+    $stamp = ((float) $serial - ($date1904 ? 24107 : 25569)) * 86400;
 
     return gmdate((((float) $serial) == floor((float) $serial)) ? 'Y-m-d' : 'Y-m-d H:i', (int) round($stamp));
 }
@@ -470,9 +516,10 @@ function pg_office_xlsx_number($value)
  * @param array  $date_styles pg_office_xlsx_date_styles()
  * @param int    $cells_left  how many cells may still be read, counted down
  * @param bool   $truncated   set when the sheet was cut
+ * @param bool   $date1904    the workbook counts its days from 1904
  * @return array[]
  */
-function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated)
+function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false)
 {
     $rows = array();
     $truncated = false;
@@ -481,7 +528,9 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 
     $reader = new XMLReader();
 
-    if (!$reader->open('zip://' . $path . '#' . $part, null, LIBXML_NONET)) {
+    // No further than the sheet's declared size: past it the read stops, and
+    // the rows read until then are shown as the beginning of the sheet.
+    if (!$reader->open(pg_zip_entry_uri($path, $part, max(0, pg_zip_entry_size($path, $part))), null, LIBXML_NONET)) {
         return $rows;
     }
 
@@ -504,6 +553,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
         }
 
         $row = array();
+        $waiting = array();
 
         foreach ($row_xml->c as $cell) {
             $column = pg_office_xlsx_column((string) $cell['r']);
@@ -545,7 +595,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
                     $value = (string) $cell->v;
 
                     if (($value !== '') && is_numeric($value)) {
-                        $value = isset($date_styles[(int) $cell['s']]) ? pg_office_xlsx_date($value) : pg_office_xlsx_number($value);
+                        $value = isset($date_styles[(int) $cell['s']]) ? pg_office_xlsx_date($value, $date1904) : pg_office_xlsx_number($value);
                     }
             }
 
@@ -554,11 +604,24 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
             }
 
             $row[$column] = $value;
+
+            // A formula with no result stored: the program that wrote the
+            // file did not work it out (or an edit here took the stale one
+            // away), and a spreadsheet program will when it opens the file.
+            if (($value === '') && isset($cell->f)) {
+                $waiting[] = $column;
+            }
         }
 
         // The row number the sheet gives, so an empty stretch stays visible
         // as a gap rather than closing up.
-        $rows[] = array('n' => (int) $row_xml['r'], 'cells' => $row);
+        $entry = array('n' => (int) $row_xml['r'], 'cells' => $row);
+
+        if (!empty($waiting)) {
+            $entry['calc'] = $waiting;
+        }
+
+        $rows[] = $entry;
         $cells_left -= max(1, count($row));
     }
 
@@ -566,17 +629,30 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
     libxml_use_internal_errors($previous);
     $reader->close();
 
+    if (pg_zip_entry_overran()) {
+        $truncated = true;
+    }
+
     return $rows;
 }
 
 /**
  * A workbook as the preview draws it.
  *
+ * Asked for editing, each sheet also says whether its cells may be changed
+ * and which of the shown ones may not (pg_office_xlsx_sheet_edit_info()),
+ * and the workbook carries its version, which a save hands back.
+ *
  * @param string $path
- * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated), truncated
+ * @param bool   $edit
+ * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated[, edit]), truncated[, version]
  */
-function pg_office_xlsx_read($path)
+function pg_office_xlsx_read($path, $edit = false)
 {
+    // The version is taken before anything is read: a file changed while it
+    // is read then fails the save's check, instead of passing it with cells
+    // the person never saw.
+    $version = ($edit && function_exists('pg_office_version')) ? pg_office_version($path) : '';
     $zip = pg_office_open($path, $error);
 
     if ($zip === null) {
@@ -586,30 +662,57 @@ function pg_office_xlsx_read($path)
     $sheets = pg_office_xlsx_sheets($zip);
     $date_styles = pg_office_xlsx_date_styles($zip);
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $zip->close();
+    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) $zip->getFromName('xl/workbook.xml'));
 
     if (empty($sheets)) {
+        $zip->close();
+
         return array('ok' => false, 'error' => lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
     }
 
     $strings = pg_office_xlsx_strings($path, $strings_part);
+
+    if (!is_array($strings)) {
+        return array('ok' => false, 'error' => ($strings === null) ? lang('This file is too large to show here. Download it to open it.') : lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
+    }
+
     $cells_left = PG_OFFICE_MAX_CELLS;
     $out = array();
     $any_cut = false;
+    $edit = $edit && function_exists('pg_office_xlsx_sheet_edit_info');
+    $signed = $edit && pg_office_signed($zip);
+    $styles = $edit ? pg_office_xlsx_style_kinds($zip) : array();
 
     foreach ($sheets as $sheet) {
         $cut = false;
-        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut) : array();
+        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904) : array();
 
         if ($cells_left <= 0) {
             $cut = true;
         }
 
         $any_cut = $any_cut || $cut;
-        $out[] = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+        $entry = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+
+        if ($edit) {
+            $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];
+            $entry['edit'] = $signed
+                ? array('ok' => false, 'why' => 'signed')
+                : pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
+        }
+
+        $out[] = $entry;
     }
 
-    return array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+    $zip->close();
+
+    $book = array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+
+    if ($edit) {
+        $book['version'] = $version;
+    }
+
+    return $book;
 }
 
 /* ---------------------------------------------------------------------------
@@ -815,6 +918,14 @@ function pg_office_docx_run(&$state, $run)
 
             case 'cr':
                 $html .= '<br>';
+                break;
+
+            case 'noBreakHyphen':
+                $html .= '&#8209;';
+                break;
+
+            case 'softHyphen':
+                $html .= '&shy;';
                 break;
 
             case 'sym':
@@ -1077,6 +1188,7 @@ function pg_office_docx_blocks(&$state, $container, &$html)
             case 'p':
                 $props = pg_office_docx_paragraph_props($child);
                 $inner = pg_office_docx_inline($state, $child);
+                $mark = pg_office_docx_edit_mark($state, $child);
 
                 if (($props['list'] === '') && isset($state['styles'][$props['style']])) {
                     $props['list'] = $state['styles'][$props['style']]['list'];
@@ -1094,9 +1206,9 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                     if ($list_open === '') {
                         $list_open = $format;
                         $list_id = $props['list'];
-                        $html .= '<' . $format . ' class="office-list"><li class="office-lvl-' . (int) $props['level'] . '">';
+                        $html .= '<' . $format . ' class="office-list"><li class="office-lvl-' . (int) $props['level'] . '"' . $mark . '>';
                     } else {
-                        $html .= '</li><li class="office-lvl-' . (int) $props['level'] . '">';
+                        $html .= '</li><li class="office-lvl-' . (int) $props['level'] . '"' . $mark . '>';
                     }
 
                     $html .= ($inner === '') ? '&nbsp;' : $inner;
@@ -1108,7 +1220,7 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                 $tag = pg_office_docx_block_tag($props['style']);
                 $style = ($props['align'] !== '') ? ' style="text-align:' . $props['align'] . '"' : '';
 
-                $html .= '<' . $tag . $style . '>' . (($inner === '') ? '&nbsp;' : $inner) . '</' . $tag . '>';
+                $html .= '<' . $tag . $style . $mark . '>' . (($inner === '') ? '&nbsp;' : $inner) . '</' . $tag . '>';
                 break;
 
             case 'tbl':
@@ -1165,16 +1277,58 @@ function pg_office_docx_blocks(&$state, $container, &$html)
 }
 
 /**
+ * The attributes a drawn paragraph carries when the document is read for
+ * editing: its position among the document's paragraphs (data-p), and why
+ * it cannot be changed (data-lock) when it cannot; the text of one that can
+ * goes to the preview beside the HTML. Nothing when not editing.
+ *
+ * @param array      $state
+ * @param DOMElement $paragraph
+ * @return string
+ */
+function pg_office_docx_edit_mark(&$state, $paragraph)
+{
+    if (!isset($state['edit'])) {
+        return '';
+    }
+
+    $path = $paragraph->getNodePath();
+
+    if (!isset($state['edit']['index'][$path])) {
+        return '';
+    }
+
+    $position = (int) $state['edit']['index'][$path];
+    $edit = pg_office_docx_paragraph_edit($paragraph);
+
+    if ($edit['lock'] !== '') {
+        return ' data-p="' . $position . '" data-lock="' . h($edit['lock']) . '"';
+    }
+
+    $state['edit']['texts'][(string) $position] = $edit['text'];
+
+    return ' data-p="' . $position . '"';
+}
+
+/**
  * A document as the preview draws it: a safe subset of HTML (headings,
  * paragraphs, lists, tables, bold and the like, links, inlined pictures),
  * made here from the package alone, with nothing the file wrote passing
  * through unescaped.
  *
+ * Asked for editing, the paragraphs drawn carry their position (and the
+ * reason when one cannot change), the answer carries the texts of those that
+ * can and the version a save hands back (includes/fn/office_edit.php), or
+ * says why the document cannot be changed at all.
+ *
  * @param string $path
- * @return array ok, error, html, truncated, images_lost
+ * @param bool   $edit
+ * @return array ok, error, html, truncated, images_lost[, edit, version]
  */
-function pg_office_docx_read($path)
+function pg_office_docx_read($path, $edit = false)
 {
+    // As for a workbook, the version is taken before anything is read.
+    $version = ($edit && function_exists('pg_office_version')) ? pg_office_version($path) : '';
     $zip = pg_office_open($path, $error);
 
     if ($zip === null) {
@@ -1191,6 +1345,16 @@ function pg_office_docx_read($path)
 
     $state = pg_office_docx_state($zip);
     $html = '';
+    $edit = $edit && function_exists('pg_office_docx_edit_refusal');
+    $refusal = $edit ? pg_office_docx_edit_refusal($zip) : '';
+
+    if ($edit && ($refusal === '')) {
+        $state['edit'] = array('index' => array(), 'texts' => array());
+
+        foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
+            $state['edit']['index'][$paragraph->getNodePath()] = $position;
+        }
+    }
 
     foreach ($document->getElementsByTagNameNS('*', 'body') as $body) {
         pg_office_docx_blocks($state, $body, $html);
@@ -1199,7 +1363,16 @@ function pg_office_docx_read($path)
 
     $zip->close();
 
-    return array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'], 'images_lost' => $state['images_lost']);
+    $out = array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'], 'images_lost' => $state['images_lost']);
+
+    if ($edit) {
+        $out['edit'] = ($refusal !== '')
+            ? array('ok' => false, 'why' => $refusal)
+            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts']);
+        $out['version'] = $version;
+    }
+
+    return $out;
 }
 
 /**
@@ -1216,17 +1389,56 @@ function pg_office_view_includes()
 }
 
 /**
- * The words the preview's drawing code needs, translated.
+ * The words the preview's drawing code needs, translated: the preview's own,
+ * those of a workbook offered for editing (why a cell or a sheet is not
+ * offered, the hint, the count of changes) and those of a document (why a
+ * paragraph or the whole document is not offered, the hint, the count).
  *
- * @return array hidden, truncated, images_lost, empty
+ * @return array
  */
 function pg_office_view_strings()
 {
     return array(
-        'hidden'      => lang('Hidden sheet'),
-        'truncated'   => lang('Only the beginning is shown. Download the file to see all of it.'),
-        'images_lost' => lang('{1} picture(s) could not be shown.'),
-        'empty'       => lang('The sheet is empty.'),
+        'hidden'            => lang('Hidden sheet'),
+        'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
+        'images_lost'       => lang('{1} picture(s) could not be shown.'),
+        'empty'             => lang('The sheet is empty.'),
+        'calc'              => lang('Worked out by a formula when the file is opened in a spreadsheet program.'),
+        'edit_hint'         => lang('Double-click a cell, or select it and type, to change it. Enter keeps the change, Esc undoes it.'),
+        'changed'           => lang('{1} cell(s) changed.'),
+        'recalc'            => lang('Formulas are worked out again when the file is opened in a spreadsheet program.'),
+        'formula_text'      => lang('Kept as text: formulas are not worked out here.'),
+        'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
+        'locked_formula_is' => lang('Worked out by a formula: {1}'),
+        'locked_value'      => lang('A linked value or a picture in the cell. Change it in a spreadsheet program.'),
+        'locked_merged'     => lang('Hidden under merged cells. Change the first cell of the area.'),
+        'locked_table'      => lang('A header or totals row of a table. Change it in a spreadsheet program.'),
+        'locked_pivot'      => lang('Part of a pivot table. Change it in a spreadsheet program.'),
+        'locked_array'      => lang('Part of an array formula. Change it in a spreadsheet program.'),
+        'locked_protected'  => lang('The sheet is protected and this cell is locked.'),
+        'sheet_protected'   => lang('The sheet is protected: only its unlocked cells can be changed.'),
+        'sheet_signed'      => lang('The file is digitally signed, so its cells are not changed here.'),
+        'sheet_kind'        => lang('This sheet has no cells to change.'),
+        'sheet_large'       => lang('This sheet is too large to change here.'),
+        'sheet_unusual'     => lang('This sheet cannot be changed here.'),
+        'doc_hint'          => lang('Click a paragraph, then click it again (or press Enter) to change its text. Enter keeps the change, Shift+Enter starts a new line, Esc undoes it.'),
+        'doc_changed'       => lang('{1} paragraph(s) changed.'),
+        'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
+        'doc_editor'        => lang('Text of the paragraph'),
+        'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
+        'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
+        'doc_protected'     => lang('The document is protected against changes.'),
+        'doc_tracking'      => lang('Track Changes is on for this document. Change it in a word processor, so that the changes are tracked.'),
+        'doc_large'         => lang('This document is too large to change here.'),
+        'doc_unusual'       => lang('This document cannot be changed here.'),
+        'para_tracked'      => lang('This paragraph has tracked changes. Change it in a word processor.'),
+        'para_field'        => lang('This paragraph has a field, such as a page number, a date or a table of contents. Change it in a word processor.'),
+        'para_comment'      => lang('This paragraph has a comment. Change it in a word processor.'),
+        'para_note'         => lang('This paragraph has a footnote or an endnote. Change it in a word processor.'),
+        'para_control'      => lang('This paragraph is part of a content control or a form. Change it in a word processor.'),
+        'para_object'       => lang('This paragraph has a picture, a shape, an equation or a symbol. Change it in a word processor.'),
+        'para_break'        => lang('This paragraph has a page or column break. Change it in a word processor.'),
+        'para_other'        => lang('This paragraph holds more than text. Change it in a word processor.'),
     );
 }
 
@@ -1235,18 +1447,19 @@ function pg_office_view_strings()
  *
  * @param string $path
  * @param string $name the file's name (for the kind)
+ * @param bool   $edit a workbook or a document also says what may be changed in it
  * @return array ok, error, kind, and the kind's own fields
  */
-function pg_office_read($path, $name)
+function pg_office_read($path, $name, $edit = false)
 {
     $kind = pg_office_kind($name);
 
     if ($kind === 'xlsx') {
-        return array('kind' => 'xlsx') + pg_office_xlsx_read($path);
+        return array('kind' => 'xlsx') + pg_office_xlsx_read($path, $edit);
     }
 
     if ($kind === 'docx') {
-        return array('kind' => 'docx') + pg_office_docx_read($path);
+        return array('kind' => 'docx') + pg_office_docx_read($path, $edit);
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');

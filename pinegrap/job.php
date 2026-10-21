@@ -20,6 +20,8 @@
 // It should be run by a cron job.  Currently it does the following:
 //
 // - Publishing scheduled comments
+// - Putting visual-designer pages on the site, and taking them off it, at
+//     their scheduled times
 // - Creating order abandoned auto campaigns
 // - Unpublishing old calendar events so they don't appear on the calendar
 //     or in search results.
@@ -283,7 +285,7 @@ if (
     ECOMMERCE
     and defined('ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS')
     and (ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS > 0)
-    and db_item("SHOW COLUMNS FROM orders LIKE 'paid_at'")
+    and pg_schema_has('orders', 'paid_at')
 ) {
 
     $cancel_days = (int) ECOMMERCE_OFFLINE_PAYMENT_CANCEL_DAYS;
@@ -293,7 +295,7 @@ if (
     // An order put on the customer's account (ERP, 10.60) is an offline
     // payment too, but no transfer is coming: it is paid by the account's
     // due date, once it is invoiced. It is never cancelled here.
-    $sql_not_on_account = db_item("SHOW COLUMNS FROM orders LIKE 'erp_on_account'")
+    $sql_not_on_account = pg_schema_has('orders', 'erp_on_account')
         ? 'AND (erp_on_account = 0)'
         : '';
 
@@ -462,6 +464,73 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// Scheduled pages (includes/fn/page_schedule.php): a draft whose publish time
+// has come goes on the site, a page whose time to come off has come goes back
+// to the drafts, and the time is cleared. Every tick, so a page goes live
+// within one tick of its time; with nothing due it is two indexed reads.
+if (function_exists('pg_page_schedule_run')) {
+
+    $page_schedule = pg_page_schedule_run();
+
+    foreach ($page_schedule['published'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was published at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['unpublished'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) was taken off the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_schedule['home'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+}
+
+// Page revisions (includes/fn/page_revisions.php): once a day the rows of
+// deleted pages go, and every page holding more revisions than the count rule
+// keeps is trimmed by the age rule. A tick with nothing due reads one small
+// file.
+if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_due()) {
+
+    $revision_sweep = pg_page_revisions_sweep();
+
+    if (($revision_sweep['orphans'] + $revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($revision_sweep['orphans'] + $revision_sweep['trimmed'], 0),
+                pg_format_number($revision_sweep['orphans'], 0),
+                pg_format_number($revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// The price visitors are shown under the offers, into the product price
+// history (pg_price_history_offer_pass_run()): once an hour, ten seconds a
+// tick until the pass is through. A tick with nothing due reads one small
+// file; a shop with no offer running reads its offers once an hour.
+if (pg_price_history_offer_pass_due()) {
+    pg_price_history_offer_pass_run(PG_PRICE_HISTORY_OFFER_BUDGET);
+}
+
+// Page revisions (includes/fn/page_revisions.php): once a day the rows of
+// deleted pages go, and every page holding more revisions than the count rule
+// keeps is trimmed by the age rule. A tick with nothing due reads one small
+// file.
+if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_due()) {
+
+    $revision_sweep = pg_page_revisions_sweep();
+
+    if (($revision_sweep['orphans'] + $revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($revision_sweep['orphans'] + $revision_sweep['trimmed'], 0),
+                pg_format_number($revision_sweep['orphans'], 0),
+                pg_format_number($revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // A visitors table still on MyISAM is moved to InnoDB once the cleanup has
 // brought it down to its period: an InnoDB copy built next to it a chunk at a
 // time, put in its place with one RENAME (pg_visitor_move_run()). Not in a
@@ -545,6 +614,18 @@ if (pg_mail_queue_ready()) {
     pg_mail_queue_run(25, 20);
 
     pg_cron_ran('mail_job');
+
+}
+
+// Queued text messages (pg_sms_queue_run() in includes/fn/sms.php). A request
+// only queues a message, since the provider's answer is not worth a visitor's
+// wait, so apart from the queue screen's Run now this pass is what sends
+// them, and it depends on no setting. An empty queue, which is every site
+// without SMS, costs one read. Fewer rows and less time than the mail pass:
+// each message is a paid call that waits on the provider.
+if (pg_sms_queue_ready()) {
+
+    pg_sms_queue_run(10, 15);
 
 }
 

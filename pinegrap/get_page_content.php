@@ -53,6 +53,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // The page's own meta tags (includes/fn/meta_tags.php); absent before
     // 2026.11.0 (11.0.3), and then there are none.
     $page_meta_tags = (string) ($row['page_meta_tags'] ?? '');
+    // The page's own canonical address and the robots directives besides
+    // noindex (includes/fn/seo.php); absent before 2026.11.0 (11.0.22), and
+    // then there are none.
+    $page_canonical_url = (string) ($row['canonical_url'] ?? '');
+    $page_noarchive = (int) ($row['noarchive'] ?? 0);
+    $page_max_snippet = $row['max_snippet'] ?? null;
     $page_type = $row['page_type'] ?? '';
     $comments = $row['comments'] ?? '';
     $comments_label = $row['comments_label'] ?? '';
@@ -636,20 +642,29 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // first replace designer regions.  We also replace designer regions inside of other
     // designer regions in this block of code (only one level though).
     preg_match_all('/<cregion>.*?<\/cregion>/i', $content, $regions);
-    
-    foreach ($regions[0] as $region) {
-        $cregion_name = strip_tags($region);
 
-        $query =
-            "SELECT
-                cregion_id,
-                cregion_content,
-                cregion_designer_type,
-                cregion_name
-            FROM cregion
-            WHERE cregion_name = '" . escape($cregion_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+    // The regions the content names are read in one query, then the regions
+    // those designer regions name in a second (pg_common_regions() keeps both
+    // for the common region pass below).
+    $cregion_rows = pg_common_regions(array_map('strip_tags', $regions[0]));
+    $embedded_cregion_names = array();
+
+    foreach ($cregion_rows as $row) {
+        if (($row !== null) && ($row['cregion_designer_type'] == 'yes')) {
+            preg_match_all('/<cregion>.*?<\/cregion>/i', $row['cregion_content'], $embedded_regions);
+            $embedded_cregion_names = array_merge($embedded_cregion_names, array_map('strip_tags', $embedded_regions[0]));
+        }
+    }
+
+    $embedded_cregion_rows = pg_common_regions($embedded_cregion_names);
+
+    foreach ($regions[0] as $region) {
+        $row = $cregion_rows[strip_tags($region)];
+
+        // No region by that name: the tag stays as it is.
+        if ($row === null) {
+            continue;
+        }
 
         $cregion_id = $row['cregion_id'];
         $cregion_content = $row['cregion_content'];
@@ -661,19 +676,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // Replace other designer regions that might exist inside this designer region.
             preg_match_all('/<cregion>.*?<\/cregion>/i', $cregion_content, $embedded_regions);
             foreach ($embedded_regions[0] as $embedded_region) {
-                $embedded_cregion_name = strip_tags($embedded_region);
+                $row = $embedded_cregion_rows[strip_tags($embedded_region)];
 
-                $query =
-                    "SELECT
-                        cregion_id,
-                        cregion_content,
-                        cregion_designer_type,
-                        cregion_name
-                    FROM cregion
-                    WHERE cregion_name = '" . escape($embedded_cregion_name) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                
+                if ($row === null) {
+                    continue;
+                }
+
                 $embedded_cregion_id = $row['cregion_id'];
                 $embedded_cregion_content = $row['cregion_content'];
                 $embedded_cregion_designer_type = $row['cregion_designer_type'];
@@ -5364,19 +5372,24 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
     // replace code with common regions
     preg_match_all('/<cregion>.*?<\/cregion>/i', $content, $regions);
+
+    // Names the designer region pass read are not read again; only a tag that
+    // appeared since (PHP, dynamic and system regions) costs a query, and all
+    // such tags share one.
+    $cregion_rows = pg_common_regions(array_map('strip_tags', $regions[0]));
+
+    // The common regions a user below Manager may edit, read once on the
+    // first common region of an edit-mode view.
+    $common_regions_user_can_edit = null;
+
     foreach ($regions[0] as $region) {
-        $cregion_name = strip_tags($region);
-        $query =
-            "SELECT
-                cregion_id,
-                cregion_content,
-                cregion_designer_type,
-                cregion_name
-            FROM cregion
-            WHERE cregion_name = '" . escape($cregion_name) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        
+        $row = $cregion_rows[strip_tags($region)];
+
+        // No region by that name: the tag stays as it is.
+        if ($row === null) {
+            continue;
+        }
+
         $cregion_id = $row['cregion_id'];
         $cregion_content = $row['cregion_content'];
         $cregion_designer_type = $row['cregion_designer_type'];
@@ -5384,13 +5397,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
+            if (($mode == 'edit') && ($user['role'] >= 3) && ($common_regions_user_can_edit === null)) {
+                $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $user['id']);
+            }
+
             // If mode is edit and user has edit access to common region, then add edit container.
             if (
                 ($mode == 'edit')
                 &&
                 (
                     ($user['role'] < 3)
-                    || (in_array($cregion_id, get_items_user_can_edit('common_regions', $user['id'])) == true)
+                    || (in_array($cregion_id, $common_regions_user_can_edit) == true)
                 )
             ) {
                 if ($page_editor_version == 'latest') {
@@ -5829,13 +5846,46 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $og_image = pg_og_default_image();
     }
 
+    // The address the canonical link and og:url name: the page's own
+    // canonical address (page.canonical_url) while the page is drawn at its
+    // own address and answers 200. An item the page shows (a product, a
+    // post, an event), a list page with a page number or a query, an error
+    // answer and an address that names nothing keep the automatic one: one
+    // address for all of them would make every item a copy of the same page.
+    $canonical_link_url = $canonical_url;
+
+    if ($page_canonical_url !== '') {
+        $pg_own_url = URL_SCHEME . HOSTNAME_SETTING . (($page_home == 'yes') ? PATH : PATH . encode_url_path($page_name));
+        $pg_status = function_exists('http_response_code') ? http_response_code() : false;
+
+        if (($page_type != 'error')
+            && ($canonical_url === $pg_own_url)
+            && empty($pg_blog_form_id)
+            && empty($pg_og_sw_product_image_name)
+            && !(function_exists('pg_sw_item_missing') && pg_sw_item_missing())
+            && (($pg_status === false) || ((int) $pg_status === 200))
+        ) {
+            $pg_canonical_override = pg_page_canonical_href($page_canonical_url, URL_SCHEME . HOSTNAME_SETTING);
+
+            if ($pg_canonical_override !== '') {
+                $canonical_link_url = $pg_canonical_override;
+            }
+        }
+    }
+
+    // The language pass finds the page it draws from the canonical link; a
+    // page that names another address keeps its own for it.
+    if ($email != TRUE) {
+        pg_page_own_url(($canonical_link_url !== $canonical_url) ? $canonical_url : '');
+    }
+
     // If open graph tags are not disabled, then prepare them.
 
     if (!defined('OPEN_GRAPH') or OPEN_GRAPH) {
 
         $open_graph ='        <meta property="og:title" content="' . h($page_title) . '">' . "\n" .
             '        <meta property="og:type" content="' . $og_type . '">' . "\n" .
-            '        <meta property="og:url" content="' . h($canonical_url) . '">' . "\n" .
+            '        <meta property="og:url" content="' . h($canonical_link_url) . '">' . "\n" .
             '        <meta property="og:site_name" content="' . h(TITLE) . '">' . "\n" .
             '        <meta property="og:locale" content="' . pg_og_locale() . '">' . "\n";
 
@@ -5914,11 +5964,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // An address that names a record or product that is not there answers
     // 404 (pg_sw_item_missing()): it is kept out of the index the same way,
     // and has no canonical address to point at.
+    //
+    // A page in the index can also ask not to be kept as a cached copy
+    // (page.noarchive) and how much text a result may quote from it
+    // (page.max_snippet); both apply to every address the page draws, the
+    // items it shows included (pg_page_robots_content()).
     $pg_item_missing = function_exists('pg_sw_item_missing') && pg_sw_item_missing();
 
-    if ((($page_noindex == 1) || $pg_item_missing) && ($email != TRUE)) {
-        $robots_content = 'noindex, ' . (($page_nofollow == 1) ? 'nofollow' : 'follow');
-        $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+    if ($email != TRUE) {
+        $robots_content = pg_page_robots_content(
+            ($page_noindex == 1) || $pg_item_missing,
+            ($page_nofollow == 1),
+            ($page_noarchive == 1),
+            $page_max_snippet);
+
+        if ($robots_content !== '') {
+            $robots_meta_tag = '<meta name="robots" content="' . $robots_content . '">' . "\n" . '        ';
+        }
     }
 
     // The site's Google Search Console verification (search_console.php). Google
@@ -5953,7 +6015,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $twitter_card,
             $custom_meta_tags) .
         pg_meta_tags_html($custom_meta_tags) .
-        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_url) . '">');
+        ($pg_item_missing ? '' : '        <link rel="canonical" href="' . h($canonical_link_url) . '">');
 
     // The placeholder is written into every style the software creates, but a
     // designer editing raw style code can delete it, and then none of this block

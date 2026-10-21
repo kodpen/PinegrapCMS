@@ -73,13 +73,26 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!is_string($q)) continue;
         $q   = (int)$q;
         if ($iid <= 0) continue;
+        // Anti-tamper: the row must belong to THIS session's order.
+        $line = db_item("SELECT order_items.ship_to_id, order_items.quantity, ship_tos.complete
+                         FROM order_items
+                         LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
+                         WHERE order_items.id = '$iid' AND order_items.order_id = '$oid' LIMIT 1");
+        if (!$line) continue;
         if ($q <= 0) {
-            // 0 = remove
-            db("DELETE FROM order_items WHERE id = '$iid' AND order_id = '$oid'");
-            db("DELETE FROM form_data   WHERE order_item_id = '$iid' AND order_id = '$oid'");
+            // 0 = remove, the way every removal goes: the recipient it leaves
+            // empty goes too (express order would ask an address for it and
+            // charge its shipping), and a gift is not put straight back.
+            pg_cart_remove_line($iid);
             $applied++;
         } else {
             db("UPDATE order_items SET quantity = '$q' WHERE id = '$iid' AND order_id = '$oid'");
+            // A recipient that already has an address and a shipping method
+            // is charged for what it now holds.
+            if (($q != (int)$line['quantity']) && $line['ship_to_id'] && ($line['complete'] == 1)) {
+                require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+                update_shipping_cost_for_ship_to($line['ship_to_id']);
+            }
             $applied++;
         }
     }
@@ -569,7 +582,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
 //   submit_save_for_later=1 + save_item_id=<id>     → flip saved_for_later=1
 //   submit_restore_saved=1   + save_item_id=<id>    → flip saved_for_later=0
 //
-// We probe the column once per request so the endpoint stays stable on
+// The column is probed (pg_schema_has()) so the endpoint stays stable on
 // installs that haven't run the migration yet (the endpoint just no-ops
 // instead of producing a query error).
 if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_saved']))
@@ -577,15 +590,12 @@ if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_save
     && defined('ECOMMERCE_SAVE_FOR_LATER') && ECOMMERCE_SAVE_FOR_LATER === true) {
     $_save_iid = isset($_POST['save_item_id']) ? (int)$_POST['save_item_id'] : 0;
     if ($_save_iid > 0) {
-        static $_sfl_has_col = null;
-        if ($_sfl_has_col === null) {
-            $_p = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
-            $_sfl_has_col = ($_p !== '' && $_p !== null);
-        }
-        if ($_sfl_has_col) {
-            $_owns = (int)db_value("SELECT id FROM order_items
-                                    WHERE id = '$_save_iid' AND order_id = '$oid' LIMIT 1");
-            if ($_owns === $_save_iid) {
+        if (pg_schema_has('order_items', 'saved_for_later')) {
+            $_save_line = db_item("SELECT order_items.id, order_items.ship_to_id, ship_tos.complete
+                                   FROM order_items
+                                   LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
+                                   WHERE order_items.id = '$_save_iid' AND order_items.order_id = '$oid' LIMIT 1");
+            if ($_save_line && ((int)$_save_line['id'] === $_save_iid)) {
                 if (isset($_POST['submit_save_for_later'])) {
                     db("UPDATE order_items
                         SET saved_for_later = 1, saved_at = UNIX_TIMESTAMP()
@@ -596,6 +606,13 @@ if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_save
                         SET saved_for_later = 0, saved_at = NULL
                         WHERE id = '$_save_iid'");
                     $lf->add_notice(lang('Item restored to cart.'));
+                }
+                // A saved line is left out of the recipient's shipping, so a
+                // recipient that already has an address and a shipping method
+                // is charged again for the lines it now holds.
+                if ($_save_line['ship_to_id'] && ($_save_line['complete'] == 1)) {
+                    require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+                    update_shipping_cost_for_ship_to($_save_line['ship_to_id']);
                 }
                 $did_mutate = true;
             }
@@ -626,9 +643,8 @@ if (!preg_match('#^(?:/|\?)#', $send_to) || stripos($send_to, '://') !== false) 
 // pay for; otherwise the cart shows why (the messages above) or is empty.
 if ($checkout && $oid > 0 && !$lf->check_form_errors()) {
     $checkout_to = isset($_POST['checkout_to']) ? (string)$_POST['checkout_to'] : '';
-    $sfl_col = db_value("SHOW COLUMNS FROM order_items LIKE 'saved_for_later'");
     $items_left = (int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '$oid'"
-        . (($sfl_col !== '' && $sfl_col !== null) ? " AND saved_for_later = 0" : ''));
+        . (pg_schema_has('order_items', 'saved_for_later') ? " AND saved_for_later = 0" : ''));
     if ($items_left > 0 && preg_match('#^/#', $checkout_to) && stripos($checkout_to, '://') === false && strpos($checkout_to, '//') !== 0) {
         $send_to = $checkout_to;
     }

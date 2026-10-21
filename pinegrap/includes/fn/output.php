@@ -279,7 +279,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
-    <link rel="stylesheet" type="text/css" href="' . CONTROL_PANEL_STYLESHEET_URL . '" />
+    <link rel="stylesheet" type="text/css" href="' . h(CONTROL_PANEL_STYLESHEET_URL) . '" />
     ' . $assistant_snippet . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>
     <style>' . CUSTOM_CSS . '</style>';
@@ -1413,8 +1413,18 @@ function pg_safe_back_url($candidate, $fallback)
         return $fallback;
     }
 
-    // Reject protocol-relative URLs and dangerous schemes outright
-    if (strpos($candidate, '//') === 0) {
+    // Control characters are refused anywhere, before any other reading: a
+    // browser drops tabs and line breaks from an address before it parses it,
+    // so "/<TAB>/evil.com" is followed as "//evil.com" and "java<TAB>script:"
+    // as "javascript:", and CR/LF would split a Location header.
+    if (preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+        return $fallback;
+    }
+
+    // Reject protocol-relative URLs and dangerous schemes outright. A
+    // backslash counts as a slash here: browsers read "/\evil.com" (and
+    // "\\evil.com") as "//evil.com", another host.
+    if ((strpos($candidate, '//') === 0) || (strpos($candidate, '/\\') === 0) || (strpos($candidate, '\\') === 0)) {
         return $fallback;
     }
     $lower = strtolower($candidate);
@@ -1428,16 +1438,20 @@ function pg_safe_back_url($candidate, $fallback)
     }
 
     // Root-relative path — e.g. "/siparis", "/dukkan/urun-1?q=foo".
-    // The protocol-relative "//host" form was already rejected above, so
-    // a single leading "/" is unambiguously same-origin. Reject anything
-    // that contains control characters, which would let an attacker hide
-    // CRLF / NUL sequences inside a Location header.
-    if (strlen($candidate) > 0 && $candidate[0] === '/'
-        && !preg_match('/[\x00-\x1F\x7F]/', $candidate)) {
+    // The protocol-relative "//host" and "/\host" forms and control
+    // characters were already rejected above, so a single leading "/" is
+    // unambiguously same-origin.
+    if (strlen($candidate) > 0 && $candidate[0] === '/') {
         return $candidate;
     }
 
-    // Absolute URL: only allow if host matches current request host
+    // Absolute URL: only allow if host matches current request host. Not with
+    // a backslash in it: parse_url() reads "https://evil.com\@site/" as user
+    // "evil.com\" on host "site", a browser as host "evil.com".
+    if (strpos($candidate, '\\') !== false) {
+        return $fallback;
+    }
+
     $parts = @parse_url($candidate);
     if (is_array($parts) && isset($parts['host'])) {
         $current_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
@@ -1874,7 +1888,7 @@ function output_header($properties = false)
             . ((get_short_version() !== '') ? '<span class="pinegrap-version ms-1 border rounded-pill px-1 d-none d-md-inline-block">' . get_short_version() . '</span>' : '')
             . '</span>';
     } else {
-        $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . LOGO_URL . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';
+        $output_logo = '<li class="nav-item"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' type="button" class="nav-link p-0 me-1 position-relative overflow-hidden" style="width:39.97px;;height:39.99px;border-radius:2px;"><img src="' . h(LOGO_URL) . '" style="object-fit: scale-down;height: inherit;width: inherit;transform: rotate3d(0, 1, 0, 180deg);" border="0" alt="logo" title="" /></a></li>';
     }
 
     // Carries its own list wrapper so the whole group disappears when there is
@@ -3266,6 +3280,12 @@ function output_menu($properties = false)
         $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-rolodex bi-me-2\'>' . lang('All Contact Groups') . '</a>';
         $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+
+        // CONTACTS > Personal data export (staff only: it reads users and orders too)
+        if ($user['role'] < 3) {
+            $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_export.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-down bi-me-2\'>' . lang('Personal data export') . '</a>';
+        }
     }
 
     if ($user['role'] < 3) {
@@ -3317,6 +3337,8 @@ function output_menu($properties = false)
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=any&type=local\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Local Orders') . ' </a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-plus bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-return-left bi-me-2\'>' . lang('Returns') . '</a>';
 
             if ((ECOMMERCE === true) and USER_MANAGE_ECOMMERCE_REPORTS) {
                 // ECOMMERCE > Order Reports
@@ -3767,6 +3789,7 @@ function output_menu($properties = false)
         case 'add_contact_group.php':
         case 'edit_contact_group.php':
         case 'organize_contacts.php':
+        case 'privacy_export.php':
             $active_menu = 7;
             break;
         case 'view_users.php':
@@ -3860,6 +3883,8 @@ function output_menu($properties = false)
         case 'view_order_report.php':
         case 'add_order.php':
         case 'view_parasut_inbox.php':
+        case 'view_returns.php':
+        case 'view_return.php':
             $active_menu = 10;
             break;
         case 'view_products.php':
@@ -4096,6 +4121,33 @@ function output_menu($properties = false)
     return $output_all_menu_items;
 }
 
+// Whether license_check() should ask the license server now. $status is the
+// status the session holds from the last attempt ('' when that attempt got no
+// usable answer), $last_check its time (0 when this session has not asked
+// yet). A good answer is trusted for 12 hours; a failed attempt is retried
+// after 15 minutes rather than on every page, since an unreachable server
+// costs each attempt up to the request's 10-second timeout.
+function pg_license_check_due($force, $status, $last_check, $now)
+{
+    if ($force) {
+        return true;
+    }
+
+    $last_check = (int) $last_check;
+
+    if ($last_check <= 0) {
+        return true;
+    }
+
+    $elapsed = (int) $now - $last_check;
+
+    if ((string) $status === '') {
+        return $elapsed >= 900;
+    }
+
+    return $elapsed > 43200;
+}
+
 // license_check()
 // PHP 7.0 - 8.5 compatible helper to validate and display subscription/license status.
 // Improvements:
@@ -4161,9 +4213,21 @@ function license_check($properties = false)
         }
 
         $last_check = isset($_SESSION['software']['settings']['license']['last_check']) ? (int) ($_SESSION['software']['settings']['license']['last_check'] ?? '') : 0;
-        $need_check = $force_check || (empty($_SESSION['software']['settings']['license']['status'])) || ((time() - $last_check) > 43200);
+        $session_status = isset($_SESSION['software']['settings']['license']['status']) ? (string) $_SESSION['software']['settings']['license']['status'] : '';
+        $need_check = pg_license_check_due($force_check, $session_status, $last_check, time());
+
+        // The account menu asks twice on one page (the licence card and the
+        // avatar dot); only the first call may go to the server, so a forced
+        // re-check is not sent twice either.
+        static $license_asked_this_request = false;
+
+        if ($license_asked_this_request) {
+            $need_check = false;
+        }
 
         if ($need_check) {
+            $license_asked_this_request = true;
+
             // Clear previous license indicators (we'll set again below)
             $_SESSION['software']['settings']['license']['status'] = '';
             $_SESSION['software']['settings']['license']['error_code'] = '';
@@ -4251,6 +4315,10 @@ function license_check($properties = false)
                 $response = @file_get_contents($api_url, false, $context);
             }
 
+            // Stamped for every attempt, answered or not: pg_license_check_due()
+            // measures the wait from it, after a failure too.
+            $_SESSION['software']['settings']['license']['last_check'] = time();
+
             // decode result safely
             $decoded = false;
             if ($response !== false && $response !== null && $response !== '') {
@@ -4293,15 +4361,9 @@ function license_check($properties = false)
                         // %a gives total days; ensure format method exists (it does)
                         $countdown = (int) $diff->format('%a');
                         $_SESSION['software']['settings']['license']['countdown'] = $countdown;
-                        $_SESSION['software']['settings']['license']['last_check'] = time();
                     }
-                } else {
-                    // If P_end_d not provided, set last_check to avoid continuous retries
-                    $_SESSION['software']['settings']['license']['last_check'] = time();
                 }
             } else {
-                // mark last_check to avoid hammering remote if it failed repeatedly
-                $_SESSION['software']['settings']['license']['last_check'] = time();
                 // store diagnostic info for admin display
                 $_SESSION['software']['settings']['license']['diag_errno'] = $curl_errno;
                 $_SESSION['software']['settings']['license']['diag_error'] = $curl_error;

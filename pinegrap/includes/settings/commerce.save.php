@@ -109,6 +109,15 @@ function pg_parasut_credentials_for_save()
         }
     }
 
+    // The payment drivers' settings (includes/fn/payments.php) are checked
+    // here, so a refused one stops the whole card before anything is written,
+    // and stored after the card's own columns.
+    $payment_driver_decisions = pg_payment_settings_check($_POST, $liveform);
+
+    if ($liveform->check_form_errors()) {
+        return;
+    }
+
     // if the user selected to reset encryption key, then do that
     if (
         isset($_POST['ecommerce_reset_encryption_key'])
@@ -133,7 +142,7 @@ function pg_parasut_credentials_for_save()
         
         // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
         if (defined('ENCRYPTION_KEY') == FALSE) {
-            $config_content = str_replace('?>', "define('ENCRYPTION_KEY', '" . $new_encryption_key . "'); // DO NOT MODIFY OR SHARE\r\n?>", $config_content);
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
             
         // else there is an old encryption key in the config.php file, so update it
         } else {
@@ -358,6 +367,27 @@ function pg_parasut_credentials_for_save()
             erp_tax_name = '" . escape(mb_substr(trim((string) post_value('erp_tax_name')), 0, 30)) . "',";
     }
 
+    // When a web order's invoice is issued (2026.4.4): from the order screen,
+    // or on its own once the order is paid or shipped. Written only when the
+    // ERP card posted it, so a form without the card keeps the store's choice.
+    if (waf_table_has_column('config', 'erp_auto_invoice_on') && is_string(post_value('erp_auto_invoice_on'))) {
+        $erp_auto_invoice_value = (string) post_value('erp_auto_invoice_on');
+        if (!in_array($erp_auto_invoice_value, array('off', 'order_paid', 'order_shipped'), true)) {
+            $erp_auto_invoice_value = 'off';
+        }
+        $sql_erp_due .= "
+            erp_auto_invoice_on = '" . escape($erp_auto_invoice_value) . "',";
+
+        // Its two filters (11.0.58), drawn with the select, so a switch that
+        // did not come is one left off. The amount is typed in whole units of
+        // the base currency and kept in minor units.
+        if (waf_table_has_column('config', 'erp_auto_invoice_tax_number_only') && waf_table_has_column('config', 'erp_auto_invoice_min_total')) {
+            $sql_erp_due .= "
+            erp_auto_invoice_tax_number_only = '" . ((post_value('erp_auto_invoice_tax_number_only') == 1) ? 1 : 0) . "',
+            erp_auto_invoice_min_total = '" . (min(10000000, max(0, (int) post_value('erp_auto_invoice_min_total'))) * 100) . "',";
+        }
+    }
+
     // The walk-in sales account (4.59): an account that exists, or none.
     if (waf_table_has_column('config', 'erp_walkin_account_id')) {
         $erp_walkin_account_id = (int) post_value('erp_walkin_account_id');
@@ -546,6 +576,8 @@ function pg_parasut_credentials_for_save()
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
+
+    pg_payment_settings_save($payment_driver_decisions, USER_ID);
 
     // A Paraşüt authorization code is exchanged by the card's Connect button;
     // one pasted and saved with the page is exchanged here as well, after the

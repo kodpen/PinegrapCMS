@@ -23,7 +23,7 @@ description: Cookie notice: Settings, Reject all and Accept all drawn alike, not
 - The translation system, the buttons included: the `lang()` keys of `pg_consent_ui_keys()`, which a language without a language file translates in Translations › "Cookie window". The button texts get no settings of their own (decided 2026-10-19).
 
 ## What is not built?
-- A consent log of answers: `privacy-data-pack-audit-log.md`.
+- Logging the answers: the `consent_log` table and `pg_consent_log_record()` exist (`docs/memory/core/consent-log-and-audit-trail.md`, channel `cookie`, source `banner`), but the notice has no server endpoint yet and writes nothing to it.
 
 ## Where are the tests?
 - `tests/consent_test.php`: first view and settings buttons, no `checked` switch, Consent Mode states, the default script, its position, insertion, and the state names in `pg_consent.js`.

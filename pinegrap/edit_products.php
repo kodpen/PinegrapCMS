@@ -112,6 +112,8 @@ if (!$_POST) {
                     // Loop through selected products in order to edit them.
                     foreach ($_POST['products'] as $product_id) {
                         $sql_enabled = '';
+
+                        $audit_before = pg_audit_fetch('products', $product_id);
 					
 						if($edit_change_price_method != ''){
 							$query = "SELECT 
@@ -316,6 +318,8 @@ if (!$_POST) {
                                 timestamp = UNIX_TIMESTAMP(),
                                 user = '" . USER_ID . "'
                             WHERE id = '" . escape($product_id) . "'");
+
+                        pg_audit_record('update', 'products', $product_id, $audit_before);
 
                         if ($edit_change_price_method != '') {
                             pg_price_history_queue($product_id, 'panel');
@@ -522,6 +526,8 @@ if (!$_POST) {
                         continue;
                     }
 
+                    $audit_before = pg_audit_fetch('products', $product_id);
+
                     if ($binning) {
 
                         // False for a product that is gone or already in the
@@ -529,6 +535,8 @@ if (!$_POST) {
                         if (pg_catalog_bin_product($product_id, $user['id']) === false) {
                             continue;
                         }
+
+                        pg_audit_record('recycle', 'products', $product_id, $audit_before);
 
                     } else {
 
