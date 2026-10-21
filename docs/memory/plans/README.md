@@ -4,7 +4,7 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
-- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; consent notice PR #619 and statement block done): designer contrast rule, nightly WCAG 2.2 Level A report, PDF export of the report
+- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688 and consent notice #619 done): nightly WCAG 2.2 Level A report with its PDF export left
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
