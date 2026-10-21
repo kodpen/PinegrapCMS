@@ -1,6 +1,6 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decisions 2026-10-21; steps 1-2 done, #1001, #1004): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 3-6 remain
+description: Plan (owner's decisions 2026-10-21; steps 1-3 done, #1001, #1004, #1020): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 4-6 remain
 ---
 
 ## Why?
@@ -19,10 +19,10 @@ description: Plan (owner's decisions 2026-10-21; steps 1-2 done, #1001, #1004): 
 ## What remains?
 1. Done: `erp_rate_vat()` and its tests (#1001).
 2. Done: typed documents and the editor preview (#1004).
-3. Returns: `includes/erp/returns.php` takes the returned lines' taxes per rate of the return (M).
+3. Done: returns, the lines given back in part per group of the return, capped by what is left; the card refund dialog takes the whole from the server (#1020).
 4. Orders: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary; the kurus-below rule above) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
 5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue at once and only report the variance: the driver's shift there too until they go (erp-edocument-leftovers.md) (M).
 6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
 
 ## Where to start?
-- Step 3: read `erp_return_build()` and how a partial return splits a line (includes/erp/returns.php, erp-return-documents.md).
+- Step 4: read `update_order_item_taxes()` (includes/fn/ecommerce.php), the header tax in submit_order.php and `erp_order_lines()` (includes/erp/order_bridge.php); erp-discounted-order-vat.md.
