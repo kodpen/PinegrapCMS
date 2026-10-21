@@ -23,7 +23,8 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 ## How is a refused package tried again?
 - A `failed` row with `order_id` 0 (refused before any order was written) is re-claimed when the feed hands the package back: one `UPDATE ... SET status='importing' WHERE status='failed' AND order_id=0`; only the pass that changed the row writes (`mp_import_claimed()`).
 - An `importing` row with `order_id` 0 is NOT retried: it may be a write in progress or a half-written order.
-- The package only comes back if its `lastModifiedDate` falls in the window, so the Imported orders card has "Try again" (`mp_action=retry_orders`, shown while such rows exist): it moves `last_order_pull` back to the oldest one's `remote_timestamp` minus 3 h (GMT+3 margin), never forward. Re-reading is safe: imported packages are skipped.
+- The package only comes back if its `lastModifiedDate` falls in the window, so the Imported orders card has "Try again" (`mp_action=retry_orders`, shown while such rows exist): it moves `last_order_pull` back to the oldest one's `remote_timestamp` (the fallback `imported_timestamp` minus 3 h), never forward. `remote_timestamp` is on the pull cursor's own scale; an extra margin would read packages no pull ever read and import them as new orders. Re-reading is safe: imported packages are skipped.
+- The pull's cursor write is compare-and-set on the cursor it started from, so a Try again pressed during a pull survives (#1021).
 - Symptom before the fix (#1021): after matching the product the package stayed "Failed" for ever; the import answered `skipped` and the queue's "Try again" only reset `marketplace_sync_queue`.
 
 ## How are customers matched?

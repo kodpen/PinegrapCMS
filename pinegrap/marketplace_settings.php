@@ -567,16 +567,19 @@ if ($_POST) {
 		// longer in the window. So the cursor goes back to the oldest refused
 		// one: the next run reads on from there, imports what was refused and
 		// passes over what is already here, because the importer is keyed on
-		// the package. Three hours further back, because remote_timestamp is
-		// the marketplace's clock (n11 counts in GMT+3) and the fallback is
-		// this server's.
-		$oldest = (int) db_value("SELECT MIN(IF(remote_timestamp > 0, remote_timestamp, imported_timestamp))
+		// the package. remote_timestamp is on the same scale as the pull's own
+		// cursor (read_to is the last package's placed_at), and the pull
+		// already starts a few minutes before its cursor, so it is used as it
+		// is. Only the imported_timestamp fallback, this server's clock, goes
+		// back 3 h. Going back further would read packages from before the
+		// first pull and import them as new orders.
+		$oldest = (int) db_value("SELECT MIN(IF(remote_timestamp > 0, remote_timestamp, imported_timestamp - 10800))
 			FROM marketplace_order_map
 			WHERE (account_id = '" . e($account_id) . "') AND (status = 'failed') AND (order_id = 0)");
 
 		if ($oldest > 0) {
 
-			$from = max(1, $oldest - 10800);
+			$from = max(1, $oldest);
 
 			db("UPDATE marketplace_accounts
 				SET last_order_pull = '" . e($from) . "', updated_timestamp = UNIX_TIMESTAMP()
