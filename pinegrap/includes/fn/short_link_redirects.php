@@ -1123,41 +1123,22 @@ function pg_short_link_redirect_columns($link, $code = null, $stored = 0, $links
  * The lines of a short link CSV file.
  *
  * Columns: the address (a name, a path or a full old address), where it sends
- * visitors and, optionally, the code (301 when empty). The separator is a
- * comma, or the semicolon or tab a spreadsheet wrote when the first line has
- * one of those and no comma. A byte order mark is dropped, and bytes that are
- * not UTF-8 are read as the Windows Turkish code page (what Excel writes in
- * Turkey). A first line whose second cell holds no / is a heading (from,to,
- * Eski adres;Yeni adres) and is skipped, as are empty lines. The apostrophe
- * pg_short_link_csv() puts before a formula character is taken off again.
+ * visitors and, optionally, the code (301 when empty). The separator is the
+ * comma, semicolon or tab that splits the most lines into two or three cells
+ * (pg_short_link_csv_separator()). The text is read as UTF-8
+ * (pg_short_link_csv_text(): UTF-16 as Excel's "Unicode Text" writes it,
+ * the Windows Turkish code page for bytes that are not UTF-8). A first line
+ * whose second cell holds no / is a heading (from,to, Eski adres;Yeni adres)
+ * and is skipped, as are empty lines. The apostrophe pg_short_link_csv() puts
+ * before a formula character is taken off again.
  *
  * @param string $bytes
  * @return array[] array('line' => int, 'from' => string, 'to' => string, 'code' => string)
  */
 function pg_short_link_csv_rows($bytes)
 {
-    $bytes = (string) $bytes;
-
-    if (substr($bytes, 0, 3) === "\xEF\xBB\xBF") {
-        $bytes = substr($bytes, 3);
-    }
-
-    if (!mb_check_encoding($bytes, 'UTF-8')) {
-        $encodings = array_map('strtolower', mb_list_encodings());
-        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', in_array('windows-1254', $encodings, true) ? 'Windows-1254' : 'ISO-8859-9');
-    }
-
-    $bytes = str_replace(array("\r\n", "\r"), "\n", $bytes);
-    $first_line = (string) strtok($bytes, "\n");
-    $delimiter = ',';
-
-    if (strpos($first_line, ',') === false) {
-        if (strpos($first_line, ';') !== false) {
-            $delimiter = ';';
-        } elseif (strpos($first_line, "\t") !== false) {
-            $delimiter = "\t";
-        }
-    }
+    $bytes = str_replace(array("\r\n", "\r"), "\n", pg_short_link_csv_text($bytes));
+    $delimiter = pg_short_link_csv_separator($bytes);
 
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, $bytes);
@@ -1196,6 +1177,107 @@ function pg_short_link_csv_rows($bytes)
     fclose($handle);
 
     return $rows;
+}
+
+/**
+ * A CSV file's bytes as UTF-8 text without a byte order mark. UTF-16 is what
+ * Excel's "Unicode Text" writes (FF FE, little-endian, tab-separated); without
+ * a mark it is told by its NUL bytes, which text in any 8-bit encoding does
+ * not have. Other bytes that are not UTF-8 are read as the Windows Turkish
+ * code page (what Excel writes in Turkey; ISO-8859-9 where mbstring lacks it).
+ *
+ * @param string $bytes
+ * @return string
+ */
+function pg_short_link_csv_text($bytes)
+{
+    $bytes = (string) $bytes;
+    $utf16 = '';
+
+    if (substr($bytes, 0, 2) === "\xFF\xFE") {
+        $utf16 = 'UTF-16LE';
+    } elseif (substr($bytes, 0, 2) === "\xFE\xFF") {
+        $utf16 = 'UTF-16BE';
+    } elseif (strpos($bytes, "\0") !== false) {
+        // ASCII in UTF-16LE puts the NUL after each letter, in UTF-16BE before.
+        $sample = substr($bytes, 0, 4096);
+        $odd = 0;
+        $even = 0;
+
+        for ($at = 0, $length = strlen($sample); $at < $length; $at++) {
+            if ($sample[$at] === "\0") {
+                if ($at % 2) {
+                    $odd++;
+                } else {
+                    $even++;
+                }
+            }
+        }
+
+        $utf16 = ($odd >= $even) ? 'UTF-16LE' : 'UTF-16BE';
+    }
+
+    if ($utf16 !== '') {
+        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', $utf16);
+    }
+
+    if (substr($bytes, 0, 3) === "\xEF\xBB\xBF") {
+        $bytes = substr($bytes, 3);
+    }
+
+    if (!mb_check_encoding($bytes, 'UTF-8')) {
+        $encodings = array_map('strtolower', mb_list_encodings());
+        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', in_array('windows-1254', $encodings, true) ? 'Windows-1254' : 'ISO-8859-9');
+    }
+
+    return $bytes;
+}
+
+/**
+ * The separator of a short link CSV file: of the comma, the semicolon and the
+ * tab, the one that splits the most of its first lines into two or three
+ * cells (from, to, code), the comma first when they split as many. A comma
+ * inside one address of a semicolon file (a name may hold one) no longer makes
+ * the whole file read as comma-separated.
+ *
+ * @param string $text UTF-8, lines ending in \n
+ * @return string
+ */
+function pg_short_link_csv_separator($text)
+{
+    $lines = array();
+
+    foreach (explode("\n", (string) $text) as $line) {
+        if (trim($line) !== '') {
+            $lines[] = $line;
+        }
+
+        if (count($lines) >= 20) {
+            break;
+        }
+    }
+
+    $best = ',';
+    $best_score = -1;
+
+    foreach (array(',', ';', "\t") as $candidate) {
+        $score = 0;
+
+        foreach ($lines as $line) {
+            $cells = count(str_getcsv($line, $candidate, '"', '\\'));
+
+            if (($cells === 2) || ($cells === 3)) {
+                $score++;
+            }
+        }
+
+        if ($score > $best_score) {
+            $best = $candidate;
+            $best_score = $score;
+        }
+    }
+
+    return $best;
 }
 
 /**
