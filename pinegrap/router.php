@@ -721,8 +721,10 @@ function router_translation_prefixes()
         $parts = explode('=', $pair, 2);
         $prefix = trim($parts[0]);
 
+        // The address is matched in lower case; a prefix an earlier save
+        // wrote with capitals (pt-BR) is served under its lower-case form.
         if ($prefix !== '') {
-            $map[$prefix] = isset($parts[1]) ? trim($parts[1]) : $prefix;
+            $map[strtolower($prefix)] = isset($parts[1]) ? trim($parts[1]) : $prefix;
         }
     }
 

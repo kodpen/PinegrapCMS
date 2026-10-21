@@ -525,6 +525,24 @@ function test_legal_documents_script_posts_the_billing_fields()
 	pg_assert_contains('url.origin !== window.location.origin', $script, 'the token never leaves the site');
 }
 
+// With "my billing address is the same as my shipping address" ticked the
+// billing block is hidden and empty; the script posts the one recipient's
+// fields as the billing ones, the same fields express_order.php copies on
+// submit, and leaves out fields a hidden block holds.
+function test_legal_documents_script_posts_the_recipient_when_billing_is_the_same()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_legal_documents.js');
+	$submit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/express_order.php');
+
+	pg_assert_same(1, preg_match('/var SAME_AS_SHIPPING = \[(.*?)\];/s', $script, $match), 'the list is there');
+	preg_match_all("/'([a-z0-9_]+)'/", $match[1] ?? '', $names);
+	pg_assert_same(1, preg_match('/foreach \(array\(([^)]*)\) as \$pg_same_field\)/', $submit, $copied), 'the submit copies a list');
+	preg_match_all("/'([a-z0-9_]+)'/", $copied[1] ?? '', $copied_names);
+	pg_assert_same($copied_names[1], $names[1], 'the same fields as the submit copies');
+	pg_assert_contains("'billing_same_as_shipping'", $script, 'it reads the box');
+	pg_assert_contains("closest('[hidden]')", $script, 'a hidden block is not posted');
+}
+
 // The document page takes posted values only with the session's token and
 // hands them to the cart's documents; a kept copy never reads them.
 function test_legal_documents_page_reads_posted_values_with_the_token()
