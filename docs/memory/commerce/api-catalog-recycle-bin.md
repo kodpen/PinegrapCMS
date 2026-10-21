@@ -12,5 +12,5 @@ description: How the external API treats products and product groups in the cata
 - Filing a binned product into a group (`POST /product-groups` `product_ids`, `POST /product-groups/{id}/products` `add`) is refused with 422, as if there were no such product (`api_product_group_product_ids()`).
 
 ## Does a group's product_ids include binned products?
-- No (since #PR876). `api_product_group_extras()` joins `products_groups_xref` to `products` with `products.recycled = '0'`, so `product_ids` (the group's variants) leaves a binned product out, and `attributes[].options[].in_use` no longer counts the options only it carries. Symptom it fixed (#876): a connector building variants from `product_ids` published a product the shop no longer sells, and a size only that product had showed as in use.
+- No (since #1046). `api_product_group_extras()` joins `products_groups_xref` to `products` with `products.recycled = '0'`, so `product_ids` (the group's variants) leaves a binned product out, and `attributes[].options[].in_use` no longer counts the options only it carries. Symptom it fixed (#876): a connector building variants from `product_ids` published a product the shop no longer sells, and a size only that product had showed as in use.
 - The inner join also drops link rows whose product no longer exists.
