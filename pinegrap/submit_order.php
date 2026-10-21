@@ -744,7 +744,8 @@ function submit_order($type) {
             order_items.product_name,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total,
+            order_items.tax_total," . (pg_schema_has('order_items', 'tax_rate') ? "
+            order_items.tax_rate AS line_tax_rate," : "") . "
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -857,6 +858,10 @@ function submit_order($type) {
     $installment_charge = '';
     $commission = '';
 
+    // The lines charged today with the rate each was taxed at, for the tax
+    // after an order discount (pg_order_charged_tax()).
+    $charged_lines = array();
+
     // loop through all nonrecurring products in order to get totals for order
     foreach ($nonrecurring_products as $product) {
 
@@ -871,6 +876,12 @@ function submit_order($type) {
 
         // update tax
         $tax = $tax + $total_tax;
+
+        $charged_lines[(int) $product['order_item_id']] = array(
+            'amount' => (int) $product['price'] * max(1, (int) $product['quantity']),
+            'rate' => $product['line_tax_rate'] ?? null,
+            'tax' => (int) $product['tax_total'],
+        );
     }
 
     // If the tax is negative then set it to zero.  The tax might be negative
@@ -888,17 +899,12 @@ function submit_order($type) {
     // and we need to add a discount line item for PayPal Express Checkout
     $original_tax = $tax;
 
-    // If there is an order discount, adjust tax according to discount. A
-    // discount is only above zero when the subtotal is.
+    // If there is an order discount, the tax is taken again per rate on what
+    // the discount leaves of the lines, as the order's invoice takes it
+    // (pg_order_charged_tax(); never below zero). A discount is only above
+    // zero when the subtotal is.
     if ($discount && ($subtotal > 0)) {
-
-        $tax = $tax - round(($tax * ($discount / $subtotal)));
-
-        // If the tax is negative then set it to zero.
-        if ($tax < 0) {
-            $tax = 0;
-        }
-
+        $tax = pg_order_charged_tax($charged_lines, $discount);
     }
     
     // get shipping total for all ship tos
