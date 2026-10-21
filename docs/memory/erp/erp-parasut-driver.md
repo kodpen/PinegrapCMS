@@ -25,7 +25,7 @@ description: Paraşüt e-document driver (includes/erp/edoc/parasut.php): reques
 - Not seen: the demo company has no e-document integration (`POST e_archives`, and `POST e_invoices` for a registered VKN → 422); job, PDF, e-Arşiv cancel wait for one.
 - A free-text line goes on the default product with its own description.
 - Tevkifat draft (601, 4/10): `vat_withholding_rate` is percent of the VAT (40 on 15.99 → 6.40), `net_total` is after withholding and checked against `grand_total` (#630); poll prints Paraşüt's totals. Open: whether `internet_sale.payment_type` takes `DIGER`.
-- Capabilities: `einvoice`, `earchive`, `accounts` (#711). No `inbox` (v4 has no incoming e-invoices), `ewaybill`, `return`.
+- Capabilities: `einvoice`, `earchive`, `accounts` (#711). No `inbox` (v4 has no incoming e-invoices), `ewaybill`, `return`, `ubl`.
 
 ## Tests
 - `tests/erp_edoc_parasut_test.php`, `tests/parasut_test.php` (throttle).

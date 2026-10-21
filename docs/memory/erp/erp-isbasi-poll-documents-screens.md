@@ -13,7 +13,7 @@ description: Isbasi poll status mapping, fetch_document type pitfalls, e-documen
 - The returned type is NOT the requested type: for a document not yet at GİB the PDF address returns `type: "HTML"` with an HTML body and the UBL address returns `type: "zip"`. `erp_edoc_isbasi_document_kind()` inspects the bytes (%PDF / PK / `<html` / `<?xml`).
 
 ## What are the screens?
-- `edit_erp_invoice.php` `$output_edoc` card (after Lines); POST `erp_action=edoc_send|edoc_poll` → `go()`; `get_erp_edoc_document.php?id=&format=pdf|xml` (PDF and HTML in the browser, others download). Button text carries the provider name ("Logo İşbaşı sağlayıcısına gönder").
+- `edit_erp_invoice.php` `$output_edoc` card (after Lines); POST `erp_action=edoc_send|edoc_poll` → `go()`; `get_erp_edoc_document.php?id=&format=pdf|xml` (PDF and HTML in the browser, others download); the UBL button only for a provider with the `ubl` capability (İşbaşı yes, Paraşüt no: until #PR762 it led Paraşüt invoices to an error page). Button text carries the provider name ("Logo İşbaşı sağlayıcısına gönder").
 - Invoice list `erp_invoices.php` "e-Belge" column: `$edoc_column = erp_edoc_installed()` toggles the header AND the cell together (otherwise the column count shifts); sortable by `data-order="<edoc_status>"`.
 
 ## How does the taxpayer query work?
