@@ -1,6 +1,6 @@
 ---
 name: n11-api-facts
-description: n11 REST API facts for the connector: headers, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints, GMT+3 dates, discount fields, stockCode.
+description: n11 REST API facts for the connector: headers, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 ---
 
 ## How does the n11 API behave? (developer.n11.com)
@@ -17,5 +17,11 @@ description: n11 REST API facts for the connector: headers, async price/stock ta
 - In a line, `stockCode` is the seller's code (matching uses this); `productId` is n11's and useless here; `orderLineId` is the id needed for confirmation.
 - `mallDiscount` is NOT counted: it is n11's money, paid to the seller as if it did not exist. Only `sellerDiscount` and `sellerCouponDiscount` are this order's discount.
 - Prices are decimal and a comma may appear.
+
+## How far does one order pull read? (`mp_n11_pull_orders()`)
+- At most 20 pages (2,000 packages) a pass, asked in ascending `lastModifiedDate` order. At the cap `read_to` is the last read package's `lastModifiedDate`, not now; the next pass starts there (minus the 5-minute overlap) and reads on.
+- Symptom before the fix (#1011): with more than 2,000 packages in the window the cursor jumped to now and packages 2,001+ were never imported.
+- If 20 full pages end inside the overlap (no progress), it reads on up to 100 pages; if even that does not get past the start, `complete` is false and the cursor stays.
+- Tests: `tests/marketplace_n11_test.php` (transport parameter, like Trendyol's).
 
 Related: docs/memory/commerce/marketplace-order-status-sync.md
