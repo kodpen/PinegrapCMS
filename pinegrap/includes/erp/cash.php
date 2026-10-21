@@ -278,12 +278,21 @@ function erp_post_receipt($data)
 
     if ($invoice_id > 0) {
 
-        $invoice = db_item("SELECT id, account_id, direction, currency, full_number, grand_total, grand_total_base, paid_total, status
+        $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
             FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
         if (!is_array($invoice) || ((int) $invoice['account_id'] !== $account_id)) {
             erp_tx_rollback();
             return $fail(lang('That invoice does not belong to this account.'));
+        }
+
+        // A return closes against the invoice it returns, never with money.
+        // Read without its doc_type it looked like an invoice whose whole
+        // total was open, so the money went to the return (marked paid)
+        // and the invoice stayed open.
+        if ((string) $invoice['doc_type'] !== 'invoice') {
+            erp_tx_rollback();
+            return $fail(lang('That document is not an invoice; a receipt does not close it.'));
         }
 
         // The allocation is measured in the invoice's currency, so the money
