@@ -8084,6 +8084,7 @@
     "The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.": "Pazaryeri mağaza ayarlarınızdaki kargo anlaşmasının adı, birebir. Bu olmadan yeni ilan kabul edilmez.",
     "Days to prepare": "Hazırlama süresi (gün)",
     "How long you take to hand a parcel over. It is shown to the buyer.": "Kargoya vermeniz ne kadar sürüyor. Alıcıya gösterilir.",
+    "The address prefix of {var:1} is used by another language. Give it a prefix of its own.": "{var:1} dilinin adres öneki başka bir dilde kullanılıyor. Bu dile kendine ait bir önek verin.",
     "{var:1} product(s) queued for listing. They go out on the next run.": "{var:1} ürün açılmak üzere kuyruğa alındı. Bir sonraki çalışmada gönderilir.",
     "Already queued.": "Zaten kuyrukta.",
     "This article has no marketplace category yet.": "Bu ürünün pazaryeri kategorisi henüz seçilmedi.",
