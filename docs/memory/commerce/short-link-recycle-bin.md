@@ -54,4 +54,11 @@ every field with `is_scalar()` (`item_id[]` no longer hits link 1, `name[]` no
 longer names a link "Array"); classic screens call
 `pg_liveform_single_values()` (15 former 500s).
 
-Tests: `tests/short_link_requests_test.php`. PRs: #482, #487.
+## What name does a copy or a renamed restore get?
+`pg_short_link_free_name()`: the name, else `name[1]`, `[2]`… cut at its end
+to fit the column (`pg_short_link_numbered_name()`, 191; 100 before 11.0.12).
+Before #1024 a name of 189-191 characters lost the suffix on INSERT: two
+links with one name.
+
+Tests: `tests/short_link_requests_test.php`, `short_link_redirects_test.php`.
+PRs: #482, #487, #1024.

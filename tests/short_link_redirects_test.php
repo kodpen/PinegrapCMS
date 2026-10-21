@@ -408,3 +408,15 @@ function test_short_link_redirects_csv_writer()
 	pg_assert_same('=1+1', $rows[4]['to'], 'formula guard taken off');
 	pg_assert_same('', pg_short_link_csv_target(array('destination_type' => 'page', 'page_name' => null), '/'), 'a page that is gone');
 }
+
+function test_short_link_redirects_numbered_name_keeps_to_the_column()
+{
+	$long = 'gtest-long/' . str_repeat('a', 180);
+
+	pg_assert_same('blog/x[1]', pg_short_link_numbered_name('blog/x', 1, 191), 'room enough');
+	pg_assert_same(191, mb_strlen(pg_short_link_numbered_name($long, 1, 191), 'UTF-8'), '191 characters: the end gives way');
+	pg_assert_same('gtest-long/' . str_repeat('a', 177) . '[1]', pg_short_link_numbered_name($long, 1, 191), 'the suffix is whole');
+	pg_assert_same('gtest-long/' . str_repeat('b', 176) . '[12]', pg_short_link_numbered_name('gtest-long/' . str_repeat('b', 179), 12, 191), 'a longer suffix');
+	pg_assert_same(str_repeat('ü', 97) . '[1]', pg_short_link_numbered_name(str_repeat('ü', 99), 1, 100), 'characters, not bytes (100 before the step)');
+	pg_assert_same('', pg_short_link_numbered_name('abc', 1, 3), 'no room for any of the name');
+}

@@ -308,6 +308,27 @@ function pg_short_link_name_read($name)
 }
 
 /**
+ * A name with the [n] a copy or a renamed restore gets, the end of the name
+ * cut away when the suffix would make it longer than the column takes: a
+ * longer value is cut in silence on INSERT, so the copy would be written under
+ * the very name it was numbered to avoid.
+ *
+ * @param string   $wanted A stored-form name
+ * @param int      $index
+ * @param int|null $max    pg_short_link_name_max() when null
+ * @return string '' when no part of the name fits beside the suffix
+ */
+function pg_short_link_numbered_name($wanted, $index, $max = null)
+{
+    $max = ($max === null) ? pg_short_link_name_max() : (int) $max;
+    $suffix = '[' . (int) $index . ']';
+    $room = $max - strlen($suffix);
+    $base = ($room > 0) ? mb_substr((string) $wanted, 0, $room, 'UTF-8') : '';
+
+    return ($base === '') ? '' : $base . $suffix;
+}
+
+/**
  * What is wrong with the address a link sends visitors to, or '' when it can
  * be used: a web address (http or https) or a path on this site, without
  * spaces or a backslash, not protocol-relative, within the column. The
