@@ -171,6 +171,20 @@ function test_audit_request_id_and_actor()
 	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'command line');
 }
 
+// Work the software does on its own inside someone's request (the Recycle
+// Bin's daily purge) is recorded as a job's while the switch is on; the switch
+// hands back its previous state so a caller can restore it.
+function test_audit_as_job_switch()
+{
+	pg_assert_false(pg_audit_as_job(), 'off by default');
+	pg_assert_false(pg_audit_as_job(true), 'turning it on returns the previous state');
+	pg_assert_true(pg_audit_as_job(), 'on');
+	pg_assert_true(pg_audit_as_job(true), 'nested: already on');
+	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'a job while on');
+	pg_assert_true(pg_audit_as_job(false), 'turning it off returns the previous state');
+	pg_assert_false(pg_audit_as_job(), 'off again');
+}
+
 // A save that changed nothing reads the same twice: the editor, the stamps and
 // the derived SEO score are left out, every other column stays.
 function test_audit_volatile_columns_left_out()
