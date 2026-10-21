@@ -78,7 +78,7 @@ if ($group !== '') {
 }
 $filter = (isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : 'all';
 
-if (!in_array($filter, array('all', 'pending', 'machine', 'reviewed', 'suspicious'), true)) {
+if (!in_array($filter, array('all', 'pending', 'machine', 'reviewed', 'suspicious', 'blocking'), true)) {
     $filter = 'all';
 }
 
@@ -144,6 +144,13 @@ if ($selected_page === null) {
     $page_id = 0;
 }
 
+// Under the reviewed policy a page is indexed in the language only when
+// every text drawn on it stands approved: what each page answered the last
+// time it was drawn (one read), and for the selected page, on request, which
+// texts kept it out.
+$index_watch = $language_row && ((string) $language_row['index_policy'] === 'reviewed') && pg_tr_page_verdict_ready();
+$verdicts = $index_watch ? pg_tr_page_verdicts($language) : array();
+
 // ── the texts ──
 
 $rows = array();
@@ -171,6 +178,12 @@ if ($language !== '') {
             break;
         case 'suspicious':
             $where[] = 't.suspicious = 1';
+            break;
+        // What keeps a page out of the search engines under the reviewed
+        // policy: no translation, or an unapproved one that differs from
+        // the source.
+        case 'blocking':
+            $where[] = pg_tr_screen_blocking_sql();
             break;
     }
 
@@ -217,6 +230,40 @@ if ($language !== '') {
         }
     }
 }
+
+// ── why the selected page is kept out: read only when asked for (the
+//    "blocking" filter), where each text listed above comes from ──
+
+$index_reasons = array();
+$index_row_owners = array();
+$index_owner_names = array();
+
+if ($index_watch && ($page_id > 0) && ($filter === 'blocking')) {
+    $index_reasons = pg_tr_screen_reasons($language, $page_id);
+    $index_row_owners = pg_tr_screen_string_owners(array_column($rows, 'id'), $page_id);
+
+    foreach ($index_reasons as $reason) {
+        $index_owner_names[$reason['kind'] . ':' . $reason['id']] = $reason['name'];
+    }
+}
+
+// The label of a place a page draws texts from.
+$index_owner_label = function ($kind, $name) {
+    switch ($kind) {
+        case 'page':
+            return lang('The page itself');
+        case 'page_seo':
+            return lang('Its title and description');
+        case 'shared':
+            return lang(array('string' => 'Shared component "{var:1}"', 'vars' => array($name)));
+        case 'menu':
+            return lang(array('string' => 'Menu "{var:1}"', 'vars' => array($name)));
+        case 'form_records':
+            return lang(array('string' => 'Records of the form "{var:1}"', 'vars' => array($name)));
+    }
+
+    return lang('Other texts drawn on the page');
+};
 
 // ── the glossary: the terms for this language, and the ones for every language ──
 
@@ -277,7 +324,12 @@ foreach (array(
     'machine'    => array(lang('Machine'), $site_stats['machine']),
     'reviewed'   => array(lang('Reviewed'), $site_stats['reviewed']),
     'suspicious' => array(lang('Suspicious'), null),
+    'blocking'   => ($index_watch || ($filter === 'blocking')) ? array(lang('Keeping pages out of search'), null) : null,
 ) as $key => $chip) {
+    if ($chip === null) {
+        continue;
+    }
+
     $output_chips .= '<a class="pg-chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
         . (($chip[1] !== null) ? ' <span class="opacity-75">' . (int) $chip[1] . '</span>' : '') . '</a>';
 }
@@ -294,11 +346,34 @@ foreach ($pages as $row) {
     $coverage = ($stat['total'] > 0) ? (int) round(($stat['translated'] / $stat['total']) * 100) : 0;
     $bar_class = ($stat['total'] === 0) ? 'bg-secondary' : (($stat['reviewed'] === $stat['total']) ? 'bg-success' : (($coverage === 100) ? 'bg-info' : 'bg-warning'));
     $title = ($row['page_title'] !== '') ? $row['page_title'] : $row['page_name'];
+    $output_verdict = '';
+
+    // The counter counts the page's own texts; whether the page is indexed
+    // depends on everything drawn on it, so the answer it gave is shown
+    // beside the counter.
+    if ($index_watch) {
+        switch (pg_tr_screen_verdict_state($verdicts, $pid)) {
+            case 'indexed':
+                $verdict_icon = 'bi-search';
+                $verdict_label = lang('In search results');
+                break;
+            case 'noindex':
+                $verdict_icon = 'bi-eye-slash text-warning';
+                $verdict_label = lang('Kept out of search results: select the page to see why');
+                break;
+            default:
+                $verdict_icon = 'bi-hourglass opacity-50';
+                $verdict_label = lang('Not checked yet: the page has not been opened in this language since its translations last changed');
+        }
+
+        $output_verdict = '<i class="bi ' . $verdict_icon . ' small" title="' . h($verdict_label) . '" aria-hidden="true"></i><span class="visually-hidden">' . h($verdict_label) . '</span>';
+    }
 
     $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active' : '') . '" href="' . h($url(array('page_id' => $pid, 'p' => 0))) . '">'
         . '<div class="d-flex align-items-center gap-2">'
         . '<span class="flex-grow-1 text-truncate" title="' . h($title) . '">' . (($row['page_home'] === 'yes') ? '<i class="bi bi-house-door me-1" aria-hidden="true"></i>' : '') . h($row['page_name']) . '</span>'
         . '<span class="small opacity-75">' . (($stat['total'] > 0) ? (int) $stat['translated'] . '/' . (int) $stat['total'] : lang('Not scanned')) . '</span>'
+        . $output_verdict
         . '</div>'
         . '<div class="progress mt-1" style="height: 3px;"><div class="progress-bar ' . $bar_class . '" style="width: ' . $coverage . '%"></div></div>'
         . '</a>';
@@ -337,17 +412,25 @@ foreach ($rows as $row) {
     $state_label = $has ? (($state === 'reviewed') ? lang('Reviewed') : lang('Machine')) : lang('Pending');
     $state_class = $has ? (($state === 'reviewed') ? 'text-bg-success' : 'text-bg-warning') : 'text-bg-secondary';
     $engine_label = ($has && isset($engine_labels[$row['engine']])) ? $engine_labels[$row['engine']] : ($has ? (string) $row['engine'] : '');
+    $row_owner = isset($index_row_owners[(int) $row['id']]) ? $index_row_owners[(int) $row['id']] : null;
+    $row_owner_name = $row_owner ? (isset($index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']]) ? $index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']] : '') : '';
 
     $output_rows .= '
             <div class="pg-tr-row border-bottom py-3" data-string-id="' . (int) $row['id'] . '" data-format="' . h($row['format']) . '">
                 <div class="row g-3">
-                    <div class="col-12 col-xl-5">
+                    <div class="col-12 col-xl-5 d-flex gap-2">'
+                        // A reviewed translation is not offered for "keep as
+                        // in the source": the action leaves it as it is.
+                        . (($state !== 'reviewed') ? '<input class="form-check-input flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0" style="width: 1em;"></span>') . '
+                        <div class="flex-grow-1" style="min-width: 0;">
                         <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '">' . h($row['source_text']) . '</div>
                         <div class="mt-1 small text-body-secondary">'
+                            . ($row_owner ? '<span class="badge text-bg-light border me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
                             . (($row['kind'] === 'seo') ? '<span class="badge text-bg-light border me-1">SEO</span>' : '')
                             . (($row['format'] === 'inline') ? '<span class="badge text-bg-light border me-1">HTML</span>' : '')
                             . '<span class="font-monospace opacity-50">' . h(substr($row['hash'], 0, 8)) . '</span>'
                         . '</div>
+                        </div>
                     </div>
                     <div class="col-12 col-xl-5">
                         <textarea class="form-control pg-tr-target" rows="2" lang="' . h($language) . '" placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
@@ -500,6 +583,68 @@ if ($language_row) {
     }
 }
 
+// The selected page under the reviewed policy: what it answered the search
+// engines when it was last drawn, and on request ("Why?", the blocking
+// filter) where the texts that keep it out come from.
+$output_index_note = '';
+
+if ($index_watch && $selected_page) {
+    $index_state = pg_tr_screen_verdict_state($verdicts, $page_id);
+    $index_language = pg_tr_language_label($language);
+    $index_why = ($filter !== 'blocking') ? ' <a href="' . h($url(array('filter' => 'blocking', 'p' => 0))) . '">' . lang('Why?') . '</a>' : '';
+
+    if ($index_state === 'noindex') {
+        $output_index_note = '<div class="alert alert-warning py-2 small mt-3 mb-2"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Kept out of search results in {var:1}: when the page was last drawn, some of the texts on it had no approved translation.', 'vars' => array($index_language)))) . $index_why;
+    } elseif ($index_state === 'indexed') {
+        $output_index_note = '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-search me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Search engines may index this page in {var:1}.', 'vars' => array($index_language))));
+    } else {
+        $output_index_note = '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-hourglass me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Not checked yet: the page has not been drawn in {var:1} since its translations last changed. It is checked the next time it is opened in this language.', 'vars' => array($index_language))))
+            . (($filter !== 'blocking') ? ' <a href="' . h($url(array('filter' => 'blocking', 'p' => 0))) . '">' . lang('Show the texts that would keep it out') . '</a>' : '');
+    }
+
+    if ($filter === 'blocking') {
+        if ($index_reasons) {
+            $output_index_note .= '<div class="mt-2">' . h(lang(array('string' => '{var:1} text(s) here have no translation, or one that is neither approved nor the same as the source text. They come from:', 'vars' => array($total_rows)))) . '</div><ul class="mb-1 ps-3">';
+
+            foreach ($index_reasons as $reason) {
+                $output_index_note .= '<li>' . h($index_owner_label($reason['kind'], $reason['name'])) . ' <span class="opacity-75">' . (int) $reason['count'] . '</span></li>';
+            }
+
+            $output_index_note .= '</ul>';
+        } else {
+            $output_index_note .= '<div class="mt-2">' . lang('None of the texts last read from this page is pending. Run "Update this page" so they are read again, then open the page once in this language.') . '</div>';
+        }
+
+        $output_index_note .= '<div class="mt-1 opacity-75">' . lang('Counted from the texts last read from this page and from what it places: shared components, menus, the records a list includes. A widget may draw other texts as well (products, form fields), and they count too when the page is drawn.') . '</div>';
+    }
+
+    $output_index_note .= '</div>';
+}
+
+// "Keep as in the source": the selected texts get their source text as the
+// translation, approved. Offered while a listed text is not reviewed yet.
+$accept_offered = false;
+
+foreach ($rows as $row) {
+    if (($row['text'] === null) || ((string) $row['status'] !== 'reviewed')) {
+        $accept_offered = true;
+        break;
+    }
+}
+
+$output_bulk = $accept_offered ? '<div class="d-flex flex-wrap align-items-center gap-2 py-2 border-bottom pg-tr-bulk">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input pg-tr-pick-all" type="checkbox" id="pg_tr_pick_all"/>
+                                <label class="form-check-label small" for="pg_tr_pick_all">' . lang('Select all on this page') . '</label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary no-popover" id="pg_tr_accept_source" disabled="disabled" data-bs-toggle="tooltip" title="' . h(lang('A name, a code, a word that reads the same in both languages: the source text is approved as the translation')) . '">
+                                <i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . ' <span class="opacity-75 pg-tr-pick-count">0</span>
+                            </button>
+                        </div>' : '';
+
 $config = array(
     'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations_action.php',
     'token'      => $token,
@@ -543,6 +688,7 @@ $config = array(
         'review_all_count'  => lang('{var} translation(s) will be marked as reviewed.'),
         'clear_count'       => lang('{var} translation(s) will be deleted.'),
         'retrying'          => lang('The server did not answer in time; trying again…'),
+        'accept_count'      => lang('{var} text(s) will be approved as written in the source language.'),
     ),
 );
 
@@ -652,7 +798,7 @@ echo pg_page_shell(array(
                         <span class="text-uppercase h5 text-primary fw-bold mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</span>
                         <span class="small text-body-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
-                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '') . $output_rows . '
+                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '') . $output_index_note . $output_bulk . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-3">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>
@@ -727,6 +873,24 @@ echo pg_page_shell(array(
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
                         <button type="button" class="btn btn-primary pg-tr-review-all-go" data-plain="' . (int) $review_all_count . '" data-flagged="' . (int) $review_all_flagged . '"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="pg_tr_accept_modal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">' . lang('Keep as in the source and approve') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-body-secondary">' . lang('The selected texts are kept as they are written in the source language: the source text becomes their translation, approved by hand. Meant for names, codes and words that read the same in both languages. A machine translation among them is replaced; a text used in other places too is approved there as well.') . '</p>
+                        <p class="fw-semibold mb-0 pg-tr-accept-count"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-primary pg-tr-accept-go"><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
                 </div>
             </div>

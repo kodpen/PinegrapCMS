@@ -4,6 +4,7 @@
  *
  * The Translations screen's endpoint: "update translations", the browser
  * engine's batches and answers, a translation typed or reviewed by hand,
+ * selected texts kept as written in the source language and approved,
  * clearing the translations of a scope, the CSV export and import, the
  * glossary.
  *
@@ -362,6 +363,27 @@ if (!$translations_is_import && !$translations_is_export) {
             }
 
             translations_respond(array('status' => 'success', 'count' => $count, 'message' => lang(array('string' => '{var:1} translation(s) marked as reviewed.', 'vars' => array($count)))));
+            break;
+
+        // The selected texts kept as they are written in the source
+        // language: the source text approved as the translation. A reviewed
+        // translation among them is left as it is.
+        case 'accept_source':
+            $string_ids = pg_tr_screen_string_ids(isset($request['string_ids']) ? $request['string_ids'] : null);
+
+            if (!$string_ids || ($language === '')) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            $accepted = pg_tr_accept_source($language, $string_ids, (int) $user['id']);
+
+            if ($accepted['written'] > 0) {
+                log_activity(lang(array('string' => 'texts were approved as written in the source language ({var:1}, {var:2} text(s))', 'vars' => array($language, $accepted['written']))), $_SESSION['sessionusername']);
+            }
+
+            translations_respond(array('status' => 'success', 'count' => $accepted['written'], 'kept' => $accepted['kept'], 'message' => ($accepted['kept'] > 0)
+                ? lang(array('string' => '{var:1} text(s) approved as written in the source language; {var:2} reviewed translation(s) left as they were.', 'vars' => array($accepted['written'], $accepted['kept'])))
+                : lang(array('string' => '{var:1} text(s) approved as written in the source language.', 'vars' => array($accepted['written'])))));
             break;
 
         // The translations of the scope deleted, so the next update sends

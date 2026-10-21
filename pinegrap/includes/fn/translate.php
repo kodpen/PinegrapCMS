@@ -53,6 +53,7 @@ function pg_tr_load()
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/jobs.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/seo.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/translate/screen.php');
 }
 
 /**
