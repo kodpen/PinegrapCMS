@@ -942,8 +942,12 @@ function ws_app_reads_channel($reader, $channel)
  * a discussion, or in a private channel that lets it be asked, brings it in
  * for that request, so the owner of its application need not be in the room.
  * The words stay the application's own message; the reader only answers
- * whether they may be written there. Whether the assistant may be asked
- * there at all is the caller's question (ws_claude_channel_allowed(),
+ * whether they may be written there. Never through inspection: the work is
+ * carried on by whichever screen asks for it, and a private channel an
+ * administrator opened for inspection in that session must not let anybody
+ * in, so each is asked the way an application's reader is
+ * (ws_app_reads_channel()). Whether the assistant may be asked there at all
+ * is the caller's question (ws_claude_channel_allowed(),
  * ws_ai_channel_allowed()).
  *
  * @param array|null $owner   ws_viewer() of the application's owner, null when there is none
@@ -954,7 +958,7 @@ function ws_app_reads_channel($reader, $channel)
 function ws_assistant_writer($owner, $asker, $channel)
 {
     foreach (array($owner, $asker) as $reader) {
-        if (is_array($reader) && is_array($channel) && ws_can_post_channel($reader, $channel)) {
+        if (is_array($reader) && is_array($channel) && ws_can_post_channel(array('role' => 3) + $reader, $channel)) {
             return $reader;
         }
     }

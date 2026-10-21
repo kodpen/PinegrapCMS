@@ -161,7 +161,7 @@ function ws_api_claude_guard()
         api_fail(403, 'forbidden', lang('Claude is not switched on on this site.'));
     }
 
-    if (ws_api_app_id() !== (int) ws_claude_config()['app_id']) {
+    if (!ws_api_is_claude()) {
         api_fail(403, 'forbidden', lang('Only the application Claude works through may use this endpoint.'));
     }
 
@@ -169,14 +169,20 @@ function ws_api_claude_guard()
 }
 
 /**
- * Is the current application the one Claude works through?
+ * Is the call Claude's: the key of the application chosen for Claude, used
+ * as itself? A person signed in through that application - a team device or
+ * an OAuth connection reports the application it came through - is that
+ * person, not Claude: the routine signs in with the key and secret, and what
+ * Claude may read and answer (ws_claude_channel_asker(), ws_assistant_writer())
+ * must not open to every session of the application.
  *
  * @return bool
  */
 function ws_api_is_claude()
 {
     return function_exists('ws_claude_schema_ready') && ws_claude_schema_ready()
-        && (ws_claude_config()['app_id'] > 0) && (ws_api_app_id() === (int) ws_claude_config()['app_id']);
+        && (ws_claude_config()['app_id'] > 0) && (ws_api_app_id() === (int) ws_claude_config()['app_id'])
+        && (!function_exists('api_current_device') || (api_current_device() === null));
 }
 
 function ws_api_claude_request_present($viewer, $row)

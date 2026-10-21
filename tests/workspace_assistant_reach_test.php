@@ -7,8 +7,9 @@
  * application where that person may write and through the person who asked
  * where the owner is not in the channel or the discussion; Claude's
  * application reads such a place through the person who asked while the
- * request is open; and Claude's and Pinegrap AI's answers and refusals are
- * written that way.
+ * request is open and Claude is switched on; only the application's key used
+ * as itself counts as Claude; and Claude's and Pinegrap AI's answers and
+ * refusals are written that way.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -56,6 +57,28 @@ function test_workspace_assistant_reach_writer()
 	pg_assert_same(null, ws_assistant_writer(null, null, $channel), 'nobody');
 	pg_assert_same(null, ws_assistant_writer($owner, $asker, array('archived_at' => 1700000000) + $channel), 'nothing is written in an archived channel');
 	pg_assert_same(null, ws_assistant_writer($owner, $asker, null), 'no channel');
+
+	// The work is carried on by whichever screen asks for it: a private
+	// channel opened for inspection in that session lets nobody in.
+	pg_assert_contains("ws_can_post_channel(array('role' => 3) + \$reader, \$channel)", workspace_assistant_reach_test_source('ws_assistant_writer'), 'never through inspection');
+}
+
+// The channel is read with the eyes of whoever asked the request being worked
+// on, wherever it came from (asked in the channel, or a run on one of its
+// tasks), then the others' oldest first; each person once.
+function test_workspace_assistant_reach_asker_order()
+{
+	$rows = array(
+		array('id' => '5', 'requested_by' => '3', 'status' => 'queued'),
+		array('id' => '2', 'requested_by' => '3', 'status' => 'sent'),
+		array('id' => '4', 'requested_by' => '0', 'status' => 'queued'),
+		array('id' => '9', 'requested_by' => '7', 'status' => 'running'),
+		array('id' => '8', 'requested_by' => '6', 'status' => 'queued'),
+	);
+
+	pg_assert_same(array(7, 3, 6), ws_claude_asker_order($rows), 'running first, then oldest first, each once, nobody for 0');
+	pg_assert_same(array(), ws_claude_asker_order(array()), 'no request');
+	pg_assert_same(array(4), ws_claude_asker_order(array(array('id' => 1, 'requested_by' => 4, 'status' => 'queued'))), 'one request');
 }
 
 // Claude's answer and its refusal go in through ws_assistant_writer(), with
@@ -112,8 +135,19 @@ function test_workspace_assistant_reach_claude_context()
 
 	$lookup = workspace_assistant_reach_test_source('ws_claude_channel_asker');
 
+	pg_assert_contains("ws_claude_config()['enabled']", $lookup, 'nothing while Claude is switched off');
 	pg_assert_contains("status IN ('queued', 'sent', 'running')", $lookup, 'only while the request is open');
 	pg_assert_contains('ws_claude_only()', $lookup, 'Claude\'s requests only');
 	pg_assert_contains("ws_claude_only('r')", $lookup, 'also for a run on a task of the channel');
+	pg_assert_contains('ws_claude_asker_order($rows)', $lookup, 'both kinds of request in one order');
 	pg_assert_contains('ws_app_reads_channel($asker, $channel)', $lookup, 'never through inspection');
+}
+
+// Claude is the application's key used as itself: a person signed in through
+// that application on a device or over OAuth is not Claude, here nor at the
+// queue's endpoints.
+function test_workspace_assistant_reach_claude_is_the_key()
+{
+	pg_assert_contains('api_current_device() === null', workspace_assistant_reach_test_source('ws_api_is_claude'), 'no device session');
+	pg_assert_contains('if (!ws_api_is_claude())', workspace_assistant_reach_test_source('ws_api_claude_guard'), 'the queue asks the same');
 }

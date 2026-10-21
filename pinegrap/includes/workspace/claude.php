@@ -398,30 +398,31 @@ function ws_claude_channel_allowed($channel)
  */
 function ws_claude_channel_asker($channel)
 {
-    if (!ws_claude_schema_ready() || !is_array($channel) || ((int) ($channel['id'] ?? 0) <= 0) || !function_exists('ws_change_viewer_for_id')) {
+    // Switched off, Claude reads nothing: its requests stay queued, as nothing
+    // runs the watchdog that would end them.
+    if (!ws_claude_schema_ready() || !ws_claude_config()['enabled'] || !is_array($channel) || ((int) ($channel['id'] ?? 0) <= 0)
+        || !function_exists('ws_change_viewer_for_id')) {
         return null;
     }
 
     $channel_id = (int) $channel['id'];
 
-    // The request being worked on first: a run claims one request at a time
-    // and reads its channel right after.
-    $ids = (array) db_values("SELECT requested_by FROM ws_ai_requests
+    $rows = (array) db_items("SELECT id, requested_by, status FROM ws_ai_requests
         WHERE channel_id = '" . $channel_id . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only() . "
         ORDER BY status = 'running' DESC, id
         LIMIT 20");
 
     // A run on a task reads the task's channel (ws_api_claude_task_present()).
     if (function_exists('ws_delegation_ready') && ws_delegation_ready()) {
-        $ids = array_merge($ids, (array) db_values("SELECT r.requested_by FROM ws_ai_requests r
+        $rows = array_merge($rows, (array) db_items("SELECT r.id, r.requested_by, r.status FROM ws_ai_requests r
             INNER JOIN ws_tasks t ON t.id = r.task_id
             WHERE r.task_id > 0 AND t.channel_id = '" . $channel_id . "' AND r.status IN ('queued', 'sent', 'running')" . ws_claude_only('r') . "
             ORDER BY r.status = 'running' DESC, r.id
             LIMIT 20"));
     }
 
-    foreach (array_unique(array_map('intval', $ids)) as $user_id) {
-        $asker = ($user_id > 0) ? ws_change_viewer_for_id($user_id) : null;
+    foreach (ws_claude_asker_order($rows) as $user_id) {
+        $asker = ws_change_viewer_for_id($user_id);
 
         if ($asker && ws_app_reads_channel($asker, $channel)) {
             return $asker;
@@ -429,6 +430,38 @@ function ws_claude_channel_asker($channel)
     }
 
     return null;
+}
+
+/**
+ * The people behind a channel's open requests to Claude, each once: whoever
+ * asked the request being worked on first - a run claims one request at a
+ * time and reads its channel right after, so the channel is read with that
+ * person's eyes - then the others, oldest request first.
+ *
+ * @param array[] $rows ws_ai_requests rows: id, requested_by, status
+ * @return int[] user ids
+ */
+function ws_claude_asker_order($rows)
+{
+    $rows = array_values((array) $rows);
+
+    usort($rows, function ($a, $b) {
+        $running = ((($b['status'] ?? '') === 'running') ? 1 : 0) - ((($a['status'] ?? '') === 'running') ? 1 : 0);
+
+        return ($running !== 0) ? $running : ((int) ($a['id'] ?? 0) - (int) ($b['id'] ?? 0));
+    });
+
+    $out = array();
+
+    foreach ($rows as $row) {
+        $user_id = (int) ($row['requested_by'] ?? 0);
+
+        if (($user_id > 0) && !in_array($user_id, $out, true)) {
+            $out[] = $user_id;
+        }
+    }
+
+    return $out;
 }
 
 /**
