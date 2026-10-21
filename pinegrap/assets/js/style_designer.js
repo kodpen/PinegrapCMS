@@ -3470,7 +3470,10 @@ const StyleDesigner = (function () {
         // block somebody else laid out is the same kind of edit as changing
         // the sentence beside it — and the alternative is a content operator
         // who can rewrite the caption of an image they cannot replace.
-        if (what === 'image' && typeof _sdNodeImage === 'function' && _sdNodeImage(node)) return true;
+        // A background image is not among them: it is formatting, and the
+        // save does not take it outside a marked area
+        // (_pg_dm_take_image_src()), so offering it lost the change.
+        if (what === 'image' && typeof _sdNodeContentImage === 'function' && _sdNodeContentImage(node)) return true;
         return false;
     }
 
@@ -57703,6 +57706,20 @@ const StyleDesigner = (function () {
             return { url: bg, set: function (u) { setAttrStyleProp(node, 'background-image', 'url(' + u + ')'); } };
         }
         return null;
+    }
+
+    /**
+     * The image a content operator may swap outside a marked area: an image
+     * content node or a bare <img>, whose address the save takes
+     * (_pg_dm_take_image_src() in includes/designer_access.php). An inline
+     * background-image is formatting; the save keeps the stored one, so it
+     * is not offered there.
+     */
+    function _sdNodeContentImage(node) {
+        if (!node || !node.props) return null;
+        var picture = (node.type === 'content' && node.props.contentType === 'image')
+            || (node.type === 'semantic' && String(node.props.tag || '').toLowerCase() === 'img');
+        return picture ? _sdNodeImage(node) : null;
     }
 
     // Right-click entry: same tool, the node supplies the address.
