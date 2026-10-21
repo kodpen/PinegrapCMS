@@ -1928,7 +1928,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // on; if not present, prepend to the form body as a last resort.
         $body = preg_replace(
             '/(<div[^>]*class="[^"]*pg-cart-upsell-auto[^"]*"[^>]*>.*?<\/div>)/s',
-            '$1' . str_replace('$', '\\$', $applied_offers_html),
+            '$1' . pg_regex_replacement($applied_offers_html),
             $body,
             1,
             $_replaced

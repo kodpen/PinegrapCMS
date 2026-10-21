@@ -5059,7 +5059,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_recipient, $_html)) {
                     $$_target = preg_replace(
                         $_re_recipient,
-                        $variant_picker_html . '<$1 $2>',
+                        pg_regex_replacement($variant_picker_html) . '<$1 $2>',
                         $_html,
                         1
                     );
@@ -5068,7 +5068,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_sepete_row, $_html)) {
                     $$_target = preg_replace(
                         $_re_sepete_row,
-                        $variant_picker_html . '$1',
+                        pg_regex_replacement($variant_picker_html) . '$1',
                         $_html,
                         1
                     );
@@ -5077,7 +5077,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_sepete_btn, $_html)) {
                     $$_target = preg_replace(
                         $_re_sepete_btn,
-                        $variant_picker_html . '$0',
+                        pg_regex_replacement($variant_picker_html) . '$0',
                         $_html,
                         1
                     );
