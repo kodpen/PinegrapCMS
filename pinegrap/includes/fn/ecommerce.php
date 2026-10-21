@@ -2114,11 +2114,21 @@ function update_order_item_taxes()
     $billing_state = isset($row['billing_state']) ? $row['billing_state'] : '';
     $billing_country = isset($row['billing_country']) ? $row['billing_country'] : '';
     $tax_exempt = isset($row['tax_exempt']) ? $row['tax_exempt'] : '';
+
+    // The rate each line is charged at goes with its tax (order_items.tax_rate,
+    // 11.0.59): the order's invoice prints it and takes the line's tax at it
+    // again, and a rate worked back out of two rounded amounts can be wrong.
+    $rate_sql = function ($rate) {
+        return pg_schema_has('order_items', 'tax_rate')
+            ? ", tax_rate = '" . number_format((float) $rate, 3, '.', '') . "'"
+            : '';
+    };
+
     // if order is tax-exempt, clear tax from all order items
     if ($tax_exempt) {
         $query = "UPDATE order_items
 
-                 SET tax_total = 0, tax = 0
+                 SET tax_total = 0, tax = 0" . $rate_sql(0) . "
 
                  WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2226,7 +2236,7 @@ function update_order_item_taxes()
                     $tax_amount = round($effective_tax_rate / 100 * $order_item['price'] * $line_quantity);
                     $query = "UPDATE order_items
 
-                             SET tax_total = '$tax_amount', tax = '0'
+                             SET tax_total = '$tax_amount', tax = '0'" . $rate_sql($effective_tax_rate) . "
 
                              WHERE id = '" . $order_item['id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2234,7 +2244,7 @@ function update_order_item_taxes()
                 } else {
                     $query = "UPDATE order_items
 
-                             SET tax_total = '0', tax = '0'
+                             SET tax_total = '0', tax = '0'" . $rate_sql(0) . "
 
                              WHERE id = '" . $order_item['id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));

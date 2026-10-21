@@ -1659,21 +1659,35 @@ function pg_page_custom_jsonld_message($error, $page_name)
  */
 function pg_page_canonical_url_check($raw)
 {
-    $raw = trim((string) $raw);
+    $refuse = function ($error) {
+        return array('ok' => false, 'value' => '', 'error' => $error);
+    };
+
+    // An address pasted from a document or a web page brings Unicode white
+    // space and invisible characters along (a no-break space at the end, a
+    // byte order mark at the start): trimmed at both ends like ASCII space,
+    // where trim() alone kept them and the page printed ...%C2%A0. The same
+    // set as the designer's live check (_sdCanonicalCheck(), JS \s plus the
+    // zero-width ones). Not UTF-8 is not an address.
+    $raw = preg_replace('~^[\x00\x09-\x0D\p{Z}\x{FEFF}\x{200B}-\x{200D}\x{2060}]+|[\x00\x09-\x0D\p{Z}\x{FEFF}\x{200B}-\x{200D}\x{2060}]+$~u', '', (string) $raw);
+
+    if ($raw === null) {
+        return $refuse('chars');
+    }
 
     if ($raw === '') {
         return array('ok' => true, 'value' => '', 'error' => '');
     }
 
-    $refuse = function ($error) {
-        return array('ok' => false, 'value' => '', 'error' => $error);
-    };
-
     if (strlen($raw) > 2000) {
         return $refuse('size');
     }
 
-    if (preg_match('~[\x00-\x20\x7F"<>\\\\]~', $raw)) {
+    // Inside: ASCII space and control characters, the characters no address
+    // carries unescaped, and every Unicode separator or format character
+    // (no-break and ideographic spaces, line separators, zero-width and
+    // direction marks), none of which a visitor can see in the address.
+    if (preg_match('~[\x00-\x20\x7F"<>\\\\]|[\p{Z}\p{Cf}]~u', $raw)) {
         return $refuse('chars');
     }
 

@@ -56,6 +56,18 @@
             return (data.labels && data.labels[key]) ? String(data.labels[key]) : fallback;
         }
 
+        // The address the refreshes post to, carrying the language a page
+        // drawn in another language says it is in (<html data-pg-lang>), as
+        // frontend.js adds it to the software's jQuery requests: api.php
+        // then answers the product's texts in that language instead of
+        // writing the source language over the translated page.
+        function apiUrl() {
+            var url = String(data.api_url || '');
+            var lang = document.documentElement.getAttribute('data-pg-lang');
+            if (!url || !lang || /[?&]pg_lang=/.test(url)) return url;
+            return url + ((url.indexOf('?') === -1) ? '?' : '&') + 'pg_lang=' + encodeURIComponent(lang);
+        }
+
         // Find any variant-attribute select on the page belonging to this
         // group's attributes. Two layouts emit such elements:
         //   • Legacy `.pg-civ-variant-picker` (auto-injected single block)
@@ -322,7 +334,7 @@
             if (parseInt(detailPid, 10) > 0) {
                 body.detail_page_id = parseInt(detailPid, 10);
             }
-            fetch(data.api_url, {
+            fetch(apiUrl(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -490,7 +502,7 @@
             // api.php reads the request body via json_decode(php://input). See
             // refreshCrossSell above for the full reasoning — FormData would
             // make $request null and leak nothing useful into the action.
-            fetch(data.api_url, {
+            fetch(apiUrl(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
