@@ -33,6 +33,11 @@
 // documentation writes them both ways for different services. Both spellings
 // are sent, which costs two headers and removes a class of bug that only shows
 // up on one endpoint.
+//
+// A function that talks to n11 may take an optional $transport, a callable with
+// the signature of api_http_request(). The connector table never passes one, so
+// production traffic always goes through the address-checked client; the tests
+// pass one that answers from saved responses.
 
 if (!defined('PG_INIT_LOADED')) {
 
@@ -98,9 +103,15 @@ function mp_n11_headers($account) {
 // back 200 with status REJECT in the body, and an expired key can come back 200
 // with an error object. So the body is parsed first and the status code is only
 // the fallback.
-function mp_n11_call($account, $method, $path, $body = null, $max_body = 0) {
+function mp_n11_call($account, $method, $path, $body = null, $max_body = 0, $transport = null) {
 
-	$outcome = api_http_request($method, mp_n11_base() . $path, array(
+	if ($transport === null) {
+
+		$transport = 'api_http_request';
+
+	}
+
+	$outcome = call_user_func($transport, $method, mp_n11_base() . $path, array(
 		'body'     => ($body === null) ? null : json_encode($body),
 		'headers'  => mp_n11_headers($account),
 		'timeout'  => 30,
@@ -554,7 +565,13 @@ function mp_n11_reason_text($reasons) {
 // feed that is queried right up to "now" loses whatever was written in the
 // second the query was made; the overlap costs nothing because the importer is
 // keyed on the package id and refuses a repeat.
-function mp_n11_pull_orders($account, $since) {
+//
+// Answers data['read_to'], the moment the cursor may move to. When the feed
+// ran out that is now. When the page cap ran out first it is the modification
+// time of the last package read: the feed is asked in ascending order of that
+// time, so everything not yet read was modified at or after it, and the next
+// pass starts there and reads on.
+function mp_n11_pull_orders($account, $since, $transport = null) {
 
 	$since = (int) $since;
 
@@ -572,13 +589,24 @@ function mp_n11_pull_orders($account, $since) {
 
 	$packages = array();
 
-	$page = 0;
-
 	// Their ceiling is a hundred a page. The cap on pages is what stops a first
 	// pull on a busy store from running until the cron is killed; whatever is
 	// left is picked up on the next pass, because the cursor only moves as far
 	// as what was actually read.
-	for ($page = 0; $page < 20; $page++) {
+	$pages = 20;
+
+	// Twenty full pages that all sit inside the five-minute overlap would hand
+	// the next pass the same start, and it would read the same twenty pages for
+	// ever. Only then does the pull read on past the cap, up to this ceiling,
+	// until the last package read is newer than where it started.
+	$ceiling = 100;
+
+	// The modification time of the last package read that carried one.
+	$reached = 0;
+
+	$more = false;
+
+	for ($page = 0; $page < $ceiling; $page++) {
 
 		$path = '/rest/delivery/v1/shipmentPackages'
 			. '?startDate=' . $start
@@ -588,7 +616,7 @@ function mp_n11_pull_orders($account, $since) {
 			. '&orderByField=true'
 			. '&orderByDirection=ASC';
 
-		$result = mp_n11_call($account, 'GET', $path, null, 4194304);
+		$result = mp_n11_call($account, 'GET', $path, null, 4194304, $transport);
 
 		if (!$result['ok']) {
 
@@ -601,12 +629,6 @@ function mp_n11_pull_orders($account, $since) {
 
 		$content = mp_n11_order_content($result['data']);
 
-		if (!$content) {
-
-			break;
-
-		}
-
 		foreach ($content as $entry) {
 
 			$package = mp_n11_package($entry);
@@ -615,11 +637,25 @@ function mp_n11_pull_orders($account, $since) {
 
 				$packages[] = $package;
 
+				if ($package['placed_at'] > 0) {
+
+					$reached = (int) $package['placed_at'];
+
+				}
+
 			}
 
 		}
 
-		if (count($content) < 100) {
+		$more = (count($content) >= 100);
+
+		if (!$more) {
+
+			break;
+
+		}
+
+		if (($page + 1 >= $pages) && ($reached > $since)) {
 
 			break;
 
@@ -627,7 +663,21 @@ function mp_n11_pull_orders($account, $since) {
 
 	}
 
-	return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => time()));
+	if (!$more) {
+
+		return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => time()));
+
+	}
+
+	if ($reached > $since) {
+
+		return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => $reached, 'more' => true));
+
+	}
+
+	// Even the ceiling did not get past the start. The packages are imported
+	// and the cursor stays where it was rather than jumping over the rest.
+	return mp_ok(array('packages' => $packages, 'complete' => false, 'more' => true));
 
 }
 
