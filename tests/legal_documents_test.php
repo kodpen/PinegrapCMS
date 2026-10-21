@@ -609,3 +609,16 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("strpos((string)\$tree_json, '__legal_preinfo_url') === false", $section, 'a bound link keeps the card away');
 	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
 }
+
+// Deleting an order deletes the copies kept with it: they hold the buyer's
+// name, address, phone, e-mail, IP and browser, and a reused order id would
+// otherwise find "already stored" copies of another customer.
+function test_legal_documents_deleted_with_the_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_order.php');
+	$orders = strpos($source, 'db("DELETE FROM orders WHERE');
+	$documents = strpos($source, 'db("DELETE FROM order_documents WHERE order_id = \'" . e($order[\'id\']) . "\'")');
+
+	pg_assert_true(($orders !== false) && ($documents !== false) && ($orders < $documents), 'the copies go with the order');
+	pg_assert_contains("pg_schema_has('order_documents')", $source, 'only where the table is there');
+}
