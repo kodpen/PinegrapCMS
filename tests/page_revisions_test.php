@@ -122,3 +122,22 @@ function test_page_revisions_identical()
 	pg_assert_same(false, pg_page_revision_identical($latest, 'c', 'b', '{"page_title":"x"}'));
 	pg_assert_same(false, pg_page_revision_identical(null, 'a', 'b', '{"page_title":"x"}'));
 }
+
+// History › Compare draws the revision with the shared components and
+// system widgets its tree places, also those the page has dropped since and
+// the editor's cache does not hold: they are fetched before both sides are
+// drawn, as loading a tree does.
+function test_page_revisions_compare_fetches_the_revision_shared_components()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, 'function _sdRevisionOpenCompare(');
+	$section = ($from === false) ? '' : substr($source, $from, strpos($source, 'function _sdRevisionShowCompare(', $from) - $from);
+
+	$collect = strpos($section, 'collectSharedIds(rev.tree, sids);');
+	$fetch = strpos($section, 'prefetchShared(missing, function () {');
+	$draw = strpos($section, 'generateHTML(styleName, addBc, rev.tree)');
+
+	pg_assert_true(($collect !== false) && ($fetch !== false) && ($draw !== false), 'collect, fetch and draw are there');
+	pg_assert_true(($collect < $fetch) && ($fetch < $draw), 'the revision is drawn after its components are fetched');
+	pg_assert_contains('!_sharedCache[id]', $section, 'only what the cache does not hold');
+}
