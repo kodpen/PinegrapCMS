@@ -157,7 +157,9 @@ function update_order($request) {
                     $recipient['new_tracking_number'] = true;
                 }
 
-                $recipient['tracking_numbers'][] = $number;
+                // The spelling the row keeps (pg_shipment_record()), so the
+                // event and the answer say what the order screen shows.
+                $recipient['tracking_numbers'][] = $recorded['number'];
 
                 $kept_numbers[] = $number;
             }

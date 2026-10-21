@@ -217,6 +217,30 @@ function test_workspace_notes_io_import_paths()
 	pg_assert_false(ws_note_import_is_note('Vault/a.png'), 'a picture is not');
 }
 
+function test_workspace_notes_io_import_zip_names_without_the_utf8_flag()
+{
+	// Names as Windows' "Compressed folder" and 7-Zip write them on a Turkish
+	// system: the OEM code page CP857, no UTF-8 flag on the entry.
+	$meeting = hex2bin('546f706c616e748d206e6f746c61728d2e6d64');
+	$spec    = hex2bin('456b6c65722f9f6172746e616d652e706466');
+	$plan    = hex2bin('598d6c6c8d6b20706c616e2e6d64');
+
+	pg_assert_same('Toplantı notları.md', ws_note_import_zip_name($meeting, 'Toplantì notlarì.md'), 'ı from CP857, not libzip\'s CP437 guess');
+	pg_assert_same('Ekler/şartname.pdf', ws_note_import_zip_name($spec, 'Ekler/ƒartname.pdf'), 'ş in a folder path');
+	pg_assert_same('Yıllık plan.md', ws_note_import_zip_name($plan, 'Yìllìk plan.md'), 'two ı');
+	pg_assert_same('İş.md', ws_note_import_zip_name(hex2bin('989f2e6d64'), ''), 'İ and ş');
+	pg_assert_same('Ğ.md', ws_note_import_zip_name(hex2bin('a62e6d64'), ''), 'Ğ');
+	pg_assert_same('Résumé.md', ws_note_import_zip_name(hex2bin('528273756d822e6d64'), ''), 'a Western European name shares its bytes with CP437 and CP850');
+	pg_assert_same("a\u{FFFD}b.md", ws_note_import_zip_name(hex2bin('61d5622e6d64'), ''), 'a byte CP857 does not define');
+
+	pg_assert_same('Toplantı notları.md', ws_note_import_zip_name('Toplantı notları.md', 'Toplantı notları.md'), 'a UTF-8 name (flagged or not) is kept as it is');
+	pg_assert_same('Ekler/plan.pdf', ws_note_import_zip_name('Ekler/plan.pdf', 'Ekler/plan.pdf'), 'ASCII');
+	pg_assert_same('Toplantì notlarì.md', ws_note_import_zip_name(false, 'Toplantì notlarì.md'), 'no raw name: what libzip guessed');
+	pg_assert_same('', ws_note_import_zip_name('', ''), 'nothing');
+
+	pg_assert_same('Toplantı notları.md', ws_note_import_entry_name(ws_note_import_zip_name($meeting, '')), 'a decoded name is a valid entry name');
+}
+
 function test_workspace_notes_io_import_links_found_and_replaced()
 {
 	$body = "[[Plan]] [[Plan#Goals|the goals]] ![[pic.png]] [spec](../docs/my%20spec.pdf#p2) [web](https://x.test/a) [mail](mailto:a@b.test) [top](#here)\n```\n[[not a link]]\n```\n`[[code]]`";

@@ -470,7 +470,10 @@ function ws_note_import_stage($viewer, $files)
                 continue;
             }
 
-            $name = ws_note_import_entry_name($stat['name']);
+            // The name as the zip holds it, not libzip's guess: a zip from
+            // a Turkish Windows names its entries in CP857 without the
+            // UTF-8 flag, and the guess (CP437) garbles ı, ş and İ.
+            $name = ws_note_import_entry_name(ws_note_import_zip_name($archive->getNameIndex($index, ZipArchive::FL_ENC_RAW), $stat['name']));
 
             if ($name !== '') {
                 $entries[] = array($name, (int) $stat['size'], (int) $stat['mtime'], $index);

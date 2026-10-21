@@ -107,6 +107,35 @@
         return index;
     }
 
+    // Whether a cell of a protected sheet is unlocked: by its own style when
+    // the file holds the cell (open, or closed when its row or column would
+    // say otherwise), else by the style a new cell takes, the row's own
+    // first, then the column's, as the save gives it
+    // (pg_office_xlsx_new_cell_style()).
+    function openOf(edit, address, row, column) {
+        if (edit.open && own(edit.open, address)) {
+            return true;
+        }
+
+        if (edit.closed && own(edit.closed, address)) {
+            return false;
+        }
+
+        if (edit.rows && own(edit.rows, row)) {
+            return !!edit.rows[row];
+        }
+
+        var columns = edit.columns || [];
+
+        for (var place = 0; place < columns.length; place++) {
+            if (column >= columns[place][0] && column <= columns[place][1]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // Why a cell of a sheet may not be changed, as the server sorted it
     // (includes/fn/office_edit.php); '' when it may. The server checks the
     // same again when the edit is saved.
@@ -123,7 +152,7 @@
             return edit.locked[address];
         }
 
-        if (edit.protected && !(edit.open && own(edit.open, address))) {
+        if (edit.protected && !openOf(edit, address, row, column)) {
             return 'protected';
         }
 

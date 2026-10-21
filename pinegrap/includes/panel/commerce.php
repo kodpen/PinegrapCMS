@@ -642,6 +642,13 @@ function pg_panel_get_product($request, $action)
         exit();
     }
 
+    // A request from a page drawn in another language (pg_lang, read in
+    // api.php) is answered with the product's texts in that language: the
+    // variant chooser writes them over the page's translated ones.
+    if (function_exists('pg_tr_product_fields')) {
+        $product = pg_tr_product_fields($product);
+    }
+
     // ── Extended response: gallery + computed fields ─────────────────
     // Backward-compat: the legacy custom-layout 'code' expansion above
     // ALREADY uses products_images_xref; we just expose the same gallery

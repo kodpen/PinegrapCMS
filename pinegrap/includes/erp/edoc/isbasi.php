@@ -961,6 +961,32 @@ function erp_edoc_isbasi_document_missing($invoice)
 }
 
 /**
+ * How a line's discount goes to İşbaşı: a rate or an amount, never both.
+ *
+ * The ERP takes a campaign discount first and the rate typed on the line
+ * from what is left (erp_manual_lines_build()): 1.000,00 with 10 % and 5 %
+ * is 145,00 off, and discount_amount holds both. Sent as the typed rate
+ * alone, İşbaşı took 5 % (50,00) and issued the document at 1.140,00 against
+ * the ERP's 1.026,00. A line with a campaign discount therefore goes with the
+ * amount; a line whose only discount is the typed rate keeps the rate, which
+ * İşbaşı works out exactly as the ERP does.
+ *
+ * @param array $line  an erp_invoice_items row
+ * @return array ['rate' => float, 'value' => float (currency units)]
+ */
+function erp_edoc_isbasi_line_discount($line)
+{
+    $rate = (float) ($line['discount_rate'] ?? 0);
+    $amount = ((int) ($line['discount_amount'] ?? 0)) / 100;
+
+    if (($rate > 0) && ((float) ($line['offer_discount_rate'] ?? 0) <= 0)) {
+        return array('rate' => $rate, 'value' => 0.0);
+    }
+
+    return array('rate' => 0.0, 'value' => (float) $amount);
+}
+
+/**
  * The SimpleInv body for an invoice, field for field from the documentation.
  *
  * @param array $invoice
@@ -1036,8 +1062,7 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
     foreach ($lines as $line) {
         $quantity = (float) $line['quantity'];
         $unit_price = ((int) $line['unit_price']) / 100;
-        $discount_rate = (float) $line['discount_rate'];
-        $discount_value = ((int) $line['discount_amount']) / 100;
+        $discount = erp_edoc_isbasi_line_discount($line);
         // products.code is the SKU field (free text); İşbaşı matches its
         // own product card by itemCode, so the SKU when there is one.
         $item_code = ((int) ($line['product_id'] ?? 0) > 0) ? trim((string) db_value("SELECT code FROM products WHERE id = '" . (int) $line['product_id'] . "'")) : '';
@@ -1048,8 +1073,8 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
             'taxRate' => (float) $line['tax_rate'],
             'name' => (string) $line['description'],
             'price' => $unit_price,
-            'discountRate' => $discount_rate,
-            'discountValue' => ($discount_rate > 0) ? 0 : $discount_value,
+            'discountRate' => $discount['rate'],
+            'discountValue' => $discount['value'],
             'description' => '',
             'productDetail' => array(
                 'itemCode' => ($item_code !== '') ? $item_code : ((int) ($line['product_id'] ?? 0) > 0 ? 'PG-' . (int) $line['product_id'] : ''),

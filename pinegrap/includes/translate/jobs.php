@@ -781,7 +781,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 
         $string = $strings[$hash];
         $clean = pg_tr_sanitize_incoming($translation, $string['format']);
-        $check = pg_tr_result_check($string['source_text'], $clean, $string['format']);
+        $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
 
         if (!$check['ok']) {
             $summary['rejected']++;
