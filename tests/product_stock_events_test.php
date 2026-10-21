@@ -264,3 +264,78 @@ function test_product_stock_catalogue_says_quiet_paths_are_listed()
 	pg_assert_contains('marketplace order imports', $line);
 	pg_assert_contains('updated_since', $line);
 }
+
+// -- the 'before' a sale passes ----------------------------------------------
+
+// The part of a writer's source between two markers, '' when either is
+// missing, so a test reads one block and not the whole file.
+function product_stock_events_test_block($code, $start, $end)
+{
+	$from = strpos($code, $start);
+
+	if ($from === false) {
+		return '';
+	}
+
+	$to = strpos($code, $end, $from);
+
+	return ($to === false) ? '' : substr($code, $from, $to - $from);
+}
+
+// Why the sale must pass the stock as it is at the decrement: the crossing is
+// decided from $before. Two checkouts that both read 6 with a line at 5: the
+// first sells 6 -> 5 and is the crossing; the second sells 5 -> 4 and is not,
+// unless it passes the 6 it read before the payment call.
+function test_product_stock_events_crossing_depends_on_the_fresh_before()
+{
+	pg_assert_same(2, count(pg_product_stock_events(41, 'SKU-41', true, 6, 5, 5, 'checkout')), 'first sale crosses');
+	pg_assert_same(1, count(pg_product_stock_events(41, 'SKU-41', true, 5, 4, 5, 'checkout')), 'second sale, fresh before: no second stock.low');
+	pg_assert_same(2, count(pg_product_stock_events(41, 'SKU-41', true, 6, 4, 5, 'checkout')), 'second sale, stale before: stock.low again');
+
+	// Restocked to 10 during the payment call, 6 sold: the crossing is only
+	// seen from the fresh 10, not from the 4 read before.
+	pg_assert_same(2, count(pg_product_stock_events(41, 'SKU-41', true, 10, 4, 5, 'checkout')), 'fresh before after a restock');
+	pg_assert_same(1, count(pg_product_stock_events(41, 'SKU-41', true, 4, 4, 5, 'checkout')), 'stale before misses it');
+}
+
+// The checkout reads $products before the payment call. The first row of a
+// product reads the stock again right before its decrement and passes that.
+function test_product_stock_checkout_reads_the_stock_before_the_decrement()
+{
+	$block = product_stock_events_test_block(product_stock_events_test_source('submit_order.php'), '$stock_left = array();', "'checkout');");
+	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
+	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
+
+	pg_assert_true($block !== '', 'the checkout stock block is found');
+	pg_assert_true($select !== false, 'the stock is read again in the loop');
+	pg_assert_true(($select !== false) && ($decrement !== false) && ($select < $decrement), 'read before the decrement');
+	pg_assert_contains('isset($stock_left[$product_id])', $block, 'later rows carry what the row above left');
+}
+
+// The local sale reads the stock again the same way and sets the flag from
+// the stock left, not by comparing one line with the stock read before the
+// loop: a product on two lines (2 + 3 of 5) reached 0 with no flag.
+function test_product_stock_local_sale_reads_the_stock_and_flags_from_what_is_left()
+{
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/local_sale.php'), '// 5. Stock goes down', '// 6. Tell whoever');
+	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
+	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
+
+	pg_assert_true($block !== '', 'the local sale stock block is found');
+	pg_assert_true(($select !== false) && ($decrement !== false) && ($select < $decrement), 'read before the decrement');
+	pg_assert_contains("AND inventory_quantity <= 0 AND out_of_stock != '1'", $block, 'conditional flag from the stock left');
+	pg_assert_contains("'action' => 'out_stock'", $block, 'the out-of-stock bell');
+	pg_assert_false(strpos($block, "(int) \$line['quantity'] >= (int) \$line['inventory_quantity']") !== false, 'no per-line comparison');
+}
+
+// A scan that leaves the stock where it was (a decrease at 0) announces no
+// inventory.changed; the marketplace is still queued.
+function test_product_stock_barcode_announces_only_a_change()
+{
+	foreach (array('barcode_decrease_inventory.php', 'barcode_increase_inventory.php') as $file) {
+		$code = product_stock_events_test_source($file);
+
+		pg_assert_contains('if ((int) $inventory_quantity !== (int) $new_inventory_quantity) {', $code, $file);
+		pg_assert_contains('pg_marketplace_product_changed((int) $id);', $code, $file . ' still queues the marketplace');
+	}
+}
