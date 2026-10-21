@@ -21,6 +21,7 @@ description: Claude and Pinegrap AI read and answer a discussion or allowed priv
 
 ## When is nothing posted?
 - The person who asked left the channel or the discussion, or it was archived or concluded, and the owner is not in it: `/answer` 403 "The answer cannot be posted there any more: …", Pinegrap AI's request fails with the same sentence; `/fail` keeps the reason on the request only (`told_in_channel` false).
+- Pinegrap AI switched on without an application (none chosen, or it was deleted): nothing is written in the channel, the request only keeps its state; else the asker would stand in and the refusal become their own message (`ws_ai_app()` first).
 
 ## What was checked, and how?
 - Sandbox (tools/setup_sandbox.sh), routine played with the app key and curl: the bug reproduced on the old code (context 404, answer 403); with the fix the discussion and the private channel were answered and the refusal posted, the context closed with the request, another app of the same owner got 404, a concluded discussion 403. Pinegrap AI's delivery and refusal were called directly (no model). Never with a real routine: workspace-claude-routine.md.

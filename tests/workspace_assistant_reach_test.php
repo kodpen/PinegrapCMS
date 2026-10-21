@@ -121,6 +121,27 @@ function test_workspace_assistant_reach_ai_writes_through_the_writer()
 	pg_assert_contains('ws_message_send($writer, $channel,', $fail);
 }
 
+// Without its application (none chosen, or the chosen one deleted) Pinegrap
+// AI writes nothing in the channel: the person who asked must not stand in
+// for an application that does not exist, which would post the words as that
+// person's own message.
+function test_workspace_assistant_reach_ai_writes_only_with_its_application()
+{
+	foreach (array('ws_ai_deliver', 'ws_ai_finish_fail') as $function) {
+		$source = workspace_assistant_reach_test_source($function);
+		$app = strpos($source, '$app = ws_ai_app();');
+		$writer = strpos($source, 'ws_assistant_writer(');
+
+		pg_assert_true($app !== false, $function . ': the application is looked up');
+		pg_assert_true(($writer !== false) && ($app < $writer), $function . ': before a writer is chosen');
+		pg_assert_contains("'app_id'    => (int) \$app['id']", $source, $function . ': the message carries that application');
+		pg_assert_false(strpos($source, "'app_id'    => (int) ws_ai_config()['app_id']") !== false, $function . ': not the configured id, which may name no application');
+	}
+
+	pg_assert_contains('($channel && $app && ws_ai_channel_allowed($channel))', workspace_assistant_reach_test_source('ws_ai_finish_fail'), 'no application: the refusal is kept on the request only');
+	pg_assert_contains('$writer = $app ? ws_assistant_writer(', workspace_assistant_reach_test_source('ws_ai_deliver'), 'no application: the answer is refused');
+}
+
 // The context Claude reads: through the person who asked only for Claude's
 // application, only where Claude may be asked and only where the owner does
 // not read; anywhere else the owner reads it as every endpoint does.
