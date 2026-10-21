@@ -70,6 +70,97 @@ function test_code_editor_is_plain_names_the_text_types()
 	pg_assert_false(pg_code_editor_is_plain(''), 'empty');
 }
 
+// Runs the facade's tracked ranges and marks under Node: the range classes
+// and fields of pg_code_editor.js and the instance's "Tracked ranges" and
+// "Marks" blocks, on the engine's own state package from the bundle and a
+// view that only holds and updates a state. Prints the script's JSON; null
+// when there is no Node, ['error' => …] when a block is not found.
+function code_editor_test_ranges_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$cut = function ($from, $to) use ($facade) {
+		$a = strpos($facade, $from);
+		$b = ($a !== false) ? strpos($facade, $to, $a) : false;
+
+		return ($b !== false) ? substr($facade, $a, $b - $a) : '';
+	};
+	$classes = $cut('    function _rangeClasses(', '    // Sorted, merged [from, to] pairs.');
+	$tracked = $cut('        // ── Tracked ranges ──', '        // ── Locks ──');
+	$marks = $cut('        // ── Marks (', '        inst.destroy = function');
+
+	if (($classes === '') || ($tracked === '') || ($marks === '')) {
+		return array('error' => 'a block of the facade was not found');
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeeditor');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'global.window = global;' . "\n"
+		. '(0, eval)(require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js') . ', "utf8"));' . "\n"
+		. $classes . "\n"
+		. 'var cm = { state: PgCM.state, view: PgCM.view }, fields = _rangeFields(cm), inst = {};' . "\n"
+		. 'var view = { state: PgCM.state.EditorState.create({ doc: "<body>\n</body>", extensions: [fields.trackedField] }),' . "\n"
+		. '    dispatch: function (spec) { this.state = this.state.update(spec).state; } };' . "\n"
+		. $tracked . "\n" . $marks . "\n"
+		. 'function type(at, text) { view.dispatch({ changes: { from: at, insert: text } }); }' . "\n"
+		. $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// mark() rebuilds the set without changing the other ranges: an empty range
+// that grows (the designer's page content on an empty page) still takes the
+// text typed at its position, and another mark keeps its class. Before, every
+// other range came back as not growing and without a class, so the first
+// keystroke on an empty page dropped the content range and nothing typed
+// there reached the canvas.
+function test_code_editor_mark_keeps_the_other_ranges()
+{
+	$result = code_editor_test_ranges_node(
+		'inst.track([{ id: "content", from: 7, to: 7, grow: true }, { id: "tag", from: 0, to: 6 }, { id: "hover", from: 0, to: 6, cls: "x-hover" }]);' . "\n"
+		. 'inst.mark("sel", 0, 6);' . "\n"
+		. 'var after = inst.tracked("content");' . "\n"
+		. 'type(7, "<p>Hi</p>");' . "\n"
+		. 'type(0, " ");' . "\n"
+		. 'function at(id) { var r = inst.tracked(id); return r ? [r.from, r.to, !!r.grow, r.cls] : null; }' . "\n"
+		. 'console.log(JSON.stringify({ grows: !!(after && after.grow), content: at("content"), tag: at("tag"), hover: at("hover"), sel: at("sel") }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_true($result['grows'] === true, 'the content range still grows after a mark');
+	pg_assert_same(array(8, 17, true, ''), $result['content'], 'what is typed in the empty range is inside it');
+	pg_assert_same(array(1, 7, false, ''), $result['tag'], 'a range that does not grow leaves what is typed at its start outside');
+	pg_assert_same(array(1, 7, false, 'x-hover'), $result['hover'], 'another mark keeps its class');
+	pg_assert_same(array(1, 7, false, 'pg-ce-mark'), $result['sel'], 'the new mark has the default class');
+}
+
 // The source of the facade's syntax linter, up to the next function of the
 // facade.
 function code_editor_test_linter_source()

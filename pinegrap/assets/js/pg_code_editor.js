@@ -817,7 +817,9 @@
             if (trackedCache && trackedCacheState === view.state) return trackedCache;
             var map = {};
             view.state.field(fields.trackedField).between(0, view.state.doc.length, function (from, to, value) {
-                if (map[value.id] === undefined) map[value.id] = { id: value.id, from: from, to: to, data: value.data };
+                if (map[value.id] === undefined) {
+                    map[value.id] = { id: value.id, from: from, to: to, data: value.data, grow: value.startSide < 0, cls: value.cls };
+                }
             });
             trackedCache = map;
             trackedCacheState = view.state;
@@ -860,9 +862,13 @@
         };
 
         // ── Marks (a highlight that follows the text, e.g. the selected node) ──
+        // The set is rebuilt with the other ranges as they are: a range that
+        // grows keeps growing (an empty one that did not would be dropped by
+        // the first keystroke at its position), and another mark keeps its
+        // class.
         inst.mark = function (id, from, to, cls) {
             var all = inst.allTracked().filter(function (r) { return r.id !== String(id); }).map(function (r) {
-                return { id: r.id, from: r.from, to: r.to, data: r.data, grow: false, cls: '' };
+                return { id: r.id, from: r.from, to: r.to, data: r.data, grow: r.grow, cls: r.cls };
             });
             if (typeof from === 'number') all.push({ id: String(id), from: from, to: to, grow: false, cls: cls || 'pg-ce-mark' });
             inst.track(all);
