@@ -17189,7 +17189,8 @@ const StyleDesigner = (function () {
                                     { name: 'autocomplete', value: 'email' },
                                     { name: 'required',     value: 'required' }
                                 ] });
-                            var btn = createNode('component', { componentType: 'btn', text: _sdT('Notify me'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', href: '', cssClass: 'text-nowrap' });
+                            var btn = createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary text-nowrap', text: _sdT('Notify me'),
+                                customName: _sdT('Submit Button'), _attrs: [{ name: 'type', value: 'submit' }] });
                             if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ]);
                             return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ]);
                         };
@@ -17201,7 +17202,7 @@ const StyleDesigner = (function () {
                             _bkRow(_sdT('Maintenance Row'), [
                                 _bkCol(_sdT('Maintenance Body'), [
                                     _bkDiv('mb-4', _sdT('Maintenance Icon'), [
-                                        _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', '', '40') ])
+                                        _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', 'fs-1') ])
                                     ]),
                                     _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
                                     _bkH('h1', _sdT('We\'ll be back soon'), 'display-5 fw-bold mb-3'),
@@ -17238,7 +17239,7 @@ const StyleDesigner = (function () {
                     if (ctype === 'maintenance-split') {
                         var _mtStep = function (n, icon, iconCls, text, status, badgeCls) {
                             return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
-                                _bkIcon(icon, 'flex-shrink-0 ' + iconCls, '20'),
+                                _bkIcon(icon, 'flex-shrink-0 fs-5 ' + iconCls),
                                 _bkH('span', text, 'flex-grow-1'),
                                 _bkH('span', status, 'badge text-wrap ' + badgeCls + ' rounded-pill')
                             ]);
@@ -17300,7 +17301,7 @@ const StyleDesigner = (function () {
                                         _bkP(_sdT('Follow the work as it happens. This page is updated every half hour.'), 'lead text-body-secondary mb-0')
                                     ]),
                                     _bkDiv('alert alert-warning d-flex align-items-start gap-3 mb-4', _sdT('Status Alert'), [
-                                        _bkIcon('bi-exclamation-triangle-fill', 'flex-shrink-0', '22'),
+                                        _bkIcon('bi-exclamation-triangle-fill', 'flex-shrink-0 fs-5'),
                                         _bkDiv('', _sdT('Alert Body'), [
                                             _bkH('h2', _sdT('The site is closed for maintenance'), 'h6 fw-bold mb-1'),
                                             _bkP(_sdT('Orders placed before the work began are safe and will ship as usual.'), 'small mb-0')
@@ -17428,7 +17429,7 @@ const StyleDesigner = (function () {
                             _bkRow(_sdT('Launch Row'), [
                                 _bkCol(_sdT('Text Col'), [
                                     _bkDiv('d-flex align-items-center gap-2 mb-4', _sdT('Brand'), [
-                                        _bkIcon('bi-rocket-takeoff', 'text-primary', '24'),
+                                        _bkIcon('bi-rocket-takeoff', 'fs-4 text-primary'),
                                         _bkH('span', _sdT('ACME'), 'fs-5 fw-bold')
                                     ]),
                                     _bkH('h1', _sdT('Our new online shop opens in December'), 'display-5 fw-bold mb-3'),
@@ -17446,7 +17447,7 @@ const StyleDesigner = (function () {
                                         _bkImg('coming-soon-split', 900, 700, _sdT('A first look at the new shop'), 'img-fluid w-100 rounded-4 shadow object-fit-cover'),
                                         _bkDiv('card m-3 border-0 shadow position-absolute bottom-0 start-0', _sdT('Offer Card'), [
                                             _bkDiv('card-body d-flex align-items-center gap-3 p-3', _sdT('Card Body'), [
-                                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Offer Icon'), [ _bkIcon('bi-gift', '', '22') ]),
+                                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Offer Icon'), [ _bkIcon('bi-gift', 'fs-5') ]),
                                                 _bkDiv('', _sdT('Offer Text'), [
                                                     _bkP(_sdT('20% off on opening day'), 'mb-0 fw-bold'),
                                                     _bkP(_sdT('For everyone on the list'), 'mb-0 small text-body-secondary')
@@ -17518,7 +17519,7 @@ const StyleDesigner = (function () {
                         ]);
                     }
 
-                    // News: Headline Rotator — a Latest news badge, four headlines that fade in turn and small previous/next buttons
+                    // News: Headline Rotator — a Latest news badge, four headlines that fade in turn with small previous/next buttons
                     if (ctype === 'news-ticker-rotator') {
                         var _nbRtId = _bkUid('headlines');
                         var _nbRtSlide = function (n, active, title, datetime, clock) {
@@ -17538,7 +17539,11 @@ const StyleDesigner = (function () {
                             ]);
                         };
                         // Phones: badge and buttons on the first line, the headline below
-                        // (order-last); from 576 px all three share one line.
+                        // (order-last); from 576 px all three share one line. The
+                        // carousel does not play by itself, it moves with the
+                        // previous/next buttons only: autoplay would need a pause
+                        // control (WCAG 2.2.2). An operator can still switch it on
+                        // with data-bs-ride="carousel" in Attributes.
                         return _nbBand('bg-body border-bottom', _sdT('News (Headline Rotator)'), 'd-flex flex-wrap flex-sm-nowrap align-items-center gap-2 gap-sm-3 py-2', [
                             _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-primary', _sdT('Latest Badge'), [
                                 _bkIcon('bi-clock-history'),
@@ -17552,11 +17557,9 @@ const StyleDesigner = (function () {
                                     _nbRtSlide(4, false, _sdT('Tokyo robotics show draws families for a hands-on weekend'),    '2026-11-27T11:30', '11:30')
                                 ])
                             ], [
-                                { name: 'id',               value: _nbRtId },
-                                { name: 'data-bs-ride',     value: 'carousel' },
-                                { name: 'data-bs-interval', value: '5000' },
-                                { name: 'role',             value: 'region' },
-                                { name: 'aria-label',       value: _sdT('Latest headlines') }
+                                { name: 'id',         value: _nbRtId },
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('Latest headlines') }
                             ]),
                             _bkDiv('d-flex gap-1 flex-shrink-0 ms-auto', _sdT('Carousel Controls'), [
                                 _nbRtControl('prev', 'bi-chevron-left',  _sdT('Previous headline')),
@@ -17927,7 +17930,7 @@ const StyleDesigner = (function () {
                                     _bkDiv('mb-4', _sdT('Live Header'), [
                                         _bkDiv('d-flex flex-wrap align-items-center gap-2 mb-3', _sdT('Live Status'), [
                                             _bkDiv('badge d-inline-flex align-items-center gap-2 text-bg-danger', _sdT('Live Badge'), [
-                                                _bkDiv('spinner-grow spinner-grow-sm pg-live-pulse', _sdT('Live Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                                _bkDiv('spinner-grow spinner-grow-sm pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
                                                 _bkH('span', _sdT('Live'))
                                             ]),
                                             _bkH('span', _sdT('Last updated'), 'small text-body-secondary'),
@@ -18007,7 +18010,7 @@ const StyleDesigner = (function () {
                                     _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'lead text-body-secondary mb-4'),
                                     _bkDiv('d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 mb-4 border-top border-bottom', _sdT('Article Meta'), [
                                         _bkDiv('d-flex align-items-center gap-3', _sdT('Byline'), [
-                                            createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/ns-author-jane/96/96', alt: '', cssClass: 'rounded-circle object-fit-cover flex-shrink-0', width: '48', height: '48' }),
+                                            _bkImg('ns-author-jane', 96, 96, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-circle-40'),
                                             _bkDiv('small', _sdT('Author Info'), [
                                                 _bkLink(_sdT('Jane Cooper'), '#', 'd-block fw-semibold link-primary text-decoration-none', _sdT('Author Link')),
                                                 _bkH('span', _sdT('Technology Editor'), 'd-block text-body-secondary'),
@@ -18044,7 +18047,7 @@ const StyleDesigner = (function () {
                                 _bkCol(_sdT('Author Column'), [
                                     _bkTag('aside', 'card border rounded-4 bg-body', _sdT('Author Card'), [
                                         _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4 p-lg-5', _sdT('Author Body'), [
-                                            createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/ns-author-jane/224/224', alt: '', cssClass: 'rounded-circle object-fit-cover flex-shrink-0', width: '112', height: '112' }),
+                                            _bkImg('ns-author-jane', 224, 224, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-thumb-100'),
                                             _bkDiv('flex-grow-1', _sdT('Author Info'), [
                                                 _bkH('span', _sdT('About the author'), 'd-block small fw-semibold text-uppercase text-primary mb-1'),
                                                 _bkTag('h2', 'h4 fw-bold mb-1', _sdT('Author Name'), [
@@ -18298,16 +18301,20 @@ const StyleDesigner = (function () {
                     // Quote: Pull Quote — one large centred quote under a quote mark, with the speaker and the source
                     if (ctype === 'quote-pull') {
                         return _bkSection('py-5', _sdT('Quote (Pull Quote)'), [
-                            _bkTag('figure', 'col-lg-9 mx-auto mb-0 text-center', _sdT('Pull Quote'), [
-                                _bkIcon('bi-quote', 'd-block mb-2 display-1 lh-1 text-primary'),
-                                _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
-                                    _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
-                                ]),
-                                _bkTag('figcaption', 'blockquote-footer mb-0 text-body-secondary', _sdT('Attribution'), [
-                                    _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
-                                    _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
-                                    _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
-                                ])
+                            _bkRow(_sdT('Quote Row'), [
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center', _sdT('Pull Quote'), [
+                                        _bkIcon('bi-quote', 'd-block mb-2 display-1 lh-1 text-primary'),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'blockquote-footer mb-0 text-body-secondary', _sdT('Attribution'), [
+                                            _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
+                                            _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
+                                            _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
                             ])
                         ]);
                     }
@@ -18320,7 +18327,7 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5 text-bg-primary', _sdT('Quote (Spotlight)'), [
                             _bkRow(_sdT('Spotlight Row'), [
                                 _bkCol(_sdT('Portrait Column'), [
-                                    createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/cr-spotlight-michael/320/320', alt: '', cssClass: 'object-fit-cover rounded-circle shadow', width: '160', height: '160' })
+                                    _bkImg('cr-spotlight-michael', 320, 320, '', 'object-fit-cover rounded-circle shadow pg-circle-160')
                                 ], '3', '', '', 'text-center'),
                                 _bkCol(_sdT('Quote Column'), [
                                     _bkTag('figure', 'mb-0 text-center text-lg-start', _sdT('Spotlight Quote'), [
@@ -18354,10 +18361,10 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5 bg-body-tertiary', _sdT('Gallery (Polaroid)'), [
                             _bkIntro(_sdT('Moments From the Road'), _sdT('Snapshots from our workshops in London, Berlin, Istanbul and Tokyo.')),
                             _bkRow(_sdT('Photos Row'), [
-                                _crGpCard(1, 'cr-polaroid-london',   _sdT('People around a table covered in sketches'), _sdT('Workshop day in London'),  '2026-10', _sdT('October 2026'),  'pg-tilt-left'),
-                                _crGpCard(2, 'cr-polaroid-berlin',   _sdT('A wall of notes and drawings'),              _sdT('Sketch night in Berlin'),  '2026-10', _sdT('October 2026'),  'pg-tilt-right'),
-                                _crGpCard(3, 'cr-polaroid-istanbul', _sdT('A sunny studio with plants by the window'),   _sdT('Studio visit in Istanbul'), '2026-11', _sdT('November 2026'), 'pg-tilt-left'),
-                                _crGpCard(4, 'cr-polaroid-tokyo',    _sdT('Posters hanging at a print fair'),            _sdT('Print fair in Tokyo'),     '2026-12', _sdT('December 2026'), 'pg-tilt-right')
+                                _crGpCard(1, 'cr-polaroid-london',   _sdT('People around a table covered in sketches'), _sdT('Workshop day in London'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-left'),
+                                _crGpCard(2, 'cr-polaroid-berlin',   _sdT('A wall of notes and drawings'),              _sdT('Sketch night in Berlin'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-right'),
+                                _crGpCard(3, 'cr-polaroid-istanbul', _sdT('A sunny studio with plants by the window'),   _sdT('Studio visit in Istanbul'), '2026-11', _sdT('November 2026'), 'pg-tilt pg-tilt-left'),
+                                _crGpCard(4, 'cr-polaroid-tokyo',    _sdT('Posters hanging at a print fair'),            _sdT('Print fair in Tokyo'),     '2026-12', _sdT('December 2026'), 'pg-tilt pg-tilt-right')
                             ], 'g-lg-5')
                         ]);
                     }
@@ -57390,10 +57397,11 @@ const StyleDesigner = (function () {
         // Dark scrim under text placed on a photo; the box also carries
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
-        // Maintenance and launch blocks
-        // A spinner-grow used as a decorative pulse: under reduced motion it
-        // stands still and stays visible (its resting opacity is 0).
+        // A spinner-grow used as a decorative pulse (dark maintenance band,
+        // live badge): under reduced motion it stands still and stays
+        // visible (a resting .spinner-grow is transparent).
         'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
+        // Maintenance and launch blocks
 
         // News: stories and articles
         // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
@@ -57401,9 +57409,6 @@ const StyleDesigner = (function () {
         'pg-ratio-lead':   '.pg-ratio-lead { --bs-aspect-ratio: 100%; }\n' +
                            '@media (min-width: 768px) { .pg-ratio-lead { --bs-aspect-ratio: 56.25%; } }\n' +
                            '@media (min-width: 992px) { .pg-ratio-lead { --bs-aspect-ratio: 75%; } }',
-        // The pulsing dot of a live badge holds still under reduced motion
-        // (a resting .spinner-grow is transparent, so it is shown solid).
-        'pg-live-pulse':   '@media (prefers-reduced-motion: reduce) { .pg-live-pulse { animation: none; opacity: 1; } }',
 
         // Creative blocks
         // Soft edges for a logo marquee: a mask only, so no colour is added.
@@ -57411,12 +57416,14 @@ const StyleDesigner = (function () {
         // A small card that floats over a picture from 992 px; below that it
         // stays in the flow. Bootstrap top-*/start-*/end-*/bottom-* place it.
         'pg-float':        '@media (min-width: 992px) { .pg-float { position: absolute; z-index: 1; max-width: 16rem; } }',
-        // Polaroid tilt from 768 px; hover and focus straighten the card.
-        'pg-tilt-left':    '@media (min-width: 768px) { .pg-tilt-left { transform: rotate(-3deg); transition: transform .3s ease; } .pg-tilt-left:hover, .pg-tilt-left:focus-within { transform: none; } }\n' +
-                           '@media (prefers-reduced-motion: reduce) { .pg-tilt-left { transition: none; } }',
-        'pg-tilt-right':   '@media (min-width: 768px) { .pg-tilt-right { transform: rotate(2deg); transition: transform .3s ease; } .pg-tilt-right:hover, .pg-tilt-right:focus-within { transform: none; } }\n' +
-                           '@media (prefers-reduced-motion: reduce) { .pg-tilt-right { transition: none; } }',
+        // Polaroid tilt from 768 px (a card carries pg-tilt plus
+        // pg-tilt-left or pg-tilt-right); hover straightens the card.
+        'pg-tilt':         '@media (min-width: 768px) { .pg-tilt { transition: transform .3s ease; } .pg-tilt-left { transform: rotate(-3deg); } .pg-tilt-right { transform: rotate(2deg); } .pg-tilt:hover { transform: none; } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-tilt { transition: none; } }',
         // A sideways card row that stops on a card edge after each swipe.
+        // Large round portrait (the image's own width/height props are
+        // not a size the browser applies).
+        'pg-circle-160':   '.pg-circle-160 { width: 160px; height: 160px; }',
         'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
         'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
 
@@ -57457,8 +57464,9 @@ const StyleDesigner = (function () {
         'news-lead-grid':        ['pg-ratio-lead', 'pg-shade-bottom', 'pg-ratio-16x9'],
         'news-latest-mostread':  ['pg-thumb-100'],
         'news-category-columns': ['pg-ratio-16x9'],
-        'news-live-blog':        ['pg-ratio-16x9', 'pg-live-pulse'],
-        'news-article-header':   ['pg-ratio-16x9'],
+        'news-live-blog':        ['pg-ratio-16x9', 'pg-pulse-still'],
+        'news-article-header':   ['pg-ratio-16x9', 'pg-circle-40'],
+        'news-author-box':       ['pg-thumb-100'],
 
         // Creative blocks
         'bento-features':       ['pg-ratio-16x9'],
@@ -57467,7 +57475,8 @@ const StyleDesigner = (function () {
         'marquee-logos':        ['pg-marquee', 'pg-marquee-fade', 'pg-logo-44'],
         'showcase-floating':    ['pg-float'],
         'showcase-tabs':        ['pg-ratio-16x9'],
-        'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt-left', 'pg-tilt-right'],
+        'quote-spotlight':      ['pg-circle-160'],
+        'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt'],
         'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item'],
 
         'events-cards':         ['pg-ratio-16x9']
