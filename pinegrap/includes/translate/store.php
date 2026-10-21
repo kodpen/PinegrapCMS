@@ -165,6 +165,18 @@ function pg_tr_inline_tags()
 }
 
 /**
+ * The attributes an inline tag of a translated text may carry: the editor's
+ * own list as well (pg_design_ai_clean_inline()).
+ */
+function pg_tr_inline_attrs()
+{
+    static $attrs = array('class' => 1, 'title' => 1, 'href' => 1, 'target' => 1, 'rel' => 1, 'aria-label' => 1,
+                          'aria-hidden' => 1, 'lang' => 1, 'dir' => 1, 'datetime' => 1, 'style' => 1);
+
+    return $attrs;
+}
+
+/**
  * Inline markup reduced to the allowed tags and attributes, text escaped.
  *
  * Mirrors the editor's cleaner (pg_design_ai_clean_inline()): a block element
@@ -202,7 +214,7 @@ function pg_tr_clean_inline($html)
 function pg_tr_clean_inline_walk($node)
 {
     $inline = pg_tr_inline_tags();
-    $keep_attrs = array('class', 'title', 'href', 'target', 'rel', 'aria-label', 'aria-hidden', 'lang', 'dir', 'datetime', 'style');
+    $keep_attrs = pg_tr_inline_attrs();
     $out = '';
 
     foreach ($node->childNodes as $child) {
@@ -233,7 +245,7 @@ function pg_tr_clean_inline_walk($node)
         foreach ($child->attributes as $attr) {
             $name = strtolower($attr->name);
 
-            if (!in_array($name, $keep_attrs, true)) {
+            if (!isset($keep_attrs[$name])) {
                 continue;
             }
 
@@ -412,7 +424,8 @@ function pg_tr_language_label($code)
  * router (which reads that one column with raw mysqli) sees the same list the
  * settings screen saved. The source language never gets a prefix; a save
  * that just changed it passes the new one, since the constant still holds
- * the old.
+ * the old. A prefix is written in lower case, the only case the router
+ * matches: a language without one is served under its code lower-cased.
  *
  * @param string|null $source the source language code; null = the current one
  */
@@ -433,11 +446,47 @@ function pg_tr_prefixes_rewrite($source = null)
             continue;
         }
 
-        $prefix = ($row['prefix'] !== '') ? $row['prefix'] : $code;
+        $prefix = strtolower(($row['prefix'] !== '') ? $row['prefix'] : $code);
         $pairs[] = $prefix . '=' . $code;
     }
 
     db("UPDATE config SET translation_prefixes = '" . e(implode(',', $pairs)) . "'");
+}
+
+/**
+ * The address prefix each target language is saved with. A prefix is lower
+ * case, the only case the router matches. A wanted prefix that is empty,
+ * malformed or already taken falls back to the language's code, lower-cased
+ * (pt-BR is served under /pt-br/); when another language holds that too, the
+ * language is a conflict and gets no prefix.
+ *
+ * @param array $wanted code => the prefix asked for, in the screen's order
+ * @return array array(code => prefix, list of conflicting codes)
+ */
+function pg_tr_prefixes_settle($wanted)
+{
+    $prefixes = array();
+    $taken = array();
+    $conflicts = array();
+
+    foreach ((array) $wanted as $code => $prefix) {
+        $code = (string) $code;
+        $prefix = strtolower(trim((string) $prefix));
+
+        if (($prefix === '') || !preg_match('/^[a-z]{2,8}(-[a-z]{2,4})?$/', $prefix) || isset($taken[$prefix])) {
+            $prefix = strtolower($code);
+        }
+
+        if (isset($taken[$prefix])) {
+            $conflicts[] = $code;
+            continue;
+        }
+
+        $taken[$prefix] = true;
+        $prefixes[$code] = $prefix;
+    }
+
+    return array($prefixes, $conflicts);
 }
 
 /**
