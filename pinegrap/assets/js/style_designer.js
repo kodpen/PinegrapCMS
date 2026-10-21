@@ -22757,6 +22757,7 @@ const StyleDesigner = (function () {
         entries: [],        // the range map behind it (see _sdCodeDocument())
         busy: false,        // true while the editor is being written to
         fromEditor: false,  // true while a selection made in the editor is applied
+        heldBinding: null,  // what a half-typed {{token}} replaced (_sdCodeHoldBinding())
         loading: false,
         editable: null,     // what the editor was last told (null: never)
         dirty: null,        // { from, to } typed since the last apply, in editor positions
@@ -23805,6 +23806,53 @@ const StyleDesigner = (function () {
 
     function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
 
+    // A token still being typed or picked from the completion list: a {{
+    // with no }} after it, or an empty {{}} (closed brackets).
+    function _sdCodeHalfToken(value) {
+        return (typeof value === 'string') && (/\{\{(?![\s\S]*\}\})/.test(value) || /\{\{\s*\}\}/.test(value));
+    }
+
+    // The code view applies what is typed after a pause, so a token being
+    // typed over a bound (or bindable) value is applied half done: the
+    // binding ends and "{{" stands as the value. What the prop held before
+    // that is kept here, once, so the finished token gets the design-time
+    // text or value and the date format back (_sdCodeBindHeld()). A literal
+    // typed over it instead lets it go. One at a time: one token is typed
+    // at once.
+    function _sdCodeHoldBinding(node, prop, typed) {
+        var held = _sdCode.heldBinding;
+        var same = !!(held && held.node === node && held.prop === prop);
+        if (!_sdCodeHalfToken(typed)) {
+            if (same) _sdCode.heldBinding = null;
+            return;
+        }
+        if (same) return;
+        var p = node.props;
+        _sdCode.heldBinding = {
+            node: node,
+            prop: prop,
+            token: (p._bindings && p._bindings[prop]) || '',
+            has: Object.prototype.hasOwnProperty.call(p, prop),
+            value: p[prop],
+            format: (p._bindFormats && p._bindFormats[prop]) || ''
+        };
+    }
+
+    // Binds `prop` to `token` (_sdNodeSetBinding()), bringing back the date
+    // format held for the same token. The record held for this node and
+    // prop ({ has, value, ... }), or null when nothing was held.
+    function _sdCodeBindHeld(node, prop, token) {
+        var held = _sdCode.heldBinding;
+        if (held && held.node === node && held.prop === prop) _sdCode.heldBinding = null;
+        else held = null;
+        _sdNodeSetBinding(node, prop, token);
+        if (held && held.format && held.token === token) {
+            if (!node.props._bindFormats) node.props._bindFormats = {};
+            node.props._bindFormats[prop] = held.format;
+        }
+        return held;
+    }
+
     // Whether `prop` of this node is a binding a widget reads: the node is
     // inside a system widget and the Bind Data panel offers the prop. The
     // panel offers a plain element's text only when it has one, so the text
@@ -23882,11 +23930,16 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings.text) || '';
         var m = _SD_CODE_BIND_RE.exec(typed);
         if (!m) {
+            _sdCodeHoldBinding(node, 'text', typed);
             if (cur) _sdNodeSetBinding(node, 'text', '');
             return typed;
         }
-        if (m[1] !== cur) _sdNodeSetBinding(node, 'text', m[1]);
-        var kept = typed.replace(m[0], _sdCodeSlotRun(node.props.text));
+        var before = node.props.text;
+        if (m[1] !== cur) {
+            var held = _sdCodeBindHeld(node, 'text', m[1]);
+            if (held) before = held.has ? held.value : '';
+        }
+        var kept = typed.replace(m[0], _sdCodeSlotRun(before));
         // Words typed beside the token are kept on the node but never
         // shown: the page prints the bound value alone unless the markup
         // wraps a single run of words (pg_binding_text_slot()). Said once,
@@ -23906,9 +23959,15 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings[prop]) || '';
         var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
         if (m) {
-            if (m[1] !== cur) _sdNodeSetBinding(node, prop, m[1]);
+            if (m[1] !== cur) {
+                var held = _sdCodeBindHeld(node, prop, m[1]);
+                // The design-time value comes back from under the "{{".
+                if (held && held.has) node.props[prop] = held.value;
+                else if (held) delete node.props[prop];
+            }
             return true;
         }
+        _sdCodeHoldBinding(node, prop, value);
         if (cur) _sdNodeSetBinding(node, prop, '');
         return false;
     }
@@ -50318,8 +50377,11 @@ const StyleDesigner = (function () {
             if (revState.loading && !revState.rows.length) {
                 return html + '<div class="sd-snap-empty"><span class="bi bi-hourglass-split me-1"></span>' + esc(_sdT('Loading…')) + '</div>';
             }
+            // No row yet: the page was published before revisions were kept
+            // (or copied from another page); the server records the stored
+            // state first when the next changing save comes.
             if (!revState.rows.length) {
-                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been recorded yet; the next publish first records the page as it is now.')) + '</div>';
             }
             var loadRefusal = _sdRevisionLoadRefusal();
             html += '<div class="sd-snap-list sd-rev-list">';
@@ -51179,6 +51241,10 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-page-field[data-page-key]').forEach(function (el) {
             var k = el.dataset.pageKey;
             if (!k) return;
+            // The draft switch locked by a publish time ahead (or by the
+            // home flag) shows a state the save decides, not a choice:
+            // _pgSyncDraftBox() keeps the page's own choice apart from it.
+            if (k === 'page_draft' && el.disabled) return;
             if (el.type === 'checkbox') p[k] = el.checked ? 1 : 0;
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
@@ -54418,8 +54484,12 @@ const StyleDesigner = (function () {
             data.pages.forEach(function (m) {
                 var p = _pgPageByKey(m.key);
                 // The state the server left the page in: a draft of the home
-                // page is refused (pg_designer_page_draft_plan()).
-                if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // page is refused (pg_designer_page_draft_plan()). The stored
+                // state is the page's choice from here on, as after a reload.
+                if (p && typeof m.draft !== 'undefined') {
+                    p.page_draft = m.draft ? 1 : 0;
+                    delete p._draftByChoice;
+                }
                 // The times as the server left them: one that had come was
                 // carried out by the save and cleared.
                 if (p && typeof m.publish_at !== 'undefined') {
@@ -54533,13 +54603,16 @@ const StyleDesigner = (function () {
             // The keys as the save sends them: a new page gets its id and a
             // new key once the server answers.
             var marked = list.map(function (p) {
-                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '' };
+                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '',
+                         choice: p._draftByChoice };
             });
             // A page put on the site by hand no longer waits for its publish
             // time; one taken off no longer waits for its time to come off.
+            // Either is the page's own choice now, whatever a time forced.
             list.forEach(function (p) {
                 p.page_draft = on ? 1 : 0;
                 if (on) p.page_unpublish_at = ''; else p.page_publish_at = '';
+                delete p._draftByChoice;
             });
             _pgSyncDraftBox(_pgActivePage());
             _pgTabsRender();
@@ -54557,6 +54630,8 @@ const StyleDesigner = (function () {
                     r.page.page_draft = r.was;
                     r.page.page_publish_at = r.pub;
                     r.page.page_unpublish_at = r.unpub;
+                    if (typeof r.choice === 'undefined') delete r.page._draftByChoice;
+                    else r.page._draftByChoice = r.choice;
                     if (rebase) r.page.baseline = _pgBaselineOf(r.page);
                 });
                 _pgSyncDraftBox(_pgActivePage());
@@ -54608,9 +54683,18 @@ const StyleDesigner = (function () {
         var home = homeBox ? homeBox.checked : !!p.page_home;
         if (home && p.page_draft) p.page_draft = 0;
         // A publish time still ahead keeps the page a draft until then
-        // (pg_page_schedule_plan() decides the same on the server).
+        // (pg_page_schedule_plan() decides the same on the server). The
+        // page's own choice is kept apart from the state the time forces,
+        // so a time typed and cleared again leaves a live page live: the
+        // next save does not take it off the site unasked.
         var waits = !home && _pgScheduleAhead(p.page_publish_at);
-        if (waits) p.page_draft = 1;
+        if (waits) {
+            if (typeof p._draftByChoice === 'undefined') p._draftByChoice = p.page_draft ? 1 : 0;
+            p.page_draft = 1;
+        } else if (typeof p._draftByChoice !== 'undefined') {
+            p.page_draft = home ? 0 : p._draftByChoice;
+            delete p._draftByChoice;
+        }
         box.checked  = !!p.page_draft;
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')

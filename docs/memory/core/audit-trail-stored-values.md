@@ -5,6 +5,7 @@ description: What audit_log leaves out of before/after, how secrets are masked (
 
 ## Which columns are never compared?
 - `pg_audit_volatile()`, per table in `pg_audit_tables()` (`skip`, `skip_prefix`): columns ending in `timestamp`, the last editor, `seo_*` of page and products (recalculated after each save), `layout_modified`, `user.token`, `api_apps.last_used_ip`, config job bookkeeping and ciphertext re-encrypted with a new IV on every save (`backup_remote_settings`, `parasut_credentials_enc`), `orders.mailchimp_sync_error`.
+- `config.oauth_google_client_secret` / `oauth_google_secret_iv` are compared, so a real change of the Google secret still logs `***` → `***`: the Security save decrypts the stored secret and writes the two columns only when the field differs from it or clears a stored one (PR #1128; before, every save re-encrypted it with a new IV and logged a change).
 
 ## How are secrets masked?
 - By field name (`pg_audit_secret_key()`), at any depth, as `***`; an empty value stays empty so set and cleared still show. Over-masked by name: `api_apps.require_signature`, `api_secret_prev_expires`, `api_secret_hint`.

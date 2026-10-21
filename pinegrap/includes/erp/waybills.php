@@ -918,16 +918,22 @@ function erp_waybill_invoice($waybill_id, $created_by = 0)
 
     foreach (erp_waybill_lines($waybill_id) as $line) {
         $product = ((int) $line['product_id'] > 0)
-            ? db_item("SELECT price, tax_rate FROM products WHERE id = '" . (int) $line['product_id'] . "' LIMIT 1")
+            ? db_item("SELECT * FROM products WHERE id = '" . (int) $line['product_id'] . "' LIMIT 1")
             : null;
+
+        // The price and the rate the invoice editor and POST /erp/invoices
+        // start a line with (erp_product_for_line()): the product's own
+        // rate, or the account's zone rate when the product leaves it to the
+        // zone. A NULL rate is "the zone's", not 0%.
+        $start = is_array($product) ? erp_product_for_line($product, (int) $waybill['account_id']) : null;
 
         $lines[] = array(
             'product_id' => (int) $line['product_id'],
             'description' => (string) $line['description'],
             'quantity' => (float) $line['quantity'],
             'unit_code' => (string) $line['unit_code'],
-            'unit_price' => is_array($product) ? (int) $product['price'] : 0,
-            'tax_rate' => (is_array($product) && ($product['tax_rate'] !== null)) ? (float) $product['tax_rate'] : 0,
+            'unit_price' => is_array($start) ? (int) $start['price'] : 0,
+            'tax_rate' => is_array($start) ? (float) $start['tax_rate'] : 0,
             'discount_rate' => 0,
         );
     }
