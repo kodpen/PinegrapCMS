@@ -1509,6 +1509,37 @@ function pg_office_docx_block_tag($style)
 }
 
 /**
+ * The children of a table or a row with the given local name (tr, tc),
+ * including those inside content controls and custom XML: a repeating
+ * section wraps whole rows in sdt/sdtContent, and a control or custom XML
+ * element can wrap a single cell.
+ *
+ * @param DOMNode $parent
+ * @param string  $name
+ * @return DOMElement[]
+ */
+function pg_office_docx_wrapped($parent, $name)
+{
+    $found = array();
+
+    foreach ($parent->childNodes as $child) {
+        if (!($child instanceof DOMElement)) {
+            continue;
+        }
+
+        if ($child->localName === $name) {
+            $found[] = $child;
+        } elseif (in_array($child->localName, array('sdt', 'sdtContent', 'customXml'), true)) {
+            foreach (pg_office_docx_wrapped($child, $name) as $inner) {
+                $found[] = $inner;
+            }
+        }
+    }
+
+    return $found;
+}
+
+/**
  * The blocks of a container (the body, a table cell): paragraphs, lists
  * and tables, written to $html until the size limit is met.
  *
@@ -1554,6 +1585,12 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                     $props['level'] = $state['styles'][$props['style']]['level'];
                 }
 
+                // numId 0 is "no numbering" (ECMA-376 17.9.18): on the
+                // paragraph it also takes off its style's numbering.
+                if ($props['list'] === '0') {
+                    $props['list'] = '';
+                }
+
                 if ($props['list'] !== '') {
                     $format = $state['lists'][$props['list']][$props['level']] ?? 'ul';
 
@@ -1586,18 +1623,10 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                 $close_list();
                 $html .= '<table class="office-table">';
 
-                foreach ($child->childNodes as $row) {
-                    if (!($row instanceof DOMElement) || ($row->localName !== 'tr')) {
-                        continue;
-                    }
-
+                foreach (pg_office_docx_wrapped($child, 'tr') as $row) {
                     $html .= '<tr>';
 
-                    foreach ($row->childNodes as $cell) {
-                        if (!($cell instanceof DOMElement) || ($cell->localName !== 'tc')) {
-                            continue;
-                        }
-
+                    foreach (pg_office_docx_wrapped($row, 'tc') as $cell) {
                         $span = 1;
 
                         foreach ($cell->getElementsByTagNameNS('*', 'gridSpan') as $grid) {
