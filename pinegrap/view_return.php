@@ -101,8 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // issued without them.
         $erp = $refunded['erp'];
 
-        if (is_array($erp) && ((int) $erp['invoice_id'] > 0) && !empty($erp['quantities'])
-            && defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+        if (is_array($erp) && ((int) $erp['invoice_id'] > 0) && !empty($erp['quantities']) && pg_return_erp_hand_off($user)) {
 
             $liveform_return = new liveform('add_erp_return');
             $liveform_return->add_notice(h($done) . ' ' . h(lang('Issue the return invoice for the same lines to finish.')));
@@ -355,8 +354,16 @@ if ($refund_plan !== null) {
                         <input type="hidden" name="refund_method" value="manual">
                         <p class="small text-muted">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>';
 
-    $output_erp_note = ((int) $refund_plan['erp']['invoice_id'] > 0) ? '
-                        <p class="small text-muted mb-0 mt-2">' . h(lang(array('string' => 'After the refund, the return invoice for {var:1} opens with the same lines, ready to be checked and issued.', 'vars' => array($refund_plan['erp']['invoice_number'])))) . '</p>' : '';
+    // The return invoice opens after the refund only for whoever may use the
+    // ERP (the redirect above); anyone else is told it still has to be issued.
+    $output_erp_note = '';
+
+    if ((int) $refund_plan['erp']['invoice_id'] > 0) {
+        $output_erp_note = '
+                        <p class="small text-muted mb-0 mt-2">' . h(pg_return_erp_hand_off($user)
+                            ? lang(array('string' => 'After the refund, the return invoice for {var:1} opens with the same lines, ready to be checked and issued.', 'vars' => array($refund_plan['erp']['invoice_number'])))
+                            : lang(array('string' => 'The return invoice for {var:1} is not issued here: someone who uses the ERP must issue it after the refund.', 'vars' => array($refund_plan['erp']['invoice_number'])))) . '</p>';
+    }
 
     $output_forms .= '
             <div class="card mb-4">

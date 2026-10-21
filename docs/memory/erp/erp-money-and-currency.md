@@ -21,8 +21,9 @@ description: ERP money storage (integer minor units), home-currency rule, *_base
 - An invoice from an order is always home currency; a foreign-currency invoice is entered by hand (`add_erp_manual_invoice.php`, see erp-manual-invoice-draft-issue).
 
 ## How is the exchange difference posted?
-- `erp_fx_post_difference()` runs when an invoice becomes `paid`, inside the `erp_post_receipt()` transaction: one `kind='fx_diff'` row (`doc_type='fx_diff'`, `doc_id` = invoice as idempotency key).
+- `erp_fx_post_difference()` runs when an invoice becomes `paid`, inside the transaction of what closed it: a receipt (`erp_post_receipt()`), a late allocation (`erp_settlement_allocate()`) or a return (`erp_invoice_return()`). One `kind='fx_diff'` row (`doc_type='fx_diff'`, `doc_id` = invoice as idempotency key).
 - Amount = `Σ settlement.amount_base − (grand_total_base − Σ return.grand_total_base)`.
-- Reversal when a foreign invoice leaves `paid`: see erp-receipt-corrections-and-gift-card.
+- A return closes the invoice when what was collected now covers the rest (1,000 EUR invoiced at 30, 600 collected at 35, 400 returned: 21,000 − 18,000 = 3,000 difference). Until #1071 the return path posted nothing, and since no receipt closes a paid invoice the account kept the gap in the base currency for good.
+- Reversal when a foreign invoice leaves `paid` (`erp_settlement_after_reopen()`): a receipt cancelled, a settlement removed, or a return cancelled (#1071; before, the un-reversed row made the next closing post nothing). Details: erp-receipt-corrections-and-gift-card.
 
 Related: docs/memory/erp/erp-manual-invoice-draft-issue.md
