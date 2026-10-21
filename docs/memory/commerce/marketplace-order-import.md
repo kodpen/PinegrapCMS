@@ -9,6 +9,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 ## In what order is the map row written?
 - The map row is written BEFORE the order. There is no transaction; on a retry this is the only thing preventing the order being written twice.
 - A half-finished import = an `importing` row whose `order_id` is 0.
+- An `imported` row whose `order_id` is 0 = a package already cancelled when first seen; no order is written for it (`marketplace-order-status-sync.md`).
 
 ## Which checkout side effects are used?
 - The checkout page's side effects are NOT used. The three wanted: stock decrement, `pg_marketplace_product_changed()`, `create_notification('new_order')`.

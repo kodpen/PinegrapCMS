@@ -316,3 +316,21 @@ function test_marketplace_n11_category_tree_flattens_the_fixture()
 	pg_assert_same('Elektronik > Elektronik Alt Kategori 1', $rows[1]['path']);
 	pg_assert_same((string) $rows[0]['remote_id'], $rows[1]['parent_id']);
 }
+
+function test_marketplace_n11_vat_rate_rounds_down_to_theirs()
+{
+	pg_assert_same(20, mp_n11_vat_rate(array('tax_rate' => 20.0)));
+	pg_assert_same(10, mp_n11_vat_rate(array('tax_rate' => 18.0)));
+	pg_assert_same(1, mp_n11_vat_rate(array('tax_rate' => 8.5)));
+	pg_assert_same(0, mp_n11_vat_rate(array('tax_rate' => 0.0)));
+}
+
+// A product the shop does not tax carries no tax in its price, whatever rate
+// it or the zone has; an item built without the flag is taxed as before.
+function test_marketplace_n11_vat_rate_is_zero_for_an_untaxed_product()
+{
+	pg_assert_same(0, mp_n11_vat_rate(array('taxable' => false, 'tax_rate' => 20.0)));
+	pg_assert_same(0, mp_n11_vat_rate(array('taxable' => '0', 'tax_rate' => null)));
+	pg_assert_same(20, mp_n11_vat_rate(array('taxable' => true, 'tax_rate' => 20.0)));
+	pg_assert_same(20, mp_n11_vat_rate(array('tax_rate' => 20.0)));
+}
