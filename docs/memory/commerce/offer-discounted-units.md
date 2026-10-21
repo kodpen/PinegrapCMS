@@ -5,7 +5,15 @@ description: How many units of a cart line an offer discounts (cheapest item: on
 
 ## How many units does a product discount cover?
 - `pg_offer_action_discounted_units()`: the `cheapest` target ("the cheapest item is free") covers one unit of the cheapest line; a product or group target covers every unit of each matching line.
-- A gift (`add product`) taken from a line the shopper already pays for (`apply_offer_gift_to_cart()`) covers `add_product_quantity` units of that line. The gift never raises the line's price: the gift price is capped at the price the line stands at (list, member or another offer's).
+- A gift (`add product`) taken from a line the shopper already pays for (`apply_offer_gift_to_cart()`) covers `add_product_quantity` units of that line. The gift never raises the line's price: the gift price is capped at the price the paid units stand at.
+
+## How is a gift priced on a line that is already partly discounted?
+- `pg_offer_gift_line_unit_price($line_unit_price, $quantity, $paid_unit_price, $gift_unit_price, $gift_units)`: the gift's units come off the line's total (`line_unit_price × quantity`) at the paid units' own price, then `floor(total / quantity)`. On a plain line it equals `pg_offer_spread_unit_price()`.
+- The paid units' own price is the line's unit price, unless the line's own action (`order_items.offer_action_id`, joined in `apply_offer_gift_to_cart()`) is a `cheapest` target or another `add product`: then the unit price is already an average and the paid units stand at the list price, or the member's agreed price (`pg_erp_member_prices()`).
+- Two rounded spreads keep at most 2 × (quantity − 1) minor units with the customer: Y×3 at 10,00 with the cheapest free and one gift charges 332 × 3 = 9,96.
+
+## What was the symptom? (#984, PR #1148)
+- "En ucuzu bedava" plus a gift of Y on the paid Y line (or two gifts of Y) under-discounted: the gift was spread from the line's already spread average (Y×3 → 666 counted as a paid unit's price → 444 × 3 = 13,32, instead of one unit paid), Y×5 with two gifts charged 32,00 instead of 30,00.
 
 ## How is a partly discounted line charged?
 - `order_items.price` is one unit price, so `pg_offer_spread_unit_price()` spreads the discount of the covered units over the whole line: one free item on X×2 charges each X half.

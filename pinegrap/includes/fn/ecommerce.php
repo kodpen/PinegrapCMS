@@ -356,6 +356,45 @@ function get_ship_to_id_for_offer_gift($offer_id, $allowed_ship_to_ids = array()
     }
     return 0;
 }
+// Does this recipient hold a line the shopper pays for? The checkout refuses
+// a free item that is alone in a recipient (shopping_cart.php, submit_order.php
+// look for a line with a price above 0 in the same ship_to), so a free gift
+// is only placed in, or left in, a recipient that has one. $except_item_id
+// leaves out the gift line itself when it is the one being weighed.
+function pg_ship_to_has_paid_line($ship_to_id, $except_item_id = 0)
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if (($order_id <= 0) || ((int) $ship_to_id <= 0)) {
+        return false;
+    }
+    $sql_except = ((int) $except_item_id > 0) ? " AND (id != '" . e($except_item_id) . "')" : '';
+    return (bool) db_value("SELECT id FROM order_items
+
+        WHERE
+
+            (order_id = '" . e($order_id) . "')
+
+            AND (ship_to_id = '" . e($ship_to_id) . "')
+
+            AND (price > 0)" . $sql_except . pg_order_item_active_sql() . "
+
+        LIMIT 1");
+}
+// The recipient the cart gives every shippable product when the site ships
+// to one address: the buyer's own, the one create_or_get_ship_to('', '')
+// finds or opens. Looked up here without opening it, so a caller can ask
+// what it holds before deciding to put something there; 0 when the cart has
+// not opened it yet.
+function pg_single_recipient_ship_to_id()
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if ($order_id <= 0) {
+        return 0;
+    }
+    return (int) db_value("SELECT id FROM ship_tos
+
+        WHERE (order_id = '" . e($order_id) . "') AND (ship_to_name = '" . escape(lang('myself')) . "')");
+}
 // The shopper took an offer's gift out of the cart; remember or forget that.
 //
 // The refusal is what keeps a removed gift from coming straight back on the
@@ -481,26 +520,55 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
+    //
+    // The line's own offer action tells whether its unit price is an average:
+    // "the cheapest item is free" and an earlier gift discount only some of
+    // the units and spread that over the line.
+    $paid_order_item = db_item("SELECT
+
+            order_items.id,
+
+            order_items.quantity,
+
+            order_items.price,
+
+            order_items.discounted_by_offer,
+
+            offer_actions.type AS line_offer_action_type,
+
+            offer_actions.discount_product_target AS line_offer_action_target
+
+        FROM order_items
+
+        LEFT JOIN offer_actions ON order_items.offer_action_id = offer_actions.id
 
         WHERE
 
-            (order_id = '" . e($order_id) . "')
+            (order_items.order_id = '" . e($order_id) . "')
 
-            AND (product_id = '" . e($action['add_product_product_id']) . "')
+            AND (order_items.product_id = '" . e($action['add_product_product_id']) . "')
 
-            AND (added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
+            AND (order_items.added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
 
-        ORDER BY id ASC LIMIT 1");
+        ORDER BY order_items.id ASC LIMIT 1");
     if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
         //
         // The gift is the action's quantity, not the whole line: the other
-        // units keep the price the line stands at (list, member or another
-        // offer's), and a gift never raises that price.
-        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
-        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
+        // units keep the price they stand at, and a gift never raises that
+        // price. That price is the line's unit price, unless the line already
+        // carries a partly discounted unit spread over it (the cheapest item,
+        // an earlier gift): then the paid units stand at the list price, or
+        // the member's agreed price, and the gift is taken off the line's
+        // total at that price (pg_offer_gift_line_unit_price()).
+        $paid_unit_price = (int) $paid_order_item['price'];
+        if (($paid_order_item['discounted_by_offer'] == 1)
+            && (($paid_order_item['line_offer_action_type'] == 'add product') || (pg_offer_action_target(array('discount_product_target' => $paid_order_item['line_offer_action_target'])) == 'cheapest'))) {
+            $member_prices = pg_erp_member_prices();
+            $paid_unit_price = isset($member_prices[(int) $action['add_product_product_id']]) ? (int) $member_prices[(int) $action['add_product_product_id']]['price'] : (int) $action['product_price'];
+        }
+        $line_price = pg_offer_gift_line_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $paid_unit_price, $discounted_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
@@ -527,7 +595,17 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     // charged shipping and checked against the destination with the rest.
     // Found or created only here, once the gift is placed, so a gift that is
     // not placed leaves no empty recipient behind.
+    //
+    // A free gift has to travel with a paid line: the checkout refuses a free
+    // item alone in a recipient, and the shopper could not place the order
+    // without taking the gift out. When the recipient holds nothing paid for
+    // (only unshipped items in the cart, say) the gift is not placed; the
+    // caller keeps the offer among the pending ones and the claim button asks,
+    // as the multi-recipient branch does through get_ship_to_id_for_offer_gift().
     if (!$ship_to_id && (ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'single recipient') && ($action['product_shippable'] == 1)) {
+        if (($discounted_price <= 0) && !pg_ship_to_has_paid_line(pg_single_recipient_ship_to_id())) {
+            return false;
+        }
         $ship_to_id = create_or_get_ship_to('', '');
     }
 
@@ -1691,6 +1769,192 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
 
 
 /**
+ * The low-stock line this site runs, 0 when it runs none.
+ *
+ * ECOMMERCE_LOW_STOCK_THRESHOLD is set by hand in data/config.php and has no
+ * settings screen; the cart widget's warning reads the same constant.
+ *
+ * @return int
+ */
+function pg_product_stock_threshold()
+{
+    return (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int) ECOMMERCE_LOW_STOCK_THRESHOLD > 0))
+        ? (int) ECOMMERCE_LOW_STOCK_THRESHOLD
+        : 0;
+}
+
+
+/**
+ * What one change of a product's stock announces: the events, in order, with
+ * their payloads. Pure, so the writers and the tests read the same rule.
+ *
+ * inventory.changed goes out on every write of a tracked product, with the
+ * same keys the stock API's own writer sends, plus the writer's name as
+ * source. stock.low goes out once, on the crossing: a product sitting at two
+ * with a threshold of five would otherwise raise it on every sale, and a
+ * reorder notice that arrives four times a day stops being read. A product
+ * that did not track stock before this write ($before null) had no level to
+ * be above the line, so a count at or under it is a crossing - the stock API
+ * and the Workspace switch tracking on with a count the same way.
+ *
+ * A product that does not track stock after the write announces nothing: a
+ * gift card sold without a stock limit has no level to report and no low to
+ * cross.
+ *
+ * @param int      $product_id
+ * @param string   $name       products.name, carried by stock.low
+ * @param bool     $tracked    products.inventory after the write
+ * @param int|null $before     stock before the write; null when it was not tracked
+ * @param int      $after      stock left after the write
+ * @param int      $threshold  the low-stock line, 0 for none (pg_product_stock_threshold())
+ * @param string   $source     the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return array   list of array(event name, payload)
+ */
+function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source)
+{
+    $product_id = (int) $product_id;
+    $after = (int) $after;
+    $threshold = (int) $threshold;
+
+    if (($product_id <= 0) || !$tracked) {
+        return array();
+    }
+
+    $events = array(
+        array('inventory.changed', array(
+            'product_id'   => $product_id,
+            'quantity'     => $after,
+            'out_of_stock' => ($after <= 0),
+            'source'       => (string) $source,
+        )),
+    );
+
+    $was_above = ($before === null) || ((int) $before > $threshold);
+
+    if (($threshold > 0) && ($after <= $threshold) && $was_above) {
+        $events[] = array('stock.low', array(
+            'product_id' => $product_id,
+            'name'       => (string) $name,
+            'quantity'   => $after,
+            'threshold'  => $threshold,
+        ));
+    }
+
+    return $events;
+}
+
+
+/**
+ * Whether a save that may have touched a product's stock moved it, and what
+ * to hand pg_product_stock_changed(): array($before, $after), or null when
+ * there is nothing to announce. For the screens that write the whole row
+ * (the product screen, the bulk edit) and cannot tell from the form alone.
+ *
+ * Tracking switched on with a count is a change from no level ($before
+ * null), as the stock API's set and the Workspace treat it. Tracking
+ * switched off is not a stock change: there is no level left to report. The
+ * same count written again is nothing.
+ *
+ * @param bool       $was_tracked  products.inventory before the write
+ * @param int|string $was_quantity products.inventory_quantity before the write
+ * @param bool       $tracked      products.inventory after the write
+ * @param int|string $quantity     products.inventory_quantity after the write
+ * @return array|null array(before or null, after), or null for no change
+ */
+function pg_product_stock_delta($was_tracked, $was_quantity, $tracked, $quantity)
+{
+    if (!$tracked) {
+        return null;
+    }
+
+    $after = (int) $quantity;
+
+    if (!$was_tracked) {
+        return array(null, $after);
+    }
+
+    if ((int) $was_quantity === $after) {
+        return null;
+    }
+
+    return array((int) $was_quantity, $after);
+}
+
+
+/**
+ * A product's stock was written somewhere on the site: the checkout, a local
+ * sale, the product screen and its list, a barcode scan, the bulk edit. One
+ * call after the write does everything a stock change owes the outside:
+ *
+ *   - products.timestamp moves, so GET /products?updated_since= lists the
+ *     product; a sale that left it alone was invisible to a system that
+ *     syncs that way, which kept selling the old stock.
+ *   - inventory.changed, and stock.low on the crossing, are announced the way
+ *     the stock API's own writer announces them (pg_product_stock_events()).
+ *   - the marketplace queue is told (pg_marketplace_product_changed()).
+ *
+ * The stock API, the Workspace and the ERP keep their own writers: each
+ * stamps and announces inside its own statement already.
+ *
+ * Called once per product, after the row is written. $before is the stock as
+ * the caller read it before its write, or null when the product did not
+ * track stock until now. $after is what the write left; null reads it back
+ * from the row, which a caller whose UPDATE did the arithmetic (the checkout's
+ * decrement) cannot know otherwise. The stock left is returned, so a loop
+ * that meets the same product twice (two recipients of one order) carries it
+ * on as the next row's $before instead of the value read before the loop.
+ *
+ * Queued and recorded, never sent: a checkout must not wait on anybody's
+ * server. Silent on a product that is not there.
+ *
+ * @param int      $product_id
+ * @param int|null $before  stock before the write; null when it was not tracked
+ * @param int|null $after   stock left after the write; null reads the row
+ * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return int|null the stock left, null when the product is not there
+ */
+function pg_product_stock_changed($product_id, $before, $after, $source)
+{
+    $product_id = (int) $product_id;
+
+    if (($product_id <= 0) || !defined('DB_CONNECTED')) {
+        return null;
+    }
+
+    db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $product_id . "' LIMIT 1");
+
+    $row = db_item("SELECT name, inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+    if (!$row) {
+        return null;
+    }
+
+    if ($after === null) {
+        $after = (int) $row['inventory_quantity'];
+    }
+
+    $events = pg_product_stock_events(
+        $product_id,
+        $row['name'],
+        ((string) $row['inventory'] === '1'),
+        ($before === null) ? null : (int) $before,
+        $after,
+        pg_product_stock_threshold(),
+        $source);
+
+    if (function_exists('pg_announce')) {
+        foreach ($events as $event) {
+            pg_announce($event[0], $event[1]);
+        }
+    }
+
+    pg_marketplace_product_changed($product_id);
+
+    return (int) $after;
+}
+
+
+/**
  * The statements that put a catalogue row in the Recycle Bin.
  *
  * The catalogue's bin is a flag, not a move: the row is switched off and marked
@@ -2114,11 +2378,21 @@ function update_order_item_taxes()
     $billing_state = isset($row['billing_state']) ? $row['billing_state'] : '';
     $billing_country = isset($row['billing_country']) ? $row['billing_country'] : '';
     $tax_exempt = isset($row['tax_exempt']) ? $row['tax_exempt'] : '';
+
+    // The rate each line is charged at goes with its tax (order_items.tax_rate,
+    // 11.0.59): the order's invoice prints it and takes the line's tax at it
+    // again, and a rate worked back out of two rounded amounts can be wrong.
+    $rate_sql = function ($rate) {
+        return pg_schema_has('order_items', 'tax_rate')
+            ? ", tax_rate = '" . number_format((float) $rate, 3, '.', '') . "'"
+            : '';
+    };
+
     // if order is tax-exempt, clear tax from all order items
     if ($tax_exempt) {
         $query = "UPDATE order_items
 
-                 SET tax_total = 0, tax = 0
+                 SET tax_total = 0, tax = 0" . $rate_sql(0) . "
 
                  WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2226,7 +2500,7 @@ function update_order_item_taxes()
                     $tax_amount = round($effective_tax_rate / 100 * $order_item['price'] * $line_quantity);
                     $query = "UPDATE order_items
 
-                             SET tax_total = '$tax_amount', tax = '0'
+                             SET tax_total = '$tax_amount', tax = '0'" . $rate_sql($effective_tax_rate) . "
 
                              WHERE id = '" . $order_item['id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2234,7 +2508,7 @@ function update_order_item_taxes()
                 } else {
                     $query = "UPDATE order_items
 
-                             SET tax_total = '0', tax = '0'
+                             SET tax_total = '0', tax = '0'" . $rate_sql(0) . "
 
                              WHERE id = '" . $order_item['id'] . "'";
                     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
@@ -2363,6 +2637,37 @@ function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_pri
         return $unit_price;
     }
     $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
+// The unit price of a cart line after a gift (an 'add product' result) is
+// taken from it: $gift_units of the line are charged at $gift_unit_price,
+// the rest stay at $paid_unit_price, the price the paid units stand at (list,
+// member or a uniform product discount's price). Worked out from the line's
+// total, $line_unit_price times the quantity, because that unit price may
+// already be an average: "the cheapest item is free" or an earlier gift spread
+// over the line (Y x3 at 10,00 with one free -> 666). Spreading a second gift
+// from that average would count 666 as what a paid unit costs and lose part
+// of the first discount; taking the gift's units off the total at the paid
+// units' own price frees a second unit in full. The result rounds down, as
+// pg_offer_spread_unit_price() does (at most quantity - 1 minor units per
+// spread stay with the customer). A gift never raises the line's price, and
+// one as large as the line charges every unit the gift price.
+function pg_offer_gift_line_unit_price($line_unit_price, $quantity, $paid_unit_price, $gift_unit_price, $gift_units)
+{
+    $quantity = (int) $quantity;
+    $gift_units = (int) $gift_units;
+    $gift_unit_price = min((float) $gift_unit_price, (float) $paid_unit_price);
+    if ($gift_units >= $quantity) {
+        return (int) round($gift_unit_price);
+    }
+    if ($gift_units <= 0) {
+        return (int) round((float) $line_unit_price);
+    }
+    $line_total = ((float) $line_unit_price * $quantity) - ($gift_units * ((float) $paid_unit_price - round($gift_unit_price)));
+    if ($line_total < 0) {
+        $line_total = 0;
+    }
     return (int) floor($line_total / $quantity);
 }
 
@@ -3423,6 +3728,14 @@ function apply_offers_to_cart()
         // then the order item is valid, so update quantity and discount for product
         if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
             $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
+            // A free gift left alone in its recipient (the last paid line
+            // there was taken out) would stop the checkout, so it goes too;
+            // the offer still applies, and the loop below puts it among the
+            // pending ones for the claim button, as when it first qualified.
+            if (($discounted_price <= 0) && ((int) $order_item['ship_to_id'] > 0) && !pg_ship_to_has_paid_line($order_item['ship_to_id'], $order_item['id'])) {
+                remove_order_item($order_item['id']);
+                continue;
+            }
             $discounted_by_offer = 0;
             // if the product that was added is also being discounted, prepare to mark order item accordingly
             if (($order_item['offer_action_add_product_discount_amount'] != 0) || ($order_item['offer_action_add_product_discount_percentage'] != 0)) {
@@ -3466,20 +3779,21 @@ function apply_offers_to_cart()
                     // if this action actually discounts the order,
                     // then prepare to apply discount
                     if (($offer_action['discount_order_amount'] != 0) || ($offer_action['discount_order_percentage'] != 0)) {
-                        // if this offer is valid,
-                        // then prepare to apply discount
-                        if (validate_offer($offer['id']) == true) {
-                            // Weighed after the loop: a gift further down this
-                            // loop can still change the subtotal a percentage
-                            // (or a ladder's rung) is taken from.
-                            $order_discount_candidates[] = array(
-                                'offer_id' => $offer['id'],
-                                'amount' => $offer_action['discount_order_amount'],
-                                'percentage' => $offer_action['discount_order_percentage'],
-                                'tiers' => pg_offer_tiers($offer['id']));
-                            // else this offer is not valid, so if an upsell has not already been added for it,
-                            // and there is an upsell, then add upsell
-                        } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
+                        // Every order discount is a candidate. Whether the
+                        // cart qualifies for it (its required subtotal) is
+                        // settled after the loop, against the subtotal the
+                        // cart then has: a gift further down this loop taken
+                        // from a paid line lowers it, a gift line at a price
+                        // raises it, and the answer must not depend on the
+                        // order the offers are walked in.
+                        $order_discount_candidates[] = array(
+                            'offer_id' => $offer['id'],
+                            'amount' => $offer_action['discount_order_amount'],
+                            'percentage' => $offer_action['discount_order_percentage'],
+                            'tiers' => pg_offer_tiers($offer['id']));
+                        // if this offer is not valid for the cart as it stands, then if an upsell
+                        // has not already been added for it, and there is an upsell, then add upsell
+                        if ((validate_offer($offer['id']) == false) && (isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
                             $upsell_offers[$offer['id']] = $offer;
                         }
                     }
@@ -3681,13 +3995,22 @@ function apply_offers_to_cart()
         }
     }
     // The loop can lower an item's price after an order discount was found - a
-    // gift taken from a paid line - so the best one is chosen against the cart
-    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // gift taken from a paid line - so the candidates are judged against the
+    // cart as it now stands: each one's required subtotal with the subtotal
+    // that is left (one answer whatever the order the offers came in), then
+    // the best one, a percentage of what is left, a ladder's rung for what
     // is left, and never more than what is left.
     $best_order_discount_offer_id = 0;
     $best_order_discount = 0;
     if ($order_discount_candidates) {
-        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+        $final_subtotal = get_order_subtotal();
+        $qualified_candidates = array();
+        foreach ($order_discount_candidates as $candidate) {
+            if (validate_offer($candidate['offer_id'], 0, $final_subtotal) == true) {
+                $qualified_candidates[] = $candidate;
+            }
+        }
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {

@@ -21,6 +21,7 @@ description: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, w
 
 ## What is left to the caller?
 - RP ID and origin from `URL_SCHEME` + `HOSTNAME_SETTING` (`pg_webauthn_rp_id()`, `pg_webauthn_origin()`), never the request Host. No passkeys on an IP address or plain http (except localhost): `pg_webauthn_secure_context()`.
+- A Unicode host name goes to ASCII as the browser's URL parser writes it: `idn_to_ascii()` UTS #46 non-transitional with bidi and joiner checks (`straße.de` → `xn--strae-oqa.de`, `ςfoo.gr` → `xn--foo-lzc.gr`). Before PR #1105 (issue #772) transitional processing gave `strasse.de` (another domain): the browser refused the RP ID and the signed origin never matched. Turkish letters convert the same either way.
 - Take the challenge out of the session before verifying (one use). Refuse a credential ID already registered (7.1 step 26). Show the visitor one plain refusal; the code goes to the log only.
 
 ## How is it tested?

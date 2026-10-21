@@ -36,6 +36,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_return_reminders();       // 11.0.25
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
 	upgrade_2026_11_0_page_schedule();          // 11.0.17
@@ -45,6 +46,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fields();              // 11.0.23
 	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
 	upgrade_2026_11_0_conversion_pack();        // 11.0.14
+	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 
 }
 
@@ -552,6 +554,24 @@ function upgrade_2026_11_0_order_returns() {
 
 }
 
+// When the refund reminders of a return were given (includes/fn/returns.php,
+// pg_return_remind_refunds()): refund_due_notified_at for "due within
+// PG_RETURN_REMIND_DAYS days", refund_overdue_notified_at for "overdue", unix
+// time, 0 until that stage was rung. The daily job claims a stage with
+// UPDATE ... WHERE <column> = 0 and rings the bell only when that claimed a
+// row, so a reminder goes out once per return and stage however often staff
+// clear the bell; until now the decision read the notification rows, which
+// "Delete all notifications" removes for everyone, and the same reminder came
+// back the next day. Same pattern as erp_invoices.overdue_notified_at.
+function upgrade_2026_11_0_return_reminders() {
+
+	install_add_column('order_returns', 'refund_due_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('order_returns', 'refund_overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Returns: each return request now records when its refund reminders were given, so a reminder cleared from the panel bell is not sent again the next day.');
+
+}
+
 // Short links as redirects (router.php, includes/fn/short_link_redirects.php).
 //
 // redirect_code says how a link answers: 0 as before (a page, product group,
@@ -949,5 +969,34 @@ function upgrade_2026_11_0_conversion_pack() {
 	}
 
 	install_note('Product reviews: a review of a product can now be written only by a customer who bought it, signed in with the account they ordered with, and it is marked as a verified purchase. Comments written before this version stay as they are; only verified reviews count towards the star rating given to search engines.');
+
+}
+
+// The VAT rate each order line was charged at (order_items.tax_rate, NULL for
+// a line written before this step or by a path that does not set it). The
+// checkout writes it with the line's tax (update_order_item_taxes()), the till
+// with the sale (includes/local_sale.php). Until now the rate was worked back
+// out of the line total and its tax (erp_line_tax_rate()), which only holds
+// while every line's tax is its own rate x amount; the order invoice and the
+// e-document need the rate itself. DECIMAL(6,3) like the ERP's rate columns.
+// Added in place where the server can (the table grows with every order),
+// copied otherwise.
+function upgrade_2026_11_0_erp_order_item_tax_rate() {
+
+	$columns = array(
+		'tax_rate' => "DECIMAL(6,3) NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('order_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('order_items', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: each order line now keeps the VAT rate it was charged at, so the invoice drawn from an order carries the rate itself rather than one worked back from the amounts. Lines of earlier orders keep working as before.');
 
 }

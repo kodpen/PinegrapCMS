@@ -57,6 +57,49 @@ function test_offer_units_nothing_discounted_keeps_the_line_price()
 	pg_assert_same(1000, pg_offer_spread_unit_price(1000, 3, 0, 0));
 }
 
+// A gift taken from a line the shopper pays for is worked out from the line's
+// total: the gift's units come off at the paid units' own price, not at the
+// line's unit price, which may already be the average "the cheapest item is
+// free" or an earlier gift spread over the line.
+function test_offer_units_gift_on_a_plain_line_matches_the_spread()
+{
+	pg_assert_same(1333, pg_offer_gift_line_unit_price(2000, 3, 2000, 0, 1), 'Y x3 at 20,00, one free: 39,99');
+	pg_assert_same(5000, pg_offer_gift_line_unit_price(10000, 2, 10000, 0, 1), 'X x2, one free');
+	pg_assert_same(833, pg_offer_gift_line_unit_price(1000, 3, 1000, 500, 1), 'half off one of three');
+	pg_assert_same(720, pg_offer_gift_line_unit_price(900, 5, 900, 0, 1), 'Y x5 at 10% off, one free: 4 x 900');
+}
+
+// "The cheapest item is free" already spread one free unit over the line
+// (Y x3 at 10,00 -> 666); a gift of one more unit takes a paid unit at 10,00
+// off the line's total, so two units are free, not one and a bit.
+function test_offer_units_gift_on_a_cheapest_free_line_frees_a_second_unit()
+{
+	pg_assert_same(0, pg_offer_gift_line_unit_price(500, 2, 1000, 0, 1), 'Y x2: both free');
+	pg_assert_same(332, pg_offer_gift_line_unit_price(666, 3, 1000, 0, 1), 'Y x3: one paid, 9,96 after two rounded spreads');
+	pg_assert_same(500, pg_offer_gift_line_unit_price(750, 4, 1000, 0, 1), 'Y x4: two paid, 20,00');
+	pg_assert_same(600, pg_offer_gift_line_unit_price(800, 5, 1000, 0, 1), 'Y x5: three paid, 30,00');
+	pg_assert_same(0, pg_offer_gift_line_unit_price(666, 3, 1000, 0, 2), 'Y x3, a gift of two: nothing left to pay');
+}
+
+// Two gifts of the same product on one line: the second one is taken from a
+// line the first already spread (Y x5 -> 800), again at the paid units' price.
+function test_offer_units_second_gift_on_the_same_line()
+{
+	pg_assert_same(600, pg_offer_gift_line_unit_price(800, 5, 1000, 0, 1), 'Y x5, two gifts: 30,00');
+	pg_assert_same(0, pg_offer_gift_line_unit_price(500, 2, 1000, 0, 1), 'Y x2, two gifts: 0');
+}
+
+// A gift never raises the line's price, and covers the whole line at most.
+function test_offer_units_gift_line_price_bounds()
+{
+	pg_assert_same(800, pg_offer_gift_line_unit_price(800, 5, 1000, 1200, 1), 'gift dearer than the paid units: unchanged');
+	pg_assert_same(500, pg_offer_gift_line_unit_price(500, 2, 1000, 0, 0), 'no gift units: unchanged');
+	pg_assert_same(0, pg_offer_gift_line_unit_price(1000, 2, 1000, 0, 2), 'gift as large as the line: the gift price');
+	pg_assert_same(250, pg_offer_gift_line_unit_price(1000, 2, 1000, 250, 3), 'gift larger than the line: the gift price');
+	pg_assert_same(0, pg_offer_gift_line_unit_price(0, 3, 1000, 0, 1), 'a line already free stays free');
+	pg_assert_same(666, pg_offer_gift_line_unit_price('666', '3', '1000', '0', '0'), 'values as the database gives them');
+}
+
 // The spread price rounds down: the line never costs more than its units at
 // their own prices, and the customer keeps less than one minor unit per unit.
 function test_offer_units_spread_price_rounds_down()

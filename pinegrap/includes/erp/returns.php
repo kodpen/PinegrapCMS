@@ -116,8 +116,8 @@ function erp_returnable_lines($invoice_id)
  * rounded once, the second tax per its own rate - each capped by what is
  * still on its line. The piece that empties a line whose earlier returns are
  * known takes exactly what is left on it, so the returns of a line add up to
- * the line. An order's lines (erp_order_refund_lines()) carry no earlier
- * returns and take the group taxes alone.
+ * the line. An order's lines (erp_order_refund_lines()) carry nothing given
+ * back yet, so a line given back whole takes the tax the order charged on it.
  *
  * @param array $parent_lines  from erp_returnable_lines()
  * @param array $quantities    line id => quantity
@@ -489,6 +489,21 @@ function erp_invoice_return($data)
         return $fail($error);
     }
 
+    // A foreign invoice that this return has paid off carries the gap between
+    // what was invoiced, less the return, and what was collected in the base
+    // currency, as it does when a receipt closes it (erp_post_receipt()). No
+    // later receipt closes a paid invoice, so without this the account kept
+    // the gap for good.
+    if (($currency !== erp_base_currency()) && erp_fx_auto_diff()) {
+        $status_now = (string) db_value("SELECT status FROM erp_invoices WHERE id = '" . $parent_id . "' LIMIT 1");
+
+        if (($status_now === 'paid') && !erp_fx_post_difference($parent, $created_by)) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail($error);
+        }
+    }
+
     // The goods go back the way the invoice line moved them, if it did.
     if (!erp_stock_post_return($return_id, $created_by)) {
         $error = erp_db_error();
@@ -642,8 +657,13 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         }
 
         // The parent asks for its full amount again, so a status that the
-        // return had allowed to reach paid has to be worked out afresh.
-        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])) {
+        // return had allowed to reach paid has to be worked out afresh. A
+        // foreign parent that leaves paid takes back the exchange difference
+        // posted when it closed, as it does when a receipt is cancelled; the
+        // return was drawn in the parent's currency. Left in place, the
+        // difference made the next closing post nothing.
+        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])
+            || !erp_settlement_after_reopen((int) $invoice['parent_invoice_id'], (string) $invoice['currency'], (int) $created_by)) {
             $error = erp_db_error();
             erp_tx_rollback();
             return $fail($error);
