@@ -54,9 +54,11 @@
  *
  * Capabilities (info()['capabilities']): 'einvoice', 'earchive',
  * 'ewaybill', 'inbox', 'accounts' - its customer and supplier cards can be
- * read and written - and 'return' - the provider takes a sales return
- * through its API. The screens ask erp_edoc_has_capability() before they
- * offer a step, so a driver that gains one needs no change anywhere else. Credentials live in
+ * read and written - 'return' - the provider takes a sales return
+ * through its API - and 'ubl' - fetch_document() hands back a sent
+ * document's UBL ('xml'), not only its PDF. The screens ask
+ * erp_edoc_has_capability() before they offer a step, so a driver that
+ * gains one needs no change anywhere else. Credentials live in
  * erp_edoc_providers (4.61), AES-encrypted the way the Paraşüt secret has
  * been since Faz -1; a driver that keeps its own (Paraşüt, in the commerce
  * settings card) says so by declaring no fields.
@@ -629,6 +631,7 @@ function erp_edoc_capability_labels()
         'inbox' => lang('Incoming e-invoices'),
         'accounts' => lang('Account sync'),
         'return' => lang('Return invoices'),
+        'ubl' => lang('UBL'),
     );
 }
 
