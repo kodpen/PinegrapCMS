@@ -149,6 +149,24 @@ function mp_import_order($account, $package) {
 
 	$map_id = (int) mysqli_insert_id(db::$con);
 
+	// Cancelled before this shop ever saw it - between two pulls, or before the
+	// first one. Nothing is written: there is nothing to pick, and writing the
+	// order only to cancel it would take the stock and give it back, which is
+	// not a round trip when the stock was short (the take stops at zero, the
+	// return adds the whole quantity). The map row stays, so the package is
+	// never imported later, and says why there is no order.
+	if (mp_order_stage($account, $package) === 'cancelled') {
+
+		db("UPDATE marketplace_order_map
+			SET status = 'imported',
+				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
+				updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . e($map_id) . "'");
+
+		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+	}
+
 	$order_id = mp_order_write($account, $package, $map_id);
 
 	if (!$order_id) {
@@ -162,6 +180,11 @@ function mp_import_order($account, $package) {
 		SET order_id = '" . e($order_id) . "', status = 'imported', last_error = '',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
+
+	// A package can also arrive already shipped or delivered, with its tracking
+	// number. The feed is not guaranteed to hand it back, so what a known
+	// package would get on its next poll it gets now.
+	mp_order_apply_status($account, $package, array('id' => $map_id, 'order_id' => $order_id));
 
 	return array('ok' => true, 'order_id' => $order_id, 'skipped' => false, 'error' => '');
 
@@ -186,9 +209,7 @@ function mp_order_apply_status($account, $package, $map) {
 
 	$order_id = (int) $map['order_id'];
 
-	$stage = mp_can($account['provider'], 'order_stage')
-		? mp_call($account['provider'], 'order_stage', array($package['remote_status']))
-		: 'open';
+	$stage = mp_order_stage($account, $package);
 
 	mp_order_apply_tracking($order_id, $package);
 
@@ -205,6 +226,21 @@ function mp_order_apply_status($account, $package, $map) {
 		mp_order_cancel($account, $package, $map);
 
 	}
+
+}
+
+// Where the package is, in the shop's four words: open, shipped, delivered or
+// cancelled. A provider that cannot say is taken as open.
+function mp_order_stage($account, $package) {
+
+	if (!mp_can($account['provider'], 'order_stage')) {
+
+		return 'open';
+
+	}
+
+	return (string) mp_call($account['provider'], 'order_stage',
+		array(isset($package['remote_status']) ? (string)$package['remote_status'] : ''));
 
 }
 

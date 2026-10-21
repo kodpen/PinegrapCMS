@@ -24684,5 +24684,6 @@
     "Order (#{var:1}) was marked paid.": "Sipariş (#{var:1}) ödendi olarak işaretlendi.",
     "Order (#{var:1}) was marked paid automatically.": "Sipariş (#{var:1}) kendiliğinden ödendi olarak işaretlendi.",
     "The lines at {var:1} VAT come to {var:2} with VAT, a total Paraşüt cannot reach: it takes the VAT on their whole amount, and no amount with that VAT comes to it (the nearest are {var:3} and {var:4}). Nothing was sent to Paraşüt.": "{var:1} KDV'li satırların KDV dahil toplamı {var:2}; Paraşüt bu toplama ulaşamaz: KDV'yi satırların toplam tutarı üzerinden hesaplar ve hiçbir tutar KDV'siyle birlikte bu toplamı vermez (en yakınları {var:3} ve {var:4}). Paraşüt'e hiçbir şey gönderilmedi.",
-    "Rounding difference": "Yuvarlama farkı"
+    "Rounding difference": "Yuvarlama farkı",
+    "Cancelled on the marketplace before it was imported. No order was written.": "İçe aktarılmadan önce pazaryerinde iptal edilmiş; sipariş oluşturulmadı."
 }
