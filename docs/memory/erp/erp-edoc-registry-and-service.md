@@ -18,7 +18,7 @@ It loads the bootstrap and is the single owner of the invoice send line:
 - `erp_edoc_invoice_send($id, $user_id)`: first `edoc_status='sending'`, then the driver; success → `edoc_provider`, `edoc_external_id`, `sent`, `edoc_sent_at`; failure → `error` + `edoc_error`.
 - `erp_edoc_invoice_poll($id)`: `gib_number`, `gib_uuid`, status; an event on status change.
 - `erp_edoc_invoice_document($id, 'pdf'|'xml')`; `erp_edoc_status_labels()`.
-- Send gate: active provider + `send_invoice`, `direction=sales`, status not draft/cancelled, `edoc_status` ∈ none/error/rejected.
+- Send gate: active provider + `send_invoice`, `direction=sales`, status not draft/cancelled, `edoc_status` ∈ none/error/rejected, and no record the provider still holds (`erp_edoc_invoice_held_refusal()`: `error` with an id is asked after, not sent again; erp-parasut-send-failures.md).
 - Questions about an existing document go to `edoc_provider`, NOT to the active provider.
 - `erp_edoc_account_missing($account)` (account list, the order card's invoice gate, the automatic invoice) asks the driver's `party_missing` with the fields `erp_edoc_invoice_party()` gives for the live card. Until #911 it left out `tax_office` and `country_code`: under Paraşüt every company card read "Tax office" missing, so the order card would not issue a company's invoice.
 
