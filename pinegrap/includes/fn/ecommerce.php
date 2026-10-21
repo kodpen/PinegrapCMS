@@ -520,26 +520,55 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
+    //
+    // The line's own offer action tells whether its unit price is an average:
+    // "the cheapest item is free" and an earlier gift discount only some of
+    // the units and spread that over the line.
+    $paid_order_item = db_item("SELECT
+
+            order_items.id,
+
+            order_items.quantity,
+
+            order_items.price,
+
+            order_items.discounted_by_offer,
+
+            offer_actions.type AS line_offer_action_type,
+
+            offer_actions.discount_product_target AS line_offer_action_target
+
+        FROM order_items
+
+        LEFT JOIN offer_actions ON order_items.offer_action_id = offer_actions.id
 
         WHERE
 
-            (order_id = '" . e($order_id) . "')
+            (order_items.order_id = '" . e($order_id) . "')
 
-            AND (product_id = '" . e($action['add_product_product_id']) . "')
+            AND (order_items.product_id = '" . e($action['add_product_product_id']) . "')
 
-            AND (added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
+            AND (order_items.added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
 
-        ORDER BY id ASC LIMIT 1");
+        ORDER BY order_items.id ASC LIMIT 1");
     if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
         //
         // The gift is the action's quantity, not the whole line: the other
-        // units keep the price the line stands at (list, member or another
-        // offer's), and a gift never raises that price.
-        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
-        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
+        // units keep the price they stand at, and a gift never raises that
+        // price. That price is the line's unit price, unless the line already
+        // carries a partly discounted unit spread over it (the cheapest item,
+        // an earlier gift): then the paid units stand at the list price, or
+        // the member's agreed price, and the gift is taken off the line's
+        // total at that price (pg_offer_gift_line_unit_price()).
+        $paid_unit_price = (int) $paid_order_item['price'];
+        if (($paid_order_item['discounted_by_offer'] == 1)
+            && (($paid_order_item['line_offer_action_type'] == 'add product') || (pg_offer_action_target(array('discount_product_target' => $paid_order_item['line_offer_action_target'])) == 'cheapest'))) {
+            $member_prices = pg_erp_member_prices();
+            $paid_unit_price = isset($member_prices[(int) $action['add_product_product_id']]) ? (int) $member_prices[(int) $action['add_product_product_id']]['price'] : (int) $action['product_price'];
+        }
+        $line_price = pg_offer_gift_line_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $paid_unit_price, $discounted_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
@@ -2608,6 +2637,37 @@ function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_pri
         return $unit_price;
     }
     $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
+// The unit price of a cart line after a gift (an 'add product' result) is
+// taken from it: $gift_units of the line are charged at $gift_unit_price,
+// the rest stay at $paid_unit_price, the price the paid units stand at (list,
+// member or a uniform product discount's price). Worked out from the line's
+// total, $line_unit_price times the quantity, because that unit price may
+// already be an average: "the cheapest item is free" or an earlier gift spread
+// over the line (Y x3 at 10,00 with one free -> 666). Spreading a second gift
+// from that average would count 666 as what a paid unit costs and lose part
+// of the first discount; taking the gift's units off the total at the paid
+// units' own price frees a second unit in full. The result rounds down, as
+// pg_offer_spread_unit_price() does (at most quantity - 1 minor units per
+// spread stay with the customer). A gift never raises the line's price, and
+// one as large as the line charges every unit the gift price.
+function pg_offer_gift_line_unit_price($line_unit_price, $quantity, $paid_unit_price, $gift_unit_price, $gift_units)
+{
+    $quantity = (int) $quantity;
+    $gift_units = (int) $gift_units;
+    $gift_unit_price = min((float) $gift_unit_price, (float) $paid_unit_price);
+    if ($gift_units >= $quantity) {
+        return (int) round($gift_unit_price);
+    }
+    if ($gift_units <= 0) {
+        return (int) round((float) $line_unit_price);
+    }
+    $line_total = ((float) $line_unit_price * $quantity) - ($gift_units * ((float) $paid_unit_price - round($gift_unit_price)));
+    if ($line_total < 0) {
+        $line_total = 0;
+    }
     return (int) floor($line_total / $quantity);
 }
 
