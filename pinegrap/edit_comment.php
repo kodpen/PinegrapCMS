@@ -55,6 +55,8 @@ $query =
         forms.reference_code as reference_code,
         product_groups.address_name as product_group_address_name,
         products.address_name as product_address_name,
+        " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+        " . (pg_review_replies_ready() ? "comments.seller_reply, comments.seller_reply_at," : "'' AS seller_reply, 0 AS seller_reply_at,") . "
         comments.created_timestamp
     FROM comments
     LEFT JOIN forms ON forms.id = comments.item_id
@@ -94,8 +96,19 @@ $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 $created_timestamp = $row['created_timestamp'];
 $comments_rating = $row['comments_rating'];
 
+// A product review (includes/fn/reviews.php): whether its purchase was
+// verified, and the store's reply under it.
+$review = pg_review_gate_applies($item_type, $item_id);
+$verified_order_id = (int) $row['verified_order_id'];
+$seller_reply = (string) $row['seller_reply'];
+$seller_reply_at = (int) $row['seller_reply_at'];
+$reply_allowed = $review && pg_review_replies_ready();
+
 
 $form_reference_code = '';
+$output_reference_button = '';
+$output_reference_line = '';
+$output_reference_buttons = '';
 if($item_type === 'submitted_form'){
     //if this is custom page check referance code from forms
     $form_reference_code = $row['reference_code'];
@@ -163,6 +176,7 @@ if (!$_POST) {
         $liveform->assign_field_value('name', $name);
         $liveform->assign_field_value('message', $message);
         $liveform->assign_field_value('rating', $rating);
+        $liveform->assign_field_value('seller_reply', $seller_reply);
 
         if ($published) {
             $liveform->assign_field_value('publish', 'published');
@@ -226,6 +240,35 @@ if (!$_POST) {
             </div>';
     }
 
+    // Whose purchase a product review comes from, and the field the store
+    // answers it in (includes/fn/reviews.php).
+    $output_review_line = '';
+    $output_seller_reply_field = '';
+
+    if ($review) {
+        if ($verified_order_id > 0) {
+            $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . $verified_order_id . "'");
+            $output_order = h(($order_number !== '') ? $order_number : (string) $verified_order_id);
+
+            if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
+                $output_order = '<a href="view_order.php?id=' . $verified_order_id . '">' . $output_order . '</a>';
+            }
+
+            $output_review_line = '<p class="p-0 m-0">' . lang(array('string' => 'Verified purchase: order {var:1}', 'vars' => array($output_order))) . '</p>';
+        } else {
+            $output_review_line = '<p class="p-0 m-0">' . lang('Not a verified purchase') . '</p>';
+        }
+    }
+
+    if ($reply_allowed) {
+        $output_seller_reply_field = '
+            <div class="col-12 my-2">
+                <label for="seller_reply" class="form-label">' . lang('Reply from the store') . '</label>
+                ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'seller_reply', 'id'=>'seller_reply', 'rows'=>'3', 'maxlength'=>'5000', 'class'=>'form-control')) . '
+                <div class="form-text">' . (($seller_reply_at > 0) ? lang(array('string' => 'Replied {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $seller_reply_at))))) . ' ' : '') . lang('Shown under the review, with the date it was written.') . '</div>
+            </div>';
+    }
+
     $publish_options = array();
     $publish_options[lang('Published')] = 'published';
     $publish_options[lang('At a Scheduled Time')] = 'schedule';
@@ -286,6 +329,7 @@ if (!$_POST) {
                                 <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
                                 <p class="p-0 m-0">' . lang('Page') . ': ' . h(get_page_name($page_id)) . '</p>
                                 ' . $output_reference_line . '
+                                ' . $output_review_line . '
                             </div>
                         </div>
                         ' . $output_reference_buttons . '
@@ -315,6 +359,7 @@ if (!$_POST) {
                                             <label for="message" class="form-label">' . lang('Comment') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'class'=>'form-control')) . '
                                         </div>
+                                        ' . $output_seller_reply_field . '
                                         ' . $output_rating_field . '
                                         ' . $output_file_attachment . '
                                         <div class="col-12 col-md-6 col-lg-4 my-2" id="publish_schedule" style="display: none">
@@ -494,6 +539,16 @@ if (!$_POST) {
                 break;
         }
         
+        // The store's reply to a product review, dated when it is first
+        // written or changed (includes/fn/reviews.php).
+        $sql_seller_reply = '';
+
+        if ($reply_allowed) {
+            $new_seller_reply = pg_review_reply_text($liveform->get_field_value('seller_reply'));
+            $sql_seller_reply = "seller_reply = '" . e($new_seller_reply) . "',
+                seller_reply_at = '" . pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time()) . "',";
+        }
+
         // update comment
         $query =
             "UPDATE comments
@@ -502,6 +557,7 @@ if (!$_POST) {
                 message = '" . escape($liveform->get_field_value('message')) . "',
                 rating = '" . escape($liveform->get_field_value('rating')) . "',
                 $sql_file_id
+                $sql_seller_reply
                 published = '" . $new_published . "',
                 publish_date_and_time = '" . e($new_publish_date_and_time) . "',
                 publish_cancel = '" . $new_publish_cancel . "',
@@ -533,7 +589,11 @@ if (!$_POST) {
         // create bookmark for header
         $bookmark = '#c-' . $liveform->get_field_value('id');
     }
-    
+
+    // A review published, held back, re-rated or deleted moves its product's
+    // rating (includes/fn/reviews.php).
+    pg_review_comment_changed($item_type, $item_id);
+
     // if the page type is form item view, then update the submitted_form_info table so that form list views can show comment info
     if ($page_type == 'form item view') {
         // Get the number of views so we do not lose that data when we delete record below.

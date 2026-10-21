@@ -73,8 +73,12 @@ if (!function_exists('parasut_connect_with_code')) {
             'parasut_auth_code' => '',
             'parasut_client_secret' => '',
         );
+        // Read with the owner the token was written with: this request's
+        // constants still hold the settings from before the connection (a
+        // client id or company typed on the card and not saved yet), and
+        // the token would read as someone else's.
         $status = function_exists('parasut_connection_line') && function_exists('parasut_connection_status')
-            ? parasut_connection_line(parasut_connection_status())
+            ? parasut_connection_line(parasut_connection_status(((string) ($result['owner'] ?? '') !== '') ? (string) $result['owner'] : null))
             : array();
 
         log_activity(lang(array('string' => 'parasut connection was authorized for company {var:1}', 'vars' => (string) $result['company_id'])),
