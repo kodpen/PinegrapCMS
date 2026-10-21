@@ -652,6 +652,17 @@
         });
         inst.view = view;
 
+        // An Escape the editor used (closing its completion list, its search
+        // panel, a full-window view a screen bound to it) ends at the editor.
+        // A Bootstrap modal closes on every Escape that reaches it, prevented
+        // or not, so the dialog around the editor -- and the code typed into
+        // it -- went with the list. An Escape the editor leaves alone still
+        // reaches the dialog. The listener sits on the editor's outer box so
+        // it also hears the search panel's fields.
+        view.dom.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && event.defaultPrevented) event.stopPropagation();
+        });
+
         // ── Text ──
         inst.getValue = function () { return view.state.doc.toString(); };
         // Replaces the whole text. `keepHistory` false (the default for a
