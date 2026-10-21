@@ -356,6 +356,45 @@ function get_ship_to_id_for_offer_gift($offer_id, $allowed_ship_to_ids = array()
     }
     return 0;
 }
+// Does this recipient hold a line the shopper pays for? The checkout refuses
+// a free item that is alone in a recipient (shopping_cart.php, submit_order.php
+// look for a line with a price above 0 in the same ship_to), so a free gift
+// is only placed in, or left in, a recipient that has one. $except_item_id
+// leaves out the gift line itself when it is the one being weighed.
+function pg_ship_to_has_paid_line($ship_to_id, $except_item_id = 0)
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if (($order_id <= 0) || ((int) $ship_to_id <= 0)) {
+        return false;
+    }
+    $sql_except = ((int) $except_item_id > 0) ? " AND (id != '" . e($except_item_id) . "')" : '';
+    return (bool) db_value("SELECT id FROM order_items
+
+        WHERE
+
+            (order_id = '" . e($order_id) . "')
+
+            AND (ship_to_id = '" . e($ship_to_id) . "')
+
+            AND (price > 0)" . $sql_except . pg_order_item_active_sql() . "
+
+        LIMIT 1");
+}
+// The recipient the cart gives every shippable product when the site ships
+// to one address: the buyer's own, the one create_or_get_ship_to('', '')
+// finds or opens. Looked up here without opening it, so a caller can ask
+// what it holds before deciding to put something there; 0 when the cart has
+// not opened it yet.
+function pg_single_recipient_ship_to_id()
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if ($order_id <= 0) {
+        return 0;
+    }
+    return (int) db_value("SELECT id FROM ship_tos
+
+        WHERE (order_id = '" . e($order_id) . "') AND (ship_to_name = '" . escape(lang('myself')) . "')");
+}
 // The shopper took an offer's gift out of the cart; remember or forget that.
 //
 // The refusal is what keeps a removed gift from coming straight back on the
@@ -527,7 +566,17 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     // charged shipping and checked against the destination with the rest.
     // Found or created only here, once the gift is placed, so a gift that is
     // not placed leaves no empty recipient behind.
+    //
+    // A free gift has to travel with a paid line: the checkout refuses a free
+    // item alone in a recipient, and the shopper could not place the order
+    // without taking the gift out. When the recipient holds nothing paid for
+    // (only unshipped items in the cart, say) the gift is not placed; the
+    // caller keeps the offer among the pending ones and the claim button asks,
+    // as the multi-recipient branch does through get_ship_to_id_for_offer_gift().
     if (!$ship_to_id && (ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'single recipient') && ($action['product_shippable'] == 1)) {
+        if (($discounted_price <= 0) && !pg_ship_to_has_paid_line(pg_single_recipient_ship_to_id())) {
+            return false;
+        }
         $ship_to_id = create_or_get_ship_to('', '');
     }
 
@@ -3433,6 +3482,14 @@ function apply_offers_to_cart()
         // then the order item is valid, so update quantity and discount for product
         if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
             $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
+            // A free gift left alone in its recipient (the last paid line
+            // there was taken out) would stop the checkout, so it goes too;
+            // the offer still applies, and the loop below puts it among the
+            // pending ones for the claim button, as when it first qualified.
+            if (($discounted_price <= 0) && ((int) $order_item['ship_to_id'] > 0) && !pg_ship_to_has_paid_line($order_item['ship_to_id'], $order_item['id'])) {
+                remove_order_item($order_item['id']);
+                continue;
+            }
             $discounted_by_offer = 0;
             // if the product that was added is also being discounted, prepare to mark order item accordingly
             if (($order_item['offer_action_add_product_discount_amount'] != 0) || ($order_item['offer_action_add_product_discount_percentage'] != 0)) {

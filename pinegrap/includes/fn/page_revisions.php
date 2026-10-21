@@ -13,10 +13,13 @@
  * Nothing is written on the editor's autosave, which is browser-local.
  *
  * A row keeps the tree (page_tree_json, what the editor opens again), the
- * SHA-1 of the HTML drawn from it (the body is drawn again on restore; the
- * renderer is deterministic, so the hash is enough to tell two revisions
- * apart) and the page's settings as JSON (title, description, folder, flags,
- * meta tags, structured data), with who published and when.
+ * SHA-1 of the HTML drawn from it (the body is drawn again on restore, so
+ * the hash is a record of what went out, not a copy of it) and the page's
+ * settings as JSON (title, description, folder, flags, meta tags, structured
+ * data), with who published and when. Two revisions are told apart by the
+ * tree and the settings alone: the body is derived from the tree, and the
+ * renderer is not deterministic (a navbar or carousel gets a fresh element
+ * id on every draw), so the drawn hash differs between two draws of one tree.
  *
  * Retention is the larger of two rules, both settings on the config row: the
  * last PAGE_REVISIONS_KEEP revisions of a page are kept, and so is every
@@ -170,24 +173,26 @@ function pg_page_revision_settings($page_id)
 }
 
 /**
- * Whether the newest revision already records this state: the same tree, the
- * same drawn HTML and the same settings. Such a save (a settings save that
- * changed nothing the revision records, say) writes no row.
+ * Whether the newest revision already records this state: the same tree and
+ * the same settings. Such a save (a schedule-only save, or a settings save
+ * that changed nothing the revision records) writes no row.
  *
- * @param array|null $latest the newest row (tree_hash, tree_code_hash, settings_json)
+ * The drawn HTML is not compared: it is derived from the tree, and the
+ * renderer gives a navbar or carousel a fresh element id on every draw, so
+ * two draws of one tree hash differently and would pass for two states.
+ *
+ * @param array|null $latest the newest row (tree_hash, settings_json)
  * @param string     $tree_hash
- * @param string     $code_hash
  * @param string     $settings_json
  * @return bool
  */
-function pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)
+function pg_page_revision_identical($latest, $tree_hash, $settings_json)
 {
     if (!is_array($latest)) {
         return false;
     }
 
     return (string) $latest['tree_hash'] === (string) $tree_hash
-        && (string) $latest['tree_code_hash'] === (string) $code_hash
         && (string) $latest['settings_json'] === (string) $settings_json;
 }
 
@@ -220,13 +225,13 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
     $source        = pg_page_revision_source($source);
 
     $latest = db_item(
-        "SELECT revision_no, tree_hash, tree_code_hash, settings_json
+        "SELECT revision_no, tree_hash, settings_json
          FROM page_revisions
          WHERE page_id = '$page_id'
          ORDER BY revision_no DESC
          LIMIT 1");
 
-    if (pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)) {
+    if (pg_page_revision_identical($latest, $tree_hash, $settings_json)) {
         return 0;
     }
 

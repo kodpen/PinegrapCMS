@@ -20,7 +20,8 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 - `pg_audit('update', 'order_return', …)` with refund_amount, refund_method, refund_reference; one activity line; the customer's mail `pg_return_send_refund_mail()` (amount > 0; "the money goes back the way you paid" only for a driver).
 
 ## What about the ERP return invoice?
-- An order with an issued invoice and a person with ERP rights (role < 3 or `manage_erp`) go on to `add_erp_return.php?invoice_id=…&back_order=…&qty[line]=…`, filled in with the same lines, as the order screen's refund does; nothing is issued until they save.
+- An order with an issued invoice and a person with ERP rights (`pg_return_erp_hand_off($user)`: ERP on and role < 3 or `manage_erp`) go on to `add_erp_return.php?invoice_id=…&back_order=…&qty[line]=…`, filled in with the same lines, as the order screen's refund does; nothing is issued until they save.
+- The note under the Payment Refund card asks the same helper (PR #1135, issue #973): it promises the invoice screen only to them; anyone else reads that someone who uses the ERP must issue the return invoice after the refund. Before, every user was promised a screen that only opened for ERP users, and nobody was told the invoice was still to be issued.
 
 ## How are staff reminded?
 - The daily job, its two stages, the once-only stamps on the return and the test: commerce/order-returns-reminders.md.

@@ -2567,6 +2567,29 @@ function pg_return_money_text($cents)
 }
 
 /**
+ * Whether a person goes on to the ERP return invoice after a refund: the ERP
+ * must be on and they must be allowed to use it (role below 3 or manage_erp).
+ * The redirect after the refund and the note under the refund card both ask
+ * this, so the screen promises the invoice only to whoever will see it.
+ *
+ * @param array     $user   validate_user() row (role, manage_erp)
+ * @param bool|null $erp_on null reads ERP_ENABLED
+ * @return bool
+ */
+function pg_return_erp_hand_off($user, $erp_on = null)
+{
+    if ($erp_on === null) {
+        $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+    }
+
+    if (!$erp_on || !is_array($user)) {
+        return false;
+    }
+
+    return ((int) (isset($user['role']) ? $user['role'] : 99) < 3) || !empty($user['manage_erp']);
+}
+
+/**
  * What a refund of a return would be: what is left to give back on the order,
  * whether the payment's driver can give it back, and the amount the goods
  * come to. With the ERP on, the amount is the ERP's own figure for the same
