@@ -9,6 +9,7 @@ description: includes/db_guard.php rules: no fatal on DB connect error, only tra
 ## Which three rules came out of it?
 - A connection error cannot be fatal. Since PHP 8.1 mysqli throws and `@` does not suppress it; the `else` branch of `db_connect()` was dead code for years. `try/catch` + 503 is mandatory. A stack trace per request is a second crash cause on disk-quota hosting, so the log writes ONE line per minute.
 - Only TRANSIENT errors trip: 1040/1203/1226/2002/2003/2006/2013 back off; 1045/1049 show an error page. Waiting does not fix a wrong password, and a "try later" screen hides it from the only person who could fix it.
+- That error page is a 500, as is the missing config table: `db_connect()` passes 500 to `output_error()`, `init.php` sets it before its message, `router_output_error()` sets it for every page it prints (front end, `get_file.php`, robots, sitemap). Before PR #PR769 (issue #769) all of them were 200, so health.php and status-code monitors saw a broken site as up. `router_output_error()` looks for the config table only when the query works (`mysqli_num_rows(false)` was a PHP 8 TypeError on a dropped connection).
 - `pg_db_guard_check()` runs BEFORE `functions.php`: by `db_connect()` the request has already parsed megabytes of code. The guard file is therefore self-contained: no DB, no `functions.php`, no `lang()`, no session (same constraint as `waf.php` and `get_file.php`).
 
 ## How does the circuit breaker work?

@@ -281,6 +281,12 @@ if ($result === false) {
             . lang('Install or Reinstall Software') . '</a>';
     }
 
+    // A 500 like the other database failures: a monitor reading the status
+    // code sees a site that cannot serve.
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+
     print $config_error;
     exit();
 }
