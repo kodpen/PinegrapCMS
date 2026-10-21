@@ -220,9 +220,24 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Google client secret: stored encrypted (AES-256-CBC + IV) but written
     // as shown - the field carries the current value like the other API
     // secrets on this screen, so whatever is in the field on save is the
-    // truth. Clearing the field clears the stored secret.
+    // truth. Clearing the field clears the stored secret. Each encryption
+    // takes a new random IV, so the stored secret is compared first and an
+    // unchanged one is left as it is: re-encrypting it would change both
+    // columns and log "changed" in the audit trail on every save.
     $oauth_google_secret_input = trim(post_value('oauth_google_client_secret'));
-    if ($oauth_google_secret_input !== '') {
+    $oauth_google_secret_stored = db_item("SELECT oauth_google_client_secret, oauth_google_secret_iv FROM config LIMIT 1");
+    $oauth_google_secret_was = (is_array($oauth_google_secret_stored) && ((string) $oauth_google_secret_stored['oauth_google_client_secret'] !== ''))
+        ? decode_ssl_keys($oauth_google_secret_stored['oauth_google_client_secret'], $oauth_google_secret_stored['oauth_google_secret_iv'])
+        : '';
+    $oauth_google_secret_empty = !is_array($oauth_google_secret_stored)
+        || (((string) $oauth_google_secret_stored['oauth_google_client_secret'] === '') && ((string) $oauth_google_secret_stored['oauth_google_secret_iv'] === ''));
+    // A stored value that no longer decrypts reads as '' and is still
+    // cleared when the field is empty.
+    $oauth_google_secret_write = ($oauth_google_secret_input !== $oauth_google_secret_was)
+        || (($oauth_google_secret_input === '') && !$oauth_google_secret_empty);
+    if (!$oauth_google_secret_write) {
+        // Unchanged: both columns stay as they are.
+    } elseif ($oauth_google_secret_input !== '') {
         list($oauth_google_secret_enc, $oauth_google_secret_iv) = encrypt_string_with_iv($oauth_google_secret_input);
         $query = "UPDATE config SET oauth_google_client_secret = '" . escape($oauth_google_secret_enc) . "', oauth_google_secret_iv = '" . escape($oauth_google_secret_iv) . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed.');
