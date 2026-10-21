@@ -12,7 +12,7 @@ description: How many units of a cart line an offer discounts (cheapest item: on
 - The paid units' own price is the line's unit price, unless the line's own action (`order_items.offer_action_id`, joined in `apply_offer_gift_to_cart()`) is a `cheapest` target or another `add product`: then the unit price is already an average and the paid units stand at the list price, or the member's agreed price (`pg_erp_member_prices()`).
 - Two rounded spreads keep at most 2 × (quantity − 1) minor units with the customer: Y×3 at 10,00 with the cheapest free and one gift charges 332 × 3 = 9,96.
 
-## What was the symptom? (#984)
+## What was the symptom? (#984, PR #1148)
 - "En ucuzu bedava" plus a gift of Y on the paid Y line (or two gifts of Y) under-discounted: the gift was spread from the line's already spread average (Y×3 → 666 counted as a paid unit's price → 444 × 3 = 13,32, instead of one unit paid), Y×5 with two gifts charged 32,00 instead of 30,00.
 
 ## How is a partly discounted line charged?
