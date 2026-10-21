@@ -135,3 +135,23 @@ function test_code_editor_ckeditor_source_dialog()
 	pg_assert_contains("if ((event.key === 'Enter') || (event.key === 'Tab') || event.defaultPrevented) {", $plugin, 'Enter, Tab and the keys the editor used');
 	pg_assert_contains('event.stopPropagation();', $plugin, 'do not reach the dialog');
 }
+
+// An Escape the editor used (its completion list, its search panel, a full
+// window a screen bound to it) stops at the editor's outer box: a Bootstrap
+// modal closes on every Escape that reaches it, prevented or not, and took
+// the typed code with it. The designer's code dialog leaves its full window
+// on Escape before the next one cancels the dialog.
+function test_code_editor_escape_it_used_stays_in_the_editor()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function pgCeCreate(');
+	$create = ($from !== false) ? substr($facade, $from, strpos($facade, "\n    function open(", $from) - $from) : '';
+
+	pg_assert_contains("view.dom.addEventListener('keydown', function (event) {", $create, 'the outer box listens');
+	pg_assert_contains("if ((event.key === 'Escape') && event.defaultPrevented) event.stopPropagation();", $create, 'a used Escape goes no further');
+
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+
+	pg_assert_contains("{ key: 'Escape', run: _leaveFullscreen }", $modal, 'Escape leaves the full window first');
+	pg_assert_contains("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
+}
