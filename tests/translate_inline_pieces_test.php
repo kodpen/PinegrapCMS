@@ -50,7 +50,8 @@ function translate_inline_pieces_lookup($value, $formats)
 }
 
 // An image, a check box and a button are not part of the text: the texts
-// around them are what the translator gets, the button's label one of its own.
+// around them are what the translator gets, the button's label one of its own
+// and the image's alt after the texts.
 function test_translate_inline_pieces_segments_leave_elements_out_of_the_text()
 {
 	$html = '<p><img src="/pinegrap/assets/images/logo.png" alt="Logo"> Ürünümüz <b>harika</b>.</p>'
@@ -62,6 +63,7 @@ function test_translate_inline_pieces_segments_leave_elements_out_of_the_text()
 		array('KVKK metnini okudum', 'text'),
 		array('Bize yazın', 'text'),
 		array('Gönder', 'text'),
+		array('Logo', 'text', 'alt'),
 	), pg_tr_html_segments($html), 'segments');
 }
 
@@ -70,7 +72,7 @@ function test_translate_inline_pieces_segments_keep_a_plain_block_whole()
 {
 	pg_assert_same(array(array('Ayrıntılar için <a href="#detay">tıklayın</a>.', 'inline')),
 		pg_tr_html_segments('<p>Ayrıntılar için <a href="#detay" data-bs-toggle="collapse" id="lnk">tıklayın</a>.</p>'), 'inline tags kept');
-	pg_assert_same(array(array('Kumaşı yumuşak.', 'text')),
+	pg_assert_same(array(array('Kumaşı yumuşak.', 'text'), array('Ürün', 'text', 'alt')),
 		pg_tr_html_segments('<p><img src="/u.jpg" alt="Ürün"> Kumaşı yumuşak.</p>'), 'image at the start of a paragraph');
 	pg_assert_same(array(array('Bir <b>iki</b> üç', 'inline')), pg_tr_html_segments('Bir <b>iki</b> üç'), 'no block at all');
 }

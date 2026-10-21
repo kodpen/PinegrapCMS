@@ -329,6 +329,137 @@ function pg_tr_opaque_tags()
 }
 
 /**
+ * The attributes whose value is words a visitor reads or a screen reader
+ * says: an image's description, a tooltip, a field's hint, an accessible
+ * name. One list for every path: a designer node's attributes
+ * (pg_tr_node_fields()), the tags inside an inline text or a piece of
+ * stored HTML (pg_tr_html_attr_texts()) and the finished-page pass that
+ * draws them (pg_tr_render_attrs()).
+ *
+ * @return array
+ */
+function pg_tr_worded_attrs()
+{
+    return array('alt', 'title', 'placeholder', 'aria-label', 'aria-description', 'data-bs-title', 'data-bs-content');
+}
+
+/**
+ * Goes over the worded attributes (pg_tr_worded_attrs()) of the tags in a
+ * piece of HTML and lets a callback replace each value. The content of a
+ * script, style, text area, pre or code element and comments are passed
+ * over (a text area's own tag is not: its placeholder is a hint); so is a
+ * tag marked translate="no" or notranslate. Values are read whole, so the
+ * words of one attribute are never taken for another attribute.
+ *
+ * Extraction and drawing both go through here, so the value a page looks up
+ * is the value extraction stored.
+ *
+ * @param string   $html
+ * @param callable $callback function (string $value, string $name): string|null -
+ *                           the value with entities resolved; returns the new
+ *                           plain-text value, or null to keep the attribute
+ * @return string the HTML, changed attributes written with double quotes
+ */
+function pg_tr_html_attrs_map($html, $callback)
+{
+    $worded = array_flip(pg_tr_worded_attrs());
+    $tag_body = '(?:"[^"]*"|\'[^\']*\'|[^"\'>])*';
+
+    $tag = function ($source) use ($worded, $callback) {
+        if (!preg_match('~^<([a-zA-Z][a-zA-Z0-9-]*)(.*?)(/?>)$~s', $source, $parts)
+            || preg_match('~\stranslate\s*=\s*["\']?no\b~i', $parts[2])
+            || preg_match('~\sclass\s*=\s*(["\'])(?:(?!\1).)*\bnotranslate\b~is', $parts[2])) {
+            return $source;
+        }
+
+        $attrs = preg_replace_callback('~(\s+)([^\s"\'>/=]+)(?:(\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s"\'>]+))?~', function ($m) use ($worded, $callback) {
+            $name = strtolower($m[2]);
+
+            if (!isset($worded[$name]) || !isset($m[4])) {
+                return $m[0];
+            }
+
+            $raw = $m[4];
+
+            if (($raw[0] === '"') || ($raw[0] === "'")) {
+                $raw = substr($raw, 1, -1);
+            }
+
+            $value = call_user_func($callback, html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8'), $name);
+
+            return ($value === null) ? $m[0] : $m[1] . $m[2] . '="' . h($value) . '"';
+        }, $parts[2]);
+
+        return '<' . $parts[1] . $attrs . $parts[3];
+    };
+
+    return preg_replace_callback('~<!--.*?-->|(<(script|style|textarea|pre|code)\b' . $tag_body . '>)(.*?</\2\s*>)|<[a-zA-Z][a-zA-Z0-9-]*' . $tag_body . '>~is', function ($m) use ($tag) {
+        if (strpos($m[0], '<!--') === 0) {
+            return $m[0];
+        }
+
+        if (isset($m[1]) && ($m[1] !== '')) {
+            return $tag($m[1]) . $m[3];
+        }
+
+        return $tag($m[0]);
+    }, (string) $html);
+}
+
+/**
+ * The worded attribute values of a piece of HTML as texts to translate, in
+ * the order they stand: what pg_tr_render_attrs() looks up on the page.
+ *
+ * @param string $html
+ * @return array of array(text, 'text', attribute name) - normalised, translatable
+ */
+function pg_tr_html_attr_texts($html)
+{
+    $out = array();
+
+    if (strpos((string) $html, '<') === false) {
+        return $out;
+    }
+
+    pg_tr_html_attrs_map($html, function ($value, $name) use (&$out) {
+        $normalized = pg_tr_normalize($value, 'text');
+
+        if (($normalized !== '') && pg_tr_translatable($normalized)) {
+            $out[] = array($normalized, 'text', $name);
+        }
+
+        return null;
+    });
+
+    return $out;
+}
+
+/**
+ * A piece of the page with its worded attributes in the current language:
+ * every value that has a translation is swapped for it.
+ *
+ * @param string        $html
+ * @param callable|null $lookup pg_tr_db_text() unless given
+ * @return string
+ */
+function pg_tr_render_attrs($html, $lookup = null)
+{
+    if ($lookup === null) {
+        $lookup = 'pg_tr_db_text';
+    }
+
+    return pg_tr_html_attrs_map($html, function ($value) use ($lookup) {
+        if (!preg_match('~\p{L}~u', $value)) {
+            return null;
+        }
+
+        $found = call_user_func($lookup, $value, array('text'));
+
+        return ($found === null) ? null : strip_tags((string) $found[0]);
+    });
+}
+
+/**
  * A piece of inline HTML cut where a translated text could not carry what is
  * there. A translation holds words and the editor's inline tags
  * (pg_tr_clean_inline()); an image, a form control, a button, an embed is
@@ -562,14 +693,31 @@ function pg_tr_render_inline($html, $lookup = null)
  * beside blocks as a text of its own. HTML with no block at all is one text.
  * An element a text cannot carry (an image, a form control, a button) cuts
  * it into the texts around it (pg_tr_inline_pieces()). Scripts, styles,
- * code and anything marked translate="no" are left out.
+ * code and anything marked translate="no" are left out. The worded
+ * attributes (an image's alt, a link's aria-label) follow the texts, each
+ * a plain text of its own (pg_tr_html_attr_texts()).
  *
  * @param string $html
- * @return array of array(text, format) - normalised, translatable
+ * @return array of array(text, format) - normalised, translatable; an
+ *               attribute's value as array(text, 'text', attribute name)
  */
 function pg_tr_html_segments($html)
 {
     $html = (string) $html;
+    $attrs = pg_tr_html_attr_texts($html);
+    $out = pg_tr_html_text_segments($html);
+
+    return $attrs ? array_merge($out, $attrs) : $out;
+}
+
+/**
+ * The words of pg_tr_html_segments(), the attributes left out.
+ *
+ * @param string $html
+ * @return array of array(text, format)
+ */
+function pg_tr_html_text_segments($html)
+{
     $out = array();
 
     if (trim(strip_tags($html)) === '') {
@@ -687,7 +835,8 @@ function pg_tr_html_segments($html)
  * The segments of one stored field, ready for pg_tr_store_segments().
  *
  * @param string $field the field name; a field split into several texts
- *                      gets "#n" after it
+ *                      gets "#n" after it, an attribute's value
+ *                      "@<attribute>#n"
  * @param string $html
  * @param int    $position running counter
  * @return array
@@ -696,17 +845,32 @@ function pg_tr_field_segments($field, $html, &$position)
 {
     $segments = array();
     $parts = pg_tr_html_segments($html);
-    $many = (count($parts) > 1);
+    $texts = 0;
 
-    foreach ($parts as $i => $part) {
+    foreach ($parts as $part) {
+        $texts += isset($part[2]) ? 0 : 1;
+    }
+
+    $many = ($texts > 1);
+    $i = 0;
+    $a = 0;
+
+    foreach ($parts as $part) {
         list($text, $format) = $part;
+
+        if (isset($part[2])) {
+            $name = $field . '@' . $part[2] . '#' . $a++;
+        } else {
+            $name = $many ? $field . '#' . $i : $field;
+            $i++;
+        }
 
         $segments[] = array(
             'hash'     => pg_tr_hash($text, $format),
             'text'     => $text,
             'format'   => $format,
             'node_id'  => 'field',
-            'field'    => $many ? $field . '#' . $i : $field,
+            'field'    => $name,
             'position' => $position++,
         );
     }
@@ -1374,8 +1538,10 @@ function pg_tr_render_db_texts($content)
             continue;
         }
 
+        // A protected block keeps its content; its own tag's worded
+        // attributes (a text area's placeholder) are drawn like any other.
         if (($i % 3) === 1) {
-            $out .= (stripos($part, 'pgCivVariants') !== false) ? pg_tr_render_json_strings($part) : $part;
+            $out .= pg_tr_render_attrs((stripos($part, 'pgCivVariants') !== false) ? pg_tr_render_json_strings($part) : $part);
             continue;
         }
 
@@ -1429,16 +1595,9 @@ function pg_tr_render_db_html($html)
         return '>' . $lead[0] . $text . $trail[0] . '<';
     }, $html);
 
-    // Worded attributes.
-    $html = preg_replace_callback('~(\s(?:alt|title|placeholder|aria-label|data-bs-title)=")([^"]*)(")~i', function ($m) {
-        if (!preg_match('~\p{L}~u', $m[2])) {
-            return $m[0];
-        }
-
-        $found = pg_tr_db_text(html_entity_decode($m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'), array('text'));
-
-        return ($found === null) ? $m[0] : $m[1] . h(strip_tags($found[0])) . $m[3];
-    }, $html);
+    // Worded attributes: those of the stored HTML and those an inline text
+    // carries in its own tags, both extracted as texts of their own.
+    $html = pg_tr_render_attrs($html);
 
     // The title and description metas a product or group page sets.
     $html = preg_replace_callback('~(<meta\s+(?:name|property)="(?:description|og:title|og:description|twitter:title|twitter:description)"\s+content=")([^"]*)(")~i', function ($m) {
@@ -1470,7 +1629,7 @@ function pg_tr_render_html_value($html)
     if (!preg_match('~<(' . implode('|', pg_tr_block_tags()) . ')\b~i', $html)) {
         $translated = pg_tr_render_inline(trim($html));
 
-        return ($translated === null) ? $html : $translated;
+        return pg_tr_render_attrs(($translated === null) ? $html : $translated);
     }
 
     return pg_tr_render_db_html($html);

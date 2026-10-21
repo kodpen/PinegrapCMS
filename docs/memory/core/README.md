@@ -60,6 +60,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
+- translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
 - translation-rules.md: Rule that every user-visible string goes through lang() with a matching tr.json key (English source key, Turkish value), and the same rule for designer JS.
 - two-step-sign-in.md: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where the gate sits in every sign-in path, storage, API and ShipWorks behaviour, recovery, encryption key risk
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do
