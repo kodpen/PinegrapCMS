@@ -14,7 +14,7 @@ description: Short links as a CSV file (2026.11.0): the list's export (from,to,c
 ## How does the import read a file?
 - `pg_short_link_csv_rows()`: text from `pg_short_link_csv_text()`: UTF-16 (Excel's "Unicode Text", `FF FE`; `FE FF`; without a mark told by its NUL bytes) converted, BOM dropped, bytes that are not UTF-8 read as Windows-1254 (ISO-8859-9 where mbstring lacks it). A first line whose second cell holds no `/` is a heading; empty lines skipped; the apostrophe of the formula guard comes off again.
 - The separator (`pg_short_link_csv_separator()`): of `,` `;` tab, the one that splits most of the first 20 lines into 2 or 3 cells, the comma first on a tie.
-- Symptom before (#PR834): a UTF-16 file failed every line on the name rule (NUL bytes), with doubled line numbers; a `;` file whose first line held a comma (a name may) was read with commas, its first line saved as a wrong 301, the rest refused.
+- Symptom before (#1030): a UTF-16 file failed every line on the name rule (NUL bytes), with doubled line numbers; a `;` file whose first line held a comma (a name may) was read with commas, its first line saved as a wrong 301, the rest refused.
 
 ## What does a line do?
 - `import_short_links.php` (manager, after 11.0.12) -> `pg_short_link_import()`: 5 MB and 10,000 lines at most. Each line is a URL short link: name from the first cell (`pg_short_link_name_from_address()`), address checked by `pg_short_link_url_problem()`, code 301 when empty, 0 and 302 accepted.
@@ -22,4 +22,4 @@ description: Short links as a CSV file (2026.11.0): the list's export (from,to,c
 - Loop checks run against one prepared set kept current line by line (`pg_short_link_prepare()`, `pg_short_link_prepared_put()`), so a file may chain its own addresses but not close a loop.
 - The list screen reports added, changed and skipped counts and the first 20 line errors with their line numbers; when nothing is saved, the import screen does.
 
-Tests: `tests/short_link_redirects_test.php` (reader, writer, round trip). PR: #699.
+Tests: `tests/short_link_redirects_test.php` (reader, writer, round trip). PRs: #699, #1030.
