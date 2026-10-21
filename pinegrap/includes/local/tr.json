@@ -8084,6 +8084,7 @@
     "The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.": "Pazaryeri mağaza ayarlarınızdaki kargo anlaşmasının adı, birebir. Bu olmadan yeni ilan kabul edilmez.",
     "Days to prepare": "Hazırlama süresi (gün)",
     "How long you take to hand a parcel over. It is shown to the buyer.": "Kargoya vermeniz ne kadar sürüyor. Alıcıya gösterilir.",
+    "The address prefix of {var:1} is used by another language. Give it a prefix of its own.": "{var:1} dilinin adres öneki başka bir dilde kullanılıyor. Bu dile kendine ait bir önek verin.",
     "{var:1} product(s) queued for listing. They go out on the next run.": "{var:1} ürün açılmak üzere kuyruğa alındı. Bir sonraki çalışmada gönderilir.",
     "Already queued.": "Zaten kuyrukta.",
     "This article has no marketplace category yet.": "Bu ürünün pazaryeri kategorisi henüz seçilmedi.",
@@ -24686,5 +24687,16 @@
     "The lines at {var:1} VAT come to {var:2} with VAT, a total Paraşüt cannot reach: it takes the VAT on their whole amount, and no amount with that VAT comes to it (the nearest are {var:3} and {var:4}). Nothing was sent to Paraşüt.": "{var:1} KDV'li satırların KDV dahil toplamı {var:2}; Paraşüt bu toplama ulaşamaz: KDV'yi satırların toplam tutarı üzerinden hesaplar ve hiçbir tutar KDV'siyle birlikte bu toplamı vermez (en yakınları {var:3} ve {var:4}). Paraşüt'e hiçbir şey gönderilmedi.",
     "Rounding difference": "Yuvarlama farkı",
     "The provider still holds the document (id {var:1}); sending it again would create a second one there. Ask after its status: a record that is still a draft there is handed to GİB from here.": "Belge sağlayıcıda hâlâ duruyor (id {var:1}); yeniden göndermek orada ikinci bir belge oluşturur. Durumunu sorun: orada hâlâ taslak olan kayıt buradan GİB'e gönderilir.",
-    "The address prefix of {var:1} is used by another language. Give it a prefix of its own.": "{var:1} dilinin adres öneki başka bir dilde kullanılıyor. Bu dile kendine ait bir önek verin."
+    "Sign in with the account you ordered with to review this product.": "Bu ürünü değerlendirmek için sipariş verdiğiniz hesapla giriş yapın.",
+    "Only customers who bought this product can review it.": "Bu ürünü yalnız satın alan müşteriler değerlendirebilir.",
+    "You have already reviewed this product. You can review it again after your next order of it.": "Bu ürünü zaten değerlendirdiniz. Ürünü yeniden sipariş ettiğinizde tekrar değerlendirebilirsiniz.",
+    "access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review": "ziyaretçinin değerlendirebileceği bir satın alımı kalmadığı için sayfaya ({var:1}) değerlendirme gönderme erişimi reddedildi",
+    "Verified purchase": "Doğrulanmış satın alma",
+    "Please {var:1} to review a product you bought.": "Satın aldığınız ürünü değerlendirmek için lütfen {var:1}.",
+    "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
+    "Reply from the store": "Mağazanın cevabı",
+    "Verified purchase: order {var:1}": "Doğrulanmış satın alma: {var:1} numaralı sipariş",
+    "Not a verified purchase": "Doğrulanmış satın alma değil",
+    "Replied {var:1}.": "{var:1} cevaplandı.",
+    "Shown under the review, with the date it was written.": "Değerlendirmenin altında, yazıldığı tarihle gösterilir."
 }
