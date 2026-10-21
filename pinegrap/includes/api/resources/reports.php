@@ -68,6 +68,10 @@ function api_reports_sales($params) {
 	$where = "WHERE (status IN (" . implode(',', $in) . "))
 		AND (order_date >= '" . $from . "') AND (order_date <= '" . $to . "')";
 
+	$max = api_reports_sales_max_periods();
+
+	// One row past the most an answer carries tells a window that holds more
+	// apart from one that holds exactly that many.
 	$rows = api_rows("SELECT DATE_FORMAT(FROM_UNIXTIME(order_date), '" . $format . "') AS period,
 			COUNT(*) AS orders,
 			SUM(subtotal) AS subtotal,
@@ -80,7 +84,61 @@ function api_reports_sales($params) {
 		" . $where . "
 		GROUP BY period
 		ORDER BY period ASC
-		LIMIT 400");
+		LIMIT " . ($max + 1));
+
+	$tally = api_reports_sales_tally($rows, $max);
+
+	// Cut at the limit, the answer gave the requested window back with only
+	// its first periods in it and totals added up from those alone: a chart of
+	// 500 days of sales read as 400. Only periods that hold orders come back, so
+	// a long window over a quiet shop still fits; one that does not is refused
+	// rather than answered short.
+	if ($tally === null) {
+
+		if ($interval === 'month') {
+
+			$message = lang(array('string' => 'Orders fall in more than {var:1} months of this window. Ask for a shorter one.', 'vars' => $max));
+
+		} else {
+
+			$message = lang(array('string' => 'Orders fall on more than {var:1} days of this window. Ask for a shorter one, or by month.', 'vars' => $max));
+
+		}
+
+		api_fail_validation($message, 'from');
+
+	}
+
+	api_ok(array(
+		'from'     => api_time($from),
+		'to'       => api_time($to),
+		'interval' => ($interval === 'month') ? 'month' : 'day',
+		'statuses' => $statuses,
+		// Minor units, like every other amount this API reports, and the code
+		// is on /meta beside the rest of the store's money settings.
+		'totals'   => $tally['totals'],
+		'periods'  => $tally['periods']
+	));
+
+}
+
+// The most periods one sales report carries.
+function api_reports_sales_max_periods() {
+
+	return 400;
+
+}
+
+// The periods of a sales report and the totals of the whole window, out of the
+// grouped rows. Null when there are more rows than one answer carries: the
+// totals would then cover part of the window only.
+function api_reports_sales_tally($rows, $max) {
+
+	if (count($rows) > $max) {
+
+		return null;
+
+	}
 
 	$periods = array();
 
@@ -110,16 +168,7 @@ function api_reports_sales($params) {
 
 	}
 
-	api_ok(array(
-		'from'     => api_time($from),
-		'to'       => api_time($to),
-		'interval' => ($interval === 'month') ? 'month' : 'day',
-		'statuses' => $statuses,
-		// Minor units, like every other amount this API reports, and the code
-		// is on /meta beside the rest of the store's money settings.
-		'totals'   => $totals,
-		'periods'  => $periods
-	));
+	return array('periods' => $periods, 'totals' => $totals);
 
 }
 
