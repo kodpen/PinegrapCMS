@@ -534,9 +534,12 @@ function mp_max_attempts() {
 // the same thing about a product, and so the rules for what a price and a
 // quantity mean live in one place:
 //
-//   price is minor units in the shop, and decimal where marketplaces want it.
-//   The conversion is one place because getting it wrong by a factor of a
-//   hundred is the kind of mistake that sells stock at cost.
+//   price is what the shop's checkout charges for one unit, tax included
+//   (mp_product_price()): minor units in the shop, and decimal where
+//   marketplaces want it. Both live in one place because getting either wrong
+//   - by a factor of a hundred, or by the tax the shop adds at the checkout
+//   and a marketplace counts inside its sale price - is the kind of mistake
+//   that sells stock at cost.
 //
 //   quantity is zero for a product that does not track stock. A marketplace has
 //   no concept of "not tracked", and the alternative - sending nothing - leaves
@@ -544,7 +547,7 @@ function mp_max_attempts() {
 function mp_product_row($account, $map) {
 
 	$product = db_item("SELECT id, name, price, inventory, inventory_quantity, out_of_stock, enabled,
-			title, tax_rate
+			title, taxable, tax_rate
 		FROM products WHERE id = '" . e((int)$map['product_id']) . "'");
 
 	if (!$product) {
@@ -571,17 +574,51 @@ function mp_product_row($account, $map) {
 	// assembling a row by product id may not.
 	$remote_code = isset($map['remote_code']) ? trim((string)$map['remote_code']) : '';
 
+	$price = mp_product_price($product);
+
 	return array(
 		'product_id'  => (int)$product['id'],
 		'remote_code' => ($remote_code !== '') ? $remote_code : $product['name'],
 		'remote_id'   => isset($map['remote_id']) ? (string)$map['remote_id'] : '',
 		'name'        => $product['name'],
 		'title'       => $product['title'],
-		'price'       => (int)$product['price'],
-		'price_major' => mp_price_major((int)$product['price']),
+		'price'       => $price,
+		'price_major' => mp_price_major($price),
 		'quantity'    => $quantity,
 		'tracked'     => $tracked,
+		'taxable'     => !empty($product['taxable']),
 		'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate']
+	);
+
+}
+
+// The price a marketplace is told, in minor units: what the shop's checkout
+// charges for one unit of the product.
+//
+// The shop keeps prices without tax and adds it at the checkout; a
+// marketplace's sale price is the amount the buyer pays, tax inside (Trendyol
+// and n11 both work back the VAT from it). Sending the stored price as it is
+// sold the product cheaper over there by the tax, on every price send. So
+// the tax the checkout would add goes on here, by the checkout's own formula
+// (get_tax_inclusive_price(), the one update_order_item_taxes() uses), with
+// the shop's own country standing in for the buyer's address: a marketplace
+// price is one number for every buyer. Nothing is added when the checkout
+// would add nothing - tax off, product not taxable, country in no zone.
+//
+// Takes any row that carries price, taxable and tax_rate from products: the
+// queue's product, a listing's product, the mapping screen's row.
+function mp_product_price($product) {
+
+	$tax_enabled = defined('ECOMMERCE_TAX') && ECOMMERCE_TAX == true;
+
+	$zone_rate = ($tax_enabled && function_exists('get_default_tax_rate')) ? get_default_tax_rate() : false;
+
+	return get_tax_inclusive_price(
+		isset($product['price']) ? $product['price'] : 0,
+		isset($product['taxable']) ? $product['taxable'] : 0,
+		isset($product['tax_rate']) ? $product['tax_rate'] : null,
+		$zone_rate,
+		$tax_enabled
 	);
 
 }
