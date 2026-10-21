@@ -57,7 +57,7 @@ function erp_edoc_isbasi_info()
         'label' => 'Logo İşbaşı',
         'description' => lang('Cloud pre-accounting by Logo. e-Invoice and e-Archive through the İşbaşı API; the store needs an İşbaşı subscription and an API key issued by Logo support.'),
         'docs_url' => 'https://developers.isbasi.com/',
-        'capabilities' => array('einvoice', 'earchive', 'inbox', 'accounts'),
+        'capabilities' => array('einvoice', 'earchive', 'inbox', 'accounts', 'ubl'),
         'settings_note' => lang('Ask Logo support (destek@logo.com.tr) for the API key of your İşbaşı account; the user name and password are the ones you sign in to İşbaşı with.'),
     );
 }
