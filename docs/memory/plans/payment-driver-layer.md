@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740).
 2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #812); the inline iyzico code stays (frozen).
 2b. The iyzico 3-D Secure return (`mode=iyzipay_threedsecure_return`) still runs in submit_order.php's Iyzipay block; moving it into the card driver's `complete()` is open (S).
-3. ~~Stripe PaymentIntents driver + Payment Element in the express order widget (L).~~ Done (PR #937, `commerce/payment-driver-stripe.md`).
+3a. ~~Stripe PaymentIntents driver + Payment Element in the express order widget (L).~~ Done (PR #937, `commerce/payment-driver-stripe.md`).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M).
 4. PayTR driver (M); PayPal v2 driver (M).
 5. ~~Refund in `view_order.php` / `order_refund.php` and the cancel refund in `process_order_cancellation()` through the driver (S).~~ Done (PR #873, `commerce/payment-refunds.md`).

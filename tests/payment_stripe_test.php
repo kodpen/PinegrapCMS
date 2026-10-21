@@ -169,6 +169,29 @@ function test_payment_stripe_return_modes()
 
 	pg_assert_same('stripe', pg_payment_checkout_driver('Credit/Debit Card', 'Stripe PaymentIntents', 'stripe_return'), 'the return is finished by complete()');
 	pg_assert_same('stripe', pg_payment_checkout_driver('Credit/Debit Card', 'Stripe PaymentIntents', ''));
+
+	// A driver that cannot finish a return gets no return mode: the mode
+	// would skip the form token and the field checks with nothing to take
+	// the payment.
+	$key = 'pgtestnoreturn';
+
+	if (pg_payment_driver($key) === null) {
+		$file = sys_get_temp_dir() . '/pg_payment_' . $key . '_' . getmypid() . '.php';
+		file_put_contents($file, implode("\n", array(
+			'<?php',
+			'function pg_payment_' . $key . '_capabilities() { return array(); }',
+			'function pg_payment_' . $key . '_authorize($order, $amount, $payment) { return array(\'success\' => false); }',
+			'',
+		)));
+		pg_assert_true(pg_payment_driver_register($key, array('label' => 'No Return', 'kind' => 'card', 'gateway' => 'Pg Test No Return', 'file' => $file)));
+		pg_assert_true(pg_payment_can($key, 'authorize'), 'the driver loads');
+		@unlink($file);
+	}
+
+	pg_assert_false(pg_payment_can($key, 'complete'));
+	pg_assert_same('', pg_payment_return_mode($key), 'no complete(), no return mode');
+	pg_assert_false(pg_payment_is_return_mode($key . '_return'));
+	pg_assert_same('stripe_return', pg_payment_return_mode('stripe'), 'the others are kept');
 }
 
 function test_payment_stripe_security_policy_sources()
@@ -176,7 +199,7 @@ function test_payment_stripe_security_policy_sources()
 	$built_in = "default-src 'self' blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
 
 	pg_assert_same(
-		"default-src 'self' blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com; connect-src 'self' https://cdn.jsdelivr.net https://api.stripe.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; frame-src 'self' blob: https://js.stripe.com https://hooks.stripe.com",
+		"default-src 'self' blob:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://js.stripe.com https://*.js.stripe.com; connect-src 'self' https://cdn.jsdelivr.net https://api.stripe.com https://link.com https://*.link.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; frame-src 'self' blob: https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com",
 		waf_csp_add_payment_sources($built_in, 'Stripe PaymentIntents', true));
 
 	pg_assert_same($built_in, waf_csp_add_payment_sources($built_in, 'Stripe PaymentIntents', false), 'cards off');
@@ -184,7 +207,7 @@ function test_payment_stripe_security_policy_sources()
 	pg_assert_same($built_in, waf_csp_add_payment_sources($built_in, 'Stripe', true), 'the classic code loads nothing either');
 
 	pg_assert_same(
-		"script-src 'self' https://js.stripe.com; frame-src 'self' https://js.stripe.com https://hooks.stripe.com; connect-src https://api.stripe.com",
+		"script-src 'self' https://js.stripe.com https://*.js.stripe.com; frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com; connect-src https://api.stripe.com https://link.com https://*.link.com",
 		waf_csp_add_payment_sources("script-src 'self'; frame-src 'self'", 'Stripe PaymentIntents', true),
 		'an existing frame-src is added to');
 
@@ -240,6 +263,7 @@ function test_payment_stripe_prepare_gives_the_page_what_it_needs()
 		'amount'               => 4714,
 		'currency'             => 'try',
 		'payment_method_types' => array('card'),
+		'capture_method'       => 'automatic',
 		'locale'               => 'tr',
 	), $answer['client']);
 	pg_assert_false(strpos(json_encode($answer), 'sk_test') !== false, 'the secret key never reaches the page');
@@ -250,6 +274,28 @@ function test_payment_stripe_prepare_gives_the_page_what_it_needs()
 	pg_assert_false(pg_payment_answer('prepare', pg_payment_stripe_prepare_with(array(), 4714, payment_stripe_test_settings(array('publishable_key' => ''))))['success'], 'no publishable key');
 	pg_assert_false(pg_payment_answer('prepare', pg_payment_stripe_prepare_with(array(), 4714, payment_stripe_test_settings(array('secret_key' => ''))))['success'], 'no secret key');
 	pg_assert_false(pg_payment_answer('prepare', pg_payment_stripe_prepare_with(array(), 0, payment_stripe_test_settings()))['success'], 'nothing to pay');
+}
+
+// Stripe refuses a confirmation when the Payment Element was built with
+// another capture method or other payment method types than the intent.
+function test_payment_stripe_page_and_intent_agree()
+{
+	foreach (array('automatic', 'manual') as $capture) {
+		foreach (array(false, true) as $link) {
+			$settings = array('capture' => $capture, 'link' => $link);
+			$label = $capture . ($link ? ' with Link' : '');
+			$client = pg_payment_answer('prepare', pg_payment_stripe_prepare_with(payment_stripe_test_order(), 4714, payment_stripe_test_settings($settings)))['client'];
+
+			payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent())), $settings);
+			$calls = payment_stripe_test_calls();
+
+			pg_assert_same($capture, $client['capture_method'], $label);
+			pg_assert_same($calls[0]['params']['capture_method'], $client['capture_method'], $label);
+			pg_assert_same($calls[0]['params']['payment_method_types'], $client['payment_method_types'], $label);
+			pg_assert_same($calls[0]['params']['amount'], $client['amount'], $label);
+			pg_assert_same($calls[0]['params']['currency'], $client['currency'], $label);
+		}
+	}
 }
 
 /* ---------------------------------------------------------------------------
@@ -461,6 +507,7 @@ function test_payment_stripe_complete_gives_back_a_payment_for_another_total()
 	))));
 
 	pg_assert_false($held['success']);
+	pg_assert_same(lang('The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.'), $held['error'], 'the visitor is not told a held payment was cancelled');
 	pg_assert_same('Stripe payment pi_3Abc could not be cancelled. MANUAL REFUND REQUIRED. Gateway message: This PaymentIntent could not be canceled.', $held['log'][1]);
 }
 

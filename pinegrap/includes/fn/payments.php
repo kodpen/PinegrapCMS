@@ -118,10 +118,13 @@ function pg_payment_builtin_drivers()
             'gateway' => 'Stripe PaymentIntents',
             'file'    => 'stripe.php',
             'portal'  => 'https://dashboard.stripe.com/apikeys',
+            // Stripe.js opens frames on *.js.stripe.com, and Link (the
+            // driver's switch) on link.com; the list is static, so the Link
+            // hosts are always there.
             'csp'     => array(
-                'script-src'  => array('https://js.stripe.com'),
-                'frame-src'   => array('https://js.stripe.com', 'https://hooks.stripe.com'),
-                'connect-src' => array('https://api.stripe.com'),
+                'script-src'  => array('https://js.stripe.com', 'https://*.js.stripe.com'),
+                'frame-src'   => array('https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://link.com', 'https://*.link.com'),
+                'connect-src' => array('https://api.stripe.com', 'https://link.com', 'https://*.link.com'),
             ),
         ),
     );
@@ -1017,7 +1020,9 @@ function pg_payment_return_mode($key)
 /**
  * Every driver's return mode, key => mode. A shipped driver keeps the
  * address it has always come back to; one added later comes back to
- * '<key>_return'.
+ * '<key>_return', but only when it defines complete(): a return mode skips
+ * the form token and the field checks, and a driver that cannot finish the
+ * return would leave the order to the legacy gateway code.
  *
  * @return array
  */
@@ -1029,7 +1034,7 @@ function pg_payment_return_modes()
     );
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        if (!isset($modes[$key])) {
+        if (!isset($modes[$key]) && pg_payment_can($key, 'complete')) {
             $modes[$key] = $key . '_return';
         }
     }

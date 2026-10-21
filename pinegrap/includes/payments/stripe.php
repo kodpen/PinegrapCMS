@@ -486,6 +486,10 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
             'amount'               => $units,
             'currency'             => $settings['currency'],
             'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+            // The Payment Element must be built with the capture method the
+            // intent is created with (authorize()), or Stripe refuses the
+            // confirmation.
+            'capture_method'       => $settings['capture'],
             'locale'               => $settings['locale'],
         ),
     );
@@ -608,9 +612,13 @@ function pg_payment_stripe_complete_with($order, $amount, $return, $state, $sett
 
         $void = pg_payment_stripe_void_with($intent_id, $settings, $http);
 
+        // When the payment could not be undone, the visitor is not told it
+        // was: the money is still taken or held until the store refunds it.
         return array(
             'success' => false,
-            'error'   => lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'),
+            'error'   => $void['cancelled']
+                ? lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.')
+                : lang('The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.'),
             'log'     => array_merge(
                 array('Stripe payment ' . $intent_id . ' for order #' . (int) $order_id . ' was for ' . pg_payment_decimal($started) . ', the order now totals ' . pg_payment_decimal($amount) . '.'),
                 $void['log']),

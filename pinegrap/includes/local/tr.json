@@ -24734,5 +24734,6 @@
     "This payment cannot be refunded here. Refund it on Stripe's own screen.": "Bu ödeme buradan iade edilemez. İadeyi Stripe'ın kendi ekranından yapın.",
     "config.ecommerce_payment_gateway does not exist, skipped": "config.ecommerce_payment_gateway yok, atlandı",
     "config.ecommerce_payment_gateway already knows about Stripe PaymentIntents": "config.ecommerce_payment_gateway zaten Stripe PaymentIntents değerini tanıyor",
-    "config.ecommerce_payment_gateway is not an ENUM, skipped": "config.ecommerce_payment_gateway ENUM değil, atlandı"
+    "config.ecommerce_payment_gateway is not an ENUM, skipped": "config.ecommerce_payment_gateway ENUM değil, atlandı",
+    "The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.": "Ödeme doğrulanırken sipariş toplamı değişti ve ödeme otomatik olarak geri alınamadı. Mağaza ödemeyi iade edecek. Lütfen tekrar ödemeden önce siparişinizi kontrol ediniz."
 }

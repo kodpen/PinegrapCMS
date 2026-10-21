@@ -36,11 +36,15 @@
             }
 
             var stripe = window.Stripe(client.publishable_key, { locale: client.locale || 'auto' });
+            // captureMethod and allowedPaymentMethodTypes mirror the
+            // capture_method and payment_method_types the server creates the
+            // intent with; Stripe refuses a confirmation when they differ.
             var elements = stripe.elements({
                 mode: 'payment',
                 amount: client.amount,
                 currency: client.currency,
-                paymentMethodTypes: client.payment_method_types
+                captureMethod: client.capture_method || 'automatic',
+                allowedPaymentMethodTypes: client.payment_method_types
             });
 
             elements.create('payment').mount(mount);
