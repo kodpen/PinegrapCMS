@@ -1,32 +1,27 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decision 2026-10-21, not started): the ERP takes VAT per rate on the sum of a document's lines, as Paraşüt does; steps, open questions
+description: Plan (owner's decisions 2026-10-21; step 1 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 2-6 remain
 ---
 
 ## Why?
-- Paraşüt takes each rate's VAT on the sum of that rate's amounts, half up; the ERP, the checkout and the old order path take it line by line (erp-parasut-invoice-lines.md). The driver moves a kurus or so per rate (#961) to keep the total, so Paraşüt's before-VAT and VAT differ from the ERP's books by that much, and a rate total no amount reaches (57.93 at 20%) cannot go to Paraşüt at all.
+- Paraşüt takes the VAT on the sum of each group of lines with one VAT rate and one withholding rate, and the withholding on the groups' VAT, rounded once per invoice (erp-parasut-invoice-lines.md); the ERP, the checkout and the old order path take both line by line. The driver moves a kurus or so per rate (#961) to keep the total, so Paraşüt's before-VAT and VAT differ from the ERP's books by that much; a rate total no amount reaches (57.93 at 20%) cannot go at all, and a rate with withholding is not moved (2-4 withheld lines at 20%: four invoices in ten refused).
 
-## What is decided?
-- Owner's decision (2026-10-21): the ERP takes the VAT from the rate's total. The driver's shift stays for whatever the ERP still takes per line, and for documents issued before.
+## What is decided? (owner, 2026-10-21)
+- The ERP takes the taxes as Paraşüt does: VAT per (VAT rate, withholding rate) group, the withholding summed over the groups and rounded once; the second tax per its own rate. Issued documents keep their figures; the driver's shift stays for them.
+- A line's VAT may be a kurus off its own rate x amount: the group's VAT is spread over its lines by largest remainder, so they add up to it.
+- Purchase invoices, typed and from the inbox, take the same rule; the inbox keeps showing a difference from the supplier's figures as a warning.
+- Checkout: a VAT-inclusive charge or price whose rate total no amount reaches takes the reachable total a kurus below (57.92 for 57.93); the customer never pays more than the sum shown and the invoice equals the payment.
 
-## How would it work? (proposed; settle with step 1)
-- Per document and rate: VAT = `erp_apply_rate()` on the sum of the rate's amounts after discount. The lines keep their VAT column: the rate's VAT is spread over them by largest remainder, so they add up to it and each is within a kurus of its own rate x amount.
-- Issued documents keep their figures; only new ones take the rule (the shift moves nothing on a per-rate document).
-- One pure function does the arithmetic (`erp_rate_vat()` in includes/erp/money.php: lines in, line VAT and rate totals out), tested in `tests/erp_money_test.php`; the editor preview (assets/js/erp_invoice_editor.js, `applyRate()` and the totals) follows it.
+## How does it work?
+- `erp_rate_vat()` (includes/erp/money.php): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
 
 ## What remains?
-1. `erp_rate_vat()` and its tests (S).
-2. Manual documents: `erp_manual_lines_build()` (includes/erp/invoice_manual.php; invoices, quotes, purchase orders, the API) and the editor preview (M).
-3. Returns: `includes/erp/returns.php` takes the returned lines' VAT per rate of the return (M).
-4. Orders, after the first open question: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
-5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue the e-document at once and only report the variance: the driver's shift there too until they are removed (erp-edocument-leftovers.md) (M).
+1. Done: `erp_rate_vat()` and its tests.
+2. Manual documents: `erp_manual_lines_build()` (includes/erp/invoice_manual.php; invoices, purchase invoices, quotes, purchase orders, the API, the inbox through it) takes the taxes from `erp_rate_vat()`; the editor preview (assets/js/erp_invoice_editor.js, `applyRate()` and the totals) follows it to the kurus (M).
+3. Returns: `includes/erp/returns.php` takes the returned lines' taxes per rate of the return (M).
+4. Orders: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary; the kurus-below rule above) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
+5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue at once and only report the variance: the driver's shift there too until they go (erp-edocument-leftovers.md) (M).
 6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
 
-## Open questions?
-- VAT-inclusive charges and prices (shipping 9.99, surcharge, installment charge): per rate, the amount paid is sometimes no reachable total (57.93). Charge the reachable total at checkout (57.92 or 57.94), or invoice it and book the kurus against the payment as rounding?
-- erp-discounted-order-vat.md keeps rate x amount = VAT on every line "because the e-invoice is checked against it". Does GİB (or Paraşüt's UBL) take a line a kurus off it? Unmeasured; the demo company converts no e-document.
-- Incoming and purchase invoices (includes/erp/edoc/inbox.php, supplier figures): keep the supplier's VAT as written rather than recompute?
-- Withholding and the second tax (ÖTV/ÖİV) per rate too? Paraşüt's withholding over several lines is unmeasured.
-
 ## Where to start?
-- Step 1, then step 2; read erp-money-and-currency.md and `erp_manual_lines_build()`.
+- Step 2: read `erp_manual_lines_build()` and the editor's `applyRate()`; the preview must give the saved figures.
