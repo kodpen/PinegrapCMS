@@ -139,19 +139,17 @@ if (($_SERVER['HTTP_HOST'] ?? '') != '') {
 
         // else the software root index.php file was not requested, so get the path in a different way
     } else {
-        // if this is at least PHP 5.0.0, then use strrpos to get the position of the last occurrence of the software directory in the path
-        // PHP 4 does not support multicharacter needle for strrpos
-        if (version_compare(PHP_VERSION, '5.0.0', '>=') == TRUE) {
-            $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
+        // The last occurrence of the software directory in the address, in
+        // any case: SOFTWARE_DIRECTORY is the folder's name on disk, the
+        // address is spelled as it was typed, and on Windows (and macOS)
+        // /shop/Pinegrap/ reaches the same folder as /shop/pinegrap/.
+        $position = mb_strripos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
 
-            // else this is PHP 4, so use mb_strrpos, which supports a multicharacter needle
-        } else {
-            $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-        }
-
-        // if the software directory could not be found in the path (should never happen), then set the path to /
+        // Not found (should never happen): this request is drawn from the
+        // root, but the guess is not stored as the site's path.
         if ($position === FALSE) {
             $url_path = '/';
+            $pg_path_guessed = true;
 
             // else the software directory was found, so set the path to everything up to the software directory
         } else {
@@ -851,7 +849,7 @@ if (defined('PATH') == FALSE) {
     // else the path is defined, so if the defined path is different from the path in the database,
 // then update the path in the database, so that the next time the e-mail campaign job runs,
 // it will have the correct path
-} else if (PATH != $row['path']) {
+} else if ((PATH != $row['path']) && empty($pg_path_guessed)) {
     $query = "UPDATE config SET path = '" . escape(PATH) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 }
