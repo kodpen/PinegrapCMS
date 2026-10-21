@@ -17,7 +17,7 @@ description: What audit_log leaves out of before/after, how secrets are masked (
 
 ## Which name is the label?
 - `pg_audit_label_of()`: the first non-empty label column of `pg_audit_tables()`, from the row after, or before when there is none (a delete).
-- A file or page in the Recycle Bin is parked as `pgbin_<id>_<name>`; the prefix built from the row's own id is taken off, so `recycle` and delete-from-bin lines carry the real name (PR #PRNUM; before, `pgbin_6992_x.txt`, and a search by name missed the delete line). `before_json`/`after_json` keep the parked name.
+- A file or page in the Recycle Bin is parked as `pgbin_<id>_<name>`; the prefix built from the row's own id is taken off, so `recycle` and delete-from-bin lines carry the real name (PR #1058; before, `pgbin_6992_x.txt`, and a search by name missed the delete line). `before_json`/`after_json` keep the parked name.
 
 ## Tests?
 - `tests/audit_log_test.php`: parked labels, JSON text with secrets, a 100 KB and a 40 KB tree on a page delete (name and title kept, secret not in the opening), `_private`/`_license` names, config ciphertext left out.
