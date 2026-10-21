@@ -10,7 +10,7 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), Ma
 - README "Try it with Docker" and README.tr.md repeat the compose header's commands, variables, URLs, volumes: change together.
 
 ## Why is imagick not from PECL?
-- pecl.php.net's 504s (2026-10-21) broke every build: `IMAGICK_VERSION` tag is fetched from GitHub, `@PACKAGE_VERSION@` filled in (#PRNO).
+- pecl.php.net's 504s (2026-10-21) broke every build: `IMAGICK_VERSION` tag is fetched from GitHub, `@PACKAGE_VERSION@` filled in (#1080).
 
 ## What does the image take from the repository?
 - Only the root `index.php` and `pinegrap/`; `web.config` and `download_assistant.php` stay out. `Dockerfile.dockerignore` (BuildKit) is an allow-list: `index.php`, `pinegrap/`, the copied docker/ files, and of `pinegrap/data/` only the tracked files (guards, `config(default).php`, `cacert.pem`, the two starter sites), so a development machine's real config.php, uploads and backups never reach an image layer. `data/config.php` starts as `<?php ?>`.
