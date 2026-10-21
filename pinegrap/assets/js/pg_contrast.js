@@ -139,6 +139,36 @@
         return out;
     }
 
+    /**
+     * A text colour and its background as they are drawn with opacity on the
+     * way. `text` is the product of the opacities from the text's element up
+     * to its backdrop element (not including it): they fade the text alone
+     * over the backdrop. Each of `groups`, from the backdrop element outwards
+     * ({opacity, under}), fades text and backdrop together over the colour
+     * under it. Returns {color, background}, both [r, g, b, a].
+     */
+    function throughOpacity(fg, bg, text, groups) {
+        var a = (fg.length > 3 ? fg[3] : 1) * text;
+        var color = (a < 1) ? over([fg[0], fg[1], fg[2], a], bg) : fg;
+        var background = bg;
+
+        for (var i = 0; i < (groups || []).length; i++) {
+            var g = groups[i];
+            color = over([color[0], color[1], color[2], g.opacity], g.under);
+            background = over([background[0], background[1], background[2], g.opacity], g.under);
+        }
+
+        return { color: color, background: background };
+    }
+
+    // An element's own opacity, 0-1; an editor's box around an element
+    // (opts.ignore) is not the page's and counts as 1.
+    function opacityOf(el, opts) {
+        if (opts && opts.ignore && opts.ignore(el)) return 1;
+        var o = parseFloat(styleOf(el).opacity);
+        return isNaN(o) ? 1 : clamp(o, 0, 1);
+    }
+
     /** A computed font-weight as a number. */
     function weight(value) {
         if (value === 'bold' || value === 'bolder') return 700;
@@ -334,12 +364,33 @@
 
         var fg = parse(cs.color);
         if (!fg) return null;
-        if (fg[3] < 1) fg = over(fg, bg.color);
 
-        var r = ratio(fg, bg.color);
+        // Opacity on the way (Bootstrap's opacity-75 on a text, a faded
+        // box): what is drawn, not the colours the style names. Below the
+        // backdrop element it fades the text alone; at it and above, text
+        // and backdrop together over what lies under them.
+        var text = 1;
+        var groups = [];
+
+        for (var n = el; n && n !== bg.element; n = n.parentElement) {
+            text *= opacityOf(n, opts);
+        }
+
+        for (var m = bg.element; m; m = m.parentElement) {
+            var o = opacityOf(m, opts);
+
+            if (o < 1) {
+                var under = backdrop(m.parentElement, opts, cache);
+                if (!under) return null;
+                groups.push({ opacity: o, under: under.color });
+            }
+        }
+
+        var drawn = throughOpacity(fg, bg.color, text, groups);
+        var r = ratio(drawn.color, drawn.background);
         var min = minimum(cs.fontSize, cs.fontWeight);
 
-        return { ratio: r, min: min, ok: r >= min, color: fg, background: bg.color };
+        return { ratio: r, min: min, ok: r >= min, color: drawn.color, background: drawn.background };
     }
 
     var api = {
@@ -347,6 +398,7 @@
         luminance: luminance,
         ratio: ratio,
         over: over,
+        throughOpacity: throughOpacity,
         weight: weight,
         minimum: minimum,
         zoom: zoom,

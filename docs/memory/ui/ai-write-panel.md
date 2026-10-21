@@ -17,8 +17,8 @@ description: The "Write with AI" button and draft panel (pg_ai_write_button(), p
 ## What does the panel do?
 - The button opens a panel under its label row, above the field, and asks at once. Clicking it again, the close button or Escape closes it; an answer still on its way is then ignored.
 - Tone select (Informative, Friendly, Formal, Persuasive; a change asks again and is remembered for the next panel on the page), an optional request (Enter asks again when no request runs, #746), "Use this text", "Try again". Buttons are disabled only while a request runs.
-- Context is read at click time from the button's element ids, through the CKEditor instance when one runs on the id: unsaved edits count.
-- "Use this text": a one-line draft is set as `.value` with `input` and `change` events (SEO counters, unsaved-changes checks); the html format goes to `CKEDITOR.instances[id].setData()`, or into the textarea when no editor runs. Nothing is saved until the form is. Then `pg:ai-write-used` is sent: docs/memory/ui/ai-write-marks.md.
+- Context is read at click time from the button's element ids, through the rich text editor running on the id: unsaved edits count.
+- "Use this text": a one-line draft is set as `.value` with `input` and `change` events (SEO counters, unsaved-changes checks); the html format goes into the editor (CKEditor `setData()`; TinyMCE: ai-write-tinymce.md), else the textarea. Nothing is saved until the form is. Then `pg:ai-write-used` is sent: docs/memory/ui/ai-write-marks.md.
 - The html draft is shown with `innerHTML` only because the server built it from escaped words; other drafts (`white-space: pre-wrap`: lines kept) and errors are `textContent`. When 20 or fewer drafts are left today the panel says so.
 - On the browser's model (docs/memory/ui/ai-write-browser.md) the title says so and the body shows the download and the translation as they run.
 

@@ -377,7 +377,10 @@ function pg_sms_netgsm_send($app, $number, $text, $commercial)
     $request = pg_sms_netgsm_send_request($app, $netgsm_number, $text, $commercial);
     $response = pg_sms_http('POST', $request);
 
-    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent($response['errno'], isset($response['connect']) ? $response['connect'] : 0));
+    return pg_sms_netgsm_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent(
+        $response['errno'],
+        isset($response['connect']) ? $response['connect'] : 0,
+        isset($response['request_size']) ? $response['request_size'] : -1));
 }
 
 /**

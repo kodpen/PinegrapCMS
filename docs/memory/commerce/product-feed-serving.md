@@ -12,8 +12,8 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 - Address: `<site>/<software dir>/feed.php?f=<token>` (`pg_product_feed_url()`).
 
 ## What does the daily job do?
-- `product_feed_job.php` (catalogue `product_feed_job`, daily, light lane; manager gate for a web run) calls `pg_product_feed_refresh()`: the catalog is read once, each format that is on is rendered and written whole (temp file + rename) to `data/feeds/<format>.<ext>`; a format that is off loses its file.
-- Files are named by format, not token, so the token is never on disk in clear; `data/` is closed to HTTP by the server rules (the PHP built-in server of the sandbox ignores them).
+- `product_feed_job.php` (catalogue `product_feed_job`, daily, light lane; manager gate for a web run) calls `pg_product_feed_refresh()`: the catalog is read once in chunks, each format that is on streamed to `data/feeds/<format>.<ext>` (work file, rename: product-feed-streaming.md); a format that is off loses its file.
+- Files are named by format, not token, so the token is never on disk in clear; `data/` is closed to HTTP by the server rules (the sandbox's built-in server ignores them).
 - Status per format: a good build sets `built_at/count/bytes`; a failed one (`no_seller_name`, `no_catalog`, `write_failed`, …) keeps them, sets `error` and keeps serving the old file. Statuses are merged into a fresh read of the setup, so a save made during the build is kept.
 - `pg_product_feed_job_switch_on()` adds the job to the dispatch list when the general job dispatches.
 

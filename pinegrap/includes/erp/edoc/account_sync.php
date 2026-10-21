@@ -711,9 +711,10 @@ function erp_edoc_accounts_keep($provider, $card, $seen_at = 0)
 
 /**
  * Links new cards to accounts by tax number, where the answer is not in
- * doubt: the number is valid for its country, exactly one account carries
- * it, no other card of the provider carries it, and the account has no card
- * yet. A card somebody unlinked (no_auto_link) is left for them.
+ * doubt: the card is active, the number is valid for its country, exactly
+ * one account carries it, no other active card of the provider carries it,
+ * and the account has no card yet. A card somebody unlinked (no_auto_link)
+ * is left for them.
  *
  * @param string $provider
  * @return int  Cards linked
@@ -724,15 +725,21 @@ function erp_edoc_accounts_autolink($provider)
     $walkin = erp_edoc_accounts_walkin_id();
     $linked = 0;
 
+    // Only cards the provider still uses (is_active): an archived or passive
+    // card is kept and shown, and may be linked by hand, but an invoice never
+    // goes to it (erp_edoc_parasut_linked_contact_usable()), so linking an
+    // account to it on its own left the account on a card its invoices
+    // bypassed, and the card the first invoice opened was never linked. An
+    // archived duplicate does not make the active card's number shared.
     $shared = array();
     foreach ((array) db_items("SELECT tax_number FROM erp_edoc_accounts
-        WHERE provider = '" . $provider_sql . "' AND status <> 'ignored' AND tax_number <> ''
+        WHERE provider = '" . $provider_sql . "' AND status <> 'ignored' AND tax_number <> '' AND is_active = 1
         GROUP BY tax_number HAVING COUNT(*) > 1") as $item) {
         $shared[(string) $item['tax_number']] = true;
     }
 
     $rows = (array) db_items("SELECT id, tax_number, country_code FROM erp_edoc_accounts
-        WHERE provider = '" . $provider_sql . "' AND status = 'new' AND no_auto_link = 0 AND tax_number <> ''");
+        WHERE provider = '" . $provider_sql . "' AND status = 'new' AND no_auto_link = 0 AND tax_number <> '' AND is_active = 1");
     $by_key = erp_edoc_accounts_by_tax_key();
 
     foreach ($rows as $row) {

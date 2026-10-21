@@ -156,3 +156,48 @@ function test_contrast_script_blends_and_sizes()
 	pg_assert_same(array(200, 100, 50, 1), $result['none'], 'a transparent colour changes nothing');
 	pg_assert_same(array(4.5, 3, 3, 4.5, 3, 4.5), $result['sizes'], 'minimum by size');
 }
+
+// Opacity on the way to the text: below the text's backdrop element it fades
+// the text alone; at the backdrop element or above it, text and backdrop
+// fade together over what lies under them. Bootstrap's opacity-75 white text
+// on the secondary grey is drawn 3.4:1, not the 4.7:1 of its colours.
+function test_contrast_script_through_opacity()
+{
+	$result = contrast_test_node(
+		'var cta = C.throughOpacity([255, 255, 255, 1], [108, 117, 125, 1], 0.75, []);'
+		. 'var body = C.throughOpacity([33, 37, 41, 1], [255, 255, 255, 1], 0.5, []);'
+		. 'var group = C.throughOpacity([255, 255, 255, 1], [13, 110, 253, 1], 1, [{ opacity: 0.5, under: [255, 255, 255, 1] }]);'
+		. 'var none = C.throughOpacity([33, 37, 41, 0.5], [255, 255, 255, 1], 1, []);'
+		. 'console.log(JSON.stringify({'
+		. 'cta: cta.color, ctaRatio: C.ratio(cta.color, cta.background),'
+		. 'bodyRatio: C.ratio(body.color, body.background),'
+		. 'group: group.background, groupRatio: C.ratio(group.color, group.background),'
+		. 'none: none.color'
+		. '}));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(218.25, 220.5, 222.5, 1), $result['cta'], 'the glyph colour the browser draws');
+	pg_assert_same('3.4', sprintf('%.1f', $result['ctaRatio']), 'opacity-75 on the secondary grey (drawn 3.41 with whole channels)');
+	pg_assert_true($result['bodyRatio'] < 4.5, 'body text in a half-transparent box: ' . $result['bodyRatio']);
+	pg_assert_same(array(134, 182.5, 254, 1), $result['group'], 'a faded backdrop over white');
+	pg_assert_true($result['groupRatio'] < 3, 'white text on a faded blue: ' . $result['groupRatio']);
+	pg_assert_same(array(144, 146, 148, 1), $result['none'], 'a translucent text colour as before');
+}
+
+// check() walks the element and its ancestors for opacity: a test of the
+// walk under Node needs a page, so the source is read.
+function test_contrast_check_reads_opacity_on_the_way()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_contrast.js');
+	$from = strpos($script, 'function check(');
+	$section = substr($script, $from, strpos($script, 'var api = {') - $from);
+
+	pg_assert_contains('n !== bg.element', $section, 'below the backdrop element the text fades alone');
+	pg_assert_contains('backdrop(m.parentElement, opts, cache)', $section, 'at it or above, over what lies under it');
+	pg_assert_contains('throughOpacity(fg, bg.color, text, groups)', $section, 'both in one place');
+}

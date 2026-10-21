@@ -18,7 +18,7 @@ An issued invoice is never edited; it goes back by return or by cancel (`include
 - The card refund dialog (includes/erp/order_refund.php) prices each line alone at once, then takes the whole choice from api.php `erp_refund_preview` (`erp_order_refund_amount()`, read only): with group taxes the whole is not the sum of the lines.
 
 ## How is the line VAT rate carried?
-- From the order as the legal rate, not as the quotient of two rounded amounts (`erp_line_tax_rate()`): first try `products.tax_rate`; if `erp_apply_rate()` reproduces the stored tax exactly, use it; otherwise fit the simplest rate at 0–3 decimals (361/2008 → 18, not 17.978). Amounts stay unchanged, only the rate.
+- From the order line's own rate (`order_items.tax_rate`, #1055) when it is set. Otherwise as the legal rate, not as the quotient of two rounded amounts (`erp_line_tax_rate()`): first try `products.tax_rate`; if `erp_apply_rate()` reproduces the stored tax exactly, use it; otherwise fit the simplest rate at 0–3 decimals (361/2008 → 18, not 17.978). Amounts stay unchanged, only the rate.
 
 ## How are returned quantities tracked?
 - `erp_invoice_items.returned_qty` accumulates on the parent invoice and is decremented when a return is cancelled; this stops the same goods being returned twice by two documents.

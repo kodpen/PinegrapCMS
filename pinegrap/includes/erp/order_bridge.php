@@ -110,8 +110,13 @@ function erp_order_lines($order, $items)
 
         // The rate the line was charged at. The amount itself is carried over,
         // never recomputed; the rate is what a discounted line's tax is taken
-        // again at, and what the document prints.
-        $rate = erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
+        // again at, and what the document prints. The checkout keeps it on the
+        // line (order_items.tax_rate, 11.0.59); a line written before that, or
+        // by a path that does not set it, has it worked back out.
+        $stored_rate = $item['tax_rate'] ?? null;
+        $rate = (($stored_rate !== null) && ($stored_rate !== ''))
+            ? (float) $stored_rate
+            : erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
 
         $lines[] = array(
             'product_id' => (int) $item['product_id'],
@@ -1061,18 +1066,15 @@ function erp_auto_invoice_for_order($order_id, $trigger)
             $answer['error'] = lang('The order screen does not offer its invoice.');
         }
 
-        erp_auto_invoice_refused($order, $answer['error']);
-
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $result = erp_order_flow_run($order_id, 'invoice', 0);
 
     if (empty($result['success'])) {
         $answer['error'] = (string) ($result['error'] ?? '');
-        erp_auto_invoice_refused($order, $answer['error']);
 
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $invoice = db_item("SELECT id, full_number FROM erp_invoices WHERE id = '" . erp_invoice_for_order($order_id) . "' LIMIT 1");
@@ -1086,6 +1088,33 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     log_activity(($trigger === 'order_shipped')
         ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
         : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+
+    return $answer;
+}
+
+/**
+ * The answer of an automatic invoice that did not go through, said as a
+ * refusal (erp_auto_invoice_refused()) unless the order has its invoice by
+ * now. Two requests that invoice one order at once (two shipments recorded
+ * together, the order screen's button beside the payment) both pass the
+ * decision; the one that waited on the order's lock then finds the step
+ * gone or the invoice already written. That is the order invoiced, not
+ * refused, and it is answered as skipped 'invoiced' without a word.
+ *
+ * @param array $answer erp_auto_invoice_for_order()'s answer, error set
+ * @param array $order  the orders row
+ * @return array the answer
+ */
+function erp_auto_invoice_refuse($answer, $order)
+{
+    if (erp_invoice_for_order((int) ($order['id'] ?? 0)) > 0) {
+        $answer['skipped'] = 'invoiced';
+        $answer['error'] = '';
+
+        return $answer;
+    }
+
+    erp_auto_invoice_refused($order, $answer['error']);
 
     return $answer;
 }

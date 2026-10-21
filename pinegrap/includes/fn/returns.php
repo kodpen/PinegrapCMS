@@ -90,6 +90,13 @@ define('PG_RETURN_PANEL_LIMIT', 1000);
 define('PG_RETURN_REMIND_DAYS', 3);
 
 /**
+ * Seconds within which the same request sent again is taken as the first one
+ * (pg_return_repeat_of()): long enough for a mail sent inside the request to
+ * keep the first answer waiting.
+ */
+define('PG_RETURN_REPEAT_SECONDS', 60);
+
+/**
  * True when both tables are in the database (2026.11.0).
  *
  * @return bool
@@ -573,8 +580,8 @@ function pg_return_returnable($quantity, $held)
  * The lines a request names, checked against the lines of the delivery.
  *
  * A line is named by its order_items id with a whole, non-negative quantity;
- * zero leaves it out. At least one line must remain, each one of the
- * delivery's, none above what is left on it.
+ * zero or an empty box leaves it out. At least one line must remain, each one
+ * of the delivery's, none above what is left on it.
  *
  * @param mixed $requested order item id => quantity
  * @param array $lines     order item id => name, returnable
@@ -598,6 +605,10 @@ function pg_return_check_lines($requested, $lines)
             $count = $quantity;
         } elseif (is_string($quantity) && (preg_match('/^\s*\d{1,9}\s*$/', $quantity) === 1)) {
             $count = (int) $quantity;
+        } elseif (is_string($quantity) && (trim($quantity) === '')) {
+            // A number box the customer cleared arrives empty: nothing asked
+            // for on that line, like 0.
+            $count = 0;
         } else {
             return $refuse(lang('Enter the number of items to return as a whole number.'));
         }
@@ -636,6 +647,80 @@ function pg_return_check_lines($requested, $lines)
     }
 
     return array('ok' => true, 'error' => '', 'lines' => $out);
+}
+
+/**
+ * The request a new one repeats, if any: one still waiting for an answer,
+ * made at most PG_RETURN_REPEAT_SECONDS before, with the same reason, note
+ * and lines. That is the same form sent twice (a double click, a reload of
+ * the answer page), not a second return.
+ *
+ * Quantities are read the way pg_return_check_lines() reads them; a value it
+ * would not take is left out of the comparison, as are zeros.
+ *
+ * @param array  $recent    requests of the same order, delivery and person:
+ *                          id, reason, customer_note, requested_at, items
+ *                          (list of order_item_id, quantity)
+ * @param string $reason    the new request's reason, as stored
+ * @param string $note      its note, as stored
+ * @param mixed  $requested order item id => quantity, as sent
+ * @param int    $now       unix time of the new request
+ * @return int the id of the request it repeats, or 0
+ */
+function pg_return_repeat_of($recent, $reason, $note, $requested, $now)
+{
+    if (!is_array($requested) || !is_array($recent)) {
+        return 0;
+    }
+
+    $wanted = array();
+
+    foreach ($requested as $id => $quantity) {
+        if (is_int($quantity)) {
+            $count = $quantity;
+        } elseif (is_string($quantity) && (preg_match('/^\s*\d{1,9}\s*$/', $quantity) === 1)) {
+            $count = (int) $quantity;
+        } else {
+            continue;
+        }
+
+        if ($count > 0) {
+            $wanted[(int) $id] = $count;
+        }
+    }
+
+    if (empty($wanted)) {
+        return 0;
+    }
+
+    ksort($wanted);
+
+    foreach ($recent as $row) {
+        $age = (int) $now - (int) $row['requested_at'];
+
+        if (($age < 0) || ($age > PG_RETURN_REPEAT_SECONDS)) {
+            continue;
+        }
+
+        if (((string) $row['reason'] !== (string) $reason) || ((string) $row['customer_note'] !== (string) $note)) {
+            continue;
+        }
+
+        $held = array();
+
+        foreach ((isset($row['items']) ? (array) $row['items'] : array()) as $item) {
+            $item_id = (int) $item['order_item_id'];
+            $held[$item_id] = (isset($held[$item_id]) ? $held[$item_id] : 0) + (int) $item['quantity'];
+        }
+
+        ksort($held);
+
+        if ($held === $wanted) {
+            return (int) $row['id'];
+        }
+    }
+
+    return 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -958,12 +1043,13 @@ function pg_return_lock_name($order_id)
  *                           request must be in time), user_id (who asked),
  *                           time (unix time, defaults to now), today (Y-m-d,
  *                           defaults to today)
- * @return array ok, error, id
+ * @return array ok, error, id, repeat (true when the request was the same
+ *               form sent again and id is the request it repeats)
  */
 function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $options = array())
 {
     $refuse = function ($error) {
-        return array('ok' => false, 'error' => $error, 'id' => 0);
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'repeat' => false);
     };
 
     if (!pg_returns_ready()) {
@@ -1029,6 +1115,39 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
         return $refuse(lang('Another return is being saved for this order. Try again in a moment.'));
     }
 
+    // The same form sent again while the first one was being saved answers
+    // with that request, before the quantity check: the first one may have
+    // taken every unit, and the page the customer ends up seeing is the
+    // answer to the second.
+    $recent = db_items(
+        "SELECT id, reason, customer_note, requested_at
+        FROM order_returns
+        WHERE
+            order_id = '" . $order_id . "'
+            AND ship_to_id = '" . $ship_to_id . "'
+            AND status = 'requested'
+            AND source = '" . e($source) . "'
+            AND requested_by = '" . $user_id . "'
+            AND requested_at >= '" . ($now - PG_RETURN_REPEAT_SECONDS) . "'
+        ORDER BY id DESC
+        LIMIT 10");
+
+    if (!empty($recent)) {
+        $items = pg_return_items_of(array_column($recent, 'id'));
+
+        foreach ($recent as $index => $row) {
+            $recent[$index]['items'] = isset($items[(int) $row['id']]) ? $items[(int) $row['id']] : array();
+        }
+
+        $repeat = pg_return_repeat_of($recent, $reason, $note, $quantities, $now);
+
+        if ($repeat > 0) {
+            db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+            return array('ok' => true, 'error' => '', 'id' => $repeat, 'repeat' => true);
+        }
+    }
+
     $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
 
     if (!$checked['ok']) {
@@ -1066,7 +1185,7 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-    return array('ok' => true, 'error' => '', 'id' => $return_id);
+    return array('ok' => true, 'error' => '', 'id' => $return_id, 'repeat' => false);
 }
 
 /**

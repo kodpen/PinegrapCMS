@@ -10,10 +10,10 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 - A mark holds only while its text matches (`pg_ai_fields_marked()`): a text changed any other way (API, import, Workspace, SQL) is not shown as marked and not kept by the next save, with no code on those paths.
 
 ## When does a field get the mark?
-- "Use this text": `assets/js/pg_ai_write.js` sends `pg:ai-write-used` from the field once the draft is in (rich text editor: `setData()` callback). `assets/js/pg_ai_fields.js` (only the two screens) lists the column in the hidden `ai_fields` input, shows the marker, remembers the text. The save stores each listed column with the fingerprint of the text it writes (`pg_ai_fields_after_save()`). Form records and the designer ignore the event.
+- "Use this text": `assets/js/pg_ai_write.js` sends `pg:ai-write-used` from the field once the draft is in (CKEditor: `setData()` callback; TinyMCE: docs/memory/ui/ai-write-tinymce.md). `assets/js/pg_ai_fields.js` (only the two screens) lists the column in the hidden `ai_fields` input, shows the marker, remembers the text. The save stores each listed column with the fingerprint of the text it writes (`pg_ai_fields_after_save()`). Form records and the designer ignore the event.
 
 ## When does it lose it?
-- A hand edit (rule since 2026-10-20): the script compares the text with the remembered one on `input`/`change`, the editor's `change`/`blur`/`mode` and the form's `submit`; a difference takes the column off the list and hides the marker, the same text back (an undo) puts it on again. The mark says the text is the draft as used; an edited text is the person's.
+- A hand edit (rule since 2026-10-20): the script compares the text with the remembered one on `input`/`change`, the editor's events and the form's `submit`; a difference takes the column off the list and hides the marker, the same text back (an undo) puts it on again. The mark says the text is the draft as used; an edited text is the person's.
 - The marker's x ("Remove the AI mark"), until another draft is used. A field saved empty.
 - A save without a list (input missing, a request made by hand) keeps only the stored marks whose text it leaves unchanged. A posted list is trusted; `[]` clears all.
 

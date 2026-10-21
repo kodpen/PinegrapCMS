@@ -1339,6 +1339,43 @@ function api_products_delete($params) {
 
 }
 
+// The largest price a product takes, in minor units: products.price is a
+// signed INT. The single-product routes declare the same bound
+// (products.create and products.update in includes/api/schema.php), where the
+// router enforces it; a batch item is not a route parameter and is read by
+// api_price_batch_price() instead. Past it the session's non-strict mode cut
+// the value to the column's top in silence: 3000000000 was answered "ok" and
+// stored as 2147483647.
+if (!defined('API_PRODUCT_PRICE_MAX')) {
+	define('API_PRODUCT_PRICE_MAX', 2147483647);
+}
+
+// A batch item's price: whole minor units, as a JSON number or a numeric
+// string. Returns the int, null when it is not a whole number, false when it
+// is one below 0 or above API_PRODUCT_PRICE_MAX.
+function api_price_batch_price($raw) {
+
+	// A decimal is refused rather than rounded: rounding somebody's price
+	// quietly is worse than telling them the format is wrong, and this is the
+	// endpoint where it would happen a hundred times before anyone noticed.
+	if (($raw === null) || !is_numeric($raw) || ((string)(int)$raw !== (string)$raw)) {
+
+		return null;
+
+	}
+
+	$price = (int)$raw;
+
+	if (($price < 0) || ($price > API_PRODUCT_PRICE_MAX)) {
+
+		return false;
+
+	}
+
+	return $price;
+
+}
+
 // Prices in a batch.
 //
 // The twin of the stock endpoint, and it exists for the same reason: a
@@ -1397,11 +1434,9 @@ function api_products_prices($params) {
 
 		}
 
-		// Minor units, whole. A decimal is refused rather than rounded: rounding
-		// somebody's price quietly is worse than telling them the format is
-		// wrong, and this is the endpoint where it would happen a hundred times
-		// before anyone noticed.
-		if (!isset($item['price']) || !is_numeric($item['price']) || ((string)(int)$item['price'] !== (string)$item['price'])) {
+		$price = api_price_batch_price(isset($item['price']) ? $item['price'] : null);
+
+		if ($price === null) {
 
 			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
 				'message' => lang('price must be a whole number of minor units.'));
@@ -1410,10 +1445,14 @@ function api_products_prices($params) {
 
 		}
 
-		if ((int)$item['price'] < 0) {
+		if ($price === false) {
 
+			// The single-product routes answer a price past the top with the
+			// router's own sentence; a batch item says the same.
 			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'invalid',
-				'message' => lang('price cannot be negative.'));
+				'message' => ((int)$item['price'] < 0)
+					? lang('price cannot be negative.')
+					: lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => 'price')));
 
 			continue;
 
@@ -1437,8 +1476,6 @@ function api_products_prices($params) {
 			continue;
 
 		}
-
-		$price = (int)$item['price'];
 
 		if (((int)$product['price'] !== $price) && (!$dry)) {
 
