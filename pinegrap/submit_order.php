@@ -6266,15 +6266,24 @@ function submit_order($type) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
             $query = "UPDATE products SET inventory_quantity = (inventory_quantity - '" . $quantity . "') WHERE id = '" . $product_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            //if quantity is equal to product inventory quantity than add product to out of stock. so we can find product where out of stock page and welcome page.
-            if($quantity == $inventory_quantity){
-                $query = "UPDATE products SET 
-                            out_of_stock = '1', 
-                            out_of_stock_timestamp = UNIX_TIMESTAMP() 
-                            WHERE id = '" . $product_id . "'";
-                            
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // Mark the product out of stock from the stock left after this
+            // row, not from $inventory_quantity: that value was read before
+            // the loop, so the second row of the same product (another
+            // recipient) or a row above the stock never equals it. The column
+            // is unsigned and the session sql_mode is not strict, so a sale
+            // through the stock leaves 0. The out_of_stock guard makes the
+            // flag and the warning happen once per product.
+            $result = mysqli_query(db::$con,
+                "UPDATE products SET
+                    out_of_stock = '1',
+                    out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE
+                    (id = '" . $product_id . "')
+                    AND (inventory_quantity <= 0)
+                    AND (out_of_stock != '1')") or output_error('Query failed.');
+
+            if (mysqli_affected_rows(db::$con) > 0) {
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
@@ -6318,9 +6327,11 @@ function submit_order($type) {
                             AND (recurrence_number = '" . $recurrence_number . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
-                // else a remaining spots record was not found, so create new record using number of initial spots
+                // else a remaining spots record was not found, so create new
+                // record using number of initial spots less the spots this
+                // row reserves (the UPDATE branch above takes the quantity too)
                 } else {
-                    $number_of_remaining_spots = $number_of_initial_spots - 1;
+                    $number_of_remaining_spots = $number_of_initial_spots - $quantity;
                     
                     $query =
                         "INSERT INTO remaining_reservation_spots (
