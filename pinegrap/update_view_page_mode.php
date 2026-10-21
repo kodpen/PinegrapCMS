@@ -30,7 +30,7 @@ if (($_GET['mode'] ?? '') == 'edit') {
 
 // If there is not a current cookie or it is not equal to the current
 // view page mode, then create/update it.
-if ($_COOKIE['software']['view_page_mode'] != $_SESSION['software']['view_page_mode']) {
+if (($_COOKIE['software']['view_page_mode'] ?? '') != $_SESSION['software']['view_page_mode']) {
     setcookie('software[view_page_mode]', $_SESSION['software']['view_page_mode'], time() + 315360000, '/');
 }
 

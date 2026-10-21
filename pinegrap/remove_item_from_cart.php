@@ -51,13 +51,7 @@ $ship_to_id = $order_item['ship_to_id'];
 // refresh, so a removal is remembered: this offer does not offer that product
 // again for the rest of the order.
 if ($order_item['added_by_offer'] && $order_item['offer_id']) {
-    if (!isset($_SESSION['ecommerce']['declined_offer_gifts'])) {
-        $_SESSION['ecommerce']['declined_offer_gifts'] = array();
-    }
-    $declined_offer_gift = $order_item['order_id'] . '_' . $order_item['offer_id'] . '_' . $order_item['offer_action_id'];
-    if (!in_array($declined_offer_gift, $_SESSION['ecommerce']['declined_offer_gifts'])) {
-        $_SESSION['ecommerce']['declined_offer_gifts'][] = $declined_offer_gift;
-    }
+    pg_offer_gift_refuse($order_item['order_id'], $order_item['offer_id'], $order_item['offer_action_id']);
 }
 
 // delete order item

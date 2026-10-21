@@ -13,7 +13,7 @@ description: Tables every backup dumps without rows, the SEO, search and log tab
 
 ## Which similar tables keep their rows, and why?
 - `visitor_stats_daily`, `visitor_stats_hourly`, `perf_stats`: summaries the reports and dashboard read; small.
-- `log`, `erp_audit_log`, `erp_edoc_log`: who did what. `cron_runs`: the jobs' watermarks.
+- `log`, `erp_audit_log`, `erp_edoc_log`, `audit_log`, `consent_log`: who did what (a consent row is the proof the consent was given). `cron_runs`: the jobs' watermarks.
 - `seo_issue`, `seo_link`: findings and link graph behind the `seo_*_score` columns on every page and product; without rows the scores would point at nothing until each item is checked again. They grow with content.
 - `search_items`: the advanced site search index, rebuilt only by `update_search_index.php`. `search_results_pages`: page settings.
 - There is no 404 or site-search query log table.

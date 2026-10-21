@@ -208,6 +208,13 @@ if (!$_POST) {
 
             <form name="form" action="' . h($pg_settings_self) . '" method="post" autocomplete="off">
                 <!--
+                    Return in a text field presses the first submit button of
+                    the form. This one stands first and has no name, so Return
+                    saves like the Save button below and never presses a card
+                    button such as "New address" or "Update Bot IP Lists".
+                -->
+                <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
+                <!--
                     The following two fields are used to workaround a Safari bug where it incorrectly
                     autofills the member id label field and payment service password field.
                     https://discussions.apple.com/thread/5476502
@@ -267,6 +274,10 @@ if (!$_POST) {
     // barcode label size on every save. A list where the cards draw one value
     // refuses the save before the module reads anything.
     if (!pg_settings_refuse_lists($pg_settings_key, $liveform)) {
+        // The config row before the module writes it; the audit trail keeps
+        // the columns this category's save changed.
+        $pg_settings_audit_before = pg_audit_fetch('config');
+
         include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.save.php');
     }
 
@@ -277,6 +288,10 @@ if (!$_POST) {
     if (!$liveform->check_form_errors()) {
 
         log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+
+        if (isset($pg_settings_audit_before)) {
+            pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $pg_settings_key);
+        }
 
         $liveform->add_notice(lang('The Site Settings have been saved.'));
     }

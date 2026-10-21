@@ -24,8 +24,9 @@
 //   read_task($account, $task_id)         the result of an earlier batch
 //   pull_orders($account, $since)         their orders, ours to import
 //   update_order($account, $lines, $to)   move their order along
-//   categories($account)                  their category tree
-//   category_attributes($account, $id)    what a category demands
+//   category_tree($account)               their category tree, flattened
+//   category_attributes($account, $id)    what a category demands, with values
+//   create_listings($account, $items)     open listings, answers a task handle
 //
 // Two rules hold for all of them, and they are the correction to the accounting
 // integration that is still in the tree:
@@ -50,18 +51,107 @@ require_once(dirname(dirname(__FILE__)) . '/http.php');
 // Order is display order. A provider appears here the moment its file exists,
 // whether or not the shop has an account with it, because the account screen
 // has to offer it before there is one.
+//
+// 'shipment_template' marks a provider whose listings name a cargo agreement
+// (the account's shipment_template column); the account screen asks for one
+// only there.
+//
+// 'key' says what the marketplace knows a product by: 'barcode' for one that
+// identifies every listing, stock line and order line by barcode (Trendyol),
+// absent for one that uses the seller's own code (n11, where the code is the
+// product's name here). It decides what a listing sends as the product's key
+// and so what the mapping row stores as remote_code.
+//
+// A field is a text box unless it says 'type' => 'select'; a select carries
+// its 'options' (stored value => label) and the 'default' an unknown answer
+// falls back to, and is never empty, so it is never "required". Labels and
+// 'help' are English source text, translated where the screen draws them.
 function mp_providers() {
 
 	return array(
 		'n11' => array(
 			'name'   => 'n11',
 			'file'   => 'n11.php',
+			'shipment_template' => true,
 			'fields' => array(
 				'app_key'    => array('label' => 'API key',    'secret' => false),
 				'app_secret' => array('label' => 'API secret', 'secret' => true)
 			)
+		),
+		'trendyol' => array(
+			'name'   => 'Trendyol',
+			'file'   => 'trendyol.php',
+			'key'    => 'barcode',
+			'help'   => 'All three are in your Trendyol seller panel, under Account Information › Integration Information. The test environment has credentials of its own and only answers servers whose IP address Trendyol has authorised.',
+			'fields' => array(
+				'seller_id'   => array('label' => 'Seller ID',  'secret' => false),
+				'api_key'     => array('label' => 'API key',    'secret' => false),
+				'api_secret'  => array('label' => 'API secret', 'secret' => true),
+				'environment' => array(
+					'label'   => 'Environment',
+					'type'    => 'select',
+					'options' => array('production' => 'Live', 'stage' => 'Test environment'),
+					'default' => 'production'
+				)
+			)
 		)
 	);
+
+}
+
+// The credential fields of one provider, read out of a submitted form.
+//
+// A text field is trimmed and may be empty (the caller decides what empty
+// means: required on create, "keep the stored one" on update). A select only
+// ever answers one of its own options, so a value that came from anywhere but
+// the form's own list is stored as the default instead.
+function mp_provider_credentials($provider, $input) {
+
+	$providers = mp_providers();
+
+	if (!isset($providers[$provider]['fields'])) {
+
+		return array();
+
+	}
+
+	$values = array();
+
+	foreach ($providers[$provider]['fields'] as $field => $meta) {
+
+		$value = (isset($input[$field]) && is_scalar($input[$field])) ? trim((string)$input[$field]) : '';
+
+		if (mp_provider_field_is_select($meta)) {
+
+			$options = isset($meta['options']) ? (array)$meta['options'] : array();
+
+			if (!isset($options[$value])) {
+
+				$value = isset($meta['default']) ? (string)$meta['default'] : (string)key($options);
+
+			}
+
+		}
+
+		$values[$field] = $value;
+
+	}
+
+	return $values;
+
+}
+
+function mp_provider_field_is_select($meta) {
+
+	return isset($meta['type']) && $meta['type'] === 'select';
+
+}
+
+function mp_provider_keys_by_barcode($provider) {
+
+	$providers = mp_providers();
+
+	return isset($providers[$provider]['key']) && $providers[$provider]['key'] === 'barcode';
 
 }
 
@@ -319,7 +409,7 @@ function mp_enqueue($product_id, $operation = 'stock_price', $priority = 5) {
 
 	}
 
-	$maps = (array) db_items("SELECT marketplace_product_map.account_id
+	$maps = (array) db_items("SELECT marketplace_product_map.account_id, marketplace_accounts.provider
 		FROM marketplace_product_map
 		INNER JOIN marketplace_accounts ON marketplace_accounts.id = marketplace_product_map.account_id
 		WHERE (marketplace_product_map.product_id = '" . e($product_id) . "')
@@ -337,6 +427,15 @@ function mp_enqueue($product_id, $operation = 'stock_price', $priority = 5) {
 	foreach ($maps as $map) {
 
 		$account_id = (int) $map['account_id'];
+
+		// A provider whose connector cannot send stock and price yet gets no
+		// row: the job would only fail it six times and leave it on the
+		// "did not go through" list for a reason nobody can act on.
+		if ($operation === 'stock_price' && !mp_can((string)$map['provider'], 'push_stock_price')) {
+
+			continue;
+
+		}
 
 		$waiting = db_value("SELECT id FROM marketplace_sync_queue
 			WHERE (account_id = '" . e($account_id) . "')

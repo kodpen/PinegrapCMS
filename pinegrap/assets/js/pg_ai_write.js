@@ -33,6 +33,10 @@
  * built from escaped words, whichever model wrote it; a one-line draft is
  * only ever set as text.
  *
+ * A used draft is announced with the event pg:ai-write-used from the field
+ * (announce()); the screens that mark the texts written with AI listen for
+ * it (assets/js/pg_ai_fields.js).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -236,7 +240,13 @@
         hint.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                ask(panel);
+
+                // Like "Try again" and the tone, Enter does nothing while a
+                // request runs: each request takes a draft from the day's
+                // quota.
+                if (!again.disabled) {
+                    ask(panel);
+                }
             }
         });
 
@@ -327,10 +337,12 @@
         box.style.maxHeight = '18rem';
         box.style.overflow = 'auto';
 
-        // The html format is markup the server built from escaped words.
+        // The html format is markup the server built from escaped words; a
+        // plain text draft keeps its line breaks, as the field will.
         if (state.settings.format === 'html') {
             box.innerHTML = String(result.html || '');
         } else {
+            box.style.whiteSpace = 'pre-wrap';
             box.textContent = String(result.text || '');
         }
 
@@ -807,6 +819,32 @@
         });
     }
 
+    // Tells the screen that a draft went into a field: pg:ai-write-used,
+    // sent from the field's element (from the document when it has none)
+    // once the field holds the draft, bubbling, naming the field. A screen
+    // that marks the texts written with AI (assets/js/pg_ai_fields.js)
+    // listens for it; others do not.
+    function announce(settings) {
+        var detail = {
+            field: String(settings.field || ''),
+            target: String(settings.target || ''),
+            record: String(settings.record || ''),
+            record_id: recordIdOf(settings),
+            format: String(settings.format || '')
+        };
+        var source = document.getElementById(detail.field) || document;
+        var event;
+
+        try {
+            event = new CustomEvent('pg:ai-write-used', { bubbles: true, detail: detail });
+        } catch (e) {
+            event = document.createEvent('CustomEvent');
+            event.initCustomEvent('pg:ai-write-used', true, false, detail);
+        }
+
+        source.dispatchEvent(event);
+    }
+
     // The draft into the field, the way typing would have put it there: the
     // field's own listeners (the SEO counters, the unsaved-changes check)
     // hear about it.
@@ -823,8 +861,12 @@
         var field = document.getElementById(settings.field);
         var value = (settings.format === 'html') ? String(result.html || '') : String(result.text || '');
 
+        // The editor loads new data in the background: the draft is announced
+        // once it is in, so that a listener reads the field's new text.
         if (editor && (settings.format === 'html')) {
-            editor.setData(value);
+            editor.setData(value, function () {
+                announce(settings);
+            });
             closePanel(panel, false);
             editor.focus();
             return;
@@ -851,6 +893,7 @@
             field.dispatchEvent(event);
         }
 
+        announce(settings);
         closePanel(panel, false);
         field.focus();
     }

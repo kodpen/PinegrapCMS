@@ -54,6 +54,10 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		'barcode'           => (isset($row['barcode']) && $row['barcode'] !== '') ? $row['barcode'] : null,
 		'enabled'           => ((int)$row['enabled'] === 1),
 		'price'             => api_money($row['price']),
+		// The merchant's own "was" price for the article, in minor units, or
+		// null when it has none. It is not what the article sells at: an
+		// offer still changes the price paid without touching either field.
+		'compare_at_price'  => api_product_compare_at_price($row),
 		'title'             => $row['title'],
 		'short_description' => $row['short_description'],
 		'brand'             => $row['brand'],
@@ -90,6 +94,17 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		// the single product endpoint, because they are a query per row.
 		'seo'             => api_seo_block('product', $id, $row, $with_issues)
 	);
+
+}
+
+// products.compare_at_price as the product object carries it: null for none,
+// which is also what a site without the column answers (api_product_select()
+// reads NULL there) and what a zero put into the column by hand reads as.
+function api_product_compare_at_price($row) {
+
+	$value = pg_compare_at_price_value(isset($row['compare_at_price']) ? (string)$row['compare_at_price'] : null);
+
+	return is_int($value) ? api_money($value) : null;
 
 }
 
@@ -206,6 +221,7 @@ function api_product_extras($ids) {
 function api_product_select() {
 
 	return "SELECT products.id, products.name, products.enabled, products.price,
+			" . (pg_compare_at_price_ready() ? "products.compare_at_price," : "NULL AS compare_at_price,") . "
 			products.title, products.short_description, products.brand,
 			products.gtin, products.mpn, products.image_name, products.taxable,
 			products.shippable, products.free_shipping, products.weight,
@@ -540,6 +556,13 @@ function api_products_create($params) {
 
 	}
 
+	// Absent, null, empty or 0: the product starts without a "was" price.
+	if (array_key_exists('compare_at_price', $params)) {
+
+		$product['compare_at_price'] = api_products_compare_at_price_param($params['compare_at_price']);
+
+	}
+
 	// Absent means "follow the tax zone", which is the column default. Present
 	// and empty means the same thing said out loud, and both write NULL.
 	if (array_key_exists('tax_rate', $params)) {
@@ -607,6 +630,8 @@ function api_products_create($params) {
 
 	api_products_rescore($id);
 
+	pg_audit_record('create', 'products', $id);
+
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($name, $app['name'], $app['api_key'])
@@ -617,6 +642,34 @@ function api_products_create($params) {
 	api_webhook_enqueue('product.created', array('id' => $id, 'name' => $row['name']));
 
 	api_ok(api_product_present($row, api_product_extras(array($id))), 201);
+
+}
+
+// The compare_at_price a write sent, as products.compare_at_price stores it:
+// null for none (JSON null, an empty value or 0), the minor units otherwise.
+// The router has kept the figure to whole minor units within the column.
+//
+// A site that took the code but not the 2026.11.0 upgrade has no column to
+// write it to, and is refused before anything is written rather than having
+// the field dropped: dropping a field is how an integration writes nothing
+// for a year and gets 200 every time.
+function api_products_compare_at_price_param($value) {
+
+	if (!pg_compare_at_price_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	$value = pg_compare_at_price_value($value);
+
+	if ($value === false) {
+
+		api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => 'compare_at_price')), 'compare_at_price');
+
+	}
+
+	return $value;
 
 }
 
@@ -971,6 +1024,13 @@ function api_products_update($params) {
 
 	}
 
+	// null, an empty value or 0 takes the "was" price off.
+	if (array_key_exists('compare_at_price', $params)) {
+
+		$set[] = "compare_at_price = " . pg_compare_at_price_sql(api_products_compare_at_price_param($params['compare_at_price']));
+
+	}
+
 	$group_ids = array_key_exists('group_ids', $params) ? api_products_create_group_ids($params) : null;
 
 	$attributes = array_key_exists('attributes', $params) ? api_products_create_attributes($params) : null;
@@ -1004,6 +1064,7 @@ function api_products_update($params) {
 
 	api_dry_run_stop('updated', 'product', array('id' => $id, 'fields' => count($set)));
 
+	$audit_before = pg_audit_fetch('products', $id);
 
 	api_exec("UPDATE products SET " . implode(', ', $set) . ",
 			user = '" . (int)$app['owner']['id'] . "',
@@ -1094,6 +1155,8 @@ function api_products_update($params) {
 	}
 
 	api_products_rescore($id);
+
+	pg_audit_record('update', 'products', $id, $audit_before);
 
 	log_activity(lang(array(
 		'string' => 'Product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -1190,6 +1253,8 @@ function api_products_delete($params) {
 
 		api_dry_run_stop('recycled', 'product', array('id' => $id, 'name' => $product['name']));
 
+		$audit_before = pg_audit_fetch('products', $id);
+
 		// The statements every panel screen writes when it bins a product.
 		// "AND recycled = '0'" in them keeps a second request that raced this
 		// one from writing recycled_enabled from an enabled that is already
@@ -1200,6 +1265,8 @@ function api_products_delete($params) {
 			api_exec($statement);
 
 		}
+
+		pg_audit_record('recycle', 'products', $id, $audit_before);
 
 		log_activity(lang(array(
 			'string' => 'Product ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).',
@@ -1331,7 +1398,7 @@ function api_products_prices($params) {
 		}
 
 		$product = ($id > 0)
-			? api_row("SELECT id, name, price FROM products WHERE id = '" . $id . "' LIMIT 1")
+			? api_row("SELECT id, name, short_description, price FROM products WHERE id = '" . $id . "' LIMIT 1")
 			: null;
 
 		if ($product === null) {
@@ -1348,6 +1415,8 @@ function api_products_prices($params) {
 
 			api_exec("UPDATE products SET price = '" . $price . "', timestamp = '" . time() . "'
 				WHERE id = '" . (int)$product['id'] . "' LIMIT 1");
+
+			pg_audit('update', 'product', (int)$product['id'], array('price' => $product['price']), array('price' => $price), pg_audit_label_of('products', $product));
 
 			pg_price_history_queue((int)$product['id'], 'api');
 
@@ -1453,11 +1522,12 @@ function api_price_history_entry_present($row) {
 // table answers an empty list rather than an error: the product exists, it
 // simply has no history yet.
 //
-// What is not here, on purpose: an offer's reduced price. The history keeps
-// what products.price was set to; an offer changes what the visitor pays
-// without changing that column, and recording it is a step of its own (the
-// price-history plan). Until then a client must not read the lowest row of a
-// window as the lawful "price before the discount".
+// Offer rows (source 'offer') are the price the open offers gave a visitor
+// with no offer code, no account and an empty cart, written by the general job
+// within the hour an offer began, ended or changed
+// (pg_price_history_offer_pass_run()); the other rows are products.price as
+// its writers set it. The newest row at or before a moment is what such a
+// visitor paid then.
 function api_products_price_history($params) {
 
 	$id = (int)$params['id'];
@@ -1571,6 +1641,8 @@ function api_product_schema() {
 		'barcode'           => 'string?',
 		'enabled'           => 'boolean',
 		'price'             => 'integer',
+		// NULL for none: a product made by any path starts without one.
+		'compare_at_price'  => 'integer?',
 		'title'             => 'string',
 		// A nullable column: an import whose sheet has no such column leaves it unset.
 		'short_description' => 'string?',

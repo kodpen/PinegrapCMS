@@ -1652,8 +1652,11 @@ if (!$_POST) {
         // prepare the address name for the database
         $address_name = prepare_catalog_item_address_name($address_name);
 
-
-
+        // products.compare_at_price (2026.11.0) is copied where the table has
+        // it, which the SELECT * above shows: the copy starts with the
+        // original's "was" price as it starts with its price.
+        $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
+        $compare_at_value  = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
 
         // insert row into product table
         $query        = "INSERT INTO products (
@@ -1837,6 +1840,8 @@ if (!$_POST) {
                 brand,
     
                 mpn,
+    
+                " . $compare_at_column . "
     
                 user,
     
@@ -2023,6 +2028,8 @@ if (!$_POST) {
                 '" . escape($row['brand']) . "', 
     
                 '" . escape($row['mpn']) . "',
+    
+                " . $compare_at_value . "
     
                 '" . USER_ID . "',
     
@@ -2290,6 +2297,8 @@ if (!$_POST) {
     
         // The copy starts a price history of its own at the original's price.
         pg_price_history_record($new_product_id, 'panel');
+
+        pg_audit_record('create', 'products', (int) $new_product_id);
     
         return $new_product_id;
     }

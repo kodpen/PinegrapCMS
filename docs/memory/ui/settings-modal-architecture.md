@@ -45,4 +45,7 @@ Shared
 ## How do you add a new category?
 - Entry in `registry.php` + `includes/settings/<key>.php` + `<key>.save.php` + `settings_<key>.php` wrapper (for the page path). There is no menu entry to highlight.
 
+## What does the page path do with a refused save?
+- It redirects back and draws the cards from storage, so what was typed is lost there; the dialog keeps it (settings-invalid-vs-error). The cards are plain HTML: `liveform::prepare()` cannot refill them, it rebuilds every select from options the session does not hold.
+
 Related: docs/memory/ui/settings-card-save-rules.md

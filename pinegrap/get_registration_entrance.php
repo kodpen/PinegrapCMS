@@ -287,19 +287,6 @@ function get_registration_entrance($properties = array()) {
                                         'spellcheck' => 'false')) . '
                                 </td>
                             </tr>
-                            <tr>
-                                <td><label for="email_verify">' . lang('Confirm Email') . '*:</label></td>
-                                <td>' .
-                                    $register_form->field(array(
-                                        'type' => 'email',
-                                        'id' => 'email_verify',
-                                        'name' => 'email_verify',
-                                        'class' => 'software_input_text',
-                                        'required' => 'true',
-                                        'autocomplete' => 'email',
-                                        'spellcheck' => 'false')) . '
-                                </td>
-                            </tr>
                             ' . $output_strong_password_requirement_row . '
                             <tr>
                                 <td><label for="register_password">' . lang('Password') . '*:</label></td>
@@ -465,19 +452,6 @@ function get_registration_entrance($properties = array()) {
                                                     'spellcheck' => 'false')) . '
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td><label for="email_verify">' . lang('Confirm Email') . '*:</label></td>
-                                            <td>' .
-                                                $register_form->field(array(
-                                                    'type' => 'email',
-                                                    'id' => 'email_verify',
-                                                    'name' => 'email_verify',
-                                                    'class' => 'software_input_text',
-                                                    'required' => 'true',
-                                                    'autocomplete' => 'email',
-                                                    'spellcheck' => 'false')) . '
-                                            </td>
-                                        </tr>
                                         ' . $output_strong_password_requirement_row . '
                                         <tr>
                                             <td><label for="register_password">' . lang('Password') . '*:</label></td>
@@ -581,7 +555,6 @@ function get_registration_entrance($properties = array()) {
         $register_form->set('last_name', 'required', true);
         $register_form->set('username', 'required', true);
         $register_form->set('email', 'required', true);
-        $register_form->set('email_verify', 'required', true);
         $register_form->set('password', 'required', true);
         $register_form->set('password_verify', 'required', true);
         

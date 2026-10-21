@@ -1,0 +1,67 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Function imagecreatefrombmp not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/edit_file.php
+
+		-
+			message: '#^Undefined variable\: \$output_featured_items$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_image$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_price$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Undefined variable\: \$output_short_description$#'
+			identifier: variable.undefined
+			count: 1
+			path: ../pinegrap/get_catalog.php
+
+		-
+			message: '#^Function mysql_get_server_info not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/fn/core.php
+
+		-
+			message: '#^Function mysql_select_db not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/includes/fn/core.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value ''å'' \(''å'', ''å''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: ../pinegrap/includes/fn/files.php
+
+		-
+			message: '#^Function mysql_query not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/router.php
+
+		-
+			message: '#^Function mysql_select_db not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: ../pinegrap/router.php
+
+		-
+			message: '#^Function pfpro_process not found\.$#'
+			identifier: function.notFound
+			count: 2
+			path: ../pinegrap/submit_order.php
