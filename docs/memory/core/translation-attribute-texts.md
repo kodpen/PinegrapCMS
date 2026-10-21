@@ -16,7 +16,7 @@ description: Translating worded attributes (alt, title, placeholder, aria-label,
 The finished-page pass (`pg_tr_render_db_html()` and, for the opening tag of a protected script/textarea/pre/code block, `pg_tr_render_db_texts()`), and `pg_tr_render_html_value()` for a rich-text value with no block. All call `pg_tr_render_attrs()`, which looks each value up as a plain `text` and writes `h(strip_tags(translation))` in double quotes.
 
 ## Why was an aria-label left in the source language?
-The tree renderer draws an inline text whole. An engine translates the words of `<a aria-label="…">web çözümleri</a>` and keeps the attribute; nothing extracted the attribute, so the final pass had no translation to swap in. Custom HTML had the same gap for every attribute (render looked them up, extraction never stored them). Seen on kodpen.com `/en/` service cards (#1104, PR #PRNUM).
+The tree renderer draws an inline text whole. An engine translates the words of `<a aria-label="…">web çözümleri</a>` and keeps the attribute; nothing extracted the attribute, so the final pass had no translation to swap in. Custom HTML had the same gap for every attribute (render looked them up, extraction never stored them). Seen on kodpen.com `/en/` service cards (#1104, PR #1173).
 
 ## How is the hash kept symmetric?
 Extraction and drawing both go through `pg_tr_html_attrs_map()`: same tag scan (comments and the content of script, style, textarea, pre and code skipped; a tag with `translate="no"` or class `notranslate` skipped), values read whole in either quote style, entities resolved, then `pg_tr_normalize(value, 'text')`. The render pass used to read only double-quoted values of five names by regex.
