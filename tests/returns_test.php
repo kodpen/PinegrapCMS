@@ -693,3 +693,19 @@ function test_returns_repeat_of_differs()
 	pg_assert_same(0, pg_return_repeat_of(array(), 'damaged', 'double', $lines, 1010), 'no recent request');
 	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', 'x', 1010), 'not a list');
 }
+
+// Who goes on to the ERP return invoice after a refund: the ERP must be on
+// and the person must be allowed to use it (role below 3 or manage_erp).
+function test_returns_erp_hand_off()
+{
+	$manager = array('role' => 2, 'manage_erp' => 0);
+	$staff = array('role' => 3, 'manage_erp' => 0);
+	$erp_staff = array('role' => 3, 'manage_erp' => 1);
+
+	pg_assert_true(pg_return_erp_hand_off($manager, true), 'a manager with the ERP on');
+	pg_assert_true(pg_return_erp_hand_off($erp_staff, true), 'staff with the ERP right');
+	pg_assert_true(pg_return_erp_hand_off(array('role' => '1'), true), 'role as a string, no right column');
+	pg_assert_false(pg_return_erp_hand_off($staff, true), 'staff without the ERP right');
+	pg_assert_false(pg_return_erp_hand_off($manager, false), 'the ERP is off');
+	pg_assert_false(pg_return_erp_hand_off('x', true), 'not a user row');
+}
