@@ -378,6 +378,13 @@ if ($mail_queue_tab === 'sms') {
 
         $mail_queue_error = (string) $mail_queue_row['last_error'];
 
+        // Given up at once: what is wrong is in the message itself, so a
+        // retry fails the same way until the cause is fixed where it was
+        // written.
+        $mail_queue_permanent = pg_mail_failed_permanently($mail_queue_row['status'], $mail_queue_row['attempts'])
+            ? ' <span class="badge text-bg-dark" title="' . h(lang('Not tried again: sending it again would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>'
+            : '';
+
         $mail_queue_buttons = '';
 
         if (in_array($mail_queue_row['status'], array('queued', 'failed'), true)) {
@@ -390,7 +397,7 @@ if ($mail_queue_tab === 'sms') {
                         <tr>
                             <td class="align-middle text-nowrap">' . $mail_queue_buttons . '</td>
                             <td class="align-middle">' . (int) $mail_queue_row['id'] . '</td>
-                            <td class="align-middle"><span class="badge ' . $mail_queue_status[1] . '">' . h($mail_queue_status[0]) . '</span></td>
+                            <td class="align-middle text-nowrap"><span class="badge ' . $mail_queue_status[1] . '">' . h($mail_queue_status[0]) . '</span>' . $mail_queue_permanent . '</td>
                             <td class="align-middle">' . h(isset($mail_queue_type_labels[$mail_queue_row['mail_type']]) ? $mail_queue_type_labels[$mail_queue_row['mail_type']] : $mail_queue_row['mail_type']) . '</td>
                             <td class="align-middle">' . h($mail_queue_row['recipient']) . '</td>
                             <td class="align-middle">' . h($mail_queue_row['subject']) . '</td>
