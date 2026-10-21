@@ -16,7 +16,7 @@ description: What a completed order does to stock and event spots (submit_order.
 
 ## What does the sale tell the outside?
 - After each row's decrement, `pg_product_stock_changed($product_id, $before, null, 'checkout')`: the product's `timestamp` moves (so `GET /products?updated_since=` lists it), `inventory.changed` is announced, `stock.low` once on the crossing, and the marketplace is queued. The stock left is read back and kept per product (`$stock_left`), so the second row of the same product announces from what the first left. A local sale (`includes/local_sale.php`) does the same with source `local_sale`.
-- Before issue #871 the checkout and the local sale only queued the marketplace: a system syncing with `updated_since` or the webhook never saw the sale. The helper and the other writers: `docs/memory/core/api-webhook-stock-events.md`.
+- Before PR #1141 (issue #871) the checkout and the local sale only queued the marketplace: a system syncing with `updated_since` or the webhook never saw the sale. The helper and the other writers: `docs/memory/core/api-webhook-stock-events.md`.
 
 ## How are event spots counted?
 - Only with `CALENDARS`, a reservation item and `limit_reservations = 1`. The instance's row in `remaining_reservation_spots` is decremented by the quantity; when the event has no row yet, the first order creates it as `number_of_initial_spots - quantity`.

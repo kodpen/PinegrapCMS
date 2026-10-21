@@ -18,4 +18,4 @@ description: What a stock change announces: pg_product_stock_changed() (stamp, i
 - Quiet by the catalogue's bulk rule: the product import, a marketplace order import and an ERP stock count. The catalogue line in `api_webhook_events()` says so.
 
 ## What was wrong before?
-- A sale through the checkout or a local sale did not move the stamp and announced nothing (only the marketplace queue), so a system syncing with `updated_since` or `inventory.changed` kept selling the old stock; the product screen moved the stamp but announced nothing; the bulk edit and the barcode screens announced nothing. Issue #871.
+- A sale through the checkout or a local sale did not move the stamp and announced nothing (only the marketplace queue), so a system syncing with `updated_since` or `inventory.changed` kept selling the old stock; the product screen moved the stamp but announced nothing; the bulk edit and the barcode screens announced nothing. Issue #871, fixed in PR #1141.
