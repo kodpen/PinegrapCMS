@@ -32,7 +32,7 @@
 // a link pasted into a terminal. Ignoring it, as an unknown query value is
 // ignored, would hand exactly those callers the write they asked not to make.
 
-if (!defined('PG_API_ENTRY')) {
+if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
