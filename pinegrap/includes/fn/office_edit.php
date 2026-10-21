@@ -246,11 +246,14 @@ function pg_office_xlsx_parse_number($text)
 }
 
 /**
- * A typed date as the day count the sheet stores, or null. The forms read
- * are the one the preview shows (2026-10-19, with an optional time) and the
- * Turkish one (19.10.2026). Day 0 is 30 December 1899, or 1 January 1904 in
- * a workbook that counts from there; days before 1 March 1900 are not
- * written, since the 1900 count of spreadsheets holds a day that never was.
+ * A typed date or time as the day count the sheet stores, or null. The
+ * forms read are the one the preview shows (2026-10-19, with an optional
+ * time), the Turkish one (19.10.2026) and a time alone (08:45, 8:45:30,
+ * 25:30 for a duration), which is a fraction of a day. Day 0 is 30 December
+ * 1899, or 1 January 1904 in a workbook that counts from there, and is read
+ * (the preview shows a time cell as day 0 with its time); the days between
+ * it and 1 March 1900 are not written, since the 1900 count of spreadsheets
+ * holds a day that never was.
  *
  * @param string $text
  * @param bool   $date1904
@@ -268,6 +271,17 @@ function pg_office_xlsx_parse_date($text, $date1904)
         $year = (int) $match[3];
         $month = (int) $match[2];
         $day = (int) $match[1];
+    } elseif (preg_match('/^(\d{1,4}):(\d{2})(?::(\d{2}))?$/', $text, $match)) {
+        // A time alone, as a time or duration cell shows it: a fraction of
+        // a day, and over 24 hours (an [h] format) whole days with it.
+        $minute = (int) $match[2];
+        $second = isset($match[3]) ? (int) $match[3] : 0;
+
+        if (($minute > 59) || ($second > 59)) {
+            return null;
+        }
+
+        return pg_office_xlsx_day_fraction(0, ((int) $match[1] * 3600) + ($minute * 60) + $second);
     } else {
         return null;
     }
@@ -282,12 +296,26 @@ function pg_office_xlsx_parse_date($text, $date1904)
 
     $days = (int) floor(gmmktime(0, 0, 0, $month, $day, $year) / 86400) + ($date1904 ? 24107 : 25569);
 
-    if ($days < ($date1904 ? 0 : 61)) {
+    // Day 0 (30 December 1899, or 1 January 1904) is how the preview shows
+    // a time cell; the days of the 1900 leap-year bug between it and 1 March
+    // 1900 are not written.
+    if (($days < 0) || (!$date1904 && ($days > 0) && ($days < 61))) {
         return null;
     }
 
-    $seconds = ($hour * 3600) + ($minute * 60) + $second;
+    return pg_office_xlsx_day_fraction($days, ($hour * 3600) + ($minute * 60) + $second);
+}
 
+/**
+ * A day count with seconds into the day, as a cell stores it: whole when
+ * there are no seconds, else with up to ten decimals and no trailing zeros.
+ *
+ * @param int $days
+ * @param int $seconds
+ * @return string
+ */
+function pg_office_xlsx_day_fraction($days, $seconds)
+{
     if ($seconds === 0) {
         return (string) $days;
     }
@@ -319,7 +347,8 @@ function pg_office_xlsx_parse_bool($text)
 /**
  * What a typed text becomes in a cell. A cell keeps the kind it has when the
  * text fits it: a text cell stays text whatever is typed, a yes/no cell
- * stays one for TRUE/FALSE, a cell formatted as a date takes a date. An
+ * stays one for TRUE/FALSE, a cell formatted as a date or a time takes a
+ * date or a time (pg_office_xlsx_parse_date()). An
  * empty cell, or one holding a number, takes a number when the text is one.
  * A cell formatted as text (@) always takes text. A leading "=" is kept as
  * text: no formula is written here.

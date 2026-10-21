@@ -141,6 +141,30 @@ function test_office_edit_dates()
 	pg_assert_same(null, pg_office_xlsx_parse_date('2026-02-30', false), 'not a day');
 	pg_assert_same(null, pg_office_xlsx_parse_date('2026-10-19 24:00', false), 'not a time');
 	pg_assert_same(null, pg_office_xlsx_parse_date('10/19/2026', false), 'the American form is not guessed');
+
+	// A time alone, as a time or duration cell shows it, is a fraction of a
+	// day; over 24 hours (an [h] format) it runs on into whole days.
+	pg_assert_same('0.3645833333', pg_office_xlsx_parse_date('08:45', false), 'a time of day');
+	pg_assert_same('0.3020833333', pg_office_xlsx_parse_date('7:15', false), 'one digit of hours');
+	pg_assert_same('0.3649305556', pg_office_xlsx_parse_date('8:45:30', false), 'with seconds');
+	pg_assert_same('1.0625', pg_office_xlsx_parse_date('25:30', false), 'a duration over a day');
+	pg_assert_same('1', pg_office_xlsx_parse_date('24:00', false), 'a whole day');
+	pg_assert_same('0', pg_office_xlsx_parse_date('0:00', false), 'midnight');
+	pg_assert_same('08:45', pg_office_xlsx_time(pg_office_xlsx_parse_date('08:45', false), 'time'), 'reads back as a time');
+	pg_assert_same('25:30', pg_office_xlsx_time(pg_office_xlsx_parse_date('25:30', false), 'hours'), 'and as elapsed hours');
+	pg_assert_same(null, pg_office_xlsx_parse_date('08:60', false), 'not minutes');
+	pg_assert_same(null, pg_office_xlsx_parse_date('8:45:60', false), 'not seconds');
+	pg_assert_same(null, pg_office_xlsx_parse_date('8.45', false), 'a number, not a time');
+	pg_assert_same(null, pg_office_xlsx_parse_date('8:', false), 'nothing after the colon');
+
+	// Day 0 with a time: what the preview shows for a time cell.
+	pg_assert_same('0.3541666667', pg_office_xlsx_parse_date('1899-12-30 08:30', false), 'the preview\'s form of a time cell');
+	pg_assert_same('0.3541666667', pg_office_xlsx_parse_date('30.12.1899 08:30', false), 'in the Turkish form too');
+	pg_assert_same('0', pg_office_xlsx_parse_date('1899-12-30', false), 'day 0 alone');
+	pg_assert_same('0.3541666667', pg_office_xlsx_parse_date('1904-01-01 08:30', true), 'day 0 of a workbook counting from 1904');
+	pg_assert_same(null, pg_office_xlsx_parse_date('1899-12-29', false), 'nothing before day 0');
+	pg_assert_same(null, pg_office_xlsx_parse_date('1899-12-31', false), 'still nothing between day 0 and the first day written');
+	pg_assert_same(null, pg_office_xlsx_parse_date('1903-12-31 08:30', true), 'nor before 1904 there');
 }
 
 function test_office_edit_typed_values()
@@ -153,6 +177,10 @@ function test_office_edit_typed_values()
 	pg_assert_same(array('kind' => 'string', 'value' => 'kalem'), pg_office_xlsx_typed('kalem', 'number', '', false), 'words in a number cell are text');
 	pg_assert_same(array('kind' => 'number', 'value' => '46314'), pg_office_xlsx_typed('2026-10-19', 'number', 'date', false), 'a date in a date cell');
 	pg_assert_same(array('kind' => 'string', 'value' => '2026-10-19'), pg_office_xlsx_typed('2026-10-19', 'empty', '', false), 'a date without a date format stays as typed');
+	pg_assert_same(array('kind' => 'number', 'value' => '0.3645833333'), pg_office_xlsx_typed('08:45', 'number', 'date', false), 'a time in a time cell');
+	pg_assert_same(array('kind' => 'number', 'value' => '1.0625'), pg_office_xlsx_typed('25:30', 'empty', 'date', false), 'a duration in a duration cell');
+	pg_assert_same(array('kind' => 'number', 'value' => '0.3020833333'), pg_office_xlsx_typed('1899-12-30 07:15', 'number', 'date', false), 'the preview\'s form of a time cell, with the time changed');
+	pg_assert_same(array('kind' => 'string', 'value' => '08:45'), pg_office_xlsx_typed('08:45', 'empty', '', false), 'a time without a date format stays as typed');
 	pg_assert_same(array('kind' => 'bool', 'value' => '0'), pg_office_xlsx_typed('yanlış', 'bool', '', false), 'a yes/no cell, in Turkish');
 	pg_assert_same(array('kind' => 'bool', 'value' => '1'), pg_office_xlsx_typed('TRUE', 'bool', '', false), 'and in English');
 	pg_assert_same(array('kind' => 'string', 'value' => 'TRUE'), pg_office_xlsx_typed('TRUE', 'empty', '', false), 'TRUE elsewhere is text');
