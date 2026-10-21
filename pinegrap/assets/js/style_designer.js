@@ -22757,6 +22757,7 @@ const StyleDesigner = (function () {
         entries: [],        // the range map behind it (see _sdCodeDocument())
         busy: false,        // true while the editor is being written to
         fromEditor: false,  // true while a selection made in the editor is applied
+        heldBinding: null,  // what a half-typed {{token}} replaced (_sdCodeHoldBinding())
         loading: false,
         editable: null,     // what the editor was last told (null: never)
         dirty: null,        // { from, to } typed since the last apply, in editor positions
@@ -23805,6 +23806,53 @@ const StyleDesigner = (function () {
 
     function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
 
+    // A token still being typed or picked from the completion list: a {{
+    // with no }} after it, or an empty {{}} (closed brackets).
+    function _sdCodeHalfToken(value) {
+        return (typeof value === 'string') && (/\{\{(?![\s\S]*\}\})/.test(value) || /\{\{\s*\}\}/.test(value));
+    }
+
+    // The code view applies what is typed after a pause, so a token being
+    // typed over a bound (or bindable) value is applied half done: the
+    // binding ends and "{{" stands as the value. What the prop held before
+    // that is kept here, once, so the finished token gets the design-time
+    // text or value and the date format back (_sdCodeBindHeld()). A literal
+    // typed over it instead lets it go. One at a time: one token is typed
+    // at once.
+    function _sdCodeHoldBinding(node, prop, typed) {
+        var held = _sdCode.heldBinding;
+        var same = !!(held && held.node === node && held.prop === prop);
+        if (!_sdCodeHalfToken(typed)) {
+            if (same) _sdCode.heldBinding = null;
+            return;
+        }
+        if (same) return;
+        var p = node.props;
+        _sdCode.heldBinding = {
+            node: node,
+            prop: prop,
+            token: (p._bindings && p._bindings[prop]) || '',
+            has: Object.prototype.hasOwnProperty.call(p, prop),
+            value: p[prop],
+            format: (p._bindFormats && p._bindFormats[prop]) || ''
+        };
+    }
+
+    // Binds `prop` to `token` (_sdNodeSetBinding()), bringing back the date
+    // format held for the same token. The record held for this node and
+    // prop ({ has, value, ... }), or null when nothing was held.
+    function _sdCodeBindHeld(node, prop, token) {
+        var held = _sdCode.heldBinding;
+        if (held && held.node === node && held.prop === prop) _sdCode.heldBinding = null;
+        else held = null;
+        _sdNodeSetBinding(node, prop, token);
+        if (held && held.format && held.token === token) {
+            if (!node.props._bindFormats) node.props._bindFormats = {};
+            node.props._bindFormats[prop] = held.format;
+        }
+        return held;
+    }
+
     // Whether `prop` of this node is a binding a widget reads: the node is
     // inside a system widget and the Bind Data panel offers the prop. The
     // panel offers a plain element's text only when it has one, so the text
@@ -23882,11 +23930,16 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings.text) || '';
         var m = _SD_CODE_BIND_RE.exec(typed);
         if (!m) {
+            _sdCodeHoldBinding(node, 'text', typed);
             if (cur) _sdNodeSetBinding(node, 'text', '');
             return typed;
         }
-        if (m[1] !== cur) _sdNodeSetBinding(node, 'text', m[1]);
-        var kept = typed.replace(m[0], _sdCodeSlotRun(node.props.text));
+        var before = node.props.text;
+        if (m[1] !== cur) {
+            var held = _sdCodeBindHeld(node, 'text', m[1]);
+            if (held) before = held.has ? held.value : '';
+        }
+        var kept = typed.replace(m[0], _sdCodeSlotRun(before));
         // Words typed beside the token are kept on the node but never
         // shown: the page prints the bound value alone unless the markup
         // wraps a single run of words (pg_binding_text_slot()). Said once,
@@ -23906,9 +23959,15 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings[prop]) || '';
         var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
         if (m) {
-            if (m[1] !== cur) _sdNodeSetBinding(node, prop, m[1]);
+            if (m[1] !== cur) {
+                var held = _sdCodeBindHeld(node, prop, m[1]);
+                // The design-time value comes back from under the "{{".
+                if (held && held.has) node.props[prop] = held.value;
+                else if (held) delete node.props[prop];
+            }
             return true;
         }
+        _sdCodeHoldBinding(node, prop, value);
         if (cur) _sdNodeSetBinding(node, prop, '');
         return false;
     }
