@@ -9,6 +9,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults, group card behavior (browse/select), group scope rules, subtree helper and group price range rules.
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
+- custom-form-email-and-confirmation-fallbacks.md: Custom form e-mail body and confirmation fallbacks at submit time, and what the legacy page screen refuses to save (empty plain text body, HTML or Next Page without a page).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options belong to the element (no _choices array), page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA and migration rules.
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).

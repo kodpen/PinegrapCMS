@@ -1343,8 +1343,9 @@ if ($liveform->check_form_errors() == false) {
                 // if the format of the e-mail should be plain text, then prepare that
                 if ($submitter_email_format == 'plain_text') {
 
-                    // check the body for variable data and replace any variables with content from the submitted form
-                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $submitter_email_body, $prepare_for_html = FALSE);
+                    // Check the body for variable data and replace any variables with content from the submitted form.
+                    // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body), $prepare_for_html = FALSE);
 
                     // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                     // with the key code that was created, or a blank value if no key code was created.
@@ -1440,8 +1441,9 @@ if ($liveform->check_form_errors() == false) {
 
         // if the format of the e-mail should be plain text, then prepare that
         if ($administrator_email_format == 'plain_text') {
-            // check the body for variable data and replace any variables with content from the submitted form
-            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $administrator_email_body, $prepare_for_html = FALSE);
+            // Check the body for variable data and replace any variables with content from the submitted form.
+            // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $administrator_email_body), $prepare_for_html = FALSE);
 
             // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
             // with the key code that was created, or a blank value if no key code was created.
@@ -1667,8 +1669,27 @@ if ($liveform->check_form_errors() == false) {
         }
     }
 
-    // If the confirmation type is message, then forward visitor to send to with confirmation parameter in query string, so that message can be outputted.
-    if ($confirmation_type == 'message') {
+    // If the confirmation type is page, the visitor is logged in,
+    // an alternative confirmation page is enabled,
+    // and the user is in the alternative page contact group,
+    // then set confirmation page to alternative page.
+    if (
+        ($confirmation_type == 'page')
+        && (USER_LOGGED_IN == true)
+        && ($confirmation_alternative_page == 1)
+        && ($confirmation_alternative_page_contact_group_id != 0)
+        && ($confirmation_alternative_page_id != 0)
+        && (db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '$confirmation_alternative_page_contact_group_id'") > 0)
+        && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '$confirmation_alternative_page_id'") > 0)
+        && (db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE (contact_id = '" . USER_CONTACT_ID . "') AND (contact_group_id = '$confirmation_alternative_page_contact_group_id')") > 0)
+    ) {
+        $confirmation_page_id = $confirmation_alternative_page_id;
+    }
+
+    // If the confirmation type is message, or the next page was never chosen
+    // or no longer exists, then forward visitor to send to with confirmation
+    // parameter in query string, so that message can be outputted.
+    if (pg_cf_confirmation_shows_message($confirmation_type, $confirmation_page_id)) {
         $url = build_url(array(
             'url' => $send_to,
             'scheme' => URL_SCHEME,
@@ -1679,22 +1700,6 @@ if ($liveform->check_form_errors() == false) {
 
     // Otherwise the confirmation type is page, so forward visitor to page.
     } else {
-        // If the visitor is logged in,
-        // and an alternative confirmation page is enabled,
-        // and the user is in the alternative page contact group,
-        // then set confirmation page to alternative page.
-        if (
-            (USER_LOGGED_IN == true)
-            && ($confirmation_alternative_page == 1)
-            && ($confirmation_alternative_page_contact_group_id != 0)
-            && ($confirmation_alternative_page_id != 0)
-            && (db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '$confirmation_alternative_page_contact_group_id'") > 0)
-            && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '$confirmation_alternative_page_id'") > 0)
-            && (db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE (contact_id = '" . USER_CONTACT_ID . "') AND (contact_group_id = '$confirmation_alternative_page_contact_group_id')") > 0)
-        ) {
-            $confirmation_page_id = $confirmation_alternative_page_id;
-        }
-
         // get the confirmation page's page type to see if we need to pass a reference code to it
         $query = "SELECT page_type FROM page WHERE page_id = '" . escape($confirmation_page_id) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

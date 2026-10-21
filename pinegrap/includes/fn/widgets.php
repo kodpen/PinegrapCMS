@@ -6302,7 +6302,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     $cf_folder   = 0;
     if ($form_page_id > 0) {
         $cf_page_row = db_item(
-            "SELECT form_name, confirmation_type, confirmation_message
+            "SELECT form_name, confirmation_type, confirmation_message, confirmation_page_id
              FROM custom_form_pages WHERE page_id = '" . e($form_page_id) . "' LIMIT 1"
         );
         if (!is_array($cf_page_row)) $cf_page_row = array();
@@ -6318,13 +6318,13 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // with `<page_id>_confirmation=true`, and the form must NOT be drawn again
     // — a visitor who sees the empty form return assumes nothing happened and
     // submits a second time. Same branch, same query parameter and same
-    // wrapper class as the legacy screen, so existing CSS still applies.
+    // wrapper class as the legacy screen, so existing CSS still applies; a
+    // next page that was never chosen or no longer exists shows it too.
     if ($form_page_id > 0
         && isset($_GET[$form_page_id . '_confirmation'])
         && $_GET[$form_page_id . '_confirmation'] === 'true'
-        && (!isset($cf_page_row['confirmation_type']) || $cf_page_row['confirmation_type'] === 'message')) {
-        $cf_done = isset($cf_page_row['confirmation_message']) ? (string)$cf_page_row['confirmation_message'] : '';
-        if (trim(strip_tags($cf_done)) === '') $cf_done = lang('Thank you. Your message has been received.');
+        && pg_cf_confirmation_shows_message($cf_page_row['confirmation_type'] ?? '', $cf_page_row['confirmation_page_id'] ?? 0)) {
+        $cf_done = pg_cf_confirmation_message_or_default($cf_page_row['confirmation_message'] ?? '');
         return '<div class="confirmation_message alert alert-success">' . $cf_done . '</div>';
     }
 

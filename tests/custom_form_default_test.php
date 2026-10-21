@@ -88,3 +88,98 @@ function test_custom_form_default_text_controls()
 	pg_assert_same('Istanbul', $fields['city']['default_value']);
 	pg_assert_same('Hello', $fields['note']['default_value']);
 }
+
+// A body the operator wrote is sent as written.
+function test_custom_form_default_email_body_kept()
+{
+	$fields = array(array('name' => 'email', 'label' => 'E-mail'));
+	pg_assert_same("Hi ^^email^^", pg_cf_email_body_fallback("Hi ^^email^^", $fields));
+	pg_assert_same('Hi', pg_cf_email_body_or_default(0, 'Hi'), 'no field read for a written body');
+}
+
+// An empty body lists the form's fields; a label left empty or ending in a
+// colon still reads as one label.
+function test_custom_form_default_email_body_from_fields()
+{
+	$fields = array(
+		array('name' => 'first_name', 'label' => 'First Name:'),
+		array('name' => 'email', 'label' => ''),
+		array('name' => '', 'label' => 'Intro'),
+	);
+	pg_assert_same("First Name: ^^first_name^^\nemail: ^^email^^", pg_cf_email_body_fallback(" \n ", $fields));
+}
+
+// A form without a named field still says which submission the e-mail is about.
+function test_custom_form_default_email_body_without_fields()
+{
+	$body = pg_cf_email_body_fallback('', array());
+	pg_assert_contains('^^reference_code^^', $body);
+	pg_assert_contains('^^submitted_date_and_time^^', $body);
+	pg_assert_same($body, pg_cf_email_body_or_default(0, ''), 'no page, no fields');
+}
+
+// The message is shown unless a next page is chosen.
+function test_custom_form_default_confirmation_shows_message()
+{
+	pg_assert_true(pg_cf_confirmation_shows_message('message', 5), 'message type');
+	pg_assert_true(pg_cf_confirmation_shows_message('', 5), 'no type');
+	pg_assert_true(pg_cf_confirmation_shows_message('page', 0), 'next page never chosen');
+	pg_assert_true(pg_cf_confirmation_shows_message('page', ''), 'next page empty');
+}
+
+// An empty confirmation message falls back to the thank-you text.
+function test_custom_form_default_confirmation_message()
+{
+	pg_assert_same('<p>Thanks!</p>', pg_cf_confirmation_message_or_default('<p>Thanks!</p>'));
+	pg_assert_same('<img src="x.png">', pg_cf_confirmation_message_or_default('<img src="x.png">'), 'an image is content');
+	pg_assert_same(lang('Thank you. Your message has been received.'), pg_cf_confirmation_message_or_default('<p>&nbsp;</p>'));
+	pg_assert_same(lang('Thank you. Your message has been received.'), pg_cf_confirmation_message_or_default(''));
+}
+
+function _test_cf_default_settings($overrides = array())
+{
+	return array_merge(array(
+		'submitter_email' => 0, 'submitter_email_format' => 'plain_text', 'submitter_email_body' => '', 'submitter_email_page_id' => '',
+		'administrator_email' => 0, 'administrator_email_format' => 'plain_text', 'administrator_email_body' => '', 'administrator_email_page_id' => '',
+		'confirmation_type' => 'message', 'confirmation_page_id' => '',
+	), $overrides);
+}
+
+function _test_cf_default_page_exists($page_id)
+{
+	return in_array((int) $page_id, array(7, 9), true);
+}
+
+// E-mails that are off and a message confirmation need nothing more.
+function test_custom_form_default_settings_clean()
+{
+	pg_assert_same(array(), pg_cf_legacy_settings_errors(_test_cf_default_settings(), '_test_cf_default_page_exists'));
+	pg_assert_same(array(), pg_cf_legacy_settings_errors(_test_cf_default_settings(array(
+		'submitter_email' => '1', 'submitter_email_body' => 'Thanks ^^name^^',
+		'administrator_email' => '1', 'administrator_email_format' => 'html', 'administrator_email_page_id' => '7',
+		'confirmation_type' => 'page', 'confirmation_page_id' => '9',
+	)), '_test_cf_default_page_exists'), 'complete settings');
+}
+
+// An e-mail that is on needs a body (plain text) or an existing page (HTML).
+function test_custom_form_default_settings_email_errors()
+{
+	$errors = pg_cf_legacy_settings_errors(_test_cf_default_settings(array(
+		'submitter_email' => '1', 'submitter_email_body' => "  \n",
+		'administrator_email' => '1', 'administrator_email_format' => 'html', 'administrator_email_page_id' => '8',
+	)), '_test_cf_default_page_exists');
+	pg_assert_same(array('custom_form_submitter_email_body', 'custom_form_administrator_email_page_id'), array_keys($errors));
+	pg_assert_contains(lang('E-mail Submitter'), $errors['custom_form_submitter_email_body']);
+	pg_assert_contains(lang('E-mail Administrator'), $errors['custom_form_administrator_email_page_id']);
+}
+
+// "Next Page" without a page, or with a page that no longer exists, is refused.
+function test_custom_form_default_settings_confirmation_page()
+{
+	foreach (array('', '0', '8') as $page_id) {
+		$errors = pg_cf_legacy_settings_errors(_test_cf_default_settings(array(
+			'confirmation_type' => 'page', 'confirmation_page_id' => $page_id,
+		)), '_test_cf_default_page_exists');
+		pg_assert_same(array('custom_form_confirmation_page_id'), array_keys($errors), 'page ' . $page_id);
+	}
+}

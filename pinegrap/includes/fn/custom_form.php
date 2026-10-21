@@ -601,6 +601,123 @@ function pg_cf_default_email_body($fields)
 }
 
 /**
+ * The plain text body a submission e-mail goes out with.
+ *
+ * The mailer refuses an empty message, so an empty body sat in the mail
+ * queue until its retries ran out and nobody got the e-mail. A body left
+ * empty is replaced by the form's fields, the way the visual editor writes
+ * it; a form without a named field still names the submission. Labels come
+ * from the legacy field screen too, where they may be empty or end in a
+ * colon. $fields: rows with `name` and `label`.
+ */
+function pg_cf_email_body_fallback($body, $fields)
+{
+    if (trim((string)$body) !== '') return (string)$body;
+
+    $rows = array();
+    foreach ((array)$fields as $f) {
+        $name = isset($f['name']) ? (string)$f['name'] : '';
+        if ($name === '') continue;
+        $label = rtrim(trim(strip_tags(isset($f['label']) ? (string)$f['label'] : '')), ': ');
+        $rows[] = array('name' => $name, 'label' => ($label !== '') ? $label : $name);
+    }
+
+    $default = pg_cf_default_email_body($rows);
+    if ($default !== '') return $default;
+
+    return lang('Reference Code') . ': ^^reference_code^^' . "\n"
+        . lang('Date Submitted') . ': ^^submitted_date_and_time^^';
+}
+
+/**
+ * pg_cf_email_body_fallback() for a form page; the fields are read only when
+ * the body is empty.
+ */
+function pg_cf_email_body_or_default($page_id, $body)
+{
+    if (trim((string)$body) !== '') return (string)$body;
+
+    $page_id = (int)$page_id;
+    $fields  = array();
+    if ($page_id > 0) {
+        $fields = db_items(
+            "SELECT name, label FROM form_fields
+             WHERE page_id = '$page_id' AND form_type = 'custom'
+                 AND name != '' AND type != 'information'
+             ORDER BY sort_order ASC, id ASC");
+    }
+    return pg_cf_email_body_fallback($body, is_array($fields) ? $fields : array());
+}
+
+/**
+ * Whether a submission ends on the form's confirmation message rather than
+ * on its next page.
+ *
+ * A next page that was never chosen, or has been deleted since, used to send
+ * the visitor to the home page without a word; the message is shown instead.
+ * The page is looked up only when a next page is chosen.
+ */
+function pg_cf_confirmation_shows_message($type, $page_id)
+{
+    if ((string)$type !== 'page') return true;
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return true;
+    return !db_value("SELECT COUNT(*) FROM page WHERE page_id = '$page_id'");
+}
+
+/**
+ * The confirmation message as the visitor sees it: an empty one would leave
+ * the page blank where the form was, so it says thank you instead.
+ */
+function pg_cf_confirmation_message_or_default($message)
+{
+    $message = (string)$message;
+    $text = trim(str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags($message, '<img><iframe><video>'), ENT_QUOTES, 'UTF-8')));
+    return ($text !== '') ? $message : lang('Thank you. Your message has been received.');
+}
+
+/**
+ * What the legacy page screen refuses to save for a custom form: an e-mail
+ * that is switched on with nothing to send (plain text without a body, HTML
+ * without a page) and a "Next Page" confirmation without a page.
+ *
+ * $settings: the 'custom form' properties of
+ * pg_page_form_type_properties_from_post(). $page_exists: callable that
+ * answers whether a page id names an existing page. Returns the screen's
+ * field id => message, in the order of the screen.
+ */
+function pg_cf_legacy_settings_errors($settings, $page_exists)
+{
+    $errors = array();
+    $value = function ($key) use ($settings) {
+        return isset($settings[$key]) ? (string)$settings[$key] : '';
+    };
+
+    foreach (array('submitter' => lang('E-mail Submitter'), 'administrator' => lang('E-mail Administrator')) as $who => $label) {
+        if ($value($who . '_email') !== '1') continue;
+
+        // custom_form.php sends plain text only for 'plain_text'; anything else is the page.
+        if ($value($who . '_email_format') === 'plain_text') {
+            if (trim($value($who . '_email_body')) === '') {
+                $errors['custom_form_' . $who . '_email_body'] = lang(array(
+                    'string' => '{var:1} is on with the Plain Text format, but its Body is empty. Write the body of the e-mail, or choose HTML and select a page.',
+                    'vars' => array($label)));
+            }
+        } elseif (!call_user_func($page_exists, (int)$value($who . '_email_page_id'))) {
+            $errors['custom_form_' . $who . '_email_page_id'] = lang(array(
+                'string' => '{var:1} is on with the HTML format, but no page is selected. Select the page to send, or choose Plain Text and write a body.',
+                'vars' => array($label)));
+        }
+    }
+
+    if ($value('confirmation_type') !== 'message' && !call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
+        $errors['custom_form_confirmation_page_id'] = lang('The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.');
+    }
+
+    return $errors;
+}
+
+/**
  * Settings the editor owns for a page's own form.
  *
  * Only keys the widget actually carries are written, and the e-mail bodies are
