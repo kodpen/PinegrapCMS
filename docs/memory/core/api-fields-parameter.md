@@ -11,7 +11,7 @@ description: External API ?fields= on reads: which answers are trimmed row by ro
 - Anything else is one record and is trimmed at its top level.
 
 ## What went wrong before?
-- Only `page` marked a listing. `GET /webhooks` answers `array('data' => …, 'events' => …)` through `api_ok()` (no paging, declared `array('data' => 'Webhook[]', 'events' => 'string[]')`), so it was trimmed as a record: `data` and `events` dropped, no `id` at the top, answer `[]`. A client syncing its subscriptions with `?fields=url` read "no subscriptions" (issue #920).
+- Only `page` marked a listing. `GET /webhooks` answers `array('data' => …, 'events' => …)` through `api_ok()` (no paging, declared `array('data' => 'Webhook[]', 'events' => 'string[]')`), so it was trimmed as a record: `data` and `events` dropped, no `id` at the top, answer `[]`. A client syncing its subscriptions with `?fields=url` read "no subscriptions" (issue #920, fixed by PR #1016).
 - Now `GET /webhooks?fields=url` answers `{"data":[{"id":…,"url":…}],"events":[…]}`. Tested in `tests/api_response_fields_test.php` (the route rule; `response.php` loads only behind `PG_API_ENTRY`, checked on a running instance).
 
 ## What should a new endpoint do?
