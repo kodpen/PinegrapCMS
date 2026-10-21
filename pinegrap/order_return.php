@@ -82,6 +82,13 @@ switch ($action) {
             break;
         }
 
+        // The same form sent twice: the first one has mailed and rung already,
+        // so this answer only says it was received.
+        if (!empty($created['repeat'])) {
+            $messages->add_notice(h(lang('Your return request was received. We will let you know what happens next.')));
+            break;
+        }
+
         // The request is kept whatever happens to the mail and the bell.
         pg_return_send_request_mail($created['id']);
         pg_return_notify_staff($created['id'], 'requested');

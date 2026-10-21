@@ -2118,13 +2118,21 @@ function pg_recycle_purge_if_due($user)
 
     $purged = 0;
 
-    foreach ($entries as $entry) {
-        $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $user);
+    // The purge is the software's own work, run on whoever's visit came first;
+    // the audit trail records its deletes as a job's, not as that person's.
+    $was_job = pg_audit_as_job(true);
 
-        if ($result['status'] == 'success') {
-            db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
-            $purged++;
+    try {
+        foreach ($entries as $entry) {
+            $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $user);
+
+            if ($result['status'] == 'success') {
+                db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
+                $purged++;
+            }
         }
+    } finally {
+        pg_audit_as_job($was_job);
     }
 
     if ($purged > 0) {

@@ -152,8 +152,10 @@ function db_connect()
             pg_db_guard_unavailable();
         }
 
+        // A 500, so an uptime monitor that reads the status code (health.php
+        // included) sees the outage; the page still tells the operator why.
         $err = $connect_error;
-        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''));
+        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''), 500);
     }
 
     // Pin the session sql_mode instead of inheriting the server default, which differs

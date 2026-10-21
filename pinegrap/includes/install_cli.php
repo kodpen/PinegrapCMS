@@ -150,6 +150,15 @@ function install_cli_read($env, $defaults, $starter_sites) {
 
 	$email = $value('PG_INSTALL_ADMIN_EMAIL');
 
+	// The installation screen leaves the format to the browser's field; here there is no
+	// browser, and the address becomes the site's own e-mail address and the fallback
+	// recipient of the operations alerts. A missing one is named above.
+	if (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+
+		$problems[] = 'PG_INSTALL_ADMIN_EMAIL must be an e-mail address, such as admin@example.com.';
+
+	}
+
 	$password = $value('PG_INSTALL_ADMIN_PASSWORD');
 
 	return array(

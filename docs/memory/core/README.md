@@ -5,7 +5,9 @@
 Code rules, file layout, translation, roles and access, security, api.php, request parameters.
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule.
+- api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
+- api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
@@ -13,6 +15,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-response-json-encoding.md: How the external API writes its answer as JSON (api_json_encode()): broken UTF-8 bytes become U+FFFD, an answer JSON cannot hold (INF, NAN) becomes a 500 server_error, never an empty body
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
+- audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
@@ -20,7 +23,9 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
 - consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them yet
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
+- content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
+- content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
 - designer-i18n-audit-tool.md: docs/_tools/designer_i18n.php check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
@@ -39,6 +44,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
+- oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
@@ -46,6 +52,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, escaping, PHP/JS default twins.
 - security-helpers-and-secret-storage.md: CSRF/escape helpers (get_token_field, validate_token_field, h) and how secret config fields are stored encrypted as one blob, never exposed as constants.
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
+- site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - translation-rules.md: Rule that every user-visible string goes through lang() with a matching tr.json key (English source key, Turkish value), and the same rule for designer JS.
