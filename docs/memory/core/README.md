@@ -15,6 +15,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-response-json-encoding.md: How the external API writes its answer as JSON (api_json_encode()): broken UTF-8 bytes become U+FFFD, an answer JSON cannot hold (INF, NAN) becomes a 500 server_error, never an empty body
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
+- audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.

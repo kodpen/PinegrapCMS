@@ -80,13 +80,45 @@ function pg_audit_request_id()
 }
 
 /**
+ * Record the lines that follow as a scheduled job's, not as the work of
+ * whoever's request is running. Housekeeping that piggybacks on a visit (the
+ * Recycle Bin's daily purge runs on the first file manager or catalog visit of
+ * the day) is the software's own doing; without the switch the trail would
+ * name the operator who happened to open the screen as the one who deleted.
+ *
+ *   $was = pg_audit_as_job(true);
+ *   // … work …
+ *   pg_audit_as_job($was);
+ *
+ * @param bool|null $on  true or false to switch, null to ask
+ * @return bool  the state before this call (the current one when asking)
+ */
+function pg_audit_as_job($on = null)
+{
+    static $as_job = false;
+
+    $was = $as_job;
+
+    if ($on !== null) {
+        $as_job = (bool) $on;
+    }
+
+    return $was;
+}
+
+/**
  * Who is acting: an operator in the panel, an application through the API
- * (its owner and its name), or a scheduled job.
+ * (its owner and its name), or a scheduled job (also any work done while
+ * pg_audit_as_job() is on).
  *
  * @return array  source (panel | api | job), user_id, username
  */
 function pg_audit_actor()
 {
+    if (pg_audit_as_job()) {
+        return array('source' => 'job', 'user_id' => 0, 'username' => '');
+    }
+
     if (defined('PG_API_ENTRY') && function_exists('api_current_app')) {
         $app = api_current_app();
 
