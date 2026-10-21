@@ -394,6 +394,38 @@ function api_products_get($params) {
 
 }
 
+// The name a product is written with. It is the merchant SKU, so it has to be
+// there and has to be free; trimmed, as the product screen trims it. Names are
+// compared the way the catalogue compares them, which is the collation of the
+// column - a case difference is not a different SKU. $except_id is the product
+// being renamed, whose own row does not count as taken.
+function api_products_name_or_fail($raw, $except_id = 0) {
+
+	$name = trim((string)$raw);
+
+	if ($name === '') {
+
+		api_fail_validation(lang(array('string' => '{var:1} is required', 'vars' => array('name'))), 'name');
+
+	}
+
+	$taken = api_value("SELECT id FROM products
+		WHERE name = '" . escape($name) . "'" . (($except_id > 0) ? " AND id != '" . (int)$except_id . "'" : '') . "
+		LIMIT 1");
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang(array(
+			'string' => 'A product with the name {var:1} already exists (id {var:2}).',
+			'vars'   => array($name, (int)$taken)
+		)), 'name');
+
+	}
+
+	return $name;
+
+}
+
 // Add a product.
 //
 // The row and its cross-references are written by pg_pb_create_product()
@@ -421,26 +453,7 @@ function api_products_create($params) {
 
 	require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/product_builder.php');
 
-	$name = trim((string)$params['name']);
-
-	if ($name === '') {
-
-		api_fail_validation(lang(array('string' => '{var:1} is required', 'vars' => array('name'))), 'name');
-
-	}
-
-	// Names are compared the way the catalogue compares them, which is the
-	// collation of the column - a case difference is not a different SKU.
-	$taken = api_value("SELECT id FROM products WHERE name = '" . escape($name) . "' LIMIT 1");
-
-	if ($taken) {
-
-		api_fail(409, 'name_taken', lang(array(
-			'string' => 'A product with the name {var:1} already exists (id {var:2}).',
-			'vars'   => array($name, (int)$taken)
-		)), 'name');
-
-	}
+	$name = api_products_name_or_fail($params['name']);
 
 	$app = api_current_app();
 
@@ -973,6 +986,22 @@ function api_products_update($params) {
 		'width'  => 'width',
 		'height' => 'height'
 	);
+
+	// The name is the SKU and is held to the rule POST /products applies: two
+	// products of one name leave the import and every lookup by name not
+	// knowing which one is meant, and an empty one is a product nobody can
+	// find. The product's own name sent again is not checked, so a catalogue
+	// that already holds a duplicate (the product screen does not refuse one
+	// on edit) still takes an update that resends the whole record.
+	if (array_key_exists('name', $params)) {
+
+		$name = trim((string)$params['name']);
+
+		$params['name'] = (($name !== '') && ($name === (string)$existing['name']))
+			? $name
+			: api_products_name_or_fail($name, $id);
+
+	}
 
 	$set = array();
 
