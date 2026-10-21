@@ -187,8 +187,8 @@ function test_code_editor_lint_skips_an_empty_document()
 
 	pg_assert_true($linter !== '', 'the linter is found');
 
-	$empty = strpos($linter, 'if (view.state.doc.length === 0) return out;');
-	$tree = strpos($linter, 'cm.language.syntaxTree(view.state)');
+	$empty = strpos($linter, 'if (len === 0) return [];');
+	$tree = strpos($linter, 'cm.language.ensureSyntaxTree(state, len, 50)');
 
 	pg_assert_true(($empty !== false) && ($tree !== false) && ($empty < $tree), 'an empty document is not parsed for errors');
 
@@ -225,6 +225,58 @@ function test_code_editor_ckeditor_source_dialog()
 	pg_assert_contains('keepKeys(instance.container || instance.host);', $dialog, 'its keys stop at the editor');
 	pg_assert_contains("if ((event.key === 'Enter') || (event.key === 'Tab') || event.defaultPrevented) {", $plugin, 'Enter, Tab and the keys the editor used');
 	pg_assert_contains('event.stopPropagation();', $plugin, 'do not reach the dialog');
+}
+
+// The linter reads the syntax tree only once it covers the whole document.
+// The engine parses no further than 100,000 characters past the visible
+// part on its own, and a tree cut there carries an error node at the cut: a
+// valid line of a larger file was marked and nothing after it was checked.
+// The rest is parsed in 50 ms slices with a pause between them, a result for
+// a text that changed meanwhile is dropped, and at most 200 errors are
+// marked.
+function test_code_editor_lint_reads_the_whole_document()
+{
+	$linter = code_editor_test_linter_source();
+
+	pg_assert_false(strpos($linter, 'cm.language.syntaxTree(') !== false, 'the tree as far as the background parse got is not read');
+	pg_assert_contains('var tree = cm.language.ensureSyntaxTree(state, len, 50);', $linter, 'parsed to the end of the document, 50 ms at a time');
+	pg_assert_contains('if (!tree) { setTimeout(slice, 0); return; }', $linter, 'the next slice after a pause');
+	pg_assert_contains('if (view.state.doc !== state.doc) { resolve([]); return; }', $linter, 'a text changed meanwhile is not parsed further');
+	pg_assert_contains('if (out.length >= 200) return false;', $linter, 'at most 200 errors');
+
+	$cap = strpos($linter, 'if (out.length >= 200) return false;');
+	$push = strpos($linter, 'out.push(');
+
+	pg_assert_true(($cap !== false) && ($push !== false) && ($cap < $push), 'the cap is checked before each node, not only after a push');
+}
+
+// A lint run that is still parsing when the linter is replaced (setLanguage,
+// setLint) or the editor is closed stops at its next slice without a result.
+// The lint extension applies any result whose document is unchanged and adds
+// its state back when the linter was switched off, so a late result would
+// leave marks that no linter clears. Every linter the editor builds gets a
+// new generation, and only the current one may deliver.
+function test_code_editor_lint_stops_when_the_linter_is_replaced()
+{
+	$linter = code_editor_test_linter_source();
+
+	pg_assert_contains('function _syntaxLinter(cm, lang, labels, alive)', $linter, 'the linter is told how to ask whether it is still current');
+
+	$stop = strpos($linter, 'if (alive && !alive()) return;');
+	$parse = strpos($linter, 'cm.language.ensureSyntaxTree(state, len, 50)');
+
+	pg_assert_true(($stop !== false) && ($parse !== false) && ($stop < $parse), 'a replaced linter stops before the next slice is parsed');
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function pgCeCreate(');
+	$create = ($from !== false) ? substr($facade, $from, strpos($facade, "\n    function open(", $from) - $from) : '';
+
+	pg_assert_contains('var gen = ++lintGen;', $create, 'each linter built gets a new generation');
+	pg_assert_contains('return !destroyed && gen === lintGen;', $create, 'only the current linter of an open editor delivers');
+	pg_assert_true(substr_count($create, '_syntaxLinter(') === 1, 'every linter is built through the one generation counter');
+	pg_assert_true(substr_count($create, 'lintComp.of(lintExtension())') === 1, 'the first linter');
+	pg_assert_true(substr_count($create, 'lintComp.reconfigure(lintExtension())') === 2, 'setLanguage and setLint');
+	pg_assert_true(preg_match('/destroyed = true;\s+lintGen\+\+;/', $create) === 1, 'closing the editor stops a running lint');
 }
 
 // An Escape the editor used (its completion list, its search panel, a full
