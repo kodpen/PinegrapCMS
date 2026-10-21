@@ -17756,6 +17756,306 @@ const StyleDesigner = (function () {
                     // Story layouts of a news or magazine site: lead grid, latest
                     // lists, category columns, live coverage, article header, author box.
 
+                    // A <time> whose text the operator edits next to its machine-readable datetime
+                    var _nsTime = function (datetime, text, cls, name) {
+                        return createNode('semantic', { tag: 'time', cssClass: cls || '', customName: name || _sdT('Publish Time'), text: text,
+                            _attrs: [{ name: 'datetime', value: datetime }] });
+                    };
+                    // A story heading whose link covers its whole story card (the card is position-relative)
+                    var _nsHeadline = function (tag, cls, text) {
+                        return _bkTag(tag, cls, _sdT('Headline'), [
+                            _bkLink(text, '#', 'text-reset text-decoration-none stretched-link', _sdT('Headline Link'))
+                        ]);
+                    };
+                    // An icon-only link (share or social), named by its aria-label
+                    var _nsIconLink = function (icon, label, cls, href) {
+                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
+                    };
+
+                    // News: Lead Story Grid — a lead photo story with its text on a dark scrim, beside a 2×2 grid of small stories
+                    if (ctype === 'news-lead-grid') {
+                        var _nsSmall = function (n, seed, alt, cat, title, datetime, time) {
+                            return _bkCol(_sdT('Story {var}', n), [
+                                _bkTag('article', 'position-relative', _sdT('News Story Card'), [
+                                    _bkImg(seed, 600, 338, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _bkH('span', cat, 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _nsTime(datetime, time, 'small text-body-secondary')
+                                ])
+                            ], '', '', '6');
+                        };
+                        return _bkSection('py-5', _sdT('News (Lead Story Grid)'), [
+                            _bkRow(_sdT('Stories Row'), [
+                                _bkCol(_sdT('Lead Story'), [
+                                    _bkTag('article', 'card border-0 rounded-4 shadow-sm overflow-hidden', _sdT('Lead Card'), [
+                                        _bkDiv('ratio pg-ratio-lead', _sdT('Story Picture'), [
+                                            _bkImg('ns-lead-lab', 1200, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'object-fit-cover')
+                                        ]),
+                                        _bkDiv('card-img-overlay d-flex flex-column justify-content-end p-4 p-lg-5 text-body pg-shade-bottom', _sdT('Story Overlay'), [
+                                            _bkH('span', _sdT('Technology'), 'badge text-bg-primary align-self-start mb-3'),
+                                            _nsHeadline('h2', 'h3 fw-bold mb-2', _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'd-none d-sm-block mb-3'),
+                                            _bkDiv('d-flex flex-wrap align-items-center gap-2 small text-body-secondary', _sdT('Byline'), [
+                                                _bkH('span', _sdT('By {var}', _sdT('Jane Cooper')), 'fw-semibold'),
+                                                _nsTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'))
+                                            ])
+                                        ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                    ])
+                                ], '7'),
+                                _bkCol(_sdT('More Stories'), [
+                                    _bkRow(_sdT('Small Stories Row'), [
+                                        _nsSmall(1, 'ns-small-store',  _sdT('A shop front with a green awning on a London street'), _sdT('Economy'), _sdT('Northwind opens its first London store with a rooftop café'), '2026-11-14T10:45', '10:45'),
+                                        _nsSmall(2, 'ns-small-run',    _sdT('Runners crossing a city bridge in the morning sun'),   _sdT('Sport'),   _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners'),      '2026-11-14T08:20', '08:20'),
+                                        _nsSmall(3, 'ns-small-library', _sdT('Reading tables by the tall windows of a library'),     _sdT('Culture'), _sdT('Tokyo\'s new riverside library stays open until midnight'),      '2026-11-13T19:10', '19:10'),
+                                        _nsSmall(4, 'ns-small-garden', _sdT('Volunteers carrying crates of pumpkins in a garden'),  _sdT('Local'),   _sdT('New York\'s community gardens share a record autumn harvest'),   '2026-11-13T16:30', '16:30')
+                                    ])
+                                ], '5')
+                            ])
+                        ]);
+                    }
+
+                    // News: Latest + Most Read — five latest stories with thumbnails, and a numbered most-read list beside them
+                    if (ctype === 'news-latest-mostread') {
+                        var _nsLatest = function (n, seed, cat, datetime, time, title, excerpt) {
+                            return _bkTag('article', 'd-flex gap-3 position-relative', _sdT('Story {var}', n), [
+                                _bkImg(seed, 200, 200, '', 'rounded-3 object-fit-cover flex-shrink-0 pg-thumb-100'),
+                                _bkDiv('flex-grow-1', _sdT('Story Copy'), [
+                                    _bkDiv('d-flex flex-wrap align-items-center gap-2 small mb-1', _sdT('Story Meta'), [
+                                        _bkH('span', cat, 'fw-semibold text-primary'),
+                                        _nsTime(datetime, time, 'text-body-secondary')
+                                    ]),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkP(excerpt, 'd-none d-md-block small text-body-secondary mb-0')
+                                ])
+                            ]);
+                        };
+                        var _nsRead = function (n, title, last) {
+                            return _bkTag('li', 'd-flex align-items-start gap-3 py-3 position-relative' + (last ? '' : ' border-bottom'), _sdT('Most Read Item'), [
+                                _bkH('span', String(n), 'display-6 fw-bold lh-1 text-primary flex-shrink-0'),
+                                _nsHeadline('h3', 'h6 fw-semibold mb-0', title)
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Latest + Most Read)'), [
+                            _bkRow(_sdT('News Row'), [
+                                _bkCol(_sdT('Latest Column'), [
+                                    _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-4 border-bottom', _sdT('Section Header'), [
+                                        _bkH('h2', _sdT('Latest news'), 'h4 fw-bold mb-0'),
+                                        _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                    ]),
+                                    _bkDiv('d-flex flex-column gap-4', _sdT('Story List'), [
+                                        _nsLatest(1, 'ns-latest-ferry',  _sdT('City'),       '2026-11-14T11:20', '11:20', _sdT('Electric ferries start sailing between Istanbul\'s two shores'), _sdT('The first four boats carry up to 300 passengers each and charge at the piers in ten minutes.')),
+                                        _nsLatest(2, 'ns-latest-studio', _sdT('Technology'), '2026-11-14T10:05', '10:05', _sdT('ByteWave opens a free coding studio for teenagers in Berlin'), _sdT('Weekend classes cover web pages, small games and robots; laptops are provided.')),
+                                        _nsLatest(3, 'ns-latest-market', _sdT('Economy'),    '2026-11-14T09:15', '09:15', _sdT('Winter market adds sixty stalls of local makers in London'), _sdT('Ceramics, knitwear and street food fill the square every weekend until the new year.')),
+                                        _nsLatest(4, 'ns-latest-pool',   _sdT('Sport'),      '2026-11-13T18:40', '18:40', _sdT('Tokyo swim club wins the youth relay cup for the third time'), _sdT('The team of four sixteen-year-olds finished almost two seconds ahead of the field.')),
+                                        _nsLatest(5, 'ns-latest-cinema', _sdT('Culture'),    '2026-11-13T15:00', '15:00', _sdT('Open-air cinema in New York moves indoors for the winter'), _sdT('Classic films now play in a restored warehouse, with blankets and hot cider at the door.'))
+                                    ])
+                                ], '8'),
+                                _bkCol(_sdT('Most Read Column'), [
+                                    _bkTag('aside', 'p-4 rounded-4 bg-body-tertiary', _sdT('Most Read Box'), [
+                                        _bkH('h2', _sdT('Most read'), 'h5 fw-bold mb-2'),
+                                        _bkTag('ol', 'list-unstyled mb-0', _sdT('Most Read List'), [
+                                            _nsRead(1, _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _nsRead(2, _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners')),
+                                            _nsRead(3, _sdT('Northwind opens its first London store with a rooftop café')),
+                                            _nsRead(4, _sdT('Tokyo\'s new riverside library stays open until midnight')),
+                                            _nsRead(5, _sdT('Electric ferries start sailing between Istanbul\'s two shores'), true)
+                                        ])
+                                    ])
+                                ], '4')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // News: Category Columns — Economy, Sport and Technology, each with a lead story and three headlines
+                    if (ctype === 'news-category-columns') {
+                        var _nsColumn = function (cat, seed, alt, title, datetime, time, links) {
+                            return _bkCol(_sdT('Category Column'), [
+                                _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Column Header'), [
+                                    _bkH('h2', cat, 'h5 fw-bold mb-0'),
+                                    _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                ]),
+                                _bkTag('article', 'position-relative mb-3', _sdT('Lead Story'), [
+                                    _bkImg(seed, 800, 450, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _nsTime(datetime, time, 'small text-body-secondary')
+                                ]),
+                                _bkTag('ul', 'list-unstyled mb-0', _sdT('Headline List'), links.map(function (t) {
+                                    return _bkTag('li', 'py-2 border-top', _sdT('Headline Item'), [
+                                        _bkLink(t, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link'))
+                                    ]);
+                                }))
+                            ], '4');
+                        };
+                        return _bkSection('py-5', _sdT('News (Category Columns)'), [
+                            _bkRow(_sdT('Columns Row'), [
+                                _nsColumn(_sdT('Economy'), 'ns-col-port', _sdT('Cranes and containers at a harbour at dusk'),
+                                    _sdT('PineWorks hires 200 people for its new Istanbul workshop'), '2026-11-14T10:30', '10:30',
+                                    [_sdT('Small shops report a strong start to the holiday season'), _sdT('Vertex opens its booking app to independent hotels'), _sdT('Weekend farmers\' markets double in Berlin')]),
+                                _nsColumn(_sdT('Sport'), 'ns-col-stadium', _sdT('A football pitch under floodlights in the evening'),
+                                    _sdT('London youth league adds a girls\' division of twelve teams'), '2026-11-14T09:00', '09:00',
+                                    [_sdT('New cycle lanes link three Tokyo parks'), _sdT('Local climbing gym hosts its first open championship'), _sdT('Swim school offers free lessons for beginners in December')]),
+                                _nsColumn(_sdT('Technology'), 'ns-col-chip', _sdT('A close-up of a circuit board with glowing lights'),
+                                    _sdT('OrbitSoft releases a free app that reads bus times aloud'), '2026-11-13T17:45', '17:45',
+                                    [_sdT('StartMate launches a mentoring week for first-time founders'), _sdT('Libraries in New York lend laptops for a month'), _sdT('TechBase turns an old factory into a start-up campus')])
+                            ])
+                        ]);
+                    }
+
+                    // News: Live Coverage — a live badge, the last update time and five timestamped updates on a line, newest first
+                    if (ctype === 'news-live-blog') {
+                        var _nsUpdate = function (n, datetime, time, kids) {
+                            return _bkTag('li', 'mb-4', _sdT('Update {var}', n), [
+                                _nsTime(datetime, time, 'd-block small fw-bold text-primary mb-1', _sdT('Update Time'))
+                            ].concat(kids));
+                        };
+                        return _bkSection('py-5', _sdT('News (Live Coverage)'), [
+                            _bkRow(_sdT('Live Row'), [
+                                _bkCol(_sdT('Live Column'), [
+                                    _bkDiv('mb-4', _sdT('Live Header'), [
+                                        _bkDiv('d-flex flex-wrap align-items-center gap-2 mb-3', _sdT('Live Status'), [
+                                            _bkDiv('badge d-inline-flex align-items-center gap-2 text-bg-danger', _sdT('Live Badge'), [
+                                                _bkDiv('spinner-grow spinner-grow-sm pg-live-pulse', _sdT('Live Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                                _bkH('span', _sdT('Live'))
+                                            ]),
+                                            _bkH('span', _sdT('Last updated'), 'small text-body-secondary'),
+                                            _nsTime('2026-11-14T21:40', '21:40', 'small fw-semibold', _sdT('Update Time'))
+                                        ]),
+                                        _bkH('h2', _sdT('Riverside Lights Festival opens in London'), 'fw-bold mb-2'),
+                                        _bkP(_sdT('Lanterns, street food and music along the river all weekend. Follow the opening night here.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkTag('ol', 'list-unstyled ps-4 mb-4 border-start border-2 border-primary-subtle', _sdT('Live Updates'), [
+                                        _nsUpdate(1, '2026-11-14T21:40', '21:40', [
+                                            _bkDiv('p-3 rounded-3 bg-primary-subtle text-primary-emphasis', _sdT('Key Moment Box'), [
+                                                _bkDiv('d-flex align-items-center gap-2 small fw-semibold mb-1', _sdT('Key Moment Label'), [
+                                                    _bkIcon('bi-pin-angle-fill'),
+                                                    _bkH('span', _sdT('Key moment'))
+                                                ]),
+                                                _bkH('h3', _sdT('The lantern parade reaches the old bridge'), 'h6 fw-bold mb-1'),
+                                                _bkP(_sdT('More than 2,000 lanterns cross the river while a brass band plays from the boats.'), 'mb-0')
+                                            ])
+                                        ]),
+                                        _nsUpdate(2, '2026-11-14T21:05', '21:05', [
+                                            _bkH('h3', _sdT('The food market stays open late'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Forty stalls serve street food from five continents until midnight.'), 'mb-2'),
+                                            _bkImg('ns-live-market', 1200, 675, _sdT('Food stalls lit with string lights by the river'), 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9')
+                                        ]),
+                                        _nsUpdate(3, '2026-11-14T20:30', '20:30', [
+                                            _bkH('h3', _sdT('Organisers thank the volunteers'), 'h6 fw-bold mb-2'),
+                                            _bkTag('figure', 'mb-0', _sdT('Quote Figure'), [
+                                                _bkTag('blockquote', 'blockquote fs-6 ps-3 mb-2 border-start border-3 border-primary', _sdT('Quote'), [
+                                                    _bkP(_sdT('We started with ten volunteers three years ago. Tonight more than three hundred are helping out.'), 'fst-italic mb-0')
+                                                ]),
+                                                _bkTag('figcaption', 'blockquote-footer ps-3 mb-0', _sdT('Quote Source'), [
+                                                    _bkH('span', _sdT('Emily Turner, festival director'))
+                                                ])
+                                            ])
+                                        ]),
+                                        _nsUpdate(4, '2026-11-14T19:50', '19:50', [
+                                            _bkH('h3', _sdT('Extra trains run all evening'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Riverside line trains run every five minutes until the last lanterns go out.'), 'mb-0')
+                                        ]),
+                                        _nsUpdate(5, '2026-11-14T19:00', '19:00', [
+                                            _bkH('h3', _sdT('The festival opens'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Children from local schools switch on the first lights at the riverside steps.'), 'mb-0')
+                                        ])
+                                    ]),
+                                    _bkLink(_sdT('See the full timeline'), '#', 'fw-semibold link-primary text-decoration-none', _sdT('Timeline Link'))
+                                ], '8', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Article Header — breadcrumb, category, headline, standfirst, byline with share links and the lead picture
+                    if (ctype === 'news-article-header') {
+                        var _nsCrumb = function (label, active) {
+                            if (active) {
+                                return _bkTag('li', 'breadcrumb-item active', _sdT('{var} Item', label), [ _bkH('span', label) ],
+                                    [{ name: 'aria-current', value: 'page' }]);
+                            }
+                            return _bkTag('li', 'breadcrumb-item', _sdT('{var} Item', label), [
+                                _bkLink(label, '#', 'link-primary text-decoration-none', _sdT('{var} Link', label))
+                            ]);
+                        };
+                        var _nsShare = function (icon, label) {
+                            return _nsIconLink(icon, label, 'btn btn-sm btn-outline-secondary rounded-circle');
+                        };
+                        return _bkSection('pt-5 pb-4', _sdT('News (Article Header)'), [
+                            _bkRow(_sdT('Article Row'), [
+                                _bkCol(_sdT('Article Column'), [
+                                    _bkTag('nav', 'mb-4', _sdT('Breadcrumbs Nav'), [
+                                        _bkTag('ol', 'breadcrumb small mb-0', _sdT('Breadcrumb List'), [
+                                            _nsCrumb(_sdT('Homepage'), false),
+                                            _nsCrumb(_sdT('Technology'), false),
+                                            _nsCrumb(_sdT('Robotics lab'), true)
+                                        ])
+                                    ], [{ name: 'aria-label', value: _sdT('Breadcrumb trail') }]),
+                                    _bkH('span', _sdT('Technology'), 'badge bg-primary-subtle text-primary-emphasis mb-3'),
+                                    _bkH('h1', _sdT('Helios and Quanta open a shared robotics lab in Istanbul'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 mb-4 border-top border-bottom', _sdT('Article Meta'), [
+                                        _bkDiv('d-flex align-items-center gap-3', _sdT('Byline'), [
+                                            createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/ns-author-jane/96/96', alt: '', cssClass: 'rounded-circle object-fit-cover flex-shrink-0', width: '48', height: '48' }),
+                                            _bkDiv('small', _sdT('Author Info'), [
+                                                _bkLink(_sdT('Jane Cooper'), '#', 'd-block fw-semibold link-primary text-decoration-none', _sdT('Author Link')),
+                                                _bkH('span', _sdT('Technology Editor'), 'd-block text-body-secondary'),
+                                                _bkDiv('d-flex flex-wrap gap-2 text-body-secondary', _sdT('Article Dates'), [
+                                                    _nsTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30')),
+                                                    _bkH('span', _sdT('{var} min read', '6'))
+                                                ])
+                                            ])
+                                        ]),
+                                        _bkDiv('d-flex align-items-center gap-2', _sdT('Share Links'), [
+                                            _bkH('span', _sdT('Share'), 'small text-body-secondary me-1'),
+                                            _nsShare('bi-facebook',  _sdT('Share on Facebook')),
+                                            _nsShare('bi-twitter-x', _sdT('Share on X')),
+                                            _nsShare('bi-linkedin',  _sdT('Share on LinkedIn')),
+                                            _nsShare('bi-envelope',  _sdT('Share by email'))
+                                        ])
+                                    ]),
+                                    _bkTag('figure', 'mb-0', _sdT('Article Figure'), [
+                                        _bkImg('ns-article-lab', 1600, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'img-fluid w-100 rounded-4 object-fit-cover pg-ratio-16x9'),
+                                        _bkTag('figcaption', 'small text-body-secondary mt-2', _sdT('Figure Caption'), [
+                                            _bkH('span', _sdT('A delivery robot on its first test run in the new lab.')),
+                                            _bkH('span', _sdT('Photo: {var}', _sdT('Michael Brooks')), 'ms-1 fst-italic')
+                                        ])
+                                    ])
+                                ], '10', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Author Box — the writer under a story: photo, name link, role, bio, social links and more stories
+                    if (ctype === 'news-author-box') {
+                        return _bkSection('py-5', _sdT('News (Author Box)'), [
+                            _bkRow(_sdT('Author Row'), [
+                                _bkCol(_sdT('Author Column'), [
+                                    _bkTag('aside', 'card border-0 rounded-4 bg-body-tertiary', _sdT('Author Card'), [
+                                        _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4 p-lg-5', _sdT('Author Body'), [
+                                            createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/ns-author-jane/224/224', alt: '', cssClass: 'rounded-circle object-fit-cover flex-shrink-0', width: '112', height: '112' }),
+                                            _bkDiv('flex-grow-1', _sdT('Author Info'), [
+                                                _bkH('span', _sdT('About the author'), 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                                _bkTag('h2', 'h4 fw-bold mb-1', _sdT('Author Name'), [
+                                                    _bkLink(_sdT('Jane Cooper'), '#', 'text-reset text-decoration-none', _sdT('Author Link'))
+                                                ]),
+                                                _bkP(_sdT('Technology Editor'), 'small text-body-secondary mb-3'),
+                                                _bkP(_sdT('Jane writes about start-ups, robots and the apps that make city life easier. Before ACME she spent ten years reporting from London and Tokyo.'), 'mb-4'),
+                                                _bkDiv('d-flex flex-wrap align-items-center justify-content-between gap-3', _sdT('Author Actions'), [
+                                                    _bkDiv('d-flex gap-3', _sdT('Social Links'), [
+                                                        _nsIconLink('bi-twitter-x', _sdT('{var} on X', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _nsIconLink('bi-linkedin',  _sdT('{var} on LinkedIn', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _nsIconLink('bi-envelope',  _sdT('Email {var}', _sdT('Jane Cooper')), 'link-primary fs-5', 'mailto:jane@example.com')
+                                                    ]),
+                                                    createNode('component', { componentType: 'btn', text: _sdT('More from {var}', _sdT('Jane Cooper')), variant: 'outline-primary', size: 'sm', href: '#', cssClass: '' })
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
                     // ── Creative blocks ──
                     // Eye-catching layouts for any site: bento grids, marquees,
                     // showcases, quotes, a polaroid gallery and a snap scroller.
@@ -56745,6 +57045,14 @@ const StyleDesigner = (function () {
         // News: bands and widgets
 
         // News: stories and articles
+        // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
+        // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
+        'pg-ratio-lead':   '.pg-ratio-lead { --bs-aspect-ratio: 100%; }\n' +
+                           '@media (min-width: 768px) { .pg-ratio-lead { --bs-aspect-ratio: 56.25%; } }\n' +
+                           '@media (min-width: 992px) { .pg-ratio-lead { --bs-aspect-ratio: 75%; } }',
+        // The pulsing dot of a live badge holds still under reduced motion
+        // (a resting .spinner-grow is transparent, so it is shown solid).
+        'pg-live-pulse':   '@media (prefers-reduced-motion: reduce) { .pg-live-pulse { animation: none; opacity: 1; } }',
 
         // Creative blocks
 
@@ -56782,6 +57090,11 @@ const StyleDesigner = (function () {
         'news-weather-forecast': ['pg-progress-8'],
 
         // News: stories and articles
+        'news-lead-grid':        ['pg-ratio-lead', 'pg-shade-bottom', 'pg-ratio-16x9'],
+        'news-latest-mostread':  ['pg-thumb-100'],
+        'news-category-columns': ['pg-ratio-16x9'],
+        'news-live-blog':        ['pg-ratio-16x9', 'pg-live-pulse'],
+        'news-article-header':   ['pg-ratio-16x9'],
 
         // Creative blocks
 
