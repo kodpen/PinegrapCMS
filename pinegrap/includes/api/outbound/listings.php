@@ -293,7 +293,7 @@ function mp_listing_items($account, $group_id) {
 	$products = (array) db_items("SELECT products.id, products.name, products.title,
 			products.short_description, products.full_description, products.price,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
-			products.enabled, products.tax_rate, products.image_name, products.brand
+			products.enabled, products.taxable, products.tax_rate, products.image_name, products.brand
 		FROM products
 		INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
 		WHERE products_groups_xref.product_group = '" . e($group_id) . "'
@@ -394,8 +394,11 @@ function mp_listing_items($account, $group_id) {
 			'title'       => ($product['title'] !== '') ? (string)$product['title'] : (string)$group['title'],
 			'description' => (string)$description,
 			'category_id' => (string)$map['remote_category_id'],
-			'price_major' => mp_price_major((int)$product['price']),
+			// What the checkout charges, tax included, the same figure the
+			// stock and price queue sends (mp_product_price()).
+			'price_major' => mp_price_major(mp_product_price($product)),
 			'quantity'    => $quantity,
+			'taxable'     => !empty($product['taxable']),
 			'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate'],
 			'images'      => $images,
 			'attributes'  => $attributes

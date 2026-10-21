@@ -8,7 +8,7 @@ description: Trendyol stock and price push: price-and-inventory batch by barcode
 - Only `barcode` is required: stock alone or prices alone may be sent, so an account with "send prices" off sends quantities and the Trendyol panel prices stand.
 
 ## What does the connector send, and what does it leave out?
-- `mp_trendyol_stock_body()`: barcode = the mapping's `remote_code`; `quantity` only for a stock-tracking product, capped at their maximum of 20,000 (never refused for more); both prices = shop price, rounded to 2 decimals (the shop has one price; compare-at price is not used, the same as listing create).
+- `mp_trendyol_stock_body()`: barcode = the mapping's `remote_code`; `quantity` only for a stock-tracking product, capped at their maximum of 20,000 (never refused for more); both prices = the checkout's tax-inclusive price (`mp_product_price()`, `marketplace-price.md`), rounded to 2 decimals (the shop has one price; compare-at price is not used, the same as listing create).
 - Left out and answered in `data['refused']` (product id => reason): a barcode against their rules, a second product under a barcode already in the batch, a product without a price. The queue fails those rows on their own reason and writes it on the mapping row (the mapping stays active).
 - A product with nothing to say (untracked, prices off) is not in the request. When nothing is left, `task_id` is '' and the queue closes the rest as done.
 - A shop not in TRY cannot send prices (the request has no currency field): the batch is refused with a hint to turn prices off.

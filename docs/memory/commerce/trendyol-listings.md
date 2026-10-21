@@ -8,7 +8,7 @@ description: Trendyol V2 listing create (connectors/trendyol.php): barcode as th
 - Required per item: `barcode` (≤40, letters incl. Turkish, digits, `.` `-` `_`), `title` (≤100), `productMainId` (≤40, groups variants), `brandId`, `categoryId` (leaf), `quantity`, `description` (HTML ≤30000), `listPrice` ≥ `salePrice`, `vatRate` (0/1/10/20), `images` (https, max 8), `attributes` (`attributeValueId` or `customAttributeValue`). No `currencyType` and no `cargoCompanyId` in V2; `cargoProviders`, addresses and `deliveryOption.deliveryDuration` are optional.
 
 ## What does the connector send?
-- `barcode` = item `code`; `stockCode` = product name (≤100); `productMainId` = product group name; both prices = shop price; VAT rounded down to an allowed rate; `deliveryOption.deliveryDuration` = account "Days to prepare". Cargo, addresses and dimensional weight are left to the seller's Trendyol defaults.
+- `barcode` = item `code`; `stockCode` = product name (≤100); `productMainId` = product group name; both prices = the checkout's tax-inclusive price (`mp_product_price()`, `marketplace-price.md`); VAT rounded down to an allowed rate, 0 for an untaxed product; `deliveryOption.deliveryDuration` = account "Days to prepare". Cargo, addresses and dimensional weight are left to the seller's Trendyol defaults.
 
 ## Why is the barcode the key?
 - Trendyol names every batch verdict, stock line and order line by barcode. `mp_providers()['trendyol']['key'] = 'barcode'` makes `mp_listing_items()` use the product's mapped `remote_code` or else its first (oldest) `product_barcodes` row as `code`, so the mapping row and `mp_sync_apply_results()` match on the barcode. A product without one is refused; no barcode is invented. The match screen's blank code means the barcode too.

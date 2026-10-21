@@ -1988,6 +1988,40 @@ function get_effective_tax_rate($product_rate, $zone_rate)
 
 
 /**
+ * The price a buyer pays for one unit, in minor units: the stored price plus
+ * the tax the checkout adds on top of it.
+ *
+ * The shop keeps product prices without tax and update_order_item_taxes()
+ * adds round(rate / 100 x price) per line at the checkout, so this is that
+ * formula for a quantity of one. It is the figure to hand anybody who wants
+ * the final price - a marketplace quotes its sale price with the tax inside -
+ * and it is the price itself whenever the checkout would add nothing: the
+ * shop has tax switched off, the product is not taxable, or the shop's
+ * country is in no tax zone (a zone rate of false, as get_default_tax_rate()
+ * answers it).
+ *
+ * @param  int|string   $price        minor units as stored in products.price
+ * @param  int|string   $taxable      products.taxable
+ * @param  mixed        $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param  float|false  $zone_rate    the shop country's zone rate, false in no zone
+ * @param  bool         $tax_enabled  ECOMMERCE_TAX
+ * @return int
+ */
+function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $tax_enabled)
+{
+    $price = (int) $price;
+
+    if (!$tax_enabled || !((int) $taxable) || $zone_rate === false || $zone_rate === null) {
+        return $price;
+    }
+
+    $rate = get_effective_tax_rate($product_rate, $zone_rate);
+
+    return $price + (int) round($rate / 100 * $price);
+}
+
+
+/**
  * A typed tax rate as it is stored, or NULL when the field was left empty.
  *
  * Empty is not zero. Empty means the product has no rate of its own and the
