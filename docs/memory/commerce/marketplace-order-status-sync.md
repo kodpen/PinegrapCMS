@@ -12,7 +12,7 @@ description: mp_order_apply_status() rules for shipped/delivered/cancelled marke
 - Cancelled (n11 `Cancelled`/`UnSupplied`) at first sight: NO order is written and stock is not touched. The map row is kept as `imported` with `order_id` 0 and a note in `last_error`, so the package is never imported later. Writing and cancelling would not be stock-neutral: the take stops at zero, the return adds the whole quantity.
 - Shipped/delivered at first sight: the order is written, then `mp_order_apply_status()` runs in the same pass (tracking, dates); the feed may never hand the package back.
 - Auto-accept (`mp_sync_approve()`) only runs for an `open` package; `mp_order_stage()` answers the stage.
-- Symptom before the fix: a cancelled package was imported as a `complete` order, stock came off and the cancel was never applied; auto-accept sent Picking for it.
+- Symptom before the fix (#1015): a cancelled package was imported as a `complete` order, stock came off and the cancel was never applied; auto-accept sent Picking for it.
 
 ## How is a cancellation handled?
 - Cancel with `process_order_cancellation(..., $attempt_refund = false)`: the gateway never took the money.
