@@ -50377,8 +50377,11 @@ const StyleDesigner = (function () {
             if (revState.loading && !revState.rows.length) {
                 return html + '<div class="sd-snap-empty"><span class="bi bi-hourglass-split me-1"></span>' + esc(_sdT('Loading…')) + '</div>';
             }
+            // No row yet: the page was published before revisions were kept
+            // (or copied from another page); the server records the stored
+            // state first when the next changing save comes.
             if (!revState.rows.length) {
-                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been recorded yet; the next publish first records the page as it is now.')) + '</div>';
             }
             var loadRefusal = _sdRevisionLoadRefusal();
             html += '<div class="sd-snap-list sd-rev-list">';
