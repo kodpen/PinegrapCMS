@@ -625,7 +625,12 @@ function test_office_edit_text_hunks()
 	pg_assert_same(array(array(0, 5, 'Bugün'), array(15, 20, 'yarın')), pg_office_text_hunks('Dünkü toplantı bitti', 'Bugün toplantı yarın'), 'two changes, the word between left alone');
 	pg_assert_same(array(array(6, 6, 'çok ')), pg_office_text_hunks('Kalem güzel', 'Kalem çok güzel'), 'an addition');
 	pg_assert_same(array(array(6, 10, '')), pg_office_text_hunks('Kalem çok güzel', 'Kalem güzel'), 'a removal');
-	pg_assert_same(array(array(0, 13, 'M')), pg_office_text_hunks('Sayın Ayşe, merhaba.', 'Merhaba.'), 'the letters kept at the ends stay out of the change');
+	pg_assert_same(array(array(0, 19, 'Merhaba')), pg_office_text_hunks('Sayın Ayşe, merhaba.', 'Merhaba.'), 'the words kept at the ends stay out of the change; a word changed in part is changed whole');
+	pg_assert_same(array(array(14, 14, 'BIG ')), pg_office_text_hunks('This contains BOLD, ITALIC', 'This contains BIG BOLD, ITALIC'), 'a word added before one starting with the same letter goes before it, not into it');
+	pg_assert_same(array(array(10, 10, 'helpful ')), pg_office_text_hunks('We have a hyperlink here', 'We have a helpful hyperlink here'), 'the same before a link');
+	pg_assert_same(array(array(8, 8, 'dost ')), pg_office_text_hunks('Merhaba dünya', 'Merhaba dost dünya'), 'and in Turkish');
+	pg_assert_same(array(array(6, 11, 'kalemler')), pg_office_text_hunks('Mavi  kalem', 'Mavi  kalemler'), 'a word made longer is one word; the spaces before it stay');
+	pg_assert_same(array(array(16, 16, ' adresinden ulaşabilirsiniz.')), pg_office_text_hunks('Site: kodpen.com', 'Site: kodpen.com adresinden ulaşabilirsiniz.'), 'words added after the last word');
 	pg_assert_same(array(array(0, 0, 'Yeni')), pg_office_text_hunks('', 'Yeni'), 'into an empty paragraph');
 	pg_assert_same(array(array(0, 4, '')), pg_office_text_hunks('Eski', ''), 'everything taken out');
 	pg_assert_same(array(array(0, 20, 'Bugün toplantı yarın')), pg_office_text_hunks('Dünkü toplantı bitti', 'Bugün toplantı yarın', 0), 'past the limit: one change');
@@ -714,8 +719,15 @@ function test_office_edit_docx_paragraph_write_keeps_formatting()
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:t>merhaba.</w:t></w:r></w:p>',
 		$write($runs, 'Sayın merhaba.'), 'a removal across runs: the run left empty goes');
 
-	pg_assert_same('<w:p><w:r><w:t>M</w:t></w:r><w:r><w:t>erhaba.</w:t></w:r></w:p>',
+	pg_assert_same('<w:p><w:r><w:t>Merhaba</w:t></w:r><w:r><w:t>.</w:t></w:r></w:p>',
 		$write($runs, 'Merhaba.'), 'what replaces a selection takes the formatting of its first letter, as in Word');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın dost </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>',
+		$write($runs, 'Sayın dost Ayşe, merhaba.'), 'a word added before a bold word is plain, as the text before it');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">This contains BIG </w:t></w:r><w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>BOLD</w:t></w:r><w:r><w:t>, ITALIC</w:t></w:r></w:p>',
+		$write('<w:r><w:t xml:space="preserve">This contains </w:t></w:r><w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t>BOLD</w:t></w:r><w:r><w:t>, ITALIC</w:t></w:r>', 'This contains BIG BOLD, ITALIC'),
+		'even when it starts with the same letter as the bold word');
 
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe Yılmaz</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>',
 		$write($runs, 'Sayın Ayşe Yılmaz, merhaba.'), 'text added after a bold word carries its formatting, as when typing');
@@ -733,6 +745,14 @@ function test_office_edit_docx_paragraph_write_keeps_formatting()
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> hemen ve sayfa.</w:t></w:r></w:p>',
 		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> ve sayfa.</w:t></w:r>', 'Bkz. site hemen ve sayfa.')),
 		'words typed right after a link stay out of it');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">We have a helpful </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>hyperlink</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> here.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">We have a </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>hyperlink</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> here.</w:t></w:r>', 'We have a helpful hyperlink here.')),
+		'a word typed before a link starting with the same letter stays out of it');
+
+	pg_assert_same('<w:p><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve"> adresinden ulaşabilirsiniz.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink>', 'Web sitemiz: kodpen.com adresinden ulaşabilirsiniz.')),
+		'words typed after a link that ends the paragraph go into a new run formatted like the paragraph mark');
 
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">a  b </w:t></w:r></w:p>',
 		$write('<w:r><w:t>a</w:t></w:r>', 'a  b '), 'spaces kept');

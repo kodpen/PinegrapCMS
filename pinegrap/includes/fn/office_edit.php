@@ -2314,11 +2314,15 @@ function pg_office_text_tokens($text)
  * Where two texts differ, as changes to the first: [start, end, insert] in
  * characters of the old text, in order and not overlapping.
  *
- * The common beginning and end are set aside first; what lies between is
- * compared word by word, so two separate changes come out as two and the
- * runs between them (with their formatting) are left alone. A middle too
- * long to compare word by word (the product of the two word counts above
- * $limit) is one change.
+ * The texts are compared as words (pg_office_text_tokens()), never as
+ * letters: the common beginning and end are set aside whole words at a
+ * time, so a word added before one that starts with the same letters
+ * ("BIG" before "BOLD") goes before that word, not into it and its
+ * formatting, and a word changed in part is changed whole. What lies
+ * between is compared word by word, so two separate changes come out as
+ * two and the runs between them (with their formatting) are left alone. A
+ * middle too long to compare word by word (the product of the two word
+ * counts above $limit) is one change.
  *
  * @param string $old
  * @param string $new
@@ -2331,8 +2335,8 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         return array();
     }
 
-    $a = preg_split('//u', $old, -1, PREG_SPLIT_NO_EMPTY);
-    $b = preg_split('//u', $new, -1, PREG_SPLIT_NO_EMPTY);
+    $a = pg_office_text_tokens($old);
+    $b = pg_office_text_tokens($new);
     $n = count($a);
     $m = count($b);
     $prefix = 0;
@@ -2347,13 +2351,16 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         $suffix++;
     }
 
-    $old_middle = pg_office_text_tokens(implode('', array_slice($a, $prefix, $n - $prefix - $suffix)));
-    $new_middle = pg_office_text_tokens(implode('', array_slice($b, $prefix, $m - $prefix - $suffix)));
+    $old_middle = array_slice($a, $prefix, $n - $prefix - $suffix);
+    $new_middle = array_slice($b, $prefix, $m - $prefix - $suffix);
     $rows = count($old_middle);
     $columns = count($new_middle);
 
+    // Positions are in characters of the old text.
+    $prefix = mb_strlen(implode('', array_slice($a, 0, $prefix)), 'UTF-8');
+
     if (($rows * $columns) > $limit) {
-        return array(array($prefix, $n - $suffix, implode('', $new_middle)));
+        return array(array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
     }
 
     // The longest run of words both share, filled in from the end.
@@ -2411,10 +2418,11 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
  * change starts in (or, for text only added, the run of the character before
  * it, whose formatting carries on as it does when typing; at the very start,
  * the first run with text). Text added right after a link goes into the run
- * after it, as a word processor types it, rather than into the link. Runs
- * the change does not reach keep their text.
+ * after it, as a word processor types it, rather than into the link; when
+ * the link ends the paragraph, into a new run after it, formatted like the
+ * paragraph mark. Runs the change does not reach keep their text.
  *
- * @param array  $runs   [run, text] in order, the texts updated
+ * @param array  $runs   [run, text] in order, the texts updated (a run may be added)
  * @param int    $start  in characters of the paragraph's text
  * @param int    $end
  * @param string $insert
@@ -2444,9 +2452,22 @@ function pg_office_docx_apply_hunk(&$runs, $start, $end, $insert)
                 $target = $index;
                 $next = isset($keys[$place + 1]) ? $runs[$keys[$place + 1]]['run'] : null;
 
-                if (($start === $offset + $length) && ($next !== null)
-                    && pg_office_docx_in_link($run['run']) && !pg_office_docx_in_link($next)) {
-                    $target = $keys[$place + 1];
+                if (($start === $offset + $length) && pg_office_docx_in_link($run['run'])) {
+                    if ($next === null) {
+                        $paragraph = $run['run']->parentNode;
+
+                        while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
+                            $paragraph = $paragraph->parentNode;
+                        }
+
+                        if ($paragraph instanceof DOMElement) {
+                            $runs[] = array('run' => pg_office_docx_new_run($paragraph), 'text' => '', 'changed' => true);
+                            end($runs);
+                            $target = key($runs);
+                        }
+                    } elseif (!pg_office_docx_in_link($next)) {
+                        $target = $keys[$place + 1];
+                    }
                 }
             }
         }
@@ -2585,8 +2606,9 @@ function pg_office_docx_paragraph_write($paragraph, $edit, $text, $limit = 25000
 }
 
 /**
- * A new, empty run at the end of a paragraph that has none, with the
- * formatting of the paragraph mark.
+ * A new, empty run at the end of a paragraph, with the formatting of the
+ * paragraph mark: for a paragraph that has no run, or text typed after a
+ * link that ends it.
  *
  * @param DOMElement $paragraph
  * @return DOMElement
