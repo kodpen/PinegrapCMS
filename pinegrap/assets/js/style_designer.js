@@ -51241,6 +51241,10 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-page-field[data-page-key]').forEach(function (el) {
             var k = el.dataset.pageKey;
             if (!k) return;
+            // The draft switch locked by a publish time ahead (or by the
+            // home flag) shows a state the save decides, not a choice:
+            // _pgSyncDraftBox() keeps the page's own choice apart from it.
+            if (k === 'page_draft' && el.disabled) return;
             if (el.type === 'checkbox') p[k] = el.checked ? 1 : 0;
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
@@ -54480,8 +54484,12 @@ const StyleDesigner = (function () {
             data.pages.forEach(function (m) {
                 var p = _pgPageByKey(m.key);
                 // The state the server left the page in: a draft of the home
-                // page is refused (pg_designer_page_draft_plan()).
-                if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // page is refused (pg_designer_page_draft_plan()). The stored
+                // state is the page's choice from here on, as after a reload.
+                if (p && typeof m.draft !== 'undefined') {
+                    p.page_draft = m.draft ? 1 : 0;
+                    delete p._draftByChoice;
+                }
                 // The times as the server left them: one that had come was
                 // carried out by the save and cleared.
                 if (p && typeof m.publish_at !== 'undefined') {
@@ -54595,13 +54603,16 @@ const StyleDesigner = (function () {
             // The keys as the save sends them: a new page gets its id and a
             // new key once the server answers.
             var marked = list.map(function (p) {
-                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '' };
+                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '',
+                         choice: p._draftByChoice };
             });
             // A page put on the site by hand no longer waits for its publish
             // time; one taken off no longer waits for its time to come off.
+            // Either is the page's own choice now, whatever a time forced.
             list.forEach(function (p) {
                 p.page_draft = on ? 1 : 0;
                 if (on) p.page_unpublish_at = ''; else p.page_publish_at = '';
+                delete p._draftByChoice;
             });
             _pgSyncDraftBox(_pgActivePage());
             _pgTabsRender();
@@ -54619,6 +54630,8 @@ const StyleDesigner = (function () {
                     r.page.page_draft = r.was;
                     r.page.page_publish_at = r.pub;
                     r.page.page_unpublish_at = r.unpub;
+                    if (typeof r.choice === 'undefined') delete r.page._draftByChoice;
+                    else r.page._draftByChoice = r.choice;
                     if (rebase) r.page.baseline = _pgBaselineOf(r.page);
                 });
                 _pgSyncDraftBox(_pgActivePage());
@@ -54670,9 +54683,18 @@ const StyleDesigner = (function () {
         var home = homeBox ? homeBox.checked : !!p.page_home;
         if (home && p.page_draft) p.page_draft = 0;
         // A publish time still ahead keeps the page a draft until then
-        // (pg_page_schedule_plan() decides the same on the server).
+        // (pg_page_schedule_plan() decides the same on the server). The
+        // page's own choice is kept apart from the state the time forces,
+        // so a time typed and cleared again leaves a live page live: the
+        // next save does not take it off the site unasked.
         var waits = !home && _pgScheduleAhead(p.page_publish_at);
-        if (waits) p.page_draft = 1;
+        if (waits) {
+            if (typeof p._draftByChoice === 'undefined') p._draftByChoice = p.page_draft ? 1 : 0;
+            p.page_draft = 1;
+        } else if (typeof p._draftByChoice !== 'undefined') {
+            p.page_draft = home ? 0 : p._draftByChoice;
+            delete p._draftByChoice;
+        }
         box.checked  = !!p.page_draft;
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')
