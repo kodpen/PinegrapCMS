@@ -877,6 +877,40 @@ function erp_edoc_invoice_party_editable($invoice)
 }
 
 /**
+ * Why a new send would duplicate a record the provider already holds, or ''.
+ *
+ * A document that exists at the provider is never created again: the repeat
+ * would leave a second record behind that nobody is watching. A draft there
+ * ('created') is handed over with its own button; a record a later step
+ * failed on ('error' with the provider's id still on the row: a conversion
+ * that failed, a document GİB did not take) is asked after, and what it is
+ * there decides what comes next. A send that failed before the provider
+ * wrote anything leaves no id and may go again; a rejected document is the
+ * buyer's answer to one that was issued, and is answered with a new one.
+ *
+ * @param array $invoice  An erp_invoices row
+ * @return string
+ */
+function erp_edoc_invoice_held_refusal($invoice)
+{
+    $status = (string) ($invoice['edoc_status'] ?? 'none');
+    $external_id = trim((string) ($invoice['edoc_external_id'] ?? ''));
+
+    if ($status === 'created') {
+        return lang('The document is already at the provider as a draft; hand that one to GİB instead of creating a second.');
+    }
+
+    if (($status === 'error') && ($external_id !== '')) {
+        return lang(array(
+            'string' => 'The provider still holds the document (id {var:1}); sending it again would create a second one there. Ask after its status: a record that is still a draft there is handed to GİB from here.',
+            'vars' => $external_id,
+        ));
+    }
+
+    return '';
+}
+
+/**
  * May this invoice be sent now, and if not, why not - in the operator's words.
  *
  * @param array $invoice  An erp_invoices row
@@ -915,11 +949,10 @@ function erp_edoc_invoice_can_send($invoice)
         return array('ok' => false, 'provider' => $provider, 'reason' => lang('The invoice carries a second tax, which an e-document cannot show; it stays a PDF document.'));
     }
 
-    // A document that exists at the provider is never created again: the
-    // repeat would leave a second draft behind that nobody is watching.
-    // Handing that one over is a separate button.
-    if ((string) $invoice['edoc_status'] === 'created') {
-        return array('ok' => false, 'provider' => $provider, 'reason' => lang('The document is already at the provider as a draft; hand that one to GİB instead of creating a second.'));
+    $held = erp_edoc_invoice_held_refusal($invoice);
+
+    if ($held !== '') {
+        return array('ok' => false, 'provider' => $provider, 'reason' => $held);
     }
 
     if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true)) {
