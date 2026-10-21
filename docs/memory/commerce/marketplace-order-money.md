@@ -10,7 +10,7 @@ description: Amounts of an imported marketplace order: per-unit price/tax/discou
 ## How are the order's totals built? (`mp_order_totals()`, includes/api/outbound/orders.php)
 - `subtotal = Σ price × qty`, `tax = Σ tax × qty`, `discount = Σ discount_total` (or `discount × qty` when a line has no `discount_total`), `total = subtotal − discount + tax + shipping`.
 - Why `discount_total`: n11 gives the discount for the whole line, and a line amount that does not divide by the quantity has no exact unit value. Summing the rounded unit value back was off by up to quantity/2 kuruş.
-- Symptom before the fix: 3 × 100,00 TL with a 10,00 TL line discount was imported as discount 9,99 and total 290,01 TL (7 units: 10,01 TL discount); the invoice cut from the order carried the same difference.
+- Symptom before the fix (#1025): 3 × 100,00 TL with a 10,00 TL line discount was imported as discount 9,99 and total 290,01 TL (7 units: 10,01 TL discount); the invoice cut from the order carried the same difference.
 - Tests: `tests/marketplace_order_totals_test.php`.
 
 Related: docs/memory/commerce/marketplace-order-import.md
