@@ -20,7 +20,7 @@ description: n11 REST API facts for the connector: headers, async price/stock ta
 
 ## How far does one order pull read? (`mp_n11_pull_orders()`)
 - At most 20 pages (2,000 packages) a pass, asked in ascending `lastModifiedDate` order. At the cap `read_to` is the last read package's `lastModifiedDate`, not now; the next pass starts there (minus the 5-minute overlap) and reads on.
-- Symptom before the fix: with more than 2,000 packages in the window the cursor jumped to now and packages 2,001+ were never imported.
+- Symptom before the fix (#1011): with more than 2,000 packages in the window the cursor jumped to now and packages 2,001+ were never imported.
 - If 20 full pages end inside the overlap (no progress), it reads on up to 100 pages; if even that does not get past the start, `complete` is false and the cursor stays.
 - Tests: `tests/marketplace_n11_test.php` (transport parameter, like Trendyol's).
 
