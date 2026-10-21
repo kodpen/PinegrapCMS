@@ -1381,16 +1381,14 @@ if (!$_POST) {
             // outlives the user row it belongs to.
             pg_auth_token_revoke_user((int) ($_POST['id'] ?? 0));
 
-            // The second factor and its recovery codes go with the account,
-            // as in delete_users.php: MySQL 5.7 hands the highest id out again
-            // after a restart, and a new account would inherit them.
+            // The second factor, its recovery codes and the account's
+            // passkeys go with the account, as in delete_users.php: MySQL 5.7
+            // hands the highest id out again after a restart, and a new
+            // account would inherit them.
             pg_mfa_reset((int) ($_POST['id'] ?? 0));
 
             // The Microsoft and Apple identities go with the account.
             pg_signin_identities_forget((int) ($_POST['id'] ?? 0));
-
-            // And its passkeys (silent before the 11.0.13 upgrade).
-            pg_passkeys_forget((int) ($_POST['id'] ?? 0));
 
             // delete user record
             $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";

@@ -24733,5 +24733,6 @@
     "or enter a code": "ya da bir kod girin",
     "passkey not added ({var:1})": "geçiş anahtarı eklenmedi ({var:1})",
     "user added a passkey ({var:1})": "kullanıcı bir geçiş anahtarı ekledi ({var:1})",
-    "user signed in with a passkey ({var:1})": "kullanıcı geçiş anahtarıyla oturum açtı ({var:1})"
+    "user signed in with a passkey ({var:1})": "kullanıcı geçiş anahtarıyla oturum açtı ({var:1})",
+    "Passkeys cannot be added yet.": "Geçiş anahtarı henüz eklenemiyor."
 }

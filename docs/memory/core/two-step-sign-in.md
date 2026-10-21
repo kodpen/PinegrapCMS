@@ -26,7 +26,7 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 - The install screen lock (`install/index.php`) stays password only; `developer_lock.php` (global PIN) is not a second factor.
 
 ## How is an account recovered?
-- Recovery codes; `edit_user.php` "reset two-step verification" (`pg_mfa_reset`): own account, or a lower role (administrators: anyone); a role that requires it is asked to set it up again at the next sign-in.
+- Recovery codes; `edit_user.php` "reset two-step verification" (`pg_mfa_reset`, also removes passkeys): own account or a lower role (administrators: any); a requiring role sets it up again at next sign-in.
 - While logged in as another user (`logged_in_as_different_user`) the account screen cannot change the second factor.
 - Last resort: delete the account's `user_mfa` row.
 

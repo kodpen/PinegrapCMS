@@ -96,6 +96,12 @@ switch ($action) {
     case 'register_options':
     case 'register':
 
+        // Adding a passkey is refused until the account screen asks for the
+        // current password and the second factor first, and lists and removes
+        // passkeys: a session alone must not plant a passkey that answers the
+        // second step.
+        passkey_answer(array('ok' => false, 'error' => 'denied', 'message' => lang('Passkeys cannot be added yet.')), 403);
+
         if (!pg_session_signed_in() || !defined('USER_ID') || ((int) USER_ID <= 0)) {
             passkey_answer(array('ok' => false, 'error' => 'session', 'message' => lang('You are not signed in. Sign in and try again.')), 401);
         }
