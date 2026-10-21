@@ -27,4 +27,4 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Append only, in your own section; never rewrite the whole file.
 - Right before writing: `git fetch origin development && git merge origin/development`. Right before pushing: rebase on `development`; keep both sides' sections on conflict.
 - `docs/memory/README.md` is generated: never edit or merge it by hand; run `php tools/memory_index.php` after the merge.
-- Its folder lines carry no file count (#PRNO): two branches adding a file to one folder merged into a count matching neither, and the merged tree failed CI's `--check` on other PRs.
+- Its folder lines carry no file count (#1081): two branches adding a file to one folder merged into a count matching neither, and the merged tree failed CI's `--check` on other PRs.
