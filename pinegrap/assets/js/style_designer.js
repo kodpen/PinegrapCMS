@@ -17138,6 +17138,308 @@ const StyleDesigner = (function () {
                     // Pages shown while the site is closed for work or before it
                     // opens: no links into the site, only contact and social links.
 
+                    if (/^(maintenance|coming-soon)-/.test(ctype)) {
+                        // Icon-only social link; the label names the network for screen readers.
+                        var _mtSocialLink = function (icon, label) {
+                            return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', href: '#', target: '', customName: label,
+                                _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon, '', '20') ]);
+                        };
+                        var _mtSocial = function (cls) {
+                            return _bkDiv('d-flex gap-3 ' + cls, _sdT('Social Links'), [
+                                _mtSocialLink('bi-linkedin',  _sdT('ACME on LinkedIn')),
+                                _mtSocialLink('bi-instagram', _sdT('ACME on Instagram')),
+                                _mtSocialLink('bi-twitter-x', _sdT('ACME on X'))
+                            ]);
+                        };
+                        // A fixed date or time the operator edits; datetime keeps it machine-readable.
+                        var _mtTime = function (datetime, text, name, cls) {
+                            return _bkTag('time', cls || '', name, [ _bkH('span', text) ], [{ name: 'datetime', value: datetime }]);
+                        };
+                        // Email-only notify form: a visually hidden label, the field and a submit
+                        // button, either side by side in an input group or stacked on phones.
+                        var _mtNotify = function (cls, grouped) {
+                            var id = _bkUid('mt_email');
+                            var label = createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                _attrs: [{ name: 'for', value: id }] }, [ _bkH('span', _sdT('Email address')) ]);
+                            var input = createNode('semantic', { tag: 'input', cssClass: grouped ? 'form-control' : 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                _attrs: [
+                                    { name: 'type',         value: 'email' },
+                                    { name: 'id',           value: id },
+                                    { name: 'name',         value: 'email' },
+                                    { name: 'placeholder',  value: _sdT('Your email address') },
+                                    { name: 'autocomplete', value: 'email' },
+                                    { name: 'required',     value: 'required' }
+                                ] });
+                            var btn = createNode('component', { componentType: 'btn', text: _sdT('Notify me'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', href: '', cssClass: 'text-nowrap' });
+                            if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ]);
+                            return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ]);
+                        };
+                    }
+
+                    // Maintenance: Centered — a full-height page: icon, when the site is back, progress, a contact address and social links
+                    if (ctype === 'maintenance-centered') {
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Maintenance (Centered)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Maintenance Body'), [
+                                    _bkDiv('mb-4', _sdT('Maintenance Icon'), [
+                                        _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', '', '40') ])
+                                    ]),
+                                    _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We\'ll be back soon'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('We are giving the site a scheduled upgrade to make it faster and easier to use. Thank you for your patience.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mb-4', _sdT('Return Time'), [
+                                        _bkIcon('bi-clock', 'text-primary'),
+                                        _bkH('span', _sdT('Expected back:'), 'fw-semibold'),
+                                        _mtTime('2026-11-14T09:00', _sdT('Saturday, 14 November 2026, 09:00'), _sdT('Return Date'))
+                                    ]),
+                                    _bkDiv('mb-4 text-start', _sdT('Upgrade Progress'), [
+                                        _bkDiv('d-flex justify-content-between mb-1 small', _sdT('Progress Label'), [
+                                            _bkH('span', _sdT('Upgrade progress'), 'text-body-secondary'),
+                                            _bkH('span', _sdT('75%'), 'fw-semibold')
+                                        ]),
+                                        _bkDiv('progress', _sdT('Progress'), [ _bkDiv('progress-bar w-75', _sdT('Progress Bar')) ], [
+                                            { name: 'role',          value: 'progressbar' },
+                                            { name: 'aria-label',    value: _sdT('Upgrade progress') },
+                                            { name: 'aria-valuenow', value: '75' },
+                                            { name: 'aria-valuemin', value: '0' },
+                                            { name: 'aria-valuemax', value: '100' }
+                                        ])
+                                    ]),
+                                    _bkTag('p', 'mb-4 text-body-secondary', _sdT('Contact Line'), [
+                                        _bkH('span', _sdT('Need help in the meantime? Write to us at'), 'me-1'),
+                                        _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary fw-semibold', _sdT('Email Link'))
+                                    ]),
+                                    _mtSocial('justify-content-center')
+                                ], '7', '9', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Split — what the work is and where it stands (done / in progress / next), help contacts, a picture beside it
+                    if (ctype === 'maintenance-split') {
+                        var _mtStep = function (n, icon, iconCls, text, status, badgeCls) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 ' + iconCls, '20'),
+                                _bkH('span', text, 'flex-grow-1'),
+                                _bkH('span', status, 'badge ' + badgeCls + ' rounded-pill')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Maintenance (Split)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkH('span', _sdT('Maintenance in progress'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We are upgrading our systems'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('The site is closed for a few hours while we move to faster servers. Here is where the work stands.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm overflow-hidden', _sdT('Work Card'), [
+                                        _bkTag('ul', 'list-group list-group-flush', _sdT('Work List'), [
+                                            _mtStep(1, 'bi-check-circle-fill', 'text-success',        _sdT('Back up all data'),           _sdT('Done'),        'bg-success-subtle text-success-emphasis'),
+                                            _mtStep(2, 'bi-arrow-repeat',      'text-primary',        _sdT('Move to the new servers'),    _sdT('In progress'), 'bg-primary-subtle text-primary-emphasis'),
+                                            _mtStep(3, 'bi-hourglass-split',   'text-body-secondary', _sdT('Final checks and reopening'), _sdT('Up next'),     'bg-body-tertiary text-body-secondary border')
+                                        ])
+                                    ]),
+                                    _bkP(_sdT('Need help in the meantime?'), 'fw-semibold mb-2'),
+                                    _bkTag('ul', 'list-unstyled d-flex flex-column flex-sm-row gap-2 gap-sm-4 mb-0', _sdT('Contact List'), [
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Email Item'), [
+                                            _bkIcon('bi-envelope', 'text-primary'),
+                                            _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary', _sdT('Email Link'))
+                                        ]),
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Phone Item'), [
+                                            _bkIcon('bi-telephone', 'text-primary'),
+                                            _bkLink('+90 212 555 0100', 'tel:+902125550100', 'link-primary', _sdT('Phone Link'))
+                                        ])
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkImg('maintenance-split', 900, 1000, '', 'img-fluid w-100 h-100 rounded-4 shadow object-fit-cover')
+                                ], '6', '', '', 'd-none d-lg-block')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Maintenance: Status Board — the maintenance window, each service's state, a timed update log and a notify-me form
+                    if (ctype === 'maintenance-status') {
+                        var _mtService = function (name, up) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center justify-content-between gap-2 px-0', name, [
+                                _bkH('span', name),
+                                _bkTag('span', 'badge ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
+                                    _bkIcon(up ? 'bi-check-circle-fill' : 'bi-tools', 'me-1'),
+                                    _bkH('span', up ? _sdT('Operational') : _sdT('Under maintenance'))
+                                ])
+                            ]);
+                        };
+                        var _mtUpdate = function (n, datetime, time, text, cls) {
+                            return _bkTag('li', 'd-flex gap-3' + (cls ? ' ' + cls : ''), _sdT('Update {var}', n), [
+                                _mtTime(datetime, time, _sdT('Update Time'), 'small fw-semibold text-body-secondary text-nowrap'),
+                                _bkP(text, 'small mb-0')
+                            ]);
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Maintenance (Status Board)'), [
+                            _bkRow(_sdT('Status Row'), [
+                                _bkCol(_sdT('Status Column'), [
+                                    _bkDiv('mb-4', _sdT('Section Header'), [
+                                        _bkH('h1', _sdT('Maintenance status'), 'display-6 fw-bold mb-2'),
+                                        _bkP(_sdT('Follow the work as it happens. This page is updated every half hour.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkDiv('alert alert-warning d-flex align-items-start gap-3 mb-4', _sdT('Status Alert'), [
+                                        _bkIcon('bi-exclamation-triangle-fill', 'flex-shrink-0', '22'),
+                                        _bkDiv('', _sdT('Alert Body'), [
+                                            _bkH('h2', _sdT('The site is closed for maintenance'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Orders placed before the work began are safe and will ship as usual.'), 'small mb-0')
+                                        ])
+                                    ], [{ name: 'role', value: 'status' }]),
+                                    _bkRow(_sdT('Status Cards'), [
+                                        _bkCol(_sdT('Window Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Window Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Maintenance window'), 'h5 fw-bold mb-3'),
+                                                    _bkTag('dl', 'mb-0', _sdT('Window Times'), [
+                                                        _bkH('dt', _sdT('Starts'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('Start Time'), [
+                                                            _mtTime('2026-11-14T09:00+03:00', _sdT('14 November 2026, 09:00'), _sdT('Start Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('Ends'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('End Time'), [
+                                                            _mtTime('2026-11-14T15:00+03:00', _sdT('14 November 2026, 15:00'), _sdT('End Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('Time zone'), 'small fw-normal text-body-secondary'),
+                                                        _bkH('dd', _sdT('Istanbul (UTC+3)'), 'fw-semibold mb-0')
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6'),
+                                        _bkCol(_sdT('Services Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Services Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Our services'), 'h5 fw-bold mb-2'),
+                                                    _bkTag('ul', 'list-group list-group-flush', _sdT('Service List'), [
+                                                        _mtService(_sdT('Website'), false),
+                                                        _mtService(_sdT('Mobile app'), false),
+                                                        _mtService(_sdT('Phone support'), true)
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6')
+                                    ], 'mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm', _sdT('Updates Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Latest updates'), 'h5 fw-bold mb-3'),
+                                            _bkTag('ol', 'list-unstyled mb-0', _sdT('Update Log'), [
+                                                _mtUpdate(1, '2026-11-14T11:20+03:00', '11:20', _sdT('The new servers are running; we are testing the shop and the customer accounts.'), 'mb-3'),
+                                                _mtUpdate(2, '2026-11-14T10:05+03:00', '10:05', _sdT('All data has been copied to the new servers and checked.'), 'mb-3'),
+                                                _mtUpdate(3, '2026-11-14T09:00+03:00', '09:00', _sdT('Maintenance started. The site is closed to visitors.'), '')
+                                            ])
+                                        ])
+                                    ]),
+                                    _bkDiv('card border-0 shadow-sm', _sdT('Notify Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Get an email when we are back'), 'h5 fw-bold mb-1'),
+                                            _bkP(_sdT('One email when the site reopens, nothing else.'), 'small text-body-secondary mb-3'),
+                                            _mtNotify('', true)
+                                        ])
+                                    ])
+                                ], '8', '10', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Dark — a dark full-height band: a soft pulse, the brand, a short promise, three reassurances and an email button
+                    if (ctype === 'maintenance-dark') {
+                        var _mtPill = function (icon, text) {
+                            return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal bg-body-tertiary text-body border rounded-pill', text, [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', text)
+                            ]);
+                        };
+                        return createNode('semantic', { tag: 'section', cssClass: 'd-flex flex-column justify-content-center min-vh-100 py-5 bg-body text-body', customName: _sdT('Maintenance (Dark)'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: '' }, [
+                                _bkRow(_sdT('Maintenance Row'), [
+                                    _bkCol(_sdT('Maintenance Body'), [
+                                        _bkDiv('spinner-grow mb-4 text-primary pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                        _bkP(_sdT('ACME'), 'mb-3 fs-5 fw-bold text-uppercase pg-tracking'),
+                                        _bkH('h1', _sdT('Down for a quick tune-up'), 'display-4 fw-bold mb-3'),
+                                        _bkP(_sdT('We are making a few improvements behind the scenes and will be back online shortly.'), 'lead text-body-secondary mb-4'),
+                                        _bkDiv('d-flex flex-wrap justify-content-center gap-2 mb-5', _sdT('Assurances'), [
+                                            _mtPill('bi-shield-check',  _sdT('Your data is safe')),
+                                            _mtPill('bi-truck',         _sdT('Orders keep shipping')),
+                                            _mtPill('bi-clock-history', _sdT('Back within hours'))
+                                        ]),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'outline-primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
+                                    ], '7', '9', '', 'mx-auto text-center')
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Launch Date — badge, h1, the launch date as day / month / year tiles, a notify form and social links
+                    if (ctype === 'coming-soon-launch') {
+                        var _mtTile = function (value, label) {
+                            return _bkTag('span', 'd-flex flex-column align-items-center px-3 px-sm-4 py-3 bg-body-tertiary border rounded-4', label, [
+                                _bkH('span', value, 'display-6 fw-bold lh-1'),
+                                _bkH('span', label, 'mt-2 small text-uppercase text-body-secondary')
+                            ]);
+                        };
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Coming Soon (Launch Date)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Launch Body'), [
+                                    _bkH('span', _sdT('Coming soon'), 'badge mb-3 text-bg-primary rounded-pill'),
+                                    _bkH('h1', _sdT('Something new is on its way'), 'display-4 fw-bold mb-3'),
+                                    _bkP(_sdT('ACME is building a new home for everything you like about us. The doors open on launch day.'), 'lead text-body-secondary mb-4'),
+                                    _bkP(_sdT('Launch day'), 'mb-2 small fw-semibold text-uppercase text-body-secondary pg-tracking'),
+                                    _bkTag('time', 'd-flex flex-wrap justify-content-center gap-3 mb-5', _sdT('Launch Date'), [
+                                        _mtTile('01',   _sdT('Day')),
+                                        _mtTile('12',   _sdT('Month')),
+                                        _mtTile('2026', _sdT('Year'))
+                                    ], [{ name: 'datetime', value: '2026-12-01' }]),
+                                    _bkP(_sdT('Be the first to know when we open.'), 'fw-semibold mb-2'),
+                                    _mtNotify('mb-2', false),
+                                    _bkP(_sdT('We only use your email to tell you about the launch. Unsubscribe at any time.'), 'mb-4 small text-body-secondary'),
+                                    _mtSocial('justify-content-center')
+                                ], '6', '8', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Split — brand, h1, three promises and a notify form beside a picture with one offer card on it
+                    if (ctype === 'coming-soon-split') {
+                        var _mtFeature = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Coming Soon (Split)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkDiv('d-flex align-items-center gap-2 mb-4', _sdT('Brand'), [
+                                        _bkIcon('bi-rocket-takeoff', 'text-primary', '24'),
+                                        _bkH('span', _sdT('ACME'), 'fs-5 fw-bold')
+                                    ]),
+                                    _bkH('h1', _sdT('Our new online shop opens in December'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('A faster shop, a simpler checkout and a few surprises. Leave your email and we will tell you the moment it opens.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Features'), [
+                                        _mtFeature(_sdT('Free delivery on your first order')),
+                                        _mtFeature(_sdT('Checkout in three steps')),
+                                        _mtFeature(_sdT('Early access for everyone on the list'))
+                                    ]),
+                                    _mtNotify('mb-2', true),
+                                    _bkP(_sdT('One email on launch day, nothing else.'), 'small text-body-secondary mb-0')
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('coming-soon-split', 900, 700, _sdT('A first look at the new shop'), 'img-fluid w-100 rounded-4 shadow object-fit-cover'),
+                                        _bkDiv('card m-3 border-0 shadow position-absolute bottom-0 start-0', _sdT('Offer Card'), [
+                                            _bkDiv('card-body d-flex align-items-center gap-3 p-3', _sdT('Card Body'), [
+                                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Offer Icon'), [ _bkIcon('bi-gift', '', '22') ]),
+                                                _bkDiv('', _sdT('Offer Text'), [
+                                                    _bkP(_sdT('20% off on opening day'), 'mb-0 fw-bold'),
+                                                    _bkP(_sdT('For everyone on the list'), 'mb-0 small text-body-secondary')
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
                     // ── News: bands and widgets ──
                     // Thin bands and small widgets of a news site: ticker, rotating
                     // headlines, trending topics, weather and market strips.
@@ -56128,6 +56430,9 @@ const StyleDesigner = (function () {
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
         // Maintenance and launch blocks
+        // A spinner-grow used as a decorative pulse: under reduced motion it
+        // stands still and stays visible (its resting opacity is 0).
+        'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
 
         // News: bands and widgets
 
@@ -56161,6 +56466,8 @@ const StyleDesigner = (function () {
         'locations-cards':      ['pg-ratio-16x9'],
         'menu-cards':           ['pg-ratio-1x1'],
         // Maintenance and launch blocks
+        'maintenance-dark':     ['pg-pulse-still', 'pg-tracking'],
+        'coming-soon-launch':   ['pg-tracking'],
 
         // News: bands and widgets
 
