@@ -5,7 +5,7 @@ description: Which price goes to a marketplace (Trendyol, n11) - the checkout's 
 
 ## Which price is sent to a marketplace?
 - The price the shop's checkout charges for one unit, tax included. The shop keeps `products.price` without tax and `update_order_item_taxes()` adds `round(rate / 100 x price)` per line; Trendyol's `salePrice`/`listPrice` and n11's prices are what the buyer pays with the VAT inside (both work the VAT back out of it for invoice and settlement).
-- Symptom fixed (#979, PR #1135): the stored price went out as the sale price, so a 79.95 product at 18% sold for 79.95 on the marketplace instead of the 94.34 the site collects; the seller's net was short by the VAT on every price send and every listing.
+- Symptom fixed (#979, PR #1138): the stored price went out as the sale price, so a 79.95 product at 18% sold for 79.95 on the marketplace instead of the 94.34 the site collects; the seller's net was short by the VAT on every price send and every listing.
 
 ## Where is it built?
 - One place: `mp_product_price($product)` in `connectors/base.php`, on top of the pure `get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $tax_enabled)` in `includes/fn/ecommerce.php` (tests: `tests/tax_inclusive_price_test.php`).
