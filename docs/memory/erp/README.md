@@ -17,6 +17,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-dev-environment-traps.md: Traps when developing ERP code on the dev setup: device_commit_files overwrite, long lint runs, strict sql_mode on migrations, PHP via Python heredoc.
 - erp-discounted-order-vat.md: How a discounted order's VAT is computed at checkout vs on the ERP invoice, and why order header amounts are not line items.
 - erp-document-templates-settings.md: Per-document template settings in erp_settings.php (config.erp_<doc>_template, $documents map, preview) and how placeholder references are built from data.
+- erp-edoc-account-autolink.md: Which provider cards ERP › Account sync links to accounts on its own after a read (erp_edoc_accounts_autolink()): active cards only, the shared number rule, what is left to the operator
 - erp-edoc-driver-layer.md: ERP e-document driver layer (migration 4.61): registry gate, adding a provider, driver contract, encrypted credentials, active provider, test ping, schema.
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice send/poll line.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
