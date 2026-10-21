@@ -135,3 +135,24 @@ function test_output_license_check_due_trusts_an_answer_for_twelve_hours()
 	pg_assert_true(pg_license_check_due(false, 'success', 1000000, 1000000 + 43201), 'past twelve hours');
 	pg_assert_false(pg_license_check_due(false, 'error', 1000000, 1000000 + 3600), 'a refused key is not asked again within the hour');
 }
+
+// Check License opens the same screen with its own query kept; a GET form
+// sent only check_license_again, so view_order.php?id=… lost its id.
+function test_output_license_check_again_url_keeps_the_query()
+{
+	pg_assert_same('?id=42&check_license_again=1', pg_license_check_again_url(array('id' => '42')), 'a record screen keeps its id');
+	pg_assert_same('?check_license_again=1', pg_license_check_again_url(array()), 'a screen without a query');
+	pg_assert_same('?id=7&check_license_again=1', pg_license_check_again_url(array('check_license_again' => '1', 'id' => '7')), 'pressed again: one check_license_again');
+	pg_assert_same('?q=a%26b&f%5B0%5D=x&check_license_again=1', pg_license_check_again_url(array('q' => 'a&b', 'f' => array('x'))), 'values and lists encoded');
+	pg_assert_same('?check_license_again=1', pg_license_check_again_url(null), 'no query array');
+}
+
+// The button is drawn only for a role that may force the re-check, as a link.
+function test_output_license_check_button_only_for_managers()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+
+	pg_assert_contains("if (\$output_check_license_button && isset(\$user['role']) && ((int) \$user['role'] <= 2)) {", $source, 'the card asks the role');
+	pg_assert_contains("<a href=\"' . h(pg_license_check_again_url(\$_GET)) . '\"", $source, 'a link keeping the query');
+	pg_assert_same(0, substr_count($source, '<input type="hidden" name="check_license_again"'), 'no GET form drops the query any more');
+}

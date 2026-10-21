@@ -305,6 +305,15 @@ if (!$_POST) {
                                     AND (zone_id = '" . e($zone_id) . "')");
                         }
 
+                        // The stock as stored, when this edit may move it: compared
+                        // with the row after the write to announce the products whose
+                        // stock really moved. A selection on the list is a few rows
+                        // an operator changed on purpose, not a product import, so
+                        // each one is announced the way a single save is.
+                        $stock_was = (($sql_inventory_quantity !== '') || ($sql_inventory !== ''))
+                            ? db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . escape($product_id) . "'")
+                            : null;
+
                         // Update product enabled property, if necessary, and timestamp.
                         db(
                             "UPDATE products
@@ -330,6 +339,19 @@ if (!$_POST) {
                         // the queue is keyed on the product and folds repeats.
                         if (function_exists('pg_marketplace_product_changed')) {
                             pg_marketplace_product_changed((int)$product_id);
+                        }
+
+                        if ($stock_was) {
+                            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . escape($product_id) . "'");
+                            $stock_delta = $stock_now ? pg_product_stock_delta(
+                                ((string) $stock_was['inventory'] === '1'),
+                                $stock_was['inventory_quantity'],
+                                ((string) $stock_now['inventory'] === '1'),
+                                $stock_now['inventory_quantity']) : null;
+
+                            if ($stock_delta) {
+                                pg_product_stock_changed((int) $product_id, $stock_delta[0], $stock_delta[1], 'bulk_edit');
+                            }
                         }
 
                         $number_of_products++;

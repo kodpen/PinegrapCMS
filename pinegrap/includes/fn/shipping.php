@@ -360,7 +360,12 @@ function pg_shipment_rows_ready()
  * A new row is 'created', shipped now (or at $opts['shipped_at']). An old row
  * whose shipped_at is still 0 (older than the schema, with a ship date that
  * was in the future then) takes the address's ship date once that day has
- * come; its status, source and dates are otherwise left alone.
+ * come; its status, source and dates are otherwise left alone. The number is
+ * found again by the column's collation (1Z… and 1z… are one parcel, as the
+ * unique key says) and stored as written now, so a corrected spelling is
+ * kept and the format warning is the stored number's. A marketplace poll
+ * leaves the spelling alone: it hands the same number back on every poll and
+ * would undo a correction made on the order screen.
  *
  * $ship_to_id 0 is an order imported with no address at all: the parcel
  * hangs off the order, as the import always wrote it.
@@ -416,9 +421,20 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
     $same_parcel = "(ship_to_id = '" . $ship_to_id . "') AND (number = '" . e($number) . "')"
         . (($ship_to_id === 0) ? " AND (order_id = '" . $order_id . "')" : '');
 
+    $respell = (pg_shipment_source($opts['source']) !== 'marketplace');
+
     if (!pg_shipment_rows_ready()) {
 
-        $id = (int) db_value("SELECT id FROM shipping_tracking_numbers WHERE " . $same_parcel . " LIMIT 1");
+        $found = db_item("SELECT id, number FROM shipping_tracking_numbers WHERE " . $same_parcel . " LIMIT 1");
+        $id = $found ? (int) $found['id'] : 0;
+
+        if (($id > 0) && ((string) $found['number'] !== $number)) {
+            if ($respell) {
+                db("UPDATE shipping_tracking_numbers SET number = '" . e($number) . "' WHERE id = '" . $id . "'");
+            } else {
+                $out['number'] = (string) $found['number'];
+            }
+        }
 
         if ($id <= 0) {
             db("INSERT INTO shipping_tracking_numbers (order_id, ship_to_id, number)
@@ -448,7 +464,7 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
     }
 
     $existing = db_item(
-        "SELECT id, carrier, tracking_url, shipped_at
+        "SELECT id, number, carrier, tracking_url, shipped_at
         FROM shipping_tracking_numbers
         WHERE " . $same_parcel . "
         LIMIT 1");
@@ -473,11 +489,16 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         $tracking_url = (string) $existing['tracking_url'];
     }
 
+    // The spelling the row keeps, which the carrier guess and the warning read.
+    if ($existing && !$respell) {
+        $out['number'] = (string) $existing['number'];
+    }
+
     $shown = ($carrier !== '')
         ? $carrier
-        : pg_shipping_carrier($number, (string) $ship_to['shipping_method_code'], pg_shipping_default_carrier());
+        : pg_shipping_carrier($out['number'], (string) $ship_to['shipping_method_code'], pg_shipping_default_carrier());
 
-    $warning = pg_shipment_number_warning($number, $shown) ? 1 : 0;
+    $warning = pg_shipment_number_warning($out['number'], $shown) ? 1 : 0;
 
     $now = time();
 
@@ -486,7 +507,8 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
 
     if ($existing) {
 
-        $set = "carrier = '" . e($carrier) . "',
+        $set = "number = '" . e($out['number']) . "',
+            carrier = '" . e($carrier) . "',
             tracking_url = '" . e($tracking_url) . "',
             format_warning = '" . $warning . "'";
 

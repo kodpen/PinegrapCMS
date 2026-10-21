@@ -515,7 +515,9 @@ function pg_office_xlsx_strings($path, $part)
     $too_large = false;
 
     while ($reader->read()) {
-        if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->name === 'si')) {
+        // By the local name: a workbook written with a namespace prefix
+        // (Open XML SDK writes x:si, x:row, x:c) is the same workbook.
+        if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->localName === 'si')) {
             $string = pg_office_reader_text($reader, PG_OFFICE_MAX_STRING_BYTES - $bytes + 1, $over);
             $bytes += strlen($string);
 
@@ -545,7 +547,7 @@ function pg_office_xlsx_strings($path, $part)
  *
  * @param ZipArchive $zip
  * @param string     $refused set to large or damaged when the style part could not be read whole
- * @return array style index => true
+ * @return array style index => pg_office_xlsx_format_kind() (date, time, time_s, hours, hours_s, minutes)
  */
 function pg_office_xlsx_date_styles($zip, &$refused = null)
 {
@@ -558,15 +560,17 @@ function pg_office_xlsx_date_styles($zip, &$refused = null)
         return $dates;
     }
 
+    // The built-in formats (ECMA-376 18.8.30): 14-17 dates, 18-21 times of
+    // day, 22 a date and time, 45 mm:ss, 46 [h]:mm:ss, 47 mm:ss.0.
+    $builtin = array(14 => 'date', 15 => 'date', 16 => 'date', 17 => 'date', 18 => 'time', 19 => 'time_s',
+        20 => 'time', 21 => 'time_s', 22 => 'date', 45 => 'minutes', 46 => 'hours_s', 47 => 'minutes');
     $custom = array();
 
     foreach ($styles->getElementsByTagName('numFmt') as $format) {
-        $code = strtolower((string) $format->getAttribute('formatCode'));
-        $code = preg_replace('/"[^"]*"/', '', $code);
-        $code = preg_replace('/\[[^\]]*\]/', '', $code);
+        $kind = pg_office_xlsx_format_kind((string) $format->getAttribute('formatCode'));
 
-        if (preg_match('/[dmyhs]/', $code)) {
-            $custom[(int) $format->getAttribute('numFmtId')] = true;
+        if ($kind !== '') {
+            $custom[(int) $format->getAttribute('numFmtId')] = $kind;
         }
     }
 
@@ -576,8 +580,10 @@ function pg_office_xlsx_date_styles($zip, &$refused = null)
         foreach ($xfs->getElementsByTagName('xf') as $xf) {
             $format_id = (int) $xf->getAttribute('numFmtId');
 
-            if ((($format_id >= 14) && ($format_id <= 22)) || (($format_id >= 45) && ($format_id <= 47)) || isset($custom[$format_id])) {
-                $dates[$index] = true;
+            if (isset($custom[$format_id])) {
+                $dates[$index] = $custom[$format_id];
+            } elseif (isset($builtin[$format_id])) {
+                $dates[$index] = $builtin[$format_id];
             }
 
             $index++;
@@ -625,6 +631,87 @@ function pg_office_xlsx_date($serial, $date1904 = false)
     $stamp = ((float) $serial - ($date1904 ? 24107 : 25569)) * 86400;
 
     return gmdate((((float) $serial) == floor((float) $serial)) ? 'Y-m-d' : 'Y-m-d H:i', (int) round($stamp));
+}
+
+/**
+ * What a number format shows of a day count: 'date' (a day, month or year,
+ * with or without a time), 'time' / 'time_s' (a time of day, with seconds),
+ * 'hours' / 'hours_s' (elapsed hours, [h]), 'minutes' (minutes and seconds,
+ * mm:ss), or '' for none. An m next to an h or before an s is minutes, as
+ * Excel reads it.
+ *
+ * @param string $code a numFmt formatCode
+ * @return string
+ */
+function pg_office_xlsx_format_kind($code)
+{
+    $code = strtolower((string) $code);
+    $code = preg_replace('/"[^"]*"/', '', $code);
+    // An escaped character, a padding (_x) or fill (*x) character, and the
+    // AM/PM marker are not parts of a date.
+    $code = preg_replace('/[\\\\_*]./', '', $code);
+    $code = str_replace(array('am/pm', 'a/p'), '', $code);
+    $elapsed = preg_match('/\[h+\]/', $code) === 1;
+    $code = preg_replace('/\[[^\]]*\]/', $elapsed ? 'h' : '', $code);
+
+    // Minutes, not a month: after an hour or before a second.
+    $code = preg_replace('/(h+[^a-z0-9]*)m+/', '$1', $code);
+    $code = preg_replace('/m+([^a-z0-9]*s)/', '$1', $code);
+
+    $date = preg_match('/[dmy]/', $code) === 1;
+    $seconds = preg_match('/s/', $code) === 1;
+    $hours = preg_match('/h/', $code) === 1;
+
+    if ($date) {
+        return 'date';
+    }
+
+    if ($elapsed) {
+        return $seconds ? 'hours_s' : 'hours';
+    }
+
+    if ($hours) {
+        return $seconds ? 'time_s' : 'time';
+    }
+
+    return $seconds ? 'minutes' : '';
+}
+
+/**
+ * A day count shown as a time, rounded to the unit its format shows: a time
+ * of day (the days left out), elapsed hours, or minutes and seconds.
+ *
+ * @param float|string $serial
+ * @param string       $kind time, time_s, hours, hours_s, minutes (pg_office_xlsx_format_kind())
+ * @return string
+ */
+function pg_office_xlsx_time($serial, $kind)
+{
+    $seconds = (float) $serial * 86400;
+    $sign = ($seconds < 0) ? '-' : '';
+    $seconds = abs($seconds);
+
+    switch ($kind) {
+        case 'time':
+            $minutes = ((int) round($seconds / 60)) % 1440;
+            return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+
+        case 'time_s':
+            $whole = ((int) round($seconds)) % 86400;
+            return sprintf('%02d:%02d:%02d', intdiv($whole, 3600), intdiv($whole % 3600, 60), $whole % 60);
+
+        case 'hours':
+            $minutes = (int) round($seconds / 60);
+            return $sign . sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
+
+        case 'hours_s':
+            $whole = (int) round($seconds);
+            return $sign . sprintf('%02d:%02d:%02d', intdiv($whole, 3600), intdiv($whole % 3600, 60), $whole % 60);
+
+        default:
+            $whole = (int) round($seconds);
+            return $sign . sprintf('%02d:%02d', intdiv($whole, 60), $whole % 60);
+    }
 }
 
 /**
@@ -684,7 +771,7 @@ function pg_office_xlsx_cell_parts($reader)
         $level = $reader->depth - $depth;
 
         if ($reader->nodeType === XMLReader::ELEMENT) {
-            $name = $reader->name;
+            $name = $reader->localName;
             $parent = ($level === 1) ? 'c' : (isset($open[$level - 1]) ? $open[$level - 1] : '');
             $role = '';
 
@@ -768,9 +855,10 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
     }
 
     $previous = libxml_use_internal_errors(true);
+    $last_number = 0;
 
     while ($reader->read()) {
-        if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->name !== 'row')) {
+        if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->localName !== 'row')) {
             continue;
         }
 
@@ -780,22 +868,29 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
         }
 
         // The row number the sheet gives, so an empty stretch stays visible
-        // as a gap rather than closing up.
-        $number = (int) $reader->getAttribute('r');
+        // as a gap rather than closing up. The attribute is optional
+        // (ECMA-376): a row without it is the one after the last.
+        $given = $reader->getAttribute('r');
+        $number = (($given !== null) && ($given !== '')) ? (int) $given : ($last_number + 1);
+        $last_number = $number;
         $depth = $reader->depth;
         $has_cells = !$reader->isEmptyElement;
         $row = array();
         $waiting = array();
         $past_columns = false;
+        $next_column = 0;
 
         // The row's own cells only; past the column limit the rest of the
         // row is read through and left.
         while ($has_cells && $reader->read() && ($reader->depth > $depth)) {
-            if ($past_columns || ($reader->nodeType !== XMLReader::ELEMENT) || ($reader->depth !== $depth + 1) || ($reader->name !== 'c')) {
+            if ($past_columns || ($reader->nodeType !== XMLReader::ELEMENT) || ($reader->depth !== $depth + 1) || ($reader->localName !== 'c')) {
                 continue;
             }
 
-            $column = pg_office_xlsx_column((string) $reader->getAttribute('r'));
+            // A cell without its reference is the column after the last one.
+            $reference = $reader->getAttribute('r');
+            $column = (($reference !== null) && ($reference !== '')) ? pg_office_xlsx_column((string) $reference) : $next_column;
+            $next_column = $column + 1;
 
             if ($column >= PG_OFFICE_MAX_COLUMNS) {
                 $truncated = true;
@@ -835,7 +930,15 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
                     $value = $cell['v'];
 
                     if (($value !== '') && is_numeric($value)) {
-                        $value = isset($date_styles[$style]) ? pg_office_xlsx_date($value, $date1904) : pg_office_xlsx_number($value);
+                        $kind = isset($date_styles[$style]) ? $date_styles[$style] : '';
+
+                        if ($kind === 'date') {
+                            $value = pg_office_xlsx_date($value, $date1904);
+                        } elseif ($kind !== '') {
+                            $value = pg_office_xlsx_time($value, $kind);
+                        } else {
+                            $value = pg_office_xlsx_number($value);
+                        }
                     }
             }
 
@@ -909,7 +1012,8 @@ function pg_office_xlsx_read($path, $edit = false)
     }
 
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread));
+    $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904($workbook_xml);
 
     if (empty($sheets)) {
         $zip->close();
@@ -930,6 +1034,8 @@ function pg_office_xlsx_read($path, $edit = false)
     $any_cut = false;
     $edit = $edit && function_exists('pg_office_xlsx_sheet_edit_info');
     $signed = $edit && pg_office_signed($zip);
+    // A password to modify closes the whole workbook, whatever its sheets.
+    $reserved = $edit && !$signed && pg_office_xlsx_write_reserved($workbook_xml);
     $styles = $edit ? pg_office_xlsx_style_kinds($zip) : array();
 
     foreach ($sheets as $sheet) {
@@ -945,9 +1051,11 @@ function pg_office_xlsx_read($path, $edit = false)
 
         if ($edit) {
             $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];
-            $entry['edit'] = $signed
-                ? array('ok' => false, 'why' => 'signed')
-                : pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
+            if ($signed || $reserved) {
+                $entry['edit'] = array('ok' => false, 'why' => $signed ? 'signed' : 'password');
+            } else {
+                $entry['edit'] = pg_office_xlsx_sheet_edit_info($zip, $sheet, $last_row, $styles);
+            }
         }
 
         $out[] = $entry;
@@ -1406,6 +1514,37 @@ function pg_office_docx_block_tag($style)
 }
 
 /**
+ * The children of a table or a row with the given local name (tr, tc),
+ * including those inside content controls and custom XML: a repeating
+ * section wraps whole rows in sdt/sdtContent, and a control or custom XML
+ * element can wrap a single cell.
+ *
+ * @param DOMNode $parent
+ * @param string  $name
+ * @return DOMElement[]
+ */
+function pg_office_docx_wrapped($parent, $name)
+{
+    $found = array();
+
+    foreach ($parent->childNodes as $child) {
+        if (!($child instanceof DOMElement)) {
+            continue;
+        }
+
+        if ($child->localName === $name) {
+            $found[] = $child;
+        } elseif (in_array($child->localName, array('sdt', 'sdtContent', 'customXml'), true)) {
+            foreach (pg_office_docx_wrapped($child, $name) as $inner) {
+                $found[] = $inner;
+            }
+        }
+    }
+
+    return $found;
+}
+
+/**
  * The blocks of a container (the body, a table cell): paragraphs, lists
  * and tables, written to $html until the size limit is met.
  *
@@ -1451,6 +1590,12 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                     $props['level'] = $state['styles'][$props['style']]['level'];
                 }
 
+                // numId 0 is "no numbering" (ECMA-376 17.9.18): on the
+                // paragraph it also takes off its style's numbering.
+                if ($props['list'] === '0') {
+                    $props['list'] = '';
+                }
+
                 if ($props['list'] !== '') {
                     $format = $state['lists'][$props['list']][$props['level']] ?? 'ul';
 
@@ -1483,18 +1628,10 @@ function pg_office_docx_blocks(&$state, $container, &$html)
                 $close_list();
                 $html .= '<table class="office-table">';
 
-                foreach ($child->childNodes as $row) {
-                    if (!($row instanceof DOMElement) || ($row->localName !== 'tr')) {
-                        continue;
-                    }
-
+                foreach (pg_office_docx_wrapped($child, 'tr') as $row) {
                     $html .= '<tr>';
 
-                    foreach ($row->childNodes as $cell) {
-                        if (!($cell instanceof DOMElement) || ($cell->localName !== 'tc')) {
-                            continue;
-                        }
-
+                    foreach (pg_office_docx_wrapped($row, 'tc') as $cell) {
                         $span = 1;
 
                         foreach ($cell->getElementsByTagNameNS('*', 'gridSpan') as $grid) {
@@ -1689,6 +1826,7 @@ function pg_office_view_strings()
         'locked_protected'  => lang('The sheet is protected and this cell is locked.'),
         'sheet_protected'   => lang('The sheet is protected: only its unlocked cells can be changed.'),
         'sheet_signed'      => lang('The file is digitally signed, so its cells are not changed here.'),
+        'sheet_password'    => lang('The file has a password to change it, so its cells are not changed here.'),
         'sheet_kind'        => lang('This sheet has no cells to change.'),
         'sheet_large'       => lang('This sheet is too large to change here.'),
         'sheet_unusual'     => lang('This sheet cannot be changed here.'),
