@@ -543,6 +543,12 @@ function pg_audit_volatile($table, array $row)
 /**
  * The name a row is recorded under: the first non-empty label column.
  *
+ * A file or page in the Recycle Bin is parked under "pgbin_<id>_<name>"
+ * (pg_recycle_park_name()), and the lines for sending it to the bin and for
+ * deleting it from there read that parked row. The label is the record's name
+ * kept for when it is gone, so the prefix built from the row's own id is taken
+ * off; before_json and after_json keep the parked name as it was.
+ *
  * @param string $table
  * @param array  $row
  * @return string
@@ -555,9 +561,21 @@ function pg_audit_label_of($table, array $row)
         return '';
     }
 
+    $key = $tables[$table]['id'];
+
     foreach ($tables[$table]['label'] as $column) {
         if (isset($row[$column]) && (trim((string) $row[$column]) !== '')) {
-            return (string) $row[$column];
+            $label = (string) $row[$column];
+
+            if (($key !== '') && isset($row[$key])) {
+                $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . (int) $row[$key] . '_';
+
+                if ((strpos($label, $prefix) === 0) && (strlen($label) > strlen($prefix))) {
+                    $label = substr($label, strlen($prefix));
+                }
+            }
+
+            return $label;
         }
     }
 

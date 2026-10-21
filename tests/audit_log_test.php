@@ -217,6 +217,19 @@ function test_audit_tables_and_labels()
 	pg_assert_same('', pg_audit_label_of('nope', array('name' => 'x')), 'unknown table');
 }
 
+// A file or page in the Recycle Bin is parked as "pgbin_<id>_<name>"; its
+// lines are labelled with the name it had, and only its own id's prefix is
+// taken off.
+function test_audit_label_of_parked_row()
+{
+	pg_assert_same('jF-purge-test.txt', pg_audit_label_of('files', array('id' => '6992', 'name' => 'pgbin_6992_jF-purge-test.txt')), 'binned file');
+	pg_assert_same('checkout-preview-terms[1]', pg_audit_label_of('page', array('page_id' => '1084', 'page_name' => 'pgbin_1084_checkout-preview-terms[1]')), 'binned page');
+	pg_assert_same('pgbin_7_logo.png', pg_audit_label_of('files', array('id' => '8', 'name' => 'pgbin_7_logo.png')), 'another row\'s prefix stays');
+	pg_assert_same('pgbin_9_', pg_audit_label_of('files', array('id' => '9', 'name' => 'pgbin_9_')), 'nothing after the prefix');
+	pg_assert_same('pgbin_5_x', pg_audit_label_of('page', array('page_name' => 'pgbin_5_x')), 'no id in the row');
+	pg_assert_same('logo.png', pg_audit_label_of('files', array('id' => '3', 'name' => 'logo.png')), 'a name that is not parked');
+}
+
 // Without a connection nothing is read and nothing is recorded.
 function test_audit_record_without_table()
 {
