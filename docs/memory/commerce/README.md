@@ -51,7 +51,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
-- order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window, estimate rules, no date when one delivery has none, order view token and flags, fallback card line, panel card row
+- order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date), optional columns, status enum, and the fields the external API returns for orders.
 - payment-driver-iyzico.md: iyzico drivers (card for Iyzipay, redirect for Pay With Iyzico), the one submit_order.php branch, the 3-D Secure return still in the Iyzipay block, behaviour tests
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config

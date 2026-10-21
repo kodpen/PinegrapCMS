@@ -4,8 +4,8 @@
  *
  * Tests for the last day of an order's right of withdrawal in
  * includes/fn/legal_documents.php: the deadline of the last delivery, when it
- * is an estimate, when none is given, the line the order view prints and the
- * panel's date text.
+ * is an estimate, when none is given, how parcel arrivals count, and the line
+ * the order view prints.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -94,13 +94,48 @@ function test_legal_withdrawal_in_order_view_block()
 	pg_assert_same('', pg_legal_documents_order_view_block(array('preinfo' => '', 'contract' => ''), 'a'), 'no card without a kept copy');
 }
 
-// The panel writes the date in the site's day/month order, without leading zeros.
-function test_legal_withdrawal_panel_date_text()
+// Every parcel arrived after the expected date: the known arrival sets the date, not the estimate.
+function test_legal_withdrawal_known_delivery_after_estimate()
 {
-	$expected = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? '11/3/2026' : '3/11/2026';
+	$arrived = pg_return_parcel_delivery(array('2026-10-25'));
+	$window = pg_return_window(array(
+		'delivered'        => $arrived['delivered'],
+		'parcel_delivered' => $arrived['latest'],
+		'ship_date'        => '2026-10-10',
+		'delivery_date'    => '2026-10-14',
+	), '2026-10-30');
 
-	pg_assert_same($expected, pg_legal_document_date_text('2026-11-03'));
-	pg_assert_same('', pg_legal_document_date_text('2026-02-30'), 'not a date');
+	pg_assert_same(
+		array('deadline' => '2026-11-08', 'estimated' => false, 'open' => true),
+		pg_legal_withdrawal_deadline(array($window))
+	);
+}
+
+// Some parcels arrived and others not: the latest arrival moves the estimate later.
+function test_legal_withdrawal_partial_arrival()
+{
+	$arrived = pg_return_parcel_delivery(array('2026-10-25', ''));
+	$window = pg_return_window(array(
+		'delivered'        => $arrived['delivered'],
+		'parcel_delivered' => $arrived['latest'],
+		'ship_date'        => '2026-10-10',
+		'delivery_date'    => '2026-10-14',
+	), '2026-10-30');
+
+	pg_assert_same(
+		array('deadline' => '2026-11-08', 'estimated' => true, 'open' => true),
+		pg_legal_withdrawal_deadline(array($window))
+	);
+}
+
+// The order's deliveries go through the returns flow's state, so parcel arrivals reach the date.
+function test_legal_withdrawal_reads_parcel_arrivals()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
+
+	pg_assert_contains('$state = pg_return_delivery_state($order_id, (int) $ship_to[\'id\'], $today);', $source, 'each delivery is read with its parcels');
+	pg_assert_contains('$windows[] = is_array($state) ? $state[\'window\'] : null;', $source, 'a missing delivery gives no date');
+	pg_assert_false(strpos($source, "'delivered'     => '',") !== false, 'no delivery is taken as unknown');
 }
 
 // The order view gives the token and its flags, never in the receipt e-mail.

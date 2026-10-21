@@ -1374,6 +1374,9 @@ function pg_legal_withdrawal_deadline(array $windows)
  *
  * Only recipients with goods to ship count (an order of downloads or services
  * alone has no delivery to start the period). A cancelled order has none.
+ * Each delivery's window is the returns flow's (pg_return_delivery_state()),
+ * so the arrival dates of its parcels count: a known delivery once every
+ * parcel has arrived, and the latest arrival in the estimate while some have.
  *
  * @param int    $order_id
  * @param string $today  Y-m-d in the site's time zone; '' for today
@@ -1392,7 +1395,7 @@ function pg_legal_withdrawal_of_order($order_id, $today = '')
     }
 
     $ship_tos = db_items(
-        "SELECT ship_tos.ship_date, ship_tos.delivery_date
+        "SELECT ship_tos.id
         FROM ship_tos
         WHERE
             (ship_tos.order_id = '" . $order_id . "')
@@ -1411,11 +1414,8 @@ function pg_legal_withdrawal_of_order($order_id, $today = '')
     $windows = array();
 
     foreach ($ship_tos as $ship_to) {
-        $windows[] = pg_return_window(array(
-            'delivered'     => '',
-            'ship_date'     => (string) $ship_to['ship_date'],
-            'delivery_date' => (string) $ship_to['delivery_date'],
-        ), $today);
+        $state = pg_return_delivery_state($order_id, (int) $ship_to['id'], $today);
+        $windows[] = is_array($state) ? $state['window'] : null;
     }
 
     return pg_legal_withdrawal_deadline($windows);
@@ -1444,27 +1444,6 @@ function pg_legal_withdrawal_text($withdrawal, $date_text)
     return $withdrawal['estimated']
         ? lang(array('string' => 'Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).', 'vars' => array($date_text)))
         : lang(array('string' => 'Last day of the right of withdrawal: {var:1}', 'vars' => array($date_text)));
-}
-
-/**
- * A Y-m-d date the way the panel writes the dates of the legal documents.
- *
- * @param string $date  Y-m-d
- * @return string  '' when it is not a date
- */
-function pg_legal_document_date_text($date)
-{
-    $date = pg_return_date((string) $date);
-
-    if ($date === '') {
-        return '';
-    }
-
-    list($year, $month, $day) = array_map('intval', explode('-', $date));
-
-    return (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day'))
-        ? $month . '/' . $day . '/' . $year
-        : $day . '/' . $month . '/' . $year;
 }
 
 /**
@@ -1547,7 +1526,7 @@ function pg_legal_documents_panel_card($order_id)
         $rows .= '<div class="row">
                         <span class="col text-muted">' . h(lang('Right of withdrawal until')) . ':</span>
                         <span class="col text-end"' . ($withdrawal['estimated'] ? ' title="' . h(lang('Estimated from the ship date or the expected delivery date; the 14 days run from delivery.')) . '"' : '') . '>'
-                            . h(pg_legal_document_date_text($withdrawal['deadline']))
+                            . h(pg_return_day_text($withdrawal['deadline']))
                             . (($note !== '') ? ' <span class="text-muted small">(' . h($note) . ')</span>' : '')
                         . '</span>
                     </div>';
