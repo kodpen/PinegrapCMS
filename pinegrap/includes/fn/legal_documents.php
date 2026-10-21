@@ -324,8 +324,10 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * placed order stores). The total is the one the checkout page showed and
  * submit_order.php compares against, so offers, gift cards and rounding are
  * the checkout's own; the difference to the row sums is placed below. The
- * cart's order discount ($seen['order_discount']) is taken first and lowers
- * the tax by its share, so the discount and the tax read as the checkout's.
+ * cart's order discount ($seen['order_discount']) is taken first and the tax
+ * taken again per rate on what it leaves of the lines
+ * (pg_order_charged_tax()), so the discount and the tax read as the
+ * checkout's.
  * Billing fields the visitor has typed or the page filled in replace the
  * row's, which a cart has only after an earlier submit. A field the page drew
  * empty says nothing and keeps the row's value; a field the checkout link
@@ -333,7 +335,8 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * the visitor cleared, and clears it.
  *
  * @param array $order     orders row fields
- * @param array $lines     each with line_total and tax (minor units)
+ * @param array $lines     each with line_total and tax (minor units) and rate (the line's tax rate,
+ *                         null when not kept), in the order of their ids
  * @param array $ship_tos  each with cost (minor units)
  * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool)
  * @return array  the order fields with amounts, billing and payment method filled
@@ -343,10 +346,16 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     $subtotal = 0;
     $tax = 0;
     $shipping = 0;
+    $charged = array();
 
     foreach ($lines as $line) {
         $subtotal += (int) round($line['line_total'] ?? 0);
         $tax += (int) round($line['tax'] ?? 0);
+        $charged[] = array(
+            'amount' => (int) round($line['line_total'] ?? 0),
+            'rate' => $line['rate'] ?? null,
+            'tax' => (int) round($line['tax'] ?? 0),
+        );
     }
 
     foreach ($ship_tos as $ship_to) {
@@ -354,13 +363,14 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     }
 
     // The order discount the cart worked out (apply_offers_to_cart()) lowers
-    // the tax in its own proportion, as submit_order.php and the checkout
-    // pages do; never more than the subtotal.
+    // the tax as submit_order.php and the checkout pages lower it: taken
+    // again per rate on what the discount leaves of the lines; never more
+    // than the subtotal.
     $order_discount = (int) round((float) ($seen['order_discount'] ?? 0));
     $order_discount = max(0, min($order_discount, max(0, $subtotal)));
 
     if (($order_discount > 0) && ($subtotal > 0)) {
-        $tax = max(0, $tax - (int) round($tax * ($order_discount / $subtotal)));
+        $tax = pg_order_charged_tax($charged, $order_discount);
     }
 
     $goods = $subtotal - $order_discount + $tax;
@@ -812,7 +822,8 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total
+            order_items.tax_total" . (pg_schema_has('order_items', 'tax_rate') ? ",
+            order_items.tax_rate" : "") . "
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE order_items.order_id = '" . $order_id . "'
@@ -825,6 +836,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
             'tax'        => (int) round((float) $item['tax_total']),
+            'rate'       => $item['tax_rate'] ?? null,
         );
     }
 
