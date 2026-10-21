@@ -43499,17 +43499,23 @@ const StyleDesigner = (function () {
     // typed: the mirrors of pg_page_canonical_url_check() and
     // pg_page_max_snippet_check() (includes/fn/seo.php), which the save
     // applies. '' for an empty box, 'ok', or the reason.
+    // The server's pg_page_canonical_url_check() (includes/fn/seo.php), to
+    // the same answers: Unicode white space and zero-width characters
+    // trimmed at the ends, refused inside, a port above 65535 or not a
+    // number refused as parse_url() refuses it.
     function _sdCanonicalCheck(raw) {
-        var v = String(raw == null ? '' : raw).trim();
+        var v = String(raw == null ? '' : raw).replace(/^[\s\u0000\u200B-\u200D\u2060]+|[\s\u0000\u200B-\u200D\u2060]+$/g, '');
         if (!v) return '';
         var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(v).length : v.length;
         if (bytes > 2000) return 'size';
-        if (/[\u0000-\u0020\u007F"<>\\]/.test(v)) return 'chars';
+        if (/[\u0000-\u0020\u007F"<>\\]|[\p{Z}\p{Cf}]/u.test(v)) return 'chars';
         if (v.charAt(0) === '/') return (v.charAt(1) === '/') ? 'scheme' : 'ok';
         var m = /^https?:\/\/([^\/?#]*)/i.exec(v);
         if (!m) return 'scheme';
         // The host: what is left of the authority without a user and a port.
-        return m[1].replace(/^[^@]*@/, '').replace(/:[0-9]*$/, '') ? 'ok' : 'scheme';
+        var hp = /^(\[[^\]]*\]|[^:]*)(?::([0-9]*))?$/.exec(m[1].replace(/^[^@]*@/, ''));
+        if (!hp || !hp[1]) return 'scheme';
+        return (hp[2] && parseInt(hp[2], 10) > 65535) ? 'scheme' : 'ok';
     }
 
     function _sdMaxSnippetCheck(raw, limit) {
