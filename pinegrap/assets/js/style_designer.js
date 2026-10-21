@@ -50315,7 +50315,7 @@ const StyleDesigner = (function () {
             if (!revState.rows.length) {
                 return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
             }
-            var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+            var loadRefusal = _sdRevisionLoadRefusal();
             html += '<div class="sd-snap-list sd-rev-list">';
             revState.rows.forEach(function (r, i) {
                 // The size against the revision before it in the list (the
@@ -50336,7 +50336,7 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-snap-acts">' +
                         '<button type="button" class="sd-snap-load sd-rev-compare" data-no="' + r.revision_no + '" title="' + esc(_sdT('Compare with the page now')) + '"><span class="bi bi-arrow-left-right"></span></button>' +
-                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (mayEdit ? '' : ' disabled title="' + esc(_sdT('Another person is editing this page.')) + '"') + '>' + esc(_sdT('Load')) + '</button>' +
+                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load')) + '</button>' +
                     '</div></div>';
             });
             html += '</div>';
@@ -50509,9 +50509,25 @@ const StyleDesigner = (function () {
     // Loads a revision's tree into the editor as unsaved work. The tree the
     // operator had is one Ctrl+Z away, and the page is marked so the next
     // publish records where its tree came from.
-    function _sdRevisionRestore(pageId, no, done) {
+    // Why this session may not load a revision, '' when it may. Loading puts
+    // the revision's whole tree on the canvas; at the content level the
+    // save keeps only its texts and image addresses
+    // (pg_designer_merge_restricted_tree()), so the revision never reached
+    // the site while the editor read as saved. A content operator compares.
+    function _sdRevisionLoadRefusal() {
         if (typeof _collab !== 'undefined' && _collab && _collab.mayEdit === false) {
-            sdToast(esc(_sdT('Another person is editing this page.')), 'warning');
+            return _sdT('Another person is editing this page.');
+        }
+        if (_sdIsContentLevel()) {
+            return _sdT('Only a designer can load an earlier revision.');
+        }
+        return '';
+    }
+
+    function _sdRevisionRestore(pageId, no, done) {
+        var refusal = _sdRevisionLoadRefusal();
+        if (refusal) {
+            sdToast(esc(refusal), 'warning');
             return;
         }
         _sdRevisionFetch(pageId, no).then(function (rev) {
@@ -50568,7 +50584,7 @@ const StyleDesigner = (function () {
         overlay.id = 'sd-rev-overlay';
         overlay.className = 'sd-fr-overlay sd-rev-overlay';
         var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
-        var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+        var loadRefusal = _sdRevisionLoadRefusal();
         overlay.innerHTML =
             '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
                 '<div class="sd-fr-header">' +
@@ -50589,7 +50605,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-fr-footer">' +
                     '<span class="sd-rev-summary"></span>' +
                     '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
-                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (mayEdit ? '' : ' disabled') + '>' + esc(_sdT('Load this revision')) + '</button>' +
+                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load this revision')) + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);

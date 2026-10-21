@@ -16,6 +16,9 @@ description: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, ever
 ## Which pictures does `_sdCanEditNode(node, 'image')` offer outside a marked area?
 - Only what the save takes (`_pg_dm_take_image_src()`): an image content node and a bare `<img>`, through `_sdNodeContentImage()`. `_sdNodeImage()` still finds an inline `background-image` for the designer's tools and inside marked areas, but the content level is not offered it (read-only panel Image row, both menus' "Edit Image"): a background is formatting and the save keeps the stored one. Before PR #1110 (issue #778) it was offered, the canvas showed the new picture and the save dropped it (a page read as saved, a component went back). Test: `tests/designer_content_image_test.php` (runs the functions under Node).
 
+## Can a content operator load an earlier revision?
+- No (owner decision 2026-10-21): History's Load and the comparison's "Load this revision" are drawn disabled and `_sdRevisionRestore()` refuses with "Only a designer can load an earlier revision." (`_sdRevisionLoadRefusal()`, which also gives "Another person is editing this page."). Compare stays. Loading put the whole tree on the canvas while the save kept only its texts and image addresses, so the revision never reached the site (PR #1115, issue #825). Test: `tests/designer_revision_load_test.php`.
+
 ## Other content-role UI rules
 - `_sdApplyContentChrome()` was called once at boot but the palette and settings modal are built later. It is idempotent; applied at boot and again after 300 / 1200 ms. The chrome must run after what it hides exists.
 - Never offer an unreachable path: the welcome screen showed three create-design cards to content roles while `add_system_style.php` requires a designer. A button either works or is not there.
