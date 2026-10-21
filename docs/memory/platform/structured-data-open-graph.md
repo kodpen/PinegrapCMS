@@ -5,6 +5,7 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 
 ## What may structured data contain?
 - Never invented data: `review` / `aggregateRating` are not written without real review data. Google `offers` alone is enough; a Rich Results Test warning is not an error. The legacy "google require it so we set random" block was removed - do not bring it back.
+- `aggregateRating` comes only from `pg_review_aggregate_jsonld()` (verified reviews, on the page that shows them with stars): `docs/memory/commerce/product-reviews-verified.md`.
 - JSON-LD is always an array + `json_encode()`. String concatenation is forbidden: one quoted product name invalidates the whole block and readers silently drop it.
 
 ## How is custom JSON-LD handled?
