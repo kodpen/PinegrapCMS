@@ -55,8 +55,8 @@ longer names a link "Array"); classic screens call
 ## What name does a copy or a renamed restore get?
 `pg_short_link_free_name()`: the name, else `name[1]`, `[2]`… cut at its end
 to fit the column (`pg_short_link_numbered_name()`, 191; 100 before 11.0.12).
-Before #PR836 a name of 189-191 characters lost the suffix on INSERT: two
+Before #1024 a name of 189-191 characters lost the suffix on INSERT: two
 links with one name.
 
 Tests: `tests/short_link_requests_test.php`, `short_link_redirects_test.php`.
-PRs: #482, #487.
+PRs: #482, #487, #1024.
