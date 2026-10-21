@@ -15,7 +15,10 @@
  *
  * Every part of the zip is measured before it is opened, so a file built to
  * expand into gigabytes is refused rather than read, and the output is cut
- * at a size a page can show.
+ * at a size a page can show. A part built into a DOM has a smaller ceiling
+ * of its own, as libxml's memory for the tree is not counted by
+ * memory_limit, and the rows and strings of a workbook are read node by node,
+ * never built as a tree.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,6 +36,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 define('PG_OFFICE_MAX_PART', 64 * 1024 * 1024);
 define('PG_OFFICE_MAX_PACKAGE', 256 * 1024 * 1024);
+
+/**
+ * The most an XML part read whole into a DOM may unpack to, in bytes. The
+ * tree takes many times the part's size in libxml's memory, which
+ * memory_limit does not count: 8 MB of a document's paragraphs took about
+ * 150 MB, 60 MB took 860 MB. A document's main part past this is read from
+ * its beginning and shown cut (the preview cuts its HTML well before);
+ * any other part past this makes the file too large to show.
+ */
+define('PG_OFFICE_MAX_DOM', 8 * 1024 * 1024);
 
 /**
  * How much of a workbook the preview shows: rows and columns a sheet, cells
@@ -157,38 +170,118 @@ function pg_office_open($path, &$error)
  * One XML part of the package as a DOMDocument, with nothing fetched from
  * outside it (no network, no external entities), or null.
  *
+ * The part is read whole through pg_zip_entry_contents(): only when it
+ * declares no more than PG_OFFICE_MAX_DOM, and no further than it declares.
+ * With $head, a part past the ceiling is read from its beginning instead:
+ * its first PG_OFFICE_MAX_DOM bytes up to the end of the last tag in them,
+ * the elements still open there closed by libxml's recovery, so the tree
+ * holds the part's first whole elements.
+ *
  * @param ZipArchive $zip
  * @param string     $name
+ * @param string     $status '' read whole; 'cut' only its beginning (with
+ *                           $head); with null: 'missing' (no such part, or an
+ *                           empty one), 'large', 'damaged' (not the size it
+ *                           declares) or 'xml' (not XML)
+ * @param bool       $head   read a part past the ceiling from its beginning
  * @return DOMDocument|null
  */
-function pg_office_xml($zip, $name)
+function pg_office_xml($zip, $name, &$status = null, $head = false)
 {
-    $xml = $zip->getFromName($name);
+    $status = '';
+    $name = (string) $name;
+    $stat = $head ? $zip->statName($name) : false;
+    $cut = ($stat !== false) && isset($stat['size'], $stat['index']) && ((float) $stat['size'] > PG_OFFICE_MAX_DOM);
 
-    if (($xml === false) || ($xml === '')) {
+    if ($cut) {
+        $xml = $zip->getFromIndex((int) $stat['index'], PG_OFFICE_MAX_DOM);
+
+        // Fewer bytes than asked for from a part that declares more.
+        if (!is_string($xml) || (strlen($xml) !== PG_OFFICE_MAX_DOM)) {
+            $status = 'damaged';
+
+            return null;
+        }
+
+        $end = strrpos($xml, '>');
+        $xml = ($end === false) ? '' : substr($xml, 0, $end + 1);
+    } else {
+        $xml = pg_zip_entry_contents($zip, $name, PG_OFFICE_MAX_DOM, $refused);
+
+        if ($xml === null) {
+            $status = $refused;
+
+            return null;
+        }
+    }
+
+    if ($xml === '') {
+        $status = $cut ? 'xml' : 'missing';
+
         return null;
     }
 
     $previous = libxml_use_internal_errors(true);
     $dom = new DOMDocument();
+    $dom->recover = $cut;
     $loaded = $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS);
+    unset($xml);
     libxml_clear_errors();
     libxml_use_internal_errors($previous);
 
-    return $loaded ? $dom : null;
+    if (!$loaded || ($dom->documentElement === null)) {
+        $status = 'xml';
+
+        return null;
+    }
+
+    $status = $cut ? 'cut' : '';
+
+    return $dom;
+}
+
+/**
+ * Keeps the first reason a part read whole stops a file being shown: one
+ * past PG_OFFICE_MAX_DOM, or one that does not unpack to the size it
+ * declares. A part that is missing, empty or not XML is read as absent.
+ *
+ * @param string $refused '' so far, or the first reason (large, damaged), kept
+ * @param string $status  the part's status from pg_office_xml()
+ */
+function pg_office_refuse(&$refused, $status)
+{
+    if (((string) $refused === '') && in_array($status, array('large', 'damaged'), true)) {
+        $refused = $status;
+    }
+}
+
+/**
+ * The message for a file refused by pg_office_refuse()'s reason.
+ *
+ * @param string $refused large or damaged
+ * @return string
+ */
+function pg_office_refusal_error($refused)
+{
+    return ($refused === 'large')
+        ? lang('This file is too large to show here. Download it to open it.')
+        : lang('The file could not be read.');
 }
 
 /**
  * The relationships of a part: id => [target, type word, external].
  *
  * @param ZipArchive $zip
- * @param string     $name the .rels part
+ * @param string     $name    the .rels part
+ * @param string     $refused set to large or damaged when the part could not be read whole (pg_office_refuse())
  * @return array
  */
-function pg_office_rels($zip, $name)
+function pg_office_rels($zip, $name, &$refused = null)
 {
     $out = array();
-    $dom = pg_office_xml($zip, $name);
+    $refused = '';
+    $dom = pg_office_xml($zip, $name, $status);
+    pg_office_refuse($refused, $status);
 
     if ($dom === null) {
         return $out;
@@ -276,18 +369,22 @@ function pg_office_part_name($folder, $target)
  * change).
  *
  * @param ZipArchive $zip
+ * @param string     $refused set to large or damaged when the workbook part or its relationships could not be read whole
  * @return array[]
  */
-function pg_office_xlsx_sheets($zip)
+function pg_office_xlsx_sheets($zip, &$refused = null)
 {
     $out = array();
-    $book = pg_office_xml($zip, 'xl/workbook.xml');
+    $refused = '';
+    $book = pg_office_xml($zip, 'xl/workbook.xml', $status);
+    pg_office_refuse($refused, $status);
 
     if ($book === null) {
         return $out;
     }
 
-    $rels = pg_office_rels($zip, 'xl/_rels/workbook.xml.rels');
+    $rels = pg_office_rels($zip, 'xl/_rels/workbook.xml.rels', $rels_refused);
+    pg_office_refuse($refused, $rels_refused);
 
     foreach ($book->getElementsByTagName('sheet') as $sheet) {
         $id = pg_office_attr($sheet, 'id');
@@ -336,13 +433,56 @@ function pg_office_zip_stream()
 }
 
 /**
+ * The text of the element the reader is on, as XMLReader::readString()
+ * gives it (every text and CDATA node inside it, whitespace included), read
+ * node by node. readString(), readOuterXml() and expand() first build the
+ * whole element as a tree in libxml's memory, which memory_limit does not
+ * count: one string or row a few kilobytes long on disk can unpack to
+ * millions of nodes. The reader is left on the element's last node; text past
+ * $limit bytes is passed over, not kept.
+ *
+ * @param XMLReader $reader on an element
+ * @param int       $limit  the most bytes kept
+ * @param bool      $over   set when the text is longer than $limit
+ * @return string
+ */
+function pg_office_reader_text($reader, $limit, &$over = null)
+{
+    $over = false;
+    $text = '';
+
+    if ($reader->isEmptyElement) {
+        return $text;
+    }
+
+    $depth = $reader->depth;
+    $kinds = array(XMLReader::TEXT, XMLReader::CDATA, XMLReader::WHITESPACE, XMLReader::SIGNIFICANT_WHITESPACE);
+
+    while ($reader->read() && ($reader->depth > $depth)) {
+        if ($over || !in_array($reader->nodeType, $kinds, true)) {
+            continue;
+        }
+
+        $text .= $reader->value;
+
+        if (strlen($text) > $limit) {
+            $text = substr($text, 0, max(0, (int) $limit));
+            $over = true;
+        }
+    }
+
+    return $text;
+}
+
+/**
  * The shared string table, as a list.
  *
  * Read no further than the size the package declares for the table
  * (pg_zip_entry_uri()): a stream would otherwise inflate a table that
  * declares a kilobyte to whatever it holds. A table that unpacks past its
  * declared size is damaged; one past PG_OFFICE_MAX_STRINGS strings or
- * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show.
+ * PG_OFFICE_MAX_STRING_BYTES bytes is too large to show. Each string is read
+ * node by node (pg_office_reader_text()).
  *
  * @param string $path the package on disk
  * @param string $part '' when the workbook has none
@@ -376,10 +516,10 @@ function pg_office_xlsx_strings($path, $part)
 
     while ($reader->read()) {
         if (($reader->nodeType === XMLReader::ELEMENT) && ($reader->name === 'si')) {
-            $string = $reader->readString();
+            $string = pg_office_reader_text($reader, PG_OFFICE_MAX_STRING_BYTES - $bytes + 1, $over);
             $bytes += strlen($string);
 
-            if ((count($strings) >= PG_OFFICE_MAX_STRINGS) || ($bytes > PG_OFFICE_MAX_STRING_BYTES)) {
+            if ($over || (count($strings) >= PG_OFFICE_MAX_STRINGS) || ($bytes > PG_OFFICE_MAX_STRING_BYTES)) {
                 $too_large = true;
                 break;
             }
@@ -404,12 +544,15 @@ function pg_office_xlsx_strings($path, $part)
  * formats, and the operator's own whose pattern names a day, month or year.
  *
  * @param ZipArchive $zip
+ * @param string     $refused set to large or damaged when the style part could not be read whole
  * @return array style index => true
  */
-function pg_office_xlsx_date_styles($zip)
+function pg_office_xlsx_date_styles($zip, &$refused = null)
 {
     $dates = array();
-    $styles = pg_office_xml($zip, 'xl/styles.xml');
+    $refused = '';
+    $styles = pg_office_xml($zip, 'xl/styles.xml', $status);
+    pg_office_refuse($refused, $status);
 
     if ($styles === null) {
         return $dates;
@@ -508,7 +651,97 @@ function pg_office_xlsx_number($value)
 }
 
 /**
+ * What the preview takes from one cell, read node by node from the reader on
+ * its element (pg_office_reader_text() says why): the text of its first
+ * value, whether it has a formula, and of its first inline string the text
+ * of the first text element and of each run's first text element. Each is
+ * the element's own text, as SimpleXML gives it ($cell->v, $cell->f,
+ * $cell->is->t, $cell->is->r->t), matched by the name the sheet writes as
+ * the rest of this reader matches them. The reader is left on the cell's
+ * last node.
+ *
+ * @param XMLReader $reader on a c element
+ * @return array v, f, is, t, r (it has runs), runs (their texts joined)
+ */
+function pg_office_xlsx_cell_parts($reader)
+{
+    $out = array('v' => '', 'f' => false, 'is' => false, 't' => '', 'r' => false, 'runs' => '');
+
+    if ($reader->isEmptyElement) {
+        return $out;
+    }
+
+    $depth = $reader->depth;
+    $kinds = array(XMLReader::TEXT, XMLReader::CDATA, XMLReader::WHITESPACE, XMLReader::SIGNIFICANT_WHITESPACE);
+
+    // What the element open at each depth below the cell is to this read:
+    // v (the first value), is (the first inline string), t (its first text),
+    // r (one of its runs), rt (that run's first text), or ''.
+    $open = array();
+    $seen = array('v' => false, 'is' => false, 't' => false, 'rt' => false);
+
+    while ($reader->read() && ($reader->depth > $depth)) {
+        $level = $reader->depth - $depth;
+
+        if ($reader->nodeType === XMLReader::ELEMENT) {
+            $name = $reader->name;
+            $parent = ($level === 1) ? 'c' : (isset($open[$level - 1]) ? $open[$level - 1] : '');
+            $role = '';
+
+            if ($parent === 'c') {
+                if ($name === 'f') {
+                    $out['f'] = true;
+                } elseif (($name === 'v') && !$seen['v']) {
+                    $role = 'v';
+                    $seen['v'] = true;
+                } elseif (($name === 'is') && !$seen['is']) {
+                    $role = 'is';
+                    $seen['is'] = true;
+                    $out['is'] = true;
+                }
+            } elseif ($parent === 'is') {
+                if (($name === 't') && !$seen['t']) {
+                    $role = 't';
+                    $seen['t'] = true;
+                } elseif ($name === 'r') {
+                    $role = 'r';
+                    $out['r'] = true;
+                    $seen['rt'] = false;
+                }
+            } elseif (($parent === 'r') && ($name === 't') && !$seen['rt']) {
+                $role = 'rt';
+                $seen['rt'] = true;
+            }
+
+            $open[$level] = $role;
+            continue;
+        }
+
+        if (!in_array($reader->nodeType, $kinds, true)) {
+            continue;
+        }
+
+        // The element the text stands directly in.
+        $owner = isset($open[$level - 1]) ? $open[$level - 1] : '';
+
+        if ($owner === 'v') {
+            $out['v'] .= $reader->value;
+        } elseif ($owner === 't') {
+            $out['t'] .= $reader->value;
+        } elseif ($owner === 'rt') {
+            $out['runs'] .= $reader->value;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The rows of one sheet, as lists of strings, cut at the limits.
+ *
+ * A row is walked cell by cell and each cell node by node
+ * (pg_office_xlsx_cell_parts()): a row is never built as a tree, so a sheet
+ * of one row with a million cells costs no more than its cells shown.
  *
  * @param string $path        the package on disk
  * @param string $part        the sheet part
@@ -546,56 +779,63 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
             break;
         }
 
-        $row_xml = simplexml_load_string($reader->readOuterXml());
-
-        if ($row_xml === false) {
-            continue;
-        }
-
+        // The row number the sheet gives, so an empty stretch stays visible
+        // as a gap rather than closing up.
+        $number = (int) $reader->getAttribute('r');
+        $depth = $reader->depth;
+        $has_cells = !$reader->isEmptyElement;
         $row = array();
         $waiting = array();
+        $past_columns = false;
 
-        foreach ($row_xml->c as $cell) {
-            $column = pg_office_xlsx_column((string) $cell['r']);
+        // The row's own cells only; past the column limit the rest of the
+        // row is read through and left.
+        while ($has_cells && $reader->read() && ($reader->depth > $depth)) {
+            if ($past_columns || ($reader->nodeType !== XMLReader::ELEMENT) || ($reader->depth !== $depth + 1) || ($reader->name !== 'c')) {
+                continue;
+            }
+
+            $column = pg_office_xlsx_column((string) $reader->getAttribute('r'));
 
             if ($column >= PG_OFFICE_MAX_COLUMNS) {
                 $truncated = true;
-                break;
+                $past_columns = true;
+                continue;
             }
 
-            $type = (string) $cell['t'];
+            $type = (string) $reader->getAttribute('t');
+            $style = (int) $reader->getAttribute('s');
+            $cell = pg_office_xlsx_cell_parts($reader);
             $value = '';
 
             switch ($type) {
                 case 's':
-                    $index = (int) $cell->v;
+                    $index = (int) $cell['v'];
                     $value = isset($strings[$index]) ? $strings[$index] : '';
                     break;
 
                 case 'inlineStr':
-                    $value = isset($cell->is) ? (string) $cell->is->t : '';
+                    $value = $cell['is'] ? $cell['t'] : '';
 
-                    if (($value === '') && isset($cell->is->r)) {
-                        foreach ($cell->is->r as $run) {
-                            $value .= (string) $run->t;
-                        }
+                    if (($value === '') && $cell['r']) {
+                        $value = $cell['runs'];
                     }
                     break;
 
                 case 'b':
-                    $value = (((string) $cell->v) === '1') ? 'TRUE' : 'FALSE';
+                    $value = ($cell['v'] === '1') ? 'TRUE' : 'FALSE';
                     break;
 
                 case 'str':
                 case 'e':
-                    $value = (string) $cell->v;
+                    $value = $cell['v'];
                     break;
 
                 default:
-                    $value = (string) $cell->v;
+                    $value = $cell['v'];
 
                     if (($value !== '') && is_numeric($value)) {
-                        $value = isset($date_styles[(int) $cell['s']]) ? pg_office_xlsx_date($value, $date1904) : pg_office_xlsx_number($value);
+                        $value = isset($date_styles[$style]) ? pg_office_xlsx_date($value, $date1904) : pg_office_xlsx_number($value);
                     }
             }
 
@@ -608,14 +848,12 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
             // A formula with no result stored: the program that wrote the
             // file did not work it out (or an edit here took the stale one
             // away), and a spreadsheet program will when it opens the file.
-            if (($value === '') && isset($cell->f)) {
+            if (($value === '') && $cell['f']) {
                 $waiting[] = $column;
             }
         }
 
-        // The row number the sheet gives, so an empty stretch stays visible
-        // as a gap rather than closing up.
-        $entry = array('n' => (int) $row_xml['r'], 'cells' => $row);
+        $entry = array('n' => $number, 'cells' => $row);
 
         if (!empty($waiting)) {
             $entry['calc'] = $waiting;
@@ -659,10 +897,19 @@ function pg_office_xlsx_read($path, $edit = false)
         return array('ok' => false, 'error' => $error, 'sheets' => array(), 'truncated' => false);
     }
 
-    $sheets = pg_office_xlsx_sheets($zip);
-    $date_styles = pg_office_xlsx_date_styles($zip);
+    $sheets = pg_office_xlsx_sheets($zip, $refused);
+    $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
+
+    // A part read whole that is too large or damaged: the workbook is not
+    // drawn without it, its sheets missing or its dates shown as numbers.
+    if ($refused !== '') {
+        $zip->close();
+
+        return array('ok' => false, 'error' => pg_office_refusal_error($refused), 'sheets' => array(), 'truncated' => false);
+    }
+
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) $zip->getFromName('xl/workbook.xml'));
+    $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904((string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread));
 
     if (empty($sheets)) {
         $zip->close();
@@ -673,6 +920,8 @@ function pg_office_xlsx_read($path, $edit = false)
     $strings = pg_office_xlsx_strings($path, $strings_part);
 
     if (!is_array($strings)) {
+        $zip->close();
+
         return array('ok' => false, 'error' => ($strings === null) ? lang('This file is too large to show here. Download it to open it.') : lang('The file could not be read.'), 'sheets' => array(), 'truncated' => false);
     }
 
@@ -725,13 +974,16 @@ function pg_office_xlsx_read($path, $edit = false)
  * of what has been written.
  *
  * @param ZipArchive $zip
+ * @param string     $refused set to large or damaged when the list, style or relationship part could not be read whole
  * @return array
  */
-function pg_office_docx_state($zip)
+function pg_office_docx_state($zip, &$refused = null)
 {
     $lists = array();
     $abstract = array();
-    $numbering = pg_office_xml($zip, 'word/numbering.xml');
+    $refused = '';
+    $numbering = pg_office_xml($zip, 'word/numbering.xml', $status);
+    pg_office_refuse($refused, $status);
 
     // numId -> abstractNumId -> per level: bullet or numbered.
     if ($numbering !== null) {
@@ -764,7 +1016,8 @@ function pg_office_docx_state($zip)
     // A style that is itself a list (List Bullet, List Number): paragraphs
     // in it carry no numbering of their own.
     $styles = array();
-    $style_sheet = pg_office_xml($zip, 'word/styles.xml');
+    $style_sheet = pg_office_xml($zip, 'word/styles.xml', $status);
+    pg_office_refuse($refused, $status);
 
     if ($style_sheet !== null) {
         foreach ($style_sheet->getElementsByTagNameNS('*', 'style') as $style) {
@@ -792,9 +1045,12 @@ function pg_office_docx_state($zip)
         }
     }
 
+    $rels = pg_office_rels($zip, 'word/_rels/document.xml.rels', $rels_refused);
+    pg_office_refuse($refused, $rels_refused);
+
     return array(
         'zip'         => $zip,
-        'rels'        => pg_office_rels($zip, 'word/_rels/document.xml.rels'),
+        'rels'        => $rels,
         'lists'       => $lists,
         'styles'      => $styles,
         'images'      => 0,
@@ -838,9 +1094,9 @@ function pg_office_docx_image(&$state, $rel_id)
         return '';
     }
 
-    $bytes = $state['zip']->getFromName($part);
+    $bytes = pg_zip_entry_contents($state['zip'], $part, PG_OFFICE_MAX_IMAGE, $unread);
 
-    if (($bytes === false) || ($bytes === '') || (@getimagesizefromstring($bytes) === false)) {
+    if (($bytes === null) || ($bytes === '') || (@getimagesizefromstring($bytes) === false)) {
         $state['images_lost']++;
 
         return '';
@@ -1335,7 +1591,9 @@ function pg_office_docx_read($path, $edit = false)
         return array('ok' => false, 'error' => $error, 'html' => '', 'truncated' => false, 'images_lost' => 0);
     }
 
-    $document = pg_office_xml($zip, 'word/document.xml');
+    // A main part past PG_OFFICE_MAX_DOM is read from its beginning: the
+    // preview shows a document's beginning in any case.
+    $document = pg_office_xml($zip, 'word/document.xml', $status, true);
 
     if ($document === null) {
         $zip->close();
@@ -1343,10 +1601,23 @@ function pg_office_docx_read($path, $edit = false)
         return array('ok' => false, 'error' => lang('The file could not be read.'), 'html' => '', 'truncated' => false, 'images_lost' => 0);
     }
 
-    $state = pg_office_docx_state($zip);
+    $cut = ($status === 'cut');
+    $state = pg_office_docx_state($zip, $refused);
+
+    if ($refused !== '') {
+        $zip->close();
+
+        return array('ok' => false, 'error' => pg_office_refusal_error($refused), 'html' => '', 'truncated' => false, 'images_lost' => 0);
+    }
+
     $html = '';
     $edit = $edit && function_exists('pg_office_docx_edit_refusal');
     $refusal = $edit ? pg_office_docx_edit_refusal($zip) : '';
+
+    // A document read only in part has no whole to save a change into.
+    if ($edit && $cut && ($refusal === '')) {
+        $refusal = 'large';
+    }
 
     if ($edit && ($refusal === '')) {
         $state['edit'] = array('index' => array(), 'texts' => array());
@@ -1363,7 +1634,7 @@ function pg_office_docx_read($path, $edit = false)
 
     $zip->close();
 
-    $out = array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'], 'images_lost' => $state['images_lost']);
+    $out = array('ok' => true, 'error' => '', 'html' => $html, 'truncated' => $state['cut'] || $cut, 'images_lost' => $state['images_lost']);
 
     if ($edit) {
         $out['edit'] = ($refusal !== '')

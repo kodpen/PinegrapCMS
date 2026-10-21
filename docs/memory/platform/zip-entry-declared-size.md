@@ -21,7 +21,7 @@ description: A zip entry is read no further than its archive declares: streams v
 - Without ZipArchive these refuse, as restore and update do; PclZip is no longer read.
 
 ## What is the rule?
-- Stream an entry only through `pg_zip_entry_uri()` and ask `pg_zip_entry_overran()`; read a whole entry only through `pg_zip_entry_contents()` with a ceiling; open an archive imported entry by entry with `pg_zip_import_open()`; copy in chunks bounded by the declared size.
+- Stream an entry only through `pg_zip_entry_uri()` and ask `pg_zip_entry_overran()`; read a whole entry only through `pg_zip_entry_contents()` with a ceiling; open an archive imported entry by entry with `pg_zip_import_open()`; copy in chunks bounded by the declared size. Office DOM parts: docs/memory/platform/office-dom-ceiling.md.
 
 ## Where are the tests?
 - `tests/zip_entry_cap_test.php` (streams, copies) and `tests/zip_entry_contents_test.php` (whole entries, import ceilings, names, .ods): archives whose declared size is changed after writing.

@@ -13,6 +13,7 @@ description: Word and Excel previews (includes/fn/office.php, pg_office_view.js)
 - XML is loaded with `LIBXML_NONET` and never `LIBXML_NOENT`. `pg_office_zip_stream()` restores the built-in `zip://` wrapper and libxml's loader once, because PHPExcel (the .xls/.ods importers) replaces both for the rest of a request and XMLReader cannot open a part through them; the test suite hit this ordering.
 - `get_file.php` now names the OOXML MIME types (docx, xlsx, pptx, their macro and template forms); they still go out as attachments.
 - A part read as a stream (shared strings, sheet rows) stops at the size the package declares for it, and the shared string table at 500,000 strings or 32 MB: docs/memory/platform/zip-entry-declared-size.md.
+- A part built into a DOM may declare 8 MB; a longer document is read from its beginning, rows and strings node by node: docs/memory/platform/office-dom-ceiling.md.
 
 ## Where do the readers go next?
 - Edits, read with `edit`: workbook cells docs/memory/platform/office-cell-edits.md, document paragraphs docs/memory/platform/office-paragraph-edits.md, in a channel docs/memory/workspace/workspace-office-edits.md; what is left: docs/memory/plans/files-office-documents.md (D5). Sending a file manager file to a channel, and picking one from the writing box: docs/memory/workspace/workspace-file-manager-files.md. Tests: `tests/office_test.php` (pure helpers, and both readers over packages the test writes).
