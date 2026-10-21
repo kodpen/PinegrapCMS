@@ -158,3 +158,32 @@ function test_code_editor_lint_reads_the_whole_document()
 
 	pg_assert_true(($cap !== false) && ($push !== false) && ($cap < $push), 'the cap is checked before each node, not only after a push');
 }
+
+// A lint run that is still parsing when the linter is replaced (setLanguage,
+// setLint) or the editor is closed stops at its next slice without a result.
+// The lint extension applies any result whose document is unchanged and adds
+// its state back when the linter was switched off, so a late result would
+// leave marks that no linter clears. Every linter the editor builds gets a
+// new generation, and only the current one may deliver.
+function test_code_editor_lint_stops_when_the_linter_is_replaced()
+{
+	$linter = code_editor_test_linter_source();
+
+	pg_assert_contains('function _syntaxLinter(cm, lang, labels, alive)', $linter, 'the linter is told how to ask whether it is still current');
+
+	$stop = strpos($linter, 'if (alive && !alive()) return;');
+	$parse = strpos($linter, 'cm.language.ensureSyntaxTree(state, len, 50)');
+
+	pg_assert_true(($stop !== false) && ($parse !== false) && ($stop < $parse), 'a replaced linter stops before the next slice is parsed');
+
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function pgCeCreate(');
+	$create = ($from !== false) ? substr($facade, $from, strpos($facade, "\n    function open(", $from) - $from) : '';
+
+	pg_assert_contains('var gen = ++lintGen;', $create, 'each linter built gets a new generation');
+	pg_assert_contains('return !destroyed && gen === lintGen;', $create, 'only the current linter of an open editor delivers');
+	pg_assert_true(substr_count($create, '_syntaxLinter(') === 1, 'every linter is built through the one generation counter');
+	pg_assert_true(substr_count($create, 'lintComp.of(lintExtension())') === 1, 'the first linter');
+	pg_assert_true(substr_count($create, 'lintComp.reconfigure(lintExtension())') === 2, 'setLanguage and setLint');
+	pg_assert_true(preg_match('/destroyed = true;\s+lintGen\+\+;/', $create) === 1, 'closing the editor stops a running lint');
+}
