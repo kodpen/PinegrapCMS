@@ -35,7 +35,12 @@ $name = $liveform->get_field_value('name');
 $name_type = $liveform->get_field_value('name_type');
 $message = $liveform->get_field_value('message');
 $watcher = $liveform->get_field_value('watcher');
-$rating = $liveform->get_field_value('rating');
+
+// The stars are one to five, or none (0); whatever else was posted is none.
+$rating = (int) $liveform->get_field_value('rating');
+if (($rating < 1) || ($rating > 5)) {
+    $rating = 0;
+}
 
 
 
@@ -206,11 +211,13 @@ $query =
         user.user_id,
         user.user_role
     FROM user
-    WHERE user.user_username = '" . escape($_SESSION['sessionusername']) . "'";
+    WHERE user.user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
-$user_id = $row['user_id'];
-$user_role = $row['user_role'];
+
+// A visitor who is not signed in has no row: no user, no role.
+$user_id = $row['user_id'] ?? null;
+$user_role = $row['user_role'] ?? null;
 
 // if user does not have access to view page, log and output error
 if (check_view_access($folder_id) == false) {
@@ -348,6 +355,24 @@ if ($item_type == 'submitted_form') {
             output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
+}
+
+// A review of a product comes from somebody who bought it
+// (includes/fn/reviews.php): signed in, with a bought order holding the
+// product that no review of it names yet. The page's own form says so before
+// anything is typed; this is the check that counts. Staff, who may edit the
+// page, write as the store and are not asked.
+$verified_order_id = 0;
+
+if (pg_review_gate_applies($item_type, $item_id) && !check_edit_access($folder_id)) {
+    $review = pg_review_eligibility((int) $user_id, $item_type, $item_id);
+
+    if ($review['refusal'] !== '') {
+        log_activity(lang(array('string' => 'access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
+        output_error(h(pg_review_refusal_message($review['refusal'])) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    $verified_order_id = (int) $review['order_id'];
 }
 
 // if the user is not logged in,
@@ -523,6 +548,17 @@ if (
 
 
 
+// The order that verified the purchase, once the column is there (11.0.14).
+$sql_review_column = '';
+$sql_review_value = '';
+
+if (pg_reviews_ready()) {
+    $sql_review_column = ",
+        verified_order_id";
+    $sql_review_value = ",
+        '" . (int) $verified_order_id . "'";
+}
+
 // add comment to database
 $query = 
     "INSERT INTO comments (
@@ -539,7 +575,7 @@ $query =
         created_user_id,
         created_timestamp,
         last_modified_user_id,
-        last_modified_timestamp)
+        last_modified_timestamp$sql_review_column)
      VALUES (
         '" . escape($page_id) . "',
         '" . escape($item_id) . "',
@@ -548,17 +584,22 @@ $query =
         '" . escape($message) . "',
         '$file_id',
         '" . escape($published) . "',
-        '" . escape($rating) . "',
+        '" . $rating . "',
         '" . e($publish_date_and_time) . "',
         '" . e($publish_cancel) . "',
         '" . escape($user_id) . "',
         UNIX_TIMESTAMP(),
         '" . escape($user_id) . "',
-        UNIX_TIMESTAMP())";
+        UNIX_TIMESTAMP()$sql_review_value)";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // get new comment's id
 $comment_id = mysqli_insert_id(db::$con);
+
+// A published review of a product changes its rating at once.
+if ($published == '1') {
+    pg_review_comment_changed($item_type, $item_id);
+}
 
 // If this comment was published then cancel any necessary scheduled comments,
 // that are set to be cancelled if new comments are added.

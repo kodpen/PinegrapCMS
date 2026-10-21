@@ -379,6 +379,10 @@ function api_comments_update($params) {
 
 		api_comment_refresh_form_info($row);
 
+		// A review published or held back moves its product's rating
+		// (includes/fn/reviews.php).
+		pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);
+
 	}
 
 	api_ok(api_comment_present(api_comment_load_or_fail($id)));
@@ -418,6 +422,8 @@ function api_comments_delete($params) {
 	api_exec("DELETE FROM notifications WHERE comment_id = '" . $id . "'");
 
 	api_comment_refresh_form_info($row);
+
+	pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);
 
 	log_activity(lang(array(
 		'string' => 'A comment on page ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
