@@ -17150,6 +17150,359 @@ const StyleDesigner = (function () {
                     // Eye-catching layouts for any site: bento grids, marquees,
                     // showcases, quotes, a polaroid gallery and a snap scroller.
 
+                    // Bento: Features — one wide primary tile and a stat tile, then an icon, a picture and a dark tile
+                    if (ctype === 'bento-features') {
+                        return _bkSection('py-5', _sdT('Bento (Features)'), [
+                            _bkIntro(_sdT('Everything Your Team Needs'), _sdT('Plans, files and conversations in one workspace that stays out of your way.')),
+                            _bkRow(_sdT('Bento Row'), [
+                                _bkCol(_sdT('Wide Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 p-4 p-lg-5 text-bg-primary rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-lightning-charge-fill', 'fs-2 mb-3'),
+                                        _bkH('h3', _sdT('Plan, share and ship in one place'), 'h4 fw-bold mb-2'),
+                                        _bkP(_sdT('Boards, documents and chat stay in sync, so nobody has to ask where the latest version is.'), 'mb-4'),
+                                        _bkLink(_sdT('See how it works'), '#', 'align-self-start mt-auto fw-semibold text-reset', _sdT('Tile Link'))
+                                    ])
+                                ], '8', '7'),
+                                _bkCol(_sdT('Stat Tile'), [
+                                    _bkDiv('d-flex flex-column justify-content-between h-100 p-4 bg-body-tertiary rounded-4', _sdT('Tile Body'), [
+                                        _bkH('span', _sdT('Teams on board'), 'mb-3 small fw-semibold text-uppercase text-body-secondary'),
+                                        _bkDiv('', _sdT('Stat'), [
+                                            _bkH('span', _sdT('12,000+'), 'd-block mb-2 display-4 fw-bold lh-1 text-primary'),
+                                            _bkP(_sdT('From two-person studios to companies with offices in five cities.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '5'),
+                                _bkCol(_sdT('Icon Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body border rounded-4', _sdT('Tile Body'), [
+                                        _bkDiv('d-inline-flex p-3 mb-3 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Tile Icon'), [ _bkIcon('bi-shield-check', 'fs-4') ]),
+                                        _bkH('h3', _sdT('Secure by default'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('Single sign-on, two-step login and daily backups on every plan.'), 'mb-0 text-body-secondary')
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Picture Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 bg-body border rounded-4 overflow-hidden', _sdT('Tile Body'), [
+                                        _bkImg('cr-bento-desk', 800, 450, _sdT('A team planning a project around a laptop'), 'd-block w-100 object-fit-cover pg-ratio-16x9'),
+                                        _bkDiv('p-4', _sdT('Tile Copy'), [
+                                            _bkH('h3', _sdT('Works where you work'), 'h5 fw-bold mb-2'),
+                                            _bkP(_sdT('On the desktop, in the browser and on your phone, always in sync.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Dark Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body text-body rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-graph-up-arrow', 'd-block mb-3 fs-2 text-primary'),
+                                        _bkH('h3', _sdT('Reports that write themselves'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('A summary of the week lands in every inbox on Monday morning.'), 'mb-0 text-body-secondary')
+                                    ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                ], '4')
+                            ])
+                        ]);
+                    }
+
+                    // Bento: Gallery — a photo mosaic (one tall, two square, one wide picture), each with a caption chip on the photo
+                    if (ctype === 'bento-gallery') {
+                        var _crBgShot = function (seed, w, h, alt, caption, imgCls, figCls) {
+                            return _bkTag('figure', 'position-relative mb-0 rounded-4 overflow-hidden' + (figCls ? ' ' + figCls : ''), _sdT('Figure'), [
+                                _bkImg(seed, w, h, alt, 'd-block w-100 object-fit-cover ' + imgCls),
+                                _bkTag('figcaption', 'badge m-3 bg-body text-body rounded-pill shadow-sm position-absolute bottom-0 start-0', _sdT('Caption'), [ _bkH('span', caption) ])
+                            ]);
+                        };
+                        var _crBgCol = function (n, kids) {
+                            return createNode('col', { xs: n === 4 ? '12' : '6', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Picture {var}', n) }, kids);
+                        };
+                        return _bkSection('py-5', _sdT('Bento (Gallery)'), [
+                            _bkIntro(_sdT('Inside the Studio'), _sdT('Where ideas turn into finished work, one coffee at a time.')),
+                            _bkRow(_sdT('Gallery Row'), [
+                                _bkCol(_sdT('Picture {var}', 1), [
+                                    _crBgShot('cr-bento-studio', 800, 960, _sdT('Morning light over the desks of a studio'), _sdT('The studio'), 'h-100', 'h-100')
+                                ], '5'),
+                                _bkCol(_sdT('Right Column'), [
+                                    _bkRow(_sdT('Pictures Row'), [
+                                        _crBgCol(2, [ _crBgShot('cr-bento-sketch', 600, 600, _sdT('Sketches pinned to a wall'), _sdT('Sketch wall'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(3, [ _crBgShot('cr-bento-print', 600, 600, _sdT('Fresh prints laid out on a table'), _sdT('Print day'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(4, [ _crBgShot('cr-bento-team', 1200, 675, _sdT('The team on a retreat in Istanbul'), _sdT('Team retreat, Istanbul'), 'pg-ratio-16x9') ])
+                                    ])
+                                ], '7')
+                            ])
+                        ]);
+                    }
+
+                    // Marquee: Big Words — a primary band of large words sliding sideways; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-words') {
+                        var _crMwPause = _bkUid('mqw');
+                        var _crMwGroup = function (copy) {
+                            var words = [_sdT('Branding'), _sdT('Web Design'), _sdT('Motion Design'), _sdT('Photography'), _sdT('Strategy'), _sdT('Packaging')];
+                            var kids = [];
+                            words.forEach(function (w) {
+                                kids.push(_bkH('span', w, 'display-6 fw-bold text-uppercase text-nowrap'));
+                                kids.push(_bkIcon('bi-asterisk', 'fs-3'));
+                            });
+                            return _bkDiv('d-flex align-items-center gap-4 pe-4' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-4 text-bg-primary', _sdT('Marquee (Big Words)'), [
+                            _bkDiv('pg-marquee-viewport', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMwGroup(false), _crMwGroup(true) ])
+                            ], [
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('What we do') },
+                                { name: 'tabindex',   value: '0' }
+                            ]),
+                            _bkDiv('mt-2 text-end pg-marquee-toggle', _sdT('Marquee Controls'), [
+                                _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
+                                    { name: 'type',         value: 'checkbox' },
+                                    { name: 'id',           value: _crMwPause },
+                                    { name: 'autocomplete', value: 'off' }
+                                ]),
+                                _bkTag('label', 'btn btn-sm border-0 text-reset pg-marquee-toggle', _sdT('Pause Button'), [
+                                    _bkIcon('bi-pause-fill'),
+                                    _bkH('span', _sdT('Pause the animation'), 'visually-hidden')
+                                ], [{ name: 'for', value: _crMwPause }])
+                            ])
+                        ]);
+                    }
+
+                    // Marquee: Logos — customer logos sliding sideways under soft faded edges; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-logos') {
+                        var _crMlPause = _bkUid('mql');
+                        var _crMlGroup = function (copy) {
+                            var brands = [_sdT('Vertex'), _sdT('TechBase'), _sdT('StartMate'), _sdT('LaunchLab'), _sdT('Northwind'),
+                                          _sdT('PineWorks'), _sdT('OrbitSoft'), _sdT('Quanta'), _sdT('ByteWave'), _sdT('Helios')];
+                            return _bkDiv('d-flex align-items-center gap-5 pe-5' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), brands.map(function (b) {
+                                return createNode('content', { contentType: 'image', src: 'https://placehold.co/200x80/9ca3af/ffffff?text=' + encodeURIComponent(b), alt: copy ? '' : b, cssClass: 'pg-logo-44' });
+                            }), copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-5', _sdT('Marquee (Logos)'), [
+                            _bkDiv('d-flex align-items-center justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Trusted by teams at'), 'h6 mb-0 fw-semibold text-uppercase text-body-secondary'),
+                                _bkDiv('pg-marquee-toggle', _sdT('Marquee Controls'), [
+                                    _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
+                                        { name: 'type',         value: 'checkbox' },
+                                        { name: 'id',           value: _crMlPause },
+                                        { name: 'autocomplete', value: 'off' }
+                                    ]),
+                                    _bkTag('label', 'btn btn-sm btn-outline-secondary pg-marquee-toggle', _sdT('Pause Button'), [
+                                        _bkIcon('bi-pause-fill'),
+                                        _bkH('span', _sdT('Pause the animation'), 'visually-hidden')
+                                    ], [{ name: 'for', value: _crMlPause }])
+                                ])
+                            ]),
+                            _bkDiv('pg-marquee-viewport pg-marquee-fade', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMlGroup(false), _crMlGroup(true) ])
+                            ], [
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('Customer logos') },
+                                { name: 'tabindex',   value: '0' }
+                            ])
+                        ]);
+                    }
+
+                    // Showcase: Floating Badges — copy beside a picture; from 992 px three small cards float over the picture, below that they stack under it
+                    if (ctype === 'showcase-floating') {
+                        var _crSfCard = function (n, icon, value, label, place) {
+                            // Not a .card: Bootstrap gives .card position: relative,
+                            // which would compete with the pg-float rule.
+                            return _bkDiv('d-flex align-items-center gap-3 p-3 m-lg-3 bg-body text-body rounded-4 shadow pg-float ' + place, _sdT('Floating Card {var}', n), [
+                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Card Icon'), [ _bkIcon(icon, 'fs-5') ]),
+                                _bkDiv('', _sdT('Card Copy'), [
+                                    _bkH('strong', value, 'd-block lh-sm'),
+                                    _bkH('span', label, 'small text-body-secondary')
+                                ])
+                            ]);
+                        };
+                        var _crSfPoint = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('List Item'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Floating Badges)'), [
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Showcase Copy'), [
+                                    _bkH('span', _sdT('All in one place'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h2', _sdT('See your whole business at a glance'), 'mb-3 display-6 fw-bold'),
+                                    _bkP(_sdT('Bookings, payments and reviews meet on one screen, so the morning goes to customers instead of spreadsheets.'), 'mb-4 lead text-body-secondary'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _crSfPoint(_sdT('Every booking and payment in one calendar')),
+                                        _crSfPoint(_sdT('Reviews collected after each visit')),
+                                        _crSfPoint(_sdT('A weekly report in your inbox'))
+                                    ]),
+                                    _bkDiv('d-flex flex-wrap gap-2', _sdT('Buttons'), [
+                                        _bkBtn(_sdT('Start free trial'), 'primary', 'lg'),
+                                        _bkBtn(_sdT('Book a demo'), 'outline-secondary', 'lg')
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Showcase Picture'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('cr-showcase-desk', 900, 800, _sdT('A shop owner checking the day on a tablet'), 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm'),
+                                        _bkDiv('d-flex flex-column gap-3 mt-3 mt-lg-0', _sdT('Floating Cards'), [
+                                            _crSfCard(1, 'bi-graph-up-arrow', _sdT('+38%'), _sdT('more bookings this quarter'), 'top-0 start-0'),
+                                            _crSfCard(2, 'bi-star-fill', _sdT('4.9 out of 5'), _sdT('from 2,400 reviews'), 'top-50 end-0'),
+                                            _crSfCard(3, 'bi-people-fill', _sdT('12,000+'), _sdT('teams use it every day'), 'bottom-0 start-0')
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Showcase: Vertical Tabs — four pill tabs down the side (icon, title, one line each) and a picture pane for each tab
+                    if (ctype === 'showcase-tabs') {
+                        var _crStPfx = _bkUid('st');
+                        var _crStTab = function (i, icon, title, desc) {
+                            return _bkTag('button', 'nav-link d-flex align-items-start gap-3 p-3 text-start' + (i === 0 ? ' active' : ''), _sdT('Tab {var}', i + 1), [
+                                _bkIcon(icon, 'fs-4 lh-1'),
+                                _bkTag('span', 'd-block', _sdT('Tab Text'), [
+                                    _bkH('span', title, 'd-block fw-semibold'),
+                                    _bkH('span', desc, 'd-block small')
+                                ])
+                            ], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'id',             value: _crStPfx + '_tab' + i },
+                                { name: 'data-bs-toggle', value: 'pill' },
+                                { name: 'data-bs-target', value: '#' + _crStPfx + '_' + i },
+                                { name: 'role',           value: 'tab' },
+                                { name: 'aria-controls',  value: _crStPfx + '_' + i },
+                                { name: 'aria-selected',  value: i === 0 ? 'true' : 'false' }
+                            ]);
+                        };
+                        var _crStPane = function (i, seed, alt, caption) {
+                            return createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade' + (i === 0 ? ' show active' : ''), id: _crStPfx + '_' + i, customName: _sdT('Tab Pane {var}', i + 1),
+                                _attrs: [{ name: 'role', value: 'tabpanel' }, { name: 'aria-labelledby', value: _crStPfx + '_tab' + i }, { name: 'tabindex', value: '0' }] }, [
+                                _bkTag('figure', 'mb-0', _sdT('Figure'), [
+                                    _bkImg(seed, 1200, 675, alt, 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm pg-ratio-16x9'),
+                                    _bkTag('figcaption', 'mt-3 small text-body-secondary', _sdT('Caption'), [ _bkH('span', caption) ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Vertical Tabs)'), [
+                            _bkIntro(_sdT('One Workspace, Four Ways to Work'), _sdT('Pick a part of the day and see how ACME handles it.')),
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Tabs Column'), [
+                                    _bkDiv('nav flex-column nav-pills gap-2', _sdT('Showcase Tabs'), [
+                                        _crStTab(0, 'bi-kanban',          _sdT('Planning'),    _sdT('Boards and timelines for every project.')),
+                                        _crStTab(1, 'bi-chat-dots',       _sdT('Teamwork'),    _sdT('Comments and files right where the work is.')),
+                                        _crStTab(2, 'bi-lightning-charge', _sdT('Automation'), _sdT('Rules that move work forward on their own.')),
+                                        _crStTab(3, 'bi-bar-chart-line',  _sdT('Reporting'),   _sdT('Progress at a glance, every Monday.'))
+                                    ], [{ name: 'role', value: 'tablist' }, { name: 'aria-orientation', value: 'vertical' }])
+                                ], '4'),
+                                _bkCol(_sdT('Panes Column'), [
+                                    _bkDiv('tab-content', _sdT('Showcase Panes'), [
+                                        _crStPane(0, 'cr-tabs-plan',   _sdT('A project board with cards in three columns'), _sdT('Drag a card to a new column and everyone sees the change at once.')),
+                                        _crStPane(1, 'cr-tabs-team',   _sdT('Two colleagues discussing a design on screen'), _sdT('Comment on the work itself, not in a separate email thread.')),
+                                        _crStPane(2, 'cr-tabs-auto',   _sdT('A list of rules that run on their own'), _sdT('When a task is done, the next one is assigned and the client is told.')),
+                                        _crStPane(3, 'cr-tabs-report', _sdT('Charts of a team\'s weekly progress'), _sdT('Every Monday at 9:00 the week\'s summary is waiting for you.'))
+                                    ])
+                                ], '8')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Quote: Pull Quote — one large centred quote under a quote mark, with the speaker and the source
+                    if (ctype === 'quote-pull') {
+                        return _bkSection('py-5', _sdT('Quote (Pull Quote)'), [
+                            _bkTag('figure', 'col-lg-9 mx-auto mb-0 text-center', _sdT('Pull Quote'), [
+                                _bkIcon('bi-quote', 'd-block mb-2 display-1 lh-1 text-primary'),
+                                _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                    _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
+                                ]),
+                                _bkTag('figcaption', 'blockquote-footer mb-0', _sdT('Attribution'), [
+                                    _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
+                                    _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
+                                    _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Quote: Spotlight — a primary band with a round portrait, five stars, a large quote and the speaker
+                    if (ctype === 'quote-spotlight') {
+                        var _crQsStars = [];
+                        for (var _crQsI = 0; _crQsI < 5; _crQsI++) _crQsStars.push(_bkIcon('bi-star-fill'));
+                        _crQsStars.push(_bkH('span', _sdT('Rated 5 out of 5'), 'visually-hidden'));
+                        return _bkSection('py-5 text-bg-primary', _sdT('Quote (Spotlight)'), [
+                            _bkRow(_sdT('Spotlight Row'), [
+                                _bkCol(_sdT('Portrait Column'), [
+                                    createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/cr-spotlight-michael/320/320', alt: '', cssClass: 'object-fit-cover rounded-circle shadow', width: '160', height: '160' })
+                                ], '3', '', '', 'text-center'),
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center text-lg-start', _sdT('Spotlight Quote'), [
+                                        _bkDiv('d-flex justify-content-center justify-content-lg-start gap-1 mb-3', _sdT('Star Rating'), _crQsStars),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Since we moved to ACME our launches take half the time, and the whole team knows what comes next.'), 'mb-0 fs-3 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'mb-0', _sdT('Attribution'), [
+                                            _bkH('strong', _sdT('Michael Brooks'), 'd-block'),
+                                            _bkH('span', _sdT('Head of Product, TechBase'), 'small')
+                                        ])
+                                    ])
+                                ], '9')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Gallery: Polaroid — four instant-photo cards with a caption and a date; from 768 px they lean and straighten on hover
+                    if (ctype === 'gallery-polaroid') {
+                        var _crGpCard = function (n, seed, alt, caption, datetime, date, tilt) {
+                            return _bkCol(_sdT('Photo {var}', n), [
+                                _bkTag('figure', 'mb-0 p-3 pb-4 bg-body shadow ' + tilt, _sdT('Polaroid'), [
+                                    _bkImg(seed, 600, 600, alt, 'd-block w-100 object-fit-cover pg-ratio-1x1'),
+                                    _bkTag('figcaption', 'mt-3 text-center', _sdT('Caption'), [
+                                        _bkH('span', caption, 'd-block fw-semibold'),
+                                        _bkTag('time', 'd-block small text-body-secondary', _sdT('Date'), [ _bkH('span', date) ], [{ name: 'datetime', value: datetime }])
+                                    ])
+                                ])
+                            ], '3', '', '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Gallery (Polaroid)'), [
+                            _bkIntro(_sdT('Moments From the Road'), _sdT('Snapshots from our workshops in London, Berlin, Istanbul and Tokyo.')),
+                            _bkRow(_sdT('Photos Row'), [
+                                _crGpCard(1, 'cr-polaroid-london',   _sdT('People around a table covered in sketches'), _sdT('Workshop day in London'),  '2026-10', _sdT('October 2026'),  'pg-tilt-left'),
+                                _crGpCard(2, 'cr-polaroid-berlin',   _sdT('A wall of notes and drawings'),              _sdT('Sketch night in Berlin'),  '2026-10', _sdT('October 2026'),  'pg-tilt-right'),
+                                _crGpCard(3, 'cr-polaroid-istanbul', _sdT('A sunny studio with plants by the window'),   _sdT('Studio visit in Istanbul'), '2026-11', _sdT('November 2026'), 'pg-tilt-left'),
+                                _crGpCard(4, 'cr-polaroid-tokyo',    _sdT('Posters hanging at a print fair'),            _sdT('Print fair in Tokyo'),     '2026-12', _sdT('December 2026'), 'pg-tilt-right')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Scroller: Snap Cards — a sideways row of six story cards that snaps card by card, with a scroll hint in the header
+                    if (ctype === 'scroller-cards') {
+                        var _crScCard = function (n, seed, tag, title, body) {
+                            return _bkDiv('col-10 col-sm-6 col-lg-4 pg-snap-item', _sdT('Card {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Story Card'), [
+                                    _bkImg(seed, 800, 450, '', 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Card Body'), [
+                                        _bkH('span', tag, 'badge align-self-start mb-2 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                        _bkH('h3', title, 'h5 fw-bold mb-2'),
+                                        _bkP(body, 'mb-3 small text-body-secondary'),
+                                        _bkLink(_sdT('Read the story'), '#', 'align-self-start mt-auto fw-semibold link-primary text-decoration-none stretched-link', _sdT('Card Link'))
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Scroller (Snap Cards)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkDiv('', _sdT('Header Copy'), [
+                                    _bkH('h2', _sdT('Stories From Our Customers'), 'fw-bold mb-2'),
+                                    _bkP(_sdT('How teams of every size use ACME to get more done.'), 'mb-0 lead text-body-secondary')
+                                ]),
+                                _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
+                                    _bkH('span', _sdT('Scroll sideways')),
+                                    _bkIcon('bi-arrow-right')
+                                ])
+                            ]),
+                            _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
+                                _crScCard(1, 'cr-scroller-vertex',    _sdT('Design'),      _sdT('Vertex halved its review rounds'),        _sdT('Comments on the work itself replaced long email threads.')),
+                                _crScCard(2, 'cr-scroller-techbase',  _sdT('Engineering'), _sdT('TechBase ships every Friday'),            _sdT('Boards and automations keep forty engineers in step.')),
+                                _crScCard(3, 'cr-scroller-startmate', _sdT('Startup'),     _sdT('StartMate launched in six weeks'),        _sdT('From the first sketch to the first customer on one board.')),
+                                _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
+                                _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
+                                _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
+                            ], [
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('Customer stories') },
+                                { name: 'tabindex',   value: '0' }
+                            ])
+                        ]);
+                    }
+
                 }
 
                 // Accordion Explosion
@@ -56134,6 +56487,19 @@ const StyleDesigner = (function () {
         // News: stories and articles
 
         // Creative blocks
+        // Soft edges for a logo marquee: a mask only, so no colour is added.
+        'pg-marquee-fade': '.pg-marquee-fade { -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); }',
+        // A small card that floats over a picture from 992 px; below that it
+        // stays in the flow. Bootstrap top-*/start-*/end-*/bottom-* place it.
+        'pg-float':        '@media (min-width: 992px) { .pg-float { position: absolute; z-index: 1; max-width: 16rem; } }',
+        // Polaroid tilt from 768 px; hover and focus straighten the card.
+        'pg-tilt-left':    '@media (min-width: 768px) { .pg-tilt-left { transform: rotate(-3deg); transition: transform .3s ease; } .pg-tilt-left:hover, .pg-tilt-left:focus-within { transform: none; } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-tilt-left { transition: none; } }',
+        'pg-tilt-right':   '@media (min-width: 768px) { .pg-tilt-right { transform: rotate(2deg); transition: transform .3s ease; } .pg-tilt-right:hover, .pg-tilt-right:focus-within { transform: none; } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-tilt-right { transition: none; } }',
+        // A sideways card row that stops on a card edge after each swipe.
+        'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
+        'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
 
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
@@ -56167,6 +56533,14 @@ const StyleDesigner = (function () {
         // News: stories and articles
 
         // Creative blocks
+        'bento-features':       ['pg-ratio-16x9'],
+        'bento-gallery':        ['pg-ratio-1x1', 'pg-ratio-16x9'],
+        'marquee-words':        ['pg-marquee'],
+        'marquee-logos':        ['pg-marquee', 'pg-marquee-fade', 'pg-logo-44'],
+        'showcase-floating':    ['pg-float'],
+        'showcase-tabs':        ['pg-ratio-16x9'],
+        'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt-left', 'pg-tilt-right'],
+        'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item'],
 
         'events-cards':         ['pg-ratio-16x9']
     };
