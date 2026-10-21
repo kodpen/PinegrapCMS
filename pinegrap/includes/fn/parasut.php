@@ -1537,12 +1537,6 @@ function _parasut_order_vat_rates($order_id, $order)
 
 function parasut_create_invoice($order_id)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
-
     // Fetch full order.
     $query = "SELECT
                 orders.*,
@@ -1557,6 +1551,31 @@ function parasut_create_invoice($order_id)
     if (!$order) {
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('Order not found.')];
     }
+
+    // One sales invoice per order. The id is kept as soon as the sales invoice
+    // exists, also when its e-document failed or is still being converted; a
+    // second press would raise another sales invoice and, while the first
+    // conversion runs, a second document for the same sale at GİB. Whether
+    // that conversion finished cannot be told from here (its job id is not
+    // kept), so the rest is finished on the record in Paraşüt.
+    $existing_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+
+    if ($existing_invoice_id !== '') {
+        return [
+            'success' => false,
+            'parasut_invoice_id' => $existing_invoice_id,
+            'error' => lang(array(
+                'string' => 'This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created. If its e-document did not go through, issue it from that invoice in Paraşüt.',
+                'vars' => array($existing_invoice_id),
+            )),
+        ];
+    }
+
+    $token_result = parasut_get_token();
+    if (!$token_result['success']) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $token_result['error']];
+    }
+    $token = $token_result['token'];
 
     // An order discount is held on the header and is spread across the tax at the
     // header too, so the item lines still carry their undiscounted tax. Sending
