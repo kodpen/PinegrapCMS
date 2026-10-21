@@ -180,13 +180,13 @@ function api_send_hook($hook = null) {
 // The fields a read asked for, applied to its answer.
 //
 // ?fields=id,name,price keeps those top-level fields of each record - of every
-// row of a listing, or of the one record a single read returns - and drops the
-// rest before the answer is encoded. It is how a phone on a slow connection
-// asks a listing for the three columns its screen draws rather than the forty
-// the record has. id is always kept, because a row without it cannot be told
-// apart from the others. A name the record does not have is not an error: it
-// is simply not there, which is also what an older site answers for a field a
-// newer one added.
+// row of a listing (api_route_returns_listing()), or of the one record a
+// single read returns - and drops the rest before the answer is encoded. It
+// is how a phone on a slow connection asks a listing for the three columns its
+// screen draws rather than the forty the record has. id is always kept,
+// because a row without it cannot be told apart from the others. A name the
+// record does not have is not an error: it is simply not there, which is also
+// what an older site answers for a field a newer one added.
 //
 // The descriptions of the API are left whole; they are documents, not records.
 function api_response_fields($body) {
@@ -227,7 +227,12 @@ function api_response_fields($body) {
 
 	};
 
-	if (isset($body['data']) && is_array($body['data']) && array_key_exists('page', $body)) {
+	// A listing is trimmed row by row and keeps the rest of its envelope: page,
+	// and what a route declares beside data, such as the event catalogue of
+	// GET /webhooks. Read as one record, that answer kept neither data nor
+	// events, and ?fields=url came back as [].
+	if (isset($body['data']) && is_array($body['data'])
+		&& (array_key_exists('page', $body) || api_route_returns_listing($route))) {
 
 		$body['data'] = array_map($trim, $body['data']);
 

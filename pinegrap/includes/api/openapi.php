@@ -823,6 +823,35 @@ function api_openapi_success_schema($route)
     return api_openapi_type_spec($returns);
 }
 
+/**
+ * Whether a route answers with a listing: rows in data beside fields of the
+ * envelope. A paged listing declares array('list' => 'Product') and carries
+ * page; GET /webhooks declares data as a list beside the event catalogue
+ * (array('data' => 'Webhook[]', 'events' => 'string[]')) and has no page.
+ * ?fields= trims each row of such an answer and leaves the envelope whole
+ * (api_response_fields()).
+ *
+ * @param array $route
+ * @return bool
+ */
+function api_route_returns_listing($route)
+{
+    if (!isset($route['returns']) || !is_array($route['returns'])) {
+
+        return false;
+
+    }
+
+    if (isset($route['returns']['list'])) {
+
+        return true;
+
+    }
+
+    return isset($route['returns']['data']) && is_string($route['returns']['data'])
+        && (substr($route['returns']['data'], -2) === '[]');
+}
+
 function api_openapi_responses($route) {
 
 	$error = array(
