@@ -9,12 +9,12 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 
 ## What if the create gets no answer?
 - `POST sales_invoices` can be written at Paraşüt and still end in a timeout (40 s), a dropped connection or a 5xx (`erp_edoc_parasut_answer_unsure()`; a 4xx or 429 wrote nothing). `erp_invoices.parasut_invoice_id` is set to `?` (`ERP_EDOC_PARASUT_UNSURE`) before the request and cleared on a definite answer, so a request with no answer, or a process that died waiting, leaves the mark.
-- The next send with the mark looks first: `GET sales_invoices?filter[contact_id]&filter[issue_date]` (up to 4 pages), matched by description (ERP number), date, contact, not cancelled (`erp_edoc_parasut_written_matches()`). One found: taken over (total check, no POST). None: written. Several: refused with the ids. The search failing: refused, nothing written (#PR760).
-- Until #PR760 every retry wrote a new record: two at Paraşüt, the row pointing at the second.
+- The next send with the mark looks first: `GET sales_invoices?filter[contact_id]&filter[issue_date]` (up to 4 pages), matched by description (ERP number), date, contact, not cancelled (`erp_edoc_parasut_written_matches()`). One found: taken over (total check, no POST). None: written. Several: refused with the ids. The search failing: refused, nothing written (#1019).
+- Until #1019 every retry wrote a new record: two at Paraşüt, the row pointing at the second.
 - Open: cancelling the invoice while the mark is set does not look at Paraşüt (no id on the row).
 
 ## What if the total differs and the record will not be deleted?
-- The `DELETE` answer is read (404 counts as gone). Not deleted: the refusal names the id (`external_id`), the service keeps it on the `error` row, the message says it is still there; the gate then refuses a new send and cancelling the invoice deletes it there. Until #PR760 the message said "deleted" whatever `DELETE` answered.
+- The `DELETE` answer is read (404 counts as gone). Not deleted: the refusal names the id (`external_id`), the service keeps it on the `error` row, the message says it is still there; the gate then refuses a new send and cancelling the invoice deletes it there. Until #1019 the message said "deleted" whatever `DELETE` answered.
 - `poll` never offers such a record to GİB: no e-document and `net_total` ≠ `grand_total` → `error` with both totals.
 
 ## When does the send gate refuse a record the provider holds?
