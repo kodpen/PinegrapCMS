@@ -36,6 +36,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_return_reminders();       // 11.0.25
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
 	upgrade_2026_11_0_page_schedule();          // 11.0.17
@@ -551,6 +552,24 @@ function upgrade_2026_11_0_order_returns() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Returns: the tables that will keep customers\' return requests and the order lines they send back are added. Nothing changes on the site with this update.');
+
+}
+
+// When the refund reminders of a return were given (includes/fn/returns.php,
+// pg_return_remind_refunds()): refund_due_notified_at for "due within
+// PG_RETURN_REMIND_DAYS days", refund_overdue_notified_at for "overdue", unix
+// time, 0 until that stage was rung. The daily job claims a stage with
+// UPDATE ... WHERE <column> = 0 and rings the bell only when that claimed a
+// row, so a reminder goes out once per return and stage however often staff
+// clear the bell; until now the decision read the notification rows, which
+// "Delete all notifications" removes for everyone, and the same reminder came
+// back the next day. Same pattern as erp_invoices.overdue_notified_at.
+function upgrade_2026_11_0_return_reminders() {
+
+	install_add_column('order_returns', 'refund_due_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('order_returns', 'refund_overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Returns: each return request now records when its refund reminders were given, so a reminder cleared from the panel bell is not sent again the next day.');
 
 }
 
