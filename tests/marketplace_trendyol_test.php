@@ -599,6 +599,16 @@ function test_marketplace_trendyol_vat_rate_rounds_down_to_theirs()
 	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 25.0)));
 }
 
+// A product the shop does not tax carries no tax in its price, whatever rate
+// it or the zone has; an item built without the flag is taxed as before.
+function test_marketplace_trendyol_vat_rate_is_zero_for_an_untaxed_product()
+{
+	pg_assert_same(0, mp_trendyol_vat_rate(array('taxable' => false, 'tax_rate' => 20.0)));
+	pg_assert_same(0, mp_trendyol_vat_rate(array('taxable' => '0', 'tax_rate' => null)));
+	pg_assert_same(20, mp_trendyol_vat_rate(array('taxable' => true, 'tax_rate' => 20.0)));
+	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 20.0)));
+}
+
 function test_marketplace_trendyol_brand_match_prefers_the_exact_name()
 {
 	$answer = json_decode(trendyol_test_fixture('brands-by-name.json'), true);

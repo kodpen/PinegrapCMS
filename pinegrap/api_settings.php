@@ -733,13 +733,18 @@ $queue_state = array();
 
 if (is_array($hooks) && !empty($hooks)) {
 
-	// waiting: still on the ladder. given_up: out of attempts, and the reason the
-	// subscription went to 'failing'. The last error carried on the newest row is
-	// what actually tells the operator what is wrong.
+	// waiting: still on the ladder, or held for a failing subscription until
+	// it is retried (attempts 0, api_webhook_queue_hold()); held counts those
+	// on their own, because only Retry sends them. given_up: out of attempts,
+	// and the reason the subscription went to 'failing'. The last error
+	// carried on the newest row with an attempt on it is what actually tells
+	// the operator what is wrong; a held row has never been tried and carries
+	// none, so it must not stand in for it.
 	$queue = db_items("SELECT webhook_id,
-			SUM(CASE WHEN next_attempt_at > 0 THEN 1 ELSE 0 END) AS waiting,
-			SUM(CASE WHEN next_attempt_at = 0 THEN 1 ELSE 0 END) AS given_up,
-			MAX(id) AS newest
+			SUM(CASE WHEN next_attempt_at > 0 OR attempts = 0 THEN 1 ELSE 0 END) AS waiting,
+			SUM(CASE WHEN next_attempt_at = 0 AND attempts > 0 THEN 1 ELSE 0 END) AS given_up,
+			SUM(CASE WHEN attempts = 0 AND next_attempt_at = 0 THEN 1 ELSE 0 END) AS held,
+			MAX(CASE WHEN attempts > 0 THEN id END) AS newest
 		FROM api_webhook_queue
 		GROUP BY webhook_id");
 
@@ -752,10 +757,15 @@ if (is_array($hooks) && !empty($hooks)) {
 			$queue_state[(int)$row['webhook_id']] = array(
 				'waiting'  => (int)$row['waiting'],
 				'given_up' => (int)$row['given_up'],
+				'held'     => (int)$row['held'],
 				'error'    => ''
 			);
 
-			$newest_ids[] = (int)$row['newest'];
+			if ((int)$row['newest'] > 0) {
+
+				$newest_ids[] = (int)$row['newest'];
+
+			}
 
 		}
 
@@ -796,7 +806,7 @@ if (is_array($hooks) && !empty($hooks)) {
 
 		$state = isset($queue_state[(int)$hook['id']])
 			? $queue_state[(int)$hook['id']]
-			: array('waiting' => 0, 'given_up' => 0, 'error' => '');
+			: array('waiting' => 0, 'given_up' => 0, 'held' => 0, 'error' => '');
 
 		$row = array(
 			'id'           => (int)$hook['id'],
@@ -807,6 +817,7 @@ if (is_array($hooks) && !empty($hooks)) {
 			'last_failure' => ((int)$hook['last_failure'] > 0) ? api_settings_ago($hook['last_failure']) : '',
 			'waiting'      => $state['waiting'],
 			'given_up'     => $state['given_up'],
+			'held'         => $state['held'],
 			'error'        => $state['error'],
 			'channel_group_id' => isset($hook['channel_group_id']) ? (int)$hook['channel_group_id'] : 0
 		);
@@ -1336,7 +1347,7 @@ if (!empty($webhook_all)) {
 					' . get_token_field() . '
 					<input type="hidden" name="app_id" value="' . $hook_app_id . '">
 					<input type="hidden" name="webhook_id" value="' . (int)$hook['id'] . '">'
-					. (($hook['given_up'] > 0 || $hook['status'] === 'failing')
+					. (($hook['given_up'] > 0 || $hook['held'] > 0 || $hook['status'] === 'failing')
 						? '<button type="submit" name="api_action" value="webhook_retry"
 							class="btn btn-sm btn-outline-primary">' . lang('Send again') . '</button>'
 						: '') . '
@@ -2085,7 +2096,7 @@ echo '
 				(meta.length ? "<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" : "") +
 				(h.error ? "<div class=\'api-hook-error\'><i class=\'bi bi-exclamation-triangle me-1\'></i>" + esc(h.error) + "</div>" : "") +
 				"<div class=\'api-hook-acts\'>" +
-					((h.given_up || h.status === "failing")
+					((h.given_up || h.held || h.status === "failing")
 						? "<button type=\'button\' class=\'btn btn-sm btn-outline-primary api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
 							' . json_encode(lang('Send again'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +

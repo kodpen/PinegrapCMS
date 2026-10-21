@@ -281,7 +281,9 @@ function mp_n11_categories($account) {
 //
 //   listPrice and salePrice go together or not at all - their rule, and it is
 //   enforced here because sending one alone is accepted and then rejected per
-//   SKU on the task, hours later. The shop has one price, so both carry it.
+//   SKU on the task, hours later. The shop has one price, so both carry it,
+//   and it already includes the tax the checkout adds (mp_product_price()):
+//   n11 quotes its prices with the VAT inside.
 //
 //   Sending price at all is optional per account. A shop that sets its
 //   marketplace prices by hand over there - most do, because the commission
@@ -1312,8 +1314,16 @@ function mp_n11_create_listings($account, $items) {
 // number can be anything; a product with 8.5 per cent has to be sent as
 // something from their list or the SKU is refused. The nearest of the four is
 // the honest answer, and it is rounded down rather than up - overstating the
-// rate on a marketplace listing overcharges the buyer.
+// rate on a marketplace listing overcharges the buyer. A product the shop
+// does not tax (taxable off) is reported at zero: its price carries no tax,
+// so the zone's rate would be a tax the shop never charges.
 function mp_n11_vat_rate($item) {
+
+	if (isset($item['taxable']) && !$item['taxable']) {
+
+		return 0;
+
+	}
 
 	$rate = isset($item['tax_rate']) && $item['tax_rate'] !== null
 		? (float) $item['tax_rate']

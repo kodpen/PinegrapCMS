@@ -2252,6 +2252,40 @@ function get_effective_tax_rate($product_rate, $zone_rate)
 
 
 /**
+ * The price a buyer pays for one unit, in minor units: the stored price plus
+ * the tax the checkout adds on top of it.
+ *
+ * The shop keeps product prices without tax and update_order_item_taxes()
+ * adds round(rate / 100 x price) per line at the checkout, so this is that
+ * formula for a quantity of one. It is the figure to hand anybody who wants
+ * the final price - a marketplace quotes its sale price with the tax inside -
+ * and it is the price itself whenever the checkout would add nothing: the
+ * shop has tax switched off, the product is not taxable, or the shop's
+ * country is in no tax zone (a zone rate of false, as get_default_tax_rate()
+ * answers it).
+ *
+ * @param  int|string   $price        minor units as stored in products.price
+ * @param  int|string   $taxable      products.taxable
+ * @param  mixed        $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param  float|false  $zone_rate    the shop country's zone rate, false in no zone
+ * @param  bool         $tax_enabled  ECOMMERCE_TAX
+ * @return int
+ */
+function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $tax_enabled)
+{
+    $price = (int) $price;
+
+    if (!$tax_enabled || !((int) $taxable) || $zone_rate === false || $zone_rate === null) {
+        return $price;
+    }
+
+    $rate = get_effective_tax_rate($product_rate, $zone_rate);
+
+    return $price + (int) round($rate / 100 * $price);
+}
+
+
+/**
  * A typed tax rate as it is stored, or NULL when the field was left empty.
  *
  * Empty is not zero. Empty means the product has no rate of its own and the
@@ -8288,6 +8322,229 @@ function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
     return array('ok' => true, 'value' => !empty($key_code['enabled']) ? '1' : '0')
         + $cells['enabled']
         + array('cells' => array('code' => $cells['code'], 'last_modified' => $cells['last_modified']));
+}
+
+/**
+ * The key_codes column a header cell of an imported key code file names
+ * (import_key_codes.php), '' for one the import does not read. Case, white
+ * space, underscores and dashes do not count ("Key Code", "key_code",
+ * "keycode"), nor a byte order mark left on the first cell. The export's
+ * headings (view_key_codes.php) all read.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_key_code_import_column($name)
+{
+    $name = (string) $name;
+
+    if (substr($name, 0, 3) === "\xEF\xBB\xBF") {
+        $name = substr($name, 3);
+    }
+
+    $name = str_replace(array(' ', '_', '-', "\t", "\xC2\xA0"), '', mb_strtolower(trim($name)));
+
+    $columns = array(
+        'keycode'        => 'code',
+        'offercode'      => 'offer_code',
+        'enabled'        => 'enabled',
+        'expirationdate' => 'expiration_date',
+        'notes'          => 'notes',
+        'singleuse'      => 'single_use',
+        'report'         => 'report',
+    );
+
+    return isset($columns[$name]) ? $columns[$name] : '';
+}
+
+/**
+ * The separator of an imported key code file, read from its header line: of
+ * the comma, the semicolon and the tab, the one the line holds most; the
+ * comma when it holds none of them (a file of codes alone). Excel saves a
+ * CSV file with the list separator of the computer's region, a semicolon in
+ * Turkish.
+ *
+ * @param string $header
+ * @return string
+ */
+function pg_key_code_import_separator($header)
+{
+    $header = (string) $header;
+    $best = ',';
+    $most = substr_count($header, ',');
+
+    foreach (array(';', "\t") as $separator) {
+        $count = substr_count($header, $separator);
+
+        if ($count > $most) {
+            $best = $separator;
+            $most = $count;
+        }
+    }
+
+    return $best;
+}
+
+/**
+ * A yes/no cell of an imported key code file (enabled, single_use): 1 or 0,
+ * null for an empty cell, false for anything else. The export writes 1 and
+ * 0; yes/no, true/false and Excel's TRUE/FALSE (DOĞRU/YANLIŞ in Turkish)
+ * and evet/hayır read too.
+ *
+ * @param string $value
+ * @return int|null|false
+ */
+function pg_key_code_import_flag($value)
+{
+    $value = mb_strtolower(trim((string) $value));
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (in_array($value, array('1', 'yes', 'true', 'evet', 'doğru', 'dogru'), true)) {
+        return 1;
+    }
+
+    if (in_array($value, array('0', 'no', 'false', 'hayır', 'hayir', 'yanlış', 'yanliş', 'yanlis'), true)) {
+        return 0;
+    }
+
+    return false;
+}
+
+/**
+ * An expiration date cell of an imported key code file as the column keeps
+ * it: Y-m-d, '0000-00-00' for an empty cell (the code does not expire, as
+ * the export writes it), false for a cell that is not a date. Besides the
+ * export's Y-m-d, a date Excel wrote back in the computer's own format
+ * reads: day.month.year with dots, and with slashes or dashes in the site's
+ * order (DATE_FORMAT), the other order when the site's is not a date
+ * (12/31/2026 on a day-first site). A two-digit year or a time after the
+ * date is not read: the row is reported instead of a code that never
+ * expires.
+ *
+ * @param string $value
+ * @param string $date_format month_day | day_month
+ * @return string|false
+ */
+function pg_key_code_import_date($value, $date_format)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || ($value === '0000-00-00')) {
+        return '0000-00-00';
+    }
+
+    if (preg_match('/^(\d{4})([-\/.])(\d{1,2})\2(\d{1,2})$/', $value, $parts)) {
+        return checkdate((int) $parts[3], (int) $parts[4], (int) $parts[1])
+            ? sprintf('%04d-%02d-%02d', $parts[1], $parts[3], $parts[4])
+            : false;
+    }
+
+    if (!preg_match('/^(\d{1,2})([-\/.])(\d{1,2})\2(\d{4})$/', $value, $parts)) {
+        return false;
+    }
+
+    $first = (int) $parts[1];
+    $second = (int) $parts[3];
+    $year = (int) $parts[4];
+
+    // month, day pairs in the order they are tried
+    if ($parts[2] === '.') {
+        $orders = array(array($second, $first));
+    } else if ($date_format === 'month_day') {
+        $orders = array(array($first, $second), array($second, $first));
+    } else {
+        $orders = array(array($second, $first), array($first, $second));
+    }
+
+    foreach ($orders as $order) {
+        if (checkdate($order[0], $order[1], $year)) {
+            return sprintf('%04d-%02d-%02d', $year, $order[0], $order[1]);
+        }
+    }
+
+    return false;
+}
+
+/**
+ * One row of an imported key code file read into the columns it writes.
+ * 'values' holds the code (also one too long to store, so that row is
+ * reported rather than taken for a blank line) and every other column of
+ * the file whose cell can be stored: an empty expiration date is "does not expire" and empty notes
+ * are none, as the export writes them; an empty offer code, flag or report
+ * is left out, so a code already there keeps its own and a new one takes
+ * the default. 'error' names the first cell that cannot be stored (the row
+ * is then skipped whole), '' when there is none.
+ *
+ * @param array  $row         the cells as fgetcsv() read them
+ * @param array  $columns     cell index => key_codes column
+ * @param string $date_format month_day | day_month
+ * @return array 'values' => column => value, 'error' => string
+ */
+function pg_key_code_import_row($row, $columns, $date_format)
+{
+    $values = array('code' => '');
+    $error = '';
+
+    foreach ($columns as $index => $column) {
+        $cell = (is_array($row) && isset($row[$index])) ? trim((string) $row[$index]) : '';
+
+        switch ($column) {
+            case 'code':
+            case 'offer_code':
+                if (mb_strlen($cell) > 50) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" is longer than 50 characters.', 'vars' => array($cell)));
+
+                    // A key code too long to store is still kept: the row is
+                    // then reported with it, not passed over as a blank line.
+                    if ($column === 'code') {
+                        $values[$column] = $cell;
+                    }
+                } else if (($cell !== '') || ($column === 'code')) {
+                    $values[$column] = $cell;
+                }
+                break;
+
+            case 'enabled':
+            case 'single_use':
+                $flag = pg_key_code_import_flag($cell);
+
+                if ($flag === false) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, $column)));
+                } else if ($flag !== null) {
+                    $values[$column] = $flag;
+                }
+                break;
+
+            case 'expiration_date':
+                $date = pg_key_code_import_date($cell, $date_format);
+
+                if ($date === false) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" is not an expiration date.', 'vars' => array($cell)));
+                } else {
+                    $values[$column] = $date;
+                }
+                break;
+
+            case 'report':
+                $report = str_replace(array(' ', '-'), '_', mb_strtolower($cell));
+
+                if (in_array($report, array('key_code', 'offer_code'), true)) {
+                    $values[$column] = $report;
+                } else if ($cell !== '') {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the report column is neither key_code nor offer_code.', 'vars' => array($cell)));
+                }
+                break;
+
+            case 'notes':
+                $values[$column] = $cell;
+                break;
+        }
+    }
+
+    return array('values' => $values, 'error' => $error);
 }
 
 /**
