@@ -13418,6 +13418,10 @@ const StyleDesigner = (function () {
                                      'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
                                      'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
                                      'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
@@ -16253,8 +16257,9 @@ const StyleDesigner = (function () {
                 // branches, menus, events, an urgent notice, profile cards and
                 // a rating summary. Bootstrap utilities only, so a block looks
                 // the same in any design. One family, one set of helpers; the
-                // legal blocks at the end of the branch share them.
-                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                // legal blocks at the end of the branch share them, and so do
+                // the maintenance/launch, news and creative blocks after them.
+                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
                     var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
                     var _bkDiv = function (cls, name, kids, attrs) {
                         var p = { tag: 'div', cssClass: cls, customName: name };
@@ -17128,6 +17133,23 @@ const StyleDesigner = (function () {
                             ])
                         ]);
                     }
+
+                    // ── Maintenance and launch blocks ──
+                    // Pages shown while the site is closed for work or before it
+                    // opens: no links into the site, only contact and social links.
+
+                    // ── News: bands and widgets ──
+                    // Thin bands and small widgets of a news site: ticker, rotating
+                    // headlines, trending topics, weather and market strips.
+
+                    // ── News: stories and articles ──
+                    // Story layouts of a news or magazine site: lead grid, latest
+                    // lists, category columns, live coverage, article header, author box.
+
+                    // ── Creative blocks ──
+                    // Eye-catching layouts for any site: bento grids, marquees,
+                    // showcases, quotes, a polaroid gallery and a snap scroller.
+
                 }
 
                 // Accordion Explosion
@@ -55988,6 +56010,35 @@ const StyleDesigner = (function () {
             { label: _sdT('Loyalty: Stamp Card'),         type: 'component', icon: 'bi-cup-hot',               extra: { componentType: 'loyalty-stamps' } },
             { label: _sdT('Events: Cards'),               type: 'component', icon: 'bi-calendar2-event',       extra: { componentType: 'events-cards' } },
             { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } },
+            { label: _sdT('Maintenance: Centered'),        type: 'component', icon: 'bi-tools',                  extra: { componentType: 'maintenance-centered' } },
+            { label: _sdT('Maintenance: Split'),           type: 'component', icon: 'bi-layout-split',           extra: { componentType: 'maintenance-split' } },
+            { label: _sdT('Maintenance: Status Board'),    type: 'component', icon: 'bi-activity',               extra: { componentType: 'maintenance-status' } },
+            { label: _sdT('Maintenance: Dark'),            type: 'component', icon: 'bi-moon-stars',             extra: { componentType: 'maintenance-dark' } },
+            { label: _sdT('Coming Soon: Launch Date'),     type: 'component', icon: 'bi-rocket-takeoff',         extra: { componentType: 'coming-soon-launch' } },
+            { label: _sdT('Coming Soon: Split'),           type: 'component', icon: 'bi-hourglass-split',        extra: { componentType: 'coming-soon-split' } },
+            { label: _sdT('News: Ticker'),                 type: 'component', icon: 'bi-broadcast',              extra: { componentType: 'news-ticker' } },
+            { label: _sdT('News: Headline Rotator'),       type: 'component', icon: 'bi-arrow-repeat',           extra: { componentType: 'news-ticker-rotator' } },
+            { label: _sdT('News: Trending Topics'),        type: 'component', icon: 'bi-hash',                   extra: { componentType: 'news-trending' } },
+            { label: _sdT('News: Weather Card'),           type: 'component', icon: 'bi-cloud-sun',              extra: { componentType: 'news-weather-card' } },
+            { label: _sdT('News: Weather Strip'),          type: 'component', icon: 'bi-thermometer-half',       extra: { componentType: 'news-weather-strip' } },
+            { label: _sdT('News: Weekly Forecast'),        type: 'component', icon: 'bi-calendar-week',          extra: { componentType: 'news-weather-forecast' } },
+            { label: _sdT('News: Markets Strip'),          type: 'component', icon: 'bi-graph-up-arrow',         extra: { componentType: 'news-markets' } },
+            { label: _sdT('News: Lead Story Grid'),        type: 'component', icon: 'bi-grid-1x2',               extra: { componentType: 'news-lead-grid' } },
+            { label: _sdT('News: Latest + Most Read'),     type: 'component', icon: 'bi-list-ol',                extra: { componentType: 'news-latest-mostread' } },
+            { label: _sdT('News: Category Columns'),       type: 'component', icon: 'bi-layout-three-columns',   extra: { componentType: 'news-category-columns' } },
+            { label: _sdT('News: Live Coverage'),          type: 'component', icon: 'bi-record-circle',          extra: { componentType: 'news-live-blog' } },
+            { label: _sdT('News: Article Header'),         type: 'component', icon: 'bi-file-earmark-text',      extra: { componentType: 'news-article-header' } },
+            { label: _sdT('News: Author Box'),             type: 'component', icon: 'bi-person-vcard',           extra: { componentType: 'news-author-box' } },
+            { label: _sdT('Bento: Features'),              type: 'component', icon: 'bi-grid-1x2-fill',          extra: { componentType: 'bento-features' } },
+            { label: _sdT('Bento: Gallery'),               type: 'component', icon: 'bi-images',                 extra: { componentType: 'bento-gallery' } },
+            { label: _sdT('Marquee: Big Words'),           type: 'component', icon: 'bi-type',                   extra: { componentType: 'marquee-words' } },
+            { label: _sdT('Marquee: Logos'),               type: 'component', icon: 'bi-buildings',              extra: { componentType: 'marquee-logos' } },
+            { label: _sdT('Showcase: Floating Badges'),    type: 'component', icon: 'bi-window-stack',           extra: { componentType: 'showcase-floating' } },
+            { label: _sdT('Showcase: Vertical Tabs'),      type: 'component', icon: 'bi-segmented-nav',          extra: { componentType: 'showcase-tabs' } },
+            { label: _sdT('Quote: Pull Quote'),            type: 'component', icon: 'bi-quote',                  extra: { componentType: 'quote-pull' } },
+            { label: _sdT('Quote: Spotlight'),             type: 'component', icon: 'bi-chat-quote',             extra: { componentType: 'quote-spotlight' } },
+            { label: _sdT('Gallery: Polaroid'),            type: 'component', icon: 'bi-camera',                 extra: { componentType: 'gallery-polaroid' } },
+            { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
     }
@@ -55998,14 +56049,17 @@ const StyleDesigner = (function () {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
             { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
+            { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
             { title: _sdT('Hours & Locations'), icon: 'bi-geo-alt',           match: ['hours-', 'locations-'] },
             { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-', 'catering-', 'loyalty-'] },
             { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
+            { title: _sdT('News & Magazine'),  icon: 'bi-newspaper',          match: ['news-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
             { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] },
+            { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
@@ -56058,6 +56112,29 @@ const StyleDesigner = (function () {
         'pg-logo-44':      '.pg-logo-44 { max-height: 44px; filter: grayscale(100%); opacity: .7; }',
         'pg-logo-48':      '.pg-logo-48 { max-height: 48px; filter: grayscale(100%); }',
         'pg-logo-60':      '.pg-logo-60 { max-height: 60px; }',
+        // Shared by the news ticker and the creative marquees: a track of two
+        // identical groups slides by half its width, so the loop is seamless.
+        // Hover, keyboard focus and the pause checkbox stop it; reduced motion
+        // turns it into a plain scrollable strip without the duplicate group.
+        'pg-marquee':      '.pg-marquee-viewport { overflow: hidden; }\n' +
+                           '.pg-marquee-track { display: flex; flex-wrap: nowrap; width: max-content; animation: pg-marquee 40s linear infinite; }\n' +
+                           '.pg-marquee-reverse .pg-marquee-track { animation-direction: reverse; }\n' +
+                           '[dir="rtl"] .pg-marquee-track { animation-name: pg-marquee-rtl; }\n' +
+                           '.pg-marquee:hover .pg-marquee-track, .pg-marquee:focus-within .pg-marquee-track, .pg-marquee:has(.pg-marquee-pause:checked) .pg-marquee-track { animation-play-state: paused; }\n' +
+                           '@keyframes pg-marquee { to { transform: translateX(-50%); } }\n' +
+                           '@keyframes pg-marquee-rtl { to { transform: translateX(50%); } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-marquee-viewport { overflow-x: auto; } .pg-marquee-track { animation: none; } .pg-marquee-copy, .pg-marquee-toggle { display: none; } }',
+        // Dark scrim under text placed on a photo; the box also carries
+        // data-bs-theme="dark", so the text colour never depends on the photo.
+        'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // Maintenance and launch blocks
+
+        // News: bands and widgets
+
+        // News: stories and articles
+
+        // Creative blocks
+
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
@@ -56083,6 +56160,14 @@ const StyleDesigner = (function () {
         'services-image-cards': ['pg-ratio-16x9'],
         'locations-cards':      ['pg-ratio-16x9'],
         'menu-cards':           ['pg-ratio-1x1'],
+        // Maintenance and launch blocks
+
+        // News: bands and widgets
+
+        // News: stories and articles
+
+        // Creative blocks
+
         'events-cards':         ['pg-ratio-16x9']
     };
 
