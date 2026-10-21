@@ -23,7 +23,7 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 - `waf_is_api_request()` lists `feed.php` like `workspace_ical.php`: platform fetchers send generic or empty user agents and must not meet the bot policy.
 
 ## How is it set up on the screen?
-- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand (both cut at 255), seller/privacy/terms URLs (absolute http(s) up to 2000 chars or empty, refused before any write, never cut: `pg_product_feed_seller_from_input()`; a 255 cut used to store a shortened privacy URL, PR #NNN), excluded groups (groups the catalogs show; `lists` registry entry), "Save and build now".
+- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand (both cut at 255), seller/privacy/terms URLs (absolute http(s) up to 2000 chars or empty, refused before any write, never cut: `pg_product_feed_seller_from_input()`; a 255 cut used to store a shortened privacy URL, PR #1047), excluded groups (groups the catalogs show; `lists` registry entry), "Save and build now".
 - `seo.save.php` calls `pg_product_feed_save_from_screen()` after the screen's columns: a feed switched on gets a token and is built at once; otherwise changes wait for the daily job. An address that cannot be sealed (no site key) is shown once in a notice.
 
 ## What does System Status show?
