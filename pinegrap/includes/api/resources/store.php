@@ -506,14 +506,23 @@ function api_store_countries_list($params) {
 
 /* ----- Currencies ---------------------------------------------------------- */
 
+// A currency symbol as plain text. The currency screen keeps it as HTML
+// (&euro;, &#8378;) for the pages that print it; an API client draws it in a
+// price label of its own, where the entity would show as written. GET /meta
+// and GET /store/currencies give the same text through this one rule.
+function api_currency_symbol_text($symbol) {
+
+	return html_entity_decode((string)$symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+}
+
 function api_store_currency_present($row) {
 
 	return array(
 		'id'            => (int)$row['id'],
 		'name'          => (string)$row['name'],
 		'code'          => (string)$row['code'],
-		// The screen keeps the symbol as HTML (&euro;); it is written out here.
-		'symbol'        => html_entity_decode((string)$row['symbol'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+		'symbol'        => api_currency_symbol_text($row['symbol']),
 		// How much of this currency one unit of the base currency buys.
 		'exchange_rate' => (float)$row['exchange_rate'],
 		'base'          => ((int)$row['base'] === 1),
