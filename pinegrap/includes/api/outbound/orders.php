@@ -94,6 +94,33 @@ function mp_import_order($account, $package) {
 
 	if ($existing) {
 
+		// A package refused before any order was written - most often a line
+		// no product here matched - is taken again, so matching the product
+		// and letting the feed hand the package back is enough to bring it in.
+		// The UPDATE is the claim: only a row still 'failed' with no order, and
+		// a pass that loses the race to it changes nothing. An 'importing' row
+		// with no order is left alone; it may be a write in progress, or one
+		// that stopped half-way and left an order behind.
+		if (($existing['status'] === 'failed') && !(int)$existing['order_id']) {
+
+			db("UPDATE marketplace_order_map
+				SET status = 'importing',
+					remote_order_id = '" . e(mb_substr((string)$package['remote_order_id'], 0, 64)) . "',
+					remote_status = '" . e(mb_substr((string)$package['remote_status'], 0, 40)) . "',
+					lines_json = '" . e(json_encode($package['lines'])) . "',
+					remote_timestamp = '" . e((int)$package['placed_at']) . "',
+					last_error = '',
+					updated_timestamp = UNIX_TIMESTAMP()
+				WHERE (id = '" . e((int)$existing['id']) . "') AND (status = 'failed') AND (order_id = 0)");
+
+			if (mysqli_affected_rows(db::$con) === 1) {
+
+				return mp_import_claimed($account, $package, (int)$existing['id']);
+
+			}
+
+		}
+
 		// Already here, so the order is not written again - but what has
 		// happened to it since is. The feed is queried on the modification
 		// time, so a package that shipped, arrived or was cancelled comes back
@@ -147,10 +174,17 @@ function mp_import_order($account, $package) {
 
 	}
 
-	$map_id = (int) mysqli_insert_id(db::$con);
+	return mp_import_claimed($account, $package, (int) mysqli_insert_id(db::$con));
 
-	// Cancelled before this shop ever saw it - between two pulls, or before the
-	// first one. Nothing is written: there is nothing to pick, and writing the
+}
+
+// Write the order of a package whose map row this pass holds ('importing').
+// Answers the same shape as mp_import_order().
+function mp_import_claimed($account, $package, $map_id) {
+
+	// Cancelled before an order was written for it - between two pulls, before
+	// the first one, or while a refused package waited for its product to be
+	// matched. Nothing is written: there is nothing to pick, and writing the
 	// order only to cancel it would take the stock and give it back, which is
 	// not a round trip when the stock was short (the take stops at zero, the
 	// return adds the whole quantity). The map row stays, so the package is
