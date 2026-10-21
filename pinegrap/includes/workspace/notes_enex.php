@@ -1190,7 +1190,7 @@ function ws_note_enex_read($path, &$context)
     // A no-op since PHP 8.0 and deprecated in 8.5: there the parser goes with
     // its variable.
     if (PHP_VERSION_ID < 80000) {
-        xml_parser_free($parser);
+        xml_parser_free($parser); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.xml_parser_freeDeprecated -- guarded by PHP_VERSION_ID < 80000 above
     }
 
     fclose($handle);
