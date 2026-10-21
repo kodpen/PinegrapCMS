@@ -57395,8 +57395,6 @@ const StyleDesigner = (function () {
         // stands still and stays visible (its resting opacity is 0).
         'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
 
-        // News: bands and widgets
-
         // News: stories and articles
         // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
         // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
