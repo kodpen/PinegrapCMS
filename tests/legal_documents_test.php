@@ -540,6 +540,26 @@ function test_legal_documents_page_reads_posted_values_with_the_token()
 	pg_assert_false(strpos($page, 'validate_token_field()'), 'a wrong token falls back instead of failing');
 }
 
+// The cart's document is read in the language the checkout is served in:
+// its address carries pg_lang (the document page is a script of its own,
+// not a routed page), as a form posted from that page does.
+function test_legal_documents_cart_url()
+{
+	pg_assert_same('/p/legal_document.php', pg_legal_document_cart_url('', '', '/p/legal_document.php'), 'source language, no type');
+	pg_assert_same('/p/legal_document.php?pg_lang=en', pg_legal_document_cart_url('', 'en', '/p/legal_document.php'), 'a target language');
+	pg_assert_same('/p/legal_document.php?type=preinfo', pg_legal_document_cart_url('preinfo', '', '/p/legal_document.php'), 'a type');
+	pg_assert_same('/p/legal_document.php?type=contract&pg_lang=pt-br', pg_legal_document_cart_url('contract', 'pt-br', '/p/legal_document.php'), 'both');
+	pg_assert_same('/p/legal_document.php?type=a%26b&pg_lang=e%26n', pg_legal_document_cart_url('a&b', 'e&n', '/p/legal_document.php'), 'encoded');
+	pg_assert_contains('legal_document.php?pg_lang=en&amp;type=preinfo', pg_legal_documents_checkboxes_html(array(), pg_legal_document_cart_url('', 'en', 'legal_document.php')), 'the injected boxes keep the language');
+
+	$injector = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
+
+	pg_assert_contains('pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())', $injector, 'the injected boxes link in the page language');
+	pg_assert_contains("h(pg_legal_document_cart_url('preinfo'))", $widget, 'the designer token of the pre-information form');
+	pg_assert_contains("h(pg_legal_document_cart_url('contract'))", $widget, 'the designer token of the contract');
+}
+
 // A kept copy's address is the document page with the order's id and the type.
 function test_legal_documents_copy_url()
 {

@@ -11,6 +11,10 @@ description: Checkout document boxes in the designer's express order tree: legal
 ## Where do the links point?
 - The `<a>` carries `_bindings.href` = `__legal_preinfo_url` / `__legal_contract_url`, static tokens of `_eo_compute_static_tokens()` (`legal_document.php?type=…`, escaped there). The tree holds no path; the designer picks them under "Checkout documents" in the token list, and the URL field is hidden as for every bound href.
 
+## In which language is the linked document read?
+- In the checkout's: `pg_legal_document_cart_url($type)` (`includes/fn/legal_documents.php`) adds `pg_lang=<code>` while the page is drawn in a target language (`pg_tr_active()`), for these tokens and for the boxes `pg_legal_documents_inject()` adds (`?pg_lang=en&type=preinfo`). `legal_document.php` is not routed, so `pg_lang` (init.php) is how it learns the language; the script posts to the link's address, so the post keeps it.
+- Before PR #PR765 (issue #765) a visitor on `/en/...` read the source-language document ("Ön Bilgilendirme Formu") while the copy kept at submit was English ("Pre-Contract Information"). Test: `test_legal_documents_cart_url`.
+
 ## Why is the label built from one sentence?
 - Turkish puts the document first ("… okudum ve onaylıyorum"), English last. The label is `span` + `a` + `span` cut from one key, `I have read and approve {var:1}` / `I have read and accept {var:1}`, at the `{var:1}` by `_eo_sentence_around()` (JS twin `_eoSentenceAround()`); an empty side is left out. No period: the renderer's line breaks between nodes would put a space before it. Tests `tests/designer_legal_documents_test.php`.
 
