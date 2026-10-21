@@ -6,7 +6,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
-- workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #PRNUM)
+- workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals

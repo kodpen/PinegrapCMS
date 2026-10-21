@@ -1,6 +1,6 @@
 ---
 name: workspace-assistant-reach
-description: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #PRNUM)
+description: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 ---
 
 ## Where may an assistant answer?
@@ -8,7 +8,7 @@ description: Claude and Pinegrap AI read and answer a discussion or allowed priv
 - Used by Claude's `/answer` and `/fail` (`ws_api_claude_channel()`, api_claude.php) and Pinegrap AI's `ws_ai_deliver()` and `ws_ai_finish_fail()`. An MCP agent's answer was already posted in the asker's name (mcp_agent.php).
 
 ## What did it fix?
-- Before PR #PRNUM the owner had to be in the room. In a discussion (only its starter and the message's author are in it) or a private channel the owner was not in, Claude failed with "Claude yapamadı: Kanala yazamıyorum: Claude uygulamasının sahibi bu özel kanalın üyesi değil…" (API: context 404, answer 403 "The owner of Claude's application cannot post in that channel…") and Pinegrap AI with "Pinegrap AI'ın uygulamasının sahibi o kanala yazamıyor".
+- Before PR #1085 the owner had to be in the room. In a discussion (only its starter and the message's author are in it) or a private channel the owner was not in, Claude failed with "Claude yapamadı: Kanala yazamıyorum: Claude uygulamasının sahibi bu özel kanalın üyesi değil…" (API: context 404, answer 403 "The owner of Claude's application cannot post in that channel…") and Pinegrap AI with "Pinegrap AI'ın uygulamasının sahibi o kanala yazamıyor".
 
 ## How does Claude read such a place?
 - `GET /workspace/channels/{id}/context` with Claude's application key: where the owner does not read the channel it is read through the person who asked, while a Claude request asked there (or a run on one of its tasks) is queued, sent or running (`ws_claude_channel_asker()`, claude.php), as that person reads it (tags, open tasks); never through inspection (`ws_app_reads_channel()`). Once the request closes it is 404 again.
