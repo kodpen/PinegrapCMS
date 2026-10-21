@@ -1,6 +1,6 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decisions 2026-10-21; step 1 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 2-6 remain
+description: Plan (owner's decisions 2026-10-21; step 1 done, #1001): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 2-6 remain
 ---
 
 ## Why?
@@ -13,10 +13,10 @@ description: Plan (owner's decisions 2026-10-21; step 1 done): the ERP takes VAT
 - Checkout: a VAT-inclusive charge or price whose rate total no amount reaches takes the reachable total a kurus below (57.92 for 57.93); the customer never pays more than the sum shown and the invoice equals the payment.
 
 ## How does it work?
-- `erp_rate_vat()` (includes/erp/money.php): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
+- `erp_rate_vat()` (includes/erp/money.php, #1001): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
 
 ## What remains?
-1. Done: `erp_rate_vat()` and its tests.
+1. Done: `erp_rate_vat()` and its tests (#1001).
 2. Manual documents: `erp_manual_lines_build()` (includes/erp/invoice_manual.php; invoices, purchase invoices, quotes, purchase orders, the API, the inbox through it) takes the taxes from `erp_rate_vat()`; the editor preview (assets/js/erp_invoice_editor.js, `applyRate()` and the totals) follows it to the kurus (M).
 3. Returns: `includes/erp/returns.php` takes the returned lines' taxes per rate of the return (M).
 4. Orders: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary; the kurus-below rule above) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
