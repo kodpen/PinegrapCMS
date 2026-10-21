@@ -71,6 +71,38 @@ function test_maintenance_time_text()
 	pg_assert_true(in_array(pg_maintenance_time_text($time), array('19.10.2026 18:05', '10/19/2026 6:05 PM', '19.10.2026 6:05 PM', '10/19/2026 18:05'), true));
 }
 
+// The end time typed into the card is read in the time zone the same save
+// gives the site, not the one the request started with.
+function test_maintenance_until_parse()
+{
+	pg_assert_same(0, pg_maintenance_until_parse('', 'Europe/Istanbul'), 'no end time');
+	pg_assert_same(gmmktime(12, 0, 0, 12, 1, 2026), pg_maintenance_until_parse('2026-12-01T15:00', 'Europe/Istanbul'), '15:00 in Istanbul is 12:00 UTC');
+	pg_assert_same(gmmktime(15, 0, 0, 12, 1, 2026), pg_maintenance_until_parse('2026-12-01T15:00', 'UTC'), '15:00 in UTC');
+	pg_assert_same(gmmktime(15, 0, 0, 12, 1, 2026), pg_maintenance_until_parse('2026-12-01T15:00:30', 'UTC'), 'seconds are dropped as the input does');
+	pg_assert_false(pg_maintenance_until_parse('2026-13-01T15:00', 'UTC'), 'no such month');
+	pg_assert_false(pg_maintenance_until_parse('tomorrow', 'UTC'), 'not a date and time');
+
+	$fallback = pg_maintenance_until_parse('2026-12-01T15:00', 'Not/AZone');
+	$expected = (new DateTime('2026-12-01 15:00', new DateTimeZone(date_default_timezone_get())))->getTimestamp();
+	pg_assert_same($expected, $fallback, 'an unknown zone falls back to the request\'s');
+}
+
+// A passed end time refuses only what would start or reschedule a mode that
+// is over before it begins; a mode that ended by itself does not block every
+// other general setting.
+function test_maintenance_until_refused()
+{
+	$now = 1000000;
+
+	pg_assert_true(pg_maintenance_until_refused(true, $now - 60, $now, false, 0), 'switched on with a passed end');
+	pg_assert_true(pg_maintenance_until_refused(true, $now - 60, $now, true, $now - 3600), 'on, given another passed end');
+	pg_assert_false(pg_maintenance_until_refused(true, $now - 3600, $now, true, $now - 3600), 'ended by itself, saved as it was');
+	pg_assert_false(pg_maintenance_until_refused(true, $now + 60, $now, false, 0), 'an end still ahead');
+	pg_assert_false(pg_maintenance_until_refused(true, 0, $now, true, $now - 3600), 'no end time');
+	pg_assert_false(pg_maintenance_until_refused(false, $now - 60, $now, false, 0), 'switched off');
+	pg_assert_true(pg_maintenance_until_refused(true, $now, $now, false, 0), 'an end that is now has passed');
+}
+
 // Only a page render is held: the gate sits in get_page.php, after init.php
 // and before anything is looked up, and nowhere in the bootstrap every
 // request shares - a payment provider calling the shop back must get through.
