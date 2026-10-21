@@ -8,7 +8,7 @@ description: External API product name (SKU) rule on create and update (trimmed,
 - `POST /products` calls it for every create. `POST /products/{id}` (and PATCH, and the MCP tool) calls it when `name` is sent and differs from the stored name, excluding the product itself; resending the product's own name is not checked, so a catalogue that already holds a duplicate still takes an update that sends the whole record. The trimmed name is written.
 
 ## Why on update too?
-- Before (issue #874) the update wrote `name` like any text column: another product's name gave 200 and two products of one name (`import_products.php` and other lookups by name then cannot tell which is meant); `""` gave 200 and an empty name. The create already refused both.
+- Before (issue #874, fixed by PR #1027) the update wrote `name` like any text column: another product's name gave 200 and two products of one name (`import_products.php` and other lookups by name then cannot tell which is meant); `""` gave 200 and an empty name. The create already refused both.
 - The product screen does not run `get_unique_name()` on edit (`pg_pb_update_product()`), only to avoid renaming a product to `NAME[1]` on every save; its form requires the name. Not a decision to allow duplicates.
 
 ## What bounds do the dimensions have?
