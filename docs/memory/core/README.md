@@ -16,6 +16,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-response-json-encoding.md: How the external API writes its answer as JSON (api_json_encode()): broken UTF-8 bytes become U+FFFD, an answer JSON cannot hold (INF, NAN) becomes a 500 server_error, never an empty body
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
+- api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: What a stock change announces: pg_product_stock_changed() (stamp, inventory.changed, stock.low on the crossing, marketplace queue) behind every site writer, its pure rules, which writers stay quiet
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
