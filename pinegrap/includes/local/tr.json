@@ -24710,5 +24710,6 @@
     "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
     "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin.",
     "This movement is a step of {var:1}, which changes only by its own steps on its screen; it cannot be cancelled on its own.": "Bu hareket {var:1} kaydının bir adımı; çek ve senet yalnız kendi ekranındaki adımlarla değişir, hareket tek başına iptal edilemez.",
-    "Open the cheque or note": "Çeki veya Senedi Aç"
+    "Open the cheque or note": "Çeki veya Senedi Aç",
+    "That document is not an invoice; a receipt does not close it.": "Bu belge bir fatura değil; tahsilat ya da ödeme onu kapatmaz."
 }
