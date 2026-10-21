@@ -17,7 +17,7 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 ## How do two names compare?
 - As the router's `WHERE name = '…'` does: `pg_short_link_key()` is the database's weight string of the name under the column's collation (`pg_short_link_name_collation()`, `SHOW FULL COLUMNS`), a hundred names per query (`pg_short_link_keys()`), kept for the request. PHP does not imitate the collation.
 - Under `utf8mb4_unicode_ci`: `ı`/`i`, `ø`/`o`, `ł`/`l`, `æ`/`ae` are two names; `ę`/`e`, `ș`/`s`, `ő`/`o`, `ß`/`ss`, case are one.
-- Symptom before (#PR832): keys were `pg_transliterate_to_ascii()` + lower case, so `hakkimizda` -> `/hakkımızda` was refused as "its own address", the CSV import skipped or overwrote `kılıf` for `kilif`, and `święta` -> `/swieta` was saved as an endless self-redirect.
+- Symptom before (#1033): keys were `pg_transliterate_to_ascii()` + lower case, so `hakkimizda` -> `/hakkımızda` was refused as "its own address", the CSV import skipped or overwrote `kılıf` for `kilif`, and `święta` -> `/swieta` was saved as an endless self-redirect.
 - Without a connection (the test runner) `pg_short_link_fold()`: NFKD without marks, lower case (intl), only lower case without intl.
 
-Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006.
+Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006, #1033.
