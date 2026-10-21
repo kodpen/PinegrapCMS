@@ -82,7 +82,8 @@ function office_edit_test_book_parts()
 		'xl/tables/table1.xml' => '<?xml version="1.0"?><table xmlns="' . $ns . '" id="1" name="Tablo1" displayName="Tablo1" ref="D1:E3"><tableColumns count="2"><tableColumn id="1" name="Ad"/><tableColumn id="2" name="Fiyat"/></tableColumns></table>',
 		'xl/worksheets/sheet2.xml' => office_edit_test_sheet(
 			'<row r="1"><c r="A1"><v>1</v></c><c r="B1" s="3"><v>2</v></c></row>',
-			'<sheetProtection sheet="1" objects="1"/>'),
+			'<sheetProtection sheet="1" objects="1"/>',
+			'<cols><col min="3" max="3" width="12" customWidth="1" style="3"/></cols>'),
 	);
 }
 
@@ -309,6 +310,27 @@ function test_office_edit_scan()
 	$reader = new XMLReader();
 	$reader->XML(office_edit_test_sheet('<row r="1"><c><v>1</v></c></row>'));
 	pg_assert_false(pg_office_xlsx_scan($reader, 0, array())['addressed'], 'a cell without an address');
+
+	// A form template: the lock opened for whole columns and rows, whose
+	// empty cells are not in the file (a new cell takes the row's own style
+	// first, else the column's).
+	$xml = office_edit_test_sheet(
+		'<row r="1" s="3" customFormat="1"><c r="A1"><v>1</v></c><c r="B1" s="3"/></row>'
+		. '<row r="2" s="1" customFormat="1"/>'
+		. '<row r="3"><c r="B3"><f>1</f><v>1</v></c><c r="C3" s="1"/><c r="D3" s="1"/></row>'
+		. '<row r="9" s="3" customFormat="1"/>',
+		'<sheetProtection sheet="1"/>',
+		'<cols><col min="2" max="3" width="12" style="3"/><col min="4" max="4" style="1"/><col min="5" max="16384" style="3"/></cols>');
+
+	$reader = new XMLReader();
+	$reader->XML($xml);
+	$scan = pg_office_xlsx_scan($reader, 3, array(3 => true));
+
+	pg_assert_same(array(array(1, 2), array(4, 199)), $scan['columns'], 'the columns whose style opens a new cell, 0-based and cut to the columns shown');
+	pg_assert_same(array(1 => true, 2 => false), $scan['rows'], 'the rows with a style of their own, open or locked, up to the rows asked for');
+	pg_assert_same(array('B1' => true), $scan['open'], 'a cell in the file with an unlocked style');
+	pg_assert_same(array('A1' => true, 'C3' => true), $scan['closed'], 'cells in the file that keep their locked style although their row or column would open a new cell');
+	pg_assert_same(array('B3' => 'formula'), $scan['locked'], 'a formula in an open column is a formula');
 }
 
 function test_office_edit_save_and_read_back()
@@ -331,6 +353,9 @@ function test_office_edit_save_and_read_back()
 	pg_assert_contains(array(5, 0, 5, 2, 'merged'), $book['sheets'][0]['edit']['ranges'], 'the merge is listed');
 	pg_assert_true($book['sheets'][1]['edit']['protected'], 'the second sheet is protected');
 	pg_assert_same(array('B1' => true), $book['sheets'][1]['edit']['open'], 'with one unlocked cell');
+	pg_assert_same(array(array(2, 2)), $book['sheets'][1]['edit']['columns'], 'and a column whose style opens a new cell');
+	pg_assert_same(array(array(), array()), array($book['sheets'][1]['edit']['rows'], $book['sheets'][1]['edit']['closed']), 'no row of its own style, no cell kept locked by its own');
+	pg_assert_same(array(array(), array(), array()), array($book['sheets'][0]['edit']['open'], $book['sheets'][0]['edit']['columns'], $book['sheets'][0]['edit']['rows']), 'an unprotected sheet lists none of them');
 
 	$version = $book['version'];
 	$changes = array(
@@ -340,6 +365,7 @@ function test_office_edit_save_and_read_back()
 		array('sheet' => 0, 'name' => 'Liste', 'cell' => 'D2', 'value' => 'Dolma kalem'),
 		array('sheet' => 0, 'name' => 'Liste', 'cell' => 'B3', 'value' => '4'),
 		array('sheet' => 1, 'name' => 'Korumalı', 'cell' => 'B1', 'value' => '8'),
+		array('sheet' => 1, 'name' => 'Korumalı', 'cell' => 'C1', 'value' => 'yeni'),
 	);
 
 	$refused = pg_office_xlsx_save($path, array(array('sheet' => 0, 'name' => 'Liste', 'cell' => 'C1', 'value' => '1')), $version, $directory);
@@ -364,7 +390,7 @@ function test_office_edit_save_and_read_back()
 	$saved = pg_office_xlsx_save($path, $changes, $version, $directory);
 
 	pg_assert_true($saved['ok'], 'saved: ' . $saved['error']);
-	pg_assert_same(6, $saved['changed'], 'six cells');
+	pg_assert_same(7, $saved['changed'], 'seven cells');
 	pg_assert_same(pg_office_version($path), $saved['version'], 'the new version');
 	pg_assert_false($saved['version'] === $version, 'which is not the old one');
 
@@ -379,7 +405,7 @@ function test_office_edit_save_and_read_back()
 	pg_assert_same(array(2), $rows[0]['calc'], 'and the formula marked as waiting to be worked out');
 	pg_assert_same(array('2026-10-20', '007', '', 'Dolma kalem', '5'), $rows[1]['cells'], 'a date, a text cell left alone, a changed table value');
 	pg_assert_same(array('TRUE', '4', '', 'Silgi', '3'), $rows[2]['cells'], 'a new cell');
-	pg_assert_same(array('1', '8'), $book['sheets'][1]['rows'][0]['cells'], 'the unlocked cell of the protected sheet');
+	pg_assert_same(array('1', '8', 'yeni'), $book['sheets'][1]['rows'][0]['cells'], 'the unlocked cell of the protected sheet, and a new cell in its unlocked column');
 
 	$zip = new ZipArchive();
 	$zip->open($path);
