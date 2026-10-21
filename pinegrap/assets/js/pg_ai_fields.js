@@ -41,14 +41,30 @@
         return (editors && editors[id]) ? editors[id] : null;
     }
 
+    // The TinyMCE 3 editor of a textarea (the "previous" editor version)
+    // once it runs on it. Until the form's own submit listeners have it
+    // write its text back, the textarea still holds the text the page was
+    // drawn with.
+    function tinyOf(id) {
+        var tiny = window.tinymce || window.tinyMCE;
+        var editor = (tiny && (typeof tiny.get === 'function')) ? tiny.get(id) : null;
+
+        return (editor && editor.initialized && !editor.isHidden()) ? editor : null;
+    }
+
     // The field's text as the form sends it: the rich text editor's data once
     // one runs on the field, the element's value otherwise.
     function textOf(id) {
         var editor = editorOf(id);
+        var tiny = editor ? null : tinyOf(id);
         var element = document.getElementById(id);
 
         if (editor && (editor.status === 'ready')) {
             return String(editor.getData() || '');
+        }
+
+        if (tiny) {
+            return String(tiny.getContent() || '');
         }
 
         return element ? String(element.value || '') : '';
@@ -148,10 +164,13 @@
     // on it: the button that had the focus is gone.
     function focusField(id) {
         var editor = editorOf(id);
+        var tiny = editor ? null : tinyOf(id);
         var element = document.getElementById(id);
 
         if (editor) {
             editor.focus();
+        } else if (tiny) {
+            tiny.focus();
         } else if (element) {
             element.focus();
         }
@@ -204,6 +223,45 @@
         editor.on('change', update);
         editor.on('blur', update);
         editor.on('mode', update);
+    }
+
+    // TinyMCE raises no input events on the page either. Its change event
+    // comes with each undo step, not with each key, so a key, new content
+    // (the HTML source dialog) and undo and redo are followed too.
+    function watchTiny(editor) {
+        if (!editor || editor._pgAiFields) {
+            return;
+        }
+
+        var field = editor.id;
+        var update = function () {
+            follow(field);
+        };
+
+        editor._pgAiFields = true;
+
+        if (remembered(field)) {
+            texts[field] = String(editor.getContent() || '');
+        }
+
+        editor.onChange.add(update);
+        editor.onKeyUp.add(update);
+        editor.onSetContent.add(update);
+        editor.onUndo.add(update);
+        editor.onRedo.add(update);
+    }
+
+    // An editor is watched once it has loaded its text.
+    function watchTinyOnInit(editor) {
+        if (!editor || !editor.onInit) {
+            return;
+        }
+
+        if (editor.initialized) {
+            watchTiny(editor);
+        } else {
+            editor.onInit.add(watchTiny);
+        }
     }
 
     document.addEventListener('pg:ai-write-used', function (event) {
@@ -272,6 +330,18 @@
             if (Object.prototype.hasOwnProperty.call(window.CKEDITOR.instances, name) && (window.CKEDITOR.instances[name].status === 'ready')) {
                 watchEditor(window.CKEDITOR.instances[name]);
             }
+        }
+    }
+
+    var tiny = window.tinymce || window.tinyMCE;
+
+    if (tiny && tiny.onAddEditor && (typeof tiny.onAddEditor.add === 'function')) {
+        tiny.onAddEditor.add(function (manager, editor) {
+            watchTinyOnInit(editor);
+        });
+
+        for (var i = 0; i < (tiny.editors || []).length; i++) {
+            watchTinyOnInit(tiny.editors[i]);
         }
     }
 

@@ -43,7 +43,14 @@ function api_webhook_events() {
 		// either way, and a receiver that only heard of outright deletions
 		// would keep selling one the shop no longer offers.
 		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin (recycled: true)',
-		'inventory.changed'    => 'A product stock level changed',
+		// Every stock writer on the site announces it: the checkout and a
+		// local sale, the product screen and its list, a barcode scan, the
+		// bulk edit of selected products (pg_product_stock_changed()), as the
+		// stock API, the Workspace and an ERP document do. What stays quiet is
+		// the bulk paths, for the reason the contact import does: the product
+		// import, a marketplace order import and an ERP stock count. The
+		// description says so.
+		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count)',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to
 		// cross. The cart widget reads the same constant for its own warning.

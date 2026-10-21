@@ -259,6 +259,13 @@ function test_returns_check_lines()
 	pg_assert_false(pg_return_check_lines(array(11 => -1), $lines)['ok'], 'negative');
 	pg_assert_false(pg_return_check_lines(array(11 => '1.5'), $lines)['ok'], 'a fraction');
 	pg_assert_false(pg_return_check_lines(array(11 => array(1)), $lines)['ok'], 'not a number');
+	pg_assert_false(pg_return_check_lines(array(11 => '', 12 => ' '), $lines)['ok'], 'only empty boxes');
+
+	// A cleared number box arrives as an empty string and asks for nothing,
+	// like 0; the other lines still go through.
+	$result = pg_return_check_lines(array('11' => '', '12' => '1'), $lines);
+	pg_assert_true($result['ok'], 'an empty box beside a filled one');
+	pg_assert_same(array(12 => 1), $result['lines'], 'the empty box is left out');
 	pg_assert_false(pg_return_check_lines('11', $lines)['ok'], 'not a list');
 
 	$result = pg_return_check_lines(array(11 => 3), $lines);
@@ -649,4 +656,67 @@ function test_returns_refund_mail_body()
 
 	$by_hand = pg_return_refund_mail_body(array('order_number' => '9', 'amount' => '₺5,00', 'by_payment' => false));
 	pg_assert_false(strpos($by_hand, 'the way you paid') !== false, 'a refund made another way');
+}
+
+// The same form sent twice within the window answers with the first request:
+// same reason, note and lines, still waiting for an answer.
+function test_returns_repeat_of_the_same_form()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1))),
+	);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array('464' => '1'), 1001), 'a double click');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => '0'), 1000 + PG_RETURN_REPEAT_SECONDS), 'zeros left out, last second of the window');
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => ' 1 ', 465 => ''), 1001), 'an empty box is not a line');
+}
+
+// Anything that differs is a request of its own.
+function test_returns_repeat_of_differs()
+{
+	$recent = array(
+		array('id' => 7, 'reason' => 'damaged', 'customer_note' => 'double', 'requested_at' => 1000,
+			'items' => array(array('order_item_id' => 464, 'quantity' => 1), array('order_item_id' => 465, 'quantity' => 2))),
+	);
+
+	$lines = array(464 => 1, 465 => 2);
+
+	pg_assert_same(7, pg_return_repeat_of($recent, 'damaged', 'double', array(465 => 2, 464 => 1), 1010), 'line order does not matter');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 1001 + PG_RETURN_REPEAT_SECONDS), 'after the window');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', $lines, 999), 'before the first one');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'wrong_item', 'double', $lines, 1010), 'another reason');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'other words', $lines, 1010), 'another note');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1), 1010), 'fewer lines');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 1, 465 => 1), 1010), 'another quantity');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', array(464 => 0), 1010), 'nothing asked for');
+	pg_assert_same(0, pg_return_repeat_of(array(), 'damaged', 'double', $lines, 1010), 'no recent request');
+	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', 'x', 1010), 'not a list');
+}
+
+// Each reminder stage is stamped on the return in its own column, so a bell
+// row that staff delete cannot bring the same reminder back.
+function test_returns_reminder_stamp_column()
+{
+	pg_assert_same('refund_due_notified_at', pg_return_reminder_stamp_column('due'));
+	pg_assert_same('refund_overdue_notified_at', pg_return_reminder_stamp_column('overdue'));
+	pg_assert_same('', pg_return_reminder_stamp_column(''), 'no stage');
+	pg_assert_same('', pg_return_reminder_stamp_column('refund_due'), 'the event name is not a stage');
+	pg_assert_same('', pg_return_reminder_stamp_column(array('due')), 'not a string');
+}
+
+// Who goes on to the ERP return invoice after a refund: the ERP must be on
+// and the person must be allowed to use it (role below 3 or manage_erp).
+function test_returns_erp_hand_off()
+{
+	$manager = array('role' => 2, 'manage_erp' => 0);
+	$staff = array('role' => 3, 'manage_erp' => 0);
+	$erp_staff = array('role' => 3, 'manage_erp' => 1);
+
+	pg_assert_true(pg_return_erp_hand_off($manager, true), 'a manager with the ERP on');
+	pg_assert_true(pg_return_erp_hand_off($erp_staff, true), 'staff with the ERP right');
+	pg_assert_true(pg_return_erp_hand_off(array('role' => '1'), true), 'role as a string, no right column');
+	pg_assert_false(pg_return_erp_hand_off($staff, true), 'staff without the ERP right');
+	pg_assert_false(pg_return_erp_hand_off($manager, false), 'the ERP is off');
+	pg_assert_false(pg_return_erp_hand_off('x', true), 'not a user row');
 }

@@ -6,6 +6,7 @@ description: waf_is_excluded() matches the path only; /robots.txt, /.well-known/
 ## What does the exemption look at?
 - `waf_is_excluded()` DISCARDS the query string and matches only the path. Matching the whole `REQUEST_URI` made the entire firewall skippable: anyone can put the pattern in a parameter. With `api2` exempt, `/hesabim?x=1&foo=api2&q=' OR 1=1--` hit the exemption and signature scan, rate limit and IP list were all skipped.
 - Consequence: you cannot exempt a feed by query parameter (`?rss=true`), that is exactly the string an attacker would add. To exempt, exempt the path.
+- The path stops at the script it runs (`waf_path_to_script()`): PATH_INFO is the caller's too. With `iyzico_callback` excluded, `/index.php/iyzico_callback` ran the sign-in screen with no firewall and let a banned address in (fixed in the PR for plan `security-findings-2026-10-waf` item 3). A router address (no `.php` segment) is matched whole.
 
 ## Which paths are always served?
 - `waf_path_is_always_served()`: `/robots.txt` and `/.well-known/` are exempt from bot policy.

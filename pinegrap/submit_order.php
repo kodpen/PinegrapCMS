@@ -6238,7 +6238,12 @@ function submit_order($type) {
     
     // intialize variable to keep track of the total reward points that products should give for this order
     $reward_points = 0;
-    
+
+    // The stock each product was left with by the rows above, so a product
+    // that comes twice (two recipients) announces its second row from what
+    // the first one left, not from the stock read before the loop.
+    $stock_left = array();
+
     // loop through all ordered products in order to determine if things need to be done for each product
     foreach ($products as $product) {
         $product_id = $product['product_id'];
@@ -6287,11 +6292,17 @@ function submit_order($type) {
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
-            // Sold here, so the marketplace has to be told. Queued, not sent:
-            // a checkout must never wait on somebody else's server.
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed($product_id);
-            }
+            // Sold here, so the outside has to be told: the product's stamp
+            // moves for updated_since listings, inventory.changed (and
+            // stock.low on the crossing) is announced and the marketplace is
+            // queued. Queued, not sent: a checkout must never wait on
+            // somebody else's server. The stock left is read back, because
+            // the decrement happened in the UPDATE.
+            $stock_left[$product_id] = pg_product_stock_changed(
+                $product_id,
+                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $inventory_quantity,
+                null,
+                'checkout');
         }
         
         

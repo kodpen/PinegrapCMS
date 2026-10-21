@@ -66,6 +66,14 @@ if (!defined('ERP_EDOC_PARASUT_PAGE_SIZE')) {
     define('ERP_EDOC_PARASUT_PAGE_SIZE', 25);
 }
 
+// What erp_invoices.parasut_invoice_id holds while a sales invoice request
+// is out, and after one whose answer never came: Paraşüt may have written
+// the record, so the next send looks for it before writing one. A real id
+// is digits.
+if (!defined('ERP_EDOC_PARASUT_UNSURE')) {
+    define('ERP_EDOC_PARASUT_UNSURE', '?');
+}
+
 function erp_edoc_parasut_info()
 {
     return array(
@@ -1170,9 +1178,118 @@ function erp_edoc_parasut_detail_ids($body)
 }
 
 /**
+ * Whether a refused or unanswered create leaves it open that Paraşüt wrote
+ * the record: no answer at all (a timeout, a dropped connection), a 5xx
+ * (a gateway that gave up while the server went on), or a success that
+ * names no record. A 4xx is Paraşüt's refusal of the request, and a 429 is
+ * refused unprocessed, so nothing was written.
+ *
+ * @param array $result  erp_edoc_parasut_request() answer
+ * @return bool
+ */
+function erp_edoc_parasut_answer_unsure($result)
+{
+    $code = (int) ($result['http_code'] ?? 0);
+
+    if (($code === 0) || ((string) ($result['error'] ?? '') !== '')) {
+        return true;
+    }
+
+    if ($code >= 500) {
+        return true;
+    }
+
+    return ($code >= 200) && ($code <= 299);
+}
+
+/**
+ * The sales invoices in a list answer that are this invoice's record: the
+ * same description (the ERP number, with the order's), the same issue date
+ * and the same contact, not cancelled.
+ *
+ * @param array  $body        The decoded answer of GET sales_invoices
+ * @param array  $payload     The request erp_edoc_parasut_invoice_payload() built
+ * @param string $contact_id
+ * @return array  id => attributes
+ */
+function erp_edoc_parasut_written_matches($body, $payload, $contact_id)
+{
+    $wanted = (array) ($payload['data']['attributes'] ?? array());
+    $description = trim((string) ($wanted['description'] ?? ''));
+    $date = (string) ($wanted['issue_date'] ?? '');
+    $matches = array();
+
+    if ($description === '') {
+        return $matches;
+    }
+
+    foreach ((array) ($body['data'] ?? array()) as $item) {
+        if (!is_array($item) || (trim((string) ($item['id'] ?? '')) === '')) {
+            continue;
+        }
+
+        $attributes = (array) ($item['attributes'] ?? array());
+        $contact = trim((string) ($item['relationships']['contact']['data']['id'] ?? ''));
+
+        if ((trim((string) ($attributes['description'] ?? '')) !== $description)
+            || (substr((string) ($attributes['issue_date'] ?? ''), 0, 10) !== $date)
+            || ((string) ($attributes['item_type'] ?? '') === 'cancelled')
+            || (($contact !== '') && ($contact !== (string) $contact_id))) {
+            continue;
+        }
+
+        $matches[trim((string) $item['id'])] = $attributes;
+    }
+
+    return $matches;
+}
+
+/**
+ * Looks at Paraşüt for the record an earlier try of this invoice may have
+ * written: the contact's sales invoices of the issue date, matched by
+ * erp_edoc_parasut_written_matches().
+ *
+ * @param array  $payload     The request about to be sent
+ * @param string $contact_id
+ * @param array  $context     For the log
+ * @return array ['records' => id => attributes, 'error' => string]
+ */
+function erp_edoc_parasut_find_written($payload, $contact_id, $context)
+{
+    $records = array();
+    $date = (string) ($payload['data']['attributes']['issue_date'] ?? '');
+
+    for ($page = 1; $page <= 4; $page++) {
+        $list = erp_edoc_parasut_request('GET', '/sales_invoices?filter[contact_id]=' . rawurlencode((string) $contact_id)
+            . '&filter[issue_date]=' . rawurlencode($date) . '&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, null, $context);
+
+        if (((string) $list['login_error'] !== '') || !erp_edoc_parasut_ok($list)) {
+            return array('records' => array(), 'error' => lang(array(
+                'string' => 'The last try got no answer from Paraşüt, and Paraşüt could not be asked whether it kept the invoice: {var:1}. Nothing was sent; try again in a minute.',
+                'vars' => erp_edoc_parasut_error_text($list),
+            )));
+        }
+
+        $records += erp_edoc_parasut_written_matches($list['body'], $payload, $contact_id);
+
+        if ($page >= (int) ($list['body']['meta']['total_pages'] ?? 1)) {
+            break;
+        }
+    }
+
+    return array('records' => $records, 'error' => '');
+}
+
+/**
  * Writes the invoice at Paraşüt as a sales invoice and checks the total it
  * computed. Answers 'created': the record is not an e-document until
  * submit_invoice() converts it (the service's autosend does both).
+ *
+ * A try whose answer never came is followed up on the next send: the record
+ * is looked for and taken over instead of written twice
+ * (ERP_EDOC_PARASUT_UNSURE). A record whose total is not the ERP's and that
+ * Paraşüt would not delete is named in the refusal ('external_id'), so the
+ * row keeps it.
  *
  * @param array $options  'party' (erp_edoc_invoice_party() output) when the caller has it
  * @return array ['success' => bool, 'external_id' => string, 'gib_uuid' => string,
@@ -1278,36 +1395,95 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         return $fail($payload['error']);
     }
 
-    $result = erp_edoc_parasut_request('POST', '/sales_invoices', $payload, $context);
+    $mark = function ($value) use ($invoice) {
+        erp_query("UPDATE erp_invoices SET parasut_invoice_id = '" . escape(mb_substr((string) $value, 0, 32)) . "' WHERE id = '" . (int) $invoice['id'] . "'");
+    };
+    $external_id = '';
+    $attributes = array();
 
-    if ((string) $result['login_error'] !== '') {
-        return $fail($result['login_error']);
+    // An earlier try had no answer (a timeout, a 5xx) and may have written
+    // the record all the same: it is looked for before a second is written.
+    if ((string) ($invoice['parasut_invoice_id'] ?? '') === ERP_EDOC_PARASUT_UNSURE) {
+        $found = erp_edoc_parasut_find_written($payload, $contact['id'], $context);
+
+        if ($found['error'] !== '') {
+            return $fail($found['error']);
+        }
+
+        if (count($found['records']) > 1) {
+            return $fail(lang(array(
+                'string' => 'Paraşüt holds {var:1} records of this invoice from earlier tries (ids {var:2}). Delete all but one of them on Paraşüt\'s screen, then send again; the one left is taken over.',
+                'vars' => array(count($found['records']), implode(', ', array_keys($found['records']))),
+            )));
+        }
+
+        foreach ($found['records'] as $found_id => $found_attributes) {
+            $external_id = (string) $found_id;
+            $attributes = $found_attributes;
+        }
     }
 
-    $external_id = trim((string) ($result['body']['data']['id'] ?? ''));
+    if ($external_id === '') {
+        // Marked before the request goes, so that a request whose answer
+        // never comes (or a process that dies waiting) leaves the next try
+        // the question to ask instead of a second record.
+        $mark(ERP_EDOC_PARASUT_UNSURE);
 
-    if (!erp_edoc_parasut_ok($result) || ($external_id === '')) {
-        return $fail(lang(array('string' => 'Paraşüt would not take the invoice: {var:1}', 'vars' => erp_edoc_parasut_error_text($result))));
+        $result = erp_edoc_parasut_request('POST', '/sales_invoices', $payload, $context);
+
+        if ((string) $result['login_error'] !== '') {
+            $mark('');
+            return $fail($result['login_error']);
+        }
+
+        $external_id = trim((string) ($result['body']['data']['id'] ?? ''));
+
+        if (!erp_edoc_parasut_ok($result) || ($external_id === '')) {
+            if (!erp_edoc_parasut_answer_unsure($result)) {
+                $mark('');
+                return $fail(lang(array('string' => 'Paraşüt would not take the invoice: {var:1}', 'vars' => erp_edoc_parasut_error_text($result))));
+            }
+
+            return $fail(lang(array(
+                'string' => 'Paraşüt did not say whether it took the invoice ({var:1}). The next send looks for it at Paraşüt first, so it is not written twice.',
+                'vars' => erp_edoc_parasut_error_text($result),
+            )));
+        }
+
+        $attributes = (array) ($result['body']['data']['attributes'] ?? array());
     }
 
     // What Paraşüt made of the lines against what the ERP charged. The
     // record that differs is deleted again: a legal document is not the
     // place to find a rounding gap, and a record left behind would be
     // invoiced twice on the next try.
-    $check = erp_edoc_parasut_total_check($result['body']['data']['attributes'] ?? array(), $invoice);
+    $check = erp_edoc_parasut_total_check($attributes, $invoice);
 
     if (!$check['ok']) {
-        erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
-
+        $deleted = erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
+        $gone = ((string) $deleted['login_error'] === '') && (erp_edoc_parasut_ok($deleted) || ((int) $deleted['http_code'] === 404));
         $currency = (string) $invoice['currency'];
-        $message = lang(array(
-            'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}; the record was deleted there and nothing was issued.',
-            'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) $invoice['grand_total'], $currency)),
-        ));
+
+        if ($gone) {
+            $mark('');
+            $message = lang(array(
+                'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}; the record was deleted there and nothing was issued.',
+                'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) $invoice['grand_total'], $currency)),
+            ));
+        } else {
+            // The record stays at Paraşüt: its id goes back with the refusal,
+            // so the row keeps it (nothing is created over it, and cancelling
+            // the invoice deletes it there).
+            $mark($external_id);
+            $message = lang(array(
+                'string' => 'Paraşüt computed {var:1} for the invoice where the ERP has {var:2}, and the record could not be deleted there ({var:3}): it is still at Paraşüt as id {var:4}, not issued. Cancel the invoice here to delete it there, or delete it on Paraşüt\'s screen.',
+                'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) $invoice['grand_total'], $currency), erp_edoc_parasut_error_text($deleted), $external_id),
+            ));
+        }
 
         // How Paraşüt got there, so the gap can be traced to the VAT or to
         // the amounts before it once the record is gone.
-        $totals = erp_edoc_parasut_totals($result['body']['data']['attributes'] ?? array());
+        $totals = erp_edoc_parasut_totals($attributes);
 
         if ($totals !== array()) {
             $message .= ' ' . lang(array(
@@ -1321,7 +1497,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
             ));
         }
 
-        return $fail($message);
+        return array_merge($fail($message), array('external_id' => $gone ? '' : $external_id));
     }
 
     erp_query("UPDATE erp_invoices
@@ -1932,6 +2108,22 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     $document_id = trim((string) ($document_reference['id'] ?? ''));
 
     if (($document_id === '') || !in_array($document_type, array('e_archives', 'e_invoices'), true)) {
+        $totals = erp_edoc_parasut_totals($attributes);
+        $check = erp_edoc_parasut_total_check($attributes, $invoice);
+
+        // A record whose total is not the ERP's (one Paraşüt would not
+        // delete after the send found the gap) is never offered to GİB.
+        if (($totals !== array()) && !$check['ok']) {
+            $currency = (string) ($invoice['currency'] ?? 'TRY');
+            $out['success'] = true;
+            $out['status'] = 'error';
+            $out['message'] = lang(array(
+                'string' => 'Paraşüt holds the record with a total of {var:1} where the ERP has {var:2}, so it is not handed to GİB. Cancel the invoice here to delete it there.',
+                'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency((int) ($invoice['grand_total'] ?? 0), $currency)),
+            ));
+            return $out;
+        }
+
         // No e-document: a draft not handed to GİB yet, or one whose
         // conversion job failed or ran out before it was read. Shown as the
         // provider's draft, so the hand-over button comes back.
@@ -1941,8 +2133,6 @@ function erp_edoc_parasut_poll($invoice, $job_id)
 
         // What Paraşüt computed for the draft, so it can be looked over
         // before the hand-over without opening Paraşüt.
-        $totals = erp_edoc_parasut_totals($attributes);
-
         if (($totals !== array()) && function_exists('erp_money_out_currency')) {
             $currency = (string) ($invoice['currency'] ?? 'TRY');
             $out['message'] .= ' ' . lang(array(

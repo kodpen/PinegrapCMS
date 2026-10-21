@@ -1488,6 +1488,15 @@ function pg_tr_render_json_strings($script)
             return $m[0];
         }
 
+        // A rich-text value with blocks in it (a variant's description of
+        // two paragraphs) was stored block by block (pg_tr_html_segments()),
+        // never as one text: translated the same way the page's own copy is.
+        if (preg_match('~<(' . implode('|', pg_tr_block_tags()) . ')\b~i', $decoded)) {
+            $html = pg_tr_render_html_value($decoded);
+
+            return ($html === $decoded) ? $m[0] : json_encode($html, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+        }
+
         $found = pg_tr_db_text($decoded);
 
         if ($found === null) {
