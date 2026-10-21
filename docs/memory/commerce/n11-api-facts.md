@@ -8,7 +8,7 @@ description: n11 REST API facts for the connector: headers, connection test, asy
 
 ## How is the connection tested? (`mp_n11_test_credentials()`)
 - GET `/cdn/categories`, the whole category tree, read with `mp_n11_category_tree_bytes()` (8 MB) like every call to that endpoint. 401/403 is reported as a refused key.
-- Symptom before the fix: it read 4,000 bytes, so the right key failed with "n11 answered 200 with something that is not JSON" and the account's last error was written.
+- Symptom before the fix (#1029): it read 4,000 bytes, so the right key failed with "n11 answered 200 with something that is not JSON" and the account's last error was written.
 - `mp_n11_call()` reports a body as long as its limit as cut off (not retried), not as "not JSON".
 
 ## How does the async product side work?
