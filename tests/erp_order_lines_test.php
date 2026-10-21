@@ -79,3 +79,75 @@ function test_erp_order_lines_keep_a_zero_rate()
 	pg_assert_same(0.0, $built['lines'][0]['tax_rate']);
 	pg_assert_same(1000, $built['totals']['grand_total']);
 }
+
+// An order_items row with its recurring columns, as the bridge reads it with
+// the product's start (product_start).
+function pg_test_erp_order_recurring_item($price, $period, $start_date, $product_start = 0)
+{
+	$item = pg_test_erp_order_item($price, 1, erp_apply_rate($price, 20), '20.000');
+	$item['recurring_payment_period'] = $period;
+	$item['recurring_start_date'] = $start_date;
+	$item['product_start'] = $product_start;
+
+	return $item;
+}
+
+// The checkout charges every line but a recurring one that starts after the
+// order day (submit_order.php, pg_order_line_charged_today()), so those are
+// the lines the invoice carries. The day is the order's, not today's; a line
+// without a start date starts the product's start days after the order day,
+// as at checkout. The rows that stay are indexed from 0 again, as
+// erp_order_lines() and the refund dialog count them.
+function test_erp_order_charged_items_leave_out_a_recurring_line_that_starts_later()
+{
+	$order = array('order_date' => strtotime('2026-10-21 14:30:00'));
+	$items = array(
+		pg_test_erp_order_recurring_item(10000, '', ''),
+		pg_test_erp_order_recurring_item(5000, 'Monthly', '2026-11-04'),
+		pg_test_erp_order_recurring_item(700, 'Monthly', '2026-10-21'),
+		pg_test_erp_order_recurring_item(800, 'Monthly', '0000-00-00', 14),
+		pg_test_erp_order_recurring_item(900, 'Monthly', '', 0),
+	);
+
+	$charged = erp_order_charged_items($order, $items, false);
+
+	pg_assert_same(array(0, 1, 2), array_keys($charged));
+	pg_assert_same(array(10000, 700, 900), array_column($charged, 'price'));
+}
+
+// On the ClearCommerce gateway no recurring line is charged with the order:
+// the gateway bills them itself.
+function test_erp_order_charged_items_leave_out_every_recurring_line_on_clearcommerce()
+{
+	$order = array('order_date' => strtotime('2026-10-21'));
+	$items = array(
+		pg_test_erp_order_recurring_item(10000, '', ''),
+		pg_test_erp_order_recurring_item(700, 'Monthly', '2026-10-21'),
+	);
+
+	pg_assert_same(array(10000), array_column(erp_order_charged_items($order, $items, true), 'price'));
+	pg_assert_same(array(10000, 700), array_column(erp_order_charged_items($order, $items, false), 'price'));
+}
+
+// The order of the report: a mug of 100.00 and a monthly box of 50.00 that
+// starts in 14 days, both at 20%, with a 10.00 order discount. The checkout
+// charged the mug alone: 100.00 - 10.00 + 18.00 = 108.00. Built from every line the
+// invoice came to more and was refused; built from the charged lines it
+// meets the order, and the discount lands on the line that earned it.
+function test_erp_order_lines_of_the_charged_lines_meet_the_order()
+{
+	$order = array('order_date' => strtotime('2026-10-21'), 'discount' => 1000, 'tax' => 1800, 'total' => 10800);
+	$items = array(
+		pg_test_erp_order_recurring_item(10000, '', ''),
+		pg_test_erp_order_recurring_item(5000, 'Monthly', '2026-11-04'),
+	);
+
+	$every = erp_order_lines($order, $items);
+	pg_assert_same(16800, $every['totals']['grand_total']);
+
+	$built = erp_order_lines($order, erp_order_charged_items($order, $items, false));
+	pg_assert_same(1, count($built['lines']));
+	pg_assert_same(1000, $built['lines'][0]['discount_amount']);
+	pg_assert_same(1800, $built['lines'][0]['tax_total']);
+	pg_assert_same(10800, $built['totals']['grand_total']);
+}
