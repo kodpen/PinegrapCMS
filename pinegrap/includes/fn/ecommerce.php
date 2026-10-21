@@ -3533,20 +3533,21 @@ function apply_offers_to_cart()
                     // if this action actually discounts the order,
                     // then prepare to apply discount
                     if (($offer_action['discount_order_amount'] != 0) || ($offer_action['discount_order_percentage'] != 0)) {
-                        // if this offer is valid,
-                        // then prepare to apply discount
-                        if (validate_offer($offer['id']) == true) {
-                            // Weighed after the loop: a gift further down this
-                            // loop can still change the subtotal a percentage
-                            // (or a ladder's rung) is taken from.
-                            $order_discount_candidates[] = array(
-                                'offer_id' => $offer['id'],
-                                'amount' => $offer_action['discount_order_amount'],
-                                'percentage' => $offer_action['discount_order_percentage'],
-                                'tiers' => pg_offer_tiers($offer['id']));
-                            // else this offer is not valid, so if an upsell has not already been added for it,
-                            // and there is an upsell, then add upsell
-                        } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
+                        // Every order discount is a candidate. Whether the
+                        // cart qualifies for it (its required subtotal) is
+                        // settled after the loop, against the subtotal the
+                        // cart then has: a gift further down this loop taken
+                        // from a paid line lowers it, a gift line at a price
+                        // raises it, and the answer must not depend on the
+                        // order the offers are walked in.
+                        $order_discount_candidates[] = array(
+                            'offer_id' => $offer['id'],
+                            'amount' => $offer_action['discount_order_amount'],
+                            'percentage' => $offer_action['discount_order_percentage'],
+                            'tiers' => pg_offer_tiers($offer['id']));
+                        // if this offer is not valid for the cart as it stands, then if an upsell
+                        // has not already been added for it, and there is an upsell, then add upsell
+                        if ((validate_offer($offer['id']) == false) && (isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
                             $upsell_offers[$offer['id']] = $offer;
                         }
                     }
@@ -3748,13 +3749,22 @@ function apply_offers_to_cart()
         }
     }
     // The loop can lower an item's price after an order discount was found - a
-    // gift taken from a paid line - so the best one is chosen against the cart
-    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // gift taken from a paid line - so the candidates are judged against the
+    // cart as it now stands: each one's required subtotal with the subtotal
+    // that is left (one answer whatever the order the offers came in), then
+    // the best one, a percentage of what is left, a ladder's rung for what
     // is left, and never more than what is left.
     $best_order_discount_offer_id = 0;
     $best_order_discount = 0;
     if ($order_discount_candidates) {
-        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+        $final_subtotal = get_order_subtotal();
+        $qualified_candidates = array();
+        foreach ($order_discount_candidates as $candidate) {
+            if (validate_offer($candidate['offer_id'], 0, $final_subtotal) == true) {
+                $qualified_candidates[] = $candidate;
+            }
+        }
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
