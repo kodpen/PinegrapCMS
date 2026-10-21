@@ -978,6 +978,46 @@ function pg_legal_document_page_url()
 }
 
 /**
+ * The address of the cart's document of $type on the checkout being drawn,
+ * in the language that checkout is served in.
+ *
+ * The document page is a script of its own, not a routed page, so it learns
+ * the language only from pg_lang (init.php), as a form posted from a page in
+ * another language does. Without it a visitor on /en/... read the document in
+ * the source language, while the copy kept with the order at submit (whose
+ * form carries pg_lang) was the target language's: two different texts.
+ *
+ * @param string      $type      a key of pg_legal_document_types(); '' for the
+ *                               address the checkboxes add their type to
+ * @param string|null $language  pg_lang value, '' for none; null for the
+ *                               language the current page is drawn in
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return string  unescaped
+ */
+function pg_legal_document_cart_url($type = '', $language = null, $page_url = null)
+{
+    if ($page_url === null) {
+        $page_url = pg_legal_document_page_url();
+    }
+
+    if ($language === null) {
+        $language = (function_exists('pg_tr_active') && pg_tr_active()) ? pg_tr_language() : '';
+    }
+
+    $query = array();
+
+    if ((string) $type !== '') {
+        $query[] = 'type=' . rawurlencode((string) $type);
+    }
+
+    if ((string) $language !== '') {
+        $query[] = 'pg_lang=' . rawurlencode((string) $language);
+    }
+
+    return $page_url . ($query ? '?' . implode('&', $query) : '');
+}
+
+/**
  * Give a rendered checkout page its acceptance checkboxes.
  *
  * Every checkout (the designer's express order, the classic express order
@@ -1007,7 +1047,7 @@ function pg_legal_documents_inject($html, array $values = array())
         return $html . pg_legal_documents_script();
     }
 
-    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url())) . pg_legal_documents_script();
+    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())) . pg_legal_documents_script();
 }
 
 /**
