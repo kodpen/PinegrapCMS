@@ -4,11 +4,13 @@
  *
  * Tests for the n11 marketplace connector
  * (includes/api/outbound/connectors/n11.php): how the order feed is paged and
- * how far a pull lets the cursor move.
+ * how far a pull lets the cursor move, and the connection test.
  *
  * n11 is never called. The connector's functions take an optional transport
  * with the signature of api_http_request(); the ones here answer from a feed
- * built in memory, in the shape of their shipmentPackages answer.
+ * built in memory, in the shape of their shipmentPackages answer, or from the
+ * saved category tree in tests/fixtures/n11/ (built in the shape of their
+ * /cdn/categories answer, not recorded from a live account).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -210,4 +212,92 @@ function test_marketplace_n11_pull_failure_hands_over_what_was_read_and_keeps_th
 	pg_assert_true(!empty($result['retry']), 'a 500 is worth trying again');
 	pg_assert_same(200, count($result['data']['packages']));
 	pg_assert_false($result['data']['complete']);
+}
+
+/* ------------------------------------------------------- connection test */
+
+// A transport that answers every call with $status and $body, keeping only as
+// much of the body as the call's max_body allows, the way api_http_request()
+// does. Every call's options are written into $calls.
+function n11_test_fixed_transport($status, $body, &$calls)
+{
+	return function ($method, $url, $options) use ($status, $body, &$calls) {
+
+		$calls[] = array('method' => $method, 'url' => $url, 'options' => $options);
+
+		$max = isset($options['max_body']) ? (int) $options['max_body'] : 1000;
+
+		return array('ok' => ($status >= 200 && $status < 300), 'status' => $status,
+			'body' => ($max > 0) ? substr($body, 0, $max) : $body, 'error' => '', 'duration_ms' => 1);
+	};
+}
+
+function n11_test_categories_fixture()
+{
+	return (string) file_get_contents(dirname(__FILE__) . '/fixtures/n11/categories.json');
+}
+
+function test_marketplace_n11_connection_test_reads_the_whole_category_tree()
+{
+	$calls = array();
+	$tree = n11_test_categories_fixture();
+
+	pg_assert_true(strlen($tree) > 4000, 'the fixture is larger than the old limit');
+
+	$result = mp_n11_test_credentials(n11_test_account(), n11_test_fixed_transport(200, $tree, $calls));
+
+	pg_assert_true($result['ok'], 'the right key passes the test');
+	pg_assert_same(12, $result['data']['categories']);
+	pg_assert_same('GET', $calls[0]['method']);
+	pg_assert_same('https://api.n11.com/cdn/categories', $calls[0]['url']);
+	pg_assert_same(mp_n11_category_tree_bytes(), $calls[0]['options']['max_body'], 'the same limit as the category sync');
+	pg_assert_contains('appKey: key-abc', $calls[0]['options']['headers']);
+}
+
+function test_marketplace_n11_connection_test_names_a_refused_key()
+{
+	$calls = array();
+
+	$result = mp_n11_test_credentials(n11_test_account(),
+		n11_test_fixed_transport(401, '<html><body>Unauthorized</body></html>', $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('did not accept the API key and secret', $result['error']);
+}
+
+function test_marketplace_n11_cut_off_answer_is_named_as_such()
+{
+	$calls = array();
+
+	$result = mp_n11_call(n11_test_account(), 'GET', '/cdn/categories', null, 4000,
+		n11_test_fixed_transport(200, n11_test_categories_fixture(), $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('more than the 4000 bytes', $result['error']);
+	pg_assert_false(!empty($result['retry']), 'asking again gets the same cut');
+
+	// A short answer that is not JSON is still that.
+	$result = mp_n11_call(n11_test_account(), 'GET', '/cdn/categories', null, 4000,
+		n11_test_fixed_transport(200, '<html>maintenance</html>', $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('not JSON', $result['error']);
+}
+
+function test_marketplace_n11_category_tree_flattens_the_fixture()
+{
+	$calls = array();
+
+	$result = mp_n11_category_tree(n11_test_account(),
+		n11_test_fixed_transport(200, n11_test_categories_fixture(), $calls));
+
+	pg_assert_true($result['ok']);
+
+	$rows = $result['data']['categories'];
+	$leaves = array_filter($rows, function ($row) { return $row['is_leaf'] === 1; });
+
+	pg_assert_same(372, count($rows));
+	pg_assert_same(360, count($leaves));
+	pg_assert_same('Elektronik > Elektronik Alt Kategori 1', $rows[1]['path']);
+	pg_assert_same((string) $rows[0]['remote_id'], $rows[1]['parent_id']);
 }

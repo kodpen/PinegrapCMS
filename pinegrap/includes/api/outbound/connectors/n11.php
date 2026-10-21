@@ -150,6 +150,18 @@ function mp_n11_call($account, $method, $path, $body = null, $max_body = 0, $tra
 
 	if (!is_array($decoded)) {
 
+		// A body as long as the limit was cut off there, and what is left is
+		// never JSON. Said as what it is: "not JSON" reads like a fault on
+		// their side, and asking again gets the same cut.
+		if (($max_body > 0) && (strlen((string)$outcome['body']) >= $max_body)) {
+
+			return mp_error(lang(array(
+				'string' => 'n11 answered with more than the {var:1} bytes this call reads, so the answer was cut off.',
+				'vars'   => array($max_body)
+			)));
+
+		}
+
 		return mp_error(
 			lang(array('string' => 'n11 answered {var:1} with something that is not JSON.', 'vars' => array($outcome['status']))),
 			api_http_should_retry($outcome));
@@ -234,10 +246,12 @@ function mp_n11_error_message($decoded) {
 /* ------------------------------------------------------------ can we talk */
 
 // The category tree is the cheapest authenticated call they have, and it is a
-// GET, so a wrong key is answered without anything having been submitted.
-function mp_n11_test_credentials($account) {
+// GET, so a wrong key is answered without anything having been submitted. It is
+// also the whole tree, so it is read with the same limit as the category sync:
+// a smaller one cuts the answer and fails the test with the right key.
+function mp_n11_test_credentials($account, $transport = null) {
 
-	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, 4000);
+	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes(), $transport);
 
 	if (!$result['ok']) {
 
@@ -261,7 +275,15 @@ function mp_n11_categories($account) {
 
 	// The whole tree, and it is large - the default response cap would cut it
 	// in half and leave json_decode() with a fragment.
-	return mp_n11_call($account, 'GET', '/cdn/categories', null, 4194304);
+	return mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes());
+
+}
+
+// How much of their category tree answer is read. Every call to /cdn/categories
+// uses this one limit.
+function mp_n11_category_tree_bytes() {
+
+	return 8388608;
 
 }
 
@@ -1050,9 +1072,9 @@ function mp_n11_approve_lines($account, $line_ids) {
 // than a fact about categories.
 //
 // Only a leaf can carry a product. A listing filed against a branch is refused.
-function mp_n11_category_tree($account) {
+function mp_n11_category_tree($account, $transport = null) {
 
-	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, 8388608);
+	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes(), $transport);
 
 	if (!$result['ok']) {
 
