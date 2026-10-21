@@ -5749,8 +5749,11 @@ else {
 			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 		}
 
-		// Update config settings for hostname.
-		$query ="UPDATE config SET hostname = '" . escape($_SERVER['HTTP_HOST']) . "'";
+		// The site's host name and path. The starter dump carries the path it was
+		// made on (/dev/); init.php corrects it on the first web request, but a job
+		// run from the command line reads PATH from this column, so an installation
+		// from the command line linked its e-mails to /dev/ until the site was opened.
+		$query ="UPDATE config SET hostname = '" . escape($_SERVER['HTTP_HOST']) . "', path = '" . escape(PATH) . "'";
 		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 
 		

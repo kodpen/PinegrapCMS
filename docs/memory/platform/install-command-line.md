@@ -12,6 +12,10 @@ description: php install/index.php install (PR #621): a starter site from PG_INS
 - A site in the variables' database: the screen's notice, exit 1.
 - Backups (restore stays on the screen, which shows what a backup holds) and design templates (they need `StyleDesigner.starterTree()` in a browser).
 - Not quotes or backslashes in a database value (refused until PR #741): the fields go through `pg_config_install_content()`, the screen's writer, which escapes them (core/init-constants-and-config-file.md).
+- An administrator e-mail that `filter_var(…, FILTER_VALIDATE_EMAIL)` refuses: exit 2, "PG_INSTALL_ADMIN_EMAIL must be an e-mail address…" (the screen leaves the format to its browser field). Before PR #PR771 (issue #771) `not-an-email` installed with exit 0 and became the site's address and the alerts' fallback recipient.
+
+## Which path does config.path get?
+- PATH, next to the host name (`UPDATE config SET hostname = …, path = …` in install/index.php), on the screen and here (`SCRIPT_NAME` from `PG_INSTALL_PATH`). A job run from the command line reads PATH from that column; before PR #PR771 it kept the starter dump's `/dev/` until the first web request, so alert e-mails linked to `/dev/pinegrap/…`.
 
 ## What does it print, and the exit status?
 - Each `add_install_step()` as `[  1.2 s] label: detail` (`warning:`/`error:` marked), in the site's language; then one English line `ok:`, `skipped:` or `error:`, like the automated upgrade's cron answer. Exit 0 installed or skipped, 1 failed, 2 a variable missing or wrong (usage text).
