@@ -69,6 +69,32 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
         }
     }
 
+    // ── the address prefixes, settled before anything is written ──
+    // Two languages under one prefix leave one of them unreachable: a
+    // prefix no fallback can free stops the save (pg_tr_prefixes_settle()).
+    $translation_posted = post_value('languages');
+    $translation_posted = is_array($translation_posted) ? $translation_posted : array();
+    $translation_prefix_wanted = array();
+
+    foreach ($translation_existing as $translation_code => $translation_row) {
+        if (isset($translation_posted[$translation_code]) && is_array($translation_posted[$translation_code]) && empty($translation_posted[$translation_code]['remove'])) {
+            $translation_prefix_wanted[$translation_code] = (string) ($translation_posted[$translation_code]['prefix'] ?? '');
+        }
+    }
+
+    // The language to add is served under its code, lower-cased.
+    if (($translation_add !== '') && !isset($translation_prefix_wanted[$translation_add])) {
+        $translation_prefix_wanted[$translation_add] = '';
+    }
+
+    list($translation_prefix_of, $translation_prefix_conflicts) = pg_tr_prefixes_settle($translation_prefix_wanted);
+
+    foreach ($translation_prefix_conflicts as $translation_code) {
+        $liveform->mark_error(($translation_code === $translation_add) ? 'translation_add_language' : 'languages[' . $translation_code . '][prefix]', lang(array(
+            'string' => 'The address prefix of {var:1} is used by another language. Give it a prefix of its own.',
+            'vars'   => array($translation_code))));
+    }
+
     if ($liveform->check_form_errors()) {
         // Nothing is written: the operator sees the errors and the form as it was.
         return;
@@ -93,10 +119,6 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     }
 
     // ── the target languages ──
-    $translation_posted = post_value('languages');
-    $translation_posted = is_array($translation_posted) ? $translation_posted : array();
-    $translation_prefixes_seen = array();
-
     foreach ($translation_existing as $translation_code => $translation_row) {
 
         if (!isset($translation_posted[$translation_code]) || !is_array($translation_posted[$translation_code])) {
@@ -113,13 +135,7 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
             continue;
         }
 
-        $translation_prefix = mb_strtolower(trim((string) ($translation_values['prefix'] ?? '')));
-
-        if (($translation_prefix === '') || !preg_match('/^[a-z]{2,8}(-[a-z]{2,4})?$/', $translation_prefix) || isset($translation_prefixes_seen[$translation_prefix])) {
-            $translation_prefix = $translation_code;
-        }
-
-        $translation_prefixes_seen[$translation_prefix] = true;
+        $translation_prefix = $translation_prefix_of[$translation_code];
 
         $translation_engine = (string) ($translation_values['engine'] ?? 'manual');
 
@@ -172,7 +188,7 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
         $translation_order = (int) db_value("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM site_languages");
 
         db("INSERT INTO site_languages (code, label, enabled, prefix, engine, fallback_engine, index_policy, locale_number, locale_date, og_locale, sort_order, created_at, updated_at)
-            VALUES ('" . e($translation_add) . "', '" . e($translation_info[1]) . "', 1, '" . e(mb_strtolower($translation_add)) . "', '" . e($translation_default_engine) . "', '', 'reviewed',
+            VALUES ('" . e($translation_add) . "', '" . e($translation_info[1]) . "', 1, '" . e($translation_prefix_of[$translation_add]) . "', '" . e($translation_default_engine) . "', '', 'reviewed',
                     '" . e($translation_info[3]) . "', '" . e($translation_info[4]) . "', '" . e($translation_info[2]) . "', '$translation_order', '$translation_now', '$translation_now')");
     }
 

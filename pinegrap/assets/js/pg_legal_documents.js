@@ -40,6 +40,15 @@
         'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_email_address'
     ];
 
+    // The recipient's fields that become the billing ones when "my billing
+    // address is the same as my shipping address" is ticked: the list
+    // express_order.php copies on submit. Company, e-mail and phone stay the
+    // visitor's own billing answers there, so they do here.
+    var SAME_AS_SHIPPING = [
+        'first_name', 'last_name', 'address_1', 'address_2', 'city', 'state',
+        'zip_code', 'country'
+    ];
+
     // The address to post to, or null: the cart's document on this site, never
     // a kept copy, never another host (the form's token goes with the post).
     function documentAddress(link) {
@@ -106,10 +115,42 @@
                 continue;
             }
 
+            // A field in a hidden block (the designer's billing block while
+            // the "same as shipping" box is ticked) is not one the visitor
+            // sees or fills; posting its empty value would print an empty
+            // name and address over the page's own.
+            if (!hiddenToo && item.closest && item.closest('[hidden]')) {
+                continue;
+            }
+
             return String(item.value);
         }
 
         return null;
+    }
+
+    // The one recipient's field prefix ('shipping_12_') when the box is
+    // ticked and the form holds exactly one recipient's address, else null:
+    // with several recipients there is no single address to take, and the
+    // submit does not copy one either.
+    function sameAsShippingPrefix(form) {
+        if (fieldValue(form, 'billing_same_as_shipping', false) !== '1') {
+            return null;
+        }
+
+        var ids = {};
+        var count = 0;
+
+        for (var index = 0; index < form.elements.length; index++) {
+            var match = /^shipping_(\d+)_address_1$/.exec(String(form.elements[index].name || ''));
+
+            if (match && !ids[match[1]]) {
+                ids[match[1]] = true;
+                count++;
+            }
+        }
+
+        return (count === 1) ? 'shipping_' + Object.keys(ids)[0] + '_' : null;
     }
 
     // Post the values in a form of their own, so nothing of the checkout form
@@ -169,6 +210,20 @@
                 values[name] = value;
             }
         });
+
+        // Billing the same as shipping: the recipient's name and address are
+        // the billing ones, as the submit will store them.
+        var prefix = sameAsShippingPrefix(form);
+
+        if (prefix) {
+            SAME_AS_SHIPPING.forEach(function (name) {
+                var value = fieldValue(form, prefix + name, false);
+
+                if (value !== null) {
+                    values['billing_' + name] = value;
+                }
+            });
+        }
 
         // A single payment method is a hidden field; it is still the method.
         var method = fieldValue(form, 'payment_method', true);
