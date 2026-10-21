@@ -13,6 +13,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
 - custom-form-sync.md: custom_form field derivation on the server, per-page ids map and its PHP round-trip trap, name/group rules (_cfEnsureNames), RSS roles per widget.
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; right/wrong example and tooling (_getBindableProps, migration).
+- designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
 - designer-block-sample-content.md: Canonical sample content (brand, companies, people, plans, domains, images, prices) to use when writing ready-made designer blocks.
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element.
