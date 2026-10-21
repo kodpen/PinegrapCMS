@@ -112,15 +112,22 @@ function test_page_revisions_settings_from_row()
 	pg_assert_same(array(), pg_page_revision_settings_from_row(null));
 }
 
-// The newest revision spares a save that changed nothing it records.
+// The newest revision spares a save that changed nothing it records: the
+// tree and the settings decide, the drawn HTML does not (the renderer gives
+// a navbar or carousel a fresh id on every draw, so its hash differs between
+// two draws of one tree).
 function test_page_revisions_identical()
 {
 	$latest = array('tree_hash' => 'a', 'tree_code_hash' => 'b', 'settings_json' => '{"page_title":"x"}');
 
-	pg_assert_same(true, pg_page_revision_identical($latest, 'a', 'b', '{"page_title":"x"}'));
-	pg_assert_same(false, pg_page_revision_identical($latest, 'a', 'b', '{"page_title":"y"}'));
-	pg_assert_same(false, pg_page_revision_identical($latest, 'c', 'b', '{"page_title":"x"}'));
-	pg_assert_same(false, pg_page_revision_identical(null, 'a', 'b', '{"page_title":"x"}'));
+	pg_assert_same(true, pg_page_revision_identical($latest, 'a', '{"page_title":"x"}'));
+	pg_assert_same(false, pg_page_revision_identical($latest, 'a', '{"page_title":"y"}'));
+	pg_assert_same(false, pg_page_revision_identical($latest, 'c', '{"page_title":"x"}'));
+	pg_assert_same(false, pg_page_revision_identical(null, 'a', '{"page_title":"x"}'));
+
+	// The newest row's drawn HTML differs from this draw of the same tree.
+	$redrawn = array('tree_hash' => 'a', 'tree_code_hash' => 'other', 'settings_json' => '{"page_title":"x"}');
+	pg_assert_same(true, pg_page_revision_identical($redrawn, 'a', '{"page_title":"x"}'));
 }
 
 // History › Compare draws the revision with the shared components and
