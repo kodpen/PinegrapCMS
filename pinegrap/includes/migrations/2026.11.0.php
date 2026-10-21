@@ -45,6 +45,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fields();              // 11.0.23
 	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
 	upgrade_2026_11_0_conversion_pack();        // 11.0.14
+	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 
 }
 
@@ -949,5 +950,34 @@ function upgrade_2026_11_0_conversion_pack() {
 	}
 
 	install_note('Product reviews: a review of a product can now be written only by a customer who bought it, signed in with the account they ordered with, and it is marked as a verified purchase. Comments written before this version stay as they are; only verified reviews count towards the star rating given to search engines.');
+
+}
+
+// The VAT rate each order line was charged at (order_items.tax_rate, NULL for
+// a line written before this step or by a path that does not set it). The
+// checkout writes it with the line's tax (update_order_item_taxes()), the till
+// with the sale (includes/local_sale.php). Until now the rate was worked back
+// out of the line total and its tax (erp_line_tax_rate()), which only holds
+// while every line's tax is its own rate x amount; the order invoice and the
+// e-document need the rate itself. DECIMAL(6,3) like the ERP's rate columns.
+// Added in place where the server can (the table grows with every order),
+// copied otherwise.
+function upgrade_2026_11_0_erp_order_item_tax_rate() {
+
+	$columns = array(
+		'tax_rate' => "DECIMAL(6,3) NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('order_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('order_items', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: each order line now keeps the VAT rate it was charged at, so the invoice drawn from an order carries the rate itself rather than one worked back from the amounts. Lines of earlier orders keep working as before.');
 
 }
