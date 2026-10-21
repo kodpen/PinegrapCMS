@@ -17203,7 +17203,7 @@ const StyleDesigner = (function () {
                                     _bkDiv('mb-4', _sdT('Maintenance Icon'), [
                                         _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', '', '40') ])
                                     ]),
-                                    _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
                                     _bkH('h1', _sdT('We\'ll be back soon'), 'display-5 fw-bold mb-3'),
                                     _bkP(_sdT('We are giving the site a scheduled upgrade to make it faster and easier to use. Thank you for your patience.'), 'lead text-body-secondary mb-4'),
                                     _bkTag('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mb-4', _sdT('Return Time'), [
@@ -17240,13 +17240,13 @@ const StyleDesigner = (function () {
                             return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
                                 _bkIcon(icon, 'flex-shrink-0 ' + iconCls, '20'),
                                 _bkH('span', text, 'flex-grow-1'),
-                                _bkH('span', status, 'badge ' + badgeCls + ' rounded-pill')
+                                _bkH('span', status, 'badge text-wrap ' + badgeCls + ' rounded-pill')
                             ]);
                         };
                         return _bkSection('py-5', _sdT('Maintenance (Split)'), [
                             _bkRow(_sdT('Maintenance Row'), [
                                 _bkCol(_sdT('Text Col'), [
-                                    _bkH('span', _sdT('Maintenance in progress'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('span', _sdT('Maintenance in progress'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
                                     _bkH('h1', _sdT('We are upgrading our systems'), 'display-6 fw-bold mb-3'),
                                     _bkP(_sdT('The site is closed for a few hours while we move to faster servers. Here is where the work stands.'), 'lead text-body-secondary mb-4'),
                                     _bkDiv('card mb-4 border-0 shadow-sm overflow-hidden', _sdT('Work Card'), [
@@ -17280,7 +17280,7 @@ const StyleDesigner = (function () {
                         var _mtService = function (name, up) {
                             return _bkTag('li', 'list-group-item d-flex align-items-center justify-content-between gap-2 px-0', name, [
                                 _bkH('span', name),
-                                _bkTag('span', 'badge ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
+                                _bkTag('span', 'badge text-wrap ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
                                     _bkIcon(up ? 'bi-check-circle-fill' : 'bi-tools', 'me-1'),
                                     _bkH('span', up ? _sdT('Operational') : _sdT('Under maintenance'))
                                 ])
@@ -17364,7 +17364,7 @@ const StyleDesigner = (function () {
                     // Maintenance: Dark — a dark full-height band: a soft pulse, the brand, a short promise, three reassurances and an email button
                     if (ctype === 'maintenance-dark') {
                         var _mtPill = function (icon, text) {
-                            return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal bg-body-tertiary text-body border rounded-pill', text, [
+                            return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal text-wrap bg-body-tertiary text-body border rounded-pill', text, [
                                 _bkIcon(icon, 'text-primary'),
                                 _bkH('span', text)
                             ]);
@@ -17383,7 +17383,7 @@ const StyleDesigner = (function () {
                                             _mtPill('bi-truck',         _sdT('Orders keep shipping')),
                                             _mtPill('bi-clock-history', _sdT('Back within hours'))
                                         ]),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'outline-primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
                                     ], '7', '9', '', 'mx-auto text-center')
                                 ])
                             ])
@@ -17657,12 +17657,14 @@ const StyleDesigner = (function () {
                                 _bkH('span', temp, 'fw-semibold')
                             ]);
                         };
-                        return _nbBand('small bg-body-tertiary border-bottom', _sdT('News (Weather Strip)'), 'd-flex align-items-center gap-3 py-2', [
+                        return _nbBand('small bg-body border-bottom', _sdT('News (Weather Strip)'), 'd-flex align-items-center gap-3 py-2', [
                             _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 fw-semibold', _sdT('Weather Label'), [
                                 _bkIcon('bi-thermometer-half', 'text-primary'),
                                 _bkH('span', _sdT('Weather'))
                             ]),
-                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1', _sdT('Cities'), [
+                            // position-relative: the visually hidden sky texts are
+                            // absolutely placed and must be clipped by this scroller.
+                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
                                 _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
                                 _nbWsCity(2, 'bi-sun',           _sdT('New York City'), _sdT('Sunny'),         '15°'),
                                 _nbWsCity(3, 'bi-cloud-sun',     _sdT('Istanbul'),      _sdT('Partly cloudy'), '18°'),
@@ -17734,7 +17736,7 @@ const StyleDesigner = (function () {
                                 _bkDiv('h-100 p-3 rounded-3 bg-body-tertiary', _sdT('Market Tile'), [
                                     _bkH('span', name, 'd-block small text-truncate text-body-secondary'),
                                     _bkH('span', value, 'd-block fs-5 fw-bold'),
-                                    _bkDiv('d-inline-flex align-items-center gap-1 small fw-semibold ' + (up ? 'text-success' : 'text-danger'), _sdT('Market Change'), [
+                                    _bkDiv('d-inline-flex align-items-center gap-1 small fw-semibold ' + (up ? 'text-success-emphasis' : 'text-danger-emphasis'), _sdT('Market Change'), [
                                         _bkIcon(up ? 'bi-caret-up-fill' : 'bi-caret-down-fill'),
                                         _bkH('span', change)
                                     ])
@@ -17742,7 +17744,7 @@ const StyleDesigner = (function () {
                             ]);
                         };
                         return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
-                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3', _sdT('Section Header'), [
+                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Section Header'), [
                                 _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
                                 _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Time'), [
                                     _bkIcon('bi-clock'),
@@ -17956,7 +17958,7 @@ const StyleDesigner = (function () {
                                                 _bkTag('blockquote', 'blockquote fs-6 ps-3 mb-2 border-start border-3 border-primary', _sdT('Quote'), [
                                                     _bkP(_sdT('We started with ten volunteers three years ago. Tonight more than three hundred are helping out.'), 'fst-italic mb-0')
                                                 ]),
-                                                _bkTag('figcaption', 'blockquote-footer ps-3 mb-0', _sdT('Quote Source'), [
+                                                _bkTag('figcaption', 'blockquote-footer ps-3 mt-0 mb-0 text-body-secondary', _sdT('Quote Source'), [
                                                     _bkH('span', _sdT('Emily Turner, festival director'))
                                                 ])
                                             ])
@@ -18040,7 +18042,7 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5', _sdT('News (Author Box)'), [
                             _bkRow(_sdT('Author Row'), [
                                 _bkCol(_sdT('Author Column'), [
-                                    _bkTag('aside', 'card border-0 rounded-4 bg-body-tertiary', _sdT('Author Card'), [
+                                    _bkTag('aside', 'card border rounded-4 bg-body', _sdT('Author Card'), [
                                         _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4 p-lg-5', _sdT('Author Body'), [
                                             createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/ns-author-jane/224/224', alt: '', cssClass: 'rounded-circle object-fit-cover flex-shrink-0', width: '112', height: '112' }),
                                             _bkDiv('flex-grow-1', _sdT('Author Info'), [
@@ -18109,7 +18111,7 @@ const StyleDesigner = (function () {
                                     ])
                                 ], '4', '6'),
                                 _bkCol(_sdT('Dark Tile'), [
-                                    _bkDiv('h-100 p-4 bg-body text-body rounded-4', _sdT('Tile Body'), [
+                                    _bkDiv('h-100 p-4 bg-body text-body border rounded-4', _sdT('Tile Body'), [
                                         _bkIcon('bi-graph-up-arrow', 'd-block mb-3 fs-2 text-primary'),
                                         _bkH('h3', _sdT('Reports that write themselves'), 'h5 fw-bold mb-2'),
                                         _bkP(_sdT('A summary of the week lands in every inbox on Monday morning.'), 'mb-0 text-body-secondary')
@@ -18124,7 +18126,7 @@ const StyleDesigner = (function () {
                         var _crBgShot = function (seed, w, h, alt, caption, imgCls, figCls) {
                             return _bkTag('figure', 'position-relative mb-0 rounded-4 overflow-hidden' + (figCls ? ' ' + figCls : ''), _sdT('Figure'), [
                                 _bkImg(seed, w, h, alt, 'd-block w-100 object-fit-cover ' + imgCls),
-                                _bkTag('figcaption', 'badge m-3 bg-body text-body rounded-pill shadow-sm position-absolute bottom-0 start-0', _sdT('Caption'), [ _bkH('span', caption) ])
+                                _bkTag('figcaption', 'badge m-3 text-wrap text-start bg-primary-subtle text-primary-emphasis rounded-pill shadow-sm position-absolute bottom-0 start-0', _sdT('Caption'), [ _bkH('span', caption) ])
                             ]);
                         };
                         var _crBgCol = function (n, kids) {
@@ -18214,7 +18216,7 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5', _sdT('Showcase (Floating Badges)'), [
                             _bkRow(_sdT('Showcase Row'), [
                                 _bkCol(_sdT('Showcase Copy'), [
-                                    _bkH('span', _sdT('All in one place'), 'badge mb-3 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('span', _sdT('All in one place'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
                                     _bkH('h2', _sdT('See your whole business at a glance'), 'mb-3 display-6 fw-bold'),
                                     _bkP(_sdT('Bookings, payments and reviews meet on one screen, so the morning goes to customers instead of spreadsheets.'), 'mb-4 lead text-body-secondary'),
                                     _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
@@ -18301,7 +18303,7 @@ const StyleDesigner = (function () {
                                 _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
                                     _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
                                 ]),
-                                _bkTag('figcaption', 'blockquote-footer mb-0', _sdT('Attribution'), [
+                                _bkTag('figcaption', 'blockquote-footer mb-0 text-body-secondary', _sdT('Attribution'), [
                                     _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
                                     _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
                                     _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
@@ -18344,7 +18346,7 @@ const StyleDesigner = (function () {
                                     _bkImg(seed, 600, 600, alt, 'd-block w-100 object-fit-cover pg-ratio-1x1'),
                                     _bkTag('figcaption', 'mt-3 text-center', _sdT('Caption'), [
                                         _bkH('span', caption, 'd-block fw-semibold'),
-                                        _bkTag('time', 'd-block small text-body-secondary', _sdT('Date'), [ _bkH('span', date) ], [{ name: 'datetime', value: datetime }])
+                                        _bkTag('time', 'd-block small fw-semibold text-primary', _sdT('Date'), [ _bkH('span', date) ], [{ name: 'datetime', value: datetime }])
                                     ])
                                 ])
                             ], '3', '', '6');
