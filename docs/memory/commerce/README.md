@@ -6,6 +6,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
+- api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
@@ -44,7 +45,8 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-returns-customer.md: Customer side of returns in My Account's order view: the switch, __returns / __return_form and flags, order_return.php, messages, mail, bell, the block for older layouts, the hourly limit
 - order-returns-panel.md: Panel side of returns (PR #808): list and bulk approve, one return's moves, pg_return_staff_move() (audit, log, mail), decision mails, suggested return carrier and code
-- order-returns-refund.md: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock and revert, what is written, the ERP return invoice hand-off, the refund mail, the daily reminder job
+- order-returns-refund.md: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock and revert, what is written, the ERP return invoice hand-off, the refund mail
+- order-returns-reminders.md: Daily refund reminder of customer returns (return_reminder_job.php): the two stages, the once-only stamps on order_returns (step 11.0.25), how the job is scheduled
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
