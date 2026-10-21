@@ -896,7 +896,9 @@ if (((string) $invoice['direction'] === 'sales')
             $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text me-2"></i>' . h(lang(array('string' => 'The document at {var:1}', 'vars' => $edoc_carrier_label))) . '</a>';
         }
 
-        if ((string) $invoice['edoc_external_id'] !== '') {
+        // Only a provider that hands the UBL back offers it (Paraşüt's API
+        // gives the PDF alone).
+        if (((string) $invoice['edoc_external_id'] !== '') && erp_edoc_has_capability('ubl', $edoc_provider)) {
             $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=xml"><i class="bi bi-filetype-xml me-2"></i>' . lang('UBL') . '</a>';
         }
     }

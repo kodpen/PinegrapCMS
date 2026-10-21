@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of the e-document registry
- * (includes/erp/edoc/registry.php): what the provider log masks.
+ * (includes/erp/edoc/registry.php): what the provider log masks, which
+ * capabilities a driver declares.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -46,4 +47,14 @@ function test_erp_edoc_mask_hides_personal_numbers()
 	pg_assert_false(strpos($masked, '3130557669') !== false, 'no VKN in words');
 
 	pg_assert_same('Authorization: Bearer ***', erp_edoc_mask('Authorization: Bearer abc.def.ghi'));
+}
+
+// The UBL button is drawn for a provider that hands the UBL back: İşbaşı
+// does, Paraşüt's API gives the PDF alone (its driver refuses 'xml').
+function test_erp_edoc_ubl_capability()
+{
+	pg_assert_true(erp_edoc_has_capability('ubl', 'isbasi'), 'İşbaşı');
+	pg_assert_false(erp_edoc_has_capability('ubl', 'parasut'), 'Paraşüt');
+	pg_assert_same('Paraşüt hands back the PDF of an e-document, not its UBL.', erp_edoc_parasut_fetch_document(array('id' => 1), 'xml')['error']);
+	pg_assert_true(isset(erp_edoc_capability_labels()['ubl']), 'a badge on the settings card');
 }
