@@ -436,6 +436,39 @@ function test_office_edit_save_refuses_signed_and_bad_requests()
 
 	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
 	unlink($path);
+
+	// A password to modify (Excel's "Tools › General Options"): the workbook
+	// part carries a fileSharing reservation, and nothing may be changed.
+	$parts = office_edit_test_book_parts();
+	$parts['xl/workbook.xml'] = str_replace('<bookViews>', '<fileSharing readOnlyRecommended="1" userName="Erdal" algorithmName="SHA-512" hashValue="q1w2e3==" saltValue="r4t5==" spinCount="100000"/><bookViews>', $parts['xl/workbook.xml']);
+	$path = office_edit_test_package($parts);
+	$version = pg_office_version($path);
+
+	$book = pg_office_read($path, 'liste.xlsx', true);
+	pg_assert_same(array('ok' => false, 'why' => 'password'), $book['sheets'][0]['edit'], 'the preview offers no cell of a workbook with a password to modify');
+	pg_assert_same(array('ok' => false, 'why' => 'password'), $book['sheets'][1]['edit'], 'none of its sheets');
+
+	$result = pg_office_xlsx_save($path, array(array('sheet' => 0, 'name' => 'Liste', 'cell' => 'B1', 'value' => '1')), $version, $directory);
+	pg_assert_same('password', $result['code'], 'such a workbook is not changed');
+	pg_assert_same($version, pg_office_version($path), 'and is untouched');
+
+	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
+	unlink($path);
+}
+
+function test_office_edit_write_reservation()
+{
+	$book = function ($sharing) {
+		return '<?xml version="1.0"?><workbook xmlns="' . office_edit_test_ns() . '"><fileVersion appName="xl"/>' . $sharing . '<workbookPr/><sheets/></workbook>';
+	};
+
+	pg_assert_true(pg_office_xlsx_write_reserved($book('<fileSharing readOnlyRecommended="1" userName="Erdal" algorithmName="SHA-512" hashValue="q1w2e3==" saltValue="r4t5==" spinCount="100000"/>')), 'a hashed password to modify');
+	pg_assert_true(pg_office_xlsx_write_reserved($book('<fileSharing reservationPassword="83AF" userName="Erdal"/>')), 'the old 16-bit password');
+	pg_assert_true(pg_office_xlsx_write_reserved(str_replace(array('<workbook ', '<fileSharing ', '</workbook>'), array('<x:workbook ', '<x:fileSharing ', '</x:workbook>'), $book('<fileSharing hashValue="q1w2e3=="/>'))), 'with a prefix');
+	pg_assert_false(pg_office_xlsx_write_reserved($book('<fileSharing readOnlyRecommended="1" userName="Erdal"/>')), 'read-only recommended is advice, not a password');
+	pg_assert_false(pg_office_xlsx_write_reserved($book('<fileSharing hashValue="" reservationPassword=""/>')), 'an empty password is none');
+	pg_assert_false(pg_office_xlsx_write_reserved($book('')), 'no sharing settings');
+	pg_assert_false(pg_office_xlsx_write_reserved($book('<fileSharingExt hashValue="q1w2e3=="/>')), 'another element');
 }
 
 // A zip whose entry says it unpacks to fewer bytes than it does: the central
