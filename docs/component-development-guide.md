@@ -494,13 +494,13 @@ Bir style eklerken sırayla:
 | Açıklama | 1-2 cümle, 80-140 karakter, gerçekçi | `'Join thousands of teams shipping faster every day.'` |
 | Buton metni | Aksiyon ifade eden 1-3 kelime | `'Start Free Trial'`, `'Learn More'`, `'View Plans'` |
 | Link href | `'#'` (placeholder) | — |
-| Image src | `''` (boş — placeholder kutu devreye girer) | — |
+| Image src | Fotoğraf `picsum.photos/seed/<tohum>/<g>/<y>`, logo `placehold.co` (`docs/memory/designer/designer-block-sample-content.md`) | — |
 | Fiyat | Mantıklı sayı + currency | `'15'`, `'$'`, `'/mo'` |
 | Feature list | Newline ayırmalı gerçekçi özellikler | `'Up to 5 Users\n10GB Storage\nEmail Support'` |
 | Testimonial | 1-2 cümle gerçekçi alıntı | `'This product changed how we work.'` |
-| İsim | Placeholder isim | `'Alex Morgan'`, `'Jane Doe'` |
+| İsim | Kanondaki kişiler | `'Jane Cooper'`, `'Michael Brooks'` |
 
-**Locale:** Placeholder İngilizce. `tr.json`'a key eklenmez — kullanıcı drop sonrası kendi içeriğini yazar.
+**Locale:** Örnek metin İngilizce kaynak anahtarla `_sdT('…')` içinden geçer ve Türkçesi `tr.json`'a eklenir (fiyat ve ondalıklı sayı da); kurallar `pinegrap-ceviri` ve `docs/memory/designer/designer-block-sample-content.md`. Renk ve tema uyumu: `docs/memory/designer/designer-block-theme-colours.md`.
 
 ---
 

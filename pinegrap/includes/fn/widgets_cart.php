@@ -801,12 +801,19 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // and a single multiplication would quote the wrong figure on
                 // any mixed basket. COALESCE puts the site rate under the
                 // products that carry none, which is what they will be charged
-                // at once an address is known.
+                // at once an address is known. The tax is taken once per rate on
+                // the sum of its lines, as the checkout takes it
+                // (pg_tax_by_rate()).
+                $_pg_rate_sql = "COALESCE(p.tax_rate, " . (float)$_pg_def_rate . ")";
                 $tax_cents = (int)db_value(
-                    "SELECT COALESCE(SUM(ROUND(oi.price * oi.quantity * COALESCE(p.tax_rate, " . (float)$_pg_def_rate . ") / 100)), 0)
-                     FROM order_items oi
-                     LEFT JOIN products p ON oi.product_id = p.id
-                     WHERE oi.order_id = '$oid_esc' AND p.taxable = 1" . pg_order_item_active_sql('oi')
+                    "SELECT COALESCE(SUM(ROUND(rate_groups.amount * rate_groups.rate / 100)), 0)
+                     FROM (
+                        SELECT " . $_pg_rate_sql . " AS rate, SUM(oi.price * oi.quantity) AS amount
+                        FROM order_items oi
+                        LEFT JOIN products p ON oi.product_id = p.id
+                        WHERE oi.order_id = '$oid_esc' AND p.taxable = 1" . pg_order_item_active_sql('oi') . "
+                        GROUP BY " . $_pg_rate_sql . "
+                     ) AS rate_groups"
                 );
             }
         }
@@ -1941,12 +1948,14 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * placed, in minor units: the lines charged today
  * (pg_order_line_charged_today(); a recurring line that starts later is
  * not), their tax (never below zero), the cart's order discount at most
- * their subtotal (pg_order_charged_discount()) with the tax lowered by the
- * discount's share, the shipping, the applied gift cards at most the total
- * (none on an order of gift cards alone), and the card surcharge on what is
- * left. The express order widget shows and posts these.
+ * their subtotal (pg_order_charged_discount()) with the tax taken again per
+ * rate on what it leaves of the lines (pg_order_charged_tax()), the
+ * shipping, the applied gift cards at most the total (none on an order of
+ * gift cards alone), and the card surcharge on what is left. The express
+ * order widget shows and posts these.
  *
- * @param array  $lines             per line: price, quantity, tax_total (the whole line), recurring,
+ * @param array  $lines             per line, in the order of their ids: price, quantity, tax_total (the
+ *                                  whole line), tax_rate (the line's, null when not kept), recurring,
  *                                  recurring_start_date, start_days (the product's start), gift_card
  * @param int    $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
  * @param int    $shipping
@@ -1961,6 +1970,7 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     $subtotal = 0;
     $tax = 0;
     $only_gift_cards = true;
+    $charged = array();
 
     foreach ((array) $lines as $line) {
         if (empty($line['gift_card'])) {
@@ -1974,13 +1984,18 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
 
         $subtotal += (int) $line['price'] * (int) $line['quantity'];
         $tax += (int) $line['tax_total'];
+        $charged[] = array(
+            'amount' => (int) $line['price'] * max(1, (int) $line['quantity']),
+            'rate' => isset($line['tax_rate']) ? $line['tax_rate'] : null,
+            'tax' => (int) $line['tax_total'],
+        );
     }
 
     $tax = max(0, $tax);
     $discount = pg_order_charged_discount($order_discount, $subtotal);
 
     if ($discount && ($subtotal > 0)) {
-        $tax = max(0, $tax - (int) round($tax * ($discount / $subtotal)));
+        $tax = pg_order_charged_tax($charged, $discount);
     }
 
     $shipping = (int) $shipping;
@@ -2258,6 +2273,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // and every other cart reader leaves it out the same way.
         $items = db_items(
             "SELECT oi.id AS item_id, oi.product_id, oi.quantity, oi.price, oi.tax_total,
+                    " . (pg_schema_has('order_items', 'tax_rate') ? "oi.tax_rate AS line_tax_rate, " : "") . "
                     oi.ship_to_id, p.name AS product_name, p.short_description, p.full_description,
                     p.shippable, p.image_name, p.address_name, p.selection_type, p.gift_card,
                     p.form, p.form_name, p.form_quantity_type,
@@ -2325,6 +2341,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             'price'                => $it['price'],
             'quantity'             => $it['quantity'],
             'tax_total'            => $it['tax_total'],
+            'tax_rate'             => isset($it['line_tax_rate']) ? $it['line_tax_rate'] : null,
             'recurring'            => $it['recurring'],
             'recurring_start_date' => $it['recurring_start_date'],
             'start_days'           => $it['recurring_start_days'],
