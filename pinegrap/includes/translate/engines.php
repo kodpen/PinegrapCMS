@@ -367,9 +367,10 @@ function pg_tr_runs_join($pieces, $answers, $format = 'text')
  * @param string $source     normalised source
  * @param string $translated sanitised answer
  * @param string $format
+ * @param array  $keep_terms the language's terms kept as written (pg_tr_keep_terms())
  * @return array('ok' => bool, 'suspicious' => bool, 'error' => string)
  */
-function pg_tr_result_check($source, $translated, $format = 'text')
+function pg_tr_result_check($source, $translated, $format = 'text', $keep_terms = array())
 {
     $translated = (string) $translated;
 
@@ -409,7 +410,7 @@ function pg_tr_result_check($source, $translated, $format = 'text')
     // "Blog" in most languages, and refusing it would send it again on every
     // run - but marked for a look, unless nothing in it was there to
     // translate (a brand name the glossary keeps).
-    if ((mb_strtolower(trim($translated)) === mb_strtolower(trim($source))) && pg_tr_runs_only(pg_tr_runs_split($source, $format))) {
+    if ((mb_strtolower(trim($translated)) === mb_strtolower(trim($source))) && pg_tr_runs_only(pg_tr_runs_split($source, $format, $keep_terms))) {
         $suspicious = true;
     }
 
@@ -430,7 +431,7 @@ function pg_tr_accept_result($string, $language, $translated, $engine, $user_id 
 {
     $format = $string['format'];
     $clean = pg_tr_sanitize_incoming($translated, $format);
-    $check = pg_tr_result_check($string['source_text'], $clean, $format);
+    $check = pg_tr_result_check($string['source_text'], $clean, $format, pg_tr_keep_terms($language));
 
     if (!$check['ok']) {
         return array('ok' => false, 'error' => $check['error'], 'suspicious' => false);
