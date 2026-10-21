@@ -130,6 +130,45 @@ function test_page_revisions_identical()
 	pg_assert_same(true, pg_page_revision_identical($redrawn, 'a', '{"page_title":"x"}'));
 }
 
+// A page that has no revision yet is recorded as it is stored before its
+// first changing save: the stored tree and body, the settings, the author
+// and time of the last save. A row without a tree gives nothing to record.
+function test_page_revisions_seed_values()
+{
+	$row = array(
+		'page_id'        => 7,
+		'page_style'     => 3,
+		'page_name'      => 'about',
+		'page_folder'    => 1,
+		'page_title'     => 'About us',
+		'page_tree_json' => '{"type":"root"}',
+		'page_tree_code' => '<div>About</div>',
+		'page_user'      => 5,
+		'page_timestamp' => 1700000000,
+	);
+
+	$values = pg_page_revision_seed_values($row, 1800000000);
+
+	pg_assert_same(3, $values['style_id']);
+	pg_assert_same('{"type":"root"}', $values['tree_json']);
+	pg_assert_same(sha1('{"type":"root"}'), $values['tree_hash']);
+	pg_assert_same(sha1('<div>About</div>'), $values['code_hash']);
+	pg_assert_same('{"page_name":"about","page_folder":"1","page_title":"About us"}', $values['settings_json']);
+	pg_assert_same(5, $values['user_id']);
+	pg_assert_same(1700000000, $values['created_at']);
+
+	// A row saved before the time was stamped is dated now.
+	$row['page_timestamp'] = 0;
+	pg_assert_same(1800000000, pg_page_revision_seed_values($row, 1800000000)['created_at']);
+
+	// No tree (a classic page, or one never saved by the designer): nothing.
+	$row['page_tree_json'] = '';
+	pg_assert_same(null, pg_page_revision_seed_values($row, 1800000000));
+	unset($row['page_tree_json']);
+	pg_assert_same(null, pg_page_revision_seed_values($row, 1800000000));
+	pg_assert_same(null, pg_page_revision_seed_values(null, 1800000000));
+}
+
 // History › Compare draws the revision with the shared components and
 // system widgets its tree places, also those the page has dropped since and
 // the editor's cache does not hold: they are fetched before both sides are

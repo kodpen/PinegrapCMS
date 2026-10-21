@@ -2628,7 +2628,6 @@
     "Load revision #{var}?": "{var} numaralı sürüm yüklensin mi?",
     "Load this revision": "Bu sürümü yükle",
     "Local snapshots": "Yerel anlık görüntüler",
-    "No revision has been published yet.": "Henüz yayınlanmış bir sürüm yok.",
     "Open the page in its tab first.": "Önce sayfayı kendi sekmesinde açın.",
     "Published revisions": "Yayınlanan sürümler",
     "Restored": "Geri yüklendi",
@@ -24711,5 +24710,6 @@
     "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin.",
     "This movement is a step of {var:1}, which changes only by its own steps on its screen; it cannot be cancelled on its own.": "Bu hareket {var:1} kaydının bir adımı; çek ve senet yalnız kendi ekranındaki adımlarla değişir, hareket tek başına iptal edilemez.",
     "Open the cheque or note": "Çeki veya Senedi Aç",
-    "That document is not an invoice; a receipt does not close it.": "Bu belge bir fatura değil; tahsilat ya da ödeme onu kapatmaz."
+    "That document is not an invoice; a receipt does not close it.": "Bu belge bir fatura değil; tahsilat ya da ödeme onu kapatmaz.",
+    "No revision has been recorded yet; the next publish first records the page as it is now.": "Henüz kaydedilmiş bir sürüm yok; bir sonraki yayın önce sayfanın şimdiki hâlini kaydeder."
 }
