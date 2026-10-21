@@ -218,8 +218,7 @@ function pg_short_link_name_from_address($address, $base_path = null)
         $name = $decoded;
     }
 
-    $name = str_replace(' ', '_', $name);
-    $name = (string) preg_replace('#/{2,}#', '/', $name);
+    $name = pg_short_link_path_name($name);
     $name = (string) preg_replace('#\*{2,}#', '*', $name);
 
     if ($base_path === null) {
@@ -227,13 +226,30 @@ function pg_short_link_name_from_address($address, $base_path = null)
     }
 
     $base = trim((string) $base_path, '/');
-    $name = trim($name, '/');
 
     if (($base !== '') && (stripos($name . '/', $base . '/') === 0) && (substr($address, 0, 1) === '/' || preg_match('#^https?://#i', (string) $address) === 1)) {
         $name = trim((string) substr($name, strlen($base)), '/');
     }
 
     return $name;
+}
+
+/**
+ * A decoded path in the form names are stored in: spaces become _, runs of /
+ * become one, and no / is kept at either end. A name is saved this way
+ * (pg_short_link_name_from_address()), so the old address a visitor brings
+ * (/blog/post/, /Old%20Page, //post) is looked up in this form too when it is
+ * no name as it came: router.php for an exact name, pg_short_link_match_in()
+ * for the checks and the patterns.
+ *
+ * @param string $path
+ * @return string
+ */
+function pg_short_link_path_name($path)
+{
+    $path = str_replace(' ', '_', (string) $path);
+
+    return trim((string) preg_replace('#/{2,}#', '/', $path), '/');
 }
 
 /**
@@ -568,7 +584,10 @@ function pg_short_link_index($links)
 
 /**
  * The link that answers a name, from pg_short_link_index(), with what its
- * stars matched (none for an exact name).
+ * stars matched (none for an exact name). As router.php asks: exact names
+ * first, the name as it came and then in its stored form
+ * (pg_short_link_path_name()), then each pattern in its turn, in the same two
+ * forms.
  *
  * @param string $name
  * @param array  $index
@@ -577,17 +596,26 @@ function pg_short_link_index($links)
  */
 function pg_short_link_match_in($name, $index, $exact_too = true)
 {
-    $key = pg_short_link_key($name);
+    $name = (string) $name;
+    $forms = array_unique(array($name, pg_short_link_path_name($name)));
 
-    if ($exact_too && isset($index['exact'][$key])) {
-        return array('link' => $index['exact'][$key], 'captures' => array());
+    if ($exact_too) {
+        foreach ($forms as $form) {
+            $key = pg_short_link_key($form);
+
+            if (isset($index['exact'][$key])) {
+                return array('link' => $index['exact'][$key], 'captures' => array());
+            }
+        }
     }
 
     foreach ($index['patterns'] as $link) {
-        $captures = pg_short_link_pattern_captures($link['name'], $name);
+        foreach ($forms as $form) {
+            $captures = pg_short_link_pattern_captures($link['name'], $form);
 
-        if ($captures !== null) {
-            return array('link' => $link, 'captures' => $captures);
+            if ($captures !== null) {
+                return array('link' => $link, 'captures' => $captures);
+            }
         }
     }
 
@@ -651,12 +679,16 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
         return null;
     }
 
+    // An address reaches the link the way the router finds it: as it is or in
+    // its stored form (pg_short_link_match_in()).
     $own = function ($candidate) use ($is_pattern, $name) {
-        if ($is_pattern) {
-            return (pg_short_link_pattern_captures($name, $candidate) !== null);
+        foreach (array_unique(array($candidate, pg_short_link_path_name($candidate))) as $form) {
+            if ($is_pattern ? (pg_short_link_pattern_captures($name, $form) !== null) : (pg_short_link_key($form) === pg_short_link_key($name))) {
+                return true;
+            }
         }
 
-        return (pg_short_link_key($candidate) === pg_short_link_key($name));
+        return false;
     };
 
     if ($own($path)) {
@@ -1029,7 +1061,7 @@ function pg_short_link_not_found()
     if ((string) $link['destination_type'] === 'url') {
         $back = pg_short_link_url_name(pg_short_link_fill_target($link['url'], $match['captures'], false), $site_host, $base);
 
-        if (($back !== null) && (pg_short_link_key($back) === pg_short_link_key($name))) {
+        if (($back !== null) && (pg_short_link_key(pg_short_link_path_name($back)) === pg_short_link_key(pg_short_link_path_name($name)))) {
             return false;
         }
     }
