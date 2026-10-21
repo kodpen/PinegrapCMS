@@ -21,6 +21,8 @@ description: Key code CSV import (import_key_codes.php): a code already there is
 
 ## What is reported?
 - A row with a cell that cannot be stored, an unknown offer code or a new code without one is skipped whole; the list shows "Key codes imported: n added, n changed, n unchanged, n line(s) skipped." (also in the Site Log) and up to 20 skipped lines with their reason.
+- A key code over 50 characters stays in `values['code']` with the error, so its row is listed, not taken for a blank line (a row without a code is passed over silently).
+- "Line n" is the file line the row starts on: line breaks inside a quoted cell (a note) are counted.
 
 ## How was it checked?
 - Sandbox: import, set one code used, import again (stays used, timestamp kept); an Excel-style file (BOM, `;`, 31.12.2026, DOĞRU/YANLIŞ, a bad date, a bad flag, an unknown offer, no offer); the export imported back: all unchanged.

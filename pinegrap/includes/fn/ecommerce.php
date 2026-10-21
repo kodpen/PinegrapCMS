@@ -8113,8 +8113,9 @@ function pg_key_code_import_date($value, $date_format)
 
 /**
  * One row of an imported key code file read into the columns it writes.
- * 'values' holds the code and every other column of the file whose cell can
- * be stored: an empty expiration date is "does not expire" and empty notes
+ * 'values' holds the code (also one too long to store, so that row is
+ * reported rather than taken for a blank line) and every other column of
+ * the file whose cell can be stored: an empty expiration date is "does not expire" and empty notes
  * are none, as the export writes them; an empty offer code, flag or report
  * is left out, so a code already there keeps its own and a new one takes
  * the default. 'error' names the first cell that cannot be stored (the row
@@ -8138,6 +8139,12 @@ function pg_key_code_import_row($row, $columns, $date_format)
             case 'offer_code':
                 if (mb_strlen($cell) > 50) {
                     $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" is longer than 50 characters.', 'vars' => array($cell)));
+
+                    // A key code too long to store is still kept: the row is
+                    // then reported with it, not passed over as a blank line.
+                    if ($column === 'code') {
+                        $values[$column] = $cell;
+                    }
                 } else if (($cell !== '') || ($column === 'code')) {
                     $values[$column] = $cell;
                 }

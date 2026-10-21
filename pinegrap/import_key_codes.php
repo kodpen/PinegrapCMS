@@ -121,11 +121,14 @@ if (!$_POST) {
     $summary = array('added' => 0, 'changed' => 0, 'unchanged' => 0);
     $problems = array();
     $offer_found = array();
-    $line = 1;
+    $next_line = 2;
 
     // loops through all rows of data in CSV file
     while (($row = fgetcsv($handle, 100000, $separator)) !== false) {
-        $line++;
+        // The file line the row starts on: a quoted cell can hold line
+        // breaks, so a row can take more than one line.
+        $line = $next_line;
+        $next_line += 1 + preg_match_all('/\r\n?|\n/', implode('', (array) $row));
 
         $read = pg_key_code_import_row($row, $column_names, DATE_FORMAT);
         $values = $read['values'];

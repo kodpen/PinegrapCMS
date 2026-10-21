@@ -105,6 +105,11 @@ function test_key_code_import_row()
 
 	$read = pg_key_code_import_row(array(str_repeat('K', 51), 'OFFER'), $columns, 'day_month');
 	pg_assert_contains('50', $read['error'], 'a code longer than the column');
+	pg_assert_same(str_repeat('K', 51), $read['values']['code'], 'a code longer than the column is kept, so the row is reported, not taken for a blank line');
+
+	$read = pg_key_code_import_row(array('ABC', str_repeat('O', 51)), $columns, 'day_month');
+	pg_assert_contains('50', $read['error'], 'an offer code longer than the column');
+	pg_assert_same(false, isset($read['values']['offer_code']), 'an offer code too long to store is left out');
 
 	$read = pg_key_code_import_row(array(str_repeat('ğ', 50), 'OFFER'), $columns, 'day_month');
 	pg_assert_same('', $read['error'], '50 letters fit, whatever their bytes');
