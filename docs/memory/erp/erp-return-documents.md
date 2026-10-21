@@ -12,8 +12,10 @@ An issued invoice is never edited; it goes back by return or by cancel (`include
 
 ## How are return amounts computed?
 - Full return copies the parent's figures, no recalculation: the parent's VAT was tied to the order header VAT and can be 1 kuruş off the line-derived value.
-- Partial return splits the line proportionally (`round(discount × qty / sold)`, VAT from the remaining base).
-- A return line's VAT cannot exceed the VAT still remaining on the parent line, and the part that empties the line takes the remainder exactly (`erp_returnable_lines()` → `returned_tax`, matched by `parent_line_id`): the two halves of a 361-kuruş line are 181 + 180, not 181 + 181.
+- Partial return splits the line proportionally (`round(discount × qty / sold)`); the taxes of the lines given back in part come per group of one VAT rate and one withholding rate of the return (`erp_rate_vat()`, #1020): one of each of two 2 x 1.02 lines at 20% gives back 0.41, not 0.40. A single line comes out as before.
+- An order's lines (`erp_order_refund_lines()` without an invoice) carry no earlier returns: the group taxes alone, uncapped.
+- A return line's taxes cannot exceed what is still on the parent line, and the part that empties the line takes the remainder exactly (`erp_returnable_lines()` → `returned_tax`, `returned_withholding`, `returned_tax2`, matched by `parent_line_id`): the two halves of a 361-kuruş line are 181 + 180, not 181 + 181.
+- The card refund dialog (includes/erp/order_refund.php) prices each line alone at once, then takes the whole choice from api.php `erp_refund_preview` (`erp_order_refund_amount()`, read only): with group taxes the whole is not the sum of the lines.
 
 ## How is the line VAT rate carried?
 - From the order as the legal rate, not as the quotient of two rounded amounts (`erp_line_tax_rate()`): first try `products.tax_rate`; if `erp_apply_rate()` reproduces the stored tax exactly, use it; otherwise fit the simplest rate at 0–3 decimals (361/2008 → 18, not 17.978). Amounts stay unchanged, only the rate.

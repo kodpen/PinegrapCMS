@@ -467,9 +467,13 @@ function _parasut_token_owner($company_id = null, $client_id = null, $username =
  * from then is moved in on the first read and deleted. Before the database
  * upgrade has run there is nowhere to move it, and the file is read as it was.
  *
+ * @param string|null $owner  The owner stamp to match; _parasut_token_owner() of
+ *                            the running request when null. The connect endpoint
+ *                            names the one it has just written with, which the
+ *                            constants of its own request do not know yet.
  * @return array  Cache contents, or an empty array
  */
-function _parasut_token_cache_read()
+function _parasut_token_cache_read($owner = null)
 {
     $cache = pg_connect_service_get('parasut');
 
@@ -494,7 +498,9 @@ function _parasut_token_cache_read()
         }
     }
 
-    if (!isset($cache['owner']) || ($cache['owner'] !== _parasut_token_owner())) {
+    $owner = ($owner === null) ? _parasut_token_owner() : (string) $owner;
+
+    if (!isset($cache['owner']) || ($cache['owner'] !== $owner)) {
         return [];
     }
 
@@ -871,12 +877,12 @@ function _parasut_me_parse($body)
  * @param string $client_secret  As typed (the saved one when empty)
  * @param string $company_id     As typed; '' lets the account's one company fill it
  * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
- *                'email' => string, 'error' => string]
+ *                'email' => string, 'owner' => string (the token's owner stamp), 'error' => string]
  */
 function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
 {
     $fail = function ($error) {
-        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'error' => $error];
+        return ['success' => false, 'company_id' => '', 'company_name' => '', 'email' => '', 'owner' => '', 'error' => $error];
     };
 
     $code = trim((string) $code);
@@ -957,6 +963,8 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         parasut_company_id = '" . escape($company_id) . "'");
     _parasut_credentials_store(['client_secret' => $client_secret]);
 
+    $owner = _parasut_token_owner($company_id, $client_id, null);
+
     _parasut_token_cache_write([
         'access_token' => (string) $data['access_token'],
         'refresh_token' => (string) ($data['refresh_token'] ?? ''),
@@ -965,13 +973,14 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         'email' => $me['email'],
         'company_name' => $company_name,
         'connected_at' => time(),
-    ], _parasut_token_owner($company_id, $client_id, null));
+    ], $owner);
 
     return [
         'success' => true,
         'company_id' => $company_id,
         'company_name' => $company_name,
         'email' => $me['email'],
+        'owner' => $owner,
         'error' => '',
     ];
 }
@@ -980,13 +989,17 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
  * What the settings card says about the connection, read from the sealed
  * token alone - nothing is asked of Paraşüt while a settings page is drawn.
  *
+ * @param string|null $owner  The token's owner stamp; the saved settings' when
+ *                            null. Connect passes the one it wrote with: the
+ *                            company and client it has just saved are not in
+ *                            its request's constants.
  * @return array ['connected' => bool, 'grant' => 'code'|'password'|'', 'email' => string,
  *                'company_name' => string, 'expires_at' => int, 'connected_at' => int,
  *                'renewable' => bool]
  */
-function parasut_connection_status()
+function parasut_connection_status($owner = null)
 {
-    $cache = _parasut_token_cache_read();
+    $cache = _parasut_token_cache_read($owner);
     $credentials = _parasut_credentials();
 
     $renewable = (!empty($cache['refresh_token']) && ($credentials['client_secret'] !== ''))
