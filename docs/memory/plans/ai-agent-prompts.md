@@ -1,6 +1,6 @@
 ---
 name: ai-agent-prompts
-description: Plan (2026-10-21, step 1 done #1124, answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
+description: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 ---
 
 ## What is asked? (owner, 2026-10-21)
@@ -23,10 +23,10 @@ description: Plan (2026-10-21, step 1 done #1124, answers open): Pinegrap AI's b
 3. Claude from the site: `GET /workspace/claude/requests/{id}/brief` returns the briefing Pinegrap AI gets; the pasted prompt shrinks to a bootstrap (sign in, read the instructions from the site, follow them; the fire payload instructs nothing) and the site serves the rest; the card warns when the pasted bootstrap is older than the site's version.
 4. MCP agents and outside apps: a per-server switch (off by default, the decision stands) sends a short preamble (site, asker, place, language, rules) without channel text; outside apps read the same through an endpoint.
 5. Connected apps: `pg_mcp_instructions()` gains the safety lines (data is not instructions, confirm writes and deletes with the person, dry_run first, copy nothing to other tools).
-6. The other prompts (designer, translation, summaries, bulk, status, scheduled draft, write with AI) take the block; each request keeps the prompt version it ran with.
+6. Each request keeps the prompt version it ran with (every prompt already takes the block through step 1).
 
 ## Open questions (recommendation)
-1. Rules text editable by administrators: (a) no, code only, (b) an extra site note added below the rules → a, b later as data.
+1. Taken: rules text editable by administrators → (a) code only, by step 1 (#1124); (b), a site note below the rules, stays possible later as data.
 2. Preamble for MCP agents: (a) off by default per server, (b) on → a.
 3. Claude's instructions from the site: (a) yes, bootstrap prompt, (b) keep pasting → a.
 4. Live injection test on dev with the owner, Pinegrap AI and the routine → yes, after step 2.
