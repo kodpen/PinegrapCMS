@@ -1752,21 +1752,72 @@ function erp_edoc_parasut_cancel_window_open($attributes, $now)
  * e-document. A draft that was never handed to GİB is sent there for the
  * first time; one that was handed over (a conversion job kept, the kind
  * decided, the row marked sent) and still has none is sent there again.
+ * Why the conversion failed, when its job said so, comes first.
  *
- * @param array $invoice  The erp_invoices row as the question found it
+ * @param array  $invoice  The erp_invoices row as the question found it
+ * @param string $why      The failed conversion job's words, or ''
  * @return string
  */
-function erp_edoc_parasut_unconverted_message($invoice)
+function erp_edoc_parasut_unconverted_message($invoice, $why = '')
 {
     $handed_over = (trim((string) ($invoice['parasut_job_id'] ?? '')) !== '')
         || ((string) ($invoice['edoc_status'] ?? '') === 'sent')
         || in_array((string) ($invoice['edoc_kind'] ?? ''), array('einvoice', 'earchive'), true);
+    $why = trim((string) $why);
 
-    if ($handed_over) {
-        return lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    if ($why !== '') {
+        $why .= preg_match('/[.!?]$/u', $why) ? ' ' : '. ';
     }
 
-    return lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+    if ($handed_over) {
+        return $why . lang('The invoice is at Paraşüt but has not become an e-document; hand it to GİB again.');
+    }
+
+    return $why . lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => array('Paraşüt')));
+}
+
+/**
+ * What a conversion job's answer says: still running, finished, or failed,
+ * and Paraşüt's own words for a failure (errors[], strings or JSON:API
+ * error objects).
+ *
+ * @param array $attributes  data.attributes of GET trackable_jobs/{id}
+ * @return array ['state' => 'running'|'done'|'error', 'message' => string]
+ */
+function erp_edoc_parasut_job_reading($attributes)
+{
+    $attributes = (array) $attributes;
+    $state = mb_strtolower(trim((string) ($attributes['status'] ?? '')), 'UTF-8');
+    $said = array();
+
+    foreach ((array) ($attributes['errors'] ?? array()) as $error) {
+        if (is_array($error)) {
+            $title = trim((string) (is_scalar($error['title'] ?? null) ? $error['title'] : ''));
+            $detail = trim((string) (is_scalar($error['detail'] ?? null) ? $error['detail'] : ''));
+            $line = (($title !== '') || ($detail !== ''))
+                ? ((($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title))
+                : trim(implode(' ', array_map('strval', array_filter($error, 'is_scalar'))));
+        } else {
+            $line = is_scalar($error) ? trim((string) $error) : '';
+        }
+
+        if (($line !== '') && !in_array($line, $said, true)) {
+            $said[] = $line;
+        }
+    }
+
+    if (preg_match('/error|fail|abort/u', $state)) {
+        return array(
+            'state' => 'error',
+            'message' => ($said !== array()) ? implode(' | ', $said) : lang('Paraşüt could not convert the invoice into an e-document.'),
+        );
+    }
+
+    if (preg_match('/done|complet|success|finish/u', $state)) {
+        return array('state' => 'done', 'message' => '');
+    }
+
+    return array('state' => 'running', 'message' => '');
 }
 
 /**
@@ -1791,8 +1842,13 @@ function erp_edoc_parasut_poll($invoice, $job_id)
     }
 
     // 1. The conversion job, while its window is open. A job that failed
-    // is the one place Paraşüt says why in words.
+    // is the one place Paraşüt says why in words. A failed job leaves the
+    // sales invoice at Paraşüt as it was, so what the row becomes is read
+    // from the invoice below (a record with no e-document is 'created' and
+    // is handed over again, never created a second time); the job's words
+    // go with it.
     $tracked = trim((string) ($invoice['parasut_job_id'] ?? ''));
+    $job_words = '';
 
     if (($tracked !== '') && ((int) ($invoice['parasut_job_expires_at'] ?? 0) > time())) {
         $job = erp_edoc_parasut_request('GET', '/trackable_jobs/' . rawurlencode($tracked), null, $context);
@@ -1803,23 +1859,9 @@ function erp_edoc_parasut_poll($invoice, $job_id)
         }
 
         if (erp_edoc_parasut_ok($job)) {
-            $attributes = (array) ($job['body']['data']['attributes'] ?? array());
-            $state = mb_strtolower(trim((string) ($attributes['status'] ?? '')), 'UTF-8');
-            $said = array();
+            $reading = erp_edoc_parasut_job_reading($job['body']['data']['attributes'] ?? array());
 
-            foreach ((array) ($attributes['errors'] ?? array()) as $error) {
-                $said[] = is_array($error) ? implode(' ', array_map('strval', $error)) : (string) $error;
-            }
-
-            if (preg_match('/error|fail|abort/u', $state)) {
-                erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
-                $out['success'] = true;
-                $out['status'] = 'error';
-                $out['message'] = ($said !== array()) ? implode(' | ', array_filter(array_map('trim', $said), 'strlen')) : lang('Paraşüt could not convert the invoice into an e-document.');
-                return $out;
-            }
-
-            if (!preg_match('/done|complet|success|finish/u', $state)) {
+            if ($reading['state'] === 'running') {
                 $out['success'] = true;
                 $out['status'] = 'sent';
                 $out['message'] = lang('Paraşüt is still converting the invoice; ask again in a minute.');
@@ -1827,6 +1869,7 @@ function erp_edoc_parasut_poll($invoice, $job_id)
             }
 
             erp_query("UPDATE erp_invoices SET parasut_job_id = '', parasut_job_expires_at = 0 WHERE id = '" . (int) $invoice['id'] . "'");
+            $job_words = (string) $reading['message'];
         }
     }
 
@@ -1890,12 +1933,11 @@ function erp_edoc_parasut_poll($invoice, $job_id)
 
     if (($document_id === '') || !in_array($document_type, array('e_archives', 'e_invoices'), true)) {
         // No e-document: a draft not handed to GİB yet, or one whose
-        // conversion job ran out before it was read or failed without a
-        // word. Shown as the provider's draft, so the hand-over button
-        // comes back.
+        // conversion job failed or ran out before it was read. Shown as the
+        // provider's draft, so the hand-over button comes back.
         $out['success'] = true;
         $out['status'] = 'created';
-        $out['message'] = erp_edoc_parasut_unconverted_message($invoice);
+        $out['message'] = erp_edoc_parasut_unconverted_message($invoice, $job_words);
 
         // What Paraşüt computed for the draft, so it can be looked over
         // before the hand-over without opening Paraşüt.
