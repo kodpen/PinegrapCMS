@@ -16,7 +16,7 @@ description: An offer's gift line ('add product' result): the price it is charge
 - The checkout refuses a free line (`price <= 0`) alone in a recipient (`shopping_cart.php`, `submit_order.php`: no `price > 0` line in the same `ship_to`). So a free shippable gift is only placed where a paid line is: with one recipient `apply_offer_gift_to_cart()` returns `false` when the buyer's recipient (`pg_single_recipient_ship_to_id()`, looked up without opening it) has none (`pg_ship_to_has_paid_line()`), and `apply_offers_to_cart()` keeps the offer in `pending_offers` for the claim button, as the multi-recipient branch does. With several recipients `get_ship_to_id_for_offer_gift()` already answers 0.
 - The gift-line pass at the top of `apply_offers_to_cart()` applies the same rule in both modes: when the last paid line leaves the recipient, the free gift there is removed (not refused) and the offer goes back to "request it". A gift the shopper claimed and a gift with a price above 0 are not touched.
 
-## What was the symptom? (#983)
+## What was the symptom? (#983, PR #1137)
 - One recipient, a cart of unshipped (digital) items and an offer giving a shippable product free: the gift was placed alone in "myself" at 0 and "Hediye, ücretsiz bir üründür…" stopped the order until the shopper removed the gift (which then counted as refused). Removing the last paid shippable line left the gift alone the same way in both modes.
 
 ## What was the symptom? (#727, PR #923)
