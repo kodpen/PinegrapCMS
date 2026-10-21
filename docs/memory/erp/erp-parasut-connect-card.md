@@ -10,4 +10,4 @@ description: The Paraşüt card of the commerce settings: its status line, the t
 
 ## Why does Connect read the status with an owner?
 - The token is stamped with md5(company|client id|user name) of the values Connect has just saved; the request's own `PARASUT_*` constants still hold the settings from before (a client id typed but not saved, an empty company box). `parasut_connect_with_code()` returns that `owner` and `parasut_connect.php` reads `parasut_connection_status($owner)` (`_parasut_token_cache_read($owner)`); a page draw passes nothing and reads the saved settings.
-- Until #PR761 the first Connect with such boxes answered "Not connected to Paraşüt yet." beside the success notice (correct only after a reload), and pressing Connect again spent the one-time code ("Paraşüt did not accept the code").
+- Until #1032 the first Connect with such boxes answered "Not connected to Paraşüt yet." beside the success notice (correct only after a reload), and pressing Connect again spent the one-time code ("Paraşüt did not accept the code").
