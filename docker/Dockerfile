@@ -25,18 +25,28 @@ FROM php:8.3-fpm-alpine AS app
 # image). Also used: gd with JPEG, PNG, WebP and AVIF for images, imagick as
 # the better image engine, pdo_mysql for backups, intl, exif for photo
 # orientation, ftp for backups to an FTP server.
+#
+# imagick is built from its release tag on GitHub, not with pecl install:
+# pecl.php.net answering 504 failed every build. The tag's source carries
+# @PACKAGE_VERSION@ where the PECL package has the version, so it is filled in.
+ARG IMAGICK_VERSION=3.8.1
 RUN set -eux; \
     apk add --no-cache \
         freetype libjpeg-turbo libpng libwebp libavif libzip icu-libs imagemagick; \
     apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
         freetype-dev libjpeg-turbo-dev libpng-dev libwebp-dev libavif-dev libzip-dev icu-dev imagemagick-dev; \
+    docker-php-source extract; \
+    mkdir -p /usr/src/php/ext/imagick; \
+    curl -fsSL --retry 5 --retry-delay 5 \
+        "https://github.com/Imagick/imagick/archive/refs/tags/${IMAGICK_VERSION}.tar.gz" \
+        | tar -xz --strip-components=1 -C /usr/src/php/ext/imagick; \
+    sed -i "s/@PACKAGE_VERSION@/${IMAGICK_VERSION}/" /usr/src/php/ext/imagick/php_imagick.h; \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-avif; \
-    docker-php-ext-install -j"$(nproc)" mysqli pdo_mysql gd zip intl exif opcache ftp; \
-    pecl install imagick; \
-    docker-php-ext-enable imagick; \
-    rm -rf /tmp/pear; \
+    docker-php-ext-install -j"$(nproc)" mysqli pdo_mysql gd zip intl exif opcache ftp imagick; \
+    docker-php-source delete; \
     apk del --no-network .build-deps; \
-    php -m
+    php -m; \
+    test "$(php -r 'echo phpversion("imagick");')" = "${IMAGICK_VERSION}"
 
 # The php.ini values. Kept as .conf in the repository: .gitignore leaves out
 # every *.ini, a host's own server configuration.

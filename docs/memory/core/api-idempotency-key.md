@@ -5,7 +5,7 @@ description: External API Idempotency-Key: reservation row before the write, 409
 
 ## What does an Idempotency-Key do on a write?
 - `includes/api/idempotency.php`, called from `includes/api/bootstrap.php` for every POST/PUT/PATCH/DELETE that is not a dry run. The key is stored per application (`api_idempotency`, unique on `app_id, idem_key`); a device session's key is hashed with the device id (`api_idempotency_scoped_key()`).
-- The fingerprint is the method, the path and the parsed input (`api_idempotency_hash()`), with a form file part's name, size and SHA-256 (`api_idempotency_input()`).
+- The fingerprint is the method, the path and the parsed input (`api_idempotency_hash()`), with a form file part's name, size and SHA-256 (`api_idempotency_input()`). Input JSON cannot write (bytes that are not UTF-8) is taken as `serialize()` text (`api_idempotency_input_text()`, `core/api-response-json-encoding.md`).
 
 ## Why is a row written before the write runs?
 - Before #817 the record was written only after the write had answered, so a client that timed out and retried while the first request was still running found nothing and applied the write again (six overlapping bulk stock calls under one key: six decrements).
