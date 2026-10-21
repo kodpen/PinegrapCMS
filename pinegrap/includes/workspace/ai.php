@@ -2126,15 +2126,19 @@ function ws_ai_finish_fail($row, $reason)
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
 
     // Written the way an answer is (ws_ai_deliver()): through the person who
-    // asked where the owner of the application is not in the room.
-    $writer = ($channel && ws_ai_channel_allowed($channel))
+    // asked where the owner of the application is not in the room. Without
+    // an application (none chosen, or the chosen one deleted) nothing is
+    // written in the channel: the message would be the asker's own, and the
+    // reason stays on the request only.
+    $app = ws_ai_app();
+    $writer = ($channel && $app && ws_ai_channel_allowed($channel))
         ? ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel)
         : null;
 
     if ($writer) {
         $sent = ws_message_send($writer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
-            'app_id'    => (int) ws_ai_config()['app_id'],
+            'app_id'    => (int) $app['id'],
         ));
 
         $reply_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
@@ -2325,8 +2329,11 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     // The owner of the application, or the person who asked where the owner
-    // is not in the channel or the discussion (ws_assistant_writer()).
-    $writer = ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel);
+    // is not in the channel or the discussion (ws_assistant_writer()). Without
+    // an application nobody writes: the answer would be the asker's own
+    // message.
+    $app = ws_ai_app();
+    $writer = $app ? ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel) : null;
 
     if (!$writer) {
         ws_ai_finish_fail($row, lang('The answer cannot be posted there any more: the person who asked has left that channel or discussion, or it was archived or concluded.'));
@@ -2368,7 +2375,7 @@ function ws_ai_deliver($row, $text, $proposals)
 
     $sent = ws_message_send($writer, $channel, $text, array(
         'parent_id' => (int) $row['message_id'],
-        'app_id'    => (int) ws_ai_config()['app_id'],
+        'app_id'    => (int) $app['id'],
     ));
 
     if (!$sent['ok']) {
@@ -2403,7 +2410,7 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     if (!empty($pages) && ws_design_ai()) {
-        pg_design_ai_store_proposals($row, $pages, 'ai', (int) ws_ai_config()['app_id'], (int) $channel['id'], (int) $sent['message_id']);
+        pg_design_ai_store_proposals($row, $pages, 'ai', (int) $app['id'], (int) $channel['id'], (int) $sent['message_id']);
     }
 
     db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = '" . (int) $sent['message_id'] . "',
