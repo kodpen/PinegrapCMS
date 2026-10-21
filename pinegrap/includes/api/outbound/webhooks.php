@@ -238,9 +238,10 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 // does not pick up. A failing subscription's address stopped answering; trying
 // every new event against it would only add six failures each, and dropping
 // them is how an integration is found broken a week later. Held rows go out
-// when the operator retries (Retry on the Events tab, POST /webhooks/{id}/retry)
-// or when a delivery to the address succeeds again; like a row that ran out of
-// attempts, one held for a week is swept.
+// only when somebody retries (Send again on the Events tab, POST
+// /webhooks/{id}/retry): not on a successful delivery, a resume or PATCH
+// status=active, so events meant for an old address never reach a new one
+// unasked. Like a row that ran out of attempts, one held for a week is swept.
 function api_webhook_queue_hold($status) {
 
 	return ((string)$status === 'failing');
@@ -418,14 +419,6 @@ function api_webhook_deliver($row) {
 
 		db("UPDATE api_webhooks SET status = 'active', last_success = UNIX_TIMESTAMP()
 			WHERE id = '" . (int)$hook['id'] . "'");
-
-		// The address answers again: what was held while it failed goes now.
-		if ($hook['status'] === 'failing') {
-
-			db("UPDATE api_webhook_queue SET next_attempt_at = UNIX_TIMESTAMP()
-				WHERE webhook_id = '" . (int)$hook['id'] . "' AND attempts = 0 AND next_attempt_at = 0");
-
-		}
 
 		return true;
 
