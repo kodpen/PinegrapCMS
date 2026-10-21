@@ -13,6 +13,9 @@ description: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, ever
 - Asking places (add a new mutation path to this list): every mutating item of both context menus (`_sdGuardItem`), tree drag (`draggable` AND the drop target), Delete/Backspace, `handleDrop`, `onDelete`, inline text editing, canvas toolbar handle and delete button, `renderProperties`. The first version forgot menus and tree dragging and a user could delete the whole page on the first try.
 - `_sdGuardItem` FADES the item, never removes it: a vanished menu item reads "software is broken", a faded one reads "I can't do this". In multi-select it is all or none (deleting three of five leaves an unwanted page).
 
+## Which pictures does `_sdCanEditNode(node, 'image')` offer outside a marked area?
+- Only what the save takes (`_pg_dm_take_image_src()`): an image content node and a bare `<img>`, through `_sdNodeContentImage()`. `_sdNodeImage()` still finds an inline `background-image` for the designer's tools and inside marked areas, but the content level is not offered it (read-only panel Image row, both menus' "Edit Image"): a background is formatting and the save keeps the stored one. Before PR #1110 (issue #778) it was offered, the canvas showed the new picture and the save dropped it (a page read as saved, a component went back). Test: `tests/designer_content_image_test.php` (runs the functions under Node).
+
 ## Other content-role UI rules
 - `_sdApplyContentChrome()` was called once at boot but the palette and settings modal are built later. It is idempotent; applied at boot and again after 300 / 1200 ms. The chrome must run after what it hides exists.
 - Never offer an unreachable path: the welcome screen showed three create-design cards to content roles while `add_system_style.php` requires a designer. A button either works or is not there.
