@@ -301,6 +301,7 @@ function pg_designer_import_fragment($html, $user, $opts = array())
     foreach ($doc->childNodes as $cn) {
         if ($cn->nodeType === XML_PI_NODE) { $doc->removeChild($cn); break; }
     }
+    pg_di_settle_img_sources($doc);
 
     $xp   = new DOMXPath($doc);
     $body = $xp->query('//body')->item(0);
@@ -502,6 +503,8 @@ function pg_designer_import_html($html, $html_path, $ctx)
     foreach ($doc->childNodes as $cn) {
         if ($cn->nodeType === XML_PI_NODE) { $doc->removeChild($cn); break; }
     }
+    // A lazily loaded image keeps its picture outside src.
+    pg_di_settle_img_sources($doc);
 
     $xp = new DOMXPath($doc);
 
@@ -747,7 +750,8 @@ function pg_di_node($node, $ctx)
         return isset($ctx->svg_raw[$i]) ? pg_di_svg_node($ctx->svg_raw[$i], $ctx) : null;
     }
     // <picture> is its <img>; the <source> variants have no home in a
-    // single-src image node.
+    // single-src image node. An <img> left with a placeholder has already
+    // taken its picture from them (pg_di_settle_img_sources()).
     if ($tag === 'picture') {
         foreach ($node->getElementsByTagName('img') as $im) return pg_di_node($im, $ctx);
         return null;
@@ -792,6 +796,8 @@ function pg_di_node($node, $ctx)
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
     }
     if ($tag === 'img') {
+        // src is the picture: on a lazily loaded image it was moved there
+        // from where the page kept it (pg_di_settle_img_sources()).
         $src = pg_di_rewrite_ref((string)$node->getAttribute('src'), $ctx);
         // srcset/sizes are dropped: the image node has one source, and a
         // srcset left in the raw attributes would beat whatever the picker
@@ -961,6 +967,199 @@ function pg_di_outer_html($node)
     return $node->ownerDocument->saveHTML($node);
 }
 
+// ── Image sources ───────────────────────────────────────────────────────────
+
+// Attributes a lazy-loading script keeps the picture in until the image
+// scrolls into view, in the order they are read: data-src (lazysizes, lozad,
+// most WordPress plugins), data-lazy-src (Jetpack, WP Rocket), data-original
+// (the jQuery lazyload plugin).
+function pg_di_lazy_src_attrs()
+{
+    return array('data-src', 'data-lazy-src', 'data-original');
+}
+
+// The srcset forms of the same, read after them.
+function pg_di_lazy_srcset_attrs()
+{
+    return array('data-srcset', 'data-lazy-srcset');
+}
+
+/**
+ * Give every <img> of a parsed document the picture the page shows as its
+ * src, before the document is turned into nodes.
+ *
+ * An image node has one source, src; srcset and the <source> elements of a
+ * <picture> are left behind (pg_di_node()). That is right while src is the
+ * picture. On a page built for lazy loading it is not: src holds a
+ * placeholder, usually a transparent 1×1 GIF as a data: URI, and the
+ * picture waits in a data-src style attribute for the page's script, in
+ * srcset, in a <source> of the <picture> or in the <noscript> copy after
+ * the image. Imported as written, the image kept the placeholder.
+ *
+ *   - A lazy source wins over whatever src holds: it is what the page shows
+ *     once its script has run. The lazy attributes are removed; left on the
+ *     image, the project's script would put their value back over a picture
+ *     chosen in the designer later.
+ *   - srcset, the <picture> sources and the <noscript> copy are read only
+ *     when src is empty or a placeholder (pg_di_is_blank_src()). A src that
+ *     is the picture stays as it is.
+ *
+ * Working on the document rather than on the image node gives an image
+ * inside heading or paragraph text, which stays markup, the same source.
+ */
+function pg_di_settle_img_sources($doc)
+{
+    // Copied out of the live list: a <noscript> copy is taken out of the
+    // document on the way.
+    $imgs = array();
+    foreach ($doc->getElementsByTagName('img') as $img) $imgs[] = $img;
+    $lazy_attrs = array_merge(pg_di_lazy_src_attrs(), pg_di_lazy_srcset_attrs());
+
+    foreach ($imgs as $img) {
+        // The image inside a <noscript> is a source of the one before it,
+        // not an image of its own (pg_di_node() drops <noscript>).
+        if (pg_di_closest($img, 'noscript') !== null) continue;
+
+        $lazy = '';
+        foreach (pg_di_lazy_src_attrs() as $a) {
+            $v = trim((string)$img->getAttribute($a));
+            if (pg_di_is_image_ref($v) && !pg_di_is_blank_src($v)) { $lazy = $v; break; }
+        }
+        if ($lazy === '') {
+            foreach (pg_di_lazy_srcset_attrs() as $a) {
+                $lazy = pg_di_srcset_best((string)$img->getAttribute($a));
+                if ($lazy !== '') break;
+            }
+        }
+        if ($lazy !== '') {
+            $img->setAttribute('src', $lazy);
+            foreach ($lazy_attrs as $a) {
+                if ($img->hasAttribute($a)) $img->removeAttribute($a);
+            }
+            continue;
+        }
+
+        if (!pg_di_is_blank_src((string)$img->getAttribute('src'))) continue;
+        $found = pg_di_srcset_best((string)$img->getAttribute('srcset'));
+        if ($found === '') {
+            $picture = pg_di_closest($img, 'picture');
+            if ($picture !== null) $found = pg_di_picture_source($picture);
+        }
+        if ($found === '') {
+            $noscript = pg_di_noscript_after($img);
+            if ($noscript !== null) {
+                $found = pg_di_noscript_source($noscript);
+                // Used up: in heading or paragraph text it would stay
+                // behind as a second copy of the image.
+                if ($found !== '') $noscript->parentNode->removeChild($noscript);
+            }
+        }
+        if ($found !== '') $img->setAttribute('src', $found);
+    }
+}
+
+// A src that is no picture: empty, a bare "#", about:blank, or a data: URI
+// too short to hold more than a blank pixel or an empty SVG. A transparent
+// 1×1 GIF is 78 characters; a photo as a data: URI runs to thousands.
+function pg_di_is_blank_src($src)
+{
+    $src = trim((string)$src);
+    if ($src === '' || $src === '#' || strcasecmp($src, 'about:blank') === 0) return true;
+    return strlen($src) <= 512 && stripos($src, 'data:') === 0;
+}
+
+// Whether an attribute value can be an image address: a data:image/ URI, an
+// http(s) or protocol-relative URL, or a relative path. Not a flag a script
+// keeps in the same attribute ("true", "1"), nor javascript:.
+function pg_di_is_image_ref($v)
+{
+    $v = trim((string)$v);
+    if ($v === '') return false;
+    if (preg_match('#^([a-z][a-z0-9+.\-]*):#i', $v, $m)) {
+        $scheme = strtolower($m[1]);
+        if ($scheme === 'data') return stripos($v, 'data:image/') === 0;
+        return $scheme === 'http' || $scheme === 'https';
+    }
+    return strpbrk($v, './') !== false;
+}
+
+// The nearest ancestor of $node with the tag $tag, or null.
+function pg_di_closest($node, $tag)
+{
+    for ($p = $node->parentNode; $p !== null; $p = $p->parentNode) {
+        if ($p->nodeType === XML_ELEMENT_NODE && strtolower($p->nodeName) === $tag) return $p;
+    }
+    return null;
+}
+
+/**
+ * The picture the <source> elements of a <picture> offer: the largest
+ * candidate of the first source without a media condition (the one a
+ * browser takes when no media query narrows the choice), else of the first
+ * source. libxml does not know that <source> is empty and nests what follows
+ * it inside, so the sources are looked up anywhere under the <picture>.
+ */
+function pg_di_picture_source($picture)
+{
+    $first = '';
+    foreach ($picture->getElementsByTagName('source') as $s) {
+        $best = '';
+        foreach (array_merge(array('srcset'), pg_di_lazy_srcset_attrs()) as $a) {
+            $best = pg_di_srcset_best((string)$s->getAttribute($a));
+            if ($best !== '') break;
+        }
+        if ($best === '') continue;
+        if (trim((string)$s->getAttribute('media')) === '') return $best;
+        if ($first === '') $first = $best;
+    }
+    return $first;
+}
+
+// The <noscript> right after an image, past white space and comments, where
+// Next.js, Jetpack, WP Rocket and others keep the same image for a browser
+// that does not run their script. null when there is none.
+function pg_di_noscript_after($img)
+{
+    for ($n = $img->nextSibling; $n !== null; $n = $n->nextSibling) {
+        if ($n->nodeType === XML_COMMENT_NODE) continue;
+        if ($n->nodeType === XML_TEXT_NODE && trim((string)$n->nodeValue) === '') continue;
+        return ($n->nodeType === XML_ELEMENT_NODE && strtolower($n->nodeName) === 'noscript') ? $n : null;
+    }
+    return null;
+}
+
+/**
+ * The picture of the image inside a <noscript>: its src, else the largest
+ * candidate of its srcset; '' when it has neither. libxml 2.9 reads the
+ * content of <noscript> as elements, an HTML5 tokenizer keeps it as text,
+ * so the first <img> tag of that text is read as well.
+ */
+function pg_di_noscript_source($noscript)
+{
+    $img = $noscript->getElementsByTagName('img')->item(0);
+    if ($img !== null) {
+        $src    = trim((string)$img->getAttribute('src'));
+        $srcset = (string)$img->getAttribute('srcset');
+    } elseif (preg_match('/<img\b[^>]*>/i', (string)$noscript->textContent, $m)) {
+        $src    = trim(pg_di_tag_attr($m[0], 'src'));
+        $srcset = pg_di_tag_attr($m[0], 'srcset');
+    } else {
+        return '';
+    }
+    if (pg_di_is_image_ref($src) && !pg_di_is_blank_src($src)) return $src;
+    return pg_di_srcset_best($srcset);
+}
+
+// One attribute of a tag written as markup, entities decoded; '' when the
+// tag does not have it. "src" is not found inside "data-src" or "srcset".
+function pg_di_tag_attr($tag, $name)
+{
+    if (!preg_match('/(?<![\w-])' . preg_quote($name, '/') . '\s*=\s*("[^"]*"|\'[^\']*\'|[^\s"\'>]+)/i', (string)$tag, $m)) return '';
+    $v = $m[1];
+    if ($v[0] === '"' || $v[0] === "'") $v = (string)substr($v, 1, -1);
+    return html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
 // ── References ──────────────────────────────────────────────────────────────
 
 function pg_di_is_absolute($url)
@@ -1096,14 +1295,63 @@ function pg_di_rewrite_ref($ref, $ctx)
     return $ref;
 }
 
+/**
+ * The candidates of a srcset as array('url' => …, 'descriptor' => …), split
+ * the way a browser splits them: a URL runs to the first white space, so the
+ * comma inside a data: URI does not cut it (a URL that ends in commas sheds
+ * them and has no descriptor), and a descriptor runs to the next comma.
+ */
+function pg_di_srcset_candidates($val)
+{
+    $s   = (string)$val;
+    $len = strlen($s);
+    $out = array();
+    $i   = 0;
+    while ($i < $len) {
+        $i += strspn($s, ", \t\n\r\f", $i);
+        if ($i >= $len) break;
+        $n   = strcspn($s, " \t\n\r\f", $i);
+        $url = substr($s, $i, $n);
+        $i  += $n;
+        $desc = '';
+        if (substr($url, -1) === ',') {
+            $url = rtrim($url, ',');
+        } else {
+            $n    = strcspn($s, ',', $i);
+            $desc = trim(substr($s, $i, $n));
+            $i   += $n + 1;
+        }
+        if ($url !== '') $out[] = array('url' => $url, 'descriptor' => $desc);
+    }
+    return $out;
+}
+
+// The largest picture a srcset offers, '' when it offers none: the widest
+// candidate when they carry widths (1200w), else the densest (2x; no
+// descriptor is 1x). Placeholders and values that are no address are passed
+// over.
+function pg_di_srcset_best($val)
+{
+    $by_w = ''; $max_w = -1;
+    $by_x = ''; $max_x = -1.0;
+    foreach (pg_di_srcset_candidates($val) as $c) {
+        if (!pg_di_is_image_ref($c['url']) || pg_di_is_blank_src($c['url'])) continue;
+        if (preg_match('/(?:^|\s)(\d+)w(?:\s|$)/i', $c['descriptor'], $m)) {
+            if ((int)$m[1] > $max_w) { $max_w = (int)$m[1]; $by_w = $c['url']; }
+            continue;
+        }
+        $x = preg_match('/(?:^|\s)(\d*\.?\d+)x(?:\s|$)/i', $c['descriptor'], $m) ? (float)$m[1] : 1.0;
+        if ($x > $max_x) { $max_x = $x; $by_x = $c['url']; }
+    }
+    return ($by_w !== '') ? $by_w : $by_x;
+}
+
 function pg_di_rewrite_srcset($val, $ctx)
 {
-    $parts = array_map('trim', explode(',', $val));
-    foreach ($parts as $i => $p) {
-        if ($p === '') continue;
-        $bits = preg_split('/\s+/', $p, 2);
-        $bits[0] = pg_di_rewrite_ref($bits[0], $ctx);
-        $parts[$i] = implode(' ', $bits);
+    $parts = array();
+    foreach (pg_di_srcset_candidates($val) as $c) {
+        $url = pg_di_rewrite_ref($c['url'], $ctx);
+        $parts[] = ($c['descriptor'] !== '') ? $url . ' ' . $c['descriptor'] : $url;
     }
     return implode(', ', $parts);
 }

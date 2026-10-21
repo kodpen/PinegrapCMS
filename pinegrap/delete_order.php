@@ -38,6 +38,15 @@ function delete_order($request) {
     db("DELETE FROM form_data WHERE (order_id = '" . e($order['id']) . "') AND (order_id != '0')");
     db("DELETE FROM shipping_tracking_numbers WHERE order_id = '" . e($order['id']) . "'");
 
+    // The legal documents the customer accepted are copies that hold the
+    // buyer's name, address, phone, e-mail, IP and browser. Left behind they
+    // are personal data nothing can reach any more, and an order that later
+    // gets the same id would find them "already stored" and show them as its
+    // own (pg_legal_documents_store()).
+    if (pg_schema_has('order_documents')) {
+        db("DELETE FROM order_documents WHERE order_id = '" . e($order['id']) . "'");
+    }
+
     // The order's return requests and their lines name its order lines by id.
     pg_returns_delete_for_order($order['id']);
 

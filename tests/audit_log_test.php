@@ -53,6 +53,33 @@ function test_audit_secret_key_names()
 	}
 }
 
+// Security settings and password bookkeeping named after passwords hold no
+// secret: on/off flags, a hashing scheme, a time, a job cursor. The trail
+// shows their values; the user's own hint text stays masked.
+function test_audit_password_setting_flags_are_plain()
+{
+	foreach (array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done') as $plain) {
+		pg_assert_false(pg_audit_secret_key($plain), $plain);
+	}
+
+	foreach (array('user_password', 'user_password_hint', 'ups_password', 'signature_tsa_password') as $secret) {
+		pg_assert_true(pg_audit_secret_key($secret), $secret);
+	}
+
+	$row = pg_audit_row(
+		'update',
+		'settings',
+		0,
+		array('strong_password' => '1', 'password_hint' => '1', 'forgot_password_link' => '1', 'smtp_password' => 'old'),
+		array('strong_password' => '0', 'password_hint' => '', 'forgot_password_link' => '0', 'smtp_password' => 'new'),
+		'security',
+		1
+	);
+
+	pg_assert_same('{"strong_password":"1","password_hint":"1","forgot_password_link":"1","smtp_password":"***"}', $row['before_json'], 'before: flags readable, secret masked');
+	pg_assert_same('{"strong_password":"0","password_hint":"","forgot_password_link":"0","smtp_password":"***"}', $row['after_json'], 'after: flags readable, secret masked');
+}
+
 // A secret's value is never kept, only that it is set or cleared; nested fields too.
 function test_audit_redact_masks_secrets()
 {
@@ -171,6 +198,20 @@ function test_audit_request_id_and_actor()
 	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'command line');
 }
 
+// Work the software does on its own inside someone's request (the Recycle
+// Bin's daily purge) is recorded as a job's while the switch is on; the switch
+// hands back its previous state so a caller can restore it.
+function test_audit_as_job_switch()
+{
+	pg_assert_false(pg_audit_as_job(), 'off by default');
+	pg_assert_false(pg_audit_as_job(true), 'turning it on returns the previous state');
+	pg_assert_true(pg_audit_as_job(), 'on');
+	pg_assert_true(pg_audit_as_job(true), 'nested: already on');
+	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'a job while on');
+	pg_assert_true(pg_audit_as_job(false), 'turning it off returns the previous state');
+	pg_assert_false(pg_audit_as_job(), 'off again');
+}
+
 // A save that changed nothing reads the same twice: the editor, the stamps and
 // the derived SEO score are left out, every other column stays.
 function test_audit_volatile_columns_left_out()
@@ -201,6 +242,19 @@ function test_audit_tables_and_labels()
 	pg_assert_same('1172', pg_audit_label_of('orders', array('order_number' => '1172', 'reference_code' => 'ABC')), 'order number');
 	pg_assert_same('', pg_audit_label_of('config', array('title' => 'Mağaza')), 'settings have no label column');
 	pg_assert_same('', pg_audit_label_of('nope', array('name' => 'x')), 'unknown table');
+}
+
+// A file or page in the Recycle Bin is parked as "pgbin_<id>_<name>"; its
+// lines are labelled with the name it had, and only its own id's prefix is
+// taken off.
+function test_audit_label_of_parked_row()
+{
+	pg_assert_same('jF-purge-test.txt', pg_audit_label_of('files', array('id' => '6992', 'name' => 'pgbin_6992_jF-purge-test.txt')), 'binned file');
+	pg_assert_same('checkout-preview-terms[1]', pg_audit_label_of('page', array('page_id' => '1084', 'page_name' => 'pgbin_1084_checkout-preview-terms[1]')), 'binned page');
+	pg_assert_same('pgbin_7_logo.png', pg_audit_label_of('files', array('id' => '8', 'name' => 'pgbin_7_logo.png')), 'another row\'s prefix stays');
+	pg_assert_same('pgbin_9_', pg_audit_label_of('files', array('id' => '9', 'name' => 'pgbin_9_')), 'nothing after the prefix');
+	pg_assert_same('pgbin_5_x', pg_audit_label_of('page', array('page_name' => 'pgbin_5_x')), 'no id in the row');
+	pg_assert_same('logo.png', pg_audit_label_of('files', array('id' => '3', 'name' => 'logo.png')), 'a name that is not parked');
 }
 
 // Without a connection nothing is read and nothing is recorded.

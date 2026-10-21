@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Function imagecreatefrombmp not found\.$#'
-			identifier: function.notFound
-			count: 1
-			path: ../pinegrap/edit_file.php
-
-		-
 			message: '#^Undefined variable\: \$output_featured_items$#'
 			identifier: variable.undefined
 			count: 1

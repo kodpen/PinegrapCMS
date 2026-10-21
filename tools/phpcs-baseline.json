@@ -13,10 +13,6 @@
         "PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated": 2,
         "PHPCompatibility.ParameterValues.NewHTMLEntitiesFlagsDefault.NotSet": 23
     },
-    "pinegrap/edit_file.php": {
-        "PHPCompatibility.FunctionUse.NewFunctions.imagecreatefrombmpFound": 2,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.imagedestroyDeprecated": 13
-    },
     "pinegrap/import_contacts.php": {
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.auto_detect_line_endingsDeprecated": 1,
         "PHPCompatibility.ParameterValues.RemovedProprietaryCSVEscaping.DeprecatedParamNotPassed": 2

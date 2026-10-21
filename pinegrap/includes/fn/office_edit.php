@@ -386,12 +386,15 @@ function pg_office_xlsx_date1904($workbook_xml)
  * locked by a sheet's protection.
  *
  * @param ZipArchive $zip
+ * @param string     $refused set to large or damaged when the style part could not be read whole; a save does not
+ *                            guess the kinds then
  * @return array date, text, open: style number => true
  */
-function pg_office_xlsx_style_kinds($zip)
+function pg_office_xlsx_style_kinds($zip, &$refused = null)
 {
-    $out = array('date' => pg_office_xlsx_date_styles($zip), 'text' => array(), 'open' => array());
-    $styles = pg_office_xml($zip, 'xl/styles.xml');
+    $out = array('date' => pg_office_xlsx_date_styles($zip, $refused), 'text' => array(), 'open' => array());
+    $styles = pg_office_xml($zip, 'xl/styles.xml', $status);
+    pg_office_refuse($refused, $status);
 
     if ($styles === null) {
         return $out;
@@ -443,13 +446,18 @@ function pg_office_xlsx_style_kinds($zip)
  * its place in the workbook's element order when there is none.
  *
  * The part is small, so it is changed with DOM; only its direct children are
- * looked at (a workbook view may carry an extension list of its own).
+ * looked at (a workbook view may carry an extension list of its own). One
+ * past PG_OFFICE_MAX_DOM is not built as a tree.
  *
  * @param string $xml xl/workbook.xml
- * @return string|null null when it is not a workbook
+ * @return string|null null when it is not a workbook, or too large
  */
 function pg_office_xlsx_patch_workbook($xml)
 {
+    if (strlen((string) $xml) > PG_OFFICE_MAX_DOM) {
+        return null;
+    }
+
     $document = new DOMDocument('1.0', 'UTF-8');
     $previous = libxml_use_internal_errors(true);
     $loaded = $document->loadXML((string) $xml, LIBXML_NONET);
@@ -612,7 +620,9 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                     $out['locked'][$cell] = 'formula';
                     unset($out['open'][$cell]);
 
-                    $formula = ($reader->isEmptyElement || ($formula_text >= PG_OFFICE_EDIT_FORMULA_TEXT)) ? '' : (string) $reader->readString();
+                    // Read node by node, and only as much as the label
+                    // shows (four bytes a character at most).
+                    $formula = ($reader->isEmptyElement || ($formula_text >= PG_OFFICE_EDIT_FORMULA_TEXT)) ? '' : pg_office_reader_text($reader, PG_OFFICE_EDIT_FORMULA_LABEL * 4);
 
                     if ($formula !== '') {
                         $out['formulas'][$cell] = mb_substr($formula, 0, PG_OFFICE_EDIT_FORMULA_LABEL, 'UTF-8');
@@ -657,15 +667,21 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
  *
  * @param ZipArchive $zip
  * @param string     $sheet_part
+ * @param string     $refused    set to large or damaged when the sheet's relationships or one of its table parts
+ *                               could not be read whole
  * @return array[]|null [first row, first column, last row, last column, table|pivot]; null when the
- *                      sheet has more tables than are read (PG_OFFICE_EDIT_MAX_TABLES)
+ *                      sheet has more tables than are read (PG_OFFICE_EDIT_MAX_TABLES), or when $refused
  */
-function pg_office_xlsx_bound_ranges($zip, $sheet_part)
+function pg_office_xlsx_bound_ranges($zip, $sheet_part, &$refused = null)
 {
     $out = array();
     $folder = substr($sheet_part, 0, (int) strrpos($sheet_part, '/') + 1);
-    $rels = pg_office_rels($zip, $folder . '_rels/' . substr($sheet_part, strlen($folder)) . '.rels');
+    $rels = pg_office_rels($zip, $folder . '_rels/' . substr($sheet_part, strlen($folder)) . '.rels', $refused);
     $tables = 0;
+
+    if ($refused !== '') {
+        return null;
+    }
 
     foreach ($rels as $relationship) {
         if ($relationship['external'] || !in_array($relationship['type'], array('table', 'pivottable'), true)) {
@@ -676,7 +692,14 @@ function pg_office_xlsx_bound_ranges($zip, $sheet_part)
             return null;
         }
 
-        $part = pg_office_xml($zip, pg_office_part_name($folder, $relationship['target']));
+        $part = pg_office_xml($zip, pg_office_part_name($folder, $relationship['target']), $status);
+        pg_office_refuse($refused, $status);
+
+        // A table whose area cannot be read leaves no cell of the sheet
+        // open to a change.
+        if ($refused !== '') {
+            return null;
+        }
 
         if ($part === null) {
             continue;
@@ -799,9 +822,9 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
         return $out;
     }
 
-    // Read whole, as the save reads it: a part is never inflated past the
-    // size its entry declares (a stream through zip:// would go on).
-    $xml = (string) $zip->getFromName($sheet['part']);
+    // Read whole, as the save reads it, and only when it unpacks to exactly
+    // the size its entry declares (a stream through zip:// would go on).
+    $xml = (string) pg_zip_entry_contents($zip, $sheet['part'], PG_OFFICE_EDIT_MAX_PART, $unread);
 
     if (!pg_office_xlsx_utf8_part(substr($xml, 0, 200))) {
         $out['why'] = 'unusual';
@@ -829,7 +852,12 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
         return $out;
     }
 
-    $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part']);
+    $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part'], $bound_refused);
+
+    if ($bound_refused === 'damaged') {
+        $out['why'] = 'unusual';
+        return $out;
+    }
 
     if ($scan['crowded'] || ($bound === null)) {
         $out['why'] = 'large';
@@ -1030,13 +1058,19 @@ function pg_office_xlsx_column_styles($xml, $prefix)
  * @param int    $number  the row's number
  * @param array  $changes column number => typed text (cleaned)
  * @param array  $context declarations, prefix, styles, date1904, protected, column_styles
- * @return array ok, xml, error (layout, locked, xml), cell
+ * @return array ok, xml, error (layout, locked, xml, large), cell
  */
 function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
 {
     $fail = function ($error, $cell = '') {
         return array('ok' => false, 'xml' => '', 'error' => $error, 'cell' => $cell);
     };
+
+    // The row is built as a tree to be changed; one past the DOM ceiling
+    // (pg_office_xml()) is not.
+    if (strlen((string) $row_xml) > PG_OFFICE_MAX_DOM) {
+        return $fail('large');
+    }
 
     $prefix = (string) $context['prefix'];
     $document = new DOMDocument('1.0', 'UTF-8');
@@ -1209,7 +1243,7 @@ function pg_office_xlsx_clear_cell($cell)
  * @param string $xml     the sheet part
  * @param array  $changes row number => [column number => cleaned text]
  * @param array  $context styles, date1904, protected
- * @return array ok, xml, error (unusual, layout, missing, locked, xml), cell
+ * @return array ok, xml, error (unusual, layout, missing, locked, xml, large), cell
  */
 function pg_office_xlsx_patch_sheet($xml, $changes, $context)
 {
@@ -1766,9 +1800,17 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
         return $fail('signed');
     }
 
-    $sheets = pg_office_xlsx_sheets($zip);
-    $styles = pg_office_xlsx_style_kinds($zip);
-    $workbook = (string) $zip->getFromName('xl/workbook.xml');
+    $sheets = pg_office_xlsx_sheets($zip, $refused);
+    $styles = pg_office_xlsx_style_kinds($zip, $styles_refused);
+    pg_office_refuse($refused, $styles_refused);
+
+    // Without the styles a typed value cannot be stored as its cell is
+    // formatted; without the workbook part there is nothing to mark.
+    if ($refused !== '') {
+        return array('ok' => false, 'code' => 'read', 'error' => pg_office_refusal_error($refused), 'size' => 0, 'version' => '', 'changed' => 0);
+    }
+
+    $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook);
     $parts = array();
     $changed = 0;
@@ -1790,10 +1832,10 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
             return $fail('large', '', $sheet['name']);
         }
 
-        $xml = (string) $zip->getFromName($sheet['part']);
+        $xml = (string) pg_zip_entry_contents($zip, $sheet['part'], PG_OFFICE_EDIT_MAX_PART, $unread);
         $reader = new XMLReader();
 
-        if (!@$reader->XML($xml, null, LIBXML_NONET)) {
+        if (($xml === '') || !@$reader->XML($xml, null, LIBXML_NONET)) {
             return $fail('sheet', '', $sheet['name']);
         }
 
@@ -1804,7 +1846,11 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
             return $fail('sheet', '', $sheet['name']);
         }
 
-        $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part']);
+        $bound = pg_office_xlsx_bound_ranges($zip, $sheet['part'], $bound_refused);
+
+        if ($bound_refused === 'damaged') {
+            return $fail('sheet', '', $sheet['name']);
+        }
 
         if ($scan['crowded'] || ($bound === null)) {
             return $fail('large', '', $sheet['name']);
@@ -1833,7 +1879,7 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
                 return $fail($patched['error'], $patched['cell'], $sheet['name']);
             }
 
-            return $fail('sheet', '', $sheet['name']);
+            return $fail(($patched['error'] === 'large') ? 'large' : 'sheet', '', $sheet['name']);
         }
 
         $stripped = pg_office_xlsx_strip_formula_values($patched['xml']);
@@ -1869,7 +1915,7 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
             continue;
         }
 
-        $stripped = pg_office_xlsx_strip_formula_values((string) $zip->getFromName($sheet['part']));
+        $stripped = pg_office_xlsx_strip_formula_values((string) pg_zip_entry_contents($zip, $sheet['part'], PG_OFFICE_EDIT_MAX_PART, $unread));
 
         if ($stripped['ok'] && ($stripped['count'] > 0) && pg_office_xml_well_formed($stripped['xml'])) {
             $file = $spool($stripped['xml']);
@@ -1907,7 +1953,8 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
 
 /**
  * The largest main document part changed here, in bytes unpacked: it is
- * read whole with DOM, which takes several times its size in memory.
+ * read whole with DOM, which takes several times its size in memory. No more
+ * than PG_OFFICE_MAX_DOM, past which the preview reads only its beginning.
  */
 define('PG_OFFICE_EDIT_MAX_DOCUMENT', 8 * 1024 * 1024);
 
@@ -2506,19 +2553,29 @@ function pg_office_docx_new_run($paragraph)
  * edit here would not record.
  *
  * @param ZipArchive $zip
- * @return string '' when nothing, protected or tracking
+ * @return string '' when nothing, protected or tracking; large or unusual when the settings could not be read
+ *                whole, so whether the document is protected is not known
  */
 function pg_office_docx_restriction($zip)
 {
     $part = 'word/settings.xml';
 
-    foreach (pg_office_rels($zip, 'word/_rels/document.xml.rels') as $relationship) {
+    foreach (pg_office_rels($zip, 'word/_rels/document.xml.rels', $refused) as $relationship) {
         if (!$relationship['external'] && ($relationship['type'] === 'settings')) {
             $part = pg_office_part_name('word/', $relationship['target']);
         }
     }
 
-    $settings = pg_office_xml($zip, $part);
+    $settings = null;
+
+    if ($refused === '') {
+        $settings = pg_office_xml($zip, $part, $status);
+        pg_office_refuse($refused, $status);
+    }
+
+    if ($refused !== '') {
+        return ($refused === 'large') ? 'large' : 'unusual';
+    }
 
     if ($settings === null) {
         return '';
@@ -2672,10 +2729,10 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
         return $fail($refusal);
     }
 
-    $xml = (string) $zip->getFromName('word/document.xml');
+    $xml = pg_zip_entry_contents($zip, 'word/document.xml', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread);
 
-    if (!pg_office_xlsx_utf8_part(substr($xml, 0, 200)) || (stripos($xml, '<!DOCTYPE') !== false)) {
-        return $fail('unusual');
+    if (($xml === null) || !pg_office_xlsx_utf8_part(substr($xml, 0, 200)) || (stripos($xml, '<!DOCTYPE') !== false)) {
+        return $fail(($unread === 'large') ? 'large' : 'unusual');
     }
 
     // Read without dropping blank text: a space between two runs is text.
