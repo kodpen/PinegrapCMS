@@ -866,10 +866,13 @@ $failures = array();
 if ($selected) {
 
 	// One query for the mapping and the product beside it. The screen shows the
-	// shop's price and quantity next to the remote code, because the question
-	// an operator opens this screen with is "what is it going to send".
+	// price and quantity next to the remote code, because the question an
+	// operator opens this screen with is "what is it going to send": the price
+	// is the one the queue sends, tax included (mp_product_price()), which is
+	// why the product's taxable flag and rate ride along.
 	$maps = (array) db_items("SELECT marketplace_product_map.*,
 			products.name AS product_name, products.title, products.price,
+			products.taxable, products.tax_rate,
 			products.inventory, products.inventory_quantity, products.out_of_stock, products.enabled
 		FROM marketplace_product_map
 		LEFT JOIN products ON products.id = marketplace_product_map.product_id
@@ -1205,7 +1208,7 @@ if ($selected) {
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
-				<span>' . prepare_price_for_output((int)$map['price'], false, 0, 'html', false) . '</span>
+				<span>' . prepare_price_for_output(mp_product_price($map), false, 0, 'html', false) . '</span>
 				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'

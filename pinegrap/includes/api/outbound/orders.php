@@ -204,6 +204,24 @@ function mp_import_claimed($account, $package, $map_id) {
 
 	}
 
+	// Cancelled before this shop ever saw it - between two pulls, or before the
+	// first one. Nothing is written: there is nothing to pick, and writing the
+	// order only to cancel it would take the stock and give it back, which is
+	// not a round trip when the stock was short (the take stops at zero, the
+	// return adds the whole quantity). The map row stays, so the package is
+	// never imported later, and says why there is no order.
+	if (mp_order_stage($account, $package) === 'cancelled') {
+
+		db("UPDATE marketplace_order_map
+			SET status = 'imported',
+				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
+				updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . e($map_id) . "'");
+
+		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+	}
+
 	$order_id = mp_order_write($account, $package, $map_id);
 
 	if (!$order_id) {

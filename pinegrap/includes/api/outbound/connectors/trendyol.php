@@ -1040,8 +1040,16 @@ function mp_trendyol_barcode_problem($barcode) {
 // The same answer n11 gets, for the same reason: a product with no rate of
 // its own follows the shop's tax zone and that can be any number, and the
 // nearest allowed rate below it is sent - rounding up would overstate the tax
-// the buyer pays.
+// the buyer pays. A product the shop does not tax (taxable off) is reported
+// at zero: its price carries no tax, so the zone's rate would be a tax the
+// shop never charges.
 function mp_trendyol_vat_rate($item) {
+
+	if (isset($item['taxable']) && !$item['taxable']) {
+
+		return 0;
+
+	}
 
 	$rate = (isset($item['tax_rate']) && $item['tax_rate'] !== null)
 		? (float)$item['tax_rate']
@@ -1274,6 +1282,9 @@ function mp_trendyol_push_stock_price($account, $rows, $transport = null) {
 //
 //   price is sent as both list and sale price, the shop having one price, and
 //   a product without a price is left out rather than offered for nothing.
+//   The row's price_major already carries the tax the checkout adds
+//   (mp_product_price()): their sale price is what the buyer pays, VAT
+//   inside.
 //
 //   a product with nothing to say (untracked, and prices not sent) is simply
 //   not in the request.
