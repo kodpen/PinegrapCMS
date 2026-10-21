@@ -24705,5 +24705,14 @@
     "This order already has a sales invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var.",
     "Cancelled on the marketplace before it was imported. No order was written.": "İçe aktarılmadan önce pazaryerinde iptal edilmiş; sipariş oluşturulmadı.",
     "The orders that failed will be read from the marketplace again on the next run.": "Başarısız olan siparişler bir sonraki çalışmada pazaryerinden yeniden okunacak.",
-    "Match the products first. The next run reads the failed orders again.": "Önce ürünleri eşleştirin. Sonraki çalışma başarısız siparişleri yeniden okur."
+    "Match the products first. The next run reads the failed orders again.": "Önce ürünleri eşleştirin. Sonraki çalışma başarısız siparişleri yeniden okur.",
+    "Small target {var:1}×{var:2}px with others close by: at least 24×24px, or room around it": "Küçük hedef {var:1}×{var:2}px ve yakınında başka hedefler var: en az 24×24px olmalı ya da çevresinde boşluk kalmalı",
+    "This field asks again for what the form already asked: fill it in for the visitor or let them pick it": "Bu alan formun zaten sorduğu bilgiyi yeniden soruyor: ziyaretçi için doldurun ya da seçmesine izin verin",
+    "For a signed-in user, remembers whether pages show their editing tools.": "Oturum açmış kullanıcı için sayfaların düzenleme araçlarıyla gösterilip gösterilmeyeceğini hatırlar.",
+    "Remembers the language you chose for the site.": "Site için seçtiğiniz dili hatırlar.",
+    "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
+    "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin.",
+    "This movement is a step of {var:1}, which changes only by its own steps on its screen; it cannot be cancelled on its own.": "Bu hareket {var:1} kaydının bir adımı; çek ve senet yalnız kendi ekranındaki adımlarla değişir, hareket tek başına iptal edilemez.",
+    "Open the cheque or note": "Çeki veya Senedi Aç",
+    "That document is not an invoice; a receipt does not close it.": "Bu belge bir fatura değil; tahsilat ya da ödeme onu kapatmaz."
 }

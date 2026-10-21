@@ -80,6 +80,28 @@ function zip_entry_contents_test_archive($path, array $entries, array $declared 
 	return $path;
 }
 
+// A zip written byte by byte, for compressed streams this PHP's libzip does
+// not write itself: name => array(method, compressed bytes, size, crc).
+function zip_entry_contents_test_raw_archive($path, array $entries)
+{
+	$out = '';
+	$central = '';
+
+	foreach ($entries as $name => $entry) {
+		list($method, $data, $size, $crc) = $entry;
+		$offset = strlen($out);
+
+		$out .= pack('VvvvvvVVVvv', 0x04034b50, 20, 0, $method, 0, 0, $crc, strlen($data), $size, strlen($name), 0) . $name . $data;
+		$central .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0, $method, 0, 0, $crc, strlen($data), $size, strlen($name), 0, 0, 0, 0, 0, $offset) . $name;
+	}
+
+	$out .= $central . pack('VvvvvVVv', 0x06054b50, 0, 0, count($entries), count($entries), strlen($central), strlen($out), 0);
+
+	file_put_contents($path, $out);
+
+	return $path;
+}
+
 // Whether this libzip, asked for one byte past an entry's declared size,
 // hands it over (the overrun pg_zip_entry_contents() refuses). One that stops
 // at the declared size on its own leaves nothing to tell apart.
@@ -161,6 +183,63 @@ function test_zip_entry_contents_reads_no_further_than_declared()
 	pg_assert_same('missing', $error, 'said to be missing by index');
 
 	$zip->close();
+	zip_entry_contents_test_clean($dir);
+}
+
+// An empty file is empty whatever its writer put in its compressed stream:
+// Go's archive/zip ends every deflate stream with an empty stored block (5
+// bytes), a sync-flushing writer leaves 7, bzip2 14. Those used to be
+// refused as damaged, and the imported page linked to a file never written.
+// Data behind a size of nothing is still refused.
+function test_zip_entry_contents_empty_entries_of_any_writer()
+{
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
+
+	$dir = zip_entry_contents_test_dir();
+	$path = zip_entry_contents_test_raw_archive($dir . '/go.zip', array(
+		'css/go-empty.css' => array(8, "\x01\x00\x00\xff\xff", 0, 0),
+		'sync-empty.css' => array(8, "\x00\x00\x00\xff\xff\x03\x00", 0, 0),
+		'zlib-empty.css' => array(8, "\x03\x00", 0, 0),
+		'stored-empty.css' => array(0, '', 0, 0),
+		'hidden.txt' => array(8, gzdeflate(str_repeat('n', 5000)), 0, crc32(str_repeat('n', 5000))),
+		'two-letters.txt' => array(8, gzdeflate('ab'), 0, crc32('ab')),
+		'garbage.txt' => array(8, "\xff\xff\xff\xff\xff\xff", 0, 0),
+	));
+
+	$zip = new ZipArchive();
+	pg_assert_true($zip->open($path) === true, 'archive opens');
+
+	foreach (array('css/go-empty.css', 'sync-empty.css', 'zlib-empty.css', 'stored-empty.css') as $name) {
+		$error = 'unset';
+		pg_assert_same('', pg_zip_entry_contents($zip, $name, 1000, $error), $name);
+		pg_assert_same('', $error, $name . ': no error');
+	}
+
+	pg_assert_same('', pg_zip_entry_contents($zip, $zip->locateName('css/go-empty.css'), 1000, $error), 'by its index');
+
+	foreach (array('hidden.txt', 'two-letters.txt', 'garbage.txt') as $name) {
+		$error = 'unset';
+		pg_assert_same(null, pg_zip_entry_contents($zip, $name, 1000, $error), $name);
+		pg_assert_same('damaged', $error, $name . ': damaged');
+	}
+
+	$zip->close();
+
+	if (method_exists('ZipArchive', 'isCompressionMethodSupported') && ZipArchive::isCompressionMethodSupported(ZipArchive::CM_BZIP2)) {
+		$zip = new ZipArchive();
+		$zip->open($dir . '/bz.zip', ZipArchive::CREATE | ZipArchive::OVERWRITE);
+		$zip->addFromString('empty.css', '');
+		$zip->setCompressionName('empty.css', ZipArchive::CM_BZIP2);
+		$zip->close();
+
+		$zip->open($dir . '/bz.zip');
+		pg_assert_same('', pg_zip_entry_contents($zip, 'empty.css', 1000, $error), 'an empty bzip2 entry');
+		pg_assert_same('', $error, 'bzip2: no error');
+		$zip->close();
+	}
+
 	zip_entry_contents_test_clean($dir);
 }
 

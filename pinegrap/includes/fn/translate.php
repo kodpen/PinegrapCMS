@@ -492,6 +492,42 @@ function pg_tr_record_fields($fields)
 }
 
 /**
+ * A product's own texts in the current language, for an answer the page's
+ * scripts write into a page drawn in that language (api.php get_product,
+ * the variant chooser's refresh): the name the visitor reads
+ * (short_description) as one text, the rich-text fields by their blocks, as
+ * the page itself has them translated (pg_tr_render_db_texts()). Unchanged in
+ * the source language and for a field without a translation.
+ *
+ * @param array $product a products row
+ * @return array
+ */
+function pg_tr_product_fields($product)
+{
+    if (!pg_tr_active() || !is_array($product)) {
+        return $product;
+    }
+
+    pg_tr_load();
+
+    if (isset($product['short_description']) && ((string) $product['short_description'] !== '')) {
+        $found = pg_tr_db_text((string) $product['short_description'], array('text'));
+
+        if ($found !== null) {
+            $product['short_description'] = $found[0];
+        }
+    }
+
+    foreach (array('full_description', 'details', 'out_of_stock_message') as $field) {
+        if (isset($product[$field]) && ((string) $product[$field] !== '')) {
+            $product[$field] = pg_tr_render_html_value((string) $product[$field]);
+        }
+    }
+
+    return $product;
+}
+
+/**
  * A label a message repeats (a form field's), in the current language.
  */
 function pg_tr_label($text)

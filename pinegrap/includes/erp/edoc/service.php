@@ -1374,6 +1374,15 @@ function erp_edoc_taxpayer_lookup($tax_number)
         return $out;
     }
 
+    // A mistyped number is told here rather than asked: the request costs a
+    // read at the provider (İşbaşı counts them) and its "not registered,
+    // goes as an e-Archive" would send the number on as a valid buyer. The
+    // final consumer number goes on as before.
+    if (!erp_edoc_tax_number_valid($number, true)) {
+        $out['error'] = lang('The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.');
+        return $out;
+    }
+
     $provider = erp_edoc_active();
 
     if ($provider === '') {
