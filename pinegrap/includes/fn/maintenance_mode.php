@@ -188,6 +188,71 @@ function pg_maintenance_time_text($time)
 }
 
 /**
+ * The end time typed into the card (datetime-local, Y-m-d\TH:i), read in the
+ * time zone the same save gives the site. Settings › General saves the time
+ * zone and the end time in one UPDATE, and the request still runs in the old
+ * zone: read in that one, the end time moved by the difference between the two
+ * (15:00 typed for Istanbul stored as 15:00 UTC, shown as 18:00 next time).
+ *
+ * @param string $posted    the input's value; seconds, if a browser sends them, are dropped
+ * @param string $timezone  the zone the site will have; an unknown one falls back to the request's
+ * @return int|false  the timestamp, 0 for no end time, false for a value that is not a date and time
+ */
+function pg_maintenance_until_parse($posted, $timezone)
+{
+    $posted = trim((string) $posted);
+
+    if ($posted === '') {
+        return 0;
+    }
+
+    $value = substr($posted, 0, 16);
+    $zone = null;
+
+    if ((string) $timezone !== '') {
+        try {
+            $zone = new DateTimeZone((string) $timezone);
+        } catch (Exception $exception) {
+            $zone = null;
+        }
+    }
+
+    if ($zone === null) {
+        $zone = new DateTimeZone(date_default_timezone_get());
+    }
+
+    $parsed = DateTime::createFromFormat('!Y-m-d\TH:i', $value, $zone);
+
+    if (($parsed === false) || ($parsed->format('Y-m-d\TH:i') !== $value)) {
+        return false;
+    }
+
+    return $parsed->getTimestamp();
+}
+
+/**
+ * Does an end time that has passed refuse the save? Only when the save would
+ * switch the mode on or give it a new end: a mode over before it starts. A
+ * mode that ended by itself keeps its switch and its passed end, and saving
+ * any other general setting must not stop on it.
+ *
+ * @param bool $on         the switch as posted
+ * @param int  $until      the end time as read (0 = none)
+ * @param int  $now
+ * @param bool $was_on     the stored switch
+ * @param int  $was_until  the stored end time
+ * @return bool
+ */
+function pg_maintenance_until_refused($on, $until, $now, $was_on, $was_until)
+{
+    if (!$on || ((int) $until <= 0) || ((int) $until > (int) $now)) {
+        return false;
+    }
+
+    return !$was_on || ((int) $until !== (int) $was_until);
+}
+
+/**
  * The gate in front of a page render (get_page.php): while the mode holds,
  * a visitor gets the maintenance screen with a 503 and Retry-After, and the
  * request ends here.

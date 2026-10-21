@@ -63,11 +63,14 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   shipping_address   the same shape, or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
-//                      price, tax, discount)
+//                      price, tax, discount, and optionally discount_total)
 //
 // price, tax and discount are minor units PER UNIT, because that is what
 // order_items stores and converting once here is better than three connectors
-// each getting it wrong differently.
+// each getting it wrong differently. discount_total, when a connector gives it,
+// is the whole line's discount and is used instead of discount x quantity: a
+// marketplace that discounts the line rather than the unit has an amount that
+// does not always divide by the quantity.
 function mp_import_order($account, $package) {
 
 	$account_id = (int) $account['id'];
@@ -485,27 +488,18 @@ function mp_order_write($account, $package, $map_id) {
 
 	$contact_id = mp_order_contact($customer, $billing);
 
-	$subtotal = 0;
+	$totals = mp_order_totals(array_column($matched, 'line'),
+		isset($package['shipping_cost']) ? $package['shipping_cost'] : 0);
 
-	$tax = 0;
+	$subtotal = $totals['subtotal'];
 
-	$discount = 0;
+	$tax = $totals['tax'];
 
-	foreach ($matched as $entry) {
+	$discount = $totals['discount'];
 
-		$quantity = max(1, (int)$entry['line']['quantity']);
+	$shipping = $totals['shipping'];
 
-		$subtotal += ((int)$entry['line']['price']) * $quantity;
-
-		$tax      += ((int)$entry['line']['tax']) * $quantity;
-
-		$discount += ((int)$entry['line']['discount']) * $quantity;
-
-	}
-
-	$shipping = isset($package['shipping_cost']) ? (int)$package['shipping_cost'] : 0;
-
-	$total = $subtotal - $discount + $tax + $shipping;
+	$total = $totals['total'];
 
 	$placed_at = isset($package['placed_at']) ? (int)$package['placed_at'] : time();
 
@@ -624,6 +618,43 @@ function mp_order_write($account, $package, $map_id) {
 	}
 
 	return $order_id;
+
+}
+
+// What the lines add up to, in minor units: array(subtotal, discount, tax,
+// shipping, total). The discount is each line's discount_total where the
+// connector gave one, and its unit discount times the quantity otherwise.
+function mp_order_totals($lines, $shipping = 0) {
+
+	$subtotal = 0;
+
+	$tax = 0;
+
+	$discount = 0;
+
+	foreach ((array)$lines as $line) {
+
+		$quantity = max(1, (int)$line['quantity']);
+
+		$subtotal += ((int)$line['price']) * $quantity;
+
+		$tax      += ((int)$line['tax']) * $quantity;
+
+		$discount += isset($line['discount_total'])
+			? (int)$line['discount_total']
+			: ((int)$line['discount']) * $quantity;
+
+	}
+
+	$shipping = (int) $shipping;
+
+	return array(
+		'subtotal' => $subtotal,
+		'discount' => $discount,
+		'tax'      => $tax,
+		'shipping' => $shipping,
+		'total'    => $subtotal - $discount + $tax + $shipping
+	);
 
 }
 

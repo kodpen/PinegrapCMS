@@ -65,6 +65,11 @@ if (!$_POST) {
         // panel would show as 5,000.00 and be saved as such.
         $liveform->assign_field_value('balance', sprintf('%01.2f', $gift_card['balance'] / 100));
 
+        // The balance the screen opened with, so a save that leaves the
+        // balance as it was does not write it back over an amount an order
+        // spent meanwhile (submit_order() takes it off with balance - amount).
+        $liveform->assign_field_value('balance_was', (string) (int) $gift_card['balance']);
+
         if ($gift_card['expiration_date'] != '0000-00-00') {
             $liveform->assign_field_value('expiration_date', prepare_form_data_for_output($gift_card['expiration_date'], 'date'));
         }
@@ -289,6 +294,7 @@ if (!$_POST) {
                 <form name="form" action="edit_gift_card.php" method="post" >
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
+                    ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'balance_was')) . '
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-4">
@@ -407,12 +413,37 @@ if (!$_POST) {
 
         // Convert balance into cents.
         $balance = (int) round($balance * 100);
-        
+
+        // The balance is written only when it was changed on this screen,
+        // and then only over the amount the screen opened with: an order or
+        // the API may have changed it since. A form without the field (opened
+        // before this check existed) writes it as before.
+        $balance_was = $liveform->get_field_value('balance_was');
+        $balance_set = '';
+
+        if (!is_numeric($balance_was) || ((int) $balance_was !== $balance)) {
+            if (is_numeric($balance_was)) {
+                db("UPDATE gift_cards SET balance = '" . $balance . "' WHERE id = '" . (int) $gift_card['id'] . "' AND balance = '" . (int) $balance_was . "'");
+                $now = (int) db_value("SELECT balance FROM gift_cards WHERE id = '" . (int) $gift_card['id'] . "'");
+
+                if ($now !== $balance) {
+                    $liveform->assign_field_value('balance_was', (string) $now);
+                    $liveform->mark_error('balance', lang(array(
+                        'string' => 'The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.',
+                        // Plain text: the field's own feedback escapes the message.
+                        'vars'   => html_entity_decode(pg_format_money($now / 100, BASE_CURRENCY_SYMBOL), ENT_QUOTES, 'UTF-8'))));
+                    go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+                }
+            } else {
+                $balance_set = "balance = '" . $balance . "',";
+            }
+        }
+
         // Update gift card properties.
         db(
             "UPDATE gift_cards
             SET
-                balance = '" . e($balance) . "',
+                " . $balance_set . "
                 expiration_date = '" . e(prepare_form_data_for_input($expiration_date, 'date')) . "',
                 notes = '" . e($notes) . "',
                 last_modified_user_id = '" . USER_ID . "',

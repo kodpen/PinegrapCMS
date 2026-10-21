@@ -282,6 +282,7 @@ if (!isset($_POST['name'])) {
 
     $optimize_button = '';
     $image_buttons = '';
+    $output_rotate_form = '';
     $output_convert_rows = '';
     $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file_name) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
     // Convert file size to a user friendly output.
@@ -440,7 +441,23 @@ if (!isset($_POST['name'])) {
                         'vars'   => array($image_settings['file_max_dimension']))) . '</a>';
             }
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            // The rotate buttons sit in the edit form's button bar but submit
+            // a form of their own. As submit buttons of the edit form they
+            // would be its first ones, and Return in the name field submits
+            // with the first submit button: the picture would turn to the
+            // left and the name typed would be lost. This way Return reaches
+            // Save & Return, as for every other file. The form carries the
+            // stored name: this screen tells a submission from a page view
+            // by the posted name, and checks it before it looks at which
+            // button was pressed.
+            $output_rotate_form = '
+                <form action="edit_file.php" method="post" id="edit_file_rotate" class="disable_shortcut d-none">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="name" value="' . h($file_name) . '">
+                </form>';
+
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -521,7 +538,7 @@ if (!isset($_POST['name'])) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                
+                ' . $output_rotate_form . '
                 <form action="edit_file.php" method="post" submitshortcut="submit_save">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
@@ -731,157 +748,171 @@ $liveform->remove_form('edit_file');
     }
 
     $sql_size = '';
-    $image = '';
     // Set when the original image has already been replaced by its WebP
     // conversion, so the rename step below must not move the old file onto it.
     $webp_replaced_original = false;
 
+    // The sentence for an image the engine could not process. Each reason
+    // asks for something different of the operator, so each has its own
+    // sentence; the same ones the file manager's buttons use.
+    $image_report_message = function ($report, $file_name, $failed_message) {
 
-    
+        switch ($report['reason']) {
+
+            case 'animated':
+                return lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file_name));
+
+            case 'missing':
+                return lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file_name));
+
+            case 'too_large_to_process':
+                return lang(array('string' => 'Sorry, {var:1} needs more memory than this server allows. Please resize it on your computer and upload it again.', 'vars' => $file_name));
+
+            case 'no_webp':
+                return lang('This server cannot produce WebP images (neither Imagick nor GD supports it).');
+
+            case 'no_library':
+                return lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.');
+        }
+
+        return $failed_message;
+    };
+
     // ROTATE IMAGE (left or right)
+    //
+    // Through the image engine, as the file manager's rotate button: it reads
+    // the file by its detected type, turns a phone photo's EXIF orientation
+    // into pixels before the quarter turn, writes the result back in the
+    // file's own format (a BMP stays a BMP) through a temporary file, and
+    // reports a file it could not turn instead of leaving it unchanged under
+    // a success notice.
     if (!empty($_POST['rotate_left']) || !empty($_POST['rotate_right'])) {
-        $rotate_left = !empty($_POST['rotate_left']);
-        $rotated = false;
 
-        // Imagick preferred — positive angle = clockwise
-        if (class_exists('Imagick')) {
-            try {
-                $img = new Imagick($stored_file_path);
-                $img->rotateImage(new ImagickPixel('none'), $rotate_left ? -90 : 90);
-                $img->writeImage($stored_file_path);
-                $img->destroy();
-                $rotated = true;
-            } catch (Exception $e) {
-                $rotated = false;
-            }
+        // The formats the engine can decode and encode; the buttons are only
+        // drawn for these.
+        if (in_array($stored_file_extension, array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif', 'webp'), true) == false) {
+            output_error(lang('Sorry, that type of file cannot be rotated here.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        // GD fallback — positive angle = counter-clockwise (opposite of Imagick)
-        if (!$rotated) {
-            $angle_gd = $rotate_left ? 90 : -90;
-            switch ($stored_file_extension) {
-                case 'jpg': case 'jpeg':
-                    $img = imagecreatefromjpeg($stored_file_path);
-                    if ($img !== false) {
-                        $rot = imagerotate($img, $angle_gd, 0);
-                        imagejpeg($rot, $stored_file_path, 90);
-                        imagedestroy($img); imagedestroy($rot);
-                        $rotated = true;
-                    }
-                    break;
-                case 'png':
-                    $img = imagecreatefrompng($stored_file_path);
-                    if ($img !== false) {
-                        $transparent = imagecolorallocatealpha($img, 0, 0, 0, 127);
-                        $rot = imagerotate($img, $angle_gd, $transparent);
-                        imagesavealpha($rot, true);
-                        imagepng($rot, $stored_file_path);
-                        imagedestroy($img); imagedestroy($rot);
-                        $rotated = true;
-                    }
-                    break;
-                case 'gif':
-                    $img = imagecreatefromgif($stored_file_path);
-                    if ($img !== false) {
-                        $rot = imagerotate($img, $angle_gd, 0);
-                        imagegif($rot, $stored_file_path);
-                        imagedestroy($img); imagedestroy($rot);
-                        $rotated = true;
-                    }
-                    break;
-                case 'webp':
-                    if (function_exists('imagecreatefromwebp')) {
-                        $img = imagecreatefromwebp($stored_file_path);
-                        if ($img !== false) {
-                            $rot = imagerotate($img, $angle_gd, 0);
-                            imagewebp($rot, $stored_file_path, 90);
-                            imagedestroy($img); imagedestroy($rot);
-                            $rotated = true;
-                        }
-                    }
-                    break;
-                case 'bmp':
-                    if (function_exists('imagecreatefrombmp')) {
-                        $img = imagecreatefrombmp($stored_file_path);
-                        if ($img !== false) {
-                            $rot = imagerotate($img, $angle_gd, 0);
-                            imagejpeg($rot, $stored_file_path, 90);
-                            imagedestroy($img); imagedestroy($rot);
-                            $rotated = true;
-                        }
-                    }
-                    break;
-            }
+        // A large photo takes a couple of seconds to re-encode.
+        @set_time_limit(120);
+
+        // The engine turns clockwise, so a quarter to the left is three
+        // quarters to the right. Encoded at a high quality rather than the
+        // optimize ladder: the operator asked for the picture the other way
+        // up, not for a lighter file, and each turn would otherwise cost
+        // another generation of compression.
+        $rotate_report = pg_process_image_file($stored_file_path, array(
+            'rotate'  => !empty($_POST['rotate_left']) ? 270 : 90,
+            'quality' => 92));
+
+        // The form's errors are printed as markup, and the sentence carries
+        // the file name.
+        if ($rotate_report['status'] !== 'success') {
+            $liveform->add_error(h($image_report_message(
+                $rotate_report,
+                $row['name'],
+                lang(array('string' => 'Sorry, we could not rotate that image ({var:1}).', 'vars' => $row['name'])))));
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+            exit();
         }
-    
-        // Update DB with the new size, dimensions and timestamp.
-        //
-        // A quarter turn swaps width and height, and those two columns are a
-        // cache that is only refilled when it is empty — so leaving them alone
-        // here left the file list printing the pre-rotation size for ever, and
-        // the resize button deciding on it.
+
         @clearstatcache(true, $stored_file_path);
 
-        $rotated_size = @getimagesize($stored_file_path);
-
-        $sql_rotated_dimensions = '';
-
-        if ($rotated_size && !empty($rotated_size[0]) && !empty($rotated_size[1])) {
-            $sql_rotated_dimensions =
-                "image_width = '" . (int) $rotated_size[0] . "',
-                 image_height = '" . (int) $rotated_size[1] . "',";
-        }
-
+        // A quarter turn swaps width and height, and those two columns are a
+        // cache that is only refilled when it is empty, so they are written
+        // here from what the engine produced. The picture was re-encoded
+        // outside the site's image profile, so the optimized mark no longer
+        // holds and the optimize button is offered again.
         $query = "UPDATE files SET
-            size = '" . escape(filesize($stored_file_path)) . "',
-            " . $sql_rotated_dimensions . "
+            size = '" . (int) filesize($stored_file_path) . "',
+            image_width = '" . (int) $rotate_report['width'] . "',
+            image_height = '" . (int) $rotate_report['height'] . "',
+            optimized = '0',
             timestamp = UNIX_TIMESTAMP(),
             user = '" . $user['id'] . "'
             WHERE id = '" . $file_id . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed');
-    
+
         pg_audit_record('update', 'files', (int) $file_id, $audit_before);
 
-        // Log activity
-        log_activity(lang(array('string'=>'file ({var:1}) was rotated','vars'=>$name)), $_SESSION['sessionusername']);
-    
-        // Notify user
-        include_once('liveform.class.php');
-        $liveform = new liveform('edit_file');
+        log_activity(lang(array('string'=>'file ({var:1}) was rotated','vars'=>$row['name'])), $_SESSION['sessionusername']);
+
         $liveform->add_notice(lang('The file was rotated successfully.'));
-    
-        // Build redirect URL
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
         exit();
     }
 
     // WEBP CONVERSION
-    if (!empty($_POST['convert_webp'])) {
-        switch ($stored_file_extension) {
-            case 'jpg': case 'jpeg': $image = imagecreatefromjpeg($stored_file_path); break;
-            case 'png': $image = imagecreatefrompng($stored_file_path); break;
-            case 'gif': $image = imagecreatefromgif($stored_file_path); break;
-            case 'bmp': $image = imagecreatefrombmp($stored_file_path); break;
+    //
+    // Encoded by the image engine, as the file manager's "Convert to WebP".
+    // GD's imagewebp() writes nothing for a palette image (every GIF, an
+    // 8-bit PNG) and still returns true, which would leave an empty .webp
+    // and, in replace mode, delete the original after it; the engine turns a
+    // palette into truecolor first. It also reads the file by its detected
+    // type with whichever library this PHP has (imagecreatefrombmp() is PHP
+    // 7.2+, a TIFF needs Imagick) and says why when it cannot.
+    //
+    // Encoded only when one of the two branches below will use it, and
+    // before either writes anything: a failure stops the request with the
+    // original file and its row as they were.
+    //
+    // Replace mode only for the save buttons: the original is deleted, so it
+    // must run only when the row is about to be updated with the new name.
+    // Otherwise a Duplicate request would remove a file its record still
+    // points to.
+    $webp_replace = (
+        !empty($_POST['convert_webp'])
+        && empty($_POST['convert_webp_create_copy'])
+        && (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return'])));
+
+    $webp_copy = (!empty($_POST['convert_webp']) && !empty($_POST['convert_webp_create_copy']));
+
+    // webp is not a source: the switch is not drawn for a WebP file, and
+    // re-encoding one is the optimize button's job.
+    if (in_array($stored_file_extension, array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif'), true) == false) {
+        $webp_replace = false;
+        $webp_copy = false;
+    }
+
+    $webp_report = null;
+
+    if ($webp_replace || $webp_copy) {
+
+        @set_time_limit(120);
+
+        $webp_report = pg_process_image_file($stored_file_path, array('write' => false, 'format' => 'webp'));
+
+        if (($webp_report['status'] !== 'success') || ($webp_report['data'] === null)) {
+            output_error(
+                h($image_report_message(
+                    $webp_report,
+                    $row['name'],
+                    lang(array('string' => 'Sorry, we could not convert that image ({var:1}).', 'vars' => $row['name']))))
+                . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 
     // WEBP overwrite
-    //
-    // Only for the save buttons: the original is deleted below, so this
-    // must run only when the row is about to be updated with the new name.
-    // Otherwise a Duplicate request would remove a file its record still
-    // points to.
-    if (!empty($_POST['convert_webp']) && empty($_POST['convert_webp_create_copy']) && $image && (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return']))) {
+    if ($webp_replace) {
         $name = prepare_file_name(pathinfo($name, PATHINFO_FILENAME) . '.webp');
         $file_path = FILE_DIRECTORY_PATH . '/' . $name;
         if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
             output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        if (imagewebp($image, $file_path) == FALSE) {
-            imagedestroy($image);
-            output_error(lang('The image could not be converted to WebP.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+
+        // Through a temporary file in the same directory, as the engine
+        // writes: the name is the file's public address, and a write cut
+        // short would leave half a picture there.
+        $webp_temporary_path = $file_path . '.pgwebp' . (function_exists('getmypid') ? getmypid() : uniqid());
+
+        if ((@file_put_contents($webp_temporary_path, $webp_report['data']) === false) || (@rename($webp_temporary_path, $file_path) == false)) {
+            @unlink($webp_temporary_path);
+            output_error(lang(array('string' => 'The WebP file could not be written to the file system ({var:1}).', 'vars' => h($row['name']))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        imagedestroy($image);
+
         // The converted file replaces the original; remove the source so the
         // rename below does not overwrite the WebP bytes with the old image.
         $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
@@ -890,28 +921,44 @@ $liveform->remove_form('edit_file');
         }
         $webp_replaced_original = true;
         $file_extension = 'webp';
-        $sql_size = "size = '" . escape(filesize($file_path)) . "',";
+
+        // The engine already recompressed, so the optimized flag is set:
+        // running the optimize button over the result would only degrade it
+        // a second time.
+        $sql_size = "size = '" . (int) strlen($webp_report['data']) . "',
+            image_width = '" . (int) $webp_report['width'] . "',
+            image_height = '" . (int) $webp_report['height'] . "',
+            optimized = '1',
+            optimization_percent = '0',";
     }
 
     // WEBP copy
-    if (!empty($_POST['convert_webp']) && !empty($_POST['convert_webp_create_copy']) && $image) {
+    if ($webp_copy) {
         $webpname = prepare_file_name(pathinfo($name, PATHINFO_FILENAME) . '.webp');
         $webpname = get_unique_name(array('name' => $webpname, 'type' => 'file'));
         $webp_path = FILE_DIRECTORY_PATH . '/' . $webpname;
         $sql_design_1 = ($user['role'] <= 1) ? "design," : '';
         $sql_design_2 = ($user['role'] <= 1) ? "'" . escape($_POST['design'] ?? '') . "'," : '';
 
-        imagewebp($image, $webp_path);
-        $size = filesize($webp_path);
+        $webp_temporary_path = $webp_path . '.pgwebp' . (function_exists('getmypid') ? getmypid() : uniqid());
+
+        if ((@file_put_contents($webp_temporary_path, $webp_report['data']) === false) || (@rename($webp_temporary_path, $webp_path) == false)) {
+            @unlink($webp_temporary_path);
+            output_error(lang(array('string' => 'The WebP file could not be written to the file system ({var:1}).', 'vars' => h($row['name']))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
 
         db("INSERT INTO files (
-            name, folder, description, type, size, " . $sql_design_1 . " user, timestamp
+            name, folder, description, type, size, image_width, image_height, optimized, optimization_percent, " . $sql_design_1 . " user, timestamp
         ) VALUES (
             '" . escape($webpname) . "',
             '" . escape($_POST['folder'] ?? '') . "',
             '" . escape($_POST['description'] ?? '') . "',
             'webp',
-            '" . escape($size) . "',
+            '" . (int) strlen($webp_report['data']) . "',
+            '" . (int) $webp_report['width'] . "',
+            '" . (int) $webp_report['height'] . "',
+            '1',
+            '0',
             " . $sql_design_2 . "
             '" . USER_ID . "',
             UNIX_TIMESTAMP()
@@ -920,7 +967,6 @@ $liveform->remove_form('edit_file');
         pg_audit_record('create', 'files', (int) mysqli_insert_id(db::$con));
 
         log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$webpname)), $_SESSION['sessionusername']);
-        imagedestroy($image);
     }
 
     // SVG → RASTER CONVERSION

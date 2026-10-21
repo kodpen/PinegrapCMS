@@ -18,7 +18,7 @@ description: Short links as a CSV file (2026.11.0): the list's export (from,to,c
 
 ## What does a line do?
 - `import_short_links.php` (manager, after 11.0.12) -> `pg_short_link_import()`: 5 MB and 10,000 lines at most. Each line is a URL short link: name from the first cell (`pg_short_link_name_from_address()`), address checked by `pg_short_link_url_problem()`, code 301 when empty, 0 and 302 accepted.
-- A name a page, file, folder or binned short link holds is a line error. A live short link of the same name is skipped; with Replace a link to an address gets the new address and code, a link to a page, product or file never.
+- A name a page, file, folder or binned short link holds is a line error. A live short link of the same name (`pg_short_link_key()`, the database's comparison) is skipped; with Replace a link to an address gets the new address and code, a link to a page, product or file never.
 - Loop checks run against one prepared set kept current line by line (`pg_short_link_prepare()`, `pg_short_link_prepared_put()`), so a file may chain its own addresses but not close a loop.
 - The list screen reports added, changed and skipped counts and the first 20 line errors with their line numbers; when nothing is saved, the import screen does.
 

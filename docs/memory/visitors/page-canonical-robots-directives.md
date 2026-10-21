@@ -23,6 +23,7 @@ description: A page's own canonical address and noarchive / max-snippet (page.ca
 - `edit_page.php` (classic pages; a visual page redirects to the designer), SEO card. Hidden `seo_extras=1` says the form carried the three; a refused value goes back as typed (`mark_error` + `assign_field_value`) and nothing is written.
 - Visual designer: Settings > Search Engines > Indexing (`designer_screen.php`). Keys `page_canonical_url`, `page_noarchive`, `page_max_snippet` are in `_PG_PAGE_FIELDS` and every page literal (a missing key is read back as '' and wipes the value). `pg_designer_save_page()` refuses in its dry run and writes through `$c_extra`, which now takes NULL, only when sent. Every role that may edit the title.
 - JS twin: `_sdCanonicalCheck()` / `_sdMaxSnippetCheck()` mirror the PHP checks; change both together.
+- Unicode: both trim Unicode white space and zero-width characters (U+00A0, U+FEFF, U+200B…) at the ends and refuse `\p{Z}` / `\p{Cf}` inside (`chars`); a port above 65535 or not a number is `scheme` in both. `pg_page_canonical_href()` re-checks a stored value. Before PR #1112 (issue #861) `…/urun` + U+00A0 printed as `…/urun%C2%A0`. Tests compare PHP and JS on one list.
 - Copied by duplicate page, duplicate design and the designer's tab copies; part of a revision's settings.
 
 ## What is not covered yet?
