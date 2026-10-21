@@ -4,7 +4,7 @@ description: Security findings of the 2026-10-20 firewall and helper scan: IP ma
 ---
 
 ## Where does this come from?
-- Bug scan of `development` @ `60b0d27` (2026-10-20, #706), sandbox-checked (PHP 8.3, MariaDB 10.11, firewall in block mode, trusted proxy 127.0.0.1). Kept out of public issues (SECURITY.md). The API customers item is item 3 of `security-findings-2026-10-api.md`. Check `pinegrap-verilmis-kararlar` first; none is on it.
+- Bug scan of `development` @ `60b0d27` (2026-10-20, #706), sandbox-checked (PHP 8.3, MariaDB 10.11, firewall in block mode, trusted proxy 127.0.0.1). Kept out of public issues (SECURITY.md). The API customers item is item 3 of `security-findings-2026-10-api.md`. Check `workflow/decisions-made.md` first; none is on it.
 
 ## What is still open? (one PR each)
 1. Done (PR #952): addresses are compared packed (`waf_ip_packed()`, also in `waf_ip_matches_simple()`), `::ffff:a.b.c.d` as IPv4, and `waf_client_ip()` is normalised (`tests/waf_ip_match_test.php`).

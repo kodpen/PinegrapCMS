@@ -12,9 +12,10 @@ description: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, ever
 - `_sdCanEditNode(node, what)` is the SILENT predicate; `_sdMayEdit` wraps it and shows a toast on refusal. Render calls the silent one, interaction calls the talking one (`_sdMayEdit` while painting = one toast per node).
 - Asking places (add a new mutation path to this list): every mutating item of both context menus (`_sdGuardItem`), tree drag (`draggable` AND the drop target), Delete/Backspace, `handleDrop`, `onDelete`, inline text editing, canvas toolbar handle and delete button, `renderProperties`. The first version forgot menus and tree dragging and a user could delete the whole page on the first try.
 - `_sdGuardItem` FADES the item, never removes it: a vanished menu item reads "software is broken", a faded one reads "I can't do this". In multi-select it is all or none (deleting three of five leaves an unwanted page).
+- It asks the page lock first, then the role, so role-level items (lock, convert to shared component, editable field) go through it too (designer-collab-view-mode.md).
 
-## Other content-role UI rules
+## What else must the content-role UI do?
 - `_sdApplyContentChrome()` was called once at boot but the palette and settings modal are built later. It is idempotent; applied at boot and again after 300 / 1200 ms. The chrome must run after what it hides exists.
 - Never offer an unreachable path: the welcome screen showed three create-design cards to content roles while `add_system_style.php` requires a designer. A button either works or is not there.
 
-Related: docs/memory/designer/designer-content-roles-save-gate.md
+Related: docs/memory/designer/designer-content-roles-save-gate.md, docs/memory/designer/designer-content-roles-translations.md

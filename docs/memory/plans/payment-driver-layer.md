@@ -25,7 +25,7 @@ description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873
 3. Stripe PaymentIntents driver + Elements in the express order widget + webhook (L).
 4. PayTR driver (M); PayPal v2 driver (M).
 5. ~~Refund in `view_order.php` / `order_refund.php` and the cancel refund in `process_order_cancellation()` through the driver (S).~~ Done (PR #873, `commerce/payment-refunds.md`).
-6. Memory: keep `commerce/payment-drivers.md` current; the decisions skill entry (legacy gateways frozen on purpose) is the owner's to add.
+6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
 - Sipay/Param after PayTR by demand. Bank vPOS direct integrations are per-bank work; prefer a PSP that fronts the banks.

@@ -1,6 +1,6 @@
 ---
 name: git-branches-and-shared-files
-description: Branch policy (development vs main), who does git work, PR target, commit author, where the Claude Code PR footer comes from and who removes it, editing shared files without conflicts
+description: Branch policy (development vs main), who does git work, PR target, commit author, the Claude Code PR footer and who removes it, editing shared files without conflicts, API vs ERP files
 ---
 
 ## Which branch?
@@ -27,3 +27,6 @@ description: Branch policy (development vs main), who does git work, PR target, 
 - Append only, in your own section; never rewrite the whole file.
 - Right before writing: `git fetch origin development && git merge origin/development`. Right before pushing: rebase on `development`; keep both sides' sections on conflict.
 - `docs/memory/README.md` is generated: never edit or merge it by hand; run `php tools/memory_index.php` after the merge.
+
+## Which files belong to the API and which to ERP?
+- The external API: `includes/api/**` (webhook delivery is `includes/api/outbound/webhooks.php`), `integration.php`, `api_settings.php`, `api_docs.php`, the jobs `api_webhook_job.php` and `api_sync_job.php` (`api.php` is the panel's action endpoint, not the API). ERP: `includes/erp/**` and the root `*erp*.php` screens. ERP reaches the API only through `includes/erp/api.php` (`erp/erp-api-seam.md`) and edits no API file; what one side needs from the other is asked of that side.

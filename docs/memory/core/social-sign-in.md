@@ -26,3 +26,5 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 
 ## Old browsers?
 - The buttons are plain links (no JavaScript, no popup). An old browser that "does nothing" fails at the provider (Google can refuse outdated browsers and in-app webviews) or comes back cancelled, which now shows the screen above.
+
+Related: docs/memory/core/social-sign-in-providers.md (adding a provider)

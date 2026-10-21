@@ -32,5 +32,5 @@ description: System widget data flow via _bindings.* (text, src, href, action, e
 - Changing the binding select calls `renderProperties()` **only for `href`**: the custom token input calls `_setBinding()` on every keystroke and a re-render there would steal focus.
 
 ## How do HTML-producing tokens preview on the canvas?
-- `_SD_HTML_PREVIEW_TOKENS` (style_designer.js) holds real markup instead of a bracket placeholder like `[Durum Rozeti — sunucuda HTML]`; semantic nodes use `insertAdjacentHTML`, paragraph content already uses `innerHTML`.
+- `_SD_HTML_PREVIEW_TOKENS` (style_designer.js) holds real markup instead of a bracket placeholder ("[Status badge — HTML on the server]" in the old Turkish wording); semantic nodes use `insertAdjacentHTML`, paragraph content already uses `innerHTML`.
 - Adding a new HTML-emitting token requires adding a preview here too, otherwise the designer sees a blank on the canvas.

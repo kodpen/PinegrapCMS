@@ -10,7 +10,7 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 - It sends at once and waits: background job or an operator's button only; a request queues with `pg_sms_enqueue()` (`sms-outbox-queue.md`). `retry` true means sending again cannot deliver twice, `uncertain` that the provider may have it (`sms-netgsm-driver.md`).
 
 ## Where is the account and why there?
-- `connect_apps` row `sms_<key>`, as the carriers' API apps (`carrier_api.php`): user code = `client_id`, password sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. Chosen over the plan's config blob on purpose: no migration step (and no step-number race between parallel work), a provider added later needs no column (`pinegrap-dis-api`: zero schema per provider).
+- `connect_apps` row `sms_<key>`, as the carriers' API apps (`carrier_api.php`): user code = `client_id`, password sealed with the site key (`pg_connect_app_save()`), `options.sender`, `enabled` = the switch. Chosen over the plan's config blob on purpose: no migration step (and no step-number race between parallel work), a provider added later needs no column (zero schema per provider, as in docs/memory/commerce/marketplace-outbound-layer.md).
 - Active provider: the first enabled one with user, password and sender (`pg_sms_provider()`); saving one switches the others off. A second provider needs a show/hide by the card's select.
 - Commerce › Reset Encryption Key re-encrypts card numbers only, not `connect_apps`: the stored password then reads empty and the card warns.
 

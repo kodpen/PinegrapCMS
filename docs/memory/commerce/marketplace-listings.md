@@ -22,6 +22,6 @@ description: Rules for opening products on a marketplace (listings.php): product
 ## Where does a refusal show?
 - A non-retryable refusal from the connector's `create_listings` is written to the article row (`marketplace_category_map.last_error`) as well as to the queue rows; a retryable one only to the queue rows.
 
-## VAT and images
+## How are VAT and images handled?
 - VAT: n11 and Trendyol accept only 0/1/10/20; round to the nearest LOWER rate (rounding up would charge the buyer more).
 - `products_images_xref` has NO `id` column: `ORDER BY id` is a fatal error.

@@ -20,3 +20,5 @@ description: Install wizard step "Site Tasarımı": two-request template install
 - A new page-bound table added to starter data must also go into the `pg_idt_remove_starter()` list, or a templated install leaves that table's rows orphaned.
 - The live preview in the design step renders without a database (`pg_design_template_preview_html()`), only from the trees in the template file. If a DB-needing node is added to a template, the preview page can hang the request: update `pg_design_template_preview_pages()` to exclude that page.
 - The preview's "E-postalar" row comes from `pg_design_template_email_pages()`: forms' `notify_page_id` / `confirm_page_id`, comments' `email_page` setting, and widget-setting keys ending in `_email_page_id`. A new email link in a template that follows one of these names shows up in the preview automatically.
+
+Related: docs/memory/designer/design-templates-file-format.md, docs/memory/designer/design-templates-rows.md

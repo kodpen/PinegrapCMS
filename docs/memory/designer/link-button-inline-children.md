@@ -11,6 +11,7 @@ Two ways, and both survive a save:
 ## Why did a double-click turn such a link into plain words?
 - The inline editor read link / span / text nodes back with `textContent`. Stored markup and `textContent` always differ, so even a double-click with nothing typed wrote the words without the spans. The canvas kept showing the spans until the next redraw; Save stored the flattened text (pinegrap.com's release link: "2026.4.913 October 2026 · …", PR #468).
 - Now `_sdInlineEditValue(el, rich, markup)` returns `innerHTML` when the edited element holds any element (`keepsMarkup`: content types in `_SD_RICH_TEXT_CONTENT` other than heading / paragraph, which are full rich text with the toolbar). Plain text is still trimmed `textContent`, so a plain link edits as before. Enter still ends the edit; no formatting toolbar.
+- Always read an in-place edit with `_sdInlineEditValue()`, never `textContent`: it first leaves out the designer's children (`_SD_INLINE_CHROME_SEL`: child wrappers, whose toolbar name `.sd-tb-name` holds the child's label such as "Image", the virtual label, drop zones, badges). Read raw, clearing the text of a link holding an image brought "Image" back as the link text on every edit.
 - A session that ends with the value the canvas showed when it started (`origShown`) writes nothing and puts the stored text back: `&middot;` and `·` are the same text and an idle double-click must not swap one for the other. Escape restores with `innerHTML`.
 - A paste during the edit is still reduced to plain text (designer-paste-clipboard).
 

@@ -24,5 +24,5 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 - The VS Code keymap replaces the default keymaps, so `autocompletion({ defaultKeymap: false })` when it is on.
 
 ## How is the bundle built and checked?
-- `tools/code_editor/`: `package.json` (exact versions), `package-lock.json`, `entry.js` (the exports). `php tools/build_code_editor.php` runs `npm ci` + esbuild in a temp folder and writes the bundle with a banner; `--check` rebuilds and compares (CI). Upgrade: change package.json, `npm install` there, rebuild, commit all three.
+- Never by hand: from `tools/code_editor/`: `package.json` (exact versions), `package-lock.json`, `entry.js` (the exports). `php tools/build_code_editor.php` runs `npm ci` + esbuild in a temp folder and writes the bundle with a banner; `--check` rebuilds and compares (CI). Upgrade: change package.json, `npm install` there, rebuild, commit all three.
 - When the facade changes, run it in jsdom (locks, islands, tracked ranges, search, attach); there is no repo test for it.
