@@ -694,6 +694,17 @@ function test_returns_repeat_of_differs()
 	pg_assert_same(0, pg_return_repeat_of($recent, 'damaged', 'double', 'x', 1010), 'not a list');
 }
 
+// Each reminder stage is stamped on the return in its own column, so a bell
+// row that staff delete cannot bring the same reminder back.
+function test_returns_reminder_stamp_column()
+{
+	pg_assert_same('refund_due_notified_at', pg_return_reminder_stamp_column('due'));
+	pg_assert_same('refund_overdue_notified_at', pg_return_reminder_stamp_column('overdue'));
+	pg_assert_same('', pg_return_reminder_stamp_column(''), 'no stage');
+	pg_assert_same('', pg_return_reminder_stamp_column('refund_due'), 'the event name is not a stage');
+	pg_assert_same('', pg_return_reminder_stamp_column(array('due')), 'not a string');
+}
+
 // Who goes on to the ERP return invoice after a refund: the ERP must be on
 // and the person must be allowed to use it (role below 3 or manage_erp).
 function test_returns_erp_hand_off()

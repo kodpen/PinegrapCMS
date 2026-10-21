@@ -2957,9 +2957,33 @@ function pg_return_reminder_stage($deadline, $today)
 }
 
 /**
+ * The order_returns column that records when a reminder stage was given.
+ *
+ * @param string $stage pg_return_reminder_stage(): 'due' or 'overdue'
+ * @return string column name, '' for anything else
+ */
+function pg_return_reminder_stamp_column($stage)
+{
+    if ($stage === 'due') {
+        return 'refund_due_notified_at';
+    }
+
+    if ($stage === 'overdue') {
+        return 'refund_overdue_notified_at';
+    }
+
+    return '';
+}
+
+/**
  * Rings the staff's bell for each return whose refund is due within
  * PG_RETURN_REMIND_DAYS days, and again once it is overdue: once per return
- * and stage, told apart by the notification rows already written.
+ * and stage. The stage is stamped on the return itself (step 11.0.25) before
+ * the bell rings, and only the run whose UPDATE claimed the row rings it: a
+ * notification row that staff delete from the bell ("Delete all") is gone
+ * for everyone and cannot be the memory of what was already said. A bell
+ * that could not be written gives the stamp back, so the next run tries
+ * again.
  *
  * @param string $today Y-m-d, or '' for today
  * @return array due, overdue (how many were rung)
@@ -2968,7 +2992,7 @@ function pg_return_remind_refunds($today = '')
 {
     $result = array('due' => 0, 'overdue' => 0);
 
-    if (!pg_returns_ready()) {
+    if (!pg_returns_ready() || !pg_schema_has('order_returns', 'refund_overdue_notified_at')) {
         return $result;
     }
 
@@ -2978,20 +3002,23 @@ function pg_return_remind_refunds($today = '')
 
     foreach (db_items("SELECT * FROM order_returns WHERE status IN ('shipped', 'received')") as $row) {
         $stage = pg_return_reminder_stage(pg_return_refund_due($row), $today);
+        $column = pg_return_reminder_stamp_column($stage);
 
-        if ($stage === '') {
+        if (($column === '') || ((int) $row[$column] > 0)) {
             continue;
         }
 
-        $event = 'refund_' . $stage;
+        db("UPDATE order_returns SET " . $column . " = UNIX_TIMESTAMP()
+            WHERE (id = '" . (int) $row['id'] . "') AND (" . $column . " = 0)");
 
-        $rung = (int) db_value(
-            "SELECT COUNT(*)
-            FROM notifications
-            WHERE (action = 'order_return') AND (form_id = '" . (int) $row['id'] . "') AND (order_total = '" . $event . "')");
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            continue;
+        }
 
-        if (($rung === 0) && pg_return_notify_staff($row['id'], $event)) {
+        if (pg_return_notify_staff($row['id'], 'refund_' . $stage)) {
             $result[$stage]++;
+        } else {
+            db("UPDATE order_returns SET " . $column . " = 0 WHERE id = '" . (int) $row['id'] . "'");
         }
     }
 

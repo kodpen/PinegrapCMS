@@ -58,12 +58,15 @@ function erp_order_refund_lines($order_id)
     }
 
     $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
+            products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
         ORDER BY order_items.id ASC");
 
+    // Only what the order charged can be given back: a recurring line that
+    // had not started yet took no money (erp_order_charged_items()).
+    $items = erp_order_charged_items($order, $items);
     $built = erp_order_lines($order, $items);
     $lines = array();
     $extra = -1;

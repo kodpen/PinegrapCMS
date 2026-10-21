@@ -536,10 +536,18 @@ function pg_office_xlsx_patch_workbook($xml)
  * preview needs them for the part of the sheet it shows, a save only needs
  * the sheet-wide facts (it looks at the cells it changes itself).
  *
+ * A cell the file does not hold takes the row's own style (customFormat)
+ * when there is one, else its column's (pg_office_xlsx_new_cell_style()):
+ * so that the preview can tell which empty cells of a protected sheet are
+ * open, the rows with a style of their own, the columns whose style is
+ * unlocked and the cells in the file that keep a locked style although
+ * that rule would open them are listed too.
+ *
  * @param XMLReader $reader     opened on the sheet
  * @param int       $until_row  list the cells of rows up to this one; 0 for none
  * @param array     $open_styles style number => true for unlocked styles
- * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value), formulas (ref => text), open (ref => true)
+ * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value),
+ *               formulas (ref => text), open (ref => true), closed (ref => true), rows (row => open?), columns ([first, last] 0-based)
  */
 function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 {
@@ -553,9 +561,14 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
         'locked' => array(),
         'formulas' => array(),
         'open' => array(),
+        'closed' => array(),
+        'rows' => array(),
+        'columns' => array(),
     );
 
     $row = 0;
+    $row_open = null;
+    $open_columns = array();
     $cell = '';
     $record = false;
     $ranges = 0;
@@ -595,6 +608,32 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 
                 $row = (int) $number;
                 $cell = '';
+                $row_open = null;
+
+                if (in_array(strtolower((string) $reader->getAttribute('customFormat')), array('1', 'true'), true) && ((string) $reader->getAttribute('s') !== '')) {
+                    $row_open = isset($open_styles[(int) $reader->getAttribute('s')]);
+
+                    if (($until_row > 0) && ($row <= $until_row)) {
+                        $out['rows'][$row] = $row_open;
+                    }
+                }
+                break;
+
+            case 'col':
+                // The styles of whole columns come before the rows.
+                $style = (int) $reader->getAttribute('style');
+                $first = (int) $reader->getAttribute('min');
+                $last = min((int) $reader->getAttribute('max'), PG_OFFICE_MAX_COLUMNS);
+
+                if (($first < 1) || ($last < $first) || !isset($open_styles[$style])) {
+                    break;
+                }
+
+                $out['columns'][] = array($first - 1, $last - 1);
+
+                for ($column = $first - 1; $column < $last; $column++) {
+                    $open_columns[$column] = true;
+                }
                 break;
 
             case 'c':
@@ -615,6 +654,8 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                         $out['locked'][$reference] = 'value';
                     } elseif (isset($open_styles[(int) $reader->getAttribute('s')])) {
                         $out['open'][$reference] = true;
+                    } elseif (($row_open === null) ? isset($open_columns[$position[1]]) : $row_open) {
+                        $out['closed'][$reference] = true;
                     }
                 }
                 break;
@@ -634,7 +675,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
 
                 if ($record) {
                     $out['locked'][$cell] = 'formula';
-                    unset($out['open'][$cell]);
+                    unset($out['open'][$cell], $out['closed'][$cell]);
 
                     // Read node by node, and only as much as the label
                     // shows (four bytes a character at most).
@@ -820,11 +861,11 @@ function pg_office_signed($zip)
  * @param array      $sheet     pg_office_xlsx_sheets() entry
  * @param int        $until_row the last row number the preview shows
  * @param array      $styles    pg_office_xlsx_style_kinds()
- * @return array ok, why, protected, locked, formulas, open, ranges
+ * @return array ok, why, protected, locked, formulas, open, closed, rows, columns, ranges
  */
 function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
 {
-    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'ranges' => array());
+    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'closed' => array(), 'rows' => array(), 'columns' => array(), 'ranges' => array());
 
     if ($sheet['type'] !== 'worksheet') {
         $out['why'] = 'kind';
@@ -884,7 +925,10 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
     $out['protected'] = $scan['protected'];
     $out['locked'] = $scan['locked'];
     $out['formulas'] = $scan['formulas'];
-    $out['open'] = $scan['protected'] ? $scan['open'] : array();
+    // What opens a cell matters only under protection.
+    foreach (array('open', 'closed', 'rows', 'columns') as $name) {
+        $out[$name] = $scan['protected'] ? $scan[$name] : array();
+    }
 
     $ranges = array();
 
