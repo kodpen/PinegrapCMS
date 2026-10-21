@@ -48,6 +48,11 @@ define('WS_NOTE_ENEX_CHUNK', 65536);
 define('WS_NOTE_ENEX_CONTENT_MAX', 16777216);
 
 /**
+ * How many columns a table of a note keeps; the rest of a wider row is cut.
+ */
+define('WS_NOTE_ENEX_TABLE_COLUMNS', 100);
+
+/**
  * A moment an export writes (20231015T123456Z, UTC) as a timestamp; 0 when
  * it is none, or not when a note can have been written.
  *
@@ -109,7 +114,15 @@ function ws_note_enex_extension($mime)
  */
 function ws_note_enex_file_name($name, $mime, $number, &$taken)
 {
-    $name = basename(str_replace('\\', '/', (string) $name));
+    // The last segment of a path, cut by hand: basename() on Windows reads a
+    // leading "X:" of that segment as a drive and drops it.
+    $name = str_replace('\\', '/', (string) $name);
+    $slash = strrpos($name, '/');
+
+    if ($slash !== false) {
+        $name = (string) substr($name, $slash + 1);
+    }
+
     $name = preg_replace('/[\x00-\x1F\x7F]+/u', '', $name);
     $name = preg_replace('/\s*[\/:*?"<>|#%\[\]]+\s*/u', '-', $name);
     $name = trim(preg_replace('/\s+/u', ' ', $name), ' .-');
@@ -782,6 +795,12 @@ function ws_note_enex_table($table, &$state)
                     continue;
                 }
 
+                // A table wider than WS_NOTE_ENEX_TABLE_COLUMNS is cut there,
+                // so a crafted colspan cannot grow a row without end.
+                if (count($cells) >= WS_NOTE_ENEX_TABLE_COLUMNS) {
+                    break;
+                }
+
                 $words = array();
 
                 foreach (ws_note_enex_flow($cell, $state) as $line) {
@@ -794,7 +813,9 @@ function ws_note_enex_table($table, &$state)
 
                 $cells[] = str_replace('|', '\\|', implode(' ', $words));
 
-                for ($span = (int) $cell->getAttribute('colspan'); $span > 1; $span--) {
+                $span = min((int) $cell->getAttribute('colspan'), WS_NOTE_ENEX_TABLE_COLUMNS - count($cells) + 1);
+
+                for (; $span > 1; $span--) {
                     $cells[] = '';
                 }
             }
@@ -996,7 +1017,9 @@ function ws_note_enex_read($path, &$context)
     }
 
     // The export's root, and no document type of its own: an internal subset
-    // could declare entities that expand into gigabytes.
+    // could declare entities that expand into gigabytes. This look at the
+    // first 8 KB is the fast path; the prolog is also checked chunk by chunk
+    // below until the root element opens, and that root must be en-export.
     $head = (string) fread($handle, 8192);
 
     if (!preg_match('/<en-export[\s>]/', $head) || preg_match('/<!DOCTYPE[^>]*\[/i', $head) || (stripos($head, '<!ENTITY') !== false)) {
@@ -1014,20 +1037,47 @@ function ws_note_enex_read($path, &$context)
     $file = null;
     $task = null;
     $failed = '';
+    $rooted = false;
+    $tail = '';
 
     $parser = xml_parser_create('UTF-8');
     xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
     xml_parser_set_option($parser, XML_OPTION_TARGET_ENCODING, 'UTF-8');
 
-    $start = function ($parser, $name, $attributes) use (&$stack, &$text, &$note, &$file, &$task, &$context, &$failed) {
+    $start = function ($parser, $name, $attributes) use (&$stack, &$text, &$note, &$file, &$task, &$context, &$failed, &$rooted, $not_enex) {
         $name = strtolower($name);
         $parent = empty($stack) ? '' : end($stack);
+        // Pushed before any return: the end handler pops for every element.
         $stack[] = $name;
         $text = '';
+
+        // Once refused, the rest of the chunk opens nothing more.
+        if ($failed !== '') {
+            return;
+        }
+
+        if (!$rooted) {
+            $rooted = true;
+
+            if ($name !== 'en-export') {
+                $failed = $not_enex;
+
+                return;
+            }
+        }
 
         if (($name === 'note') && ($parent === 'en-export')) {
             $note = array('title' => '', 'created' => 0, 'updated' => 0, 'tags' => array(), 'content' => '', 'long' => false, 'files' => array(), 'tasks' => array());
         } elseif (($name === 'resource') && ($parent === 'note') && ($note !== null)) {
+            // The limit ws_note_enex_add() applies at </note> (this note's
+            // row and this file counted), checked before a file is opened, so
+            // a note of countless empty resources never fills the stage.
+            if ((count($context['entries']) + count($note['files']) + 2) > WS_NOTE_IMPORT_ENTRIES_MAX) {
+                $failed = lang(array('string' => 'The export holds more than {var:1} notes and attachments.', 'vars' => WS_NOTE_IMPORT_ENTRIES_MAX));
+
+                return;
+            }
+
             $number = $context['next']++;
             $file = array(
                 'number' => $number,
@@ -1172,6 +1222,21 @@ function ws_note_enex_read($path, &$context)
     $ok = true;
 
     while ($ok && ($failed === '') && (($chunk = fread($handle, WS_NOTE_ENEX_CHUNK)) !== false) && ($chunk !== '')) {
+        // Until the root opens, no entity declaration and no internal subset
+        // anywhere, a comment of any length before them included; the tail of
+        // the last chunk catches one split across two reads.
+        if (!$rooted) {
+            $probe = $tail . $chunk;
+
+            if ((stripos($probe, '<!ENTITY') !== false) || preg_match('/<!DOCTYPE[^>]*\[/i', $probe)) {
+                $failed = $not_enex;
+
+                break;
+            }
+
+            $tail = (string) substr($probe, -16);
+        }
+
         $ok = (xml_parse($parser, $chunk, false) === 1);
     }
 

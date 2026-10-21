@@ -342,3 +342,63 @@ function test_workspace_notes_enex_stage_refuses()
 		workspace_notes_enex_test_remove($dir);
 	}
 }
+
+function test_workspace_notes_enex_stage_refuses_a_padded_prolog()
+{
+	$padding = '<?xml version="1.0"?><!-- <en-export> ' . str_repeat('x', 9000) . ' -->';
+	$note = '<note><title>&a;</title><content><![CDATA[' . workspace_notes_enex_test_enml('<div>x</div>') . ']]></content></note>';
+
+	$cases = array(
+		'an entity declared past the first 8 KB' => $padding . '<!DOCTYPE en-export [<!ENTITY a "EXPANDED">]><en-export>' . $note . '</en-export>',
+		'a root other than en-export'            => $padding . '<html><body>x</body></html>',
+	);
+
+	foreach ($cases as $label => $xml) {
+		$dir = workspace_notes_enex_test_dir();
+		file_put_contents($dir . '/source-0.enex', $xml);
+
+		$read = ws_note_enex_stage($dir, array($dir . '/source-0.enex'));
+
+		pg_assert_false($read['ok'], $label);
+		pg_assert_contains('This is not an Evernote export (.enex).', $read['error'], $label);
+		pg_assert_false(strpos($read['error'], 'Line') !== false, $label . ': refused before it is parsed, not as broken XML');
+		pg_assert_same(array(), array_values((array) glob($dir . '/files/*')), $label . ': nothing written');
+
+		workspace_notes_enex_test_remove($dir);
+	}
+}
+
+function test_workspace_notes_enex_read_stops_at_the_attachment_limit()
+{
+	$dir = workspace_notes_enex_test_dir();
+	mkdir($dir . '/files', 0755);
+	file_put_contents($dir . '/source-0.enex', workspace_notes_enex_test_export(array(
+		'<note><title>Many</title><content><![CDATA[' . workspace_notes_enex_test_enml('<div>x</div>') . ']]></content>'
+			. str_repeat('<resource/>', 20) . '</note>',
+	)));
+
+	$context = array(
+		'dir'      => $dir,
+		'next'     => 0,
+		'notes'    => 0,
+		'taken'    => array(),
+		'entries'  => array_fill(0, WS_NOTE_IMPORT_ENTRIES_MAX - 5, array('x.md', 0, 0, 0)),
+		'file_max' => 20971520,
+		'error'    => '',
+	);
+
+	pg_assert_false(ws_note_enex_read($dir . '/source-0.enex', $context), 'refused');
+	pg_assert_contains('more than', $context['error'], 'the limit named');
+	pg_assert_true(count((array) glob($dir . '/files/*')) <= 4, 'no file opened past the limit');
+
+	ws_note_import_remove($dir);
+	workspace_notes_enex_test_remove($dir);
+}
+
+function test_workspace_notes_enex_table_width_is_capped()
+{
+	$text = workspace_notes_enex_test_text('<table><tr><td colspan="2000000">a</td></tr></table>');
+
+	pg_assert_true(strlen($text) < 1000, 'a huge colspan cut to a short line');
+	pg_assert_true(strpos($text, '| a |') !== false, 'the cell kept');
+}
