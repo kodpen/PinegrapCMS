@@ -264,6 +264,22 @@ function test_legal_documents_cart_order_discount_lowers_the_tax()
 	pg_assert_same(484, $odd['tax'], 'rounded as submit_order.php: 538 - round(538 * 299 / 2990)');
 }
 
+// With the lines' rates kept, the tax after an order discount is taken again
+// per rate on what the discount leaves of the lines, as submit_order.php
+// takes it (pg_order_charged_tax()): 1.01 at 20% and 1.27 at 10% less 1.00.
+function test_legal_documents_cart_order_discount_taxes_per_rate()
+{
+	$lines = array(
+		array('line_total' => 101, 'tax' => 20, 'rate' => '20.000'),
+		array('line_total' => 127, 'tax' => 13, 'rate' => '10.000'),
+	);
+
+	$order = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 100));
+
+	pg_assert_same(18, $order['tax'], '0.11 on 0.57 at 20% and 0.07 on 0.71 at 10%');
+	pg_assert_same(228 - 100 + 18, $order['total'], 'the checkout total');
+}
+
 // Typed billing values replace the row's; empty ones and the country code do not.
 function test_legal_documents_cart_order_billing()
 {

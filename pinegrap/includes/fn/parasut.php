@@ -1435,7 +1435,9 @@ function parasut_sync_contact($order)
  * stored amount: tax_total / line total gives back values like 20.12 that no tax
  * authority accepts.
  *
- * The resolution below mirrors update_order_item_taxes() step for step: an
+ * A line the checkout wrote its rate on (order_items.tax_rate) is taken at that
+ * rate. For a line placed before that, the resolution below mirrors
+ * update_order_item_taxes() step for step: an
  * exempt order pays nothing, a non-taxable product pays nothing, an address
  * outside every tax zone pays nothing, and where tax is due the product rate
  * beats the zone rate unless the product has none (get_effective_tax_rate()).
@@ -1470,12 +1472,19 @@ function _parasut_order_vat_rates($order_id, $order)
 
     $billing_rate = get_tax_rate_for_address($order['billing_country'] ?? '', $order['billing_state'] ?? '');
 
+    // A line placed since the checkout keeps its rate (order_items.tax_rate,
+    // 11.0.59) has it from there; its tax is a share of its rate's tax on the
+    // lines charged with it (pg_tax_by_rate()), so it is not the rate x line
+    // on its own and is not checked against it.
+    $with_stored = pg_schema_has('order_items', 'tax_rate');
+
     $query = "SELECT
                     order_items.id,
                     order_items.ship_to_id,
                     order_items.price,
                     order_items.quantity,
-                    order_items.tax_total,
+                    order_items.tax_total," . ($with_stored ? "
+                    order_items.tax_rate AS line_tax_rate," : "") . "
                     ship_tos.state AS ship_state,
                     ship_tos.country AS ship_country,
                     products.taxable,
@@ -1493,6 +1502,12 @@ function _parasut_order_vat_rates($order_id, $order)
 
     while ($item = mysqli_fetch_assoc($result)) {
         $item_id = (int) $item['id'];
+
+        if (isset($item['line_tax_rate']) && ($item['line_tax_rate'] !== '')) {
+            $rates[$item_id] = (float) $item['line_tax_rate'];
+            continue;
+        }
+
         $apply_tax = false;
         $zone_rate = false;
 
@@ -1734,14 +1749,22 @@ function parasut_create_invoice($order_id)
     // sale and the gift card settles part of it.
     $expected_cents = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
 
-    // What Parasut will make of the lines we are sending. It computes VAT from
-    // the line total, which is the base the order now uses too, so these should
-    // agree exactly. They are still compared: a difference means a line is
-    // missing or wrong, and a legal document is not the place to find that out.
-    $built_cents = 0;
+    // What Parasut will make of the lines we are sending. It computes the VAT
+    // once per rate on the sum of the lines at that rate, which is how the
+    // checkout takes it too (pg_tax_by_rate()), so these should agree exactly.
+    // They are still compared: a difference means a line is missing or wrong,
+    // and a legal document is not the place to find that out.
+    $built_lines = array();
     foreach ($details as $detail) {
-        $line_cents = (int) round($detail['attributes']['unit_price'] * 100) * (int) $detail['attributes']['quantity'];
-        $built_cents += $line_cents + (int) round($line_cents * $detail['attributes']['vat_rate'] / 100);
+        $built_lines[] = array(
+            'amount' => (int) round($detail['attributes']['unit_price'] * 100) * (int) $detail['attributes']['quantity'],
+            'rate' => (float) $detail['attributes']['vat_rate'],
+        );
+    }
+
+    $built_cents = 0;
+    foreach (pg_tax_by_rate($built_lines) as $index => $line_tax) {
+        $built_cents += $built_lines[$index]['amount'] + $line_tax;
     }
 
     $variance_cents = $built_cents - $expected_cents;

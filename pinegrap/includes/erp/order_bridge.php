@@ -24,14 +24,16 @@
  * figure on the order exactly (erp_allocate).
  *
  * Tax is carried over from the order rather than recomputed, except on a
- * discounted line, where the base itself moved and the tax has to follow it.
- * The sum is then tied back to the tax on the order's own header, because that
- * header is the document the customer actually paid against.
+ * discounted order, where the base itself moved and the tax is taken again per
+ * rate on what is left (erp_rate_vat(), as the checkout takes it). The sum is
+ * then tied back to the tax on the order's own header, because that header is
+ * the document the customer actually paid against.
  *
  * The rate printed on a line is the legal rate the line was charged at, not
  * the ratio of two rounded kurus figures: 361 / 2008 reads as 17.978%, and an
- * e-document with that on it is wrong even though the amounts are right.
- * order_items does not keep the rate, so it is recovered (erp_line_tax_rate).
+ * e-document with that on it is wrong even though the amounts are right. The
+ * checkout keeps it on the line (order_items.tax_rate); for a line placed
+ * before that it is recovered (erp_line_tax_rate).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -190,24 +192,38 @@ function erp_order_lines($order, $items)
 
         foreach ($shares as $index => $share) {
             $lines[$index]['discount_amount'] = (int) $share;
+        }
 
-            // A discount lowers the base the tax is charged on, so the tax is
-            // taken again on what is left of the line rather than reduced by a
-            // share of itself. That keeps rate x base = tax true on the line,
-            // which is what an e-invoice is checked against.
-            $base = $lines[$index]['line_total'] - (int) $share;
-            $lines[$index]['tax_total'] = erp_apply_rate($base, $lines[$index]['tax_rate']);
+        // A discount lowers the base the tax is charged on, so the tax is
+        // taken again on what is left of the lines rather than reduced by a
+        // share of itself: once per rate on the sum of the discounted lines,
+        // spread back over them (erp_rate_vat()), the way the checkout takes
+        // an order's tax and an e-document provider works it out.
+        $taxed = array();
+
+        foreach ($lines as $index => $line) {
+            $taxed[$index] = array(
+                'net' => $line['line_total'] - $line['discount_amount'],
+                'tax_rate' => $line['tax_rate'],
+            );
+        }
+
+        foreach (erp_rate_vat($taxed)['lines'] as $index => $figures) {
+            $lines[$index]['tax_total'] = $figures['vat'];
         }
     }
 
     // Tie the tax back to the order.
     //
-    // submit_order.php takes the discount off the tax once, on the header
-    // (round(tax * discount / subtotal)). Taken line by line above, the same
-    // reduction lands on the same figure in exact arithmetic, but can end a
-    // kurus or two away once every line is rounded on its own. The customer
-    // paid the header figure, so that is the one the invoice carries: the
-    // difference goes back to the lines holding tax, largest first.
+    // The checkout takes an order's tax the way it is taken above: per rate
+    // on the lines, and after a discount per rate again on what the discount
+    // leaves of them, shared alike (update_order_item_taxes(),
+    // pg_order_charged_tax()); the lines then meet the header. An order
+    // placed before that had its tax taken line by line and its discount taken
+    // off the header's tax (round(tax * discount / subtotal)), which can end a
+    // kurus or two away from the figure here. The customer paid the header
+    // figure, so that is the one the invoice carries: the difference goes back
+    // to the lines holding tax, largest first.
     //
     // Only rounding is absorbed here - at most a kurus per taxed line. A wider
     // gap means the order's own figures disagree with each other, which is for
