@@ -5,7 +5,7 @@
 Code rules, file layout, translation, roles and access, security, api.php, request parameters.
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule.
-- ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #PRNUM): writer and assistant profiles, the builders, the test that fails for a prompt without it
+- ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124): writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
