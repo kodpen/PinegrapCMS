@@ -292,4 +292,14 @@ function test_ai_fields_scripts_agree()
 	pg_assert_contains("addEventListener('submit'", $marks, 'the last look before the save');
 	pg_assert_contains("'instanceReady'", $marks, 'the rich text editor once it runs');
 	pg_assert_contains("on('change'", $marks, 'the rich text editor changes');
+
+	// TinyMCE 3 (editor version "previous") keeps its own copy of the text
+	// and writes it into the textarea only when the form is sent: the draft
+	// goes into the editor and the mark follows the editor's text.
+	pg_assert_contains("tiny.execCommand('mceSetContent', false, value);", $panel, 'the draft into TinyMCE');
+	pg_assert_contains('tiny.getContent()', $panel, 'the context from TinyMCE');
+	pg_assert_contains('tiny.getContent()', $marks, 'the marked text from TinyMCE');
+	pg_assert_contains('onAddEditor.add(', $marks, 'TinyMCE editors once they run');
+	pg_assert_contains('editor.onKeyUp.add(update)', $marks, 'TinyMCE typing');
+	pg_assert_contains('editor.onChange.add(update)', $marks, 'TinyMCE changes');
 }

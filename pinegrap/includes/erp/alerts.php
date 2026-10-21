@@ -330,24 +330,42 @@ function erp_alert_auto_invoice_refused($order_id, $order_number, $reason)
         return 0;
     }
 
+    // The look and the write run under a lock of the order's own, so two
+    // refusals written at once leave one row. GET_LOCK names belong to the
+    // whole server, hence the database in the name. A server that refuses
+    // named locks (NULL) still gets its row; one where another request holds
+    // the lock past the wait leaves the row to that request.
+    $lock = "CONCAT('pg_erp_auto_invoice_alert.', MD5(CONCAT(DATABASE(), '.', '" . $order_id . "')))";
+    $locked = db_value("SELECT GET_LOCK(" . $lock . ", 5)");
+
+    if (($locked !== null) && ((int) $locked !== 1)) {
+        return 0;
+    }
+
     // title is the reason, order_id the order and order_total its number
     // (includes/notifications.php builds the sentence).
     $seen = db_value("SELECT id FROM notifications
         WHERE action = 'erp_auto_invoice' AND order_id = '" . $order_id . "' AND title = '" . escape($title) . "'
         LIMIT 1");
 
-    if ($seen !== null) {
-        return 0;
+    $id = 0;
+
+    if ($seen === null) {
+        $actor = erp_alert_current_actor()['username'];
+
+        $id = erp_alert_create(array(
+            'action' => 'erp_auto_invoice',
+            'type' => 'warning',
+            'title' => $title,
+            'order_id' => $order_id,
+            'order_total' => mb_substr((string) $order_number, 0, 100),
+            'user' => ($actor !== '') ? $actor : 'system',
+        ), false);
     }
 
-    $actor = erp_alert_current_actor()['username'];
+    if ($locked !== null) {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
 
-    return erp_alert_create(array(
-        'action' => 'erp_auto_invoice',
-        'type' => 'warning',
-        'title' => $title,
-        'order_id' => $order_id,
-        'order_total' => mb_substr((string) $order_number, 0, 100),
-        'user' => ($actor !== '') ? $actor : 'system',
-    ), false);
+    return $id;
 }

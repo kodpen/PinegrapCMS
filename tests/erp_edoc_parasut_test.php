@@ -664,6 +664,50 @@ function test_erp_edoc_parasut_job_reading()
 	pg_assert_same('Paraşüt could not convert the invoice into an e-document.', erp_edoc_parasut_job_reading(array('status' => 'failed'))['message']);
 }
 
+// A create Paraşüt may have written all the same: no answer, a 5xx, a
+// success without a record; its own refusals (4xx, 429) wrote nothing.
+function test_erp_edoc_parasut_answer_unsure()
+{
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 0, 'error' => 'Operation timed out after 40000 milliseconds')), 'a timeout');
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 0, 'error' => '')), 'no answer');
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 504, 'error' => '')), 'a gateway timeout');
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 500, 'error' => '')));
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 503, 'error' => '')));
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 201, 'error' => '', 'body' => null, 'raw' => '<html>')), 'a success without a record');
+	pg_assert_true(erp_edoc_parasut_answer_unsure(array('http_code' => 200, 'error' => 'transfer closed with outstanding read data remaining')), 'a cut answer');
+	pg_assert_false(erp_edoc_parasut_answer_unsure(array('http_code' => 422, 'error' => '')), 'a refusal');
+	pg_assert_false(erp_edoc_parasut_answer_unsure(array('http_code' => 400, 'error' => '')));
+	pg_assert_false(erp_edoc_parasut_answer_unsure(array('http_code' => 429, 'error' => '')), 'refused unprocessed');
+}
+
+// The record an earlier try wrote: same description, date and contact, not
+// cancelled; nothing without a description to go by.
+function test_erp_edoc_parasut_written_matches()
+{
+	$payload = array('data' => array('attributes' => array('description' => 'PGF2026000000042 / Sipariş #1001', 'issue_date' => '2026-10-19')));
+	$item = function ($id, $attributes, $contact = '7001') {
+		return array('id' => $id, 'type' => 'sales_invoices', 'attributes' => $attributes + array('description' => 'PGF2026000000042 / Sipariş #1001', 'issue_date' => '2026-10-19', 'item_type' => 'invoice', 'net_total' => '1080.0'),
+			'relationships' => array('contact' => array('data' => array('id' => $contact, 'type' => 'contacts'))));
+	};
+	$body = array('data' => array(
+		$item('5001', array()),
+		$item('5002', array('description' => 'PGF2026000000043')),
+		$item('5003', array('issue_date' => '2026-10-20')),
+		$item('5004', array('item_type' => 'cancelled')),
+		$item('5005', array(), '7002'),
+		$item('', array()),
+		'x',
+	));
+
+	$found = erp_edoc_parasut_written_matches($body, $payload, '7001');
+	pg_assert_same(array('5001'), array_map('strval', array_keys($found)));
+	pg_assert_same('1080.0', $found['5001']['net_total'], 'the attributes come along for the total check');
+
+	pg_assert_same(array(), erp_edoc_parasut_written_matches($body, array('data' => array('attributes' => array('description' => '', 'issue_date' => '2026-10-19'))), '7001'));
+	pg_assert_same(array(), erp_edoc_parasut_written_matches(null, $payload, '7001'));
+	pg_assert_same(array('5001'), array_map('strval', array_keys(erp_edoc_parasut_written_matches(array('data' => array($item('5001', array('issue_date' => '2026-10-19T00:00:00+03:00')))), $payload, '7001'))), 'a date with a time');
+}
+
 // An e_invoice_inboxes answer: every mailbox once, and the registered name
 // from the first entry that carries one.
 function test_erp_edoc_parasut_inboxes_read()

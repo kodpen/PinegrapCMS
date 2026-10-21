@@ -188,8 +188,13 @@ function pg_webauthn_rp_id($host)
             return '';
         }
 
+        // Non-transitional UTS #46, with the bidi and joiner checks: what the
+        // browser's URL parser (WHATWG domain to ASCII) writes into the
+        // origin it signs and accepts as the relying party ID. Transitional
+        // processing (IDNA_DEFAULT) maps ß to ss and final sigma to sigma,
+        // a different domain: straße.de would become strasse.de.
         $ascii = defined('INTL_IDNA_VARIANT_UTS46')
-            ? @idn_to_ascii($host, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46)
+            ? @idn_to_ascii($host, IDNA_NONTRANSITIONAL_TO_ASCII | IDNA_CHECK_BIDI | IDNA_CHECK_CONTEXTJ, INTL_IDNA_VARIANT_UTS46)
             : @idn_to_ascii($host);
 
         if (!is_string($ascii) || ($ascii === '')) {
