@@ -7,7 +7,7 @@ description: Designer import/paste of lazy-loaded images: which source an image 
 - An imported or pasted design showed an empty image: its `src` was `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7` (a transparent 1×1 GIF) although the page's own image was a long base64 picture.
 - Not a truncation: data: URIs of any size survive the parser. The page was built for lazy loading; `src` held the placeholder and the picture waited in `data-src`, `srcset`, a `<picture>` `<source>` or a `<noscript>` copy. The image node keeps one source and drops the rest, so the placeholder won.
 
-## Where is it fixed?
+## Where is it fixed (PR #1034)?
 - `pg_di_settle_img_sources($doc)` in `includes/designer_import.php` runs on the parsed document before it becomes nodes, in `pg_designer_import_html()` (file, ZIP, pasted page) and `pg_designer_import_fragment()` (canvas paste). It works on the DOM, so an `<img>` inside heading or paragraph text (kept as markup) gets the same source.
 - Tests: `tests/designer_import_images_test.php`.
 
