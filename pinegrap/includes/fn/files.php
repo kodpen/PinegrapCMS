@@ -867,9 +867,9 @@ function pg_zip_entry_size($archive, $entry)
  * the extra byte and is refused, so an entry that declares a kilobyte and
  * inflates to gigabytes costs a kilobyte and one byte. An entry that holds
  * less than it declares comes back short and is refused as well, and so is
- * one that declares nothing over compressed data. A size past PHP_INT_MAX
- * (negative on a 32-bit build) is too large. The checksum is not compared
- * here.
+ * one that declares nothing over data that inflates to something. A size
+ * past PHP_INT_MAX (negative on a 32-bit build) is too large. The checksum
+ * is not compared here.
  *
  * @param ZipArchive $zip
  * @param string|int $entry the entry's name, or its index
@@ -897,12 +897,38 @@ function pg_zip_entry_contents($zip, $entry, $limit, &$error)
 
     $size = (int) $stat['size'];
 
-    // An empty deflate stream is two bytes; anything longer behind a size of
-    // nothing is not an empty file.
-    if (($size === 0) && isset($stat['comp_size']) && ((int) $stat['comp_size'] > 2)) {
-        $error = 'damaged';
+    // getFromIndex() answers an entry that declares nothing with '' without
+    // reading it, so the entry itself is asked for one byte: an empty file
+    // gives none, whatever its compressed stream looks like (zlib writes 2
+    // bytes, Go's archive/zip 5, a sync-flushing writer 7, bzip2 14), and an
+    // entry that hides data behind a size of nothing gives some.
+    if ($size === 0) {
+        if (!isset($stat['comp_size']) || ((int) $stat['comp_size'] === 0)) {
+            return '';
+        }
 
-        return null;
+        $stream = method_exists($zip, 'getStreamIndex')
+            ? $zip->getStreamIndex((int) $stat['index'])
+            : $zip->getStream((string) $stat['name']);
+
+        if (!is_resource($stream)) {
+            $error = 'damaged';
+
+            return null;
+        }
+
+        // A stream that cannot be inflated warns; the entry is reported as
+        // damaged instead.
+        $byte = @fread($stream, 1);
+        fclose($stream);
+
+        if ($byte !== '') {
+            $error = 'damaged';
+
+            return null;
+        }
+
+        return '';
     }
 
     $data = $zip->getFromIndex((int) $stat['index'], $size + 1);

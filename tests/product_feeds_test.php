@@ -715,6 +715,116 @@ function test_product_feeds_health()
 	pg_assert_same(3, $health['on']);
 }
 
+// A temporary folder for the streaming writer's files, removed by the test.
+function product_feeds_test_folder()
+{
+	$folder = sys_get_temp_dir() . '/pg_feed_test_' . bin2hex(random_bytes(4));
+	mkdir($folder);
+
+	return $folder;
+}
+
+function product_feeds_test_remove($folder)
+{
+	foreach ((array) glob($folder . '/*') as $file) {
+		unlink($file);
+	}
+
+	rmdir($folder);
+}
+
+// A work file line gives every byte back: tabs, line breaks and backslashes
+// inside a cell, empty cells, bytes that are not UTF-8.
+function test_product_feeds_spool_line_round_trip()
+{
+	$cells = array("a\tb", "x\ny\r\nz", 'C:\\new\\table\\n', '', '\\', "\xC3\x28 bozuk", '"tırnak", virgül');
+	$line = pg_product_feed_spool_line($cells);
+
+	pg_assert_false(strpbrk($line, "\n\r") !== false, 'one line');
+	pg_assert_same(count($cells) - 1, substr_count($line, "\t"), 'cells joined by tabs only');
+	pg_assert_same($cells, pg_product_feed_spool_cells($line));
+	pg_assert_same(array(''), pg_product_feed_spool_cells(pg_product_feed_spool_line(array(''))), 'one empty cell');
+}
+
+// The file the daily build streams chunk by chunk is byte for byte what
+// pg_product_feed_render() makes of the whole catalog, in every format; a
+// column only a later chunk fills is still in the CSV/TSV header.
+function test_product_feeds_writer_matches_render()
+{
+	$first = array(
+		product_feeds_test_item(array('gtin' => '', 'title' => "Masa\t\"ahşap\", yeni\\seri")),
+		product_feeds_test_item(array('id' => '13', 'brand' => '')),
+		product_feeds_test_item(array('id' => '14', 'image_name' => '')),
+	);
+	$second = array(
+		product_feeds_test_item(array('id' => '15', 'short_description' => "Çok\nsatırlı", 'full_description' => "<p>Bozuk \xC3\x28 bayt</p>"), array('gallery' => array('a.jpg', 'b,c.jpg'), 'sale_price' => 99900)),
+		product_feeds_test_item(array('id' => '16', 'mpn' => ''), array('choices' => array('Renk' => 'Gri', '42' => 'Evet'), 'group_id' => 7)),
+	);
+	$options = array('seller_name' => 'Kodpen Mağaza', 'seller_url' => 'https://shop.example/', 'privacy_policy_url' => 'https://shop.example/gizlilik');
+	$folder = product_feeds_test_folder();
+
+	foreach (array_keys(pg_product_feed_formats()) as $format) {
+		$path = $folder . '/' . $format . '.feed';
+		$writer = pg_product_feed_writer_open($format, $path, $options);
+
+		pg_assert_same('', $writer['error'], $format . ' opens');
+
+		pg_product_feed_writer_add($writer, $first);
+		pg_product_feed_writer_add($writer, array());
+		pg_product_feed_writer_add($writer, $second);
+
+		$result = pg_product_feed_writer_close($writer);
+		$whole = pg_product_feed_render($format, array_merge($first, $second), $options);
+
+		pg_assert_true($result['ok'], $format . ' ok');
+		pg_assert_same($whole['body'], (string) file_get_contents($path), $format . ' same bytes');
+		pg_assert_same($whole['count'], $result['count'], $format . ' count');
+		pg_assert_same($whole['skipped'], $result['skipped'], $format . ' skipped');
+		pg_assert_same(strlen($whole['body']), $result['bytes'], $format . ' bytes');
+	}
+
+	pg_assert_contains('gtin', (string) file_get_contents($folder . '/openai_csv.feed'), 'a column the first chunk left empty');
+	pg_assert_same(3, count(glob($folder . '/*')), 'no work file left behind');
+
+	product_feeds_test_remove($folder);
+}
+
+// An empty catalog, a missing seller name and a catalog error: the same
+// results as rendering, and an old file stays when the build fails.
+function test_product_feeds_writer_errors_and_empty()
+{
+	$folder = product_feeds_test_folder();
+
+	foreach (array('openai_csv', 'google_tsv', 'openai_jsonl') as $format) {
+		$writer = pg_product_feed_writer_open($format, $folder . '/' . $format, array('seller_name' => 'Kodpen'));
+		$result = pg_product_feed_writer_close($writer);
+
+		pg_assert_same(pg_product_feed_render($format, array(), array('seller_name' => 'Kodpen'))['body'], (string) file_get_contents($folder . '/' . $format), $format . ' empty catalog');
+		pg_assert_same(0, $result['count']);
+	}
+
+	$writer = pg_product_feed_writer_open('openai_jsonl', $folder . '/no_seller', array());
+	pg_product_feed_writer_add($writer, array(product_feeds_test_item()));
+	$result = pg_product_feed_writer_close($writer);
+
+	pg_assert_false($result['ok']);
+	pg_assert_same('no_seller_name', $result['error']);
+
+	file_put_contents($folder . '/served', 'old feed');
+
+	$writer = pg_product_feed_writer_open('google_tsv', $folder . '/served');
+	pg_product_feed_writer_add($writer, array(product_feeds_test_item()));
+	$result = pg_product_feed_writer_close($writer, 'no_catalog');
+
+	pg_assert_same('no_catalog', $result['error'], "the catalog's error wins");
+	pg_assert_same('old feed', file_get_contents($folder . '/served'), 'the file being served stays');
+
+	pg_assert_same('unknown_format', pg_product_feed_writer_open('xml', $folder . '/x')['error']);
+	pg_assert_same(4, count(glob($folder . '/*')), 'no work file left behind');
+
+	product_feeds_test_remove($folder);
+}
+
 // A privacy policy address longer than 255 characters was cut there on save
 // and the feeds carried the shortened address; names keep their 255 cap.
 function test_product_feeds_seller_from_input_keeps_long_addresses()

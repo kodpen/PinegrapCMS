@@ -143,3 +143,81 @@ function test_page_own_url_register()
 	pg_assert_same('', pg_page_own_url(''));
 	pg_assert_same('', pg_page_own_url());
 }
+
+// Addresses pasted from a document or a web page bring Unicode white space
+// and invisible characters along: at the ends they are trimmed, inside they
+// are refused, by the server and by the designer's live check alike. A port
+// is checked the same on both sides.
+function seo_canonical_unicode_cases()
+{
+	return array(
+		array("https://example.com/urun\u{00A0}", 'ok', 'https://example.com/urun'),
+		array("\u{00A0}https://example.com/urun", 'ok', 'https://example.com/urun'),
+		array("\u{FEFF}https://example.com/x", 'ok', 'https://example.com/x'),
+		array("https://example.com/x\u{200B}", 'ok', 'https://example.com/x'),
+		array("\u{3000}/urunler/kalem\u{2028}", 'ok', '/urunler/kalem'),
+		array("\u{00A0}\u{FEFF}", '', ''),
+		array("https://example.com/a\u{00A0}b", 'chars', ''),
+		array("https://example.com/a\u{2028}b", 'chars', ''),
+		array("https://example.com/a\u{3000}b", 'chars', ''),
+		array("https://example.com/a\u{200B}b", 'chars', ''),
+		array("https://exa\u{202E}mple.com/", 'chars', ''),
+		array('https://örnek.com.tr/hakkımızda', 'ok', 'https://örnek.com.tr/hakkımızda'),
+		array('https://host.com:99999/', 'scheme', ''),
+		array('https://host.com:65536/', 'scheme', ''),
+		array('https://a:b/', 'scheme', ''),
+		array('https://host.com:65535/', 'ok', 'https://host.com:65535/'),
+		array('https://host.com:/', 'ok', 'https://host.com:/'),
+		array('https://[::1]:8080/', 'ok', 'https://[::1]:8080/'),
+		array('https://u:p@host.com/', 'ok', 'https://u:p@host.com/'),
+		array('/a b', 'chars', ''),
+		array('//x', 'scheme', ''),
+	);
+}
+
+function test_page_canonical_unicode_space_trimmed_or_refused()
+{
+	foreach (seo_canonical_unicode_cases() as $case) {
+		$check = pg_page_canonical_url_check($case[0]);
+		$got = $check['ok'] ? (($check['value'] === '') ? '' : 'ok') : $check['error'];
+
+		pg_assert_same($case[1], $got, json_encode($case[0]));
+
+		if ($case[1] === 'ok') {
+			pg_assert_same($case[2], $check['value'], 'stored as ' . json_encode($case[2]));
+		}
+	}
+
+	pg_assert_same('chars', pg_page_canonical_url_check("https://example.com/\xC3")['error'], 'not UTF-8');
+}
+
+// The designer's live check (_sdCanonicalCheck()) answers as the server does.
+function test_page_canonical_designer_check_agrees()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, 'function _sdCanonicalCheck(');
+	$to = strpos($source, 'function _sdMaxSnippetCheck(', $from);
+	pg_assert_true(($from !== false) && ($to !== false), 'the designer has the check');
+
+	$inputs = array_map(function ($case) { return $case[0]; }, seo_canonical_unicode_cases());
+	$file = tempnam(sys_get_temp_dir(), 'pgcanon');
+	file_put_contents($file, substr($source, $from, $to - $from) . "\nconsole.log(JSON.stringify(" . json_encode($inputs) . ".map(_sdCanonicalCheck)));");
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	pg_assert_same(0, $code, implode("\n", $out));
+	$answers = json_decode(implode("\n", $out), true);
+
+	foreach (seo_canonical_unicode_cases() as $i => $case) {
+		pg_assert_same($case[1], $answers[$i] ?? null, 'designer: ' . json_encode($case[0]));
+	}
+}

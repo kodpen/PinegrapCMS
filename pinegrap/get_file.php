@@ -1482,11 +1482,9 @@ function initialize_url_constants()
         define('SOFTWARE_DIRECTORY', $path_parts[count($path_parts) - 1]);
     }
 
-    if (version_compare(PHP_VERSION, '5.0.0', '>=') == TRUE) {
-        $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-    } else {
-        $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-    }
+    // In any case, as init.php finds it: the address keeps the spelling it
+    // was typed with, which on Windows need not be the folder's.
+    $position = mb_strripos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
 
     if ($position === FALSE) {
         $url_path = '/';
