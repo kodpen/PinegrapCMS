@@ -262,7 +262,10 @@ function pg_db_run($query)
     $counters['ms'] += (microtime(true) - $started) * 1000;
 
     if ($result === false) {
-        // Provide mysqli error to output_error for debugging (output_error may suppress details based on DEBUG).
+        // The database's own message names tables, columns and a piece of the
+        // statement. It goes to the server log; on the page output_error()
+        // shows it only when verbose database errors are on (DEBUG) or during
+        // an install or update, reading it from the connection itself.
         $err = mysqli_error(db::$con);
         // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
         // a failed schema statement can be waved through as "already applied", and anything
@@ -272,7 +275,9 @@ function pg_db_run($query)
         if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
             return null;
         }
-        output_error(lang('Query failed.') . ' ' . h($err));
+        error_log('Pinegrap: query failed: ' . $err);
+
+        output_error(lang('Query failed.'));
     }
 
     return $result;
@@ -1297,6 +1302,36 @@ function pg_send_to_url($fallback = '')
 
     return $send_to;
 }
+/**
+ * Whether get_relative_time() and get_absolute_time() show a time in the
+ * signed-in person's own time zone rather than the site's: the caller did not
+ * ask for the site's ("timezone_type" => "site"), somebody is signed in, and
+ * that person has a zone of their own. Leaving timezone_type out means "user",
+ * which is how every caller of both functions leaves it.
+ *
+ * @param array  $properties    the properties the time function was given
+ * @param bool   $signed_in     whether somebody is signed in (USER_LOGGED_IN)
+ * @param string $user_timezone the person's zone, '' when none (USER_TIMEZONE)
+ * @return bool
+ */
+function pg_time_in_user_zone($properties, $signed_in, $user_timezone)
+{
+    $asked = (is_array($properties) && isset($properties['timezone_type'])) ? (string) $properties['timezone_type'] : '';
+
+    return ($asked !== 'site') && $signed_in && ((string) $user_timezone !== '');
+}
+
+// pg_time_in_user_zone() for this request. The constants are read through
+// defined() because an error screen or a command line job can draw a time
+// before init.php has decided who is signed in.
+function pg_time_uses_user_zone($properties)
+{
+    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN;
+    $zone = ($signed_in && defined('USER_TIMEZONE')) ? (string) USER_TIMEZONE : '';
+
+    return pg_time_in_user_zone($properties, $signed_in, $zone);
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -1331,7 +1366,7 @@ function get_relative_time($properties)
     // If the type is "date_and_time" and if the timezone type is not "site",
     // and the visitor is logged in, and the user has a specific timezone set,
     // then get time in user's timezone.
-    if (($type != 'date') && (isset($properties['timezone_type']) && $properties['timezone_type'] != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+    if (($type != 'date') && pg_time_uses_user_zone($properties)) {
         $timezone_type = 'user';
         // Otherwise get the time for the site's timezone.
     } else {
@@ -1553,7 +1588,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {
@@ -1573,7 +1608,7 @@ function get_absolute_time($properties)
         // If the timezone type is not "site", and the visitor is logged in,
         // and the user has a specific timezone set,
         // then get time in user's timezone.
-        if ((($properties['timezone_type'] ?? '') != 'site') && (USER_LOGGED_IN) && (USER_TIMEZONE != '')) {
+        if (pg_time_uses_user_zone($properties)) {
             $timezone_type = 'user';
             // Otherwise get the time for the site's timezone.
         } else {

@@ -345,7 +345,7 @@ $query =
         products.submit_form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 $order_items = array();
@@ -633,7 +633,7 @@ if ($order_submitted == false) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND products.gift_card = '0'") == 0
             ) {
                 $liveform->assign_field_value('gift_card_code', '');
@@ -1046,6 +1046,11 @@ if ($order_submitted == false) {
                          "timestamp = UNIX_TIMESTAMP() " .
                      "WHERE id = '" . $contact_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        } elseif ($liveform->field_in_session('tax_number')) {
+            // The card is not updated from the billing block, but a card with no
+            // tax number still takes the one typed here: the order keeps none of
+            // its own, and the account its invoice goes to is opened from the card.
+            pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id);
         }
 
         // Announced only now: the row above was created empty and has just been
@@ -1611,7 +1616,7 @@ if (ECOMMERCE_SHIPPING) {
                 FROM order_items
                 LEFT JOIN products ON products.id = order_items.product_id
                 WHERE
-                    (order_items.order_id = '" . e($order_id) . "')
+                    (order_items.order_id = '" . e($order_id) . "')" . pg_order_item_active_sql() . "
                     AND (order_items.ship_to_id = '" . e($recipient['id']) . "')
                 ORDER BY order_items.id");
 

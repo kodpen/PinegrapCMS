@@ -1287,8 +1287,6 @@ function api_products_delete($params) {
 
 	api_dry_run_stop('deleted', 'product', array('id' => $id, 'name' => $product['name']));
 
-	$audit_before = pg_audit_fetch('products', $id);
-
 	if (!function_exists('pg_pb_delete_product')) {
 
 		$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
@@ -1300,8 +1298,6 @@ function api_products_delete($params) {
 	// The product screen's own deletion. It queues product.deleted itself,
 	// because every path that removes a product ends on that function.
 	pg_pb_delete_product($id);
-
-	pg_audit_record('delete', 'products', $id, $audit_before);
 
 	api_exec("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . $id . "')");
 

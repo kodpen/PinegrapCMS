@@ -4,12 +4,13 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 ---
 
 ## What is the connector contract?
-- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes only so far (facts: `trendyol-api-facts.md`).
+- `includes/api/outbound/connectors/`: `base.php` = contract + shared plumbing; `n11.php` = first provider; `trendyol.php` = test, category tree, attributes, listing create, stock and price, batch result so far (`trendyol-api-facts.md`, `trendyol-listings.md`, `trendyol-stock-price.md`).
 - The contract is not an interface but a TABLE OF FUNCTION NAMES: `mp_connector('n11')` returns it, `mp_can()` asks, `mp_call()` calls. A connector that does not name a function it cannot do is valid.
+- `push_stock_price` may answer `data['refused']` (product id => reason): the queue fails those rows on their own reason at once and writes it on the mapping. `task_id` '' = nothing was sent, the rest close as done. A retryable error may carry `data['retry_after']` (seconds, capped at an hour), which `mp_sync_batch_failed()` waits instead of the backoff.
 - Nothing is queued for what a connector cannot do: `mp_enqueue()` skips accounts whose provider lacks `push_stock_price`, and the screen hides "List on the marketplace" without `create_listings` (otherwise rows fail six times or wait for ever).
 
 ## How are a provider's credential fields declared?
-- `mp_providers()[...]['fields']`: text box by default (`secret` → password); `'type' => 'select'` with `options` and `default` (Trendyol's live/test environment). `mp_provider_credentials()` reads a form and only ever stores one of a select's options; a select is never "required". Optional `help` is drawn under the fields. The new-account modal draws every provider's block and disables the hidden ones.
+- `mp_providers()[...]['fields']`: text box by default (`secret` → password); `'type' => 'select'` with `options` and `default` (Trendyol's live/test environment). `mp_provider_credentials()` reads a form and only ever stores one of a select's options; a select is never "required". Optional `help` is drawn under the fields; `shipment_template` shows the account's cargo template field; `key => 'barcode'` (`mp_provider_keys_by_barcode()`) makes the barcode the product's key. The new-account modal draws every provider's block and disables the hidden ones.
 - Trendyol's functions take an optional `$transport` (signature of `api_http_request()`); `mp_call()` never passes it, tests pass a fixture recorder.
 
 ## Which tables does it use?

@@ -252,7 +252,7 @@ function api_schema() {
 			'summary' => 'Set or adjust stock for many products',
 			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied.')
 			)
 		),
 
@@ -625,6 +625,7 @@ function api_schema() {
 			'handler' => 'api_customers_list',
 			'returns' => array('list' => 'Customer'),
 			'summary' => 'List customers',
+			'description' => 'From the manager role up an application reaches every customer; one whose owner has the user role reaches only those filed in the contact groups given to that account, as on the contact screens, and every customers route answers 404 for the rest.',
 			'params'  => array(
 				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name, the email address or the member number.'),
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
@@ -1467,7 +1468,7 @@ function api_schema() {
 			'returns' => 'Customer',
 			'status'  => 201,
 			'summary' => 'Add a customer',
-			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, contact groups, the affiliate record and the ERP columns are not written here.',
+			'description' => 'The plain fields of the address book record. Needs at least a name, a company or an e-mail address - a row with none of those is not a customer. Nothing is de-duplicated: two people at one address is a real thing and neither the table nor the panel refuses it, so an integration that wants an upsert looks first with GET /customers?email=. Membership, the affiliate record and the ERP columns are not written here, and contact groups only as contact_group_id says.',
 			'params'  => array(
 				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'first_name',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
@@ -1483,7 +1484,8 @@ function api_schema() {
 				array('name' => 'zip',         'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'country',     'in' => 'body', 'type' => 'string', 'max_length' => 50),
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
-				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; this endpoint does not subscribe anyone to a contact group.')
+				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; it is also the choice recorded for the e-mail of the group in contact_group_id, which is otherwise recorded as not opted in.'),
+				array('name' => 'contact_group_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact group the customer is filed in (GET /contact-groups); left out, none. An application whose owner has the user role reaches only customers in the groups given to that account, as on the contact screens, so its customer is always filed in one of them: the one sent, or the only one it has; with several, this is required.')
 			)
 		),
 
@@ -1496,7 +1498,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Customer',
 			'summary' => 'Change a customer',
-			'description' => 'Only the fields you send are changed. The same set the create takes.',
+			'description' => 'Only the fields you send are changed. The same set the create takes, without contact_group_id: groups are changed through POST /contact-groups/{id}/members.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'salutation',  'in' => 'body', 'type' => 'string', 'max_length' => 50),
@@ -1628,7 +1630,7 @@ function api_schema() {
 			'handler' => 'api_forms_list',
 			'returns' => array('list' => 'Form'),
 			'summary' => 'List forms',
-			'description' => 'Every page that carries a form, with how many fields it has and how much has been filled in on it. A form is a page in this software, so the id here is a page id and the same id reads the page through /pages.',
+			'description' => 'Every page that carries a form, with how many fields it has and how much has been filled in on it. A form is a page in this software, so the id here is a page id and the same id reads the page through /pages. An account with the forms right but the user role sees only the forms on pages in folders it may edit, as on the submitted-form screens.',
 			'params'  => array(
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
 				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
@@ -1643,7 +1645,7 @@ function api_schema() {
 			'handler' => 'api_forms_get',
 			'returns' => 'Form',
 			'summary' => 'One form, with its fields',
-			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen.',
+			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -1657,7 +1659,7 @@ function api_schema() {
 			'handler' => 'api_form_submissions',
 			'returns' => array('list' => 'FormSubmission'),
 			'summary' => 'What came in on a form',
-			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read.',
+			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',              'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submitted_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions sent at or after this moment.'),
@@ -1677,7 +1679,7 @@ function api_schema() {
 			'handler' => 'api_form_submission_get',
 			'returns' => 'FormSubmission',
 			'summary' => 'One submission',
-			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404.',
+			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404, and so is one made on a form in a folder the owner may not edit.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -1694,7 +1696,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'FormSubmission',
 			'summary' => 'Mark a submission complete, or fill in its text answers',
-			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now.',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -2599,7 +2601,7 @@ function api_schema() {
 			'returns' => 'DesignPage',
 			'status'  => 201,
 			'summary' => 'Add a page to a design, as a draft',
-			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those). publish_at schedules the draft: the site\'s general job puts it on the site at that time, and unpublish_at takes it back to the drafts later; a publish time that has already come is refused, since the page would go live at once. The times can be changed later with POST /design/pages/{id}.',
+			'description' => 'A new page of the design, always kept off the site in the drafts folder: it opens in the Visual Page Editor with the design\'s other pages, and a person publishes it there. It starts as an empty canvas, or with the layout of another page of the same design (copy_from; its title, description and settings are not copied). Fill it with proposals (POST /design/pages/{id}/proposals). folder_id is the folder the page is published to (GET /folders), the top folder when left out. name is the page\'s address: spaces and & become _, and 409 name_taken when a page, file, short link or folder already answers at it. 409 page_has_form when the page to copy has a form of its own (the editor duplicates those). publish_at schedules the draft: the site\'s general job puts it on the site at that time, and unpublish_at takes it back to the drafts later; a time that has already come is refused, since a publish time would put the page live at once and the page is not on the site to come off it. The times can be changed later with POST /design/pages/{id}.',
 			'params'  => array(
 				array('name' => 'design_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The design (GET /design/designs).'),
 				array('name' => 'name',             'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The page name, which is its address.'),
@@ -2607,8 +2609,8 @@ function api_schema() {
 				array('name' => 'meta_description', 'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'folder_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The folder the page is published to.'),
 				array('name' => 'copy_from',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A page of the same design whose layout the new page starts with.'),
-				array('name' => 'publish_at',       'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the draft goes on the site: ISO 8601 with an offset or Z (2026-10-21T09:30:00+03:00), or a unix time. A time without an offset is refused, as the site\'s time zone is not assumed. Has to be ahead.'),
-				array('name' => 'unpublish_at',     'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the page comes off the site again, back to the drafts. Same forms as publish_at; after it when both are set.')
+				array('name' => 'publish_at',       'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the draft goes on the site: ISO 8601 with an offset or Z (2026-10-21T09:30:00+03:00), or a unix time. Fractions of a second are dropped. A time without an offset is refused, as the site\'s time zone is not assumed. Has to be ahead.'),
+				array('name' => 'unpublish_at',     'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the page comes off the site again, back to the drafts. Same forms as publish_at; after it when both are set, and ahead.')
 			)
 		),
 
@@ -2661,7 +2663,7 @@ function api_schema() {
 			'description' => 'The two times of the Schedule section in the Visual Page Editor\'s Page Settings; nothing else of the page changes here. Send either or both, null or "" clears one, and one left out keeps its stored value. A publish time ahead keeps the page a draft until then - a page that is on the site now is taken off it at once and comes back at that time. A time that has already come is carried out by this request: a passed publish_at publishes the page now, a passed unpublish_at takes it off now. The site\'s general job carries out the times that come later, about once a minute, and clears each one as it does. unpublish_at has to come after publish_at when both are set. The home page stays on the site and takes neither time. 409 page_open_in_editor while somebody has the page open in the editor: their next save would put their copy of the times back. The dry run answers with the state the page would be left in and the times as they would be stored. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached. Use POST.',
 			'params'  => array(
 				array('name' => 'id',           'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'publish_at',   'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the page goes on the site: ISO 8601 with an offset or Z (2026-10-21T09:30:00+03:00), or a unix time. A time without an offset is refused, as the site\'s time zone is not assumed. null or "" clears it.'),
+				array('name' => 'publish_at',   'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the page goes on the site: ISO 8601 with an offset or Z (2026-10-21T09:30:00+03:00), or a unix time. Fractions of a second are dropped. A time without an offset is refused, as the site\'s time zone is not assumed. null or "" clears it.'),
 				array('name' => 'unpublish_at', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'When the page comes off the site, back to the drafts. Same forms as publish_at; null or "" clears it.')
 			)
 		),
@@ -2674,7 +2676,7 @@ function api_schema() {
 			'handler' => 'api_design_revisions_list',
 			'returns' => array('list' => 'DesignRevision'),
 			'summary' => 'Published revisions of a page',
-			'description' => 'One revision for every publish of the page, newest first: the editor\'s saves, the external API, the importers and the AI editor (source publish, restore, import or ai). A save that changed nothing the revision records writes none, and so does a change of the times alone. name and title are the page\'s at that publish. The layout is not returned; put a revision back with POST /design/pages/{id}/revisions/{no}/restore. The site keeps the last revisions of each page and the recent ones (Site Settings, Features, Page Revisions), so old numbers disappear. Cursor paged.',
+			'description' => 'One revision for every publish of the page, newest first: the editor\'s saves, the external API, the importers and the AI editor (source publish, restore, import or ai). A save that changed nothing the revision records writes none, and so does a change of the times that leaves the page where it was; one that moves it on or off the site writes one, since the revision records the page\'s folder. name and title are the page\'s at that publish. The layout is not returned; put a revision back with POST /design/pages/{id}/revisions/{no}/restore. The site keeps the last revisions of each page and the recent ones (Site Settings, Features, Page Revisions), so old numbers disappear. Cursor paged.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
@@ -3031,6 +3033,7 @@ function api_error_catalogue() {
 		'method_not_allowed'       => array(405, 'The address exists but not with that verb.'),
 
 		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
+		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
 
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 

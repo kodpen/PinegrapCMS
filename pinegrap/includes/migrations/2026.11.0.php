@@ -43,6 +43,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_privacy_logs();           // 11.0.16
 	upgrade_2026_11_0_page_canonical_robots();  // 11.0.22
 	upgrade_2026_11_0_ai_fields();              // 11.0.23
+	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
 
 }
 
@@ -818,5 +819,20 @@ function upgrade_2026_11_0_ai_fields() {
 	}
 
 	install_note('Write with AI: a text that came from an accepted AI draft on the product screen or the page properties screen is now marked beside its field. The mark goes when the text is edited by hand, when it is removed beside the field, or when the field is saved empty.');
+
+}
+
+// The two filters of the order invoice the ERP issues on its own
+// (config.erp_auto_invoice_on, erp_auto_invoice_decision() in
+// includes/erp/order_bridge.php): only buyers with a tax number, and the
+// smallest order it is issued for. The amount is kept in minor units of the
+// base currency, BIGINT like the ERP's other amounts. Both start off, so a
+// store that already invoices its orders on its own goes on as before.
+function upgrade_2026_11_0_erp_auto_invoice() {
+
+	install_add_column('config', 'erp_auto_invoice_tax_number_only', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
+
+	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
 
 }

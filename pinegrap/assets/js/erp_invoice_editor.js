@@ -8,12 +8,15 @@
  * rate of the issue date into an empty rate box.
  *
  * The arithmetic here mirrors the money helpers on the server (erp_kurus,
- * erp_line_total, erp_apply_rate): whole kurus in integers, rounding half away
- * from zero at the same points. The server works everything out again on
- * save; what is shown here is a preview and must agree with it. A line's VAT
- * withholding is the share of its VAT its code carries (the list comes from
- * the server in data-withholding-rates; a code it does not know keeps the
- * share stored on the line), and comes off the total.
+ * erp_line_total, erp_apply_rate, erp_allocate, erp_rate_vat): whole kurus in
+ * integers, rounding half away from zero at the same points. The server works
+ * everything out again on save; what is shown here is a preview and must
+ * agree with it. The taxes are taken per group of lines, not line by line:
+ * the VAT of the lines with one VAT rate and one withholding rate on their
+ * sum, then spread back over them. A line's VAT withholding is the share of
+ * its VAT its code carries (the list comes from the server in
+ * data-withholding-rates; a code it does not know keeps the share stored on
+ * the line), rounded once for the document, and comes off the total.
  *
  * Loaded by the invoice editor screens with a plain <script src>; it does not
  * depend on jQuery, but uses it for the date fields when it is present because
@@ -170,6 +173,140 @@
         return roundHalfAway(unitPrice * quantity);
     }
 
+    // erp_allocate(): the total split in proportion to the weights, each its
+    // floor share, the kurus left over to the largest remainders - the first
+    // of equal ones first, as PHP's stable arsort() leaves them. The shares
+    // always add up to the total.
+    function allocate(total, weights) {
+        var shares = weights.map(function () { return 0; });
+        var sum = 0;
+        weights.forEach(function (weight) {
+            sum += weight;
+        });
+        if (sum <= 0 || weights.length === 0) {
+            if (weights.length > 0) {
+                shares[0] = total;
+            }
+            return shares;
+        }
+        var remainders = [];
+        var allocated = 0;
+        weights.forEach(function (weight, index) {
+            var exact = (total * weight) / sum;
+            var floor = Math.floor(exact);
+            shares[index] = floor;
+            remainders.push({ index: index, value: exact - floor });
+            allocated += floor;
+        });
+        var left = total - allocated;
+        if (left !== 0) {
+            var step = left > 0 ? 1 : -1;
+            // Array.prototype.sort is stable, so equals keep their order.
+            remainders.sort(function (a, b) {
+                return b.value - a.value;
+            });
+            if (left < 0) {
+                remainders.reverse();
+            }
+            var position = 0;
+            while (left !== 0) {
+                shares[remainders[position % remainders.length].index] += step;
+                left -= step;
+                position++;
+            }
+        }
+        return shares;
+    }
+
+    // A rate as the server keys its groups by: three places, the rate
+    // columns' own scale.
+    function rateKey(rate) {
+        return Number(rate).toFixed(3);
+    }
+
+    // erp_rate_vat(): each tax taken once on the sum of the lines at its
+    // rate and spread back over them. The VAT per group of one VAT rate and
+    // one withholding rate; the withholding is every group's VAT times its
+    // rate, summed and rounded once, spread over the withheld lines by what
+    // each withholds; the second tax per its own rate. Lines are
+    // {net, taxRate, withholdingRate, tax2Rate}; the answer is per line
+    // {vat, tax2, withholding}, in the same order.
+    function rateTaxes(lines) {
+        var out = lines.map(function () {
+            return { vat: 0, tax2: 0, withholding: 0 };
+        });
+        var groups = [];
+        var groupByKey = {};
+        var tax2Groups = [];
+        var tax2ByKey = {};
+
+        lines.forEach(function (line, index) {
+            // Nothing is withheld from a line that carries no VAT.
+            var withholdingRate = line.taxRate > 0 ? line.withholdingRate : 0;
+            var key = rateKey(line.taxRate) + '|' + rateKey(withholdingRate);
+            if (!Object.prototype.hasOwnProperty.call(groupByKey, key)) {
+                groupByKey[key] = groups.length;
+                groups.push({ taxRate: line.taxRate, withholdingRate: withholdingRate, net: 0, members: [] });
+            }
+            var group = groups[groupByKey[key]];
+            group.net += line.net;
+            group.members.push(index);
+
+            if (line.tax2Rate > 0) {
+                var tax2Key = rateKey(line.tax2Rate);
+                if (!Object.prototype.hasOwnProperty.call(tax2ByKey, tax2Key)) {
+                    tax2ByKey[tax2Key] = tax2Groups.length;
+                    tax2Groups.push({ rate: line.tax2Rate, net: 0, members: [] });
+                }
+                var tax2Group = tax2Groups[tax2ByKey[tax2Key]];
+                tax2Group.net += line.net;
+                tax2Group.members.push(index);
+            }
+        });
+
+        var withheld = 0;
+        var withheldLines = [];
+        var withheldWeights = [];
+
+        groups.forEach(function (group) {
+            var vat = applyRate(group.net, group.taxRate);
+            var shares = allocate(vat, group.members.map(function (index) {
+                return lines[index].net;
+            }));
+            group.members.forEach(function (index, position) {
+                out[index].vat = shares[position];
+            });
+            if (group.withholdingRate > 0) {
+                withheld += vat * group.withholdingRate;
+                // Whole weights: thousandths of a kurus keep a rate's three
+                // places.
+                group.members.forEach(function (index) {
+                    withheldLines.push(index);
+                    withheldWeights.push(roundHalfAway(out[index].vat * group.withholdingRate * 1000));
+                });
+            }
+        });
+
+        var withholdingTotal = roundHalfAway(withheld / 100);
+        if (withholdingTotal !== 0) {
+            allocate(withholdingTotal, withheldWeights).forEach(function (share, position) {
+                out[withheldLines[position]].withholding = share;
+            });
+        }
+
+        tax2Groups.forEach(function (group) {
+            var tax2 = applyRate(group.net, group.rate);
+            var shares = allocate(tax2, group.members.map(function (index) {
+                return lines[index].net;
+            }));
+            group.members.forEach(function (index, position) {
+                out[index].tax2 = shares[position];
+            });
+        });
+
+        return out;
+    }
+
     /* --------------------------------------------------------- formatting */
 
     var numberFormat = null;
@@ -286,25 +423,22 @@
         var tax2Rate = parseDecimal(field(row, 'tax2_rate') ? field(row, 'tax2_rate').value : '');
 
         // The campaign first, the typed discount on what it leaves; the same
-        // order erp_manual_lines_build() uses.
+        // order erp_manual_lines_build() uses. The taxes come from the
+        // document's groups (rateTaxes()): a second tax, where the store
+        // names one, is its own rate on the same net, and withholding stays a
+        // share of the first.
         var total = lineTotal(unitPrice, quantity);
         var offer = offerRate > 0 ? applyRate(total, offerRate) : 0;
         var typed = discountRate > 0 ? applyRate(total - offer, discountRate) : 0;
         var discount = offer + typed;
-        var tax = applyRate(total - discount, taxRate);
-        // A second tax, where the store names one: its own rate on the same
-        // net; withholding stays a share of the first.
-        var tax2 = tax2Rate > 0 ? applyRate(total - discount, tax2Rate) : 0;
-        var share = withholdingShare(row);
-        var withholding = share > 0 ? applyRate(tax, share) : 0;
 
         return {
             lineTotal: total,
             discount: discount,
-            tax: tax,
-            tax2: tax2,
-            withholding: withholding,
-            payable: total - discount + tax + tax2 - withholding,
+            net: total - discount,
+            taxRate: taxRate,
+            tax2Rate: tax2Rate,
+            withholdingRate: withholdingShare(row),
             isEmpty: (quantity === 0 && unitPrice === 0)
         };
     }
@@ -364,18 +498,22 @@
         var taxTotal = 0;
         var tax2Total = 0;
         var withholdingTotal = 0;
+        var lineRows = rows();
+        var figures = lineRows.map(lineFigures);
+        var taxes = rateTaxes(figures);
 
-        rows().forEach(function (row) {
-            var figures = lineFigures(row);
+        lineRows.forEach(function (row, index) {
+            var line = figures[index];
+            var lineTaxes = taxes[index];
             var cell = row.querySelector('[data-erp-line-total]');
             if (cell) {
-                cell.textContent = figures.isEmpty ? '' : formatMoney(figures.payable);
+                cell.textContent = line.isEmpty ? '' : formatMoney(line.net + lineTaxes.vat + lineTaxes.tax2 - lineTaxes.withholding);
             }
-            subtotal += figures.lineTotal;
-            discountTotal += figures.discount;
-            taxTotal += figures.tax;
-            tax2Total += figures.tax2;
-            withholdingTotal += figures.withholding;
+            subtotal += line.lineTotal;
+            discountTotal += line.discount;
+            taxTotal += lineTaxes.vat;
+            tax2Total += lineTaxes.tax2;
+            withholdingTotal += lineTaxes.withholding;
         });
 
         if (!totalsBox) {

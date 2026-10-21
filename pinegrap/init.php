@@ -677,6 +677,11 @@ define('ERP_ENABLED', isset($row['erp_enabled']) ? (int) $row['erp_enabled'] : 0
 define('ERP_PARASUT_ENABLED', isset($row['erp_parasut_enabled']) ? (int) $row['erp_parasut_enabled'] : 0);
 define('ERP_DEFAULT_SERIES', $row['erp_default_series'] ?? 'PGF');
 define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
+// The two filters of that invoice (2026.11.0, 11.0.58): buyers with a tax
+// number only, and the smallest order in minor units of the base currency.
+// Off and 0 until the step has run.
+define('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY', isset($row['erp_auto_invoice_tax_number_only']) ? (int) $row['erp_auto_invoice_tax_number_only'] : 0);
+define('ERP_AUTO_INVOICE_MIN_TOTAL', isset($row['erp_auto_invoice_min_total']) ? (int) $row['erp_auto_invoice_min_total'] : 0);
 define('ERP_DEFAULT_CASH_ACCOUNT_ID', isset($row['erp_default_cash_account_id']) ? (int) $row['erp_default_cash_account_id'] : 0);
 // The account a counter sale with no customer is billed to (4.59); 0 = none named.
 define('ERP_WALKIN_ACCOUNT_ID', isset($row['erp_walkin_account_id']) ? (int) $row['erp_walkin_account_id'] : 0);

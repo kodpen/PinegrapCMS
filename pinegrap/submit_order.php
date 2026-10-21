@@ -267,7 +267,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND products.gift_card = '0'") == 0
             ) {
                 db("DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
@@ -669,6 +669,11 @@ function submit_order($type) {
                         timestamp = UNIX_TIMESTAMP()
                     WHERE id = '" . $contact_id . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            } elseif ($liveform->field_in_session('tax_number')) {
+                // The card is not updated from the billing block, but a card with no
+                // tax number still takes the one typed here: the order keeps none of
+                // its own, and the account its invoice goes to is opened from the card.
+                pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id);
             }
         }
         
@@ -791,7 +796,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql() . "
         ORDER BY order_items.id ASC";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -874,15 +879,18 @@ function submit_order($type) {
         $tax = 0;
     }
     
-    // set the discount for the order if there is one
-    $discount = $_SESSION['ecommerce']['order_discount'] ?? 0;
+    // Set the discount for the order if there is one: what the cart worked
+    // out, at most the subtotal charged today (recurring lines that start
+    // later are not in $subtotal).
+    $discount = pg_order_charged_discount($_SESSION['ecommerce']['order_discount'] ?? 0, $subtotal);
     
     // store the orginal tax in case there is a discount
     // and we need to add a discount line item for PayPal Express Checkout
     $original_tax = $tax;
 
-    // if there is an order discount, adjust tax according to discount
-    if ($discount) {
+    // If there is an order discount, adjust tax according to discount. A
+    // discount is only above zero when the subtotal is.
+    if ($discount && ($subtotal > 0)) {
 
         $tax = $tax - round(($tax * ($discount / $subtotal)));
 
@@ -1385,7 +1393,7 @@ function submit_order($type) {
                 "SELECT id
                 FROM order_items
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                     AND (product_id = '" . $product['required_product'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1420,7 +1428,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
             AND (order_items.ship_to_id > 0)
             AND (order_items.price <= 0)";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1438,7 +1446,7 @@ function submit_order($type) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                 AND (ship_to_id = '" . $free_order_item['ship_to_id'] . "')
                 AND (price > 0)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -2478,7 +2486,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2667,7 +2675,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2961,7 +2969,7 @@ function submit_order($type) {
                         $Iyzipay_ship_zip = '';
                         $Iyzipay_ship_country = '';
 
-                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')";
+                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')" . pg_order_item_active_sql();
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
@@ -3391,7 +3399,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON products.id = order_items.product_id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND (products.shippable = '1')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
@@ -4181,8 +4189,11 @@ function submit_order($type) {
                 $affiliate_commission_rate = AFFILIATE_DEFAULT_COMMISSION_RATE;
             }
             
-            // if there is an order discount, calculate discount percentage
-            if ($discount) {
+            // If there is an order discount, calculate discount percentage
+            // (pg_order_charged_discount() keeps a discount within a subtotal
+            // above zero; the check keeps the division safe on its own).
+            $discount_percentage = 0;
+            if ($discount && ($subtotal > 0)) {
                 $discount_percentage = $discount / $subtotal;
             }
             
@@ -4449,7 +4460,11 @@ function submit_order($type) {
                 ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
+
+    // The placed order holds what was charged: lines saved for later come off
+    // it before the receipt and the e-mails below read it.
+    pg_order_drop_saved_lines((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
     // lock table, so no one can read table, so we can get the order number
     $query = "LOCK TABLES next_order_number WRITE";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

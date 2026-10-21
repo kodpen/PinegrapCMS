@@ -22,11 +22,13 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
+- money-field-input-mask.md: Panel money fields with the currency input mask (data-inputmask-alias currency): fill them in machine format, read them with pg_normalize_amount(), require them; the gift card balance symptom
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .dropdown-menu: Bootstrap's capture-phase keydown handler throws on it, so its keys are taken on the window; closing on scroll and a long press
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-save-shortcut.md: The panel's Ctrl+S shortcut (backend.src.js): which form it submits, disable_shortcut, and why a key a dialog has already handled is left alone.
+- panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in: the signed-in person's own zone unless the caller asks for the site's, decided by pg_time_in_user_zone()
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the alert-dismissible padding rule.

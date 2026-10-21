@@ -2104,12 +2104,12 @@ const StyleDesigner = (function () {
     var MEMBER_CORE_FIELDS = {
         member_id:            _sdT('Member number (membership activation; contact: member_id)'),
         email_address:        _sdT('Email (legacy name; contact: email_address)'),
-        email_address_verify: _sdT('Email again (legacy name)'),
+        email_address_verify: _sdT('Email again (legacy name; optional, must match when filled in)'),
         first_name:           _sdT('First name (contact: first_name)'),
         last_name:            _sdT('Last name (contact: last_name)'),
         username:             _sdT('User name (derived from the email when absent)'),
         email:                _sdT('Email (contact: email_address)'),
-        email_verify:         _sdT('Email again'),
+        email_verify:         _sdT('Email again (optional; must match the email when filled in)'),
         password:             _sdT('Password'),
         password_verify:      _sdT('Password again'),
         password_hint:        _sdT('Password hint (not drawn when the site setting is off)'),
@@ -25135,6 +25135,42 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A link's window or relationship typed in the Attrs panel, or kept there
+    // by an older starter tree, prints on the canvas and on the page (the
+    // server's link and btn cases read _attrs when the prop is empty) while
+    // the Target and Relationship options read the prop and said "Default".
+    // On selection such an entry is folded into the prop when the option can
+    // hold its value - the page prints the prop where it printed the entry,
+    // so nothing moves - and leaves _attrs. Beside a prop that is already set
+    // the entry is the one the page ignores, and it is dropped. A value the
+    // option cannot hold (a named frame, two rel words) stays in _attrs,
+    // where the Attrs panel shows it. Runs silently on node selection — no
+    // undo entry.
+    function migrateNodeLinkProps(node) {
+        if (!node || !node.props || !Array.isArray(node.props._attrs) || !node.props._attrs.length) return;
+        var p = node.props;
+        var rels = ['nofollow', 'noopener', 'noreferrer', 'noopener noreferrer', 'sponsored', 'ugc'];
+        var opts = null;
+        // The values each element's Target and Relationship selects offer
+        // (propsLinkOptions() for the link, the Button's link rows).
+        if (node.type === 'content' && p.contentType === 'link') {
+            opts = { target: ['_blank', '_self', '_parent', '_top'], rel: rels };
+        } else if (node.type === 'component' && p.componentType === 'btn'
+                   && p.btnElement !== 'button' && p.btnElement !== 'input') {
+            opts = { target: ['_blank', '_self'], rel: rels };
+        }
+        if (!opts) return;
+        p._attrs = p._attrs.filter(function (a) {
+            var name = (a && a.name) ? String(a.name).trim().toLowerCase() : '';
+            if (!opts.hasOwnProperty(name)) return true;
+            if (p[name]) return false;
+            var v = String(a.value == null ? '' : a.value).trim();
+            if (opts[name].indexOf(v) === -1) return true;
+            p[name] = v;
+            return false;
+        });
+    }
+
     // ── Multi-select: shared helpers ─────────────────────────────────────────
     // Returns the uniform class within a mutex group across all nodes, or null if mixed.
     function _mcUniformGroup(nodes, groupArr) {
@@ -26591,6 +26627,8 @@ const StyleDesigner = (function () {
         // (fontSize, objectPosition) back into the prop, so the option and
         // the page agree (_sdInlineStyleProps()).
         migrateNodeStyleProps(selectedNode);
+        // The same for a link's window and relationship kept in _attrs.
+        migrateNodeLinkProps(selectedNode);
 
         // Options section (node-specific)
         var optHtml = '';
@@ -28282,7 +28320,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>register_remember_me</code> control and its label are not drawn. They are not drawn either when the site setting is off.') + '</div>'
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
-                        _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code>, <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
                     '</div></div>'
                 );
             }
@@ -28759,7 +28797,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>register_remember_me</code> control and its label are not drawn. They are not drawn either when the site setting is off.') + '</div>'
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
-                        _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code>, <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
                     '</div></div>'
                 );
             }
@@ -46604,8 +46642,9 @@ const StyleDesigner = (function () {
                                             rgField(_sdT('First Name'), rgId + '_first', 'text', 'first_name', 'given-name', null, 'col-sm-6'),
                                             rgField(_sdT('Last Name'), rgId + '_last', 'text', 'last_name', 'family-name', null, 'col-sm-6')
                                         ]),
+                                        // The address is asked once (WCAG 2.2 3.3.7);
+                                        // pg_member_register() takes email_verify as optional.
                                         rgField(_sdT('Email'), rgId + '_email', 'email', 'email', 'email', [{ name: 'spellcheck', value: 'false' }]),
-                                        rgField(_sdT('Email (again)'), rgId + '_email2', 'email', 'email_verify', 'email', [{ name: 'spellcheck', value: 'false' }]),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-2', customName: _sdT('Password Rules'),
                                             _bindings: { section: 'password_rules' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Password') }, [
@@ -47422,8 +47461,9 @@ const StyleDesigner = (function () {
                                             mbField(_sdT('First Name'), mbId + '_first', 'text', 'first_name', 'given-name', null, 'col-sm-6'),
                                             mbField(_sdT('Last Name'), mbId + '_last', 'text', 'last_name', 'family-name', null, 'col-sm-6')
                                         ]),
+                                        // Asked once, as on the registration widget;
+                                        // pg_member_activate() takes email_verify as optional.
                                         mbField(_sdT('Email'), mbId + '_email', 'email', 'email', 'email', [{ name: 'spellcheck', value: 'false' }]),
-                                        mbField(_sdT('Email (again)'), mbId + '_email2', 'email', 'email_verify', 'email', [{ name: 'spellcheck', value: 'false' }]),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-2', customName: _sdT('Password Rules'),
                                             _bindings: { section: 'password_rules' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Password') }, [
@@ -48094,8 +48134,8 @@ const StyleDesigner = (function () {
                                 aiBadge(_sdT('Partially paid'), 'text-bg-warning', 'invoice_is_partial', _sdT('Partially Paid Badge')),
                                 aiBadge(_sdT('12 days overdue'), 'text-bg-danger', 'invoice_is_overdue', _sdT('Overdue Badge'), '__invoice_status'),
                                 aiBadge(_sdT('Return'), 'text-bg-info', 'invoice_is_return', _sdT('Return Badge')),
-                                createNode('content', { contentType: 'link', text: _sdT('PDF'), href: '#', cssClass: 'btn btn-sm btn-outline-primary',
-                                    _attrs: [{ name: 'target', value: '_blank' }, { name: 'rel', value: 'noopener' }],
+                                createNode('content', { contentType: 'link', text: _sdT('PDF'), href: '#', target: '_blank', cssClass: 'btn btn-sm btn-outline-primary',
+                                    _attrs: [{ name: 'rel', value: 'noopener' }],
                                     _bindings: { href: '__invoice_pdf_url' } })
                             ])
                         ])

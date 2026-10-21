@@ -461,10 +461,26 @@ if ($_POST) {
 
 			// Blank means the product's own code. Most shops list under the same
 			// code on both sides, and making the operator retype it is how a
-			// typo gets into the mapping.
+			// typo gets into the mapping. On a marketplace keyed on barcodes
+			// the product's own code is its barcode, not its name.
 			if ($remote_code === '') {
 
-				$remote_code = $product['name'];
+				$remote_code = mp_provider_keys_by_barcode($account['provider'])
+					? mp_product_first_barcode($product_id)
+					: $product['name'];
+
+			}
+
+			if ($remote_code === '') {
+
+				$liveform->add_error(lang(array(
+					'string' => 'This product has no barcode. Type the barcode it is listed under on {var:1}.',
+					'vars'   => array(mp_provider_name($account['provider']))
+				)));
+
+				header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
+
+				exit();
 
 			}
 
@@ -1552,14 +1568,15 @@ if ($selected) {
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
 			</div>
-			<hr>
+			<hr>'
+			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
 			<div class="mb-3">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
 				<input type="text" class="form-control" id="edit_shipment_template" name="shipment_template"
 					value="' . h((string)$selected['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
-			</div>
+			</div>' : '') . '
 			<div class="mb-4">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
 				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30"
@@ -1604,7 +1621,7 @@ if ($selected) {
 					<input type="text" class="form-control" id="match_code" name="remote_code" autocomplete="off">
 					<div class="form-text">'
 						. (($selected['provider'] === 'trendyol')
-							? lang('Leave empty to use the same code as here. On Trendyol this is the barcode of the listing.')
+							? lang('Leave empty to use the product\'s barcode. Trendyol knows a listing by its barcode.')
 							: lang('Leave empty to use the same code as here. On n11 this is the stock code (stockCode) of the listing.')) . '</div>
 				</div>
 			</div>

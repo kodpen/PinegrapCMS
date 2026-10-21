@@ -234,3 +234,58 @@ function test_page_schedule_request_plan_order_names_the_field()
 	pg_assert_same(array('error' => 'order', 'field' => 'publish_at', 'plan' => null),
 		pg_page_schedule_request_plan(array('publish_at' => 4500), array('unpublish_at' => 4000), true, false, 1000));
 }
+
+// JavaScript's toISOString() writes milliseconds; a space instead of the T
+// is read with an offset as well as without one. The fraction is dropped.
+function test_page_schedule_parse_fractions_and_space_with_offset()
+{
+	page_schedule_test_in_zone('Europe/Istanbul', function () {
+		$expected = gmmktime(6, 30, 0, 10, 21, 2026);
+
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21T06:30:00.000Z'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21T06:30:00.999Z'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21T09:30:00.123456+03:00'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21 09:30:00+03:00'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21 06:30Z'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21T06:30:00z'));
+		pg_assert_same(array('ok' => true, 'time' => $expected), pg_page_schedule_parse('2026-10-21T09:30:00.500'), 'local time with a fraction');
+
+		pg_assert_same(array('ok' => true, 'time' => $expected, 'error' => ''), pg_page_schedule_parse_absolute('2026-10-21T06:30:00.000Z'));
+		pg_assert_same('offset', pg_page_schedule_parse_absolute('2026-10-21T09:30:00.000')['error'], 'a fraction does not stand for an offset');
+	});
+
+	foreach (array('2026-10-21T09:30.5Z', '2026-10-21T09:30:00.Z', '2026-10-21T09:30:00,5Z') as $value) {
+		pg_assert_false(pg_page_schedule_parse($value)['ok'], 'refused: ' . $value);
+	}
+}
+
+// The columns are INT UNSIGNED: a later time would be clipped to 2106 by
+// MySQL, and one before 1970 would read as no time at all.
+function test_page_schedule_parse_refuses_times_the_columns_cannot_hold()
+{
+	pg_assert_same(array('ok' => true, 'time' => 4294967295), pg_page_schedule_parse('4294967295'));
+	pg_assert_same(array('ok' => true, 'time' => 4294967295), pg_page_schedule_parse(4294967295));
+
+	foreach (array('4294967296', 4294967296, 9999999999, 5.0e9, '2106-02-07T06:28:16Z', '2200-01-01T00:00:00Z', '1969-12-31T23:59:59Z', -1) as $value) {
+		pg_assert_same(array('ok' => false, 'time' => 0), pg_page_schedule_parse($value), 'refused: ' . json_encode($value));
+	}
+
+	pg_assert_same('invalid', pg_page_schedule_parse_absolute('2200-01-01T00:00:00Z')['error']);
+}
+
+// A new page is a draft: a time to come off the site that has passed would
+// be cleared without doing anything, so it is refused like a passed publish
+// time.
+function test_page_schedule_request_plan_passed_unpublish_time_on_create()
+{
+	pg_assert_same(array('error' => 'passed', 'field' => 'unpublish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('unpublish_at' => 900), array(), true, false, 1000, true));
+
+	pg_assert_same(array('error' => 'passed', 'field' => 'unpublish_at', 'plan' => null),
+		pg_page_schedule_request_plan(array('publish_at' => 2000, 'unpublish_at' => 1000), array(), true, false, 1000, true));
+
+	// Ahead it is kept; on a page that exists a passed one is carried out.
+	pg_assert_same(3000, pg_page_schedule_request_plan(array('unpublish_at' => 3000), array(), true, false, 1000, true)['plan']['unpublish_at']);
+	pg_assert_same(array('draft' => true, 'publish_at' => 0, 'unpublish_at' => 0, 'error' => '', 'notes' => array('unpublished_now')),
+		pg_page_schedule_request_plan(array('unpublish_at' => 900), array(), false, false, 1000)['plan']);
+}
