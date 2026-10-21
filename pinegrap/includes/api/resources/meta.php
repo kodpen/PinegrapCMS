@@ -50,7 +50,8 @@ function api_meta_read($params) {
 				: null,
 			'currency' => array(
 				'code'          => $currency_code,
-				'symbol'        => defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '',
+				// Plain text (₺, not &#8378;), as GET /store/currencies gives it.
+				'symbol'        => defined('BASE_CURRENCY_SYMBOL') ? api_currency_symbol_text(BASE_CURRENCY_SYMBOL) : '',
 				'minor_units'   => api_currency_minor_units($currency_code),
 				// Spelled out because it is the single most common way to get an
 				// integration wrong: 1999 is 19.99, not 1999.00.
