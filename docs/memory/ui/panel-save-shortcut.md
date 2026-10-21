@@ -14,6 +14,6 @@ description: The panel's Ctrl+S shortcut (backend.src.js) and Return in a text f
 - `tests/save_shortcut_test.php` checks the order in the source.
 
 ## And Return in a text field?
-- No script handles it: the browser submits the form with its first submit button. A screen whose first one is not Save runs that button on Return: on an image `edit_file.php` drew Rotate Left first, so Return in the name field turned the picture and dropped the new name (#1041, fixed in PR #PRNUM).
+- No script handles it: the browser submits the form with its first submit button. A screen whose first one is not Save runs that button on Return: on an image `edit_file.php` drew Rotate Left first, so Return in the name field turned the picture and dropped the new name (#1041, fixed in PR #1064).
 - A button that does its own job (rotate, connect, align) goes on a form of its own: the button gets `form="<id>"`, the form sits outside the edit form with `class="disable_shortcut d-none"` and its own token. Examples: `edit_file.php` (`edit_file_rotate`), `search_console.php`, `smtp_settings.php`, `erp_account_sync_item.php`. Return then reaches the edit form's first button (Save & Return); Ctrl+S is unchanged.
 - `edit_file.php` tells a submission from a page view by `$_POST['name']`, so its rotate form also posts the stored name.
