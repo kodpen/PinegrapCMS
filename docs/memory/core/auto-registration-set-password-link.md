@@ -4,7 +4,7 @@ description: A form's auto-registered account gets a signed single-use set passw
 ---
 
 ## Why is the password no longer written anywhere?
-- `custom_form.php` (auto_registration = 1) used to keep the random password in `$_SESSION['software']['custom_form_auto_registration'][$form_id]['password']` and print it in the sender's e-mail, the administrator's copy (same request, so the session was full), watchers' HTML copies, the confirmation page and old layouts. Reported on kodpen.com, 2026-10-21. Fixed in PR #PRNUM.
+- `custom_form.php` (auto_registration = 1) used to keep the random password in `$_SESSION['software']['custom_form_auto_registration'][$form_id]['password']` and print it in the sender's e-mail, the administrator's copy (same request, so the session was full), watchers' HTML copies, the confirmation page and old layouts. Reported on kodpen.com, 2026-10-21. Fixed in PR #1172.
 - The account now gets a random password nobody is told (`bin2hex(random_bytes(16))`); the session entry holds only `email_address` and `user_id`.
 
 ## How is the link made and checked?
