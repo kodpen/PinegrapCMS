@@ -5,7 +5,7 @@ description: How Recycle Bin work appears in audit_log: the daily purge recorded
 
 ## Who is the actor of the daily purge?
 - `pg_recycle_purge_if_due()` (`view_folder_and_files_f.php`) runs once a day on the first file manager list (`explorer_list`) or catalog list (`explorer_catalog_list`) of the day and deletes up to 30 bin entries past the retention window (pages, files, products, short links, styles).
-- Its lines are written with `source = 'job'`, `user_id = 0`, no username: the loop runs inside `pg_audit_as_job(true)` and restores the previous state in `finally` (PR #PRNUM).
+- Its lines are written with `source = 'job'`, `user_id = 0`, no username: the loop runs inside `pg_audit_as_job(true)` and restores the previous state in `finally` (PR #1054).
 - Before, every purged record was written as deleted by whoever opened the screen that day (an admin who only listed a folder showed up as the one who deleted, a KVKK/GDPR accountability error).
 - A manual "Delete permanently" or "Empty Recycle Bin" (`explorer_hard_delete`) stays `panel` with the operator.
 - The site log (`log_activity()`: "N item(s) were purged…", "file (…) was deleted") still names the visitor; it is free text, not the trail.
