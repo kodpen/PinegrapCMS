@@ -89,6 +89,32 @@ function test_install_cli_read_names_missing_variables()
 	), $read['problems']);
 }
 
+// An administrator e-mail address that is not one is refused before anything is installed:
+// it becomes the site's own address and the fallback recipient of the operations alerts.
+function test_install_cli_read_refuses_an_admin_email_that_is_not_one()
+{
+	$env = install_cli_test_env();
+	$env['PG_INSTALL_ADMIN_EMAIL'] = 'not-an-email';
+
+	pg_assert_same(array('PG_INSTALL_ADMIN_EMAIL must be an e-mail address, such as admin@example.com.'), install_cli_read($env, array(), install_cli_test_starters())['problems']);
+
+	$env['PG_INSTALL_ADMIN_EMAIL'] = 'yönetici@örnek.test';
+	pg_assert_same(1, count(install_cli_read($env, array(), install_cli_test_starters())['problems']), 'what the browser field refuses is refused here too');
+
+	$env['PG_INSTALL_ADMIN_EMAIL'] = 'Admin.Name+site@example.co.uk';
+	pg_assert_same(array(), install_cli_read($env, array(), install_cli_test_starters())['problems'], 'an ordinary address');
+}
+
+// The installer writes the site's path next to its host name, so a job run from the command
+// line before the site is first opened (CLI PATH comes from config.path) links to the site,
+// not to the starter dump's /dev/.
+function test_install_writes_the_site_path()
+{
+	$installer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
+
+	pg_assert_contains('UPDATE config SET hostname = \'" . escape($_SERVER[\'HTTP_HOST\']) . "\', path = \'" . escape(PATH) . "\'', $installer, 'hostname and path in one update');
+}
+
 // A data/config.php that names the database fills in the database variables that are not set;
 // a variable that is set wins.
 function test_install_cli_read_takes_the_database_from_the_config()

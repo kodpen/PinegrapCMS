@@ -102,6 +102,48 @@ function erp_cheque($id)
 }
 
 /**
+ * The cheque or note a receipt belongs to: the collection or payment that
+ * took it in or gave it (open_cash_id), or the payment that passed it on or
+ * sent it back (close_cash_id). Null for any other receipt.
+ *
+ * @param int $cash_id erp_cash_transactions.id
+ * @return array|null erp_cheque()
+ */
+function erp_cheque_for_cash($cash_id)
+{
+    if (!erp_cheques_ready() || ((int) $cash_id <= 0)) {
+        return null;
+    }
+
+    $id = (int) db_value("SELECT id FROM erp_cheques
+        WHERE (open_cash_id = '" . (int) $cash_id . "') OR (close_cash_id = '" . (int) $cash_id . "')
+        LIMIT 1");
+
+    return ($id > 0) ? erp_cheque($id) : null;
+}
+
+/**
+ * Why a receipt of a cheque or note is not cancelled on its own: the
+ * cheque would stay where it was (in the portfolio after its receipt was
+ * taken back), and its next step would move the money a second time (a
+ * bounce owing the customer again, a collection out of an empty
+ * portfolio). It changes only by its own steps.
+ *
+ * @param array $cheque erp_cheque()
+ * @return string
+ */
+function erp_cheque_receipt_refusal($cheque)
+{
+    $kinds = erp_cheque_kinds();
+    $name = trim(($kinds[(string) ($cheque['kind'] ?? '')] ?? $kinds['cheque']) . ' ' . (string) ($cheque['serial_no'] ?? ''));
+
+    return lang(array(
+        'string' => 'This movement is a step of {var:1}, which changes only by its own steps on its screen; it cannot be cancelled on its own.',
+        'vars' => $name,
+    ));
+}
+
+/**
  * The register, soonest due first.
  *
  * @param array $filters  direction ('received'|'given'|''), status, search
