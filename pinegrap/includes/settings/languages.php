@@ -56,7 +56,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
 
     $translation_name = 'languages[' . h($translation_code) . ']';
     $translation_label = ($translation_row['label'] !== '') ? $translation_row['label'] : (isset($translation_known[$translation_code]) ? $translation_known[$translation_code][1] : $translation_code);
-    $translation_prefix = ($translation_row['prefix'] !== '') ? $translation_row['prefix'] : $translation_code;
+    $translation_prefix = mb_strtolower(($translation_row['prefix'] !== '') ? $translation_row['prefix'] : $translation_code);
 
     $output_translation_engines = '';
 
