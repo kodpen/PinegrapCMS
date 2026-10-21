@@ -2517,12 +2517,17 @@ if (!$_POST) {
         // follows from whether the buyer is registered with the tax authority, so
         // it is not the operator's to choose - and choosing wrong produced a
         // document that was not valid.
+        // An order that already has its sales invoice in Paraşüt is not offered
+        // the action again: parasut_create_invoice() refuses a second one.
+        $output_parasut_invoice_action = ($parasut_invoice_id !== '')
+            ? ' disabled title="' . h(lang('This order already has a sales invoice in Paraşüt.')) . '"'
+            : ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
+                title="Paraşüt"';
+
         $output_parasut_buttons = '
         <div class="btn-group btn-group-sm flex-wrap">
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_id ? 'link-success' : 'link-secondary') . '"
-                onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
-                title="Paraşüt">
+                class="btn btn-link py-0 mb-2 ' . (($parasut_invoice_id !== '') ? 'link-success' : 'link-secondary') . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>
             ' . $output_parasut_shipment_button . '
@@ -2868,6 +2873,10 @@ if (!$_POST) {
     validate_token_field();
     
     $liveform->add_fields_to_session();
+
+    // The order row as it was, for the audit trail of whichever action below
+    // changes it.
+    $audit_before = pg_audit_fetch('orders', (int) $liveform->get('id'));
     
     // if the operator submitted the cancel modal
     if ($liveform->get_field_value('submit_cancel_order') == 'cancel') {
@@ -2901,6 +2910,8 @@ if (!$_POST) {
             $liveform->mark_error('_error', h($response['message']));
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
+
+        pg_audit_record('cancel', 'orders', $order_id, $audit_before);
 
         $liveform->add_notice(lang('The order has been cancelled.'));
 
@@ -3013,6 +3024,8 @@ if (!$_POST) {
 
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
 
+        pg_audit_record('refund', 'orders', $order_id, $audit_before);
+
         // The return invoice for the same lines comes next, filled in; the
         // operator checks it and saves. Nothing is issued without them.
         if (is_array($refund_by_lines) && ($refund_source['source'] === 'invoice')) {
@@ -3051,6 +3064,8 @@ if (!$_POST) {
         // The helper writes paid_at and the activity log entry; it is a no-op
         // when another path recorded the payment in the meantime.
         pg_order_mark_paid($order_id, (int) (isset($user['id']) ? $user['id'] : 0));
+
+        pg_audit_record('update', 'orders', $order_id, $audit_before);
 
         $liveform->add_notice(lang('Payment recorded.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
@@ -3099,6 +3114,8 @@ if (!$_POST) {
             'Refund marked as processed by operator for order #' . $order_id
             . ($refund_reference !== '' ? '. Reference: ' . $refund_reference : ''));
 
+        pg_audit_record('update', 'orders', $order_id, $audit_before);
+
         $liveform->add_notice(lang('The refund has been marked as processed.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
@@ -3140,6 +3157,8 @@ if (!$_POST) {
               AND expiration_date <= '" . date('Y-m-d') . "'");
 
         log_activity('Restored cancelled order #' . $order_id . ' to complete.');
+
+        pg_audit_record('restore', 'orders', $order_id, $audit_before);
 
         // The move back is a status change like any other: announced with the
         // shape the API and the workspace give order.status_changed.

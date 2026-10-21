@@ -592,6 +592,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if (!in_array($erp_auto_invoice_on, array('off', 'order_paid', 'order_shipped'), true)) {
         $erp_auto_invoice_on = 'off';
     }
+    // Its two filters (11.0.58): buyers with a tax number only, and the
+    // smallest order, kept in minor units and shown in whole units of the
+    // base currency.
+    $erp_auto_invoice_filters_ready = $erp_auto_invoice_ready
+        && array_key_exists('erp_auto_invoice_tax_number_only', $row)
+        && array_key_exists('erp_auto_invoice_min_total', $row);
+    $erp_auto_invoice_tax_number_only_checked = ((int) ($row['erp_auto_invoice_tax_number_only'] ?? 0) === 1) ? ' checked' : '';
+    $erp_auto_invoice_min_total = (int) floor(max(0, (int) ($row['erp_auto_invoice_min_total'] ?? 0)) / 100);
     // Checkout legal documents (11.0.1): the switch and the two templates. An
     // empty template is shown as the built-in one, so it is edited rather than
     // written from nothing.

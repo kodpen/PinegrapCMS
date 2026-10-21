@@ -15,7 +15,7 @@ description: Maintenance mode (503 + Retry-After on page renders only, who passe
 - System Status tile "Maintenance Mode" (actions column, not scored) only while the switch is on: warning with the end time, or "Ended" once it passed. The API's `GET /system/status` carries `maintenance: {active, until}`, read live rather than from the ten-minute cache.
 
 ## What does health.php answer?
-- Anonymous, no session (`PG_NO_SESSION`), JSON `{"status", "cron_age"}` only: `maintenance` → 503 + Retry-After; `cron_stalled` (general job's last run older than its `stale_after`, 2 h) → 503; otherwise `ok` → 200. A general job that never ran is `ok` with `cron_age` null. A database that does not answer is init's own 503.
+- Anonymous, no session (`PG_NO_SESSION`), JSON `{"status", "cron_age"}` only: `maintenance` → 503 + Retry-After; `cron_stalled` (general job's last run older than its `stale_after`, 2 h) → 503; otherwise `ok` → 200. A general job that never ran is `ok` with `cron_age` null. A database that does not answer: 503 when overloaded, 500 when broken (waf/waf-db-guard-connection-failures.md).
 - A `cron_stalled` answer also runs `pg_ops_alerts_check_cron()`: the general job cannot report its own death, a monitor polling here can (once a day, `docs/memory/platform/ops-alerts.md`).
 - The firewall leaves the bot policy and the country restriction out for it (`waf_is_health_request()`, by the running script, not the path): monitors are often generic clients with no user agent and run abroad, and with "block unknown bots" on every check was a 403 that read as "site down". The IP block list, attack tools and rate limits still apply. The firewall itself does not change behaviour in maintenance.
 

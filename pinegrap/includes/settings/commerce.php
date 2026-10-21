@@ -559,6 +559,20 @@ $pg_settings_cards[] = '
                             <option value="order_shipped"' . (($erp_auto_invoice_on === 'order_shipped') ? ' selected' : '') . '>' . lang('Is issued on its own once the order is shipped') . '</option>
                         </select>
                         <div class="form-text">' . lang('On its own, the order gets the invoice its screen\'s Issue the Invoice step writes, with the same checks: an order the step cannot invoice yet waits there with the reason, and the panel bell names it. Paid is a card, PayPal or iyzico payment at checkout, a bank transfer recorded with Payment Received, or an order put on the customer\'s account. Counter sales are still invoiced at the till and marketplace orders from their screen; the e-document is still made official from the order screen.') . '</div>
+                    </div>' : '') . ($erp_auto_invoice_filters_ready ? '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_auto_invoice_min_total">' . h(lang(array('string' => 'Smallest order invoiced on its own ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
+                        <input type="number" class="form-control" id="erp_auto_invoice_min_total" name="erp_auto_invoice_min_total" value="' . (int) $erp_auto_invoice_min_total . '" min="0" max="10000000" step="1" inputmode="numeric" autocomplete="off" />
+                        <div class="form-text">' . lang('A smaller order waits for Issue the Invoice on its screen. The amount is the whole sale the invoice states, a gift card included. 0 invoices every order.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input value="1"' . $erp_auto_invoice_tax_number_only_checked . ' class="form-check-input" type="checkbox" id="erp_auto_invoice_tax_number_only" name="erp_auto_invoice_tax_number_only" />
+                            <label class="form-check-label" for="erp_auto_invoice_tax_number_only">' . lang('Only for buyers with a tax number') . '</label>
+                        </div>
+                        <div class="form-text">' . ((pg_erp_store_country() === 'TR')
+                            ? lang('Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.')
+                            : lang('Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.')) . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>

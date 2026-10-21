@@ -591,9 +591,11 @@ if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_save
     $_save_iid = isset($_POST['save_item_id']) ? (int)$_POST['save_item_id'] : 0;
     if ($_save_iid > 0) {
         if (pg_schema_has('order_items', 'saved_for_later')) {
-            $_owns = (int)db_value("SELECT id FROM order_items
-                                    WHERE id = '$_save_iid' AND order_id = '$oid' LIMIT 1");
-            if ($_owns === $_save_iid) {
+            $_save_line = db_item("SELECT order_items.id, order_items.ship_to_id, ship_tos.complete
+                                   FROM order_items
+                                   LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
+                                   WHERE order_items.id = '$_save_iid' AND order_items.order_id = '$oid' LIMIT 1");
+            if ($_save_line && ((int)$_save_line['id'] === $_save_iid)) {
                 if (isset($_POST['submit_save_for_later'])) {
                     db("UPDATE order_items
                         SET saved_for_later = 1, saved_at = UNIX_TIMESTAMP()
@@ -604,6 +606,13 @@ if ((isset($_POST['submit_save_for_later']) || isset($_POST['submit_restore_save
                         SET saved_for_later = 0, saved_at = NULL
                         WHERE id = '$_save_iid'");
                     $lf->add_notice(lang('Item restored to cart.'));
+                }
+                // A saved line is left out of the recipient's shipping, so a
+                // recipient that already has an address and a shipping method
+                // is charged again for the lines it now holds.
+                if ($_save_line['ship_to_id'] && ($_save_line['complete'] == 1)) {
+                    require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+                    update_shipping_cost_for_ship_to($_save_line['ship_to_id']);
                 }
                 $did_mutate = true;
             }

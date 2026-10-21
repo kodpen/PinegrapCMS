@@ -53,6 +53,33 @@ function test_audit_secret_key_names()
 	}
 }
 
+// Security settings and password bookkeeping named after passwords hold no
+// secret: on/off flags, a hashing scheme, a time, a job cursor. The trail
+// shows their values; the user's own hint text stays masked.
+function test_audit_password_setting_flags_are_plain()
+{
+	foreach (array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done') as $plain) {
+		pg_assert_false(pg_audit_secret_key($plain), $plain);
+	}
+
+	foreach (array('user_password', 'user_password_hint', 'ups_password', 'signature_tsa_password') as $secret) {
+		pg_assert_true(pg_audit_secret_key($secret), $secret);
+	}
+
+	$row = pg_audit_row(
+		'update',
+		'settings',
+		0,
+		array('strong_password' => '1', 'password_hint' => '1', 'forgot_password_link' => '1', 'smtp_password' => 'old'),
+		array('strong_password' => '0', 'password_hint' => '', 'forgot_password_link' => '0', 'smtp_password' => 'new'),
+		'security',
+		1
+	);
+
+	pg_assert_same('{"strong_password":"1","password_hint":"1","forgot_password_link":"1","smtp_password":"***"}', $row['before_json'], 'before: flags readable, secret masked');
+	pg_assert_same('{"strong_password":"0","password_hint":"","forgot_password_link":"0","smtp_password":"***"}', $row['after_json'], 'after: flags readable, secret masked');
+}
+
 // A secret's value is never kept, only that it is set or cleared; nested fields too.
 function test_audit_redact_masks_secrets()
 {
@@ -171,6 +198,20 @@ function test_audit_request_id_and_actor()
 	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'command line');
 }
 
+// Work the software does on its own inside someone's request (the Recycle
+// Bin's daily purge) is recorded as a job's while the switch is on; the switch
+// hands back its previous state so a caller can restore it.
+function test_audit_as_job_switch()
+{
+	pg_assert_false(pg_audit_as_job(), 'off by default');
+	pg_assert_false(pg_audit_as_job(true), 'turning it on returns the previous state');
+	pg_assert_true(pg_audit_as_job(), 'on');
+	pg_assert_true(pg_audit_as_job(true), 'nested: already on');
+	pg_assert_same(array('source' => 'job', 'user_id' => 0, 'username' => ''), pg_audit_actor(), 'a job while on');
+	pg_assert_true(pg_audit_as_job(false), 'turning it off returns the previous state');
+	pg_assert_false(pg_audit_as_job(), 'off again');
+}
+
 // A save that changed nothing reads the same twice: the editor, the stamps and
 // the derived SEO score are left out, every other column stays.
 function test_audit_volatile_columns_left_out()
@@ -183,6 +224,9 @@ function test_audit_volatile_columns_left_out()
 	pg_assert_same(array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h'), pg_audit_volatile('user', array('user_id' => '2', 'user_role' => '2', 'user_password' => 'h', 'user_user' => '1', 'user_timestamp' => '9', 'token' => 't', 'user_online_timestamp' => '9')), 'user');
 	pg_assert_same(array('id' => '1', 'status' => 'active'), pg_audit_volatile('api_apps', array('id' => '1', 'status' => 'active', 'last_used_ip' => '10.0.0.1', 'last_used_timestamp' => '9', 'updated_timestamp' => '9')), 'api app');
 	pg_assert_same(array('timestamp_label' => 'x'), pg_audit_volatile('files', array('timestamp_label' => 'x', 'timestamp' => '9')), 'only a column that ends in timestamp');
+	pg_assert_same(array('page_title' => 'Hakkımızda'), pg_audit_volatile('page', array('page_title' => 'Hakkımızda', 'seo_flags' => '34', 'seo_checked_at' => '9', 'seo_meta_score' => '62', 'seo_depth' => '2')), 'derived page SEO columns');
+	pg_assert_same(array('price' => '100'), pg_audit_volatile('products', array('price' => '100', 'seo_struct_score' => '40', 'seo_link_score' => '10')), 'derived product SEO columns');
+	pg_assert_same(array('seo_flags' => '1'), pg_audit_volatile('files', array('seo_flags' => '1')), 'seo_ prefix only where it is derived');
 }
 
 // Every mapped table names a record type the trail accepts, and the label is the
@@ -200,6 +244,19 @@ function test_audit_tables_and_labels()
 	pg_assert_same('', pg_audit_label_of('nope', array('name' => 'x')), 'unknown table');
 }
 
+// A file or page in the Recycle Bin is parked as "pgbin_<id>_<name>"; its
+// lines are labelled with the name it had, and only its own id's prefix is
+// taken off.
+function test_audit_label_of_parked_row()
+{
+	pg_assert_same('jF-purge-test.txt', pg_audit_label_of('files', array('id' => '6992', 'name' => 'pgbin_6992_jF-purge-test.txt')), 'binned file');
+	pg_assert_same('checkout-preview-terms[1]', pg_audit_label_of('page', array('page_id' => '1084', 'page_name' => 'pgbin_1084_checkout-preview-terms[1]')), 'binned page');
+	pg_assert_same('pgbin_7_logo.png', pg_audit_label_of('files', array('id' => '8', 'name' => 'pgbin_7_logo.png')), 'another row\'s prefix stays');
+	pg_assert_same('pgbin_9_', pg_audit_label_of('files', array('id' => '9', 'name' => 'pgbin_9_')), 'nothing after the prefix');
+	pg_assert_same('pgbin_5_x', pg_audit_label_of('page', array('page_name' => 'pgbin_5_x')), 'no id in the row');
+	pg_assert_same('logo.png', pg_audit_label_of('files', array('id' => '3', 'name' => 'logo.png')), 'a name that is not parked');
+}
+
 // Without a connection nothing is read and nothing is recorded.
 function test_audit_record_without_table()
 {
@@ -207,4 +264,76 @@ function test_audit_record_without_table()
 	pg_assert_same(array(), pg_audit_fetch_many('page', array(1, 2)), 'no rows');
 	pg_assert_same(array(), pg_audit_fetch('nope', 1), 'unknown table');
 	pg_assert_false(pg_audit_record('update', 'products', 1, array('price' => '1')), 'nothing recorded');
+	pg_assert_same(0, pg_audit_record_many('update', 'files', array(3 => array('folder' => '1'), 4 => array('folder' => '2'))), 'nothing recorded for many');
+	pg_assert_same(0, pg_audit_record_many('update', 'files', array()), 'no rows');
+}
+
+// A column that holds JSON text is masked inside: a feed token in
+// config.product_feeds must not reach the trail as part of a string.
+function test_audit_redact_json_text()
+{
+	$feeds = '{"seller_name":"Mağaza","formats":{"openai_jsonl":{"enabled":1,"token_hash":"ab12","token_secret":"s3cr3t"}}}';
+
+	pg_assert_same(
+		array('product_feeds' => array('seller_name' => 'Mağaza', 'formats' => array('openai_jsonl' => array('enabled' => 1, 'token_hash' => '***', 'token_secret' => '***')))),
+		pg_audit_redact(array('product_feeds' => $feeds)),
+		'secrets inside JSON text'
+	);
+	pg_assert_same(array('list' => array('a', 'b')), pg_audit_redact(array('list' => '["a","b"]')), 'a JSON list');
+	pg_assert_same(array('note' => '{not json'), pg_audit_redact(array('note' => '{not json')), 'text that only looks like JSON');
+	pg_assert_same(array('n' => '12'), pg_audit_redact(array('n' => '12')), 'a number stays text');
+}
+
+// A page deleted with a large designer tree keeps its name, folder and title:
+// the tree is kept as its length, hash and opening, never decoded into a side
+// that passes the JSON limit.
+function test_audit_large_json_text_is_compacted()
+{
+	$limits = pg_audit_limits();
+	$nodes = array();
+
+	for ($i = 0; strlen(json_encode($nodes)) < 100000; $i++) {
+		$nodes[] = array('id' => 'n' . $i, 'tag' => 'div', 'text' => 'Bölüm ' . $i);
+	}
+
+	$tree = json_encode(array('type' => 'root', 'children' => $nodes));
+
+	pg_assert_same(null, pg_audit_json_text($tree), 'over the JSON limit it is not decoded');
+	pg_assert_true(strlen($tree) > $limits['json'], 'the fixture is past the limit');
+
+	$row = pg_audit_row('delete', 'page', 7, array('page_name' => 'hakkimizda', 'page_folder' => '3', 'page_title' => 'Hakkımızda', 'page_tree_json' => $tree), array(), 'hakkimizda', 1);
+	$before = json_decode($row['before_json'], true);
+
+	pg_assert_same('hakkimizda', $before['page_name'] ?? null, '100 KB tree: name kept');
+	pg_assert_same('Hakkımızda', $before['page_title'] ?? null, '100 KB tree: title kept');
+	pg_assert_same(true, $before['page_tree_json']['truncated'] ?? null, '100 KB tree: compacted');
+	pg_assert_same(sha1($tree), $before['page_tree_json']['sha1'] ?? null, '100 KB tree: hash of the text');
+
+	// Under the JSON limit but over the value limit: decoded to be masked,
+	// then kept compacted as the masked text.
+	$medium = json_encode(array('token_secret' => 's3cr3t', 'children' => array_slice($nodes, 0, 400)));
+	pg_assert_true((strlen($medium) > $limits['value']) && (strlen($medium) < $limits['json']), 'medium fixture size');
+
+	$row = pg_audit_row('delete', 'page', 8, array('page_name' => 'iletisim', 'page_tree_json' => $medium), array(), 'iletisim', 1);
+	$before = json_decode($row['before_json'], true);
+
+	pg_assert_same('iletisim', $before['page_name'] ?? null, '40 KB tree: name kept');
+	pg_assert_same(true, $before['page_tree_json']['truncated'] ?? null, '40 KB tree: compacted');
+	pg_assert_true(strpos($row['before_json'], 's3cr3t') === false, '40 KB tree: the secret is not in the opening');
+	pg_assert_same(0, strpos($before['page_tree_json']['start'] ?? '', '{"token_secret":"***"'), '40 KB tree: the opening is the masked text');
+}
+
+// Encrypted blobs and keys named private or license are secrets; columns that
+// only contain those words are not.
+function test_audit_private_and_license_names()
+{
+	foreach (array('push_vapid_private', 'ws_ai_license', 'license') as $secret) {
+		pg_assert_true(pg_audit_secret_key($secret), $secret);
+	}
+
+	foreach (array('private_label', 'private_folder', 'grant_private_access', 'private_days', 'license_check') as $plain) {
+		pg_assert_false(pg_audit_secret_key($plain), $plain);
+	}
+
+	pg_assert_same(array('title' => 'x'), pg_audit_volatile('config', array('title' => 'x', 'backup_remote_settings' => 'cipher:iv', 'parasut_credentials_enc' => 'cipher')), 'config ciphertext re-encrypted on every save');
 }

@@ -652,6 +652,17 @@
         });
         inst.view = view;
 
+        // An Escape the editor used (closing its completion list, its search
+        // panel, a full-window view a screen bound to it) ends at the editor.
+        // A Bootstrap modal closes on every Escape that reaches it, prevented
+        // or not, so the dialog around the editor -- and the code typed into
+        // it -- went with the list. An Escape the editor leaves alone still
+        // reaches the dialog. The listener sits on the editor's outer box so
+        // it also hears the search panel's fields.
+        view.dom.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && event.defaultPrevented) event.stopPropagation();
+        });
+
         // ── Text ──
         inst.getValue = function () { return view.state.doc.toString(); };
         // Replaces the whole text. `keepHistory` false (the default for a
@@ -806,7 +817,9 @@
             if (trackedCache && trackedCacheState === view.state) return trackedCache;
             var map = {};
             view.state.field(fields.trackedField).between(0, view.state.doc.length, function (from, to, value) {
-                if (map[value.id] === undefined) map[value.id] = { id: value.id, from: from, to: to, data: value.data };
+                if (map[value.id] === undefined) {
+                    map[value.id] = { id: value.id, from: from, to: to, data: value.data, grow: value.startSide < 0, cls: value.cls };
+                }
             });
             trackedCache = map;
             trackedCacheState = view.state;
@@ -849,9 +862,13 @@
         };
 
         // ── Marks (a highlight that follows the text, e.g. the selected node) ──
+        // The set is rebuilt with the other ranges as they are: a range that
+        // grows keeps growing (an empty one that did not would be dropped by
+        // the first keystroke at its position), and another mark keeps its
+        // class.
         inst.mark = function (id, from, to, cls) {
             var all = inst.allTracked().filter(function (r) { return r.id !== String(id); }).map(function (r) {
-                return { id: r.id, from: r.from, to: r.to, data: r.data, grow: false, cls: '' };
+                return { id: r.id, from: r.from, to: r.to, data: r.data, grow: r.grow, cls: r.cls };
             });
             if (typeof from === 'number') all.push({ id: String(id), from: from, to: to, grow: false, cls: cls || 'pg-ce-mark' });
             inst.track(all);

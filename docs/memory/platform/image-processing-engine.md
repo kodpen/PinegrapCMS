@@ -20,4 +20,8 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 7. The resize criterion is pixels, not bytes (`pg_image_can_be_resized()`): a low-quality 6000 px photo can be under 1 MB yet 6x too wide; a heavy 1200 px screenshot gains nothing from losing pixels.
 8. The threshold cannot go below the target: `pg_image_settings()` clamps it, otherwise the button is offered for images that resizing would never change.
 
+## Which screens call it, and what went wrong on the one that did not?
+- Optimize and resize (`optimize_image.php`), uploads (`add_file.php`, API `files.php`), the file manager's rotate, WebP and upload, Workspace thumbnails, derivatives (`get_file.php`); since #1039 also the file screen's Rotate and "Convert to WebP" (`edit_file.php`, `write => false` for the conversion, error sentence per `reason`).
+- Before #1039 `edit_file.php` called GD itself. `imagewebp()` on a palette image (every GIF, an 8-bit PNG) writes nothing and still returns true, so the conversion left an empty `.webp` and in replace mode deleted the original. A BMP turned without Imagick became JPEG bytes under its `.bmp` name; an unreadable file got the "rotated" notice. Rule: palette to truecolor before `imagewebp()`/`imageavif()`, and judge the bytes, not the return value.
+
 Related: docs/memory/platform/image-settings-and-product-upload.md, docs/memory/platform/image-derivatives.md

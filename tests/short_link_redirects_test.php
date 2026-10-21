@@ -77,11 +77,36 @@ function test_short_link_redirects_name_rule()
 	pg_assert_same('', pg_short_link_name_problem('a*b*c*d*e*f*g*h*i*j'), 'nine stars');
 }
 
-function test_short_link_redirects_key_ignores_case_and_turkish_marks()
+// Without a connection the keys come from pg_short_link_fold(), which keeps
+// to the pairs utf8mb4_unicode_ci decides: marks that decompose go, ı, ø, ł stay.
+function test_short_link_redirects_key_without_a_database_follows_the_collation()
 {
+	pg_assert_true(pg_short_link_key('a') !== pg_short_link_key('b'), 'different names');
+	pg_assert_same(pg_short_link_key('blog'), pg_short_link_key('BLOG'), 'case');
+
+	if (!class_exists('Normalizer')) {
+		return;
+	}
+
 	pg_assert_same(pg_short_link_key('urun'), pg_short_link_key('ÜRÜN'), 'Ü');
 	pg_assert_same(pg_short_link_key('istanbul'), pg_short_link_key('İstanbul'), 'dotted capital I');
-	pg_assert_true(pg_short_link_key('a') !== pg_short_link_key('b'), 'different names');
+	pg_assert_same(pg_short_link_key('swieta'), pg_short_link_key('święta'), 'ę, as the database: ś and ę decompose');
+	pg_assert_same(pg_short_link_key('sarbatoare'), pg_short_link_key('sărbătoare'), 'ă');
+	pg_assert_same(pg_short_link_key('fi'), pg_short_link_key('ﬁ'), 'a ligature, as its letters');
+	pg_assert_true(pg_short_link_key('hakkimizda') !== pg_short_link_key('hakkımızda'), 'ı is not i to the database');
+	pg_assert_true(pg_short_link_key('o') !== pg_short_link_key('ø'), 'ø has no mark to drop');
+	pg_assert_true(pg_short_link_key('l') !== pg_short_link_key('ł'), 'nor has ł');
+}
+
+function test_short_link_redirects_names_the_database_keeps_apart_are_not_a_loop()
+{
+	if (!class_exists('Normalizer')) {
+		return;
+	}
+
+	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'hakkimizda', '/hakk%C4%B1m%C4%B1zda')), 'ı and i are two names');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'święta', '/swieta')), 'ę and e are one');
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a', '/święta'), array(short_link_redirects_test_link(1, 'swieta', '/a'))), 'a loop through a name the database finds');
 }
 
 function test_short_link_redirects_pattern_captures()
@@ -128,6 +153,30 @@ function test_short_link_redirects_exact_names_win_over_patterns()
 	pg_assert_same(null, pg_short_link_match_in('baska', $index), 'nothing');
 }
 
+function test_short_link_redirects_a_requested_path_is_read_as_names_are_stored()
+{
+	pg_assert_same('blog/2019/05/yazi', pg_short_link_path_name('blog/2019/05/yazi/'), 'a slash at the end');
+	pg_assert_same('eski/yazi', pg_short_link_path_name('/eski//yazi'), 'a slash at the front, a run of slashes');
+	pg_assert_same('Eski_Sayfa_Adı', pg_short_link_path_name('Eski Sayfa Adı'), 'spaces');
+	pg_assert_same('a/b', pg_short_link_path_name('a/b'), 'a stored name stays');
+
+	$index = pg_short_link_index(array(
+		short_link_redirects_test_link(1, 'blog/2019/05/yazi', '/yeni'),
+		short_link_redirects_test_link(2, 'Eski_Sayfa', '/yeni'),
+		short_link_redirects_test_link(3, 'arsiv/*', '/yeni/$1'),
+	));
+
+	$slash = pg_short_link_match_in('blog/2019/05/yazi/', $index);
+	$space = pg_short_link_match_in('eski sayfa', $index);
+	$double = pg_short_link_match_in('blog//2019/05/yazi', $index);
+	$pattern = pg_short_link_match_in('arsiv/a b', $index, false);
+
+	pg_assert_same(1, (int) $slash['link']['id'], 'an old address with a slash at the end');
+	pg_assert_same(2, (int) $space['link']['id'], 'an old address with a space');
+	pg_assert_same(1, (int) $double['link']['id'], 'an old address with a run of slashes');
+	pg_assert_same(array('a b'), $pattern['captures'], 'a pattern takes the address as it came first');
+}
+
 function test_short_link_redirects_fill_target()
 {
 	pg_assert_same('/yeni/a%20b/c%3Fd', pg_short_link_fill_target('/yeni/$1', array('a b/c?d')), 'encoded segment by segment');
@@ -160,6 +209,8 @@ function test_short_link_redirects_refuses_a_link_to_itself()
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'eski', '/')), 'the home page always answers');
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'eski', 'https://other.com/eski')), 'another site');
 	pg_assert_same('', short_link_redirects_test_problem(array('id' => 0, 'name' => 'eski', 'destination_type' => 'page', 'url' => '')), 'a page answers at its own address');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'Eski_Sayfa', '/Eski%20Sayfa')), 'the address reaches the name in its stored form');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'Eski_*', '/Eski%20$1')), 'a pattern, its stored form');
 }
 
 function test_short_link_redirects_refuses_loops_and_long_chains()
@@ -168,6 +219,7 @@ function test_short_link_redirects_refuses_loops_and_long_chains()
 
 	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a', '/b'), $links), 'a -> b -> a');
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'c', '/b'), $links), 'c -> b -> a ends at a page');
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'x', '/a%20b/'), array(short_link_redirects_test_link(2, 'a_b', '/x'))), 'x -> a_b (asked as "a b/") -> x');
 
 	// The link being changed is checked as it will stand, not as it stood.
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(1, 'b', '/c'), $links), 'changed link');
@@ -353,6 +405,35 @@ function test_short_link_redirects_csv_reader()
 	pg_assert_same(array(), pg_short_link_csv_rows(''), 'empty file');
 }
 
+function test_short_link_redirects_csv_reader_reads_excel_unicode_text()
+{
+	$text = "Eski adres\tYeni adres\r\n/gtest-sl/utf16-a\t/about-us\r\n/gtest-sl/ürün\t/contact-us\r\n";
+	$little = "\xFF\xFE" . mb_convert_encoding($text, 'UTF-16LE', 'UTF-8');
+	$rows = pg_short_link_csv_rows($little);
+
+	pg_assert_same(2, count($rows), 'UTF-16LE with its mark: heading skipped, two lines');
+	pg_assert_same(array('line' => 2, 'from' => '/gtest-sl/utf16-a', 'to' => '/about-us', 'code' => ''), $rows[0], 'line numbers as the file counts them');
+	pg_assert_same(array('line' => 3, 'from' => '/gtest-sl/ürün', 'to' => '/contact-us', 'code' => ''), $rows[1], 'a Turkish letter');
+
+	pg_assert_same($rows, pg_short_link_csv_rows("\xFE\xFF" . mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')), 'UTF-16BE with its mark');
+	pg_assert_same($rows, pg_short_link_csv_rows(mb_convert_encoding($text, 'UTF-16LE', 'UTF-8')), 'UTF-16LE without a mark');
+	pg_assert_same($rows, pg_short_link_csv_rows(mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')), 'UTF-16BE without a mark');
+}
+
+function test_short_link_redirects_csv_separator_is_the_one_most_lines_split_by()
+{
+	$rows = pg_short_link_csv_rows("/gtest-csv/kalem,defter;/about-us;301\n/gtest-csv/eski-sayfa;/contact-us;301\n/gtest-csv/eski-iki;/contact-us;302\n");
+
+	pg_assert_same(3, count($rows), 'semicolons, a comma inside the first address');
+	pg_assert_same(array('line' => 1, 'from' => '/gtest-csv/kalem,defter', 'to' => '/about-us', 'code' => '301'), $rows[0], 'the comma stays in the address');
+
+	pg_assert_same(',', pg_short_link_csv_separator("from,to,code\n/a,/b?x=1;y=2,301\n"), 'a semicolon in a query string');
+	pg_assert_same(',', pg_short_link_csv_separator("/a,/b\n"), 'one line, commas');
+	pg_assert_same(';', pg_short_link_csv_separator("Eski adres;Yeni adres\n/a;/b\n"), 'semicolons with a heading');
+	pg_assert_same("\t", pg_short_link_csv_separator("/a\t/b\t302\n"), 'tabs');
+	pg_assert_same(',', pg_short_link_csv_separator(''), 'nothing to go by: the comma');
+}
+
 function test_short_link_redirects_csv_writer()
 {
 	$links = array(
@@ -380,4 +461,16 @@ function test_short_link_redirects_csv_writer()
 	pg_assert_same('https://example.com/a,b', $rows[0]['to'], 'address with a comma');
 	pg_assert_same('=1+1', $rows[4]['to'], 'formula guard taken off');
 	pg_assert_same('', pg_short_link_csv_target(array('destination_type' => 'page', 'page_name' => null), '/'), 'a page that is gone');
+}
+
+function test_short_link_redirects_numbered_name_keeps_to_the_column()
+{
+	$long = 'gtest-long/' . str_repeat('a', 180);
+
+	pg_assert_same('blog/x[1]', pg_short_link_numbered_name('blog/x', 1, 191), 'room enough');
+	pg_assert_same(191, mb_strlen(pg_short_link_numbered_name($long, 1, 191), 'UTF-8'), '191 characters: the end gives way');
+	pg_assert_same('gtest-long/' . str_repeat('a', 177) . '[1]', pg_short_link_numbered_name($long, 1, 191), 'the suffix is whole');
+	pg_assert_same('gtest-long/' . str_repeat('b', 176) . '[12]', pg_short_link_numbered_name('gtest-long/' . str_repeat('b', 179), 12, 191), 'a longer suffix');
+	pg_assert_same(str_repeat('ü', 97) . '[1]', pg_short_link_numbered_name(str_repeat('ü', 99), 1, 100), 'characters, not bytes (100 before the step)');
+	pg_assert_same('', pg_short_link_numbered_name('abc', 1, 3), 'no room for any of the name');
 }

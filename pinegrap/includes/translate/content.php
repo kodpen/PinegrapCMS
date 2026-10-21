@@ -319,11 +319,250 @@ function pg_tr_block_tags()
 }
 
 /**
+ * The elements whose content is not words to translate: inside a text they
+ * are drawn as they are, content and all.
+ */
+function pg_tr_opaque_tags()
+{
+    return array('script', 'style', 'template', 'noscript', 'textarea', 'select', 'svg', 'math',
+        'iframe', 'object', 'video', 'audio', 'canvas', 'pre');
+}
+
+/**
+ * A piece of inline HTML cut where a translated text could not carry what is
+ * there. A translation holds words and the editor's inline tags
+ * (pg_tr_clean_inline()); an image, a form control, a button, an embed is
+ * none of those, and a block swapped whole for its translation lost it. Every
+ * other tag is a cut, an element whose content is not words
+ * (pg_tr_opaque_tags()) is one cut with its content, and so is a comment. A
+ * stretch whose inline tags do not close inside it (a <b> around a button)
+ * is cut at those tags as well. The stretches between the cuts are the
+ * texts; the cuts are drawn as they are. Extraction and drawing cut alike,
+ * so the text a translator gets is the text the page looks up.
+ *
+ * @param string $html
+ * @return array of array('text' | 'keep', html), in order
+ */
+function pg_tr_inline_pieces($html)
+{
+    $inline = pg_tr_inline_tags();
+    $opaque = array_flip(pg_tr_opaque_tags());
+    $tag_pattern = '~^(?:<!--.*?-->|<[a-zA-Z/!][^>]*>)$~s';
+    $tokens = preg_split('~(<!--.*?-->|<[a-zA-Z/!][^>]*>)~s', (string) $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+    $pieces = array();
+    $run = array();
+
+    // A stretch of words and inline tags: one text when its tags close
+    // inside it, otherwise its tags are cuts too.
+    $flush = function () use (&$run, &$pieces, $tag_pattern) {
+        if (!$run) {
+            return;
+        }
+
+        $open = array();
+        $balanced = true;
+
+        foreach ($run as $token) {
+            if (!preg_match($tag_pattern, $token) || !preg_match('~^<(/?)([a-zA-Z][a-zA-Z0-9]*)~', $token, $tag)) {
+                continue;
+            }
+
+            $name = strtolower($tag[2]);
+
+            if (($name === 'br') || ($name === 'wbr') || (substr($token, -2) === '/>')) {
+                continue;
+            }
+
+            if ($tag[1] === '') {
+                $open[] = $name;
+            } elseif (array_pop($open) !== $name) {
+                $balanced = false;
+                break;
+            }
+        }
+
+        $balanced = $balanced && !$open;
+        $text = '';
+
+        foreach ($run as $token) {
+            if ($balanced || !preg_match($tag_pattern, $token)) {
+                $text .= $token;
+                continue;
+            }
+
+            if ($text !== '') {
+                $pieces[] = array((trim(strip_tags($text)) === '') ? 'keep' : 'text', $text);
+                $text = '';
+            }
+
+            $pieces[] = array('keep', $token);
+        }
+
+        if ($text !== '') {
+            $pieces[] = array((trim(strip_tags($text)) === '') ? 'keep' : 'text', $text);
+        }
+
+        $run = array();
+    };
+
+    $count = count($tokens);
+
+    for ($i = 0; $i < $count; $i++) {
+        $token = $tokens[$i];
+
+        if (!preg_match($tag_pattern, $token)) {
+            $run[] = $token;
+            continue;
+        }
+
+        $name = preg_match('~^<(/?)([a-zA-Z][a-zA-Z0-9-]*)~', $token, $tag) ? strtolower($tag[2]) : '';
+
+        if (($name !== '') && isset($inline[$name])) {
+            $run[] = $token;
+            continue;
+        }
+
+        $flush();
+
+        // An element whose content is not words: up to its own end tag.
+        if (($name !== '') && ($tag[1] === '') && isset($opaque[$name]) && (substr($token, -2) !== '/>')) {
+            $depth = 1;
+
+            while (($depth > 0) && ($i + 1 < $count)) {
+                $next = $tokens[++$i];
+                $token .= $next;
+
+                if (preg_match($tag_pattern, $next) && preg_match('~^<(/?)' . preg_quote($name, '~') . '\b~i', $next, $inner)) {
+                    $depth += ($inner[1] === '') ? 1 : -1;
+                }
+            }
+        }
+
+        $pieces[] = array('keep', $token);
+    }
+
+    $flush();
+
+    return $pieces;
+}
+
+/**
+ * A translation of inline markup with the attributes put back that the
+ * cleaner took off the page's tags (pg_tr_inline_attrs(): an id, data-*,
+ * the attributes a collapse link or a tooltip works by). The store keeps the
+ * cleaned tag; the page's own tag replaces each one the translation carries,
+ * in order, so a link opens what it opened in the source language.
+ *
+ * @param string $raw        the text as the page printed it
+ * @param string $translated its translation, cleaned tags
+ * @return string
+ */
+function pg_tr_inline_restore_attrs($raw, $translated)
+{
+    $translated = (string) $translated;
+
+    if ((strpos($translated, '<') === false) || !preg_match_all('~<([a-zA-Z][a-zA-Z0-9]*)(\s[^>]*)?>~', (string) $raw, $tags, PREG_SET_ORDER)) {
+        return $translated;
+    }
+
+    $inline = pg_tr_inline_tags();
+    $kept = pg_tr_inline_attrs();
+    $queues = array();
+
+    foreach ($tags as $tag) {
+        $name = strtolower($tag[1]);
+
+        if (!isset($inline[$name]) || empty($tag[2])) {
+            continue;
+        }
+
+        // Only a tag that loses an attribute in the cleaner; a value is
+        // consumed whole, so the words in a title are not read as names.
+        preg_match_all('~([^\s"\'>/=]+)(?:\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'>]+))?~', $tag[2], $attrs);
+        $lossy = false;
+
+        foreach ($attrs[1] as $attr) {
+            if (!isset($kept[strtolower($attr)])) {
+                $lossy = true;
+                break;
+            }
+        }
+
+        if (!$lossy) {
+            continue;
+        }
+
+        $void = in_array($name, array('br', 'wbr'), true);
+        $clean = pg_tr_clean_inline($tag[0] . ($void ? '' : '</' . $name . '>'));
+
+        if (!$void) {
+            $clean = substr($clean, 0, -strlen('</' . $name . '>'));
+        }
+
+        $queues[$clean][] = $tag[0];
+    }
+
+    if (!$queues) {
+        return $translated;
+    }
+
+    return preg_replace_callback('~<[a-z][a-z0-9]*\b[^>]*>~', function ($m) use (&$queues) {
+        return empty($queues[$m[0]]) ? $m[0] : array_shift($queues[$m[0]]);
+    }, $translated);
+}
+
+/**
+ * A stretch of inline HTML the page printed, its texts in the current
+ * language: cut by pg_tr_inline_pieces(), each text looked up, the cuts and
+ * the tags' own attributes kept. Null when no text of it has a translation.
+ *
+ * @param string        $html
+ * @param callable|null $lookup pg_tr_db_text() unless given
+ * @return string|null
+ */
+function pg_tr_render_inline($html, $lookup = null)
+{
+    if ($lookup === null) {
+        $lookup = 'pg_tr_db_text';
+    }
+
+    $out = '';
+    $changed = false;
+
+    foreach (pg_tr_inline_pieces($html) as $piece) {
+        if ($piece[0] !== 'text') {
+            $out .= $piece[1];
+            continue;
+        }
+
+        preg_match('~^(\s*)(.*?)(\s*)$~s', $piece[1], $parts);
+        $core = $parts[2];
+        $plain = (strpos($core, '<') === false);
+
+        $found = $plain
+            ? call_user_func($lookup, html_entity_decode($core, ENT_QUOTES | ENT_HTML5, 'UTF-8'), array('text'))
+            : call_user_func($lookup, $core, array('inline'));
+
+        if ($found === null) {
+            $out .= $piece[1];
+            continue;
+        }
+
+        $changed = true;
+        $out .= $parts[1] . (($found[1] === 'inline') ? pg_tr_inline_restore_attrs($core, $found[0]) : h($found[0])) . $parts[3];
+    }
+
+    return $changed ? $out : null;
+}
+
+/**
  * A piece of stored HTML (a product description, a confirmation message, a
  * custom HTML block) as the texts a translator gets: every leaf block - one
  * with no block inside it - as one text, inline tags kept; text that sits
  * beside blocks as a text of its own. HTML with no block at all is one text.
- * Scripts, styles, code and anything marked translate="no" are left out.
+ * An element a text cannot carry (an image, a form control, a button) cuts
+ * it into the texts around it (pg_tr_inline_pieces()). Scripts, styles,
+ * code and anything marked translate="no" are left out.
  *
  * @param string $html
  * @return array of array(text, format) - normalised, translatable
@@ -337,14 +576,22 @@ function pg_tr_html_segments($html)
         return $out;
     }
 
-    $push = function ($inner) use (&$out) {
-        $plain = (strpos($inner, '<') === false);
-        $format = $plain ? 'text' : 'inline';
-        $value = $plain ? html_entity_decode($inner, ENT_QUOTES | ENT_HTML5, 'UTF-8') : $inner;
-        $normalized = pg_tr_normalize($value, $format);
+    $push = function ($html) use (&$out) {
+        foreach (pg_tr_inline_pieces($html) as $piece) {
+            $inner = trim($piece[1]);
 
-        if (($normalized !== '') && pg_tr_translatable($normalized)) {
-            $out[] = array($normalized, $format);
+            if (($piece[0] !== 'text') || ($inner === '')) {
+                continue;
+            }
+
+            $plain = (strpos($inner, '<') === false);
+            $format = $plain ? 'text' : 'inline';
+            $value = $plain ? html_entity_decode($inner, ENT_QUOTES | ENT_HTML5, 'UTF-8') : $inner;
+            $normalized = pg_tr_normalize($value, $format);
+
+            if (($normalized !== '') && pg_tr_translatable($normalized)) {
+                $out[] = array($normalized, $format);
+            }
         }
     };
 
@@ -1146,16 +1393,17 @@ function pg_tr_render_db_html($html)
     $leaf = 'p|li|h[1-6]|td|th|dd|dt|figcaption|blockquote|div|caption|summary|label|legend|address';
     $nested = $leaf . '|ul|ol|dl|table|thead|tbody|tfoot|tr|section|article|header|footer|aside|main|nav|form|fieldset|figure|details|select|option|svg';
 
-    // Leaf blocks with inline markup inside: the whole inner HTML is one text.
+    // Leaf blocks with inline markup inside: the whole inner HTML is one
+    // text, or the texts around the elements a text cannot carry.
     $html = preg_replace_callback('~<(' . $leaf . ')\b([^>]*)>((?:(?!</?(?:' . $nested . ')\b)[\s\S])*?)</\1>~i', function ($m) {
         // A block of text alone is the text pass's.
         if ((strpos($m[3], '<') === false) || preg_match('~\stranslate="no"|\bnotranslate\b~i', $m[2])) {
             return $m[0];
         }
 
-        $found = pg_tr_db_text($m[3], array('inline'));
+        $translated = pg_tr_render_inline($m[3]);
 
-        return ($found === null) ? $m[0] : '<' . $m[1] . $m[2] . '>' . $found[0] . '</' . $m[1] . '>';
+        return ($translated === null) ? $m[0] : '<' . $m[1] . $m[2] . '>' . $translated . '</' . $m[1] . '>';
     }, $html);
 
     // Single text nodes.
@@ -1220,17 +1468,9 @@ function pg_tr_render_html_value($html)
     }
 
     if (!preg_match('~<(' . implode('|', pg_tr_block_tags()) . ')\b~i', $html)) {
-        $trimmed = trim($html);
-        $plain = (strpos($trimmed, '<') === false);
-        $found = $plain
-            ? pg_tr_db_text(html_entity_decode($trimmed, ENT_QUOTES | ENT_HTML5, 'UTF-8'), array('text'))
-            : pg_tr_db_text($trimmed, array('inline'));
+        $translated = pg_tr_render_inline(trim($html));
 
-        if ($found === null) {
-            return $html;
-        }
-
-        return ($found[1] === 'inline') ? $found[0] : h($found[0]);
+        return ($translated === null) ? $html : $translated;
     }
 
     return pg_tr_render_db_html($html);
@@ -1246,6 +1486,15 @@ function pg_tr_render_json_strings($script)
 
         if (!is_string($decoded) || !preg_match('~\p{L}~u', $decoded)) {
             return $m[0];
+        }
+
+        // A rich-text value with blocks in it (a variant's description of
+        // two paragraphs) was stored block by block (pg_tr_html_segments()),
+        // never as one text: translated the same way the page's own copy is.
+        if (preg_match('~<(' . implode('|', pg_tr_block_tags()) . ')\b~i', $decoded)) {
+            $html = pg_tr_render_html_value($decoded);
+
+            return ($html === $decoded) ? $m[0] : json_encode($html, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
         }
 
         $found = pg_tr_db_text($decoded);

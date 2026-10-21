@@ -381,6 +381,136 @@ function erp_allocate($total, $weights)
 }
 
 /**
+ * A document's taxes, each taken once on the sum of the lines at its rate.
+ *
+ * Lines with the same VAT rate and the same withholding rate form a group. The
+ * group's VAT is erp_apply_rate() on the sum of its lines' net amounts and is
+ * spread back over those lines by largest remainder (erp_allocate()), so the
+ * lines add up to their group and each stays within a kurus of the VAT it
+ * would carry on its own. A withheld line and a plain one at the same rate are
+ * two groups.
+ *
+ * The withholding is every group's VAT times its withholding rate, summed over
+ * the document and rounded once - the one rounding here that is not
+ * erp_apply_rate(), because a rounding per group would round the document's
+ * withholding several times. It is spread over the withheld lines in
+ * proportion to what each of them withholds. The second tax is taken per its
+ * own rate on the sum of the same net amounts and is never withheld.
+ *
+ * Taking a tax on the sum instead of line by line is also how an e-document
+ * provider that works the taxes out from the rates reaches its figures, so a
+ * document built here has the same totals there, to the kurus.
+ *
+ * @param array $lines  key => [
+ *                          'net'              => int, kurus after discount, zero or more
+ *                          'tax_rate'         => float, VAT percentage
+ *                          'withholding_rate' => float, percentage of the VAT withheld
+ *                          'tax2_rate'        => float, second tax percentage
+ *                      ]; a missing rate is zero
+ * @return array [
+ *     'lines'       => key => ['vat' => int, 'tax2' => int, 'withholding' => int],
+ *     'groups'      => list of ['tax_rate', 'withholding_rate', 'net', 'vat'],
+ *                      in the order the groups first appear,
+ *     'vat'         => int,
+ *     'tax2'        => int,
+ *     'withholding' => int,
+ * ]
+ */
+function erp_rate_vat($lines)
+{
+    $out = array();
+    $groups = array();
+    $members = array();
+    $tax2_groups = array();
+    $tax2_members = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $net = (int) ($line['net'] ?? 0);
+        $tax_rate = (float) ($line['tax_rate'] ?? 0);
+        // Nothing is withheld from a line that carries no VAT.
+        $withholding_rate = ($tax_rate > 0) ? (float) ($line['withholding_rate'] ?? 0) : 0.0;
+        $tax2_rate = (float) ($line['tax2_rate'] ?? 0);
+
+        $out[$key] = array('vat' => 0, 'tax2' => 0, 'withholding' => 0);
+
+        // A rate comes as a float from a form and as a DECIMAL string from the
+        // database; three places is the rate columns' own scale.
+        $group = sprintf('%.3F|%.3F', $tax_rate, $withholding_rate);
+        if (!isset($groups[$group])) {
+            $groups[$group] = array(
+                'tax_rate' => $tax_rate,
+                'withholding_rate' => $withholding_rate,
+                'net' => 0,
+                'vat' => 0,
+            );
+            $members[$group] = array();
+        }
+        $groups[$group]['net'] += $net;
+        $members[$group][$key] = $net;
+
+        if ($tax2_rate > 0) {
+            $tax2_group = sprintf('%.3F', $tax2_rate);
+            if (!isset($tax2_groups[$tax2_group])) {
+                $tax2_groups[$tax2_group] = array('rate' => $tax2_rate, 'net' => 0);
+                $tax2_members[$tax2_group] = array();
+            }
+            $tax2_groups[$tax2_group]['net'] += $net;
+            $tax2_members[$tax2_group][$key] = $net;
+        }
+    }
+
+    $vat_total = 0;
+    $withheld = 0.0;
+    $withholding_weights = array();
+
+    foreach ($groups as $group => $data) {
+        $vat = erp_apply_rate($data['net'], $data['tax_rate']);
+        $groups[$group]['vat'] = $vat;
+        $vat_total += $vat;
+
+        foreach (erp_allocate($vat, $members[$group]) as $key => $share) {
+            $out[$key]['vat'] = $share;
+        }
+
+        if ($data['withholding_rate'] > 0) {
+            $withheld += $vat * $data['withholding_rate'];
+            // erp_allocate() takes whole weights: thousandths of a kurus keep
+            // a rate's three places.
+            foreach (array_keys($members[$group]) as $key) {
+                $withholding_weights[$key] = (int) round($out[$key]['vat'] * $data['withholding_rate'] * 1000);
+            }
+        }
+    }
+
+    $withholding_total = (int) round($withheld / 100);
+
+    if ($withholding_total !== 0) {
+        foreach (erp_allocate($withholding_total, $withholding_weights) as $key => $share) {
+            $out[$key]['withholding'] = $share;
+        }
+    }
+
+    $tax2_total = 0;
+
+    foreach ($tax2_groups as $group => $data) {
+        $tax2 = erp_apply_rate($data['net'], $data['rate']);
+        $tax2_total += $tax2;
+
+        foreach (erp_allocate($tax2, $tax2_members[$group]) as $key => $share) {
+            $out[$key]['tax2'] = $share;
+        }
+    }
+
+    return array(
+        'lines' => $out,
+        'groups' => array_values($groups),
+        'vat' => $vat_total,
+        'tax2' => $tax2_total,
+        'withholding' => $withholding_total,
+    );
+}
+
+/**
  * Format kurus for the screen, in the base currency.
  *
  * @param int  $kurus

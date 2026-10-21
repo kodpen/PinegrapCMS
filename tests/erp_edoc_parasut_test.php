@@ -192,6 +192,18 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_same('9001', $details[1]['relationships']['product']['data']['id']);
 	pg_assert_false(isset($details[0]['attributes']['vat_withholding_rate']));
 
+	// A campaign discount and a typed one apply one after the other, which no
+	// single rate says: the line goes with the amount they came to (99.99,
+	// campaign 10% then 5% = 14.50; 5% alone would be 5.00).
+	$two = array(array_merge($lines[0], array('quantity' => '3.0000', 'unit_price' => 3333, 'offer_discount_rate' => '10.000', 'discount_rate' => '5.000', 'discount_amount' => 1450)));
+	$detail = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $two, '555')['data']['relationships']['details']['data'][0]['attributes'];
+	pg_assert_same('amount', $detail['discount_type'], 'campaign and typed discount');
+	pg_assert_same(14.5, $detail['discount_value']);
+	$campaign = array(array_merge($two[0], array('discount_rate' => '0.000', 'discount_amount' => 1000)));
+	$detail = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $campaign, '555')['data']['relationships']['details']['data'][0]['attributes'];
+	pg_assert_same('amount', $detail['discount_type'], 'campaign discount alone');
+	pg_assert_same(10.0, $detail['discount_value']);
+
 	// The order number without its date would stop the conversion; neither
 	// is sent then.
 	$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('order_id' => 438, 'order_number' => '1172', 'order_date' => '')), $lines, '555');
@@ -218,6 +230,200 @@ function test_erp_edoc_parasut_invoice_payload_lines_and_header()
 	pg_assert_same(40.0, $payload['data']['relationships']['details']['data'][0]['attributes']['vat_withholding_rate']);
 	pg_assert_same(50.0, $payload['data']['relationships']['details']['data'][1]['attributes']['vat_withholding_rate']);
 	pg_assert_false(isset($payload['data']['attributes']['vat_withholding_rate']));
+}
+
+function pg_test_parasut_vat_line($base, $vat, $overrides = array())
+{
+	return array_merge(array('product_id' => 0, 'description' => 'Satır', 'quantity' => '1.0000', 'unit_price' => $base, 'line_total' => $base, 'discount_rate' => '0.000', 'discount_amount' => 0, 'tax_rate' => '20.000', 'tax_total' => $vat, 'tax2_amount' => 0, 'withholding_rate' => '0.000'), $overrides);
+}
+
+// Paraşüt takes the VAT on each rate's whole amount, the ERP line by line.
+// Where the two differ, the rate's amount at Paraşüt moves a kurus or so so
+// that amount and VAT come to the ERP's total there.
+function test_erp_edoc_parasut_vat_shift()
+{
+	// Agreeing VAT: nothing moves.
+	pg_assert_same(array('lines' => array(), 'extra' => array(), 'refusal' => array()), erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(3995, 799), pg_test_parasut_vat_line(1250, 250))));
+
+	// 1.02 + 1.02 at 20%: 0.40 line by line, 0.41 on 2.04. The amount goes
+	// down a kurus (2.03 + 0.41 = 2.44) off the largest line.
+	$down = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(102, 20), pg_test_parasut_vat_line(102, 20)));
+	pg_assert_same(array(0 => array('discount' => 1, 'unit_price' => 0)), $down['lines'], 'a kurus off');
+	pg_assert_same(array(), $down['refusal']);
+
+	// 1.03 + 1.03: 0.42 line by line, 0.41 on 2.06. The amount goes up a
+	// kurus (2.07 + 0.41 = 2.48): on the price of a single unit.
+	$up = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(103, 21), pg_test_parasut_vat_line(103, 21)));
+	pg_assert_same(array(0 => array('discount' => 0, 'unit_price' => 1), ), $up['lines'], 'a kurus on');
+
+	// Up again, but a discounted line gives back a kurus of its discount.
+	$discounted = pg_test_parasut_vat_line(2000, 360, array('quantity' => '2.0000', 'unit_price' => 1000, 'line_total' => 2000, 'discount_amount' => 200));
+	$discounted['line_total'] = 2000;
+	$back = erp_edoc_parasut_vat_shift(array($discounted, pg_test_parasut_vat_line(103, 21), pg_test_parasut_vat_line(103, 21)));
+	pg_assert_same(-1, $back['lines'][0]['discount'] ?? null, 'discount given back');
+
+	// Up with only several units and no discount: a rounding line at the rate.
+	$units = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(206, 42, array('quantity' => '2.0000', 'unit_price' => 103))));
+	pg_assert_same(array(), $units['lines']);
+	pg_assert_same(1, $units['extra'][0]['kurus'] ?? null, 'rounding line');
+	pg_assert_same(20.0, $units['extra'][0]['rate'] ?? null);
+
+	// 39.95 + 7.99 and shipping 8.33 + 1.66: 57.93, three kurus off a
+	// multiple of six, which no amount at 20% comes to.
+	$out = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(3995, 799), pg_test_parasut_vat_line(833, 166)));
+	pg_assert_same(array('rate' => 20.0, 'total' => 5793, 'below' => 5792, 'above' => 5794), $out['refusal'], 'unreachable');
+
+	// Each rate on its own; a withheld or untaxed rate is left alone.
+	$rates = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(102, 20), pg_test_parasut_vat_line(102, 20), pg_test_parasut_vat_line(1250, 125, array('tax_rate' => '10.000')), pg_test_parasut_vat_line(500, 0, array('tax_rate' => '0.000'))));
+	pg_assert_same(array(0), array_keys($rates['lines']), 'only the 20% lines move');
+	$withheld = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(102, 20, array('withholding_rate' => '40.000')), pg_test_parasut_vat_line(102, 20)));
+	pg_assert_same(array(), $withheld['lines'], 'withheld rate left alone');
+	pg_assert_same(array(), $withheld['refusal']);
+
+	// A VAT further off than line roundings take it is no rounding: nothing
+	// moves, and the total check says what differs.
+	$far = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(1000, 260)));
+	pg_assert_same(array('lines' => array(), 'extra' => array(), 'refusal' => array()), $far, 'VAT 0.60 off');
+	$nothing = erp_edoc_parasut_vat_shift(array(pg_test_parasut_vat_line(0, 1, array('line_total' => 0))));
+	pg_assert_same(array('lines' => array(), 'extra' => array(), 'refusal' => array()), $nothing, 'no amount');
+}
+
+// The amount Paraşüt's VAT comes to a total from; at 20% one total in six,
+// at 10% one in eleven, has none.
+function test_erp_edoc_parasut_rate_amount()
+{
+	pg_assert_same(203, erp_edoc_parasut_rate_amount(244, 20));
+	pg_assert_same(4827, erp_edoc_parasut_rate_amount(5792, 20));
+	pg_assert_same(4828, erp_edoc_parasut_rate_amount(5794, 20));
+	pg_assert_same(null, erp_edoc_parasut_rate_amount(5793, 20), '57.93 at 20%');
+	pg_assert_same(1245, erp_edoc_parasut_rate_amount(1370, 10), '12.45 + 1.25');
+	pg_assert_same(1250, erp_edoc_parasut_rate_amount(1263, 1), '12.50 + 0.13');
+	pg_assert_same(0, erp_edoc_parasut_rate_amount(0, 20));
+
+	foreach (array(20 => 1000, 10 => 546, 1 => 59) as $rate => $missed) {
+		$none = 0;
+
+		for ($total = 1; $total <= 6000; $total++) {
+			$none += (erp_edoc_parasut_rate_amount($total, $rate) === null) ? 1 : 0;
+		}
+
+		pg_assert_same($missed, $none, 'totals none reaches at ' . $rate . '%');
+	}
+}
+
+// Paraşüt's arithmetic on a sales_invoices body, as seen live: each line's
+// amount less its discount, then each rate's VAT on the sum of its lines,
+// half up to the kurus.
+function pg_test_parasut_simulated_total($details)
+{
+	$bases = array();
+
+	foreach ($details as $detail) {
+		$attributes = $detail['attributes'];
+		$amount = (int) round($attributes['quantity'] * $attributes['unit_price'] * 100);
+		$discount = ($attributes['discount_type'] === 'percentage')
+			? erp_apply_rate($amount, $attributes['discount_value'])
+			: (int) round($attributes['discount_value'] * 100);
+		$rate = number_format((float) $attributes['vat_rate'], 3, '.', '');
+		$bases[$rate] = ($bases[$rate] ?? 0) + $amount - $discount;
+	}
+
+	$total = 0;
+
+	foreach ($bases as $rate => $base) {
+		$total += $base + erp_apply_rate($base, (float) $rate);
+	}
+
+	return $total;
+}
+
+// Over many invoices of a few lines - typed prices with or without a
+// discount, VAT-inclusive prices split as an order's are - the lines as they
+// go to Paraşüt come to the ERP's total by Paraşüt's arithmetic, unless a
+// rate's total is one no amount reaches.
+function test_erp_edoc_parasut_vat_shift_reaches_the_total()
+{
+	mt_srand(20261021);
+	$refused = 0;
+	$moved = 0;
+
+	for ($run = 0; $run < 4000; $run++) {
+		$lines = array();
+		$erp_total = 0;
+
+		for ($i = 0, $count = mt_rand(1, 4); $i < $count; $i++) {
+			$rate = array(1, 10, 20, 20, 20)[mt_rand(0, 4)];
+
+			if (mt_rand(0, 2) === 0) {
+				$split = erp_split_gross(mt_rand(50, 30000), $rate);
+				$line = pg_test_parasut_vat_line($split['net'], $split['tax'], array('tax_rate' => (string) $rate));
+			} else {
+				$quantity = mt_rand(1, 3);
+				$price = (mt_rand(0, 9) === 0) ? mt_rand(1, 30) : mt_rand(100, 20000);
+				$line_total = $price * $quantity;
+				$discount_rate = (mt_rand(0, 2) === 0) ? mt_rand(1, 30) : 0;
+				$discount = erp_apply_rate($line_total, $discount_rate);
+				$line = pg_test_parasut_vat_line($line_total, erp_apply_rate($line_total - $discount, $rate), array(
+					'quantity' => $quantity . '.0000',
+					'unit_price' => $price,
+					'discount_rate' => $discount_rate . '.000',
+					'discount_amount' => $discount,
+					'tax_rate' => (string) $rate,
+				));
+			}
+
+			$lines[] = $line;
+			$erp_total += $line['line_total'] - $line['discount_amount'] + $line['tax_total'];
+		}
+
+		$shift = erp_edoc_parasut_vat_shift($lines);
+
+		if ($shift['refusal'] !== array()) {
+			pg_assert_same(null, erp_edoc_parasut_rate_amount($shift['refusal']['total'], $shift['refusal']['rate']), 'refused only when unreachable');
+			$refused++;
+			continue;
+		}
+
+		$moved += (($shift['lines'] !== array()) || ($shift['extra'] !== array())) ? 1 : 0;
+		$payload = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $lines, '555');
+		pg_assert_false(isset($payload['error']), 'run ' . $run);
+		pg_assert_same($erp_total, pg_test_parasut_simulated_total($payload['data']['relationships']['details']['data']), 'run ' . $run);
+	}
+
+	pg_assert_true(($refused > 0) && ($moved > 0), 'both paths taken: ' . $moved . ' moved, ' . $refused . ' refused');
+}
+
+// The payload carries the moved kurus: a discount amount, a unit price, a
+// rounding line after every line.
+function test_erp_edoc_parasut_invoice_payload_vat_shift()
+{
+	$down = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), array(pg_test_parasut_vat_line(102, 20), pg_test_parasut_vat_line(102, 20)), '555')['data']['relationships']['details']['data'];
+	pg_assert_same(2, count($down));
+	pg_assert_same('amount', $down[0]['attributes']['discount_type']);
+	pg_assert_same(0.01, $down[0]['attributes']['discount_value'], 'a kurus off the first');
+	pg_assert_same(0.0, $down[1]['attributes']['discount_value']);
+
+	$up = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), array(pg_test_parasut_vat_line(103, 21), pg_test_parasut_vat_line(103, 21)), '555')['data']['relationships']['details']['data'];
+	pg_assert_same(1.04, $up[0]['attributes']['unit_price'], 'a kurus on the first price');
+	pg_assert_same(1.03, $up[1]['attributes']['unit_price']);
+
+	// A line that moves keeps its discount as the amount: 15% of 0.04 would
+	// be a kurus where 15% of 0.03 was none.
+	$rated = array(pg_test_parasut_vat_line(3, 1, array('discount_rate' => '15.000')), pg_test_parasut_vat_line(42339, 8468, array('quantity' => '3.0000', 'unit_price' => 14113)), pg_test_parasut_vat_line(4, 1, array('quantity' => '2.0000', 'unit_price' => 2, 'discount_rate' => '7.000')));
+	$detail = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), $rated, '555')['data']['relationships']['details']['data'][0]['attributes'];
+	pg_assert_same(0.04, $detail['unit_price']);
+	pg_assert_same('amount', $detail['discount_type']);
+	pg_assert_same(0.0, $detail['discount_value']);
+
+	$units = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(), array(pg_test_parasut_vat_line(206, 42, array('quantity' => '2.0000', 'unit_price' => 103))), '555')['data']['relationships']['details']['data'];
+	pg_assert_same(2, count($units), 'rounding line after the line');
+	pg_assert_same(0.01, $units[1]['attributes']['unit_price']);
+	pg_assert_same(20.0, $units[1]['attributes']['vat_rate']);
+	pg_assert_same('9001', $units[1]['relationships']['product']['data']['id']);
+
+	// A rate that can be reached is no refusal (the unreachable one is
+	// test_erp_edoc_parasut_vat_shift's; its words need the currency table).
+	pg_assert_same('', erp_edoc_parasut_total_refusal(array(pg_test_parasut_vat_line(102, 20), pg_test_parasut_vat_line(102, 20)), 'TRY'));
 }
 
 // The grand total Paraşüt computed is net_total ("Genel Toplam"); gross_total
@@ -423,6 +629,39 @@ function test_erp_edoc_parasut_unconverted_message()
 	foreach ($handed_over as $label => $row) {
 		pg_assert_contains('hand it to GİB again', erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice($row)), $label);
 	}
+
+	// A failed conversion job's words come first, as their own sentence.
+	$failed = erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice(array('edoc_status' => 'sent', 'parasut_job_id' => '1234')), 'Alıcı adresi GİB tarafından reddedildi');
+	pg_assert_same('Alıcı adresi GİB tarafından reddedildi. ', mb_substr($failed, 0, 40), 'the reason, closed with a full stop');
+	pg_assert_contains('hand it to GİB again', $failed);
+	pg_assert_same(0, strpos(erp_edoc_parasut_unconverted_message(pg_test_parasut_invoice(array('edoc_status' => 'sent')), 'Done.'), 'Done. The'), 'no second full stop');
+}
+
+// A conversion job's answer: running, done, or failed with Paraşüt's words,
+// whatever shape its errors come in.
+function test_erp_edoc_parasut_job_reading()
+{
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'pending')));
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'running')));
+	pg_assert_same(array('state' => 'running', 'message' => ''), erp_edoc_parasut_job_reading(array()));
+	pg_assert_same(array('state' => 'done', 'message' => ''), erp_edoc_parasut_job_reading(array('status' => 'done', 'errors' => array())));
+
+	pg_assert_same(
+		array('state' => 'error', 'message' => 'Alıcı adresi GİB tarafından reddedildi'),
+		erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array('Alıcı adresi GİB tarafından reddedildi')))
+	);
+	pg_assert_same(
+		array('state' => 'error', 'message' => 'Geçersiz alan: VKN hatalı | Zaman aşımı'),
+		erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(
+			array('title' => 'Geçersiz alan', 'detail' => 'VKN hatalı', 'source' => array('pointer' => '/data/attributes/vkn')),
+			array('title' => 'Zaman aşımı', 'detail' => 'Zaman aşımı'),
+			'Zaman aşımı',
+		))),
+		'JSON:API error objects, a repeated line once, no notice from a nested array'
+	);
+	pg_assert_same('error', erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(array('code' => 'E1', 'meta' => array('x' => 1)))))['state']);
+	pg_assert_same('E1', erp_edoc_parasut_job_reading(array('status' => 'error', 'errors' => array(array('code' => 'E1', 'meta' => array('x' => 1)))))['message']);
+	pg_assert_same('Paraşüt could not convert the invoice into an e-document.', erp_edoc_parasut_job_reading(array('status' => 'failed'))['message']);
 }
 
 // An e_invoice_inboxes answer: every mailbox once, and the registered name
@@ -499,6 +738,11 @@ function test_erp_edoc_parasut_product_refusal()
 	// Without a default given, the setting answers (the test sets one).
 	pg_assert_same('', erp_edoc_parasut_product_refusal(array($free)));
 	pg_assert_same(erp_edoc_parasut_no_product_text($free), erp_edoc_parasut_product_refusal(array($free), ''));
+
+	// A rounding line goes on the default product/service too.
+	$units = pg_test_parasut_vat_line(206, 42, array('product_id' => 543, 'quantity' => '2.0000', 'unit_price' => 103));
+	pg_assert_contains('"Rounding difference"', erp_edoc_parasut_product_refusal(array($units), ''));
+	pg_assert_same('', erp_edoc_parasut_product_refusal(array($units), '9001'));
 }
 
 // The driver hands over its customer and supplier cards: the account sync

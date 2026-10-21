@@ -932,6 +932,8 @@ function api_calendar_events_update($params) {
 
 	$set = api_calendar_event_fields_in($params);
 
+	$moved = false;
+
 	// The times are worked out again from what is sent and what is stored
 	// whenever one of the three changes, so switching all_day alone turns the
 	// stored times into whole days and back.
@@ -954,6 +956,8 @@ function api_calendar_events_update($params) {
 		if (($times[0] !== date('Y-m-d H:i:s', strtotime($row['start_time']))) || ($times[1] !== date('Y-m-d H:i:s', strtotime($row['end_time'])))) {
 
 			api_calendar_event_rooms_or_fail($row, $times);
+
+			$moved = true;
 
 		}
 
@@ -979,10 +983,27 @@ function api_calendar_events_update($params) {
 
 	}
 
-	api_dry_run_stop('updated', 'calendar_event', array(
+	// A cancelled repeat is stored by its number in the series, not by its
+	// date, so once the event moves the number points at a different day: the
+	// cancelled day would come back and the repeat now on that number would
+	// drop off the calendar. The event screen clears them whenever the start
+	// or end changes, and so does this.
+	$skipped = $moved
+		? (int)api_value("SELECT COUNT(*) FROM calendar_event_exceptions WHERE calendar_event_id = '" . $id . "'")
+		: 0;
+
+	$detail = array(
 		'id'      => $id,
 		'changes' => array_merge(array_keys($set), ($calendars === null) ? array() : array('calendar_ids'))
-	));
+	);
+
+	if ($skipped > 0) {
+
+		$detail['skipped_occurrences_cleared'] = $skipped;
+
+	}
+
+	api_dry_run_stop('updated', 'calendar_event', $detail);
 
 	if (!empty($set)) {
 
@@ -1003,6 +1024,12 @@ function api_calendar_events_update($params) {
 		api_exec("UPDATE calendar_events SET last_modified_user_id = '" . (int)$app['owner']['id'] . "',
 				last_modified_timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . $id . "'");
+
+	}
+
+	if ($skipped > 0) {
+
+		api_exec("DELETE FROM calendar_event_exceptions WHERE calendar_event_id = '" . $id . "'");
 
 	}
 

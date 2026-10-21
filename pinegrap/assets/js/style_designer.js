@@ -3470,7 +3470,10 @@ const StyleDesigner = (function () {
         // block somebody else laid out is the same kind of edit as changing
         // the sentence beside it — and the alternative is a content operator
         // who can rewrite the caption of an image they cannot replace.
-        if (what === 'image' && typeof _sdNodeImage === 'function' && _sdNodeImage(node)) return true;
+        // A background image is not among them: it is formatting, and the
+        // save does not take it outside a marked area
+        // (_pg_dm_take_image_src()), so offering it lost the change.
+        if (what === 'image' && typeof _sdNodeContentImage === 'function' && _sdNodeContentImage(node)) return true;
         return false;
     }
 
@@ -22754,6 +22757,7 @@ const StyleDesigner = (function () {
         entries: [],        // the range map behind it (see _sdCodeDocument())
         busy: false,        // true while the editor is being written to
         fromEditor: false,  // true while a selection made in the editor is applied
+        heldBinding: null,  // what a half-typed {{token}} replaced (_sdCodeHoldBinding())
         loading: false,
         editable: null,     // what the editor was last told (null: never)
         dirty: null,        // { from, to } typed since the last apply, in editor positions
@@ -23802,6 +23806,53 @@ const StyleDesigner = (function () {
 
     function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
 
+    // A token still being typed or picked from the completion list: a {{
+    // with no }} after it, or an empty {{}} (closed brackets).
+    function _sdCodeHalfToken(value) {
+        return (typeof value === 'string') && (/\{\{(?![\s\S]*\}\})/.test(value) || /\{\{\s*\}\}/.test(value));
+    }
+
+    // The code view applies what is typed after a pause, so a token being
+    // typed over a bound (or bindable) value is applied half done: the
+    // binding ends and "{{" stands as the value. What the prop held before
+    // that is kept here, once, so the finished token gets the design-time
+    // text or value and the date format back (_sdCodeBindHeld()). A literal
+    // typed over it instead lets it go. One at a time: one token is typed
+    // at once.
+    function _sdCodeHoldBinding(node, prop, typed) {
+        var held = _sdCode.heldBinding;
+        var same = !!(held && held.node === node && held.prop === prop);
+        if (!_sdCodeHalfToken(typed)) {
+            if (same) _sdCode.heldBinding = null;
+            return;
+        }
+        if (same) return;
+        var p = node.props;
+        _sdCode.heldBinding = {
+            node: node,
+            prop: prop,
+            token: (p._bindings && p._bindings[prop]) || '',
+            has: Object.prototype.hasOwnProperty.call(p, prop),
+            value: p[prop],
+            format: (p._bindFormats && p._bindFormats[prop]) || ''
+        };
+    }
+
+    // Binds `prop` to `token` (_sdNodeSetBinding()), bringing back the date
+    // format held for the same token. The record held for this node and
+    // prop ({ has, value, ... }), or null when nothing was held.
+    function _sdCodeBindHeld(node, prop, token) {
+        var held = _sdCode.heldBinding;
+        if (held && held.node === node && held.prop === prop) _sdCode.heldBinding = null;
+        else held = null;
+        _sdNodeSetBinding(node, prop, token);
+        if (held && held.format && held.token === token) {
+            if (!node.props._bindFormats) node.props._bindFormats = {};
+            node.props._bindFormats[prop] = held.format;
+        }
+        return held;
+    }
+
     // Whether `prop` of this node is a binding a widget reads: the node is
     // inside a system widget and the Bind Data panel offers the prop. The
     // panel offers a plain element's text only when it has one, so the text
@@ -23879,11 +23930,16 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings.text) || '';
         var m = _SD_CODE_BIND_RE.exec(typed);
         if (!m) {
+            _sdCodeHoldBinding(node, 'text', typed);
             if (cur) _sdNodeSetBinding(node, 'text', '');
             return typed;
         }
-        if (m[1] !== cur) _sdNodeSetBinding(node, 'text', m[1]);
-        var kept = typed.replace(m[0], _sdCodeSlotRun(node.props.text));
+        var before = node.props.text;
+        if (m[1] !== cur) {
+            var held = _sdCodeBindHeld(node, 'text', m[1]);
+            if (held) before = held.has ? held.value : '';
+        }
+        var kept = typed.replace(m[0], _sdCodeSlotRun(before));
         // Words typed beside the token are kept on the node but never
         // shown: the page prints the bound value alone unless the markup
         // wraps a single run of words (pg_binding_text_slot()). Said once,
@@ -23903,9 +23959,15 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings[prop]) || '';
         var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
         if (m) {
-            if (m[1] !== cur) _sdNodeSetBinding(node, prop, m[1]);
+            if (m[1] !== cur) {
+                var held = _sdCodeBindHeld(node, prop, m[1]);
+                // The design-time value comes back from under the "{{".
+                if (held && held.has) node.props[prop] = held.value;
+                else if (held) delete node.props[prop];
+            }
             return true;
         }
+        _sdCodeHoldBinding(node, prop, value);
         if (cur) _sdNodeSetBinding(node, prop, '');
         return false;
     }
@@ -43496,17 +43558,23 @@ const StyleDesigner = (function () {
     // typed: the mirrors of pg_page_canonical_url_check() and
     // pg_page_max_snippet_check() (includes/fn/seo.php), which the save
     // applies. '' for an empty box, 'ok', or the reason.
+    // The server's pg_page_canonical_url_check() (includes/fn/seo.php), to
+    // the same answers: Unicode white space and zero-width characters
+    // trimmed at the ends, refused inside, a port above 65535 or not a
+    // number refused as parse_url() refuses it.
     function _sdCanonicalCheck(raw) {
-        var v = String(raw == null ? '' : raw).trim();
+        var v = String(raw == null ? '' : raw).replace(/^[\s\u0000\u200B-\u200D\u2060]+|[\s\u0000\u200B-\u200D\u2060]+$/g, '');
         if (!v) return '';
         var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(v).length : v.length;
         if (bytes > 2000) return 'size';
-        if (/[\u0000-\u0020\u007F"<>\\]/.test(v)) return 'chars';
+        if (/[\u0000-\u0020\u007F"<>\\]|[\p{Z}\p{Cf}]/u.test(v)) return 'chars';
         if (v.charAt(0) === '/') return (v.charAt(1) === '/') ? 'scheme' : 'ok';
         var m = /^https?:\/\/([^\/?#]*)/i.exec(v);
         if (!m) return 'scheme';
         // The host: what is left of the authority without a user and a port.
-        return m[1].replace(/^[^@]*@/, '').replace(/:[0-9]*$/, '') ? 'ok' : 'scheme';
+        var hp = /^(\[[^\]]*\]|[^:]*)(?::([0-9]*))?$/.exec(m[1].replace(/^[^@]*@/, ''));
+        if (!hp || !hp[1]) return 'scheme';
+        return (hp[2] && parseInt(hp[2], 10) > 65535) ? 'scheme' : 'ok';
     }
 
     function _sdMaxSnippetCheck(raw, limit) {
@@ -50312,7 +50380,7 @@ const StyleDesigner = (function () {
             if (!revState.rows.length) {
                 return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
             }
-            var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+            var loadRefusal = _sdRevisionLoadRefusal();
             html += '<div class="sd-snap-list sd-rev-list">';
             revState.rows.forEach(function (r, i) {
                 // The size against the revision before it in the list (the
@@ -50333,7 +50401,7 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-snap-acts">' +
                         '<button type="button" class="sd-snap-load sd-rev-compare" data-no="' + r.revision_no + '" title="' + esc(_sdT('Compare with the page now')) + '"><span class="bi bi-arrow-left-right"></span></button>' +
-                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (mayEdit ? '' : ' disabled title="' + esc(_sdT('Another person is editing this page.')) + '"') + '>' + esc(_sdT('Load')) + '</button>' +
+                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load')) + '</button>' +
                     '</div></div>';
             });
             html += '</div>';
@@ -50506,9 +50574,25 @@ const StyleDesigner = (function () {
     // Loads a revision's tree into the editor as unsaved work. The tree the
     // operator had is one Ctrl+Z away, and the page is marked so the next
     // publish records where its tree came from.
-    function _sdRevisionRestore(pageId, no, done) {
+    // Why this session may not load a revision, '' when it may. Loading puts
+    // the revision's whole tree on the canvas; at the content level the
+    // save keeps only its texts and image addresses
+    // (pg_designer_merge_restricted_tree()), so the revision never reached
+    // the site while the editor read as saved. A content operator compares.
+    function _sdRevisionLoadRefusal() {
         if (typeof _collab !== 'undefined' && _collab && _collab.mayEdit === false) {
-            sdToast(esc(_sdT('Another person is editing this page.')), 'warning');
+            return _sdT('Another person is editing this page.');
+        }
+        if (_sdIsContentLevel()) {
+            return _sdT('Only a designer can load an earlier revision.');
+        }
+        return '';
+    }
+
+    function _sdRevisionRestore(pageId, no, done) {
+        var refusal = _sdRevisionLoadRefusal();
+        if (refusal) {
+            sdToast(esc(refusal), 'warning');
             return;
         }
         _sdRevisionFetch(pageId, no).then(function (rev) {
@@ -50546,15 +50630,25 @@ const StyleDesigner = (function () {
     function _sdRevisionOpenCompare(pageId, no, done) {
         _sdRevisionFetch(pageId, no).then(function (rev) {
             if (!rev) return;
-            var nameEl = document.querySelector('[name="name"]');
-            var bcEl   = document.querySelector('[name="additional_body_classes"]');
-            var styleName = nameEl ? nameEl.value.trim() : '';
-            var addBc     = bcEl ? bcEl.value.trim() : '';
-            var nowHtml = generateHTML(styleName, addBc);
-            var revHtml = generateHTML(styleName, addBc, rev.tree);
-            var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
-            var revDoc  = _sdPreviewDocHtml(null, revHtml);
-            _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            // A shared component or system widget the page has dropped
+            // since is not in the cache, and the emitter draws nothing for
+            // a shared_ref it has no tree for: the revision's side lost the
+            // block and could even read as the same HTML. Fetch the missing
+            // ones first, as loading a tree does (_replaceTreeWithPrefetch()).
+            var sids = {};
+            collectSharedIds(rev.tree, sids);
+            var missing = Object.keys(sids).map(Number).filter(function (id) { return id > 0 && !_sharedCache[id]; });
+            prefetchShared(missing, function () {
+                var nameEl = document.querySelector('[name="name"]');
+                var bcEl   = document.querySelector('[name="additional_body_classes"]');
+                var styleName = nameEl ? nameEl.value.trim() : '';
+                var addBc     = bcEl ? bcEl.value.trim() : '';
+                var nowHtml = generateHTML(styleName, addBc);
+                var revHtml = generateHTML(styleName, addBc, rev.tree);
+                var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
+                var revDoc  = _sdPreviewDocHtml(null, revHtml);
+                _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            });
         });
     }
 
@@ -50565,7 +50659,7 @@ const StyleDesigner = (function () {
         overlay.id = 'sd-rev-overlay';
         overlay.className = 'sd-fr-overlay sd-rev-overlay';
         var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
-        var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+        var loadRefusal = _sdRevisionLoadRefusal();
         overlay.innerHTML =
             '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
                 '<div class="sd-fr-header">' +
@@ -50586,7 +50680,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-fr-footer">' +
                     '<span class="sd-rev-summary"></span>' +
                     '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
-                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (mayEdit ? '' : ' disabled') + '>' + esc(_sdT('Load this revision')) + '</button>' +
+                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load this revision')) + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);
@@ -57023,27 +57117,25 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
-    // Read from the canvas, not from the tree: the colour of a text and of
-    // what it sits on come from the design's CSS, its theme and Bootstrap's
-    // classes. Every text the canvas shows is measured against the colour
-    // behind it (PgContrast, assets/js/pg_contrast.js); a text with a picture
-    // under it is left alone, since no single colour is behind it. One issue
-    // per element, for its worst text, on the nearest element a tree knows -
-    // inside shared components and widgets too, like cf_field_unnamed.
+    // ── Canvas checks (WCAG 2.2) ─────────────────────────────────────
+    // What only the browser can tell: the colours a text is drawn in, the
+    // size a control is drawn at, the fields a form ends up with. Read from
+    // the canvas, not from the tree; each finding goes on the nearest element
+    // a tree knows, inside shared components and widgets too, like
+    // cf_field_unnamed, so its badge and Go work as for every issue.
 
-    // Editor chrome that has text of its own (toolbars, badges, placeholders,
-    // bands), the sample records drawn after a loop's first, and elements a
-    // switched-off feature drops from the page.
-    var _SD_CONTRAST_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+    // Editor chrome that has text or controls of its own (toolbars, badges,
+    // placeholders, bands), the sample records drawn after a loop's first,
+    // and elements a switched-off feature drops from the page.
+    var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
         '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
 
     // An editor box around an element: its background (the selection tint,
-    // the loop area's) is the editor's, not the page's. Table parts and a
-    // summary are their own wrapper (buildTableNodeEl(), _sdSelfWrapped()),
-    // so theirs is the page's.
-    function _sdContrastEditorBox(el) {
+    // the loop area's) and its display are the editor's, not the page's.
+    // Table parts and a summary are their own wrapper (buildTableNodeEl(),
+    // _sdSelfWrapped()), so theirs are the page's.
+    function _sdCanvasEditorBox(el) {
         var cl = el.classList;
         if (!cl) return false;
         if (cl.contains('sd-wrap')) {
@@ -57054,7 +57146,7 @@ const StyleDesigner = (function () {
 
     // Every node the canvas can show, by id: the page's and those of the
     // shared components, whose own nodes carry their ids on the canvas.
-    function _sdContrastNodeIndex(root) {
+    function _sdCanvasNodeIndex(root) {
         var index = {};
         function walk(n) {
             if (!n) return;
@@ -57069,12 +57161,49 @@ const StyleDesigner = (function () {
         return index;
     }
 
-    function _sdContrastIssues(root) {
+    // The node a canvas element belongs to: the nearest wrapper a tree knows.
+    function _sdCanvasNodeOf(el, index) {
+        for (var w = el.closest('[data-sd-id]'); w; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
+            var n = index[w.getAttribute('data-sd-id')];
+            if (n) return n.type === 'root' ? null : n;
+        }
+        return null;
+    }
+
+    // A number in the panel's language: 4,4 in Turkish.
+    function _sdAuditNum(v, digits) {
+        try {
+            return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+        } catch (e) {
+            return String(v);
+        }
+    }
+
+    function _sdCanvasAuditIssues(root) {
         if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return [];
-        var body = canvasDoc.body;
+        var ctx = { index: _sdCanvasNodeIndex(root), body: canvasDoc.body };
+        var out = [];
+        // One check that cannot read this canvas does not stop the others.
+        [_sdContrastIssues, _sdTargetSizeIssues, _sdRedundantEntryIssues].forEach(function (check) {
+            try {
+                check(ctx).forEach(function (issue) { out.push(issue); });
+            } catch (e) {
+                if (window.console) console.warn('Canvas check skipped', e);
+            }
+        });
+        return out;
+    }
+
+    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
+    // Every text the canvas shows against the colour behind it (PgContrast,
+    // assets/js/pg_contrast.js); a text with a picture under it is left
+    // alone, since no single colour is behind it. One issue per element, for
+    // its worst text.
+    function _sdContrastIssues(ctx) {
+        var body = ctx.body;
         var opts = {
-            skip: function (el) { return el.matches(_SD_CONTRAST_SKIP); },
-            ignore: _sdContrastEditorBox,
+            skip: function (el) { return el.matches(_SD_CANVAS_AUDIT_SKIP); },
+            ignore: _sdCanvasEditorBox,
             // The canvas grid overlay is the body's background image.
             noImage: function (el) { return el === body && body.classList.contains('sd-grid-overlay'); },
             // The editor tints the cells of a repeated table row; under the
@@ -57087,39 +57216,155 @@ const StyleDesigner = (function () {
             }
         };
         var cache = (typeof WeakMap === 'function') ? new WeakMap() : null;
-        var index = _sdContrastNodeIndex(root);
         var pics = PgContrast.pictures(body, opts);
         var worst = {};
         PgContrast.textRuns(body, opts).forEach(function (run) {
-            var node = null;
-            for (var w = run.el.closest('[data-sd-id]'); w && !node; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
-                node = index[w.getAttribute('data-sd-id')] || null;
-            }
-            if (!node || node.type === 'root') return;
+            var node = _sdCanvasNodeOf(run.el, ctx.index);
+            if (!node) return;
             var res = PgContrast.check(run, pics, opts, cache);
             if (!res || res.ok) return;
             // How far below its minimum: the text that reads worst is named.
             var gap = res.ratio / res.min;
             if (!worst[node._id] || gap < worst[node._id].gap) worst[node._id] = { node: node, gap: gap, res: res, text: run.text };
         });
-        var num = function (v, digits) {
-            try {
-                return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
-            } catch (e) {
-                return String(v);
-            }
-        };
         return Object.keys(worst).map(function (id) {
             var f = worst[id];
             var text = f.text.length > 40 ? f.text.slice(0, 39) + '…' : f.text;
             // Rounded down, so a 4.48:1 never reads as the 4.5:1 it misses.
-            var ratio = num(Math.floor(f.res.ratio * 10) / 10, 1);
+            var ratio = _sdAuditNum(Math.floor(f.res.ratio * 10) / 10, 1);
             return {
                 rule: 'low_contrast',
-                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, num(f.res.min, 0), text]),
+                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, _sdAuditNum(f.res.min, 0), text]),
                 node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
             };
         });
+    }
+
+    // ── Target size (WCAG 2.5.8) ─────────────────────────────────────
+    // What the visitor clicks or taps is at least 24×24 CSS pixels, or has
+    // room around it: a 24px circle centred on it touches no other target
+    // and no other small target's circle. Exempt, as in the criterion: a
+    // link inside a sentence, the browser's own checkboxes and radio buttons,
+    // and a stretched link, whose target is its whole card. Sizes are CSS
+    // pixels, the canvas zoom divided out.
+    var _SD_AUDIT_TARGETS = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, ' +
+        '[role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"]';
+
+    // A link in running text: drawn inline, with words beside it in the
+    // nearest block of the page (editor boxes looked through).
+    function _sdTargetInSentence(el, cs, win) {
+        if (cs.display !== 'inline') return false;
+        var block = el.parentElement;
+        while (block && block !== win.document.body && (_sdCanvasEditorBox(block) || win.getComputedStyle(block).display === 'inline')) {
+            block = block.parentElement;
+        }
+        if (!block) return false;
+        var own = (el.textContent || '').replace(/\s+/g, '').length;
+        var around = 0;
+        PgContrast.textRuns(block, { skip: function (n) { return n === el || n.matches(_SD_CANVAS_AUDIT_SKIP); } }).forEach(function (run) {
+            around += run.text.replace(/\s+/g, '').length;
+        });
+        return around > 0 && own > 0;
+    }
+
+    function _sdTargetSizeIssues(ctx) {
+        var win = canvasDoc.defaultView;
+        var targets = [];
+        Array.prototype.forEach.call(ctx.body.querySelectorAll(_SD_AUDIT_TARGETS), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var cs = win.getComputedStyle(el);
+            if (cs.visibility !== 'visible' || el.closest(':disabled, [aria-disabled="true"], .disabled')) return;
+            var z = PgContrast.zoom(el);
+            var r = el.getBoundingClientRect();
+            var t = { el: el, left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z };
+            t.w = t.right - t.left;
+            t.h = t.bottom - t.top;
+            // Not drawn, or a visually hidden one-pixel box.
+            if (t.w <= 1 || t.h <= 1) return;
+            t.cx = (t.left + t.right) / 2;
+            t.cy = (t.top + t.bottom) / 2;
+            var type = (el.getAttribute('type') || '').toLowerCase();
+            var uaDrawn = (type === 'checkbox' || type === 'radio') && (cs.appearance || cs.webkitAppearance || 'auto') !== 'none';
+            t.small = (t.w < 24 || t.h < 24) && !uaDrawn && !el.classList.contains('stretched-link') && !_sdTargetInSentence(el, cs, win);
+            targets.push(t);
+        });
+        var worst = {};
+        targets.forEach(function (t) {
+            if (!t.small) return;
+            var crowded = targets.some(function (o) {
+                if (o === t || o.el.contains(t.el) || t.el.contains(o.el)) return false;
+                // The circle touches the other target's box...
+                var dx = Math.max(o.left - t.cx, 0, t.cx - o.right);
+                var dy = Math.max(o.top - t.cy, 0, t.cy - o.bottom);
+                if (dx * dx + dy * dy < 144) return true;
+                // ...or another small target's circle.
+                return o.small && ((o.cx - t.cx) * (o.cx - t.cx) + (o.cy - t.cy) * (o.cy - t.cy) < 576);
+            });
+            if (!crowded) return;
+            var node = _sdCanvasNodeOf(t.el, ctx.index);
+            if (!node) return;
+            var area = t.w * t.h;
+            if (!worst[node._id] || area < worst[node._id].area) worst[node._id] = { node: node, area: area, t: t };
+        });
+        return Object.keys(worst).map(function (id) {
+            var f = worst[id];
+            return {
+                rule: 'target_size',
+                label: _sdT('Small target {var:1}×{var:2}px with others close by: at least 24×24px, or room around it', [Math.round(f.t.w), Math.round(f.t.h)]),
+                node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
+            };
+        });
+    }
+
+    // ── Redundant entry (WCAG 3.3.7) ─────────────────────────────────
+    // A form that asks for the same thing twice - an e-mail and its "confirm
+    // e-mail", two fields with one autocomplete purpose - makes the visitor
+    // type it again. A password asked twice is exempt (asked again for
+    // safety), like choices, files and buttons.
+    var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
+
+    // Asked twice by the software itself: the registration and membership
+    // forms post to pg_member_register() / pg_member_activate(), which
+    // require the address again; a design cannot drop the field.
+    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
+
+    // What a field asks for: its autocomplete purpose, or its name without a
+    // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
+    function _sdEntryPurpose(el) {
+        var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
+        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
+        var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
+        name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')
+                   .replace(/[_\-.]{2,}/g, '_').replace(/^[_\-.]+|[_\-.]+$/g, '');
+        return name ? 'name:' + name : '';
+    }
+
+    function _sdRedundantEntryIssues(ctx) {
+        var out = [], flagged = {}, scopes = [];
+        // A form on the canvas, or a widget whose form the server wraps
+        // around its fields only when the page is drawn.
+        Array.prototype.forEach.call(ctx.body.querySelectorAll('input, select, textarea'), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var type = (el.getAttribute('type') || 'text').toLowerCase();
+            if (el.tagName === 'INPUT' && _SD_ENTRY_NOT_TYPED.indexOf(type) !== -1) return;
+            var scope = el.closest('form') || el.closest('.sd-system-wrap');
+            var purpose = scope ? _sdEntryPurpose(el) : '';
+            if (!purpose) return;
+            var seen = null;
+            for (var i = 0; i < scopes.length && !seen; i++) if (scopes[i].el === scope) seen = scopes[i].seen;
+            if (!seen) { seen = {}; scopes.push({ el: scope, seen: seen }); }
+            if (!seen[purpose]) { seen[purpose] = true; return; }
+            var node = _sdCanvasNodeOf(el, ctx.index);
+            if (!node || flagged[node._id]) return;
+            flagged[node._id] = true;
+            out.push({
+                rule: 'redundant_entry',
+                label: _sdT('This field asks again for what the form already asked: fill it in for the visitor or let them pick it'),
+                node: node, nodeLabel: getNodeLabel(node), seo: ''
+            });
+        });
+        return out;
     }
 
     function validateTree(root) {
@@ -57169,12 +57414,7 @@ const StyleDesigner = (function () {
                 seo: pi.seo
             });
         });
-        // A broken canvas must not take the rest of the audit with it.
-        try {
-            _sdContrastIssues(root).forEach(function (ci) { issues.push(ci); });
-        } catch (e) {
-            if (window.console) console.warn('Contrast check skipped', e);
-        }
+        _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
         return issues;
     }
 
@@ -57703,6 +57943,20 @@ const StyleDesigner = (function () {
             return { url: bg, set: function (u) { setAttrStyleProp(node, 'background-image', 'url(' + u + ')'); } };
         }
         return null;
+    }
+
+    /**
+     * The image a content operator may swap outside a marked area: an image
+     * content node or a bare <img>, whose address the save takes
+     * (_pg_dm_take_image_src() in includes/designer_access.php). An inline
+     * background-image is formatting; the save keeps the stored one, so it
+     * is not offered there.
+     */
+    function _sdNodeContentImage(node) {
+        if (!node || !node.props) return null;
+        var picture = (node.type === 'content' && node.props.contentType === 'image')
+            || (node.type === 'semantic' && String(node.props.tag || '').toLowerCase() === 'img');
+        return picture ? _sdNodeImage(node) : null;
     }
 
     // Right-click entry: same tool, the node supplies the address.

@@ -253,8 +253,8 @@ function _eo_compute_static_tokens($state)
         '^^__currency_disclaimer^^'          => _eo_currency_disclaimer(),
         // The checkout documents filled from the visitor's cart
         // (legal_document.php), for the links beside their acceptance boxes.
-        '^^__legal_preinfo_url^^'            => h(pg_legal_document_page_url() . '?type=preinfo'),
-        '^^__legal_contract_url^^'           => h(pg_legal_document_page_url() . '?type=contract'),
+        '^^__legal_preinfo_url^^'            => h(pg_legal_document_cart_url('preinfo')),
+        '^^__legal_contract_url^^'           => h(pg_legal_document_cart_url('contract')),
     );
 }
 
@@ -2248,7 +2248,7 @@ function _eo_render_applied_offers()
     $offer_ids = array();
     $row = db_item("SELECT discount_offer_id FROM orders WHERE id = '" . (int)$oid . "' LIMIT 1");
     if (is_array($row) && !empty($row['discount_offer_id'])) $offer_ids[(int)$row['discount_offer_id']] = true;
-    $rows = db_items("SELECT DISTINCT offer_id FROM order_items WHERE order_id = '" . (int)$oid . "' AND offer_id > 0");
+    $rows = db_items("SELECT DISTINCT offer_id FROM order_items WHERE order_id = '" . (int)$oid . "' AND offer_id > 0" . pg_order_item_active_sql());
     if (is_array($rows)) foreach ($rows as $r) $offer_ids[(int)$r['offer_id']] = true;
     $rows = db_items("SELECT DISTINCT offer_id FROM ship_tos WHERE order_id = '" . (int)$oid . "' AND offer_id > 0");
     if (is_array($rows)) foreach ($rows as $r) $offer_ids[(int)$r['offer_id']] = true;
