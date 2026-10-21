@@ -12,8 +12,11 @@ description: Tiered order discount (ladder) and how the order discount is chosen
 - `pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)`: what one action takes off in minor units: the amount when it has one (an amount comes before a percentage), else the percentage of the subtotal, rounded; never more than the subtotal.
 
 ## How is the order discount chosen?
-- `apply_offers_to_cart()` keeps every valid `discount order` action as a candidate and chooses after its loop, against the cart as it then stands: `pg_offer_best_order_discount($candidates, $subtotal)`, the most taken off, the first candidate on a tie, `array(0, 0)` when nothing is taken off (`discount_offer_id` 0, the session's `order_discount` removed).
-- Chosen after the loop because a gift taken from a paid line lowers the subtotal: a ladder can fall below its first rung and another order discount can then be worth more.
+- `apply_offers_to_cart()` keeps every `discount order` action as a candidate and decides after its loop, against the cart as it then stands: first each candidate's conditions with the final subtotal (`validate_offer($offer_id, 0, $final_subtotal)`), then among those that pass `pg_offer_best_order_discount($candidates, $subtotal)`, the most taken off, the first candidate on a tie, `array(0, 0)` when nothing is taken off (`discount_offer_id` 0, the session's `order_discount` removed).
+- Decided after the loop because a gift taken from a paid line lowers the subtotal (a gift line at a price raises it): a required subtotal can stop being met, a ladder can fall below its first rung and another order discount can then be worth more. In the loop `validate_offer()` is still asked only for the upsell nudge.
+
+## What was the symptom? (#988, PR #1146)
+- "₺25 üzeri siparişe %10" next to a gift that fell on the paid Y×3 line (₺30,00 → ₺19,98): with the discount offer walked first its ₺25 condition passed on ₺30,00 and ₺19,98 got ₺2,00 off; walked second it failed. Offers are walked `ORDER BY code`, so the store's code names decided the discount.
 - `get_best_offer_id()` (which code-entered offer is best) weighs order discounts with the same `pg_offer_order_discount_value()`.
 - The cart widget's applied-offers list (`widgets_cart.php`) does not list a laddered offer below its first rung.
 

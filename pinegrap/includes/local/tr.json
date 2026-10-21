@@ -2628,7 +2628,6 @@
     "Load revision #{var}?": "{var} numaralı sürüm yüklensin mi?",
     "Load this revision": "Bu sürümü yükle",
     "Local snapshots": "Yerel anlık görüntüler",
-    "No revision has been published yet.": "Henüz yayınlanmış bir sürüm yok.",
     "Open the page in its tab first.": "Önce sayfayı kendi sekmesinde açın.",
     "Published revisions": "Yayınlanan sürümler",
     "Restored": "Geri yüklendi",
@@ -24703,6 +24702,11 @@
     "Orders fall on more than {var:1} days of this window. Ask for a shorter one, or by month.": "Bu aralıkta siparişler {var:1} günden fazlasına dağılıyor. Daha kısa bir aralık ya da aylık döküm isteyin.",
     "This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created. If its e-document did not go through, issue it from that invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var (ID: {var:1}); ikincisi oluşturulmadı. e-Belgesi çıkmadıysa Paraşüt'te o faturadan kesin.",
     "This order already has a sales invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var.",
+    "Paraşüt holds {var:1} records of this invoice from earlier tries (ids {var:2}). Delete all but one of them on Paraşüt's screen, then send again; the one left is taken over.": "Paraşüt'te önceki denemelerden bu faturanın {var:1} kaydı var (id {var:2}). Birini bırakıp gerisini Paraşüt ekranında silin, sonra yeniden gönderin; kalan kayıt devralınır.",
+    "Paraşüt did not say whether it took the invoice ({var:1}). The next send looks for it at Paraşüt first, so it is not written twice.": "Paraşüt faturayı alıp almadığını söylemedi ({var:1}). Bir sonraki gönderim önce Paraşüt'te onu arar; fatura iki kez yazılmaz.",
+    "Paraşüt computed {var:1} for the invoice where the ERP has {var:2}, and the record could not be deleted there ({var:3}): it is still at Paraşüt as id {var:4}, not issued. Cancel the invoice here to delete it there, or delete it on Paraşüt's screen.": "Paraşüt fatura için {var:1} hesapladı, ERP'de {var:2}; kayıt orada silinemedi ({var:3}): Paraşüt'te {var:4} id'siyle duruyor, düzenlenmedi. Orada silmek için faturayı burada iptal edin ya da Paraşüt ekranında silin.",
+    "The last try got no answer from Paraşüt, and Paraşüt could not be asked whether it kept the invoice: {var:1}. Nothing was sent; try again in a minute.": "Son denemede Paraşüt'ten cevap gelmedi ve faturayı tutup tutmadığı Paraşüt'e sorulamadı: {var:1}. Hiçbir şey gönderilmedi; bir dakika sonra yeniden deneyin.",
+    "Paraşüt holds the record with a total of {var:1} where the ERP has {var:2}, so it is not handed to GİB. Cancel the invoice here to delete it there.": "Paraşüt kaydı {var:1} toplamla tutuyor, ERP'de {var:2}; bu yüzden GİB'e gönderilmez. Orada silmek için faturayı burada iptal edin.",
     "Small target {var:1}×{var:2}px with others close by: at least 24×24px, or room around it": "Küçük hedef {var:1}×{var:2}px ve yakınında başka hedefler var: en az 24×24px olmalı ya da çevresinde boşluk kalmalı",
     "This field asks again for what the form already asked: fill it in for the visitor or let them pick it": "Bu alan formun zaten sorduğu bilgiyi yeniden soruyor: ziyaretçi için doldurun ya da seçmesine izin verin",
     "For a signed-in user, remembers whether pages show their editing tools.": "Oturum açmış kullanıcı için sayfaların düzenleme araçlarıyla gösterilip gösterilmeyeceğini hatırlar.",
@@ -24735,5 +24739,9 @@
     "config.ecommerce_payment_gateway does not exist, skipped": "config.ecommerce_payment_gateway yok, atlandı",
     "config.ecommerce_payment_gateway already knows about Stripe PaymentIntents": "config.ecommerce_payment_gateway zaten Stripe PaymentIntents değerini tanıyor",
     "config.ecommerce_payment_gateway is not an ENUM, skipped": "config.ecommerce_payment_gateway ENUM değil, atlandı",
-    "The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.": "Ödeme doğrulanırken sipariş toplamı değişti ve ödeme otomatik olarak geri alınamadı. Mağaza ödemeyi iade edecek. Lütfen tekrar ödemeden önce siparişinizi kontrol ediniz."
+    "The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.": "Ödeme doğrulanırken sipariş toplamı değişti ve ödeme otomatik olarak geri alınamadı. Mağaza ödemeyi iade edecek. Lütfen tekrar ödemeden önce siparişinizi kontrol ediniz.",
+    "The return invoice for {var:1} is not issued here: someone who uses the ERP must issue it after the refund.": "{var:1} için iade faturası buradan kesilmez: ücret iadesinden sonra ERP'yi kullanan birinin kesmesi gerekir.",
+    "The file has a password to change it, so its cells are not changed here.": "Dosyanın değiştirme parolası var; hücreleri burada değiştirilmiyor.",
+    "None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.": "Bu siparişin hiçbir kalemi sipariş verilirken tahsil edilmedi; henüz faturalanacak bir şey yok.",
+    "No revision has been recorded yet; the next publish first records the page as it is now.": "Henüz kaydedilmiş bir sürüm yok; bir sonraki yayın önce sayfanın şimdiki hâlini kaydeder."
 }

@@ -3217,6 +3217,14 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             if (!array_key_exists($col, $prev) || e((string)$prev[$col]) !== (string)$val) $carried = false;
         }
         $changed = !$carried;
+        // A page with no revision yet (published before the table arrived,
+        // or copied row by row by duplicate_page_f.php / duplicate_style.php)
+        // is recorded as stored before this save writes over it, so the
+        // publish below becomes revision 2 and History can bring back the
+        // state before it (includes/fn/page_revisions.php).
+        if ($changed && $multi_ready && function_exists('pg_page_revision_seed')) {
+            pg_page_revision_seed($page_id);
+        }
         $touch_set = $carried ? '' : "page_timestamp = UNIX_TIMESTAMP(), page_user = '" . (int)$user['id'] . "',";
         db("UPDATE page SET
                 $touch_set
