@@ -148,7 +148,10 @@ function pg_tr_job_waiting($job_id, $limit = 100)
  * same texts, by hand, by the API or by an import since the job was opened.
  * A job is opened only with texts that had none, so anything found here
  * would otherwise go to a paid engine a second time. Skipped items count as
- * done, as pg_tr_job_item_done() counts them.
+ * done, as pg_tr_job_item_done() counts them. A job left with nothing
+ * waiting is closed here: a consumer that finds no items stops without
+ * closing it (Claude's items endpoint), and a job left running is queued
+ * again every half hour.
  *
  * @param int $job_id
  * @return int items skipped
@@ -169,6 +172,7 @@ function pg_tr_job_skip_translated($job_id)
 
     if ($skipped > 0) {
         db("UPDATE translation_jobs SET done_count = done_count + $skipped WHERE id = '$job_id'");
+        pg_tr_job_close_if_complete($job_id);
     }
 
     return $skipped;
@@ -556,25 +560,31 @@ function pg_tr_auto_update($languages, $scope, $user_id = 0)
             continue;
         }
 
+        // Two saves at the same moment would both find no open job and open
+        // one each: the check and the insert run under a lock of the
+        // language and scope. A lock held longer than a few seconds is
+        // another save opening that job, so this one leaves it.
+        $lock = 'pg_tr_auto_' . md5($code . '|' . $scope);
+
+        if ((int) db_value("SELECT GET_LOCK('$lock', 5)") !== 1) {
+            continue;
+        }
+
         $waiting = (int) db_value("SELECT COUNT(*) FROM translation_jobs
             WHERE language = '" . e($code) . "' AND scope = '" . e($scope) . "' AND status IN ('queued', 'sent', 'running')");
 
-        if ($waiting > 0) {
-            continue;
+        $pending = ($waiting > 0) ? array() : pg_tr_pending_string_ids($code, $owners);
+
+        if ($pending) {
+            pg_tr_job_create($code, $engine, $scope, $pending, $user_id);
+            $opened++;
+
+            if ($engine === 'claude') {
+                $claude = true;
+            }
         }
 
-        $pending = pg_tr_pending_string_ids($code, $owners);
-
-        if (!$pending) {
-            continue;
-        }
-
-        pg_tr_job_create($code, $engine, $scope, $pending, $user_id);
-        $opened++;
-
-        if ($engine === 'claude') {
-            $claude = true;
-        }
+        db_value("SELECT RELEASE_LOCK('$lock')");
     }
 
     if ($claude) {

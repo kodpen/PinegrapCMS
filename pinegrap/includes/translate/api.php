@@ -1243,6 +1243,13 @@ function translate_api_jobs_items($params)
         $strings = pg_tr_job_waiting($job['id'], $limit);
         $errors = array();
 
+        // Nothing left to translate: the job is closed here, as the results
+        // endpoint closes it, rather than left running for the next run to
+        // find empty again.
+        if (!$strings) {
+            pg_tr_job_close_if_complete($job['id']);
+        }
+
         if ($strings) {
             $ids = array();
 
