@@ -15,6 +15,9 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 - IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router_utf8_name()` reads it back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before the lookup.
 
 ## How do two names compare?
-- Like the database (`utf8mb4_unicode_ci`): `pg_short_link_key()`, transliterated and lower case.
+- As the router's `WHERE name = '…'` does: `pg_short_link_key()` is the database's weight string of the name under the column's collation (`pg_short_link_name_collation()`, `SHOW FULL COLUMNS`), a hundred names per query (`pg_short_link_keys()`), kept for the request. PHP does not imitate the collation.
+- Under `utf8mb4_unicode_ci`: `ı`/`i`, `ø`/`o`, `ł`/`l`, `æ`/`ae` are two names; `ę`/`e`, `ș`/`s`, `ő`/`o`, `ß`/`ss`, case are one.
+- Symptom before (#PR832): keys were `pg_transliterate_to_ascii()` + lower case, so `hakkimizda` -> `/hakkımızda` was refused as "its own address", the CSV import skipped or overwrote `kılıf` for `kilif`, and `święta` -> `/swieta` was saved as an endless self-redirect.
+- Without a connection (the test runner) `pg_short_link_fold()`: NFKD without marks, lower case (intl), only lower case without intl.
 
 Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006.

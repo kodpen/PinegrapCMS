@@ -364,9 +364,13 @@ function pg_short_link_is_pattern($name)
 }
 
 /**
- * The form two names are compared in, as close to the database's comparison
- * of an exact name as PHP gets: without case and without the marks on Latin
- * letters (utf8mb4_unicode_ci finds "urun" for "ürün" too).
+ * The form two names are compared in. Two names are the same name when
+ * router.php's WHERE short_links.name = '…' finds one for the other, so the
+ * database answers: the key is the weight string of the name under the name
+ * column's collation (utf8mb4_unicode_ci finds "swieta" for "święta" and
+ * "urun" for "ürün", but keeps "ı" and "i" apart). PHP does not imitate the
+ * collation; pg_short_link_fold() is only for a run without a connection
+ * (the test runner), and its keys never meet the database's.
  *
  * @param string $name
  * @return string
@@ -374,9 +378,126 @@ function pg_short_link_is_pattern($name)
 function pg_short_link_key($name)
 {
     $name = (string) $name;
+    $keys = pg_short_link_keys(array($name));
 
-    if (function_exists('pg_transliterate_to_ascii')) {
-        $name = pg_transliterate_to_ascii($name);
+    return $keys[$name];
+}
+
+/**
+ * The keys of many names (pg_short_link_key()), asked of the database a
+ * hundred at a time and kept for the request. A name the database could not
+ * be asked about gets a key of its own, so it equals no other name.
+ *
+ * @param string[] $names
+ * @return array name => key
+ */
+function pg_short_link_keys($names)
+{
+    static $keys = array();
+
+    $names = array_map('strval', (array) $names);
+    $missing = array();
+
+    foreach ($names as $name) {
+        if (!isset($keys[$name])) {
+            $missing[$name] = $name;
+        }
+    }
+
+    if ($missing) {
+        $collation = pg_short_link_name_collation();
+
+        if ($collation === '') {
+            foreach ($missing as $name) {
+                $keys[$name] = 'php:' . pg_short_link_fold($name);
+            }
+        } else {
+            // The charset is the collation's first part (utf8mb4_unicode_ci,
+            // utf8_general_ci): the literal is converted the way the router's
+            // comparison converts it.
+            $charset = substr($collation, 0, strpos($collation . '_', '_'));
+
+            foreach (array_chunk(array_values($missing), 100) as $chunk) {
+                $columns = array();
+
+                foreach ($chunk as $name) {
+                    $columns[] = "HEX(WEIGHT_STRING(CONVERT(_utf8mb4'" . mysqli_real_escape_string(db::$con, $name) . "' USING " . $charset . ") COLLATE " . $collation . "))";
+                }
+
+                $result = @mysqli_query(db::$con, "SELECT " . implode(', ', $columns));
+                $row = $result ? mysqli_fetch_row($result) : null;
+
+                if (!is_array($row)) {
+                    pg_short_link_log_failure('comparing names');
+                }
+
+                foreach ($chunk as $position => $name) {
+                    $keys[$name] = (is_array($row) && isset($row[$position])) ? 'db:' . $row[$position] : 'name:' . $name;
+                }
+            }
+        }
+    }
+
+    $found = array();
+
+    foreach ($names as $name) {
+        $found[$name] = $keys[$name];
+    }
+
+    return $found;
+}
+
+/**
+ * The collation of short_links.name, read once per request, or '' when there
+ * is no connection to ask (the test runner) or the answer is not a collation
+ * name.
+ *
+ * @return string
+ */
+function pg_short_link_name_collation()
+{
+    static $collation = null;
+
+    if ($collation !== null) {
+        return $collation;
+    }
+
+    $collation = '';
+
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return $collation;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW FULL COLUMNS FROM short_links WHERE Field = 'name'");
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    $name = is_array($row) && isset($row['Collation']) ? (string) $row['Collation'] : '';
+
+    if (preg_match('/^[a-z0-9]+_[a-z0-9_]+$/', $name) === 1) {
+        $collation = $name;
+    }
+
+    return $collation;
+}
+
+/**
+ * Two names as a run without a database compares them: without case, without
+ * the marks a letter decomposes into (é, ę, ș; not ı, ø, ł, which have none),
+ * compatibility forms as their letters. An approximation of
+ * utf8mb4_unicode_ci for tests; without the intl extension only case goes.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_short_link_fold($name)
+{
+    $name = (string) $name;
+
+    if (class_exists('Normalizer')) {
+        $decomposed = Normalizer::normalize($name, Normalizer::FORM_KD);
+
+        if (is_string($decomposed)) {
+            $name = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+        }
     }
 
     return mb_strtolower($name, 'UTF-8');
@@ -564,6 +685,11 @@ function pg_short_link_url_name($url, $site_host = '', $base_path = '/')
 function pg_short_link_index($links)
 {
     $index = array('exact' => array(), 'patterns' => array());
+
+    // Every key in a few queries instead of one per link.
+    pg_short_link_keys(array_map(function ($link) {
+        return (string) $link['name'];
+    }, array_values((array) $links)));
 
     foreach ((array) $links as $link) {
         if ((string) $link['name'] === '') {
@@ -1327,9 +1453,16 @@ function pg_short_link_import($rows, $replace, $user_id = 0)
     $prepared = pg_short_link_prepare(pg_short_link_redirect_links());
     $by_key = array();
 
+    // "A short link has this name" is the database's answer (pg_short_link_key()),
+    // the one check_name_availability() and the router give: under
+    // utf8mb4_unicode_ci "kilif" is not "kılıf", "swieta" is "święta".
     foreach ($prepared['by_id'] as $link) {
         $by_key[pg_short_link_key($link['name'])] = $link;
     }
+
+    pg_short_link_keys(array_map(function ($row) {
+        return pg_short_link_name_from_address($row['from']);
+    }, array_values((array) $rows)));
 
     $modes = pg_short_link_modes_ready();
 

@@ -77,11 +77,36 @@ function test_short_link_redirects_name_rule()
 	pg_assert_same('', pg_short_link_name_problem('a*b*c*d*e*f*g*h*i*j'), 'nine stars');
 }
 
-function test_short_link_redirects_key_ignores_case_and_turkish_marks()
+// Without a connection the keys come from pg_short_link_fold(), which keeps
+// to the pairs utf8mb4_unicode_ci decides: marks that decompose go, ı, ø, ł stay.
+function test_short_link_redirects_key_without_a_database_follows_the_collation()
 {
+	pg_assert_true(pg_short_link_key('a') !== pg_short_link_key('b'), 'different names');
+	pg_assert_same(pg_short_link_key('blog'), pg_short_link_key('BLOG'), 'case');
+
+	if (!class_exists('Normalizer')) {
+		return;
+	}
+
 	pg_assert_same(pg_short_link_key('urun'), pg_short_link_key('ÜRÜN'), 'Ü');
 	pg_assert_same(pg_short_link_key('istanbul'), pg_short_link_key('İstanbul'), 'dotted capital I');
-	pg_assert_true(pg_short_link_key('a') !== pg_short_link_key('b'), 'different names');
+	pg_assert_same(pg_short_link_key('swieta'), pg_short_link_key('święta'), 'ę, as the database: ś and ę decompose');
+	pg_assert_same(pg_short_link_key('sarbatoare'), pg_short_link_key('sărbătoare'), 'ă');
+	pg_assert_same(pg_short_link_key('fi'), pg_short_link_key('ﬁ'), 'a ligature, as its letters');
+	pg_assert_true(pg_short_link_key('hakkimizda') !== pg_short_link_key('hakkımızda'), 'ı is not i to the database');
+	pg_assert_true(pg_short_link_key('o') !== pg_short_link_key('ø'), 'ø has no mark to drop');
+	pg_assert_true(pg_short_link_key('l') !== pg_short_link_key('ł'), 'nor has ł');
+}
+
+function test_short_link_redirects_names_the_database_keeps_apart_are_not_a_loop()
+{
+	if (!class_exists('Normalizer')) {
+		return;
+	}
+
+	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'hakkimizda', '/hakk%C4%B1m%C4%B1zda')), 'ı and i are two names');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'święta', '/swieta')), 'ę and e are one');
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a', '/święta'), array(short_link_redirects_test_link(1, 'swieta', '/a'))), 'a loop through a name the database finds');
 }
 
 function test_short_link_redirects_pattern_captures()
