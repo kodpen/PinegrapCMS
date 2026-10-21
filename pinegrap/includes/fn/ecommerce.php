@@ -1740,6 +1740,192 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
 
 
 /**
+ * The low-stock line this site runs, 0 when it runs none.
+ *
+ * ECOMMERCE_LOW_STOCK_THRESHOLD is set by hand in data/config.php and has no
+ * settings screen; the cart widget's warning reads the same constant.
+ *
+ * @return int
+ */
+function pg_product_stock_threshold()
+{
+    return (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int) ECOMMERCE_LOW_STOCK_THRESHOLD > 0))
+        ? (int) ECOMMERCE_LOW_STOCK_THRESHOLD
+        : 0;
+}
+
+
+/**
+ * What one change of a product's stock announces: the events, in order, with
+ * their payloads. Pure, so the writers and the tests read the same rule.
+ *
+ * inventory.changed goes out on every write of a tracked product, with the
+ * same keys the stock API's own writer sends, plus the writer's name as
+ * source. stock.low goes out once, on the crossing: a product sitting at two
+ * with a threshold of five would otherwise raise it on every sale, and a
+ * reorder notice that arrives four times a day stops being read. A product
+ * that did not track stock before this write ($before null) had no level to
+ * be above the line, so a count at or under it is a crossing - the stock API
+ * and the Workspace switch tracking on with a count the same way.
+ *
+ * A product that does not track stock after the write announces nothing: a
+ * gift card sold without a stock limit has no level to report and no low to
+ * cross.
+ *
+ * @param int      $product_id
+ * @param string   $name       products.name, carried by stock.low
+ * @param bool     $tracked    products.inventory after the write
+ * @param int|null $before     stock before the write; null when it was not tracked
+ * @param int      $after      stock left after the write
+ * @param int      $threshold  the low-stock line, 0 for none (pg_product_stock_threshold())
+ * @param string   $source     the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return array   list of array(event name, payload)
+ */
+function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source)
+{
+    $product_id = (int) $product_id;
+    $after = (int) $after;
+    $threshold = (int) $threshold;
+
+    if (($product_id <= 0) || !$tracked) {
+        return array();
+    }
+
+    $events = array(
+        array('inventory.changed', array(
+            'product_id'   => $product_id,
+            'quantity'     => $after,
+            'out_of_stock' => ($after <= 0),
+            'source'       => (string) $source,
+        )),
+    );
+
+    $was_above = ($before === null) || ((int) $before > $threshold);
+
+    if (($threshold > 0) && ($after <= $threshold) && $was_above) {
+        $events[] = array('stock.low', array(
+            'product_id' => $product_id,
+            'name'       => (string) $name,
+            'quantity'   => $after,
+            'threshold'  => $threshold,
+        ));
+    }
+
+    return $events;
+}
+
+
+/**
+ * Whether a save that may have touched a product's stock moved it, and what
+ * to hand pg_product_stock_changed(): array($before, $after), or null when
+ * there is nothing to announce. For the screens that write the whole row
+ * (the product screen, the bulk edit) and cannot tell from the form alone.
+ *
+ * Tracking switched on with a count is a change from no level ($before
+ * null), as the stock API's set and the Workspace treat it. Tracking
+ * switched off is not a stock change: there is no level left to report. The
+ * same count written again is nothing.
+ *
+ * @param bool       $was_tracked  products.inventory before the write
+ * @param int|string $was_quantity products.inventory_quantity before the write
+ * @param bool       $tracked      products.inventory after the write
+ * @param int|string $quantity     products.inventory_quantity after the write
+ * @return array|null array(before or null, after), or null for no change
+ */
+function pg_product_stock_delta($was_tracked, $was_quantity, $tracked, $quantity)
+{
+    if (!$tracked) {
+        return null;
+    }
+
+    $after = (int) $quantity;
+
+    if (!$was_tracked) {
+        return array(null, $after);
+    }
+
+    if ((int) $was_quantity === $after) {
+        return null;
+    }
+
+    return array((int) $was_quantity, $after);
+}
+
+
+/**
+ * A product's stock was written somewhere on the site: the checkout, a local
+ * sale, the product screen and its list, a barcode scan, the bulk edit. One
+ * call after the write does everything a stock change owes the outside:
+ *
+ *   - products.timestamp moves, so GET /products?updated_since= lists the
+ *     product; a sale that left it alone was invisible to a system that
+ *     syncs that way, which kept selling the old stock.
+ *   - inventory.changed, and stock.low on the crossing, are announced the way
+ *     the stock API's own writer announces them (pg_product_stock_events()).
+ *   - the marketplace queue is told (pg_marketplace_product_changed()).
+ *
+ * The stock API, the Workspace and the ERP keep their own writers: each
+ * stamps and announces inside its own statement already.
+ *
+ * Called once per product, after the row is written. $before is the stock as
+ * the caller read it before its write, or null when the product did not
+ * track stock until now. $after is what the write left; null reads it back
+ * from the row, which a caller whose UPDATE did the arithmetic (the checkout's
+ * decrement) cannot know otherwise. The stock left is returned, so a loop
+ * that meets the same product twice (two recipients of one order) carries it
+ * on as the next row's $before instead of the value read before the loop.
+ *
+ * Queued and recorded, never sent: a checkout must not wait on anybody's
+ * server. Silent on a product that is not there.
+ *
+ * @param int      $product_id
+ * @param int|null $before  stock before the write; null when it was not tracked
+ * @param int|null $after   stock left after the write; null reads the row
+ * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return int|null the stock left, null when the product is not there
+ */
+function pg_product_stock_changed($product_id, $before, $after, $source)
+{
+    $product_id = (int) $product_id;
+
+    if (($product_id <= 0) || !defined('DB_CONNECTED')) {
+        return null;
+    }
+
+    db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $product_id . "' LIMIT 1");
+
+    $row = db_item("SELECT name, inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+    if (!$row) {
+        return null;
+    }
+
+    if ($after === null) {
+        $after = (int) $row['inventory_quantity'];
+    }
+
+    $events = pg_product_stock_events(
+        $product_id,
+        $row['name'],
+        ((string) $row['inventory'] === '1'),
+        ($before === null) ? null : (int) $before,
+        $after,
+        pg_product_stock_threshold(),
+        $source);
+
+    if (function_exists('pg_announce')) {
+        foreach ($events as $event) {
+            pg_announce($event[0], $event[1]);
+        }
+    }
+
+    pg_marketplace_product_changed($product_id);
+
+    return (int) $after;
+}
+
+
+/**
  * The statements that put a catalogue row in the Recycle Bin.
  *
  * The catalogue's bin is a flag, not a move: the row is switched off and marked
@@ -3533,20 +3719,21 @@ function apply_offers_to_cart()
                     // if this action actually discounts the order,
                     // then prepare to apply discount
                     if (($offer_action['discount_order_amount'] != 0) || ($offer_action['discount_order_percentage'] != 0)) {
-                        // if this offer is valid,
-                        // then prepare to apply discount
-                        if (validate_offer($offer['id']) == true) {
-                            // Weighed after the loop: a gift further down this
-                            // loop can still change the subtotal a percentage
-                            // (or a ladder's rung) is taken from.
-                            $order_discount_candidates[] = array(
-                                'offer_id' => $offer['id'],
-                                'amount' => $offer_action['discount_order_amount'],
-                                'percentage' => $offer_action['discount_order_percentage'],
-                                'tiers' => pg_offer_tiers($offer['id']));
-                            // else this offer is not valid, so if an upsell has not already been added for it,
-                            // and there is an upsell, then add upsell
-                        } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
+                        // Every order discount is a candidate. Whether the
+                        // cart qualifies for it (its required subtotal) is
+                        // settled after the loop, against the subtotal the
+                        // cart then has: a gift further down this loop taken
+                        // from a paid line lowers it, a gift line at a price
+                        // raises it, and the answer must not depend on the
+                        // order the offers are walked in.
+                        $order_discount_candidates[] = array(
+                            'offer_id' => $offer['id'],
+                            'amount' => $offer_action['discount_order_amount'],
+                            'percentage' => $offer_action['discount_order_percentage'],
+                            'tiers' => pg_offer_tiers($offer['id']));
+                        // if this offer is not valid for the cart as it stands, then if an upsell
+                        // has not already been added for it, and there is an upsell, then add upsell
+                        if ((validate_offer($offer['id']) == false) && (isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
                             $upsell_offers[$offer['id']] = $offer;
                         }
                     }
@@ -3748,13 +3935,22 @@ function apply_offers_to_cart()
         }
     }
     // The loop can lower an item's price after an order discount was found - a
-    // gift taken from a paid line - so the best one is chosen against the cart
-    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // gift taken from a paid line - so the candidates are judged against the
+    // cart as it now stands: each one's required subtotal with the subtotal
+    // that is left (one answer whatever the order the offers came in), then
+    // the best one, a percentage of what is left, a ladder's rung for what
     // is left, and never more than what is left.
     $best_order_discount_offer_id = 0;
     $best_order_discount = 0;
     if ($order_discount_candidates) {
-        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+        $final_subtotal = get_order_subtotal();
+        $qualified_candidates = array();
+        foreach ($order_discount_candidates as $candidate) {
+            if (validate_offer($candidate['offer_id'], 0, $final_subtotal) == true) {
+                $qualified_candidates[] = $candidate;
+            }
+        }
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {

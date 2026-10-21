@@ -381,6 +381,22 @@ function pg_office_xlsx_date1904($workbook_xml)
 }
 
 /**
+ * Does the workbook ask for a password before it is changed? Excel's
+ * "password to modify" is a fileSharing element with the password's hash
+ * (hashValue, or reservationPassword in older files); read-only recommended
+ * alone is advice and no password. A workbook so reserved is not changed
+ * here, as a document with writeProtection is not
+ * (pg_office_docx_restriction()).
+ *
+ * @param string $workbook_xml xl/workbook.xml
+ * @return bool
+ */
+function pg_office_xlsx_write_reserved($workbook_xml)
+{
+    return (bool) preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b[^>]*\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
+}
+
+/**
  * The cell styles that matter to an edit, by style number: those whose
  * number format shows a date, those formatted as text (@), and those not
  * locked by a sheet's protection.
@@ -1566,6 +1582,8 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang('The file is being saved by someone else. Try again in a moment.');
         case 'signed':
             return lang('The file is digitally signed. Changing it here would break the signature.');
+        case 'password':
+            return lang('The file has a password to change it, so its cells are not changed here.');
         case 'many':
             return lang(array('string' => 'Too many cells were changed at once. Save at most {var:1} cells at a time.', 'vars' => array(PG_OFFICE_EDIT_MAX_CHANGES)));
         case 'long':
@@ -1811,6 +1829,11 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
     }
 
     $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+
+    if (pg_office_xlsx_write_reserved($workbook)) {
+        return $fail('password');
+    }
+
     $date1904 = pg_office_xlsx_date1904($workbook);
     $parts = array();
     $changed = 0;

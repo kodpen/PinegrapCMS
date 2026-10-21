@@ -24712,5 +24712,6 @@
     "Open the cheque or note": "Çeki veya Senedi Aç",
     "That document is not an invoice; a receipt does not close it.": "Bu belge bir fatura değil; tahsilat ya da ödeme onu kapatmaz.",
     "The return invoice for {var:1} is not issued here: someone who uses the ERP must issue it after the refund.": "{var:1} için iade faturası buradan kesilmez: ücret iadesinden sonra ERP'yi kullanan birinin kesmesi gerekir.",
+    "The file has a password to change it, so its cells are not changed here.": "Dosyanın değiştirme parolası var; hücreleri burada değiştirilmiyor.",
     "No revision has been recorded yet; the next publish first records the page as it is now.": "Henüz kaydedilmiş bir sürüm yok; bir sonraki yayın önce sayfanın şimdiki hâlini kaydeder."
 }
