@@ -935,6 +935,34 @@ function ws_app_reads_channel($reader, $channel)
 }
 
 /**
+ * Who an assistant's words go into a channel through - Claude's
+ * (api_claude.php) and Pinegrap AI's (ai.php): the owner of its application
+ * where that person may write, otherwise the person who asked, while they
+ * still may. Being asked is the invitation: somebody who asks an assistant in
+ * a discussion, or in a private channel that lets it be asked, brings it in
+ * for that request, so the owner of its application need not be in the room.
+ * The words stay the application's own message; the reader only answers
+ * whether they may be written there. Whether the assistant may be asked
+ * there at all is the caller's question (ws_claude_channel_allowed(),
+ * ws_ai_channel_allowed()).
+ *
+ * @param array|null $owner   ws_viewer() of the application's owner, null when there is none
+ * @param array|null $asker   ws_viewer() of the person who asked, null when they are gone
+ * @param array      $channel the channel or discussion the request was asked in
+ * @return array|null the reader to write through, null when neither may write there
+ */
+function ws_assistant_writer($owner, $asker, $channel)
+{
+    foreach (array($owner, $asker) as $reader) {
+        if (is_array($reader) && is_array($channel) && ws_can_post_channel($reader, $channel)) {
+            return $reader;
+        }
+    }
+
+    return null;
+}
+
+/**
  * What workspace.app.mentioned carries: the message the way
  * workspace.message.created has it, where it was written - for a discussion
  * also the channel and the message it is about - and the application it

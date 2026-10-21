@@ -13,6 +13,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 - Uses the owner's Claude subscription (routine + API trigger), not a Console API key. One connection for the whole site: every call counts against the daily allowance of the admin who set up the routine, and sessions and connector actions appear under that person.
 - Claude reads records only as far as the application key allows; it writes records only through approved drafts. No delete endpoint.
 - Private channels are off by default (`ws_channels.claude_access`): their content goes to Anthropic under the admin's account, so the channel owner must turn it on.
+- The admin who owns the application need not be in a channel or a discussion Claude was asked in: it is read and answered through the person who asked while the request is open (docs/memory/workspace/workspace-assistant-reach.md).
 - The routine token is stored encrypted in `config.ws_claude_token`; the settings card never shows it back.
 
 ## What limits come from Anthropic?

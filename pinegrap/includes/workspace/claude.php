@@ -384,6 +384,54 @@ function ws_claude_channel_allowed($channel)
 }
 
 /**
+ * The person through whom Claude's application reads a channel or a
+ * discussion its owner is not in: somebody whose request to Claude is still
+ * open there - asked in it, or a run on one of its tasks - and who still
+ * reads it. Asking is the invitation (ws_assistant_writer()), and it lasts as
+ * long as the request does. Never through inspection: the person is asked
+ * the way an application's reader is (ws_app_reads_channel()). Whether
+ * Claude may be asked there at all is the caller's question
+ * (ws_claude_channel_allowed()).
+ *
+ * @param array $channel
+ * @return array|null ws_viewer() of the person who asked, null when nobody did
+ */
+function ws_claude_channel_asker($channel)
+{
+    if (!ws_claude_schema_ready() || !is_array($channel) || ((int) ($channel['id'] ?? 0) <= 0) || !function_exists('ws_change_viewer_for_id')) {
+        return null;
+    }
+
+    $channel_id = (int) $channel['id'];
+
+    // The request being worked on first: a run claims one request at a time
+    // and reads its channel right after.
+    $ids = (array) db_values("SELECT requested_by FROM ws_ai_requests
+        WHERE channel_id = '" . $channel_id . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only() . "
+        ORDER BY status = 'running' DESC, id
+        LIMIT 20");
+
+    // A run on a task reads the task's channel (ws_api_claude_task_present()).
+    if (function_exists('ws_delegation_ready') && ws_delegation_ready()) {
+        $ids = array_merge($ids, (array) db_values("SELECT r.requested_by FROM ws_ai_requests r
+            INNER JOIN ws_tasks t ON t.id = r.task_id
+            WHERE r.task_id > 0 AND t.channel_id = '" . $channel_id . "' AND r.status IN ('queued', 'sent', 'running')" . ws_claude_only('r') . "
+            ORDER BY r.status = 'running' DESC, r.id
+            LIMIT 20"));
+    }
+
+    foreach (array_unique(array_map('intval', $ids)) as $user_id) {
+        $asker = ($user_id > 0) ? ws_change_viewer_for_id($user_id) : null;
+
+        if ($asker && ws_app_reads_channel($asker, $channel)) {
+            return $asker;
+        }
+    }
+
+    return null;
+}
+
+/**
  * What the channel screen needs to know about Claude in a channel.
  *
  * @param array $channel

@@ -2082,8 +2082,9 @@ function ws_ai_viewer($user_id)
 }
 
 /**
- * The owner of the application, in whose name the answers are posted (the
- * same way Claude's are).
+ * The owner of the application, through whom the answers are posted where
+ * they may write; elsewhere through the person who asked, as Claude's are
+ * (ws_assistant_writer()).
  *
  * @return array|null
  */
@@ -2123,10 +2124,15 @@ function ws_ai_finish_fail($row, $reason)
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $reason), 0, 250));
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
-    $owner = $channel ? ws_ai_owner() : null;
 
-    if ($channel && $owner && ws_ai_channel_allowed($channel) && ws_can_post_channel($owner, $channel)) {
-        $sent = ws_message_send($owner, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
+    // Written the way an answer is (ws_ai_deliver()): through the person who
+    // asked where the owner of the application is not in the room.
+    $writer = ($channel && ws_ai_channel_allowed($channel))
+        ? ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel)
+        : null;
+
+    if ($writer) {
+        $sent = ws_message_send($writer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => (int) ws_ai_config()['app_id'],
         ));
@@ -2312,15 +2318,18 @@ function ws_ai_deliver($row, $text, $proposals)
     }
 
     $channel = ws_channel($row['channel_id']);
-    $owner = ws_ai_owner();
 
     if (!$channel || !ws_ai_channel_allowed($channel)) {
         ws_ai_finish_fail($row, lang('Pinegrap AI may not be asked in this channel.'));
         return array('ok' => true, 'error' => '');
     }
 
-    if (!$owner || !ws_can_post_channel($owner, $channel)) {
-        ws_ai_finish_fail($row, lang('The owner of Pinegrap AI\'s application cannot post in that channel. In a private channel they must be a member.'));
+    // The owner of the application, or the person who asked where the owner
+    // is not in the channel or the discussion (ws_assistant_writer()).
+    $writer = ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $row['requested_by']), $channel);
+
+    if (!$writer) {
+        ws_ai_finish_fail($row, lang('The answer cannot be posted there any more: the person who asked has left that channel or discussion, or it was archived or concluded.'));
         return array('ok' => true, 'error' => '');
     }
 
@@ -2357,7 +2366,7 @@ function ws_ai_deliver($row, $text, $proposals)
         $text = $mention . ' ' . $text;
     }
 
-    $sent = ws_message_send($owner, $channel, $text, array(
+    $sent = ws_message_send($writer, $channel, $text, array(
         'parent_id' => (int) $row['message_id'],
         'app_id'    => (int) ws_ai_config()['app_id'],
     ));
