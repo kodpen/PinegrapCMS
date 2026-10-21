@@ -24698,5 +24698,7 @@
     "Verified purchase: order {var:1}": "Doğrulanmış satın alma: {var:1} numaralı sipariş",
     "Not a verified purchase": "Doğrulanmış satın alma değil",
     "Replied {var:1}.": "{var:1} cevaplandı.",
-    "Shown under the review, with the date it was written.": "Değerlendirmenin altında, yazıldığı tarihle gösterilir."
+    "Shown under the review, with the date it was written.": "Değerlendirmenin altında, yazıldığı tarihle gösterilir.",
+    "Orders fall in more than {var:1} months of this window. Ask for a shorter one.": "Bu aralıkta siparişler {var:1} aydan fazlasına dağılıyor. Daha kısa bir aralık isteyin.",
+    "Orders fall on more than {var:1} days of this window. Ask for a shorter one, or by month.": "Bu aralıkta siparişler {var:1} günden fazlasına dağılıyor. Daha kısa bir aralık ya da aylık döküm isteyin."
 }
