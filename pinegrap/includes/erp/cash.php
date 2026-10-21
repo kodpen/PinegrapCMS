@@ -543,6 +543,14 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
         return $fail(lang('That receipt has already been cancelled.'));
     }
 
+    // A cheque's or note's movement changes with the cheque
+    // (erp_cheque_receipt_refusal()).
+    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $receipt['id']) : null;
+
+    if ($cheque !== null) {
+        return $fail(erp_cheque_receipt_refusal($cheque));
+    }
+
     // A receipt inside a closed period stays: cancelling it would change
     // what was filed.
     if (($refusal = erp_lock_refusal((string) $receipt['doc_date'])) !== '') {

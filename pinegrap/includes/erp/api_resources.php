@@ -1421,6 +1421,14 @@ function erp_api_receipts_cancel($params)
         api_fail_validation(lang('That receipt has already been cancelled.'), 'id');
     }
 
+    // A cheque's or note's movement is changed by the cheque's steps
+    // (POST /erp/cheques/{id}/{step}), never cancelled on its own.
+    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $row['id']) : null;
+
+    if ($cheque !== null) {
+        api_fail(409, 'receipt_belongs_to_cheque', erp_cheque_receipt_refusal($cheque));
+    }
+
     $reason = trim((string) ($params['reason'] ?? ''));
 
     if ($reason === '') {
