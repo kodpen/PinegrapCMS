@@ -200,17 +200,18 @@ function pg_tr_language_row($code)
 }
 
 /**
- * The address prefix of a language: its own prefix, or its code.
+ * The address prefix of a language: its own prefix, or its code, lower-cased
+ * as the router matches it (pt-BR is served under /pt-br/).
  */
 function pg_tr_prefix($code)
 {
     $row = pg_tr_language_row($code);
 
     if (is_array($row) && ($row['prefix'] !== '')) {
-        return (string) $row['prefix'];
+        return strtolower((string) $row['prefix']);
     }
 
-    return (string) $code;
+    return strtolower((string) $code);
 }
 
 /**
@@ -235,7 +236,7 @@ function pg_tr_prefix_map()
         }
 
         $parts = explode('=', $pair, 2);
-        $prefix = trim($parts[0]);
+        $prefix = strtolower(trim($parts[0]));
         $code = isset($parts[1]) ? trim($parts[1]) : $prefix;
 
         if ($prefix !== '') {
