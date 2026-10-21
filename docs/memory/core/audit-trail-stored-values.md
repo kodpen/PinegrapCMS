@@ -8,6 +8,7 @@ description: What audit_log leaves out of before/after, how secrets are masked (
 
 ## How are secrets masked?
 - By field name (`pg_audit_secret_key()`), at any depth, as `***`; an empty value stays empty so set and cleared still show. Over-masked by name: `api_apps.require_signature`, `api_secret_prev_expires`, `api_secret_hint`.
+- Not secrets though named after passwords, kept in clear (PR #PRNUM): the Security screen's on/off rules `strong_password`, `password_hint`, `forgot_password_link` (before, turning them on or off logged `***` on both sides), `user_password_algo`, `user_password_changed_at`, `password_wrap_cursor`, `password_wrap_done`. `user.user_password_hint` (the hint text) stays masked.
 - `config.backup_remote_settings` is `<ciphertext>:<iv>`, not JSON; it is left out rather than masked.
 
 ## How is JSON text stored?

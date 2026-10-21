@@ -119,12 +119,22 @@ function pg_audit_actor()
  * (push_vapid_private), licences, encrypted blobs, card data. Its value is
  * never written; that it changed is.
  *
+ * A few names contain "password" but hold no secret, and the trail must show
+ * their values: the Security screen's on/off rules (config.strong_password,
+ * password_hint, forgot_password_link), the user's hashing scheme and the
+ * time the password last changed, and the password rewrap job's cursor.
+ * user.user_password_hint is the hint text itself and stays masked.
+ *
  * @param mixed $key
  * @return bool
  */
 function pg_audit_secret_key($key)
 {
     $key = strtolower((string) $key);
+
+    if (in_array($key, array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done'), true)) {
+        return false;
+    }
 
     if (in_array($key, array('pass', 'passwd', 'pin', 'otp', 'cvv', 'cvc', 'secret', 'token', 'signature', 'card_number', 'card_verification_number', 'recovery_codes'), true)) {
         return true;
