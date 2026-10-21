@@ -9,7 +9,7 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 
 ## How does a request find its link?
 - `router.php` looks the decoded path up as it came, then, when it differs, in the stored form (`pg_short_link_path_name()`, the router loads the module with `router_short_link_module()`): `/blog/post/`, `/Old%20Page`, `//post` reach `blog/post`, `Old_Page`, `post`.
-- Symptom before (#831): the pasted old address itself answered 404 (a WordPress permalink ends in `/`; an address with a space or `//`), only the `_` spelling or the one without the slash worked, from every save path and the CSV import alike.
+- Symptom before (#1006): the pasted old address itself answered 404 (a WordPress permalink ends in `/`; an address with a space or `//`), only the `_` spelling or the one without the slash worked, from every save path and the CSV import alike.
 - Patterns at 404 (`pg_short_link_not_found()` -> `pg_short_link_match_in()`): each pattern in its turn, the path as it came first, then the stored form; `$n` takes what the matching form gave.
 - The loop checks walk `pg_short_link_match_in()` too and compare the link's own name in both forms, so an address that reaches a link only through its stored form counts as reaching it.
 - IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router_utf8_name()` reads it back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before the lookup.
@@ -17,4 +17,4 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 ## How do two names compare?
 - Like the database (`utf8mb4_unicode_ci`): `pg_short_link_key()`, transliterated and lower case.
 
-Tests: `tests/short_link_redirects_test.php`. PRs: #699, #831.
+Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006.
