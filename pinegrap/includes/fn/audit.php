@@ -80,13 +80,45 @@ function pg_audit_request_id()
 }
 
 /**
+ * Record the lines that follow as a scheduled job's, not as the work of
+ * whoever's request is running. Housekeeping that piggybacks on a visit (the
+ * Recycle Bin's daily purge runs on the first file manager or catalog visit of
+ * the day) is the software's own doing; without the switch the trail would
+ * name the operator who happened to open the screen as the one who deleted.
+ *
+ *   $was = pg_audit_as_job(true);
+ *   // … work …
+ *   pg_audit_as_job($was);
+ *
+ * @param bool|null $on  true or false to switch, null to ask
+ * @return bool  the state before this call (the current one when asking)
+ */
+function pg_audit_as_job($on = null)
+{
+    static $as_job = false;
+
+    $was = $as_job;
+
+    if ($on !== null) {
+        $as_job = (bool) $on;
+    }
+
+    return $was;
+}
+
+/**
  * Who is acting: an operator in the panel, an application through the API
- * (its owner and its name), or a scheduled job.
+ * (its owner and its name), or a scheduled job (also any work done while
+ * pg_audit_as_job() is on).
  *
  * @return array  source (panel | api | job), user_id, username
  */
 function pg_audit_actor()
 {
+    if (pg_audit_as_job()) {
+        return array('source' => 'job', 'user_id' => 0, 'username' => '');
+    }
+
     if (defined('PG_API_ENTRY') && function_exists('api_current_app')) {
         $app = api_current_app();
 
@@ -119,12 +151,22 @@ function pg_audit_actor()
  * (push_vapid_private), licences, encrypted blobs, card data. Its value is
  * never written; that it changed is.
  *
+ * A few names contain "password" but hold no secret, and the trail must show
+ * their values: the Security screen's on/off rules (config.strong_password,
+ * password_hint, forgot_password_link), the user's hashing scheme and the
+ * time the password last changed, and the password rewrap job's cursor.
+ * user.user_password_hint is the hint text itself and stays masked.
+ *
  * @param mixed $key
  * @return bool
  */
 function pg_audit_secret_key($key)
 {
     $key = strtolower((string) $key);
+
+    if (in_array($key, array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done'), true)) {
+        return false;
+    }
 
     if (in_array($key, array('pass', 'passwd', 'pin', 'otp', 'cvv', 'cvc', 'secret', 'token', 'signature', 'card_number', 'card_verification_number', 'recovery_codes'), true)) {
         return true;
@@ -511,6 +553,12 @@ function pg_audit_volatile($table, array $row)
 /**
  * The name a row is recorded under: the first non-empty label column.
  *
+ * A file or page in the Recycle Bin is parked under "pgbin_<id>_<name>"
+ * (pg_recycle_park_name()), and the lines for sending it to the bin and for
+ * deleting it from there read that parked row. The label is the record's name
+ * kept for when it is gone, so the prefix built from the row's own id is taken
+ * off; before_json and after_json keep the parked name as it was.
+ *
  * @param string $table
  * @param array  $row
  * @return string
@@ -523,9 +571,21 @@ function pg_audit_label_of($table, array $row)
         return '';
     }
 
+    $key = $tables[$table]['id'];
+
     foreach ($tables[$table]['label'] as $column) {
         if (isset($row[$column]) && (trim((string) $row[$column]) !== '')) {
-            return (string) $row[$column];
+            $label = (string) $row[$column];
+
+            if (($key !== '') && isset($row[$key])) {
+                $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . (int) $row[$key] . '_';
+
+                if ((strpos($label, $prefix) === 0) && (strlen($label) > strlen($prefix))) {
+                    $label = substr($label, strlen($prefix));
+                }
+            }
+
+            return $label;
         }
     }
 

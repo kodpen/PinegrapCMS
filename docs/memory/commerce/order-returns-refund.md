@@ -1,6 +1,6 @@
 ---
 name: order-returns-refund
-description: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock and revert, what is written, the ERP return invoice hand-off, the refund mail, the daily reminder job
+description: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock and revert, what is written, the ERP return invoice hand-off, the refund mail
 ---
 
 ## How is a return refunded?
@@ -20,11 +20,11 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 - `pg_audit('update', 'order_return', …)` with refund_amount, refund_method, refund_reference; one activity line; the customer's mail `pg_return_send_refund_mail()` (amount > 0; "the money goes back the way you paid" only for a driver).
 
 ## What about the ERP return invoice?
-- An order with an issued invoice and a person with ERP rights (role < 3 or `manage_erp`) go on to `add_erp_return.php?invoice_id=…&back_order=…&qty[line]=…`, filled in with the same lines, as the order screen's refund does; nothing is issued until they save.
+- An order with an issued invoice and a person with ERP rights (`pg_return_erp_hand_off($user)`: ERP on and role < 3 or `manage_erp`) go on to `add_erp_return.php?invoice_id=…&back_order=…&qty[line]=…`, filled in with the same lines, as the order screen's refund does; nothing is issued until they save.
+- The note under the Payment Refund card asks the same helper (PR #1135, issue #973): it promises the invoice screen only to them; anyone else reads that someone who uses the ERP must issue the return invoice after the refund. Before, every user was promised a screen that only opened for ERP users, and nobody was told the invoice was still to be issued.
 
 ## How are staff reminded?
-- `return_reminder_job.php` (daily, light lane; registry row in `pg_cron_jobs()`): `pg_return_remind_refunds()` rings `order_return` with `order_total` `refund_due` (from `PG_RETURN_REMIND_DAYS` = 3 days before `pg_return_refund_due()`) and `refund_overdue` (after it), once per return and stage, checked against the notification rows. Statuses `shipped` and `received`.
-- `pg_return_move()` to `shipped`/`received` calls `pg_return_reminder_job_switch_on()`: appends the job to `config.job_dispatch` when the general job dispatches (the product feed pattern).
+- The daily job, its two stages, the once-only stamps on the return and the test: commerce/order-returns-reminders.md.
 
 ## Tests?
-- `tests/returns_test.php` (amount, estimate, line map, reminder stage, refund mail). Sandbox runs, the iyzico driver with a stand-in HTTP client and the ERP hand-off: PR #936 body.
+- `tests/returns_test.php` (amount, estimate, line map, refund mail). Sandbox runs, the iyzico driver with a stand-in HTTP client and the ERP hand-off: PR #936 body.

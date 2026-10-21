@@ -14,14 +14,14 @@ description: A zip entry is read no further than its archive declares: streams v
 - `pg_restore_archive_copy()` and `pg_restore_extract_step()` read at most one byte past the declared size, then report the file damaged.
 
 ## And entries read whole? (PR #730)
-- `pg_zip_entry_contents($zip, $entry, $limit, &$error)` (files.php): null with `large` (declares more than `$limit`, or a size negative on 32-bit), `damaged` (not exactly its declared size, `getFromIndex()` asked for size + 1; or size 0 over compressed data) or `missing`. CRC is not compared.
+- `pg_zip_entry_contents($zip, $entry, $limit, &$error)` (files.php): null with `large` (declares more than `$limit`, or a size negative on 32-bit), `damaged` (not exactly its declared size, `getFromIndex()` asked for size + 1) or `missing`. CRC is not compared. Size 0: `getFromIndex()` gives '' unread, so one byte is read from the stream; empty Go/bzip2 entries pass, hidden data is `damaged` (#860).
 - `pg_zip_import_open($path, &$error)` refuses, before inflating, an empty archive, more than 10,000 entries, 2 GB declared or the disk room (`pg_explorer_disk_has_room()`, now in files.php). `import_zip.php` and `pg_designer_import_zip()` use both; an entry past 64 MB (`PG_ZIP_IMPORT_MAX_ENTRY`; a designer page past 8 MB, `PG_DI_MAX_HTML`, as libxml's DOM memory escapes memory_limit) or damaged is left out with a warning. Names are raw (`FL_ENC_RAW`); Import ZIP cleans them with `pg_zip_entry_path()`, the designer reads by each entry's index.
-- Search index: only the text part is opened and read, at `PG_OFFICE_MAX_PART`; pptx slides share that room; a video elsewhere in the package does not matter. A refused part gives no text.
+- Search index: only the text part is read, at `PG_OFFICE_MAX_PART`; pptx slides share that room. A refused part gives no text.
 - .ods: `pg_products_import_ods_check()` (import_products_f.php; bank import too) reads `content.xml`, `meta.xml` once at 8 MB (`PG_PRODUCTS_IMPORT_ODS_MAX_PART`) before PHPExcel. The cells PHPExcel makes of repeated rows/columns: `ods-cell-ceiling.md`.
 - Without ZipArchive these refuse, as restore and update do; PclZip is no longer read.
 
 ## What is the rule?
-- Stream an entry only through `pg_zip_entry_uri()` and ask `pg_zip_entry_overran()`; read a whole entry only through `pg_zip_entry_contents()` with a ceiling; open an archive imported entry by entry with `pg_zip_import_open()`; copy in chunks bounded by the declared size.
+- Stream an entry only through `pg_zip_entry_uri()` and ask `pg_zip_entry_overran()`; read a whole entry only through `pg_zip_entry_contents()` with a ceiling; open an archive imported entry by entry with `pg_zip_import_open()`; copy in chunks bounded by the declared size. Office DOM parts: docs/memory/platform/office-dom-ceiling.md.
 
 ## Where are the tests?
 - `tests/zip_entry_cap_test.php` (streams, copies) and `tests/zip_entry_contents_test.php` (whole entries, import ceilings, names, .ods): archives whose declared size is changed after writing.

@@ -11,7 +11,7 @@ description: Asking GİB about a tax number from the account form and the New ac
 
 ## What is kept on the card?
 - With an account id: `erp_edoc_account_check_taxpayer()` (service.php) writes `einvoice_user / einvoice_alias / einvoice_aliases (JSON) / einvoice_checked_at` only when the number asked about is the stored one (`stored`); the answer then carries the redrawn status line (`erp_account_form_einvoice_state()`, `data-erp-einvoice-state`).
-- Without one (a new account): `erp_edoc_taxpayer_lookup()`, nothing kept.
+- Without one (a new account): `erp_edoc_taxpayer_lookup()`, nothing kept. It first refuses a number that is not 10/11 digits or fails its check digits (PR #1114: a mistyped VKN cost a read and was "e-Archive").
 - The name is never written by the lookup itself.
 - The sentence is `erp_edoc_taxpayer_message()` (registry.php, pure): e-Invoice user with up to three mailboxes, e-Delivery note user, the registered name in quotes.
 
@@ -22,8 +22,9 @@ description: Asking GİB about a tax number from the account form and the New ac
 ## What name does an account opened from an order get?
 - GİB's, when its VKN is registered (#806): the register is taken as right over what the customer typed (owner, 2026-10-20). `erp_account_for_contact()` with an order (invoice or delivery note from an order, the automatic invoice too) asks the active provider about a Turkish VKN that passes its check digit before the account is written (`erp_account_registered_name_wanted()`, `erp_account_registered_name_lookup()`); a registered name replaces the one the order or the card gave and the account becomes a company's (`erp_account_data_with_registered_name()`), so the creation event and the invoice's copy carry it. The answer's e-Invoice fields are kept (`erp_account_keep_taxpayer_answer()`); a changed name leaves a log line.
 - Not asked: a TCKN (a person's invoice carries the first and the last name; a sole trader's registered name can be a trade name), the bulk "open accounts for contacts with orders" (no order), an account that already exists. A failed or unanswered lookup opens the account as before. One more provider call per new account; at checkout after the response (`pg_erp_auto_invoice()`).
-- Seen on dev (2026-10-20): the delivery note form, Issue the Invoice and the automatic invoice (Payment Received) of an order whose contact had a registered VKN opened its account under GİB's name, as a company, with the mailbox and the log line.
+- Seen on dev (2026-10-20) for the delivery note, Issue the Invoice and the automatic invoice.
 
 ## Tests
 - `tests/erp_edoc_parasut_test.php`: `test_erp_edoc_parasut_inboxes_read`, `test_erp_edoc_taxpayer_message`.
 - `tests/erp_account_registered_name_test.php`: which numbers are asked about, when the name is replaced.
+- `tests/erp_edoc_service_test.php`: check digit refusal.
