@@ -17746,7 +17746,7 @@ const StyleDesigner = (function () {
                             ]);
                         };
                         return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
-                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Section Header'), [
+                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pt-2 mb-3 border-top border-2 border-primary', _sdT('Section Header'), [
                                 _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
                                 _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Line'), [
                                     _bkIcon('bi-clock'),
