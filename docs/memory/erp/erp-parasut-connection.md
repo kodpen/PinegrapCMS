@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-connection
-description: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect button and endpoint, company id discovery
+description: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect endpoint, company id discovery
 ---
 
 ## How is the Paraşüt connection made?
@@ -16,13 +16,11 @@ description: How Pinegrap is connected to Paraşüt (authorization code or passw
 - Token: sealed among the connected accounts' service tokens (`pg_connect_service_put('parasut')`): `access_token`, `refresh_token`, `expires_at`, `grant` (`code`|`password`), `email`, `company_name`, `connected_at`, and `owner` = md5(company|client id|user name). A token whose owner does not match the saved settings is ignored.
 - The token endpoint gets the client as HTTP Basic and in the body; grants carry `redirect_uri` = `PARASUT_REDIRECT_URI`.
 
-## What does the card show?
-- A status line (`parasut_connection_line(parasut_connection_status())`, no call to Paraşüt), then "Connect in three steps" (client id + secret → authorization page → code + Connect; a `<details>` open while not connected, closed as "Authorize again" once connected), then "Advanced" (company number, the user name / password grant). Built in `includes/settings/prep.php`, printed in `commerce.php`.
-- Connect answers `fill` (company number, emptied code and secret boxes) and `status`; `backend.src.js` writes them into the open card. The settings save keeps the saved company number when the box is empty (`parasut_company_id_for_save()`). Until 2026-10-19 a Save after Connect wrote the empty box back and orphaned the token (owner stamp).
-
 ## What happens when the refresh token dies?
 - Paraşüt rotates the refresh token: every refresh answers a new one and retires the old (API documentation; access token lives 2 h). The new one is saved over the old. A request that renewed in parallel leaves the other holding a retired token, so `invalid_grant` first re-reads the cache and uses a token another request has just stored.
 - `invalid_grant` on refresh with no password on file → "The Paraşüt connection has expired … authorize once more"; with a password on file the password grant runs instead. Any other refresh failure (transport, 5xx) is passed on as it is.
 
 ## Tests
 - `tests/parasut_test.php`: authorize URL, owner stamp, `/v4/me` reading, status line, company number on save, throttle.
+
+Related: docs/memory/erp/erp-parasut-connect-card.md (the settings card and what Connect answers)

@@ -106,6 +106,7 @@ $query =
         forms.reference_code as reference_code,
         product_groups.address_name as product_group_address_name,
         products.address_name as product_address_name,
+        " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
         comments.created_timestamp
     FROM comments
     LEFT JOIN forms ON forms.id = comments.item_id
@@ -219,7 +220,7 @@ foreach ($comments as $comment) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
-                <td class="align-middle chart_label">' . h($comment['name']) . '</td>
+                <td class="align-middle chart_label">' . h($comment['name']) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge text-bg-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . '</td>
                 <td class="align-middle text-center">' . $output_published_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
                 <td class="align-middle"><span class="badge bg-primary fw-light">'.$output_date_and_time.'</span></td>
