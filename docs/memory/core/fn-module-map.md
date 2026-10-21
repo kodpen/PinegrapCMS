@@ -18,6 +18,6 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `system_status`: system-status card and checks, cache clearing, file integrity, write permissions, changelog reading, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
 - Added in 2026.4.8: `errors`, `mail_queue`, `backup`, `consent` (see `docs/memory/core/fn-module-errors-mail-backup-consent.md`).
-- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see `docs/memory/core/consent-log-and-audit-trail.md`; `privacy_export` (one person's data pack, `docs/memory/core/personal-data-export.md`).
+- Added in 2026.11.0: `privacy` (person token, consent log) and `audit` (`pg_audit()`), see `docs/memory/core/consent-log-and-audit-trail.md`; `privacy_export` (one person's data pack, `docs/memory/core/personal-data-export.md`); `reviews` (who may review a product, the product rating, AggregateRating: `docs/memory/commerce/product-reviews-verified.md`).
 
 Related: docs/memory/core/functions-php-split-rules.md
