@@ -286,6 +286,12 @@ function pg_restore_archive_read($path)
  * against its size and checksum in the archive. A file that does not come out
  * whole is deleted again.
  *
+ * Nothing past the size the archive declares is written: the read stops one
+ * byte beyond it. A stream would otherwise inflate an entry that declares a
+ * kilobyte to whatever it holds before the sizes are compared, and the disk
+ * room the callers make sure of (pg_restore_archive_read(),
+ * pg_explorer_archive_size()) is the declared sizes added up.
+ *
  * @param ZipArchive $zip
  * @param int        $index the file's index in the archive
  * @param string     $path  where it is written
@@ -316,11 +322,12 @@ function pg_restore_archive_copy($zip, $index, $path)
 
     $crc = hash_init('crc32b');
     $written = 0;
+    $declared = (float) $stat['size'];
     $error = '';
 
     while (true) {
 
-        $chunk = @stream_get_contents($stream, 1048576);
+        $chunk = @stream_get_contents($stream, (int) min(1048576, $declared - $written + 1));
 
         if (($chunk === false) || ($chunk === '')) {
             break;
@@ -333,6 +340,11 @@ function pg_restore_archive_copy($zip, $index, $path)
 
         hash_update($crc, $chunk);
         $written += strlen($chunk);
+
+        // Past the declared size: damaged, which the comparison below says.
+        if ($written > $declared) {
+            break;
+        }
     }
 
     fclose($stream);
@@ -1163,7 +1175,10 @@ function pg_restore_extract_step(array &$state, $heartbeat = null)
 
         while ($skip <= 0) {
 
-            $chunk = @stream_get_contents($stream, 1048576);
+            // Never more than one byte past the declared size: an entry that
+            // inflates further is damaged (the check after the loop), and a
+            // stream would read it to its end first.
+            $chunk = @stream_get_contents($stream, (int) min(1048576, $entry['size'] - $written + 1));
 
             if (($chunk === false) || ($chunk === '')) {
                 break;
@@ -1180,6 +1195,10 @@ function pg_restore_extract_step(array &$state, $heartbeat = null)
             hash_update($crc, $chunk);
             $written += strlen($chunk);
             $state['offset'] += strlen($chunk);
+
+            if ($written > $entry['size']) {
+                break;
+            }
 
             $now = microtime(true);
 

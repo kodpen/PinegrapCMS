@@ -11,15 +11,15 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 ## What is open?
 - 2026.11.0 (opened 2026-10-16), the first number in the year.month.patch scheme: docs/memory/release/version-numbering.md. It has its `versions.php` row and its changelog heading with the `[FIX]` line.
 - Its migration file `includes/migrations/2026.11.0.php` holds `upgrade_to_2026_11_0()`; each schema step is a sub-step `upgrade_2026_11_0_<topic>()` called from there with its label; a new step adds a call, not a file.
-- A database that already recorded `2026.11.0` (dev, beta, demo sites that pulled `development` while the version was code-only or before a step was added) skips the steps added since: set `config.version` back to `2026.4.10` and run the upgrade again.
+- A database that already recorded `2026.11.0` (dev, beta, demo sites that pulled `development` while the version was code-only or before a step was added) skips the steps added since: set `config.version` back to the last released version (today `2026.4.10`) and run the upgrade again; steps are idempotent, applied ones are skipped.
 - Step labels take the prefix `11.0.` with the earlier ranges (version-numbering.md).
 - The next version number is the owner's; ask. A version opens with its first schema step or changelog entry, always together with its `versions.php` row (the dashboard compares the changelog's newest heading with `config.version`).
-- Rerun on dev: set `config.version` back to the last released version (today `2026.4.10`); steps are idempotent, applied ones are skipped. A pull that adds a `versions.php` row sends the panel to the upgrade screen once, also for a code-only version.
+- A pull that adds a `versions.php` row sends the panel to the upgrade screen once, also for a code-only version.
 
 ## How is a release built?
 - Branch `release/<version>` = one "Release <version>" commit on top of `main` whose tree is `development`'s minus `CLAUDE.md`, `.claude/`, `docs/`, `tools/`, `tests/` (temporary index: `read-tree`, `rm -r --cached` those paths, `write-tree`, `commit-tree -p origin/main`; author Erdal Güral). The commit message is the short release notes, grouped by area.
 - Pull request `Release <version>` to `main`, body = the GitHub release notes (`## Release v<version>`, schema note, sections with emoji headings, upgrade notes, compare link). Merge with a merge commit titled `Merge pull request #<n> from kodpen/release/<version>`, never squash; development's own history never reaches `main`.
-- Tag `v<version>` on that merge commit and a GitHub release with the same body. A cloud session can push the release branch and merge through the GitHub API, but its git proxy drops tag pushes: the tag and the GitHub release are made from the owner's machine or the GitHub web page (creating the release there creates the tag).
+- Tag `v<version>` on that merge commit and a GitHub release with the same body; publishing it pushes the Docker images to GHCR (platform/docker-image-publishing.md). A cloud session can push the release branch and merge through the GitHub API, but its git proxy drops tag pushes: the tag and the GitHub release are made from the owner's machine or the GitHub web page (creating the release there creates the tag).
 - CI PHP steps skip on branches without `tools/`. After a release this file is updated.
 
 ## What never ships in public notes?

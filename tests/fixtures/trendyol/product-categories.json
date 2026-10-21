@@ -1,0 +1,35 @@
+{
+  "categories": [
+    {
+      "id": 368,
+      "name": "Aksesuar",
+      "subCategories": [
+        {
+          "id": 1228,
+          "name": "Altın",
+          "parentId": 368,
+          "subCategories": [
+            { "id": 1237, "name": "Ata Altın", "parentId": 1228, "subCategories": [] },
+            { "id": 1238, "name": "Bilezik", "parentId": 1228, "subCategories": [] }
+          ]
+        },
+        { "id": 1229, "name": "Şapka", "parentId": 368 }
+      ]
+    },
+    {
+      "id": 403,
+      "name": "Spor & Outdoor",
+      "subCategories": [
+        {
+          "id": 14600,
+          "name": "Dövüş Sporları",
+          "parentId": 403,
+          "subCategories": [
+            { "id": 14609, "name": "Muay Thai Kaskı", "parentId": 14600, "subCategories": [] }
+          ]
+        }
+      ]
+    },
+    { "name": "no id, skipped" }
+  ]
+}

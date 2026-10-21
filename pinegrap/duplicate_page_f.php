@@ -328,6 +328,16 @@ function duplicate_page($request) {
               AND src.page_id = '" . (int)$page_id . "'");
     }
 
+    // ...and its canonical address and robots directives (page settings).
+    if (pg_page_seo_extras_ready()) {
+        db("UPDATE page dst, page src
+            SET dst.canonical_url = src.canonical_url,
+                dst.noarchive = src.noarchive,
+                dst.max_snippet = src.max_snippet
+            WHERE dst.page_id = '" . (int)$new_page['id'] . "'
+              AND src.page_id = '" . (int)$page_id . "'");
+    }
+
     // The copy of a draft stays in the drafts folder with its original, so it
     // also needs the folder it goes back to when it is published.
     if (pg_page_is_draft($folder['id'])) {
@@ -740,6 +750,8 @@ function duplicate_page($request) {
     }
     
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('page'), $original_page_name) )), $_SESSION['sessionusername']);
+
+    pg_audit_record('create', 'page', (int) $new_page['id']);
 
     return array(
         'status' => 'success',

@@ -300,7 +300,7 @@ foreach ($order_items as $order_item) {
 
         // if quantity was set to 0, remove order item from order
         if ($_POST['quantity'][$order_item['id']] == '0') {
-            remove_order_item($order_item['id']);
+            pg_cart_remove_line($order_item['id']);
             $new_quantity = 0;
 
         // else if quantity is a positive integer and new quantity is different from old quantity, update quantity for product
@@ -957,8 +957,14 @@ check_inventory($liveform);
 // check reservations for calendar events in order to make sure they are still valid and available
 check_reservations($liveform);
 
-// before we proceed with checkout, we need to check product dependencies
+// before we proceed with checkout, we need to check product dependencies.
+// $order_items was read before this request's quantities were saved, so a
+// line just set to 0 is gone and requires nothing.
+$pg_lines_in_cart = array_map('intval', (array) db_values("SELECT id FROM order_items WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'"));
 foreach ($order_items as $order_item) {
+    if (!in_array((int) $order_item['id'], $pg_lines_in_cart, true)) {
+        continue;
+    }
     // if product has a required product, then make sure required product is in cart
     if ($order_item['required_product']) {
         // find out if required product is in cart

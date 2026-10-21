@@ -251,7 +251,7 @@ function api_openapi_build() {
 				'name'        => 'Idempotency-Key',
 				'in'          => 'header',
 				'required'    => false,
-				'description' => 'A value of your choosing, up to 64 characters. Repeating a request with the same key returns the first answer instead of applying the change again.',
+				'description' => 'A value of your choosing, up to 64 characters. Repeating a request with the same key returns the first answer instead of applying the change again. A repeat sent while the first request is still being carried out is answered 409 idempotency_in_progress with Retry-After; send it again then.',
 				'schema'      => array('type' => 'string', 'maxLength' => 64)
 			);
 
@@ -665,6 +665,8 @@ function api_openapi_objects()
         'DesignView'     => 'api_design_view_schema',
         'DesignOutlineItem' => 'api_design_outline_item_schema',
         'DesignProposal' => 'api_design_proposal_schema',
+        'DesignRevision' => 'api_design_revision_schema',
+        'DesignRestore'  => 'api_design_restore_schema',
         'AuthSession'    => 'api_auth_session_schema',
         'Me'             => 'api_auth_me_schema',
         'Device'         => 'api_device_schema',
@@ -957,7 +959,7 @@ function api_openapi_responses($route) {
 		// Every write takes an Idempotency-Key, and a key reused for a
 		// different request is a conflict; the endpoint's own conflicts are
 		// named in its description.
-		$responses['409'] = array('description' => 'The change conflicts with the state of the record, or the Idempotency-Key was already used for a different request. The description of the endpoint names its own codes.', 'content' => $error_content);
+		$responses['409'] = array('description' => 'The change conflicts with the state of the record, the Idempotency-Key was already used for a different request (idempotency_key_reused), or a request with the same key is still being carried out (idempotency_in_progress). The description of the endpoint names its own codes.', 'content' => $error_content);
 
 	}
 

@@ -245,11 +245,7 @@ function create_member_user($data)
 // skipped rather than failing the sign-up it belongs to.
 function pg_user_created_stamp($user_id)
 {
-    static $column_exists = null;
-    if ($column_exists === null) {
-        $column_exists = (bool) db_item("SHOW COLUMNS FROM user LIKE 'user_created'");
-    }
-    if (!$column_exists || !$user_id) {
+    if (!$user_id || !pg_schema_has('user', 'user_created')) {
         return;
     }
     db("UPDATE user SET user_created = UNIX_TIMESTAMP() WHERE (user_id = '" . e($user_id) . "') AND (user_created = '0')");
@@ -326,6 +322,26 @@ function pg_google_signin_button($send_to = '', $signup = 'create')
     return function_exists('pg_signin_button') ? pg_signin_button('google', $send_to, $signup) : '';
 }
 
+// Whether the address typed a second time on a sign-up form (email_verify,
+// or email_address_verify on the membership entrance's own screen) agrees
+// with the first. The second copy is optional - the software's own forms ask
+// for the address once (WCAG 2.2 3.3.7, redundant entry) - so none, or one
+// left empty, passes; one that was typed in has to be the same address, so a
+// layout that keeps the field still catches a typo. Both values come trimmed
+// from liveform::add_fields_to_session().
+function pg_member_email_repeat_ok($email, $repeat)
+{
+    if (($repeat === null) || ($repeat === '')) {
+        return true;
+    }
+
+    if (!is_scalar($repeat) || !is_scalar($email)) {
+        return false;
+    }
+
+    return ((string) $repeat === (string) $email);
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same
@@ -343,7 +359,8 @@ function pg_google_signin_button($send_to = '', $signup = 'create')
 // Field names are the entrance screen's: first_name, last_name, username,
 // email, email_verify, password, password_verify, password_hint, opt_in,
 // register_remember_me (remember_me is accepted too), and the CAPTCHA fields.
-// A form that never asked for a username gets one derived from the address.
+// A form that never asked for a username gets one derived from the address;
+// email_verify is optional (pg_member_email_repeat_ok()).
 //
 // Returns array('ok' => bool, 'user_id' => int, 'contact_id' => int). When
 // ok is false the errors are on the form and nothing was written.
@@ -360,7 +377,6 @@ function pg_member_register($form, $opts = array())
         $form->validate_required_field('username', lang('Username is required.'));
     }
     $form->validate_required_field('email', lang('Email is required.'));
-    $form->validate_required_field('email_verify', lang('Please type email address again.'));
     $form->validate_required_field('password', lang('New Password is required.'));
     $form->validate_required_field('password_verify', lang('Please type new password again.'));
 
@@ -376,12 +392,12 @@ function pg_member_register($form, $opts = array())
         }
     }
 
-    // Email: the two copies agree, the address is valid, not blocked, not in use.
-    if (($form->check_field_error('email') == false) && ($form->check_field_error('email_verify') == false)) {
-        if ($email != $form->get_field_value('email_verify')) {
-            $form->mark_error('email', lang('The two email addresses you entered did not match.'));
-            $form->mark_error('email_verify');
-        }
+    // Email: a second copy, when one was typed, agrees; the address is valid,
+    // not blocked, not in use.
+    if (($form->check_field_error('email') == false)
+        && !pg_member_email_repeat_ok($email, $form->get_field_value('email_verify'))) {
+        $form->mark_error('email', lang('The two email addresses you entered did not match.'));
+        $form->mark_error('email_verify');
     }
     if (($form->check_field_error('email') == false) && (validate_email_address($email) == false)) {
         $form->mark_error('email', lang('The email address you entered is invalid.'));
@@ -553,7 +569,8 @@ function pg_member_register($form, $opts = array())
 // Field names are the entrance screen's: first_name, last_name, member_id,
 // username, email_address, email_address_verify, password, password_verify,
 // password_hint, opt_in, register_remember_me. A designed page may name the
-// address fields email / email_verify instead; both spellings are read.
+// address fields email / email_verify instead; both spellings are read, and
+// the second copy is optional (pg_member_email_repeat_ok()).
 // A form that never asked for a username gets one derived from the address.
 //
 // A Google sign-in that matched no account arrives here with a pending
@@ -586,7 +603,6 @@ function pg_member_activate($form, $opts = array())
         $form->validate_required_field('username', lang('Username is required.'));
     }
     $form->validate_required_field($email_field, lang('Email is required.'));
-    $form->validate_required_field($verify_field, lang('Please type email address again.'));
     if (!$google_signup) {
         $form->validate_required_field('password', lang('New Password is required.'));
         $form->validate_required_field('password_verify', lang('Please type new password again.'));
@@ -632,11 +648,10 @@ function pg_member_activate($form, $opts = array())
         }
     }
 
-    if (($form->check_field_error($email_field) == false) && ($form->check_field_error($verify_field) == false)) {
-        if ($email != $form->get_field_value($verify_field)) {
-            $form->mark_error($email_field, lang('The two email addresses you entered did not match.'));
-            $form->mark_error($verify_field);
-        }
+    if (($form->check_field_error($email_field) == false)
+        && !pg_member_email_repeat_ok($email, $form->get_field_value($verify_field))) {
+        $form->mark_error($email_field, lang('The two email addresses you entered did not match.'));
+        $form->mark_error($verify_field);
     }
     if (($form->check_field_error($email_field) == false) && (validate_email_address($email) == false)) {
         $form->mark_error($email_field, lang('The email address you entered is invalid.'));
@@ -1456,8 +1471,7 @@ function pg_user_has_password_algo()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_algo'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_schema_has('user', 'user_password_algo');
     }
 
     return $has;
@@ -1472,8 +1486,7 @@ function pg_user_has_password_changed_at()
     static $has = null;
 
     if ($has === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM user LIKE 'user_password_changed_at'");
-        $has = ($result && (mysqli_num_rows($result) > 0));
+        $has = pg_schema_has('user', 'user_password_changed_at');
     }
 
     return $has;
@@ -1676,8 +1689,7 @@ function pg_auth_tokens_table_exists()
     static $exists = null;
 
     if ($exists === null) {
-        $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'auth_tokens'");
-        $exists = ($result && (mysqli_num_rows($result) > 0));
+        $exists = pg_schema_has('auth_tokens');
     }
 
     return $exists;
@@ -1688,8 +1700,7 @@ function pg_auth_tokens_have_pin()
     static $have = null;
 
     if ($have === null) {
-        $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM auth_tokens LIKE 'pinned'");
-        $have = ($result && (mysqli_num_rows($result) > 0));
+        $have = pg_schema_has('auth_tokens', 'pinned');
     }
 
     return $have;

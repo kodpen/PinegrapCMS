@@ -190,6 +190,14 @@ function pg_settings_modal_markup($user)
                         (latch() in backend.src.js). The bait is not worth what it
                         attracts.
                     -->
+                    <!--
+                        Return in a text field presses the first submit button
+                        of the form. This one stands first and has no name, so
+                        Return saves the pane and never presses a card button
+                        such as "New address", which runs its own job (and asks
+                        its own question) on top of the save.
+                    -->
+                    <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <input type="hidden" name="pane" id="pg_settings_modal_key" value="" />
                     <input type="hidden" name="token" id="pg_settings_modal_token" value="' . h(isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : '') . '" />
 

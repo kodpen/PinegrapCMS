@@ -325,12 +325,15 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * submit_order.php compares against, so offers, gift cards and rounding are
  * the checkout's own; the difference to the row sums is placed below.
  * Billing fields the visitor has typed or the page filled in replace the
- * row's, which a cart has only after an earlier submit.
+ * row's, which a cart has only after an earlier submit. A field the page drew
+ * empty says nothing and keeps the row's value; a field the checkout link
+ * posted empty ($seen['typed'], pg_legal_document_typed_snapshot()) is one
+ * the visitor cleared, and clears it.
  *
  * @param array $order     orders row fields
  * @param array $lines     each with line_total and tax (minor units)
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), billing (field => value), payment_method
+ * @param array $seen      total (minor units or null), billing (field => value), payment_method, typed (bool)
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -376,10 +379,18 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     $order['total'] = $total;
     $order['order_number'] = '';
 
-    foreach (pg_legal_document_billing_fields() as $field) {
-        $value = trim((string) ($seen['billing'][$field] ?? ''));
+    $billing = (isset($seen['billing']) && is_array($seen['billing'])) ? $seen['billing'] : array();
+    $typed = !empty($seen['typed']);
 
-        if (($value !== '') && ($field !== 'billing_country')) {
+    foreach (pg_legal_document_billing_fields() as $field) {
+        // The country arrives as a code; the caller names it.
+        if (($field === 'billing_country') || !array_key_exists($field, $billing)) {
+            continue;
+        }
+
+        $value = trim((string) $billing[$field]);
+
+        if (($value !== '') || $typed) {
             $order[$field] = $value;
         }
     }
@@ -466,6 +477,73 @@ function pg_legal_document_form_snapshot($html)
     }
 
     return $snapshot;
+}
+
+/**
+ * The page's snapshot with what the checkout form holds now laid over it.
+ *
+ * The checkout's document link posts the form's billing fields and payment
+ * method at the moment of the click (assets/js/pg_legal_documents.js), so
+ * the document shows what the visitor has typed but not yet sent. Only the
+ * billing fields and a known payment method are taken, each as one line of
+ * plain text of bounded length. A field that was posted, empty included,
+ * replaces the snapshot's and marks the result `typed`: an empty one is a
+ * value the visitor cleared. The total stays the page's: the form's hidden
+ * total can carry an instalment fee the documents do not count as part of it.
+ *
+ * Nothing here is stored; the values are for the one page they were posted to.
+ *
+ * @param array $seen    pg_legal_document_form_snapshot() for this cart, or array()
+ * @param array $posted  the request's fields
+ * @return array  total, billing, payment_method, typed
+ */
+function pg_legal_document_typed_snapshot(array $seen, array $posted)
+{
+    $seen += array('total' => null, 'billing' => array(), 'payment_method' => '');
+
+    if (!is_array($seen['billing'])) {
+        $seen['billing'] = array();
+    }
+
+    foreach (pg_legal_document_billing_fields() as $field) {
+        if (!isset($posted[$field]) || !is_string($posted[$field])) {
+            continue;
+        }
+
+        // One line of text, as the input holds it: no control characters,
+        // and no longer than a field of the order could hold. A value that is
+        // not UTF-8 is left out rather than cut into one that is.
+        $value = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $posted[$field]);
+
+        if ($value === null) {
+            continue;
+        }
+
+        $seen['billing'][$field] = mb_substr(trim($value), 0, ($field === 'billing_country') ? 10 : 255, 'UTF-8');
+        $seen['typed'] = true;
+    }
+
+    if (isset($posted['payment_method']) && is_string($posted['payment_method'])
+        && isset(pg_legal_document_payment_methods()[$posted['payment_method']])) {
+        $seen['payment_method'] = $posted['payment_method'];
+    }
+
+    return $seen;
+}
+
+/**
+ * Does a posted form token belong to this session? The comparison
+ * validate_token_field() makes, answered rather than enforced: the document
+ * page falls back to the values it was drawn with instead of failing.
+ *
+ * @param mixed $session_token
+ * @param mixed $posted_token
+ * @return bool
+ */
+function pg_legal_document_token_matches($session_token, $posted_token)
+{
+    return is_string($session_token) && is_string($posted_token)
+        && ($session_token !== '') && hash_equals($session_token, $posted_token);
 }
 
 /**
@@ -567,6 +645,22 @@ function pg_legal_documents_enabled()
 }
 
 /**
+ * Whether a site installed from a starter site begins with the checkout
+ * documents switched on. Turkish distance-selling rules require both
+ * documents, so a Turkish starter site starts with them; its template
+ * columns stay empty and read the built-in templates. Any other
+ * language, and a restored backup (no starter language), starts off, as an
+ * upgrade does.
+ *
+ * @param string $starter_language  the starter site's language, '' for a backup
+ * @return bool
+ */
+function pg_legal_documents_on_for_new_site($starter_language)
+{
+    return strtolower(trim((string) $starter_language)) === 'tr';
+}
+
+/**
  * The stored template for a type, or the built-in one when none is stored.
  *
  * @param string $type
@@ -616,6 +710,22 @@ function pg_legal_document_seller()
 }
 
 /**
+ * The payment methods an order can carry (orders.payment_method), with the
+ * name a customer reads.
+ *
+ * @return array  stored value => label
+ */
+function pg_legal_document_payment_methods()
+{
+    return array(
+        'Credit/Debit Card'       => lang('Credit/Debit Card'),
+        'PayPal Express Checkout' => lang('PayPal Express Checkout'),
+        'Offline Payment'         => lang('Offline Payment'),
+        'Pay With Iyzico'         => lang('Pay With Iyzico'),
+    );
+}
+
+/**
  * The customer-facing name of a stored payment method.
  *
  * @param string $payment_method  one of the four orders.payment_method values
@@ -627,12 +737,7 @@ function pg_legal_document_payment_label($payment_method)
         return (string) $_SESSION['ecommerce']['offline_payment_label'];
     }
 
-    $labels = array(
-        'Credit/Debit Card'       => lang('Credit/Debit Card'),
-        'PayPal Express Checkout' => lang('PayPal Express Checkout'),
-        'Offline Payment'         => lang('Offline Payment'),
-        'Pay With Iyzico'         => lang('Pay With Iyzico'),
-    );
+    $labels = pg_legal_document_payment_methods();
 
     return isset($labels[$payment_method]) ? $labels[$payment_method] : (string) $payment_method;
 }
@@ -752,11 +857,14 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
         // The checkout posts a country code; the documents name the country.
-        $seen_country = (string) ($seen['billing']['billing_country'] ?? '');
+        // A country the visitor took off the form (typed, empty) is none.
+        $seen_country = trim((string) ($seen['billing']['billing_country'] ?? ''));
 
         if ($seen_country !== '') {
             $country_name = (string) db_value("SELECT name FROM countries WHERE code = '" . e($seen_country) . "' LIMIT 1");
             $order['billing_country'] = ($country_name !== '') ? $country_name : $seen_country;
+        } elseif (!empty($seen['typed']) && is_array($seen['billing'] ?? null) && array_key_exists('billing_country', $seen['billing'])) {
+            $order['billing_country'] = '';
         }
     }
 
@@ -877,7 +985,9 @@ function pg_legal_document_page_url()
  * total and billing values are kept for the document page the checkboxes
  * link to, so the documents show what the visitor is looking at. A page that
  * already carries the fields (a designer tree that binds them) gets none
- * added; a page without a purchase button needs none.
+ * added; a page without a purchase button needs none. Either way a page with
+ * the documents gets the script that makes their links post what the visitor
+ * has typed since the page was drawn.
  *
  * @param string $html
  * @param array  $values  pg_legal_documents_form_values() taken before rendering
@@ -894,18 +1004,42 @@ function pg_legal_documents_inject($html, array $values = array())
     $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
 
     if (strpos($html, 'name="legal_preinfo"') !== false) {
-        return $html;
+        return $html . pg_legal_documents_script();
     }
 
-    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url()));
+    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url())) . pg_legal_documents_script();
+}
+
+/**
+ * The script tag of assets/js/pg_legal_documents.js, stamped with the file's
+ * time: a click on a document link posts the checkout form's billing fields
+ * and payment method to the document page, so the document is filled with
+ * what the form holds at that moment. Without the script, or opened in a new
+ * tab by a modified click, the link stays a plain GET.
+ *
+ * @param string|null $base  the software directory's address; null for the site's
+ * @return string
+ */
+function pg_legal_documents_script($base = null)
+{
+    $file = '/assets/js/pg_legal_documents.js';
+
+    if ($base === null) {
+        $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+    }
+
+    return '<script src="' . h($base . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . $file)) . '" defer></script>';
 }
 
 /**
  * The documents for the visitor's current cart, as the checkout shows them.
  *
+ * @param array $posted  the fields the checkout's document link posted (see
+ *                       pg_legal_document_typed_snapshot()); empty for the
+ *                       values the page was drawn with
  * @return array  type => html; empty without a cart
  */
-function pg_legal_documents_for_cart()
+function pg_legal_documents_for_cart(array $posted = array())
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
@@ -917,6 +1051,10 @@ function pg_legal_documents_for_cart()
 
     if ((int) ($seen['order_id'] ?? 0) !== $order_id) {
         $seen = array();
+    }
+
+    if (!empty($posted)) {
+        $seen = pg_legal_document_typed_snapshot($seen, $posted);
     }
 
     return pg_legal_documents_for_order($order_id, $seen);
@@ -1092,6 +1230,76 @@ function pg_legal_documents_attachments($order_id, $order_number)
 }
 
 /**
+ * The address of a document's copy kept with a placed order: the document
+ * page with the order's id and the type. Unescaped.
+ *
+ * @param int         $order_id
+ * @param string      $type      a key of pg_legal_document_types()
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return string
+ */
+function pg_legal_document_copy_url($order_id, $type, $page_url = null)
+{
+    if ($page_url === null) {
+        $page_url = pg_legal_document_page_url();
+    }
+
+    return $page_url . '?order_id=' . (int) $order_id . '&type=' . rawurlencode((string) $type);
+}
+
+/**
+ * The links a customer's order view gives to the copies kept with the
+ * order: one per document type, '' for a type the order has no copy of.
+ *
+ * @param array       $kept      type => order_documents row (pg_legal_documents_of_order())
+ * @param int         $order_id
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return array  type => address (unescaped), every type of pg_legal_document_types() in its order
+ */
+function pg_legal_document_copy_urls(array $kept, $order_id, $page_url = null)
+{
+    $urls = array();
+
+    foreach (array_keys(pg_legal_document_types()) as $type) {
+        $urls[$type] = isset($kept[$type]) ? pg_legal_document_copy_url($order_id, $type, $page_url) : '';
+    }
+
+    return $urls;
+}
+
+/**
+ * The card an order view gets after it when its layout links neither
+ * document: the kept copies, one link each, opening in a new window. A
+ * layout from before the links existed shows them this way; a layout that
+ * binds a link places them itself.
+ *
+ * @param array $urls  pg_legal_document_copy_urls()
+ * @return string  '' when the order has no kept copy
+ */
+function pg_legal_documents_order_view_block(array $urls)
+{
+    $types = pg_legal_document_types();
+    $items = '';
+
+    foreach ($urls as $type => $url) {
+        if (!isset($types[$type]) || ((string) $url === '')) {
+            continue;
+        }
+
+        $items .= '<li><a href="' . h((string) $url) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a></li>';
+    }
+
+    if ($items === '') {
+        return '';
+    }
+
+    return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
+        . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
+        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul></div>'
+        . '</div></div>';
+}
+
+/**
  * The order screen's card listing the documents kept with the order: each
  * one's name, whether and when it was accepted, from which address, and a
  * link to the copy.
@@ -1115,7 +1323,7 @@ function pg_legal_documents_panel_card($order_id)
             : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">
-                        <span class="col text-muted"><a class="link-secondary" href="' . h(PATH . SOFTWARE_DIRECTORY . '/legal_document.php?order_id=' . (int) $order_id . '&type=' . $type) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
+                        <span class="col text-muted"><a class="link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
                         <span class="col text-end" title="' . h((string) $row['ip']) . '">' . $status . '</span>
                     </div>';
     }

@@ -5,27 +5,51 @@
 #
 #   docker compose -f docker/docker-compose.yml up -d --build
 #
-# and opened at http://localhost:8080/pinegrap/install/. In the installation
-# wizard the database is host "db" with the name, user and password below.
+# which builds the images from these files, or without --build, which pulls
+# the images published for every release when they are not on the machine:
+# ghcr.io/kodpen/pinegrap-app and ghcr.io/kodpen/pinegrap-web, tagged with
+# the release (v2026.11.0) and latest (PG_IMAGE_TAG).
 #
-#   web    nginx on port 8080 (PG_HTTP_PORT), the installer's nginx rules
-#   app    PHP-FPM running the software
-#   cron   the general job once a minute (same image as app)
-#   db     MariaDB 10.11, reachable only from the other containers
+# Then open http://localhost:8080/pinegrap/install/. In the installation
+# wizard the database is host "db" with the name, user and password below.
+# With PG_INSTALL_ADMIN_EMAIL and PG_INSTALL_ADMIN_PASSWORD set, the install
+# service installs the starter site on the first start instead: the site is
+# then at http://localhost:8080/, its control panel at /pinegrap/, and
+# `docker compose logs install` shows the steps.
+#
+#   web      nginx on port 8080 (PG_HTTP_PORT), the installer's nginx rules
+#   app      PHP-FPM running the software
+#   cron     the general job once a minute (same image as app)
+#   install  the installation without the wizard; runs at every start, does
+#            nothing once a site is installed, then stops (same image as app)
+#   db       MariaDB 10.11, reachable only from the other containers
 #
 # Two named volumes hold everything that is not the software itself:
 # pinegrap_data (config.php, uploads, layouts, backups) and pinegrap_db. The
 # software comes from the image, so a new release is installed by building
-# or pulling the new image and recreating the containers; an update installed
-# from the control panel lasts only until the app container is recreated.
+# or pulling the new image (`docker compose pull`, then `up -d`) and
+# recreating the containers; an update installed from the control panel
+# lasts only until the app container is recreated.
 #
 # Settings, all optional, from the shell or an .env file next to this file:
 #   PG_HTTP_PORT     published port of the web container (8080)
+#   PG_IMAGE_TAG     tag of the images to pull, or to give the images built
+#                    with --build (latest; a release tag such as v2026.11.0
+#                    keeps that release)
 #   PG_DB_NAME       database name (pinegrap)
 #   PG_DB_USER       database user (pinegrap)
 #   PG_DB_PASSWORD   database password (pinegrap; set your own for anything
 #                    but a trial)
 #   PG_CRON_INTERVAL seconds between two runs of the general job (60)
+#
+# For the install service (pinegrap/includes/install_cli.php has the rest):
+#   PG_INSTALL_ADMIN_EMAIL     the administrator's e-mail address and
+#   PG_INSTALL_ADMIN_PASSWORD  password; without both nothing is installed
+#   PG_INSTALL_ADMIN_USERNAME  the administrator's username (admin)
+#   PG_INSTALL_STARTER         english_default or turkish_default
+#                              (english_default)
+#   PG_INSTALL_LANGUAGE        en or tr (the starter site's)
+#   PG_INSTALL_HOSTNAME        the site's address (localhost:PG_HTTP_PORT)
 #
 # @author      Erdal Güral (Kodpen)
 # @link        https://kodpen.com
@@ -60,7 +84,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: app
-    image: pinegrap-app:local
+    image: ghcr.io/kodpen/pinegrap-app:${PG_IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -73,7 +97,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: app
-    image: pinegrap-app:local
+    image: ghcr.io/kodpen/pinegrap-app:${PG_IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ["pinegrap-cron"]
     user: www-data
@@ -91,12 +115,42 @@ services:
         max-size: "1m"
         max-file: "3"
 
+  # Started after app, which fills a new data volume from the image first.
+  install:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    image: ghcr.io/kodpen/pinegrap-app:${PG_IMAGE_TAG:-latest}
+    restart: "no"
+    command: ["pinegrap-install"]
+    user: www-data
+    environment:
+      PG_HTTP_PORT: ${PG_HTTP_PORT:-8080}
+      PG_INSTALL_DB_HOST: db
+      PG_INSTALL_DB_NAME: ${PG_DB_NAME:-pinegrap}
+      PG_INSTALL_DB_USER: ${PG_DB_USER:-pinegrap}
+      PG_INSTALL_DB_PASSWORD: ${PG_DB_PASSWORD:-pinegrap}
+      PG_INSTALL_ADMIN_EMAIL: ${PG_INSTALL_ADMIN_EMAIL:-}
+      PG_INSTALL_ADMIN_PASSWORD: ${PG_INSTALL_ADMIN_PASSWORD:-}
+      PG_INSTALL_ADMIN_USERNAME: ${PG_INSTALL_ADMIN_USERNAME:-}
+      PG_INSTALL_STARTER: ${PG_INSTALL_STARTER:-}
+      PG_INSTALL_LANGUAGE: ${PG_INSTALL_LANGUAGE:-}
+      PG_INSTALL_HOSTNAME: ${PG_INSTALL_HOSTNAME:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    volumes:
+      - data:/var/www/html/pinegrap/data
+
   web:
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: web
-    image: pinegrap-web:local
+    image: ghcr.io/kodpen/pinegrap-web:${PG_IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       app:

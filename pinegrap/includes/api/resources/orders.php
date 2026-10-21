@@ -473,6 +473,8 @@ function api_orders_update($params) {
 		'cancelling' => $cancelling
 	));
 
+	$audit_before = pg_audit_fetch('orders', $id);
+
 	// Cancelling is not a status write.
 	//
 	// The store has one cancellation path, process_order_cancellation(), and it
@@ -524,6 +526,8 @@ function api_orders_update($params) {
 		'string' => 'Order ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($existing['order_number'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
+
+	pg_audit_record(($cancelling && ($existing['status'] !== 'cancelled')) ? 'cancel' : 'update', 'orders', $id, $audit_before);
 
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 
@@ -728,7 +732,7 @@ function api_orders_ship($params) {
 
 	require_once(dirname(__FILE__) . '/../../../update_order.php');
 
-	$outcome = update_order(array('order' => array(
+	$outcome = update_order(array('source' => 'api', 'order' => array(
 		'id'         => $id,
 		'recipients' => array(array(
 			'id'               => (int)$recipient['id'],

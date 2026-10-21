@@ -110,13 +110,6 @@ if (!db::$con) {
 
     // Healthy again - close the breaker if a previous request opened it.
     pg_db_guard_clear();
-
-    // check db connected but if it's empty or has no config table.
-    $config_table_result = mysqli_query(db::$con, "SHOW TABLES LIKE 'config'");
-    if (($config_table_result === false) || !mysqli_num_rows($config_table_result)) {
-        router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
-        exit();
-    }
 }
 
 $mysql_version = preg_replace('#[^0-9\.]#', '', mysqli_get_server_info(db::$con));
@@ -141,14 +134,37 @@ if (function_exists('mysqli_set_charset')) {
 // to the collation that we want.
 mysqli_query(db::$con, "SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
 
-// Remember that we connected to the database, so that later if the init.php
-// script is run then it will know it does not need to connect to the database.
-define('DB_CONNECTED', true);
-
 // Pin the session sql_mode instead of inheriting the server default, which differs
 // between MySQL 5.7, MySQL 8.0 and MariaDB. Pinegrap relies on non-strict writes,
 // so only NO_ENGINE_SUBSTITUTION is kept.
 mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+
+// The config row, read here once and handed to the firewall below so that
+// waf_config() does not read it again. It is read after the character set and
+// sql_mode are set, as the firewall's own read was.
+//
+// A database that is empty or has no config table gets the error page. The
+// table is looked for only when the read fails, so a healthy site pays no
+// extra query; a read that fails for another reason (a damaged table) still
+// finds the table and goes on, as it did when the check was a SHOW TABLES of
+// its own. The probe runs last, so router_output_error() logs its error, not
+// the read's. This stays above DB_CONNECTED: the error page reads config
+// itself when that constant is defined.
+$router_config_result = @mysqli_query(db::$con, "SELECT * FROM config LIMIT 1");
+
+if ($router_config_result === false) {
+    $config_table_result = mysqli_query(db::$con, "SHOW TABLES LIKE 'config'");
+    if (($config_table_result === false) || !mysqli_num_rows($config_table_result)) {
+        router_output_error('Sorry, this website could not found the required config table in a database. The server administrator should check the status of the database.');
+        exit();
+    }
+}
+
+$router_config_row = ($router_config_result !== false) ? mysqli_fetch_assoc($router_config_result) : null;
+
+// Remember that we connected to the database, so that later if the init.php
+// script is run then it will know it does not need to connect to the database.
+define('DB_CONNECTED', true);
 
 // If this site has enabled the legacy MySQL connection in the config.php and it is using a version
 // of PHP that supports that (i.e. before PHP 7), then create a legacy DB connection.  Sites might
@@ -241,6 +257,7 @@ define('REQUEST_URL', router_get_request_url());
 // the page's own front-end URL: without knowing whether a designer is logged
 // in, saving a region containing <script> would look exactly like an attack.
 require_once(dirname(__FILE__) . '/waf.php');
+waf_prime_config($router_config_row);
 waf_send_security_headers();
 waf_run('router');
 
@@ -366,6 +383,14 @@ if ($item_name_lowercase == 'sitemap.xml') {
     exit();
 }
 
+// llms.txt, when the site publishes one (Site Settings, SEO, AI Crawlers).
+// Switched off, the name goes on as it always has: to a file of that name in
+// the file manager, or to a page.
+if (($item_name_lowercase == 'llms.txt') && router_llms_txt_enabled()) {
+    require(dirname(__FILE__) . '/get_llms.txt.php');
+    exit();
+}
+
 // Check if item is a file.
 $query = "SELECT id FROM files WHERE name = '" . router_escape($item_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
@@ -392,8 +417,14 @@ $short_link_select =
     LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
     LEFT JOIN products ON short_links.product_id = products.id";
 
+// IIS hands PHP a path it decoded and re-encoded in the server's ANSI code
+// page (docs/memory/ui/ascii-names-in-urls-iis.md), so a name with a Turkish
+// letter arrives as bytes that are not UTF-8. Short link names may be old
+// addresses with such letters, so they are looked up in UTF-8.
+$short_link_name = router_utf8_name($item_name);
+
 $query = $short_link_select . "
-    WHERE short_links.name = '" . router_escape($item_name) . "'";
+    WHERE short_links.name = '" . router_escape($short_link_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
 
 // Before that step there is no token_hash to look in and the query fails:
@@ -415,12 +446,25 @@ if ($short_link && !empty($short_link['recycled'])) {
     $short_link = null;
 }
 
+// A name with a * in it (2026.11.0, 11.0.12) stands for many addresses and is
+// never one of them: it is tried only once no page answers (get_page.php,
+// pg_short_link_not_found()).
+if ($short_link && !empty($short_link['is_pattern'])) {
+    $short_link = null;
+}
+
 // If short link was found, then process it.
 if ($short_link) {
 
     // Opened once, until a time, or a guest's way into the workspace: here it
     // is decided whether this visit goes on to where the link leads.
     router_short_link_gate($short_link, $item_name);
+
+    // A link that sends visitors on (2026.11.0, 11.0.12) answers with the
+    // destination's own address instead of showing it here.
+    if (in_array((int) ($short_link['redirect_code'] ?? 0), array(301, 302), true)) {
+        router_short_link_redirect($short_link);
+    }
 
     // Prepare destination differently based on the destination type.
     switch ($short_link['destination_type']) {
@@ -533,12 +577,89 @@ if ($short_link) {
 // If we have gotten here, then that means the item is not a file, short link, or other item,
 // so just assume it is page so run get page script.  If a page does not exist
 // for the item name, then the get page script will deal with that.
+// A short link with a * in its name may still stand for this address: it is
+// asked where get_page.php is about to answer 404, with the name looked up
+// here (includes/fn/short_link_redirects.php), so a page always wins over it.
+define('PG_SHORT_LINK_PATH', $short_link_name);
 $_GET['page'] = $item_name;
 require(dirname(__FILE__) . '/get_page.php');
 exit();
 
 function router_escape($string) {
     return mysqli_real_escape_string(db::$con, $string);
+}
+
+/**
+ * A path segment in UTF-8: as it came when it is UTF-8, else read from the
+ * Turkish Windows code page that IIS re-encodes it in (ISO-8859-9 where
+ * mbstring does not know Windows-1254; the two differ only in 0x80-0x9F).
+ *
+ * @param string $name
+ * @return string
+ */
+function router_utf8_name($name)
+{
+    $name = (string) $name;
+
+    if (($name === '') || mb_check_encoding($name, 'UTF-8')) {
+        return $name;
+    }
+
+    $from = in_array('windows-1254', array_map('strtolower', mb_list_encodings()), true) ? 'Windows-1254' : 'ISO-8859-9';
+
+    return (string) mb_convert_encoding($name, 'UTF-8', $from);
+}
+
+/**
+ * Sends the visitor of a short link that answers with a redirect to the
+ * destination's own address, with the link's status (pg_short_link_status():
+ * 301 or 302, 302 for a link that closes) and the visitor's query string. The
+ * address is written by pg_short_link_location()
+ * (includes/fn/short_link_redirects.php), loaded here on its own: the module
+ * runs no query and needs nothing of functions.php for this. A destination
+ * that is gone (a deleted page or file) is left to the answer the link always
+ * gave.
+ *
+ * @param array $short_link The row with page_name and the catalog address names
+ * @return void
+ */
+function router_short_link_redirect($short_link)
+{
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+    }
+
+    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
+
+    $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
+    $config = mysqli_fetch_assoc($result);
+
+    if ((string) $short_link['destination_type'] === 'file') {
+        $file = mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . (int) $short_link['file_id'] . "'");
+        $file_row = $file ? mysqli_fetch_assoc($file) : null;
+        $short_link['file_name'] = is_array($file_row) ? (string) $file_row['name'] : '';
+    }
+
+    $request = (string) REQUEST_URL;
+    $request = substr($request, 0, strcspn($request, '#'));
+    $mark = strpos($request, '?');
+
+    $location = pg_short_link_location(
+        $short_link,
+        array(),
+        ($mark === false) ? '' : (string) substr($request, $mark + 1),
+        $config['url_scheme'] . $config['hostname'],
+        PATH,
+        defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH);
+
+    $code = pg_short_link_status($short_link);
+
+    if (($location === '') || ($code === 0)) {
+        return;
+    }
+
+    header('Location: ' . $location, true, $code);
+    exit();
 }
 
 /**
@@ -585,7 +706,8 @@ function router_translation_prefixes()
 /**
  * A file asked for under a language prefix is redirected to its one address
  * at the root: a row of the files table, a physical file or directory under
- * the web root (the software directory included), robots.txt or sitemap.xml.
+ * the web root (the software directory included), robots.txt, sitemap.xml or
+ * llms.txt.
  * Anything else is a page and is routed in the language.
  *
  * @param string $rest the request without PATH and without the prefix
@@ -609,7 +731,7 @@ function router_language_file_redirect($rest)
     $software = mb_strtolower(SOFTWARE_DIRECTORY);
     $is_file = false;
 
-    if (($lower == 'robots.txt') || ($lower == 'sitemap.xml') || ($lower === $software) || (mb_strpos($lower, $software . '/') === 0)) {
+    if (($lower == 'robots.txt') || ($lower == 'sitemap.xml') || ($lower == 'llms.txt') || ($lower === $software) || (mb_strpos($lower, $software . '/') === 0)) {
         $is_file = true;
     } elseif ((mb_strpos($name, '..') === false) && (strpos($name, "\0") === false) && file_exists(dirname(dirname(__FILE__)) . '/' . $name)) {
         $is_file = true;
@@ -710,6 +832,26 @@ function router_short_link_gone($why)
 {
     header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/short_link_gone.php?r=' . (($why === 'used') ? 'used' : 'expired'), true, 302);
     exit();
+}
+
+/**
+ * Whether the site publishes llms.txt (config.llms_txt, 2026.11.0, 11.0.21).
+ * The column is asked for by name: before its step the query fails, and that
+ * reads as off.
+ *
+ * @return bool
+ */
+function router_llms_txt_enabled()
+{
+    $result = @mysqli_query(db::$con, "SELECT llms_txt FROM config");
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) && !empty($row['llms_txt']);
 }
 
 function router_get_request_url()
@@ -901,23 +1043,17 @@ function router_output_error($error_message) {
         $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
     }
 
-    function get_header($output_page_title) {
-    	return output_header_secure(array(
-    		'title' => $output_page_title,
-    		'icon' => 'setting'
-    	));
-    }
+    $output_header = output_header_secure(array(
+        'title' => $output_page_title,
+        'icon' => 'setting'
+    ));
 
-    function get_footer() {
-       
-        return '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
+    $output_footer = '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
                     <h6 class="mx-auto">' . lang('Pinegrap Content Management System') . '</h6>
                     <h6 class="version_and_copyright mx-auto">' . EDITION . ' - <span class="material-icons" >copyright</span>' . date('Y', time()) . '</h6>
                 </div>
             </body>
         </html>';
-
-    }
 
     if($output_other_help_buttons != ''){
         $output_other_help_buttons = '<p class="mt-3">' . lang('Other help links') . ':</p>' . $output_other_help_buttons;
@@ -926,8 +1062,8 @@ function router_output_error($error_message) {
 
 
 
-    echo 
-    get_header($output_page_title) . '
+    echo
+    $output_header . '
     <meta name="robots" content="noindex">
     <style>
     .alert.alert-danger{
@@ -993,7 +1129,7 @@ function router_output_error($error_message) {
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundBlendMode = "darken";
     </script>
-    ' . get_footer();
+    ' . $output_footer;
 
     exit();
 }

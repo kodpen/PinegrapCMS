@@ -76,6 +76,10 @@ include_once('product_builder.php');
 // The columns an operator can change on the list without opening the product.
 $quick_edit = pg_pb_quick_edit_columns();
 
+// The "was" price gets a column beside the price once a product has one; a
+// shop that does not use it sees the list as before.
+$show_compare_at_price = pg_pb_list_shows_compare_at_price();
+
 // Two views of the same catalog: every product, or the variant sets that group
 // them. Remembered per session like the filter below it, so returning from an
 // edit lands on the list the operator was working in rather than resetting to
@@ -384,6 +388,12 @@ if ($live_products_sql != '') {
     $where = ($where == '') ? ('WHERE 1 = 1' . $live_products_sql) : ($where . $live_products_sql);
 }
 
+// The "was" price column sorts like the price beside it, in every filter,
+// while the list draws it.
+if ($show_compare_at_price) {
+    $sort_codes[] = 'compare_at_price';
+}
+
 // Headings of the columns the list can be sorted by, keyed by the code the
 // sort is kept as.
 $sort_labels = array(
@@ -391,6 +401,7 @@ $sort_labels = array(
     'short_description'     => lang('Short Description'),
     'enabled'               => lang('Enabled'),
     'price'                 => ($filter == 'donation_products') ? lang('Default Amount (Price)') : lang('Price'),
+    'compare_at_price'      => lang('Compare-at Price'),
     'taxable'               => lang('Taxable'),
     'product_form'          => lang('Product Form'),
     'selection_type'        => lang('Selection Type'),
@@ -450,6 +461,7 @@ $sort_sql = array(
     'short_description'     => 'products.short_description',
     'enabled'               => 'products.enabled',
     'price'                 => 'products.price',
+    'compare_at_price'      => 'products.compare_at_price',
     'taxable'               => 'products.taxable',
     'product_form'          => 'products.form_name',
     'selection_type'        => 'products.selection_type',
@@ -843,6 +855,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 products.inventory_quantity as inventory_quantity,
                 products.short_description as short_description,
                 products.price as price,
+                " . ($show_compare_at_price ? "products.compare_at_price," : "") . "
                 products.taxable as taxable,
                 products.form_name as form_name,
                 products.seo_score as seo_score,
@@ -1328,6 +1341,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
             <td class="' . $list_cells['short_description']['class'] . '"' . pg_list_edit_cell($quick_edit, 'short_description', $product_id, pg_pb_quick_edit_value('short_description', $row)) . '>' . $list_cells['short_description']['html'] . '</td>
             <td class="' . $list_cells['enabled']['class'] . '"' . pg_list_edit_cell($quick_edit, 'enabled', $product_id, pg_pb_quick_edit_value('enabled', $row)) . '>' . $list_cells['enabled']['html'] . '</td>
             <td class="' . $list_cells['price']['class'] . '"' . pg_list_edit_cell($quick_edit, 'price', $product_id, pg_pb_quick_edit_value('price', $row)) . '>' . $list_cells['price']['html'] . '</td>
+            ' . ($show_compare_at_price
+                ? '<td class="' . $list_cells['compare_at_price']['class'] . '"' . pg_list_edit_cell($quick_edit, 'compare_at_price', $product_id, pg_pb_quick_edit_value('compare_at_price', $row)) . '>' . $list_cells['compare_at_price']['html'] . '</td>'
+                : '') . '
             ' . $output_inventory_columns . '
             ' . $output_tax_column . '
             ' . $output_product_form_column . '
@@ -1400,6 +1416,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                         <th>' . get_column_heading(lang(array('string'=>'Short Description') ), $sort_levels, $asc_desc, '', 'short_description') . '</th>
                                         <th>' . get_column_heading(lang(array('string'=>'Enabled') ), $sort_levels, $asc_desc, '', 'enabled') . '</th> 
                                         ' . $output_price_header . ' 
+                                        ' . ($show_compare_at_price ? '<th>' . get_column_heading(lang('Compare-at Price'), $sort_levels, $asc_desc, '', 'compare_at_price') . '</th>' : '') . '
                                         ' . $output_inventory_headers . '
                                         ' . $output_tax_header . '  
                                         ' . $output_product_form_header . ' 

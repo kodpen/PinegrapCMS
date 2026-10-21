@@ -217,21 +217,26 @@ function ws_note_import_sweep()
  * Puts a file step of an import that failed in the error log, with what PHP
  * said about it: the screen only says that the file could not be saved.
  *
- * @param string $step
+ * @param string      $step
+ * @param string|null $detail what PHP said, when the step gathered it itself;
+ *                            null reads error_get_last()
  * @return void
  */
-function ws_note_import_log_failure($step)
+function ws_note_import_log_failure($step, $detail = null)
 {
     if (!function_exists('pg_error_write') || !function_exists('pg_error_entry')) {
         return;
     }
 
-    $last = error_get_last();
+    if ($detail === null) {
+        $last = error_get_last();
+        $detail = is_array($last) ? (string) $last['message'] : '';
+    }
 
     pg_error_write(pg_error_entry(
         'warning',
         'E_USER_WARNING',
-        'Notes import: ' . $step . ' failed' . (is_array($last) ? ': ' . $last['message'] : '.'),
+        'Notes import: ' . $step . ' failed' . (($detail !== '') ? ': ' . $detail : '.'),
         __FILE__,
         __LINE__,
         array()));
@@ -262,14 +267,79 @@ function ws_note_import_save($stage)
         return false;
     }
 
-    if (!@rename($temp, $dir . '/stage.json')) {
-        ws_note_import_log_failure('renaming stage.json into place');
+    $why = '';
+
+    if (!ws_note_import_replace($temp, $dir . '/stage.json', $json, $why)) {
+        ws_note_import_log_failure('putting stage.json in place', $why);
         @unlink($temp);
 
         return false;
     }
 
     return true;
+}
+
+/**
+ * Puts $temp, written beside $path with $bytes in it, in the place of $path.
+ *
+ * rename() comes first: a reader then never finds half a file. On Windows a
+ * file only just written can be held for a moment by another program - a
+ * sync client such as OneDrive, a virus scanner - and renaming or replacing
+ * it is refused while it is held. The upload writes stage.json twice within
+ * a second, so the second write meets the first one still held. The bytes
+ * are then written into $path itself, the way data/config.php is written
+ * when rename() fails (update.php), and on Windows both ways are tried again
+ * for about three seconds.
+ *
+ * @param string     $temp
+ * @param string     $path
+ * @param string     $bytes what $temp holds
+ * @param string     $why   set to what PHP said about the last try that failed
+ * @param int[]|null $waits milliseconds to wait before each try after the
+ *                          first; null: about three seconds of them on
+ *                          Windows, none elsewhere
+ * @return bool whether $path holds $bytes
+ */
+function ws_note_import_replace($temp, $path, $bytes, &$why = '', $waits = null)
+{
+    if ($waits === null) {
+        $waits = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? array(100, 250, 500, 1000, 1500) : array();
+    }
+
+    $bytes = (string) $bytes;
+    $said = function ($way) {
+        $last = error_get_last();
+
+        return $way . ': ' . (is_array($last) ? (string) $last['message'] : 'no message');
+    };
+
+    foreach (array_merge(array(0), array_map('intval', (array) $waits)) as $wait) {
+        if ($wait > 0) {
+            usleep($wait * 1000);
+        }
+
+        error_clear_last();
+
+        if (@rename($temp, $path)) {
+            $why = '';
+
+            return true;
+        }
+
+        $why = $said('rename');
+        error_clear_last();
+
+        if (@file_put_contents($path, $bytes) === strlen($bytes)) {
+            @unlink($temp);
+            $why = '';
+
+            return true;
+        }
+
+        $why .= '; ' . $said('writing it in place');
+    }
+
+    return false;
 }
 
 /**
@@ -310,6 +380,10 @@ function ws_note_import_load($viewer, $token)
  */
 function ws_note_import_stage($viewer, $files)
 {
+    // A failed step below is logged with error_get_last(); nothing from
+    // before the upload may stand in for it.
+    error_clear_last();
+
     $fail = function ($error, $dir = '') {
         ws_note_import_remove($dir);
 

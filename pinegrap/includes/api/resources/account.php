@@ -633,6 +633,7 @@ function api_notification_subjects() {
 
 	return array(
 		'new_order'     => array('order', 'order_id'),
+		'order_return'  => array('order', 'order_id'),
 		'out_stock'     => array('product', 'product_id'),
 		'form_submited' => array('form_submission', 'form_id'),
 		'new_comment'   => array('comment', 'comment_id'),

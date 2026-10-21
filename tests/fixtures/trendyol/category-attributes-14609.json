@@ -1,0 +1,12 @@
+{
+  "id": 14609,
+  "name": "Muay Thai Kaskı",
+  "displayName": "Muay Thai Kaskı",
+  "categoryAttributes": [
+    { "allowCustom": false, "attribute": { "id": 293, "name": "Beden" }, "categoryId": 14609, "required": true, "varianter": true, "slicer": false, "allowMultipleAttributeValues": false },
+    { "allowCustom": false, "attribute": { "id": 47, "name": "Renk" }, "categoryId": 14609, "required": true, "varianter": false, "slicer": true, "allowMultipleAttributeValues": false },
+    { "allowCustom": true, "attribute": { "id": 180, "name": "Materyal" }, "categoryId": 14609, "required": false, "varianter": false, "slicer": false, "allowMultipleAttributeValues": false },
+    { "allowCustom": false, "attribute": { "id": 47, "name": "Renk" }, "categoryId": 14609, "required": true, "varianter": false, "slicer": true, "allowMultipleAttributeValues": false },
+    { "allowCustom": false, "categoryId": 14609, "required": true }
+  ]
+}

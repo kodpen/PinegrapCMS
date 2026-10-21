@@ -18,9 +18,9 @@ description: The 2026.4.8 modules errors, mail_queue, backup and consent in incl
 - Settings are encrypted in `config.backup_remote_settings` (`pg_backup_remote_encode/decode()`, per-type key, order `pg_backup_remote_types()`). Gate: `pg_backup_settings_ready()`.
 
 ## consent (cookie consent)
-- `pg_consent_inject()` prints the notice at the end of `get_page_content()` before the last `</body>` (excluded: email, edit mode, `IS_BOT`).
+- `pg_consent_inject()` → `pg_consent_insert($content, pg_consent_choices())` at the end of `get_page_content()`: the notice before the last `</body>`, the Consent Mode default at the top of `<head>` (excluded: email, edit mode, `IS_BOT`). Choices, Consent Mode and focus rules: docs/memory/platform/cookie-consent-notice.md.
 - `pg_consent_allows($category)` / `pg_consent_setcookie()` gate optional cookies (everything is allowed while the setting is off).
 - `pg_consent_hold_scripts()` holds a script as `type="text/plain" data-pg-consent`; `assets/js/pg_consent.js` revives it on consent.
-- Cookie `pg_consent=1.a1.m0`: JS writes, PHP reads (`pg_consent_parse()`).
+- Cookie `pg_consent=1.a1.m0`: JS writes, PHP reads (`pg_consent_parse()`, `pg_consent_choices()` for this request).
 
 Related: docs/memory/core/fn-module-map.md

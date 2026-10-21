@@ -8,7 +8,7 @@ description: Manual invoice form mechanics (lines[n][field] arrays, template row
 - Line inputs are still printed with `output_field()`, with the value passed explicitly via `value` (the field name is not in the session, so the session value does not apply).
 - The `<template>` row is printed with an `__INDEX__` placeholder and cloned by JS.
 - Product choice is a shortcut, not a lock: `product_id` sits in a hidden field and drops to 0 when the product name is edited.
-- JS totals mimic `erp_kurus` / `erp_line_total` / `erp_apply_rate` exactly (whole kuruş, `Math.round`); PHP recomputes on every save; a mismatch between the two is a bug.
+- JS totals mimic `erp_kurus` / `erp_line_total` / `erp_apply_rate` exactly (whole kuruş, `Math.round`), and the group taxes with `allocate()` / `rateTaxes()`, copies of `erp_allocate()` / `erp_rate_vat()` (#1004): a line's total shows its share of the group's VAT. PHP recomputes on every save; a mismatch between the two is a bug.
 
 ## What is the account snapshot on an invoice? (4.51)
 - Columns `erp_invoices.account_title / account_tax_number / account_tax_office / account_address / account_city / account_country_code / account_email`, copied from the account card by `erp_invoice_snapshot_account()` (`accounts.php`) at issue (also copied on draft save, re-copied at issue). The order bridge calls the same helper.

@@ -209,11 +209,15 @@ function mp_order_apply_status($account, $package, $map) {
 }
 
 // The number and the carrier, written where the order screen looks for them.
+//
+// Through the shipment write path (pg_shipment_record()), with the carrier's
+// name and its own tracking page as the marketplace gives them, so the row
+// says which courier took the parcel and links where the marketplace does.
 function mp_order_apply_tracking($order_id, $package) {
 
 	$tracking = isset($package['tracking']) ? (array)$package['tracking'] : array();
 
-	$number = isset($tracking['number']) ? trim((string)$tracking['number']) : '';
+	$number = isset($tracking['number']) ? pg_shipment_number_clean($tracking['number']) : '';
 
 	if ($number === '') {
 
@@ -223,19 +227,22 @@ function mp_order_apply_tracking($order_id, $package) {
 
 	$ship_to_id = (int) db_value("SELECT id FROM ship_tos WHERE order_id = '" . e((int)$order_id) . "' ORDER BY id ASC LIMIT 1");
 
-	// Written once. The feed hands the same number back on every poll for as
-	// long as the package is in the window, and the table has no unique key.
-	$exists = db_value("SELECT id FROM shipping_tracking_numbers
-		WHERE (order_id = '" . e((int)$order_id) . "') AND (number = '" . e($number) . "')");
+	$carrier = isset($tracking['carrier']) ? trim((string)$tracking['carrier']) : '';
 
-	if ($exists) {
+	// Written once. The feed hands the same number back on every poll for as
+	// long as the package is in the window; the write path updates the row it
+	// already has and says whether the number is new.
+	$recorded = pg_shipment_record((int)$order_id, $ship_to_id, $number, array(
+		'carrier'      => $carrier,
+		'tracking_url' => isset($tracking['link']) ? (string)$tracking['link'] : '',
+		'source'       => 'marketplace'
+	));
+
+	if (!$recorded['created']) {
 
 		return;
 
 	}
-
-	db("INSERT INTO shipping_tracking_numbers (order_id, ship_to_id, number)
-		VALUES ('" . e((int)$order_id) . "', '" . e($ship_to_id) . "', '" . e(mb_substr($number, 0, 100)) . "')");
 
 	// The same event the order screen and the API produce. Nothing is mailed
 	// from here - the marketplace tells its own buyer - but an integration
@@ -246,11 +253,9 @@ function mp_order_apply_tracking($order_id, $package) {
 		'id'               => (int)$order_id,
 		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
 		'ship_to_id'       => (int)$ship_to_id,
-		'tracking_numbers' => array(mb_substr($number, 0, 100)),
+		'tracking_numbers' => array($recorded['number']),
 		'ship_date'        => null
 	));
-
-	$carrier = isset($tracking['carrier']) ? trim((string)$tracking['carrier']) : '';
 
 	if (($carrier !== '') && $ship_to_id) {
 
@@ -261,11 +266,18 @@ function mp_order_apply_tracking($order_id, $package) {
 
 }
 
-// The two dates the timeline reads.
+// The two dates the timeline reads, and the delivery itself.
 //
 // Only ever filled in, never moved: the marketplace re-sends a delivered
 // package for as long as it is inside the polling window, and re-stamping the
 // date each time would make every order look like it shipped this morning.
+//
+// A delivered package is recorded through pg_shipment_delivered(), address by
+// address, on every poll that reports it: the parcels carry the record, so
+// order.delivered is announced the first time and never again. No e-mail is
+// started (the marketplace tells its own buyer). An address without a parcel
+// number has no row to keep that record on, so it is announced only by the
+// poll whose update filled in its empty delivery date.
 function mp_order_mark_dates($order_id, $stage) {
 
 	db("UPDATE ship_tos SET ship_date = CURDATE()
@@ -277,8 +289,18 @@ function mp_order_mark_dates($order_id, $stage) {
 
 	}
 
-	db("UPDATE ship_tos SET delivery_date = CURDATE(), complete = 1
-		WHERE (order_id = '" . e((int)$order_id) . "') AND (delivery_date = '0000-00-00')");
+	$now = time();
+
+	foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e((int)$order_id) . "' ORDER BY id ASC") as $ship_to_id) {
+
+		db("UPDATE ship_tos SET delivery_date = CURDATE(), complete = 1
+			WHERE (id = '" . e((int)$ship_to_id) . "') AND (delivery_date = '0000-00-00')");
+
+		$first = (mysqli_affected_rows(db::$con) > 0);
+
+		pg_shipment_delivered((int)$ship_to_id, $now, array('notify' => false, 'first' => $first));
+
+	}
 
 }
 

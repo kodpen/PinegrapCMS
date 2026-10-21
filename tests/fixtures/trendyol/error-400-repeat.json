@@ -1,0 +1,1 @@
+{ "timestamp": 1760961600000, "exception": "ClientApiBusinessException", "errors": [ { "key": "same.request.within.fifteen.minutes", "message": "15 dakika boyunca aynı isteği tekrarlı olarak atamazsınız!", "errorCode": "" } ] }

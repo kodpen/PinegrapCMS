@@ -87,24 +87,31 @@ function erp_invoice_series($direction = 'sales')
  * the product (offer_discount_rate, a rate on the line total) and the
  * discount the operator typed (discount_rate, a rate on what the campaign
  * left). discount_amount is their sum, so every reader of the amount - the
- * document, the return, the export - sees one discount. The VAT is worked
+ * document, the return, the export - sees one discount. The taxes are worked
  * out on what is left after both. The document totals follow the contract
  * the order bridge writes: subtotal is the sum of the line totals before any
  * discount, discount_total the sum of the discounts, tax_total the sum of the
  * VAT, and grand_total = subtotal - discount_total + tax_total.
  *
+ * The taxes are taken per group of lines, not line by line (erp_rate_vat()):
+ * the VAT of the lines with one VAT rate and one withholding rate on their
+ * sum, spread back over them, so a line's VAT may be a kurus off its own
+ * rate x amount while the lines add up to the document's VAT. An e-document
+ * provider that works the VAT out from the rates comes to the same totals.
+ *
  * Where the store names a second tax (erp_tax2_name()), a line may carry it
- * too: its own rate on the same net as the first. A line's tax_total is the
- * sum of both and tax2_amount the second's part, so every reader of the
- * tax - the ledger, the totals, the export - sees the whole of it; the
- * document breaks it down. The document's tax2_total is the sum of the
- * second taxes.
+ * too: its own rate on the same net as the first, taken on the sum of the
+ * lines at that rate. A line's tax_total is the sum of both and tax2_amount
+ * the second's part, so every reader of the tax - the ledger, the totals,
+ * the export - sees the whole of it; the document breaks it down. The
+ * document's tax2_total is the sum of the second taxes.
  *
  * A line may carry VAT withholding (includes/erp/withholding.php): a code and
  * its share of the line's VAT - the list's share for a code it knows, the
- * given one otherwise. The withheld amount is the share of the line's VAT; the document's
- * withholding_total is their sum and comes off the grand total, because the
- * buyer pays that part to the tax office and owes the rest.
+ * given one otherwise. The document's withholding is each group's VAT times
+ * its share, rounded once for the document and spread over the withheld
+ * lines; withholding_total comes off the grand total, because the buyer pays
+ * that part to the tax office and owes the rest.
  *
  * A refused line says which field on which row is wrong ('field', in the
  * lines[n][name] shape the form posts), so the screen can mark it.
@@ -129,11 +136,10 @@ function erp_manual_lines_build($lines_in)
     }
 
     $lines = array();
+    // What erp_rate_vat() takes for each built line, under the same key.
+    $taxed = array();
     $subtotal = 0;
     $discount_total = 0;
-    $tax_total = 0;
-    $tax2_total = 0;
-    $withholding_total = 0;
     $row_no = 0;
     $tax2_on = erp_tax2_enabled();
 
@@ -210,11 +216,16 @@ function erp_manual_lines_build($lines_in)
         $offer_amount = ($offer_rate > 0) ? erp_apply_rate($line_total, $offer_rate) : 0;
         $typed_amount = ($discount_rate > 0) ? erp_apply_rate($line_total - $offer_amount, $discount_rate) : 0;
         $discount_amount = $offer_amount + $typed_amount;
-        $line_tax = erp_apply_rate($line_total - $discount_amount, $tax_rate);
-        $line_tax2 = ($tax2_rate > 0) ? erp_apply_rate($line_total - $discount_amount, $tax2_rate) : 0;
+
+        // The taxes come once every line is read: they are taken per group.
         // Withholding is a share of the VAT, the first tax; the second is
         // never withheld.
-        $line_withholding = ($withholding_rate > 0) ? erp_apply_rate($line_tax, $withholding_rate) : 0;
+        $taxed[] = array(
+            'net' => $line_total - $discount_amount,
+            'tax_rate' => $tax_rate,
+            'withholding_rate' => $withholding_rate,
+            'tax2_rate' => $tax2_rate,
+        );
 
         $built_line = array(
             'product_id' => max(0, $product_id),
@@ -228,12 +239,12 @@ function erp_manual_lines_build($lines_in)
             'discount_rate' => $discount_rate,
             'discount_amount' => $discount_amount,
             'tax_rate' => $tax_rate,
-            'tax_total' => $line_tax + $line_tax2,
+            'tax_total' => 0,
             'tax2_rate' => $tax2_rate,
-            'tax2_amount' => $line_tax2,
+            'tax2_amount' => 0,
             'withholding_code' => $withholding_code,
             'withholding_rate' => $withholding_rate,
-            'withholding_amount' => $line_withholding,
+            'withholding_amount' => 0,
             'line_total' => $line_total,
         );
 
@@ -249,10 +260,20 @@ function erp_manual_lines_build($lines_in)
 
         $subtotal += $line_total;
         $discount_total += $discount_amount;
-        $tax_total += $line_tax + $line_tax2;
-        $tax2_total += $line_tax2;
-        $withholding_total += $line_withholding;
     }
+
+    $taxes = erp_rate_vat($taxed);
+
+    foreach (array_keys($lines) as $index) {
+        $line_taxes = $taxes['lines'][$index];
+        $lines[$index]['tax_total'] = $line_taxes['vat'] + $line_taxes['tax2'];
+        $lines[$index]['tax2_amount'] = $line_taxes['tax2'];
+        $lines[$index]['withholding_amount'] = $line_taxes['withholding'];
+    }
+
+    $tax_total = $taxes['vat'] + $taxes['tax2'];
+    $tax2_total = $taxes['tax2'];
+    $withholding_total = $taxes['withholding'];
 
     return array(
         'lines' => $lines,

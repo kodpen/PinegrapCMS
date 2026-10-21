@@ -70,7 +70,6 @@
                         <input type="text" name="last_name" id="last_name" placeholder="Last Name*" autocomplete="family-name" spellcheck="false">
                         <input type="text" name="username" id="username" placeholder="Username*" autocomplete="username" spellcheck="false">
                         <input type="email" name="email" id="register_email_address" placeholder="Email*" autocomplete="email" spellcheck="false">
-                        <input type="email" name="email_verify" id="email_address_verify" placeholder="Confirm Email*" autocomplete="email" spellcheck="false">
                         <?php if ($strong_password_help): ?>
                         <?=$strong_password_help?>
                         <?php endif ?>

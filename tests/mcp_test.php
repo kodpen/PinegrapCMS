@@ -26,6 +26,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/dry_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/protocol.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 
@@ -155,4 +156,21 @@ function test_mcp_arguments_are_sorted_by_where_the_route_reads_them()
 	pg_assert_true($split['dry_run']);
 	pg_assert_false(pg_mcp_arguments(mcp_test_route(), array('dry_run' => false))['dry_run']);
 	pg_assert_same('/products/12', pg_mcp_route_path(mcp_test_route(), $split['path']));
+}
+
+function test_mcp_dry_run_reads_as_the_header_does()
+{
+	foreach (array(true, 1, '1', 'true', 'True', 'TRUE', 'yes', 'Yes', 'on', ' on ') as $value) {
+		pg_assert_same(true, pg_mcp_arguments(mcp_test_route(), array('dry_run' => $value))['dry_run'], var_export($value, true) . ' asks for a rehearsal');
+	}
+
+	foreach (array(false, 0, '0', '', 'false', 'False', 'no', 'off', null) as $value) {
+		pg_assert_same(false, pg_mcp_arguments(mcp_test_route(), array('dry_run' => $value))['dry_run'], var_export($value, true) . ' asks for the write');
+	}
+
+	pg_assert_same(false, pg_mcp_arguments(mcp_test_route(), array('id' => 12))['dry_run'], 'no dry_run is a write');
+
+	foreach (array('maybe', 2, 'y', array(true), array('dry_run' => true)) as $value) {
+		pg_assert_same(null, pg_mcp_arguments(mcp_test_route(), array('dry_run' => $value))['dry_run'], var_export($value, true) . ' is neither, so the call is refused');
+	}
 }

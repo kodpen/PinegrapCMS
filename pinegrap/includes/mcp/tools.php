@@ -181,13 +181,18 @@ function pg_mcp_tool_from_route($route) {
 
 // The arguments of a call, sorted into what the route reads from its path and
 // what it reads from the query and the body. Answers array('path' => name =>
-// value, 'input' => name => value, 'body_keys' => list, 'dry_run' => bool).
+// value, 'input' => name => value, 'body_keys' => list, 'dry_run' => true,
+// false, or null for a value that is neither).
 //
 // Values go on as they came: the route's own validation types and checks them,
 // exactly as it would a request. A path value is turned into text, which is
 // what a path is made of. An argument the route does not declare is passed on
 // as a body key, so the route refuses it by name rather than the call
 // succeeding without it.
+//
+// dry_run is read by the same rule as X-Dry-Run (api_dry_run_value()): the
+// schema says boolean, but a client that sends "yes" or "True" means a
+// rehearsal, and reading that as false would make the write it asked not to.
 function pg_mcp_arguments($route, $arguments) {
 
 	$split = array('path' => array(), 'input' => array(), 'body_keys' => array(), 'dry_run' => false);
@@ -212,7 +217,7 @@ function pg_mcp_arguments($route, $arguments) {
 
 		if (($name === 'dry_run') && !isset($where['dry_run'])) {
 
-			$split['dry_run'] = ($value === true) || ($value === 1) || ($value === '1') || ($value === 'true');
+			$split['dry_run'] = (is_scalar($value) || ($value === null)) ? api_dry_run_value($value) : null;
 
 			continue;
 
@@ -363,6 +368,12 @@ function pg_mcp_tool_call($id, $params, $modern) {
 	// Only routes the caller's scopes cover are listed, but a name can be
 	// sent without being listed.
 	api_require_scope($route['scope']);
+
+	if ($split['dry_run'] === null) {
+
+		api_fail(400, 'invalid_dry_run', lang('dry_run must be true or false.'), 'dry_run');
+
+	}
 
 	if ($split['dry_run'] && empty($route['dry_run'])) {
 
