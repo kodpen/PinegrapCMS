@@ -326,9 +326,19 @@ if (!$is_cancelled && ($unallocated > 0)) {
 }
 
 // Cancelling: a modal that asks why, so the reversal carries the reason.
+// A cheque's or note's movement is not cancelled here: the screen shows
+// why and leads to the cheque, whose steps change it.
 $output_cancel = '';
+$receipt_cheque = (!$is_cancelled && function_exists('erp_cheque_for_cash')) ? erp_cheque_for_cash($cash_id) : null;
 
-if (!$is_cancelled) {
+if ($receipt_cheque !== null) {
+    $output_cancel = '
+            <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 my-4">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                <span class="flex-grow-1">' . h(erp_cheque_receipt_refusal($receipt_cheque)) . '</span>
+                <a class="btn btn-sm btn-outline-primary" href="erp_cheque.php?id=' . (int) $receipt_cheque['id'] . '"><i class="bi bi-arrow-right me-1" aria-hidden="true"></i>' . lang('Open the cheque or note') . '</a>
+            </div>';
+} elseif (!$is_cancelled) {
     $output_cancel = '
             <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
                 <div class="container">

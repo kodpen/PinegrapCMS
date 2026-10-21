@@ -133,6 +133,15 @@
         return true;
     }
 
+    // Escape leaves the full window first; only the next one cancels the
+    // dialog (the editor stops an Escape it used before the modal hears it).
+    function _leaveFullscreen() {
+        var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
+        if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;
+        dlg.classList.remove('modal-fullscreen');
+        return true;
+    }
+
     window.openCodeEditor = function (opts) {
         opts = opts || {};
         if (typeof window.PgCodeEditor === 'undefined') {
@@ -172,7 +181,8 @@
                 labels: { syntaxError: _t('Syntax error') },
                 keys: [
                     { key: 'Mod-s', run: function () { _saveBtn.click(); return true; } },
-                    { key: 'F11', run: _toggleFullscreen }
+                    { key: 'F11', run: _toggleFullscreen },
+                    { key: 'Escape', run: _leaveFullscreen }
                 ]
             });
             setTimeout(function () { if (_editor && !opts.readonly) _editor.focus(); }, 50);

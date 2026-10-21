@@ -2118,13 +2118,21 @@ function pg_recycle_purge_if_due($user)
 
     $purged = 0;
 
-    foreach ($entries as $entry) {
-        $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $user);
+    // The purge is the software's own work, run on whoever's visit came first;
+    // the audit trail records its deletes as a job's, not as that person's.
+    $was_job = pg_audit_as_job(true);
 
-        if ($result['status'] == 'success') {
-            db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
-            $purged++;
+    try {
+        foreach ($entries as $entry) {
+            $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $user);
+
+            if ($result['status'] == 'success') {
+                db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
+                $purged++;
+            }
         }
+    } finally {
+        pg_audit_as_job($was_job);
     }
 
     if ($purged > 0) {
@@ -2745,7 +2753,9 @@ function pg_short_link_clean_name($name)
 
 // A free name, Windows style: the wanted one, then the wanted one with [1],
 // [2] and so on.  The namespace being checked is pages, files and short links
-// together, so a short link can never shadow a page.
+// together, so a short link can never shadow a page. A numbered name keeps to
+// the column's length (pg_short_link_numbered_name()): the end of a long name
+// gives way to the suffix.
 function pg_short_link_free_name($wanted)
 {
     $wanted = pg_short_link_clean_name($wanted);
@@ -2760,7 +2770,11 @@ function pg_short_link_free_name($wanted)
 
     for ($index = 1; $index < 500; $index++) {
 
-        $candidate = $wanted . '[' . $index . ']';
+        $candidate = pg_short_link_numbered_name($wanted, $index);
+
+        if (($candidate === '') || (pg_short_link_name_problem($candidate) !== '')) {
+            continue;
+        }
 
         if (check_name_availability(array('name' => $candidate)) == true) {
             return $candidate;

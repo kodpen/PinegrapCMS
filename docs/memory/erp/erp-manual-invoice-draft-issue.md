@@ -20,7 +20,7 @@ description: Manual ERP invoices: files and endpoints, the draft boundary (_D se
 - An issued invoice is cancelled as before by `erp_invoice_cancel()` with a counter entry.
 
 ## How is `includes/erp/invoice_manual.php` split?
-- `erp_manual_lines_build()` (pure; per line `discount_rate` → `discount_amount = erp_apply_rate()`, VAT from the remaining base; totals share the bridge contract `grand_total = subtotal − discount_total + tax_total`; cap `ERP_MANUAL_MAX_LINES` = 200 lines), `erp_manual_header_build()`, `erp_invoice_draft_save($data, $id)`, `erp_invoice_issue($id, $user)`, `erp_invoice_draft_delete($id)`.
+- `erp_manual_lines_build()` (pure; per line `discount_rate` → `discount_amount = erp_apply_rate()`; the taxes on what is left, per group of one VAT rate and one withholding rate, from `erp_rate_vat()` (#1004): a line's VAT may be a kurus off its own rate x amount, the lines add up to the document's; totals share the bridge contract `grand_total = subtotal − discount_total + tax_total`; cap `ERP_MANUAL_MAX_LINES` = 200 lines), `erp_manual_header_build()`, `erp_invoice_draft_save($data, $id)`, `erp_invoice_issue($id, $user)`, `erp_invoice_draft_delete($id)`.
 - `erp_invoice_create_manual($data)` keeps its signature and return array: now `draft_save + issue` in one transaction (nested counter); for single-call users such as the API.
 - A foreign-currency draft may save without a rate (`exchange_rate = 0`, empty source); at issue, if no rate, `erp_fx_rate_for(currency, issue_date)` is tried, else rejected. The written rate keeps source `feed` if equal to the stored rate, otherwise `manual`.
 

@@ -4,7 +4,7 @@ description: Offer rows of product_price_history (2026.11.0, PR #681): the hourl
 ---
 
 ## What is an offer row?
-- A `product_price_history` row of source `offer`: the price the open offers gave a visitor with no offer code, no account and an empty cart, as the storefront works it out (`get_discounted_product_prices(false)` in a run without `USER_ID` or `$_SESSION['ecommerce']`), rounded to whole minor units like the cart, never above `products.price` (`pg_price_history_offer_prices()`).
+- A `product_price_history` row of source `offer`: the price the open offers gave a visitor with no offer code, no account and an empty cart, as the storefront works it out (`get_discounted_product_prices(false)`, the guest view `pg_offer_guest_view()`), rounded to whole minor units like the cart, never above `products.price` (`pg_price_history_offer_prices()`).
 - In: order-scope offers without a code whose conditions such a visitor meets (no rule; `new customer` in its default `no_orders` mode, since a guest has no orders; a usage limit not reached shop-wide), product and group actions. Out: coded and key-code offers, recipient scope, rules and conditions that need a cart, ERP member prices: they reach some buyers only.
 - `source` names the writer, not a discount: when an offer ends the pass writes the stored price as an `offer` row. Read in order, the newest row at or before a moment is what such a visitor paid then.
 

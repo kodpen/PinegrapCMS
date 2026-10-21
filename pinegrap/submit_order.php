@@ -267,7 +267,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND products.gift_card = '0'") == 0
             ) {
                 db("DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
@@ -796,7 +796,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql() . "
         ORDER BY order_items.id ASC";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1393,7 +1393,7 @@ function submit_order($type) {
                 "SELECT id
                 FROM order_items
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                     AND (product_id = '" . $product['required_product'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1428,7 +1428,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
             AND (order_items.ship_to_id > 0)
             AND (order_items.price <= 0)";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1446,7 +1446,7 @@ function submit_order($type) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                 AND (ship_to_id = '" . $free_order_item['ship_to_id'] . "')
                 AND (price > 0)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -2486,7 +2486,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2675,7 +2675,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2969,7 +2969,7 @@ function submit_order($type) {
                         $Iyzipay_ship_zip = '';
                         $Iyzipay_ship_country = '';
 
-                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')";
+                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')" . pg_order_item_active_sql();
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
@@ -3399,7 +3399,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON products.id = order_items.product_id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND (products.shippable = '1')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
@@ -4460,7 +4460,11 @@ function submit_order($type) {
                 ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
+
+    // The placed order holds what was charged: lines saved for later come off
+    // it before the receipt and the e-mails below read it.
+    pg_order_drop_saved_lines((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
     // lock table, so no one can read table, so we can get the order number
     $query = "LOCK TABLES next_order_number WRITE";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -6262,15 +6266,24 @@ function submit_order($type) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
             $query = "UPDATE products SET inventory_quantity = (inventory_quantity - '" . $quantity . "') WHERE id = '" . $product_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            //if quantity is equal to product inventory quantity than add product to out of stock. so we can find product where out of stock page and welcome page.
-            if($quantity == $inventory_quantity){
-                $query = "UPDATE products SET 
-                            out_of_stock = '1', 
-                            out_of_stock_timestamp = UNIX_TIMESTAMP() 
-                            WHERE id = '" . $product_id . "'";
-                            
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // Mark the product out of stock from the stock left after this
+            // row, not from $inventory_quantity: that value was read before
+            // the loop, so the second row of the same product (another
+            // recipient) or a row above the stock never equals it. The column
+            // is unsigned and the session sql_mode is not strict, so a sale
+            // through the stock leaves 0. The out_of_stock guard makes the
+            // flag and the warning happen once per product.
+            $result = mysqli_query(db::$con,
+                "UPDATE products SET
+                    out_of_stock = '1',
+                    out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE
+                    (id = '" . $product_id . "')
+                    AND (inventory_quantity <= 0)
+                    AND (out_of_stock != '1')") or output_error('Query failed.');
+
+            if (mysqli_affected_rows(db::$con) > 0) {
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
@@ -6314,9 +6327,11 @@ function submit_order($type) {
                             AND (recurrence_number = '" . $recurrence_number . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
-                // else a remaining spots record was not found, so create new record using number of initial spots
+                // else a remaining spots record was not found, so create new
+                // record using number of initial spots less the spots this
+                // row reserves (the UPDATE branch above takes the quantity too)
                 } else {
-                    $number_of_remaining_spots = $number_of_initial_spots - 1;
+                    $number_of_remaining_spots = $number_of_initial_spots - $quantity;
                     
                     $query =
                         "INSERT INTO remaining_reservation_spots (

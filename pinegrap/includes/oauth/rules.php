@@ -230,6 +230,23 @@ function pg_oauth_redirect_destination($uri) {
 
 }
 
+// Whether an authorize request's state can be carried through the consent
+// screen and handed back. It is returned exactly as it came (RFC 6749 4.1.2):
+// a client signs or encrypts it and compares it whole, so a state cut to fit
+// fails its check as surely as a forged one. Signed states run to a kilobyte
+// or two; a longer one is refused rather than shortened.
+function pg_oauth_state_max() {
+
+	return 4096;
+
+}
+
+function pg_oauth_state_is_acceptable($state) {
+
+	return is_string($state) && (strlen($state) <= pg_oauth_state_max());
+
+}
+
 // A code_challenge for S256 is the base64url form of a SHA-256 digest: 43
 // characters, nothing else.
 function pg_oauth_challenge_is_valid($challenge) {

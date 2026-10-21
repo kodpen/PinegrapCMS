@@ -110,8 +110,13 @@ function erp_order_lines($order, $items)
 
         // The rate the line was charged at. The amount itself is carried over,
         // never recomputed; the rate is what a discounted line's tax is taken
-        // again at, and what the document prints.
-        $rate = erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
+        // again at, and what the document prints. The checkout keeps it on the
+        // line (order_items.tax_rate, 11.0.59); a line written before that, or
+        // by a path that does not set it, has it worked back out.
+        $stored_rate = $item['tax_rate'] ?? null;
+        $rate = (($stored_rate !== null) && ($stored_rate !== ''))
+            ? (float) $stored_rate
+            : erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
 
         $lines[] = array(
             'product_id' => (int) $item['product_id'],
@@ -869,15 +874,27 @@ function erp_invoice_from_order_locked($order_id, $options = array())
  * whose invoice was cancelled is left to the operator: whatever made them
  * cancel it, a second invoice is theirs to issue.
  *
- * @param string $setting         ERP_AUTO_INVOICE_ON
- * @param string $trigger         What just happened: 'order_paid' | 'order_shipped'
- * @param array  $order           orders row: status, type, paid_at, erp_on_account, total, erp_invoice_id
- * @param string $invoice_status  Status of the order's last sales invoice, '' when it has none
+ * The store can narrow it further (erp_auto_invoice_filters()): to orders
+ * from an amount up - the whole sale the invoice states, a gift card
+ * included - and to buyers with a tax number. Any number counts (a VKN, a
+ * TCKN, a VAT id abroad) except the final consumer's 11111111111, which an
+ * e-Archive invoice carries for a buyer who gave none
+ * (erp_edoc_final_consumer_tckn()).
+ *
+ * @param string $setting           ERP_AUTO_INVOICE_ON
+ * @param string $trigger           What just happened: 'order_paid' | 'order_shipped'
+ * @param array  $order             orders row: status, type, paid_at, erp_on_account, total,
+ *                                  gift_card_discount, erp_invoice_id
+ * @param string $invoice_status    Status of the order's last sales invoice, '' when it has none
+ * @param array  $filters           tax_number_only (bool), min_total (minor units, 0 for none)
+ * @param string $buyer_tax_number  The number the invoice would carry
+ *                                  (erp_auto_invoice_buyer_tax_number()); read only when
+ *                                  tax_number_only is on
  * @return string  '' to invoice it now; otherwise the reason it is left alone:
  *                 off | trigger | status | counter_sale | marketplace |
- *                 invoiced | cancelled_before | unpaid
+ *                 invoiced | cancelled_before | below_minimum | no_tax_number | unpaid
  */
-function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status)
+function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, $filters = array(), $buyer_tax_number = '')
 {
     $setting = (string) $setting;
 
@@ -913,11 +930,74 @@ function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status)
         return 'cancelled_before';
     }
 
+    // What the store never invoices on its own comes before the payment,
+    // which only says "not yet".
+    $min_total = (int) ($filters['min_total'] ?? 0);
+    $sale = (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0);
+
+    if (($min_total > 0) && ($sale < $min_total)) {
+        return 'below_minimum';
+    }
+
+    if (!empty($filters['tax_number_only'])) {
+        $number = preg_replace('/\s+/u', '', (string) $buyer_tax_number);
+
+        if (($number === '') || ($number === '11111111111')) {
+            return 'no_tax_number';
+        }
+    }
+
     if (($setting === 'order_paid')
         && ((int) ($order['paid_at'] ?? 0) <= 0)
         && ((int) ($order['erp_on_account'] ?? 0) !== 1)
         && ((int) ($order['total'] ?? 0) > 0)) {
         return 'unpaid';
+    }
+
+    return '';
+}
+
+/**
+ * The store's two filters on the invoice it issues on its own (ERP settings
+ * card, 2026.11.0, 11.0.58). Off and 0 before the step has run.
+ *
+ * @return array  tax_number_only (bool), min_total (minor units of the base currency)
+ */
+function erp_auto_invoice_filters()
+{
+    return array(
+        'tax_number_only' => defined('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY') && ((int) ERP_AUTO_INVOICE_TAX_NUMBER_ONLY === 1),
+        'min_total' => defined('ERP_AUTO_INVOICE_MIN_TOTAL') ? max(0, (int) ERP_AUTO_INVOICE_MIN_TOTAL) : 0,
+    );
+}
+
+/**
+ * The tax number an order's invoice would carry.
+ *
+ * The order keeps none of its own: the checkout writes the number to the
+ * contact, and the invoice goes to the account the order names, or to the
+ * contact's account (erp_invoice_from_order()), which a first invoice opens
+ * from the contact with its number. So the account answers when there is
+ * one, the contact when there is not yet.
+ *
+ * @param array $order  orders row: erp_account_id, contact_id
+ * @return string  '' when neither has one
+ */
+function erp_auto_invoice_buyer_tax_number($order)
+{
+    $account_id = (int) ($order['erp_account_id'] ?? 0);
+    $contact_id = (int) ($order['contact_id'] ?? 0);
+
+    if (($account_id <= 0) && ($contact_id > 0)) {
+        $account_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
+    }
+
+    if ($account_id > 0) {
+        return trim((string) db_value("SELECT tax_number FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"));
+    }
+
+    if ($contact_id > 0) {
+        return trim((string) db_value("SELECT tax_number FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1"));
     }
 
     return '';
@@ -959,12 +1039,15 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     }
 
     $last = erp_order_flow_invoice_row($order);
+    $filters = erp_auto_invoice_filters();
 
     $answer['skipped'] = erp_auto_invoice_decision(
         defined('ERP_AUTO_INVOICE_ON') ? ERP_AUTO_INVOICE_ON : 'off',
         $trigger,
         $order,
-        is_array($last) ? (string) $last['status'] : ''
+        is_array($last) ? (string) $last['status'] : '',
+        $filters,
+        $filters['tax_number_only'] ? erp_auto_invoice_buyer_tax_number($order) : ''
     );
 
     if ($answer['skipped'] !== '') {
@@ -983,18 +1066,15 @@ function erp_auto_invoice_for_order($order_id, $trigger)
             $answer['error'] = lang('The order screen does not offer its invoice.');
         }
 
-        erp_auto_invoice_refused($order, $answer['error']);
-
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $result = erp_order_flow_run($order_id, 'invoice', 0);
 
     if (empty($result['success'])) {
         $answer['error'] = (string) ($result['error'] ?? '');
-        erp_auto_invoice_refused($order, $answer['error']);
 
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $invoice = db_item("SELECT id, full_number FROM erp_invoices WHERE id = '" . erp_invoice_for_order($order_id) . "' LIMIT 1");
@@ -1008,6 +1088,33 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     log_activity(($trigger === 'order_shipped')
         ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
         : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+
+    return $answer;
+}
+
+/**
+ * The answer of an automatic invoice that did not go through, said as a
+ * refusal (erp_auto_invoice_refused()) unless the order has its invoice by
+ * now. Two requests that invoice one order at once (two shipments recorded
+ * together, the order screen's button beside the payment) both pass the
+ * decision; the one that waited on the order's lock then finds the step
+ * gone or the invoice already written. That is the order invoiced, not
+ * refused, and it is answered as skipped 'invoiced' without a word.
+ *
+ * @param array $answer erp_auto_invoice_for_order()'s answer, error set
+ * @param array $order  the orders row
+ * @return array the answer
+ */
+function erp_auto_invoice_refuse($answer, $order)
+{
+    if (erp_invoice_for_order((int) ($order['id'] ?? 0)) > 0) {
+        $answer['skipped'] = 'invoiced';
+        $answer['error'] = '';
+
+        return $answer;
+    }
+
+    erp_auto_invoice_refused($order, $answer['error']);
 
     return $answer;
 }

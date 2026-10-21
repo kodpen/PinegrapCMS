@@ -2517,12 +2517,17 @@ if (!$_POST) {
         // follows from whether the buyer is registered with the tax authority, so
         // it is not the operator's to choose - and choosing wrong produced a
         // document that was not valid.
+        // An order that already has its sales invoice in Paraşüt is not offered
+        // the action again: parasut_create_invoice() refuses a second one.
+        $output_parasut_invoice_action = ($parasut_invoice_id !== '')
+            ? ' disabled title="' . h(lang('This order already has a sales invoice in Paraşüt.')) . '"'
+            : ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
+                title="Paraşüt"';
+
         $output_parasut_buttons = '
         <div class="btn-group btn-group-sm flex-wrap">
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_id ? 'link-success' : 'link-secondary') . '"
-                onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
-                title="Paraşüt">
+                class="btn btn-link py-0 mb-2 ' . (($parasut_invoice_id !== '') ? 'link-success' : 'link-secondary') . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>
             ' . $output_parasut_shipment_button . '

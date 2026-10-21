@@ -427,6 +427,20 @@ $query = $short_link_select . "
     WHERE short_links.name = '" . router_escape($short_link_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
 
+// A name is stored the way a pasted old address is written into one
+// (pg_short_link_path_name(): no / at either end, one / between parts, _ for
+// a space), so the old address itself (/blog/post/, /Old%20Page, //post) is
+// looked up in that form too when it is no name as it came.
+if (mysqli_num_rows($result) == 0) {
+    router_short_link_module();
+    $short_link_stored_name = pg_short_link_path_name($short_link_name);
+
+    if (($short_link_stored_name !== '') && ($short_link_stored_name !== $short_link_name)) {
+        $result = mysqli_query(db::$con, $short_link_select . "
+            WHERE short_links.name = '" . router_escape($short_link_stored_name) . "'") or router_output_error('Query failed.');
+    }
+}
+
 // Before that step there is no token_hash to look in and the query fails:
 // the name was all there was.
 if ((mysqli_num_rows($result) == 0) && (preg_match('/^[A-Za-z0-9_-]{43}$/', $item_name) == 1)) {
@@ -625,11 +639,7 @@ function router_utf8_name($name)
  */
 function router_short_link_redirect($short_link)
 {
-    if (!defined('PG_FUNCTIONS_DIR')) {
-        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
-    }
-
-    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
+    router_short_link_module();
 
     $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
     $config = mysqli_fetch_assoc($result);
@@ -660,6 +670,22 @@ function router_short_link_redirect($short_link)
 
     header('Location: ' . $location, true, $code);
     exit();
+}
+
+/**
+ * Loads includes/fn/short_link_redirects.php on its own: its functions run no
+ * query and need nothing of functions.php, which loads the same file again
+ * later without effect (require_once).
+ *
+ * @return void
+ */
+function router_short_link_module()
+{
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+    }
+
+    require_once(dirname(__FILE__) . '/includes/fn/short_link_redirects.php');
 }
 
 /**
@@ -695,8 +721,10 @@ function router_translation_prefixes()
         $parts = explode('=', $pair, 2);
         $prefix = trim($parts[0]);
 
+        // The address is matched in lower case; a prefix an earlier save
+        // wrote with capitals (pt-BR) is served under its lower-case form.
         if ($prefix !== '') {
-            $map[$prefix] = isset($parts[1]) ? trim($parts[1]) : $prefix;
+            $map[strtolower($prefix)] = isset($parts[1]) ? trim($parts[1]) : $prefix;
         }
     }
 
@@ -881,7 +909,16 @@ function router_get_request_url()
 }
 
 function router_output_error($error_message) {
-    
+
+    // Every page printed here is a site that cannot serve the request (no
+    // configuration, no database, no config table, a failed query), so it
+    // goes out as a 500: an uptime monitor or a load balancer reading the
+    // status code sees the outage, and a crawler does not index the message.
+    // Transient overload never comes here; the database guard answers 503.
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+
     $output_error_message = $error_message;
 
     $mysql_error = '';
@@ -1020,13 +1057,16 @@ function router_output_error($error_message) {
     $output_other_help_buttons = '';
 
     
+    // The config table is looked for only on a connection that still
+    // answers: a connection lost mid-request (a server restart, wait_timeout)
+    // makes the query fail, and mysqli_num_rows(false) is a TypeError on
+    // PHP 8 that would turn this page into a blank 500.
+    $config_tables = (db::$con && (defined('DB_HOST') == true)) ? @mysqli_query(db::$con, "SHOW TABLES LIKE 'config'") : false;
+
     if (
-        defined('DB_HOST') == false 
-        || !db::$con 
-        || (
-            db::$con 
-            && !mysqli_num_rows(mysqli_query(db::$con,"SHOW TABLES LIKE 'config'")) 
-            ) 
+        defined('DB_HOST') == false
+        || !db::$con
+        || (($config_tables !== false) && !mysqli_num_rows($config_tables))
         ) {
         $output_quick_fix_buttons .='<div class="col-12"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">install_desktop</span>' . lang('Install or Reinstall Software') . '</a></div>';
         $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="https://www.kodpen.com/iletisim" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">support_agent</span>' . lang('Get Support') . '</a></div>';
@@ -1043,23 +1083,17 @@ function router_output_error($error_message) {
         $output_other_help_buttons .='<div class="col-12"><a target="_blank" rel="noopener" href="' . h($output_documents_url) . '" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">article</span>' . lang('Documents') . '</a></div>';
     }
 
-    function get_header($output_page_title) {
-    	return output_header_secure(array(
-    		'title' => $output_page_title,
-    		'icon' => 'setting'
-    	));
-    }
+    $output_header = output_header_secure(array(
+        'title' => $output_page_title,
+        'icon' => 'setting'
+    ));
 
-    function get_footer() {
-       
-        return '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
+    $output_footer = '<div id="footer" class="footer p-3  d-flex flex-wrap justify-content-center justify-content-md-between text-light d-print-none">
                     <h6 class="mx-auto">' . lang('Pinegrap Content Management System') . '</h6>
                     <h6 class="version_and_copyright mx-auto">' . EDITION . ' - <span class="material-icons" >copyright</span>' . date('Y', time()) . '</h6>
                 </div>
             </body>
         </html>';
-
-    }
 
     if($output_other_help_buttons != ''){
         $output_other_help_buttons = '<p class="mt-3">' . lang('Other help links') . ':</p>' . $output_other_help_buttons;
@@ -1068,8 +1102,8 @@ function router_output_error($error_message) {
 
 
 
-    echo 
-    get_header($output_page_title) . '
+    echo
+    $output_header . '
     <meta name="robots" content="noindex">
     <style>
     .alert.alert-danger{
@@ -1135,7 +1169,7 @@ function router_output_error($error_message) {
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.backgroundBlendMode = "darken";
     </script>
-    ' . get_footer();
+    ' . $output_footer;
 
     exit();
 }

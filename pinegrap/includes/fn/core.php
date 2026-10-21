@@ -152,8 +152,10 @@ function db_connect()
             pg_db_guard_unavailable();
         }
 
+        // A 500, so an uptime monitor that reads the status code (health.php
+        // included) sees the outage; the page still tells the operator why.
         $err = $connect_error;
-        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''));
+        output_error(lang('Sorry, this website could not connect to the database. The server administrator should check the status of the database.  If there is not a problem with the database, then the server administrator should verify that the database information in the config.php file in the software directory is correct.') . ($err ? ' (' . h($err) . ')' : ''), 500);
     }
 
     // Pin the session sql_mode instead of inheriting the server default, which differs
@@ -262,7 +264,10 @@ function pg_db_run($query)
     $counters['ms'] += (microtime(true) - $started) * 1000;
 
     if ($result === false) {
-        // Provide mysqli error to output_error for debugging (output_error may suppress details based on DEBUG).
+        // The database's own message names tables, columns and a piece of the
+        // statement. It goes to the server log; on the page output_error()
+        // shows it only when verbose database errors are on (DEBUG) or during
+        // an install or update, reading it from the connection itself.
         $err = mysqli_error(db::$con);
         // While the upgrade runner is active (install/index.php, includes/migrations/runner.php)
         // a failed schema statement can be waved through as "already applied", and anything
@@ -272,7 +277,9 @@ function pg_db_run($query)
         if ((function_exists('install_query_failed')) && (install_query_failed($query, mysqli_errno(db::$con), $err))) {
             return null;
         }
-        output_error(lang('Query failed.') . ' ' . h($err));
+        error_log('Pinegrap: query failed: ' . $err);
+
+        output_error(lang('Query failed.'));
     }
 
     return $result;
