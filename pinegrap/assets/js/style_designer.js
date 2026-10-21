@@ -17443,6 +17443,314 @@ const StyleDesigner = (function () {
                     // ── News: bands and widgets ──
                     // Thin bands and small widgets of a news site: ticker, rotating
                     // headlines, trending topics, weather and market strips.
+                    // A full-width band: the outer box carries the colour, the
+                    // container inside lays its pieces out in one line.
+                    var _nbBand = function (cls, name, flexCls, kids) {
+                        return _bkDiv(cls, name, [createNode('container', { fluid: false, cssClass: flexCls }, kids)]);
+                    };
+                    // A <time> whose text the operator edits; datetime keeps the machine-readable value.
+                    var _nbTime = function (datetime, text, cls, name) {
+                        return createNode('semantic', { tag: 'time', cssClass: cls, text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+                    };
+                    // A column that takes its width from the row's row-cols-* classes.
+                    var _nbCol = function (name, kids, cls) {
+                        return createNode('col', { xs: 'col', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+                    };
+                    var _nbRegion = function (label) {
+                        return [
+                            { name: 'role',       value: 'region' },
+                            { name: 'aria-label', value: label },
+                            { name: 'tabindex',   value: '0' }
+                        ];
+                    };
+
+                    // News: Ticker — a Breaking badge and five headlines sliding past, paused by hover, focus or the pause button
+                    if (ctype === 'news-ticker') {
+                        var _nbTkPause = _bkUid('ticker_pause');
+                        var _nbTkHeads = [
+                            _sdT('London opens three new cycle lanes along the river'),
+                            _sdT('Istanbul adds late-night ferry crossings for the weekend'),
+                            _sdT('Berlin tech fair welcomes a record 80,000 visitors'),
+                            _sdT('Tokyo marathon places sell out in under an hour'),
+                            _sdT('New York libraries extend opening hours through December')
+                        ];
+                        // The second group repeats the first so the loop is
+                        // seamless; it is hidden from screen readers and its
+                        // links are out of the tab order.
+                        var _nbTkGroup = function (copy) {
+                            var kids = [];
+                            _nbTkHeads.forEach(function (t) {
+                                var a = _bkLink(t, '#', 'small fw-semibold text-nowrap text-reset text-decoration-none', _sdT('Headline Link'));
+                                if (copy) a.props._attrs = [{ name: 'tabindex', value: '-1' }];
+                                kids.push(a);
+                                kids.push(_bkIcon('bi-dot', 'text-body-secondary'));
+                            });
+                            return _bkDiv('d-flex align-items-center gap-4 pe-4' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Headlines Copy') : _sdT('Headlines'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _nbBand('pg-marquee bg-body-tertiary border-bottom', _sdT('News (Ticker)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-danger', _sdT('Breaking Badge'), [
+                                _bkIcon('bi-lightning-charge-fill'),
+                                _bkH('span', _sdT('Breaking'))
+                            ]),
+                            _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Ticker Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Ticker Track'), [_nbTkGroup(false), _nbTkGroup(true)])
+                            ], _nbRegion(_sdT('Latest headlines'))),
+                            _bkTag('input', 'btn-check pg-marquee-pause pg-marquee-toggle', _sdT('Pause Checkbox'), [], [
+                                { name: 'type',         value: 'checkbox' },
+                                { name: 'id',           value: _nbTkPause },
+                                { name: 'autocomplete', value: 'off' }
+                            ]),
+                            _bkTag('label', 'btn btn-sm btn-outline-secondary flex-shrink-0 pg-marquee-toggle', _sdT('Pause Button'), [
+                                _bkIcon('bi-pause-fill'),
+                                _bkH('span', _sdT('Pause the ticker'), 'visually-hidden')
+                            ], [{ name: 'for', value: _nbTkPause }])
+                        ]);
+                    }
+
+                    // News: Headline Rotator — a Latest news badge, four headlines that fade in turn and small previous/next buttons
+                    if (ctype === 'news-ticker-rotator') {
+                        var _nbRtId = _bkUid('headlines');
+                        var _nbRtSlide = function (n, active, title, datetime, clock) {
+                            return _bkDiv('carousel-item' + (active ? ' active' : ''), _sdT('Carousel Item {var}', n), [
+                                _bkDiv('d-flex flex-column flex-sm-row align-items-sm-baseline gap-1 gap-sm-3', _sdT('Headline'), [
+                                    _bkLink(title, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link')),
+                                    _nbTime(datetime, clock, 'small text-nowrap text-body-secondary', _sdT('Publish Time'))
+                                ])
+                            ]);
+                        };
+                        var _nbRtControl = function (dir, icon, label) {
+                            return _bkTag('button', 'btn btn-sm btn-outline-secondary', dir === 'prev' ? _sdT('Previous control') : _sdT('Next control'), [_bkIcon(icon)], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'data-bs-target', value: '#' + _nbRtId },
+                                { name: 'data-bs-slide',  value: dir },
+                                { name: 'aria-label',     value: label }
+                            ]);
+                        };
+                        // Phones: badge and buttons on the first line, the headline below
+                        // (order-last); from 576 px all three share one line.
+                        return _nbBand('bg-body border-bottom', _sdT('News (Headline Rotator)'), 'd-flex flex-wrap flex-sm-nowrap align-items-center gap-2 gap-sm-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-primary', _sdT('Latest Badge'), [
+                                _bkIcon('bi-clock-history'),
+                                _bkH('span', _sdT('Latest news'))
+                            ]),
+                            _bkDiv('carousel slide carousel-fade flex-grow-1 order-last order-sm-0', _sdT('Headline Carousel'), [
+                                _bkDiv('carousel-inner', _sdT('Carousel Inner'), [
+                                    _nbRtSlide(1, true,  _sdT('Winter markets open in Berlin with 200 stalls'),                 '2026-11-27T09:40', '09:40'),
+                                    _nbRtSlide(2, false, _sdT('Istanbul\'s new coastal tram line opens next month'),          '2026-11-27T10:15', '10:15'),
+                                    _nbRtSlide(3, false, _sdT('Vertex opens a London office with 50 new jobs'),                '2026-11-27T11:05', '11:05'),
+                                    _nbRtSlide(4, false, _sdT('Tokyo robotics show draws families for a hands-on weekend'),    '2026-11-27T11:30', '11:30')
+                                ])
+                            ], [
+                                { name: 'id',               value: _nbRtId },
+                                { name: 'data-bs-ride',     value: 'carousel' },
+                                { name: 'data-bs-interval', value: '5000' },
+                                { name: 'role',             value: 'region' },
+                                { name: 'aria-label',       value: _sdT('Latest headlines') }
+                            ]),
+                            _bkDiv('d-flex gap-1 flex-shrink-0 ms-auto', _sdT('Carousel Controls'), [
+                                _nbRtControl('prev', 'bi-chevron-left',  _sdT('Previous headline')),
+                                _nbRtControl('next', 'bi-chevron-right', _sdT('Next headline'))
+                            ])
+                        ]);
+                    }
+
+                    // News: Trending Topics — a Trending label and topic pills that scroll sideways when they do not fit
+                    if (ctype === 'news-trending') {
+                        var _nbTrTopic = function (text) {
+                            return _bkLink(text, '#', 'btn btn-sm btn-outline-secondary rounded-pill text-nowrap', _sdT('Topic Link'));
+                        };
+                        return _nbBand('bg-body border-bottom', _sdT('News (Trending Topics)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 small fw-bold text-primary', _sdT('Trending Label'), [
+                                _bkIcon('bi-hash'),
+                                _bkH('span', _sdT('Trending'))
+                            ]),
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1', _sdT('Topics'), [
+                                _nbTrTopic(_sdT('Autumn Festival')),
+                                _nbTrTopic(_sdT('City Marathon')),
+                                _nbTrTopic(_sdT('Tech Week')),
+                                _nbTrTopic(_sdT('Electric Buses')),
+                                _nbTrTopic(_sdT('Film Nights')),
+                                _nbTrTopic(_sdT('Startup Awards')),
+                                _nbTrTopic(_sdT('Winter Markets')),
+                                _nbTrTopic(_sdT('Book Fair'))
+                            ], _nbRegion(_sdT('Trending topics')))
+                        ]);
+                    }
+
+                    // News: Weather Card — one city: date, big temperature, condition, high/low, humidity, wind, rain and four hourly slots
+                    if (ctype === 'news-weather-card') {
+                        var _nbWcDetail = function (n, icon, value, label) {
+                            return _bkDiv('col', _sdT('Detail {var}', n), [
+                                _bkIcon(icon, 'd-block fs-5 mb-1 text-primary'),
+                                _bkH('span', value, 'd-block fw-semibold'),
+                                _bkH('span', label, 'd-block small text-body-secondary')
+                            ]);
+                        };
+                        // The icon shows the sky; the hidden text says it for screen readers.
+                        var _nbWcHour = function (n, datetime, clock, icon, sky, temp) {
+                            return _bkDiv('col', _sdT('Hour {var}', n), [
+                                _bkDiv('h-100 py-2 rounded-3 bg-body-tertiary', _sdT('Hour Tile'), [
+                                    _nbTime(datetime, clock, 'd-block small text-body-secondary', _sdT('Hour')),
+                                    _bkIcon(icon, 'd-block fs-5 my-1 text-primary'),
+                                    _bkH('span', sky, 'visually-hidden'),
+                                    _bkH('span', temp, 'd-block fw-semibold')
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weather Card)'), [
+                            _bkRow(_sdT('Weather Row'), [
+                                _bkCol(_sdT('Weather Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm', _sdT('Weather Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Weather Body'), [
+                                            _bkDiv('d-flex align-items-start justify-content-between gap-3 mb-3', _sdT('Card Head'), [
+                                                _bkDiv('', _sdT('Weather Place'), [
+                                                    _bkH('h2', _sdT('London'), 'h5 fw-bold mb-1'),
+                                                    _nbTime('2026-10-21T09:00', _sdT('Wednesday, 21 October · 09:00'), 'small text-body-secondary', _sdT('Date'))
+                                                ]),
+                                                _bkIcon('bi-cloud-sun', 'fs-1 lh-1 text-primary')
+                                            ]),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-2', _sdT('Temperature'), [
+                                                _bkH('span', '14°', 'display-3 fw-bold lh-1'),
+                                                _bkDiv('', _sdT('Weather Summary'), [
+                                                    _bkP(_sdT('Partly cloudy'), 'fw-semibold mb-0'),
+                                                    _bkP(_sdT('Feels like 12°'), 'small text-body-secondary mb-0')
+                                                ])
+                                            ]),
+                                            _bkP(_sdT('High 16° · Low 9°'), 'small text-body-secondary mb-4'),
+                                            _bkDiv('row row-cols-3 g-2 text-center', _sdT('Weather Details'), [
+                                                _nbWcDetail(1, 'bi-droplet',  _sdT('72%'),     _sdT('Humidity')),
+                                                _nbWcDetail(2, 'bi-wind',     _sdT('14 km/h'), _sdT('Wind')),
+                                                _nbWcDetail(3, 'bi-umbrella', _sdT('20%'),     _sdT('Chance of rain'))
+                                            ]),
+                                            _bkH('h3', _sdT('Next hours'), 'h6 fw-semibold mt-4 mb-2'),
+                                            _bkDiv('row row-cols-4 g-2 text-center', _sdT('Hourly Forecast'), [
+                                                _nbWcHour(1, '2026-10-21T10:00', '10:00', 'bi-cloud-sun',     _sdT('Partly cloudy'), '15°'),
+                                                _nbWcHour(2, '2026-10-21T12:00', '12:00', 'bi-sun',           _sdT('Sunny'),         '16°'),
+                                                _nbWcHour(3, '2026-10-21T14:00', '14:00', 'bi-cloud',         _sdT('Cloudy'),        '16°'),
+                                                _nbWcHour(4, '2026-10-21T16:00', '16:00', 'bi-cloud-drizzle', _sdT('Light rain'),    '13°')
+                                            ])
+                                        ])
+                                    ])
+                                ], '4', '6')
+                            ], 'justify-content-center')
+                        ]);
+                    }
+
+                    // News: Weather Strip — a thin header band: five cities with sky and temperature, the date and a forecast link
+                    if (ctype === 'news-weather-strip') {
+                        var _nbWsCity = function (n, icon, city, sky, temp) {
+                            return _bkDiv('d-flex align-items-center gap-1 text-nowrap', _sdT('City {var}', n), [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', city),
+                                _bkH('span', sky, 'visually-hidden'),
+                                _bkH('span', temp, 'fw-semibold')
+                            ]);
+                        };
+                        return _nbBand('small bg-body-tertiary border-bottom', _sdT('News (Weather Strip)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 fw-semibold', _sdT('Weather Label'), [
+                                _bkIcon('bi-thermometer-half', 'text-primary'),
+                                _bkH('span', _sdT('Weather'))
+                            ]),
+                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1', _sdT('Cities'), [
+                                _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
+                                _nbWsCity(2, 'bi-sun',           _sdT('New York City'), _sdT('Sunny'),         '15°'),
+                                _nbWsCity(3, 'bi-cloud-sun',     _sdT('Istanbul'),      _sdT('Partly cloudy'), '18°'),
+                                _nbWsCity(4, 'bi-cloud',         _sdT('Berlin'),        _sdT('Cloudy'),        '9°'),
+                                _nbWsCity(5, 'bi-sun',           _sdT('Tokyo'),         _sdT('Sunny'),         '20°')
+                            ], _nbRegion(_sdT('Weather in five cities'))),
+                            _nbTime('2026-10-21', _sdT('Wednesday, 21 October 2026'), 'd-none d-xl-inline flex-shrink-0 text-nowrap text-body-secondary', _sdT('Date')),
+                            _bkLink(_sdT('Full forecast'), '#', 'flex-shrink-0 fw-semibold text-nowrap link-primary text-decoration-none', _sdT('Forecast Link'))
+                        ]);
+                    }
+
+                    // News: Weekly Forecast — today in a primary card beside a seven-day list with sky, low–high and a range bar
+                    if (ctype === 'news-weather-forecast') {
+                        // The bar only draws the day's high against the week; it
+                        // repeats the numbers beside it, so it is hidden from screen readers.
+                        var _nbWfDay = function (n, datetime, day, icon, sky, range, width) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Day {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 fs-3 text-primary'),
+                                _bkDiv('flex-grow-1', _sdT('Day Copy'), [
+                                    _nbTime(datetime, day, 'd-block fw-semibold', _sdT('Date')),
+                                    _bkH('span', sky, 'd-block small text-body-secondary'),
+                                    _bkDiv('progress pg-progress-8 mt-2', _sdT('Range Bar'), [
+                                        _bkDiv('progress-bar ' + width, _sdT('Range Fill'))
+                                    ], [{ name: 'aria-hidden', value: 'true' }])
+                                ]),
+                                _bkH('span', range, 'flex-shrink-0 fw-semibold text-nowrap')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weekly Forecast)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-2 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Istanbul This Week'), 'fw-bold mb-0'),
+                                _bkP(_sdT('The forecast is updated every morning at 06:00.'), 'small text-body-secondary mb-0')
+                            ]),
+                            _bkRow(_sdT('Forecast Row'), [
+                                _bkCol(_sdT('Today Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm text-bg-primary', _sdT('Today Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Today Body'), [
+                                            _bkH('span', _sdT('Today'), 'd-block small fw-semibold text-uppercase mb-1'),
+                                            _nbTime('2026-10-21', _sdT('Wednesday, 21 October'), 'd-block mb-4', _sdT('Date')),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-3', _sdT('Temperature'), [
+                                                _bkIcon('bi-sun', 'fs-1 lh-1'),
+                                                _bkH('span', '18°', 'display-3 fw-bold lh-1')
+                                            ]),
+                                            _bkP(_sdT('Sunny spells'), 'fs-5 fw-semibold mb-1'),
+                                            _bkP(_sdT('High 19° · Low 11°'), 'mb-3'),
+                                            _bkP(_sdT('Humidity 64% · Wind 12 km/h'), 'small mb-0')
+                                        ])
+                                    ])
+                                ], '4'),
+                                _bkCol(_sdT('Week Column'), [
+                                    _bkTag('ul', 'list-group shadow-sm', _sdT('Week List'), [
+                                        _nbWfDay(1, '2026-10-22', _sdT('Thursday'),  'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 19°', 'w-75'),
+                                        _nbWfDay(2, '2026-10-23', _sdT('Friday'),    'bi-cloud-drizzle', _sdT('Light rain'),    '11° – 16°', 'w-50'),
+                                        _nbWfDay(3, '2026-10-24', _sdT('Saturday'),  'bi-cloud-rain',    _sdT('Showers'),       '10° – 14°', 'w-25'),
+                                        _nbWfDay(4, '2026-10-25', _sdT('Sunday'),    'bi-cloud',         _sdT('Cloudy'),        '10° – 15°', 'w-50'),
+                                        _nbWfDay(5, '2026-10-26', _sdT('Monday'),    'bi-sun',           _sdT('Sunny'),         '12° – 20°', 'w-75'),
+                                        _nbWfDay(6, '2026-10-27', _sdT('Tuesday'),   'bi-sun',           _sdT('Sunny'),         '13° – 21°', 'w-100'),
+                                        _nbWfDay(7, '2026-10-28', _sdT('Wednesday'), 'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 18°', 'w-75')
+                                    ])
+                                ], '8')
+                            ])
+                        ]);
+                    }
+
+                    // News: Markets Strip — six market tiles; each change has an arrow, a sign and a percent besides its colour
+                    if (ctype === 'news-markets') {
+                        var _nbMkTile = function (n, name, value, change, up) {
+                            return _nbCol(_sdT('Market {var}', n), [
+                                _bkDiv('h-100 p-3 rounded-3 bg-body-tertiary', _sdT('Market Tile'), [
+                                    _bkH('span', name, 'd-block small text-truncate text-body-secondary'),
+                                    _bkH('span', value, 'd-block fs-5 fw-bold'),
+                                    _bkDiv('d-inline-flex align-items-center gap-1 small fw-semibold ' + (up ? 'text-success' : 'text-danger'), _sdT('Market Change'), [
+                                        _bkIcon(up ? 'bi-caret-up-fill' : 'bi-caret-down-fill'),
+                                        _bkH('span', change)
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
+                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
+                                _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Time'), [
+                                    _bkIcon('bi-clock'),
+                                    _bkH('span', _sdT('Last updated')),
+                                    _nbTime('2026-10-21T17:45', _sdT('21 October, 17:45'), '', _sdT('Date'))
+                                ])
+                            ]),
+                            _bkRow(_sdT('Markets Row'), [
+                                _nbMkTile(1, 'USD/TRY',           _sdT('41.85'),     _sdT('+0.42%'), true),
+                                _nbMkTile(2, 'EUR/TRY',           _sdT('48.62'),     _sdT('+0.18%'), true),
+                                _nbMkTile(3, 'GBP/TRY',           _sdT('55.30'),     _sdT('−0.11%'), false),
+                                _nbMkTile(4, _sdT('Gold (gram)'), _sdT('4,215.40'),  _sdT('+0.65%'), true),
+                                _nbMkTile(5, 'BIST 100',          _sdT('10,482.57'), _sdT('−0.37%'), false),
+                                _nbMkTile(6, 'Bitcoin',           _sdT('$108,350'),  _sdT('+1.24%'), true)
+                            ], 'row-cols-2 row-cols-md-3 row-cols-lg-6'),
+                            _bkP(_sdT('Delayed by 15 minutes. For information only.'), 'small text-body-secondary mt-3 mb-0')
+                        ]);
+                    }
 
                     // ── News: stories and articles ──
                     // Story layouts of a news or magazine site: lead grid, latest
@@ -56470,6 +56778,8 @@ const StyleDesigner = (function () {
         'coming-soon-launch':   ['pg-tracking'],
 
         // News: bands and widgets
+        'news-ticker':          ['pg-marquee'],
+        'news-weather-forecast': ['pg-progress-8'],
 
         // News: stories and articles
 
