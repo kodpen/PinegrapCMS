@@ -573,8 +573,8 @@ function pg_return_returnable($quantity, $held)
  * The lines a request names, checked against the lines of the delivery.
  *
  * A line is named by its order_items id with a whole, non-negative quantity;
- * zero leaves it out. At least one line must remain, each one of the
- * delivery's, none above what is left on it.
+ * zero or an empty box leaves it out. At least one line must remain, each one
+ * of the delivery's, none above what is left on it.
  *
  * @param mixed $requested order item id => quantity
  * @param array $lines     order item id => name, returnable
@@ -598,6 +598,10 @@ function pg_return_check_lines($requested, $lines)
             $count = $quantity;
         } elseif (is_string($quantity) && (preg_match('/^\s*\d{1,9}\s*$/', $quantity) === 1)) {
             $count = (int) $quantity;
+        } elseif (is_string($quantity) && (trim($quantity) === '')) {
+            // A number box the customer cleared arrives empty: nothing asked
+            // for on that line, like 0.
+            $count = 0;
         } else {
             return $refuse(lang('Enter the number of items to return as a whole number.'));
         }

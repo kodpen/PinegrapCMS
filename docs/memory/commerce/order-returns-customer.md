@@ -17,6 +17,7 @@ description: Customer side of returns in My Account's order view: the switch, __
 ## What does order_return.php do?
 - POST with the CSRF token: `action=request` (ship_to_id, `qty[<order item>]`, reason, note), `withdraw` and `shipped` (return_id, tracking_number). Owner check on `orders.user_id`; anybody else gets one answer whether or not the order exists; a return of another order is "not found"; a move the customer may no longer make is refused in plain words.
 - Answers through liveform `order_receipt`, the widget's messages node, with `h()` on every message; goes back to `send_to` through `pg_safe_redirect_path()`.
+- An emptied quantity box (`qty[<id>]=`) counts as 0 in `pg_return_check_lines()`; it used to refuse the whole request with "İade edilecek adedi tam sayı olarak girin." (#857).
 - Ten actions an hour per customer (`waf_rate_exceeded('return|<user id>', 'order_return', 10, 3600)`): a withdrawn request can be made again, and each one mails and rings.
 
 ## What follows a request?
