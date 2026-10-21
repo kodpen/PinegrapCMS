@@ -211,6 +211,22 @@ function pg_sms_number($input)
 }
 
 /**
+ * A number kept in the form pg_sms_number() gives (E.164 digits without the
+ * plus), written so that pg_sms_number() reads it back unchanged. Without the
+ * plus a foreign number of ten digits that starts with 5 (Cuba +53 5…,
+ * Belize +501…, Panama +507…) would be read as a Turkish mobile, 90 5….
+ *
+ * @param string $number E.164 digits
+ * @return string
+ */
+function pg_sms_dial($number)
+{
+    $number = (string) $number;
+
+    return ($number === '') ? '' : '+' . $number;
+}
+
+/**
  * A message as it is sent: line breaks as \n, a tab as a space, no other
  * control character, no spaces around it.
  *
@@ -832,7 +848,7 @@ function pg_sms_queue_run($limit = 10, $seconds = 15)
 
         $expired = ((int) $row['expires_at'] > 0) && ((int) $row['expires_at'] <= time());
 
-        $send = $expired ? null : pg_sms_send($row['recipient'], $row['body'], $row['kind']);
+        $send = $expired ? null : pg_sms_send(pg_sms_dial($row['recipient']), $row['body'], $row['kind']);
 
         $outcome = pg_sms_queue_outcome($row, $send, time());
 
@@ -1425,7 +1441,7 @@ function pg_sms_settings_test($number, $liveform)
         return;
     }
 
-    $result = pg_sms_send($number, lang(array(
+    $result = pg_sms_send(pg_sms_dial($number), lang(array(
         'string' => 'Test message from {var:1}. SMS sending works.',
         'vars'   => array(HOSTNAME_SETTING))), 'test');
 
