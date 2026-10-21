@@ -51,19 +51,38 @@ function pg_tr_target_languages()
  */
 function pg_tr_page_id_of_url($url)
 {
-    $index = pg_tr_page_index();
+    return pg_tr_page_id_of_path($url, PATH, pg_tr_page_index());
+}
 
+/**
+ * pg_tr_page_id_of_url() without the database: the page an address is, given
+ * the site's root path and its pages (pg_tr_page_index()). The root itself,
+ * with or without its closing slash, is the home page.
+ *
+ * @param string $url   absolute address, unescaped
+ * @param string $root  PATH, with its closing slash
+ * @param array  $index names (lower-cased name => page id), home (page id)
+ * @return int page id or 0
+ */
+function pg_tr_page_id_of_path($url, $root, $index)
+{
     $path = (string) parse_url($url, PHP_URL_PATH);
     $path = rawurldecode(($path === '') ? '/' : $path);
+    $root = (string) $root;
 
-    if (strpos($path, PATH) !== 0) {
+    // An address without a path (https://example.com) is the root too.
+    if (rtrim($path, '/') === rtrim($root, '/')) {
+        return isset($index['home']) ? (int) $index['home'] : 0;
+    }
+
+    if (strpos($path, $root) !== 0) {
         return 0;
     }
 
-    $rest = trim(substr($path, strlen(PATH)), '/');
+    $rest = trim(substr($path, strlen($root)), '/');
 
     if ($rest === '') {
-        return (int) $index['home'];
+        return isset($index['home']) ? (int) $index['home'] : 0;
     }
 
     if (strpos($rest, '/') !== false) {
@@ -77,14 +96,14 @@ function pg_tr_page_id_of_url($url)
 
 /**
  * Whether a language's address of a page may be offered to the search
- * engines - listed in sitemap.xml, named as an alternate - under the
- * language's index policy: never for "none", always for "all". For
- * "reviewed" the page decides with its own robots meta, which weighs every
- * text drawn on it: what it answered the last time it was drawn in the
- * language is used while it is known (pg_tr_page_verdicts()); until then -
- * and for an address with a query string, which is not the page's own -
- * the page's own texts must all have a reviewed translation, or one that is
- * the source text itself (pg_tr_index_stats()).
+ * engines - listed in sitemap.xml, named as an alternate on any page - under
+ * the language's index policy (pg_tr_index_decide()). For "reviewed" the
+ * page answers with its own robots meta, which weighs every text drawn on it
+ * (shared components, menus, the records a list shows, the catalog); what it
+ * answered the last time it was drawn in the language is kept
+ * (pg_tr_page_verdict_keep()) and read here. An address below a page, one
+ * with a query string, and a page not drawn in the language since its answer
+ * was dropped have none, and are not offered.
  *
  * @param array  $row      site_languages row
  * @param string $url      the source address, unescaped
@@ -95,10 +114,35 @@ function pg_tr_page_id_of_url($url)
  */
 function pg_tr_indexable($row, $url, $one_page = false)
 {
-    static $stats = array();
-
     $policy = (string) $row['index_policy'];
+    $verdict = null;
 
+    if (($policy !== 'none') && ($policy !== 'all')) {
+        $page_id = pg_tr_page_id_of_url($url);
+
+        if (($page_id > 0) && ((string) parse_url($url, PHP_URL_QUERY) === '')) {
+            $verdicts = pg_tr_page_verdicts((string) $row['code'], $one_page ? $page_id : 0);
+            $verdict = isset($verdicts[$page_id]) ? $verdicts[$page_id] : null;
+        }
+    }
+
+    return pg_tr_index_decide($policy, $verdict);
+}
+
+/**
+ * The one rule behind sitemap.xml and every hreflang alternate: never for the
+ * "none" policy, always for "all", and for "reviewed" only when the page's
+ * own address answered "index" the last time it was drawn in the language.
+ * No answer is no: the texts a page draws from elsewhere (records, the
+ * catalog, data values) are known only by drawing it, so counting the
+ * page's own texts instead listed addresses whose robots meta said noindex.
+ *
+ * @param string   $policy  site_languages.index_policy
+ * @param int|null $verdict 1 index, 0 noindex, null not known
+ * @return bool
+ */
+function pg_tr_index_decide($policy, $verdict)
+{
     if ($policy === 'none') {
         return false;
     }
@@ -107,75 +151,19 @@ function pg_tr_indexable($row, $url, $one_page = false)
         return true;
     }
 
-    $page_id = pg_tr_page_id_of_url($url);
-
-    if ($page_id === 0) {
-        return false;
-    }
-
-    $code = (string) $row['code'];
-
-    if ((string) parse_url($url, PHP_URL_QUERY) === '') {
-        $verdicts = pg_tr_page_verdicts($code, $one_page ? $page_id : 0);
-
-        if (isset($verdicts[$page_id])) {
-            return ($verdicts[$page_id] === 1);
-        }
-    }
-
-    // One page reads its own rows, unless the whole language's are read
-    // already.
-    $scope = ($one_page && !isset($stats[$code][0])) ? $page_id : 0;
-
-    if (!isset($stats[$code][$scope])) {
-        $stats[$code][$scope] = pg_tr_index_stats($code, $scope);
-    }
-
-    $page = isset($stats[$code][$scope][$page_id]) ? $stats[$code][$scope][$page_id] : null;
-
-    if (!is_array($page)) {
-        return false;
-    }
-
-    return ($page['total'] > 0) && ($page['reviewed'] >= $page['total']);
+    return ($verdict === 1);
 }
 
 /**
- * pg_tr_page_stats() the way a page's robots meta weighs its texts: per
- * page, how many of its own texts (body and SEO fields) there are and how
- * many stand as they may be indexed - with a reviewed translation, or a
- * machine one that is the source text itself (pg_tr_same_as_source(); the
- * column collation is not trusted for the comparison, the bytes of the
- * lower-cased texts are).
+ * Whether a page's robots meta keeps it out of the search engines: a
+ * "noindex" directive, or "none" (noindex and nofollow together).
  *
- * @param string $language
- * @param int    $page_id one page, or 0 for every page
- * @return array page id => array(total, reviewed); a page without texts is absent
+ * @param string $html the page
+ * @return bool
  */
-function pg_tr_index_stats($language, $page_id = 0)
+function pg_tr_robots_says_noindex($html)
 {
-    $stats = array();
-
-    $rows = db_items("SELECT u.owner_id AS page_id,
-                             COUNT(DISTINCT u.string_id) AS total,
-                             COUNT(DISTINCT CASE WHEN (t.status = 'reviewed')
-                                     OR (CAST(LOWER(TRIM(t.text)) AS BINARY) = CAST(LOWER(TRIM(s.source_text)) AS BINARY))
-                                 THEN t.string_id END) AS reviewed
-                      FROM translation_uses u
-                      LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
-                      LEFT JOIN translation_strings s ON s.id = t.string_id
-                      WHERE u.owner_type IN ('page', 'page_seo')" . (((int) $page_id > 0) ? " AND u.owner_id = '" . (int) $page_id . "'" : '') . "
-                      GROUP BY u.owner_id");
-
-    if (is_array($rows)) {
-        foreach ($rows as $row) {
-            if ((int) $row['total'] > 0) {
-                $stats[(int) $row['page_id']] = array('total' => (int) $row['total'], 'reviewed' => (int) $row['reviewed']);
-            }
-        }
-    }
-
-    return $stats;
+    return (bool) preg_match('~<meta\s+name="robots"\s+content="[^"]*\b(?:noindex|none)\b~i', (string) $html);
 }
 
 /**
@@ -198,8 +186,11 @@ function pg_tr_page_verdict_ready()
 /**
  * What pages answered the search engines the last time they were drawn in a
  * language under the reviewed policy: 1 indexable, 0 noindex. A page not
- * drawn since the language's translations last changed has no answer -
- * pg_tr_invalidate_pages() drops its row together with the drawn body.
+ * drawn since something that could turn its answer to noindex changed has
+ * none: pg_tr_invalidate_pages() drops it with the drawn body (a translation
+ * taken back or overwritten, the page or a component it places saved, the
+ * caches purged); a translation that can only let it be indexed keeps a
+ * "1".
  *
  * @param string $language
  * @param int    $page_id  one page (read with its other languages), or 0 for
@@ -256,30 +247,32 @@ function pg_tr_page_verdicts($language, $page_id = 0)
  * @param string $url       the source address of the page, unescaped
  * @param string $language
  * @param bool   $indexable
+ * @return int|null the answer the address now holds, 1 or 0; null when it
+ *                  holds none, which pg_tr_indexable() reads as "not offered"
  */
 function pg_tr_page_verdict_keep($url, $language, $indexable)
 {
     if (!pg_tr_page_verdict_ready() || ((string) parse_url($url, PHP_URL_QUERY) !== '')) {
-        return;
+        return null;
     }
 
     $status = function_exists('http_response_code') ? http_response_code() : false;
 
     if (($status !== false) && ((int) $status !== 200)) {
-        return;
+        return null;
     }
 
     $page_id = pg_tr_page_id_of_url($url);
 
     if ($page_id === 0) {
-        return;
+        return null;
     }
 
     $value = $indexable ? 1 : 0;
     $known = pg_tr_page_verdicts($language, $page_id);
 
     if (isset($known[$page_id]) && ($known[$page_id] === $value)) {
-        return;
+        return $value;
     }
 
     // A page without a drawn body (one that is not built in the visual
@@ -288,6 +281,8 @@ function pg_tr_page_verdict_keep($url, $language, $indexable)
     db("INSERT INTO page_translations (page_id, language, tree_code, indexable)
         VALUES ('$page_id', '" . e($language) . "', '', '$value')
         ON DUPLICATE KEY UPDATE indexable = VALUES(indexable)");
+
+    return $value;
 }
 
 /**

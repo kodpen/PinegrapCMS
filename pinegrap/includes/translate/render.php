@@ -620,6 +620,7 @@ function pg_tr_render_finalize($content)
     $active = pg_tr_active();
     $current = $active ? pg_tr_language() : $source;
     $noindex = false;
+    $own_verdict = null;
 
     if (!$active) {
         // The page in its own language: the stored body carries the fixed
@@ -741,16 +742,20 @@ function pg_tr_render_finalize($content)
         // Under the reviewed policy the answer depends on everything drawn
         // on the page - shared components, menus, the catalog - which
         // sitemap.xml and the alternates on the other languages' pages
-        // cannot draw to find out. It is kept for them (pg_tr_indexable()).
+        // cannot draw to find out. It is kept for them (pg_tr_indexable()),
+        // and the page names itself as an alternate by the answer kept, as
+        // they do: an address that keeps none is offered nowhere. The answer
+        // is the robots meta as it now stands, so a page the operator took
+        // out of the search engines (page.noindex) answers noindex too.
         if (($row['index_policy'] === 'reviewed') && ($canonical !== '')) {
-            pg_tr_page_verdict_keep($canonical, $current, !$noindex);
+            $own_verdict = pg_tr_page_verdict_keep($canonical, $current, !pg_tr_robots_says_noindex($content));
         }
     }
 
     // The alternates: the source and x-default on the source, and every
     // enabled target whose address of the page the search engines may index
     // - the rule sitemap.xml follows; for the language being drawn, the
-    // robots directive just written. Only for an address that is a page, and
+    // answer just kept. Only for an address that is a page, and
     // none at all when no other language may be indexed.
     if (($canonical !== '') && !preg_match('~<link\b[^>]*\shreflang=~i', $content)) {
         $links = '';
@@ -761,11 +766,10 @@ function pg_tr_render_finalize($content)
 
             foreach ($targets as $code => $row) {
                 if ($active && ($code === $current)) {
-                    // Under the reviewed policy an address below a page (a
-                    // catalog item) is offered in no language, as in
-                    // pg_tr_indexable(), so the set stays the same on every
-                    // page that names it.
-                    $indexable = !$noindex && (($row['index_policy'] !== 'reviewed') || (pg_tr_page_id_of_url($canonical) > 0));
+                    // The answer just kept, through the rule the other
+                    // pages and sitemap.xml read it by, so the set stays the
+                    // same on every page that names it.
+                    $indexable = pg_tr_index_decide((string) $row['index_policy'], $own_verdict);
                 } else {
                     $indexable = pg_tr_indexable($row, $canonical, true);
                 }

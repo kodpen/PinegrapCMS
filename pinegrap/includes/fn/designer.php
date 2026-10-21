@@ -3492,6 +3492,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             WHERE style_id = '$style_id'");
     }
 
+    // What the page answered the search engines in the other languages
+    // may no longer hold once its texts changed (includes/translate/).
+    if (function_exists('pg_tr_owner_saved') && $page_id > 0) {
+        pg_tr_owner_saved('page', $page_id);
+    }
+
     // The languages set to translate on save get the page's new and changed
     // texts as a job for their engine (includes/translate/).
     if (function_exists('pg_tr_auto_update_page') && $multi_ready) {

@@ -679,7 +679,7 @@ function pg_tr_lookup($hash, $language)
  * spaces around it aside: a name, a code, a word the engine gave back as it
  * was. The page shows its own words there, so a machine translation like
  * that does not keep the page from the search engines the way engine output
- * does (pg_tr_render_text(), pg_tr_index_stats()).
+ * does (pg_tr_render_text()).
  *
  * @param string $source normalised source
  * @param string $text   the translation
@@ -740,12 +740,10 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
     $status = ($status === 'reviewed') ? 'reviewed' : 'machine';
     $now = time();
 
-    if (!$force && ($status === 'machine')) {
-        $current = db_value("SELECT status FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "' LIMIT 1");
+    $current = db_value("SELECT status FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "' LIMIT 1");
 
-        if ($current === 'reviewed') {
-            return false;
-        }
+    if (!$force && ($status === 'machine') && ($current === 'reviewed')) {
+        return false;
     }
 
     db("INSERT INTO translations (string_id, language, text, engine, status, suspicious, updated_by, created_at, updated_at)
@@ -754,9 +752,32 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
             text = VALUES(text), engine = VALUES(engine), status = VALUES(status), suspicious = VALUES(suspicious),
             updated_by = VALUES(updated_by), updated_at = VALUES(updated_at)");
 
-    pg_tr_invalidate_pages($language);
+    pg_tr_invalidate_pages($language, 0, !pg_tr_write_keeps_verdicts($status, $current));
 
     return true;
+}
+
+/**
+ * Whether writing a translation leaves the pages' "may be indexed" answers
+ * standing (pg_tr_page_verdicts()). A page answered "index" only when every
+ * text it drew had a reviewed translation or one that is the source text
+ * itself, so a reviewed translation, or a first translation of a text that
+ * had none (no such page drew it), cannot turn that answer. Overwriting a
+ * machine translation can: one that was the source text itself may become
+ * engine output.
+ *
+ * @param string $status   machine | reviewed, as written
+ * @param mixed  $previous the status the text had in the language before,
+ *                         anything else when it had no translation
+ * @return bool
+ */
+function pg_tr_write_keeps_verdicts($status, $previous)
+{
+    if ($status === 'reviewed') {
+        return true;
+    }
+
+    return !in_array($previous, array('machine', 'reviewed'), true);
 }
 
 /**
@@ -769,7 +790,7 @@ function pg_tr_set_status($string_id, $language, $status, $user_id = 0)
     db("UPDATE translations SET status = '$status', updated_by = '" . ((int) $user_id) . "', updated_at = '" . time() . "'
         WHERE string_id = '" . ((int) $string_id) . "' AND language = '" . e($language) . "'");
 
-    pg_tr_invalidate_pages($language);
+    pg_tr_invalidate_pages($language, 0, ($status !== 'reviewed'));
 }
 
 /**
@@ -818,7 +839,7 @@ function pg_tr_review_all($language, $scope = 'all', $user_id = 0, $suspicious =
     $count = (int) mysqli_affected_rows(db::$con);
 
     if ($count > 0) {
-        pg_tr_invalidate_pages($language);
+        pg_tr_invalidate_pages($language, 0, false);
     }
 
     return $count;
@@ -873,20 +894,30 @@ function pg_tr_clear($language, $scope = 'all', $with_reviewed = false)
 
 /**
  * Drops the drawn bodies of a language (or of one page in every language),
- * so the next visit draws them again with the translations as they are now.
- * Many writes in one request drop them once.
+ * so the next visit draws them again with the translations as they are now,
+ * and with them what the pages answered the search engines
+ * (pg_tr_page_verdicts()): until a page is drawn again its language address
+ * is offered nowhere. With $verdicts false (a change that can only let pages
+ * be indexed) a page that answered "index" keeps that answer; only its body
+ * goes. Many writes in one request drop them once.
+ *
+ * @param string $language '' for every language
+ * @param int    $page_id  0 for every page
+ * @param bool   $verdicts whether the answers go as well
+ * @return int how many rows were dropped or emptied
  */
-function pg_tr_invalidate_pages($language = '', $page_id = 0)
+function pg_tr_invalidate_pages($language = '', $page_id = 0, $verdicts = true)
 {
     static $done = array();
 
     $key = $language . '|' . (int) $page_id;
 
-    if (isset($done[$key])) {
-        return;
+    // After a drop with the answers there is nothing left for a lighter one.
+    if (isset($done[$key]) && ($done[$key] || !$verdicts)) {
+        return 0;
     }
 
-    $done[$key] = true;
+    $done[$key] = (bool) $verdicts;
 
     $where = array();
 
@@ -898,7 +929,21 @@ function pg_tr_invalidate_pages($language = '', $page_id = 0)
         $where[] = "page_id = '" . (int) $page_id . "'";
     }
 
+    if (!$verdicts && function_exists('pg_tr_page_verdict_ready') && pg_tr_page_verdict_ready()) {
+        $keep = array_merge($where, array('indexable = 1'));
+        $drop = array_merge($where, array('(indexable IS NULL OR indexable = 0)'));
+
+        db("UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE " . implode(' AND ', $keep));
+        $count = (int) mysqli_affected_rows(db::$con);
+
+        db("DELETE FROM page_translations WHERE " . implode(' AND ', $drop));
+
+        return $count + (int) mysqli_affected_rows(db::$con);
+    }
+
     db("DELETE FROM page_translations" . ($where ? ' WHERE ' . implode(' AND ', $where) : ''));
+
+    return (int) mysqli_affected_rows(db::$con);
 }
 
 /* ---------------------------------------------------------------------------

@@ -1064,6 +1064,19 @@ function pg_purge_caches()
         $cleared[] = lang('Image derivatives');
     }
 
+    // The pages drawn in the other languages (page_translations): their
+    // bodies, and what they answered the search engines, which sitemap.xml
+    // and the hreflang alternates follow. Each is drawn and answered again
+    // on its next visit in that language; until then its language address
+    // is not offered (includes/translate/seo.php).
+    if (function_exists('pg_tr_ready') && pg_tr_ready()) {
+        pg_tr_load();
+        $translated_pages = pg_tr_invalidate_pages();
+        if ($translated_pages > 0) {
+            $cleared[] = lang(array('string' => 'Translated pages ({var:1})', 'vars' => $translated_pages));
+        }
+    }
+
     // What pg_schema_has() remembers about tables and columns. A schema
     // changed by hand (a column added or dropped outside an upgrade) is
     // otherwise only noticed after the next upgrade.
