@@ -2356,6 +2356,262 @@ function get_default_tax_rate()
     return $default_rate;
 }
 
+/**
+ * The tax of an order's lines, taken once on the sum of the lines at each
+ * rate and spread back over them.
+ *
+ * Lines at one rate are a group: the group's tax is the rate on the sum of
+ * their amounts, rounded half away from zero, and it is shared out over them
+ * in proportion to their amounts (pg_tax_spread()). The lines add up to their
+ * group and each stays within a minor unit of what it would carry alone. It
+ * is how an e-document provider that works the tax out from the rates comes
+ * to its figures, and how the ERP takes a document's taxes (erp_rate_vat(),
+ * which gives the same figures for lines without withholding). A line with a
+ * negative amount is taxed alone, so a group's shares never run backwards.
+ *
+ * @param array $lines  key => ['amount' => int minor units, 'rate' => float percent]; no rate, or 0, is no tax
+ * @return array  key => int tax, in the order given
+ */
+function pg_tax_by_rate($lines)
+{
+    $taxes = array();
+    $groups = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $amount = (int) ($line['amount'] ?? 0);
+        $rate = (float) ($line['rate'] ?? 0);
+        $taxes[$key] = 0;
+
+        if ($rate <= 0) {
+            continue;
+        }
+
+        if ($amount < 0) {
+            $taxes[$key] = (int) round($amount * $rate / 100);
+            continue;
+        }
+
+        // Three places, the scale the rates are kept at.
+        $group = sprintf('%.3F', $rate);
+
+        if (!isset($groups[$group])) {
+            $groups[$group] = array('rate' => $rate, 'amount' => 0, 'members' => array());
+        }
+
+        $groups[$group]['amount'] += $amount;
+        $groups[$group]['members'][$key] = $amount;
+    }
+
+    foreach ($groups as $group) {
+        $tax = (int) round($group['amount'] * $group['rate'] / 100);
+
+        foreach (pg_tax_spread($tax, $group['members']) as $key => $share) {
+            $taxes[$key] = $share;
+        }
+    }
+
+    return $taxes;
+}
+
+/**
+ * Split an amount over weights: each its floor share, the minor units left
+ * over to the largest remainders, the first of equal ones first. The shares
+ * always add up to the amount. The same rule as the ERP's erp_allocate(), so
+ * an order and its invoice share a group's tax out alike.
+ *
+ * @param int   $total
+ * @param array $weights  key => int, zero or more
+ * @return array  key => int
+ */
+function pg_tax_spread($total, $weights)
+{
+    $total = (int) $total;
+    $shares = array();
+    $sum = 0;
+
+    foreach ($weights as $key => $weight) {
+        $shares[$key] = 0;
+        $sum += (int) $weight;
+    }
+
+    if ($sum <= 0) {
+        // Nothing to go on: the whole amount on the first line rather than
+        // lost.
+        foreach (array_keys($shares) as $key) {
+            $shares[$key] = $total;
+            break;
+        }
+
+        return $shares;
+    }
+
+    $remainders = array();
+    $order = array();
+    $allocated = 0;
+
+    foreach ($weights as $key => $weight) {
+        $exact = ($total * (int) $weight) / $sum;
+        $floor = (int) floor($exact);
+        $shares[$key] = $floor;
+        $remainders[$key] = $exact - $floor;
+        $order[$key] = count($order);
+        $allocated += $floor;
+    }
+
+    $left = $total - $allocated;
+
+    if ($left !== 0) {
+        // Largest remainder first, equal ones in their own order.
+        $keys = array_keys($remainders);
+        usort($keys, function ($a, $b) use ($remainders, $order) {
+            if ($remainders[$a] == $remainders[$b]) {
+                return $order[$a] - $order[$b];
+            }
+            return ($remainders[$a] < $remainders[$b]) ? 1 : -1;
+        });
+
+        if ($left < 0) {
+            $keys = array_reverse($keys);
+        }
+
+        $step = ($left > 0) ? 1 : -1;
+
+        for ($index = 0; $left !== 0; $index++) {
+            $shares[$keys[$index % count($keys)]] += $step;
+            $left -= $step;
+        }
+    }
+
+    return $shares;
+}
+
+/**
+ * The tax an order charges on its lines once the order discount is off.
+ *
+ * The discount is shared over the lines in proportion to their amounts
+ * (pg_tax_spread(), the share the order's invoice gives each line) and the
+ * tax is taken again per rate on what is left of them (pg_tax_by_rate()), so
+ * the order's tax is the one its invoice and an e-document provider come to.
+ * Without a discount it is the lines' own tax, which update_order_item_taxes()
+ * took per rate already. A line whose rate was not kept (one placed before
+ * order_items.tax_rate, or with tax switched off) cannot be taxed again; the
+ * tax is then lowered by the discount's share of the subtotal. Never below
+ * zero; the discount counts up to the subtotal.
+ *
+ * @param array $lines     key => ['amount' => int minor units, 'rate' => float|string|null, 'tax' => int],
+ *                         the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @return int
+ */
+function pg_order_charged_tax($lines, $discount)
+{
+    $amounts = array();
+    $subtotal = 0;
+    $tax = 0;
+    $rated = true;
+
+    foreach ((array) $lines as $key => $line) {
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+        $tax += (int) ($line['tax'] ?? 0);
+
+        if (!isset($line['rate']) || ($line['rate'] === '')) {
+            $rated = false;
+        }
+    }
+
+    $tax = max(0, $tax);
+    $discount = min((int) $discount, $subtotal);
+
+    if (($discount <= 0) || ($subtotal <= 0)) {
+        return $tax;
+    }
+
+    if (!$rated) {
+        return max(0, $tax - (int) round($tax * ($discount / $subtotal)));
+    }
+
+    $shares = pg_tax_spread($discount, $amounts);
+    $taxed = array();
+
+    foreach ($lines as $key => $line) {
+        $taxed[$key] = array('amount' => $amounts[$key] - $shares[$key], 'rate' => (float) $line['rate']);
+    }
+
+    return max(0, array_sum(pg_tax_by_rate($taxed)));
+}
+
+/**
+ * pg_order_charged_tax() for order lines given by id, read from the order:
+ * for the pages that show an order's totals while drawing its lines.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  minor units
+ * @return int
+ */
+function pg_order_items_charged_tax($item_ids, $discount)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $with_rate = pg_schema_has('order_items', 'tax_rate');
+    $lines = array();
+
+    foreach ((array) db_items("SELECT id, price, quantity, tax_total" . ($with_rate ? ", tax_rate" : "") . "
+        FROM order_items
+        WHERE id IN (" . implode(', ', $ids) . ")
+        ORDER BY id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $with_rate ? $item['tax_rate'] : null,
+            'tax' => (int) $item['tax_total'],
+        );
+    }
+
+    return pg_order_charged_tax($lines, $discount);
+}
+
+/**
+ * The tax of each of an order's lines, as the checkout writes it
+ * (update_order_item_taxes()).
+ *
+ * The lines charged together, when the order is placed, take their tax per
+ * rate on their sum (pg_tax_by_rate()): the way the order's invoice and an
+ * e-document provider take it. A line charged on its own takes its own tax
+ * alone - a recurring line that starts later, whose payments are taken one by
+ * one (pg_order_line_charged_today()), and one that is not charged at all.
+ * The lines go in the order of their ids, as the order's invoice reads them,
+ * so a rate's minor unit left over by the spread lands on the same line there.
+ *
+ * @param array $lines  id => ['amount' => int minor units, 'rate' => float percent, 'alone' => bool]
+ * @return array  id => int, in the order of the ids
+ */
+function pg_order_line_taxes($lines)
+{
+    $lines = (array) $lines;
+    ksort($lines);
+    $together = array();
+    $taxes = array();
+
+    foreach ($lines as $id => $line) {
+        if (!empty($line['alone'])) {
+            $taxes[$id] = pg_tax_by_rate(array($id => $line))[$id];
+        } else {
+            $together[$id] = $line;
+        }
+    }
+
+    foreach (pg_tax_by_rate($together) as $id => $tax) {
+        $taxes[$id] = $tax;
+    }
+
+    ksort($taxes);
+
+    return $taxes;
+}
 
 function update_order_item_taxes()
 {
@@ -2398,6 +2654,14 @@ function update_order_item_taxes()
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         // else order is not tax-exempt, so we need to apply taxes to order items
     } else {
+        // Each line's amount and the rate it is charged at, gathered over every
+        // recipient, and whether it is charged with the order: the taxes are
+        // then taken together (pg_order_line_taxes()).
+        $lines = array();
+        $with_saved = pg_schema_has('order_items', 'saved_for_later');
+        $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+            && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+        $today = date('Y-m-d');
         // get tax rate for billing address
         $billing_address_tax_rate = get_tax_rate_for_address($billing_country, $billing_state);
         // get all ship tos
@@ -2440,9 +2704,17 @@ function update_order_item_taxes()
 
                         order_items.quantity,
 
+                        order_items.recurring_start_date," . ($with_saved ? "
+
+                        order_items.saved_for_later," : "") . "
+
                         products.taxable,
 
-                        products.tax_rate
+                        products.tax_rate,
+
+                        products.recurring,
+
+                        products.start
 
                      FROM order_items
 
@@ -2484,36 +2756,32 @@ function update_order_item_taxes()
                 } else {
                     $apply_tax = false;
                 }
-                // if taxes should be applied to this order item, apply them
-                if ($apply_tax == true) {
-                    // The zone said tax is due; the product says at what rate.
-                    // Worked out on the line and not on one unit: rounding a unit
-                    // and then multiplying gives a different answer above quantity
-                    // one, and the line is the base the cart summary, Parasut and
-                    // the e-document format all use.
-                    //
-                    // tax is left at zero. It held the unit amount and is no longer
-                    // written, so anything still reading it shows nothing rather
-                    // than quietly multiplying a line amount by the quantity again.
-                    $effective_tax_rate = get_effective_tax_rate($order_item['tax_rate'], $tax_rate);
-                    $line_quantity = max(1, (int) $order_item['quantity']);
-                    $tax_amount = round($effective_tax_rate / 100 * $order_item['price'] * $line_quantity);
-                    $query = "UPDATE order_items
-
-                             SET tax_total = '$tax_amount', tax = '0'" . $rate_sql($effective_tax_rate) . "
-
-                             WHERE id = '" . $order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-                    // else taxes should not be applied to order item, so clear taxes
-                } else {
-                    $query = "UPDATE order_items
-
-                             SET tax_total = '0', tax = '0'" . $rate_sql(0) . "
-
-                             WHERE id = '" . $order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-                }
+                // The zone said tax is due; the product says at what rate. The
+                // base is the whole line, not one unit: rounding a unit and then
+                // multiplying gives a different answer above quantity one.
+                $line_quantity = max(1, (int) $order_item['quantity']);
+                $lines[(int) $order_item['id']] = array(
+                    'amount' => (int) $order_item['price'] * $line_quantity,
+                    'rate' => ($apply_tax == true) ? (float) get_effective_tax_rate($order_item['tax_rate'], $tax_rate) : 0.0,
+                    // A line saved for later is no part of the sale.
+                    'alone' => !empty($order_item['saved_for_later'])
+                        || !pg_order_line_charged_today($order_item['recurring'], $order_item['recurring_start_date'], $order_item['start'], $today, $clearcommerce),
+                );
             }
+        }
+
+        // tax is left at zero. It held the unit amount and is no longer
+        // written, so anything still reading it shows nothing rather than
+        // quietly multiplying a line amount by the quantity again.
+        $taxes = pg_order_line_taxes($lines);
+
+        foreach ($lines as $id => $line) {
+            $query = "UPDATE order_items
+
+                     SET tax_total = '" . (int) $taxes[$id] . "', tax = '0'" . $rate_sql($line['rate']) . "
+
+                     WHERE id = '" . (int) $id . "'";
+            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         }
     }
 }
