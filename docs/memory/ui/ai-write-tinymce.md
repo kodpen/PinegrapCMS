@@ -18,5 +18,5 @@ description: "Write with AI" and the AI marks with the "previous" rich text edit
 - The capture-phase `submit` check runs before the form's own listeners; it reads the editor, not the stale textarea.
 
 ## What was broken before?
-- #995: only `CKEDITOR.instances` was looked at. "Use this text" wrote the hidden textarea: the badge showed, but the editor kept the old text, `triggerSave()` put it back on save and the old hand-written text was stored with the "AI" mark. A hand edit in TinyMCE never took a mark off, so the person's own text was saved as written with AI.
+- #995 (PR #1051): only `CKEDITOR.instances` was looked at. "Use this text" wrote the hidden textarea: the badge showed, but the editor kept the old text, `triggerSave()` put it back on save and the old hand-written text was stored with the "AI" mark. A hand edit in TinyMCE never took a mark off, so the person's own text was saved as written with AI.
 - Checked with Playwright on the sandbox (stubbed `ai_write` answer): draft in the editor and saved with its fingerprint; a hand edit and the save clear `ai_fields`; Ctrl+Z after a hand edit puts the mark back; CKEditor unchanged.
