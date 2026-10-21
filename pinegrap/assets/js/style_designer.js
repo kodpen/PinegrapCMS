@@ -16287,6 +16287,25 @@ const StyleDesigner = (function () {
                     var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
                     var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
                     var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+                    // Pause control of a pg-marquee block: one wrapper (hidden
+                    // under reduced motion) around a btn-check and its label.
+                    // The label must follow the input: Bootstrap styles it
+                    // through .btn-check:checked + .btn.
+                    var _bkMarqueePause = function (idPrefix, label, labelCls, wrapCls) {
+                        var id = _bkUid(idPrefix);
+                        return _bkDiv((wrapCls ? wrapCls + ' ' : '') + 'pg-marquee-toggle', _sdT('Marquee Controls'), [
+                            _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
+                                { name: 'type',         value: 'checkbox' },
+                                { name: 'id',           value: id },
+                                { name: 'autocomplete', value: 'off' }
+                            ]),
+                            _bkTag('label', 'btn btn-sm' + (labelCls ? ' ' + labelCls : ''), _sdT('Pause Button'), [
+                                _bkIcon('bi-pause-fill'),
+                                _bkIcon('bi-play-fill'),
+                                _bkH('span', label, 'visually-hidden')
+                            ], [{ name: 'for', value: id }])
+                        ]);
+                    };
                     var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
                     var _bkIntro = function (title, lead) {
                         return _bkDiv('text-center mb-5', _sdT('Section Header'), [
@@ -17466,7 +17485,6 @@ const StyleDesigner = (function () {
 
                     // News: Ticker — a Breaking badge and five headlines sliding past, paused by hover, focus or the pause button
                     if (ctype === 'news-ticker') {
-                        var _nbTkPause = _bkUid('ticker_pause');
                         var _nbTkHeads = [
                             _sdT('London opens three new cycle lanes along the river'),
                             _sdT('Istanbul adds late-night ferry crossings for the weekend'),
@@ -17485,7 +17503,7 @@ const StyleDesigner = (function () {
                                 kids.push(a);
                                 kids.push(_bkIcon('bi-dot', 'text-body-secondary'));
                             });
-                            return _bkDiv('d-flex align-items-center gap-4 pe-4' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Headlines Copy') : _sdT('Headlines'), kids,
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
                                 copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
                         };
                         return _nbBand('pg-marquee bg-body-tertiary border-bottom', _sdT('News (Ticker)'), 'd-flex align-items-center gap-3 py-2', [
@@ -17493,18 +17511,10 @@ const StyleDesigner = (function () {
                                 _bkIcon('bi-lightning-charge-fill'),
                                 _bkH('span', _sdT('Breaking'))
                             ]),
-                            _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Ticker Viewport'), [
-                                _bkDiv('pg-marquee-track', _sdT('Ticker Track'), [_nbTkGroup(false), _nbTkGroup(true)])
+                            _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [_nbTkGroup(false), _nbTkGroup(true)])
                             ], _nbRegion(_sdT('Latest headlines'))),
-                            _bkTag('input', 'btn-check pg-marquee-pause pg-marquee-toggle', _sdT('Pause Checkbox'), [], [
-                                { name: 'type',         value: 'checkbox' },
-                                { name: 'id',           value: _nbTkPause },
-                                { name: 'autocomplete', value: 'off' }
-                            ]),
-                            _bkTag('label', 'btn btn-sm btn-outline-secondary flex-shrink-0 pg-marquee-toggle', _sdT('Pause Button'), [
-                                _bkIcon('bi-pause-fill'),
-                                _bkH('span', _sdT('Pause the ticker'), 'visually-hidden')
-                            ], [{ name: 'for', value: _nbTkPause }])
+                            _bkMarqueePause('ticker_pause', _sdT('Pause the ticker'), 'btn-outline-secondary', 'flex-shrink-0')
                         ]);
                     }
 
@@ -18139,7 +18149,6 @@ const StyleDesigner = (function () {
 
                     // Marquee: Big Words — a primary band of large words sliding sideways; it stops on hover, on focus and with its pause button
                     if (ctype === 'marquee-words') {
-                        var _crMwPause = _bkUid('mqw');
                         var _crMwGroup = function (copy) {
                             var words = [_sdT('Branding'), _sdT('Web Design'), _sdT('Motion Design'), _sdT('Photography'), _sdT('Strategy'), _sdT('Packaging')];
                             var kids = [];
@@ -18147,7 +18156,7 @@ const StyleDesigner = (function () {
                                 kids.push(_bkH('span', w, 'display-6 fw-bold text-uppercase text-nowrap'));
                                 kids.push(_bkIcon('bi-asterisk', 'fs-3'));
                             });
-                            return _bkDiv('d-flex align-items-center gap-4 pe-4' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
                                 copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
                         };
                         return _bkSection('pg-marquee py-4 text-bg-primary', _sdT('Marquee (Big Words)'), [
@@ -18158,44 +18167,23 @@ const StyleDesigner = (function () {
                                 { name: 'aria-label', value: _sdT('What we do') },
                                 { name: 'tabindex',   value: '0' }
                             ]),
-                            _bkDiv('mt-2 text-end pg-marquee-toggle', _sdT('Marquee Controls'), [
-                                _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
-                                    { name: 'type',         value: 'checkbox' },
-                                    { name: 'id',           value: _crMwPause },
-                                    { name: 'autocomplete', value: 'off' }
-                                ]),
-                                _bkTag('label', 'btn btn-sm border-0 text-reset pg-marquee-toggle', _sdT('Pause Button'), [
-                                    _bkIcon('bi-pause-fill'),
-                                    _bkH('span', _sdT('Pause the animation'), 'visually-hidden')
-                                ], [{ name: 'for', value: _crMwPause }])
-                            ])
+                            _bkMarqueePause('mqw', _sdT('Pause the animation'), 'text-reset', 'mt-2 text-end')
                         ]);
                     }
 
                     // Marquee: Logos — customer logos sliding sideways under soft faded edges; it stops on hover, on focus and with its pause button
                     if (ctype === 'marquee-logos') {
-                        var _crMlPause = _bkUid('mql');
                         var _crMlGroup = function (copy) {
                             var brands = [_sdT('Vertex'), _sdT('TechBase'), _sdT('StartMate'), _sdT('LaunchLab'), _sdT('Northwind'),
                                           _sdT('PineWorks'), _sdT('OrbitSoft'), _sdT('Quanta'), _sdT('ByteWave'), _sdT('Helios')];
-                            return _bkDiv('d-flex align-items-center gap-5 pe-5' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), brands.map(function (b) {
+                            return _bkDiv('gap-5 pe-5 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), brands.map(function (b) {
                                 return createNode('content', { contentType: 'image', src: 'https://placehold.co/200x80/9ca3af/ffffff?text=' + encodeURIComponent(b), alt: copy ? '' : b, cssClass: 'pg-logo-44' });
                             }), copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
                         };
                         return _bkSection('pg-marquee py-5', _sdT('Marquee (Logos)'), [
                             _bkDiv('d-flex align-items-center justify-content-between gap-3 mb-4', _sdT('Section Header'), [
                                 _bkH('h2', _sdT('Trusted by teams at'), 'h6 mb-0 fw-semibold text-uppercase text-body-secondary'),
-                                _bkDiv('pg-marquee-toggle', _sdT('Marquee Controls'), [
-                                    _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
-                                        { name: 'type',         value: 'checkbox' },
-                                        { name: 'id',           value: _crMlPause },
-                                        { name: 'autocomplete', value: 'off' }
-                                    ]),
-                                    _bkTag('label', 'btn btn-sm btn-outline-secondary pg-marquee-toggle', _sdT('Pause Button'), [
-                                        _bkIcon('bi-pause-fill'),
-                                        _bkH('span', _sdT('Pause the animation'), 'visually-hidden')
-                                    ], [{ name: 'for', value: _crMlPause }])
-                                ])
+                                _bkMarqueePause('mql', _sdT('Pause the animation'), 'btn-outline-secondary')
                             ]),
                             _bkDiv('pg-marquee-viewport pg-marquee-fade', _sdT('Marquee Viewport'), [
                                 _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMlGroup(false), _crMlGroup(true) ])
@@ -57379,14 +57367,24 @@ const StyleDesigner = (function () {
         // identical groups slides by half its width, so the loop is seamless.
         // Hover, keyboard focus and the pause checkbox stop it; reduced motion
         // turns it into a plain scrollable strip without the duplicate group.
+        // The groups take their flex layout from .pg-marquee-group, not from
+        // d-flex: a display utility outranks any block rule and would keep
+        // the copy visible.
+        // The pause label draws its border, focus ring and checked tint in
+        // currentColor, so it stays visible on any surface; when checked it
+        // shows its play icon instead of the pause icon.
         'pg-marquee':      '.pg-marquee-viewport { overflow: hidden; }\n' +
                            '.pg-marquee-track { display: flex; flex-wrap: nowrap; width: max-content; animation: pg-marquee 40s linear infinite; }\n' +
+                           '.pg-marquee-group { display: flex; align-items: center; }\n' +
                            '.pg-marquee-reverse .pg-marquee-track { animation-direction: reverse; }\n' +
                            '[dir="rtl"] .pg-marquee-track { animation-name: pg-marquee-rtl; }\n' +
                            '.pg-marquee:hover .pg-marquee-track, .pg-marquee:focus-within .pg-marquee-track, .pg-marquee:has(.pg-marquee-pause:checked) .pg-marquee-track { animation-play-state: paused; }\n' +
+                           '.pg-marquee-toggle .btn { --bs-btn-border-color: currentColor; --bs-btn-hover-border-color: currentColor; --bs-btn-focus-box-shadow: 0 0 0 .2rem currentColor; --bs-btn-active-color: var(--bs-btn-color); --bs-btn-active-bg: color-mix(in srgb, currentColor 20%, transparent); --bs-btn-active-border-color: currentColor; }\n' +
+                           '.pg-marquee-toggle .bi-play-fill, .pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-pause-fill { display: none; }\n' +
+                           '.pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-play-fill { display: inline-block; }\n' +
                            '@keyframes pg-marquee { to { transform: translateX(-50%); } }\n' +
                            '@keyframes pg-marquee-rtl { to { transform: translateX(50%); } }\n' +
-                           '@media (prefers-reduced-motion: reduce) { .pg-marquee-viewport { overflow-x: auto; } .pg-marquee-track { animation: none; } .pg-marquee-copy, .pg-marquee-toggle { display: none; } }',
+                           '@media (prefers-reduced-motion: reduce) { .pg-marquee-viewport { overflow-x: auto; } .pg-marquee-track, [dir="rtl"] .pg-marquee-track { animation: none; } .pg-marquee .pg-marquee-copy, .pg-marquee .pg-marquee-toggle { display: none; } }',
         // Dark scrim under text placed on a photo; the box also carries
         // data-bs-theme="dark", so the text colour never depends on the photo.
         'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
