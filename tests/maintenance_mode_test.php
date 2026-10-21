@@ -131,3 +131,25 @@ function test_maintenance_list_opens_to_all()
 	pg_assert_false(pg_maintenance_list_opens_to_all('203.0.113.7', '203.0.113.7', false), 'an address of the visitor\'s own');
 	pg_assert_false(pg_maintenance_list_opens_to_all('::1', '', true), 'no address');
 }
+
+// A database the site cannot use for good (wrong password, no such
+// database, no config table) answers 500 on every way in, so an uptime
+// monitor that reads the status code sees the outage; overload keeps the
+// guard's 503. The page itself stays the error page with its message.
+function test_database_errors_answer_500()
+{
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
+	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
+	$router = (string) file_get_contents(PG_FUNCTIONS_DIR . '/router.php');
+
+	pg_assert_same(1, preg_match("/output_error\\(lang\\('Sorry, this website could not connect to the database\\..*?\\), 500\\);/s", $core), 'db_connect(): 500 for a connection that waiting does not fix');
+
+	$print = strpos($init, 'print $config_error;');
+	$code = strpos($init, 'http_response_code(500);');
+	pg_assert_true(($print !== false) && ($code !== false) && ($code < $print), 'init.php: 500 before the missing config table message');
+
+	$from = strpos($router, 'function router_output_error(');
+	$section = substr($router, $from, 600);
+	pg_assert_contains('http_response_code(500);', $section, 'router.php: every error page it prints is a 500');
+	pg_assert_false(strpos($router, 'mysqli_num_rows(mysqli_query(') !== false, 'router.php: no row count of a query that may have failed');
+}
