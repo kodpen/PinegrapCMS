@@ -128,6 +128,30 @@ function test_short_link_redirects_exact_names_win_over_patterns()
 	pg_assert_same(null, pg_short_link_match_in('baska', $index), 'nothing');
 }
 
+function test_short_link_redirects_a_requested_path_is_read_as_names_are_stored()
+{
+	pg_assert_same('blog/2019/05/yazi', pg_short_link_path_name('blog/2019/05/yazi/'), 'a slash at the end');
+	pg_assert_same('eski/yazi', pg_short_link_path_name('/eski//yazi'), 'a slash at the front, a run of slashes');
+	pg_assert_same('Eski_Sayfa_Adı', pg_short_link_path_name('Eski Sayfa Adı'), 'spaces');
+	pg_assert_same('a/b', pg_short_link_path_name('a/b'), 'a stored name stays');
+
+	$index = pg_short_link_index(array(
+		short_link_redirects_test_link(1, 'blog/2019/05/yazi', '/yeni'),
+		short_link_redirects_test_link(2, 'Eski_Sayfa', '/yeni'),
+		short_link_redirects_test_link(3, 'arsiv/*', '/yeni/$1'),
+	));
+
+	$slash = pg_short_link_match_in('blog/2019/05/yazi/', $index);
+	$space = pg_short_link_match_in('eski sayfa', $index);
+	$double = pg_short_link_match_in('blog//2019/05/yazi', $index);
+	$pattern = pg_short_link_match_in('arsiv/a b', $index, false);
+
+	pg_assert_same(1, (int) $slash['link']['id'], 'an old address with a slash at the end');
+	pg_assert_same(2, (int) $space['link']['id'], 'an old address with a space');
+	pg_assert_same(1, (int) $double['link']['id'], 'an old address with a run of slashes');
+	pg_assert_same(array('a b'), $pattern['captures'], 'a pattern takes the address as it came first');
+}
+
 function test_short_link_redirects_fill_target()
 {
 	pg_assert_same('/yeni/a%20b/c%3Fd', pg_short_link_fill_target('/yeni/$1', array('a b/c?d')), 'encoded segment by segment');
@@ -160,6 +184,8 @@ function test_short_link_redirects_refuses_a_link_to_itself()
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'eski', '/')), 'the home page always answers');
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'eski', 'https://other.com/eski')), 'another site');
 	pg_assert_same('', short_link_redirects_test_problem(array('id' => 0, 'name' => 'eski', 'destination_type' => 'page', 'url' => '')), 'a page answers at its own address');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'Eski_Sayfa', '/Eski%20Sayfa')), 'the address reaches the name in its stored form');
+	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'Eski_*', '/Eski%20$1')), 'a pattern, its stored form');
 }
 
 function test_short_link_redirects_refuses_loops_and_long_chains()
@@ -168,6 +194,7 @@ function test_short_link_redirects_refuses_loops_and_long_chains()
 
 	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a', '/b'), $links), 'a -> b -> a');
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'c', '/b'), $links), 'c -> b -> a ends at a page');
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'x', '/a%20b/'), array(short_link_redirects_test_link(2, 'a_b', '/x'))), 'x -> a_b (asked as "a b/") -> x');
 
 	// The link being changed is checked as it will stand, not as it stood.
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(1, 'b', '/c'), $links), 'changed link');
