@@ -110,8 +110,13 @@ function erp_order_lines($order, $items)
 
         // The rate the line was charged at. The amount itself is carried over,
         // never recomputed; the rate is what a discounted line's tax is taken
-        // again at, and what the document prints.
-        $rate = erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
+        // again at, and what the document prints. The checkout keeps it on the
+        // line (order_items.tax_rate, 11.0.59); a line written before that, or
+        // by a path that does not set it, has it worked back out.
+        $stored_rate = $item['tax_rate'] ?? null;
+        $rate = (($stored_rate !== null) && ($stored_rate !== ''))
+            ? (float) $stored_rate
+            : erp_line_tax_rate($line_total, $tax_total, $item['product_tax_rate'] ?? null);
 
         $lines[] = array(
             'product_id' => (int) $item['product_id'],
