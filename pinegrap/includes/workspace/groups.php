@@ -1365,11 +1365,15 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
 // The channel's group is read when the event happens, so a channel moved
 // into the group is heard from that moment and one moved out stops being
 // heard. What an event carries is not changed: a private channel's message
-// is still never announced.
+// is still never announced as workspace.message.created, and a mention of
+// an application reaches that application alone (messages.php).
 
 /**
  * The channel a workspace event happened in: channel_id, or for a note the
- * task's channel. 0 when it happened in none (a task of no channel).
+ * task's channel. An event of a discussion (thread.channel_id, a mention of
+ * an application) is matched by the channel the discussion is about: a
+ * discussion is a channel of its own that no group holds. 0 when it
+ * happened in none (a task of no channel).
  *
  * @param array $payload
  * @return int
@@ -1377,6 +1381,11 @@ function ws_channel_move_group($viewer, $channel, $group_id, $preview = false)
 function ws_webhook_event_channel_id($payload)
 {
     $payload = (array) $payload;
+    $about = (isset($payload['thread']) && is_array($payload['thread'])) ? ($payload['thread']['channel_id'] ?? 0) : 0;
+
+    if ((is_int($about) || (is_string($about) && ctype_digit($about))) && ((int) $about > 0)) {
+        return (int) $about;
+    }
 
     if (array_key_exists('channel_id', $payload)) {
         return max(0, (int) $payload['channel_id']);

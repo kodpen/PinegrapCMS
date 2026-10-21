@@ -91,7 +91,9 @@ function pg_notification_visible($notification, $rights)
 		return (($target > 0) && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED);
 	}
 
-	if (($action == 'new_order') || ($action == 'out_stock')) {
+	// A customer's return request, or their word that the goods are on their
+	// way back: for whoever manages the orders (includes/fn/returns.php).
+	if (($action == 'new_order') || ($action == 'out_stock') || ($action == 'order_return')) {
 		return ((ECOMMERCE === true) && $rights['manage_ecommerce']);
 	}
 
@@ -133,6 +135,12 @@ function pg_notification_visible($notification, $rights)
 
 	// Quotes about to run out: for whoever may use the ERP.
 	if ($action == 'erp_quote_expiry') {
+		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
+	}
+
+	// An order that did not get its automatic invoice: for whoever may use
+	// the ERP, who can issue it from the order screen.
+	if ($action == 'erp_auto_invoice') {
 		return ((defined('ERP_ENABLED') && ERP_ENABLED) && $rights['manage_erp']);
 	}
 
@@ -302,6 +310,33 @@ function pg_notification_display($notification)
 		$display['badge']    = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
 
+	} elseif ($action == 'order_return') {
+
+		// title is the order number, order_total what happened (requested;
+		// shipped when the customer sent the goods back; refund_due and
+		// refund_overdue from the daily reminder) and form_id the return
+		// (pg_return_notify_staff()), whose screen the line opens.
+		switch ((string) ($notification['order_total'] ?? '')) {
+			case 'shipped':
+				$display['title'] = lang('A customer sent back the goods of a return.');
+				break;
+			case 'refund_due':
+				$display['title'] = lang(array('string' => 'The refund of a return is due within {var:1} days.', 'vars' => array(defined('PG_RETURN_REMIND_DAYS') ? PG_RETURN_REMIND_DAYS : 3)));
+				break;
+			case 'refund_overdue':
+				$display['title'] = lang('The refund of a return is overdue.');
+				break;
+			default:
+				$display['title'] = lang('A customer asked to return goods.');
+		}
+		$display['details'] = lang('Order Number') . ': #' . h($notification['title']);
+		$display['url']     = ((int) ($notification['form_id'] ?? 0) > 0)
+			? 'view_return.php?id=' . (int) $notification['form_id']
+			: 'view_order.php?id=' . (int) $notification['order_id'];
+		$display['icon']    = 'assets/images/notification-order.png';
+		$display['badge']   = 'assets/images/notification-order-badge.png';
+		$display['action']  = $action;
+
 	} elseif ($action == 'out_stock') {
 
 		$display['title']   = lang('A product out of stock by purchased.');
@@ -450,6 +485,18 @@ function pg_notification_display($notification)
 		$display['url']         = ($number !== '') ? 'edit_erp_quote.php?id=' . $quote_id : 'erp_quotes.php?state=open';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'erp_auto_invoice') {
+
+		// title is the reason the order screen gives, order_id the order and
+		// order_total its number (includes/erp/alerts.php). The link opens
+		// the order's documents card, where the invoice is issued by hand.
+		$display['title']       = lang('An order was not invoiced automatically');
+		$display['description'] = lang(array('string' => 'Order #{var:1}: {var:2}', 'vars' => array(h($notification['order_total'] ?? ''), h($notification['title'] ?? ''))));
+		$display['url']         = 'view_order.php?id=' . (int) ($notification['order_id'] ?? 0) . '#erp_order_documents';
+		$display['icon']        = 'assets/images/notification-order.png';
+		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;
 
 	} elseif ($action == 'ops') {

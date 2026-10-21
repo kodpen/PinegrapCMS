@@ -489,6 +489,8 @@ if (!$_POST) {
 
     log_activity(lang(array('string'=>'page ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
 
+    pg_audit_record('create', 'page', (int) $page_id);
+
     // If this page is a custom form, or a custom shipping or custom billing form was enabled,
     // then forward user to form designer.
     if (

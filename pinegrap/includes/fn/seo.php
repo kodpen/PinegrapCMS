@@ -326,8 +326,8 @@ function pg_sync_mysql_timezone()
  * True when the visitor rollup tables exist.
  *
  * Installs that take a code update without running the database upgrade must
- * keep serving pages, so every rollup write is gated on this. Probed once per
- * request; mirrors waf_table_has_column() and _orders_has_refund_columns().
+ * keep serving pages, so every rollup write is gated on this. Asked of
+ * pg_schema_has(), which answers most requests from its cache file.
  */
 function pg_visitor_rollup_ready($recheck = false)
 {
@@ -337,6 +337,8 @@ function pg_visitor_rollup_ready($recheck = false)
     // already loaded this file. Without a way to re-probe, a "no" cached from
     // earlier in the same request would make the backfill skip itself and
     // report success, which is the sort of failure nobody finds for months.
+    // pg_schema_has() keeps a "no" for the request as well, so a recheck
+    // makes it forget the table.
     if ($cached !== null && !$recheck) {
         return $cached;
     }
@@ -347,8 +349,11 @@ function pg_visitor_rollup_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'visitor_content_hourly'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('visitor_content_hourly');
+    }
+
+    $cached = pg_schema_has('visitor_content_hourly');
 
     return $cached;
 }
@@ -680,7 +685,7 @@ function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck 
  *
  * Installs that take a code update without running the database upgrade keep
  * writing to the legacy per-view table, so the feature works either way.
- * Mirrors pg_visitor_rollup_ready() and waf_table_has_column().
+ * Mirrors pg_visitor_rollup_ready().
  */
 function pg_sfv_stats_ready($recheck = false)
 {
@@ -700,40 +705,15 @@ function pg_sfv_stats_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_view_stats'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('submitted_form_view_stats');
+    }
+
+    $cached = pg_schema_has('submitted_form_view_stats');
 
     return $cached;
 }
 
-/**
- * True when the page table carries the search engine indexing columns.
- *
- * An installation that takes a code update without running the database
- * upgrade keeps the old behaviour: every page is indexable and robots.txt is
- * built the way it always was. Mirrors pg_sfv_stats_ready().
- *
- * Both columns are probed. They are added by one upgrade step, but the step
- * issues two statements, and a half-applied ALTER would otherwise leave the
- * readiness check saying yes to a query that selects a column that is not
- * there.
- */
-/**
- * The Recycle Bin folder's id, or 0 when there is no bin.
- *
- * The bin is an ordinary folder row (that is what keeps clean_up.php from
- * deleting the files inside it), which means every folder picker on the site
- * would list it and offer to file new content there or grant a user rights
- * over it. It is not a place anybody chooses; it is where deleted things wait.
- * So the pickers hide it - select_folder() and get_acl_folder_tree() drop the
- * row, and dropping it also hides everything below it, because a binned
- * subtree is only reachable through the bin as its parent.
- *
- * The File Manager is the exception and reads the id through its own helper:
- * showing the bin, and what is in it, is the whole point of that screen.
- *
- * Guarded per column: before the 2026.4.4 upgrade there is no bin at all.
- */
 // Where a screen without a folder picker should file the images and documents it receives.  A file
 // row with folder zero is in no folder at all: it never shows up in the file manager or on the files
 // screen again, which is what used to happen to everything that arrived through the chat.  A site
@@ -757,9 +737,7 @@ function pg_default_upload_folder($setting)
     $folder_id = 0;
 
     // the column only exists after the 2026.4.4 upgrade
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE '" . $setting . "'");
-
-    if (($result != false) && (mysqli_num_rows($result) > 0)) {
+    if (pg_schema_has('config', $setting)) {
         $folder_id = (int) db_value("SELECT " . $setting . " FROM config");
     }
 
@@ -779,7 +757,22 @@ function pg_default_upload_folder($setting)
     return $folder_id;
 }
 
-
+/**
+ * The Recycle Bin folder's id, or 0 when there is no bin.
+ *
+ * The bin is an ordinary folder row (that is what keeps clean_up.php from
+ * deleting the files inside it), which means every folder picker on the site
+ * would list it and offer to file new content there or grant a user rights
+ * over it. It is not a place anybody chooses; it is where deleted things wait.
+ * So the pickers hide it - select_folder() and get_acl_folder_tree() drop the
+ * row, and dropping it also hides everything below it, because a binned
+ * subtree is only reachable through the bin as its parent.
+ *
+ * The File Manager is the exception and reads the id through its own helper:
+ * showing the bin, and what is in it, is the whole point of that screen.
+ *
+ * Guarded per column: before the 2026.4.4 upgrade there is no bin at all.
+ */
 function pg_recycle_bin_folder_id($recheck = false)
 {
     static $cached = null;
@@ -794,9 +787,11 @@ function pg_recycle_bin_folder_id($recheck = false)
         return 0;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM config LIKE 'recycle_folder_id'");
+    if ($recheck) {
+        pg_schema_forget('config');
+    }
 
-    if (!$result || (@mysqli_num_rows($result) == 0)) {
+    if (!pg_schema_has('config', 'recycle_folder_id')) {
         return 0;
     }
 
@@ -812,6 +807,18 @@ function pg_recycle_bin_folder_id($recheck = false)
     return $cached;
 }
 
+/**
+ * True when the page table carries the search engine indexing columns.
+ *
+ * An installation that takes a code update without running the database
+ * upgrade keeps the old behaviour: every page is indexable and robots.txt is
+ * built the way it always was. Mirrors pg_sfv_stats_ready().
+ *
+ * Both columns are probed. They are added by one upgrade step, but the step
+ * issues two statements, and a half-applied ALTER would otherwise leave the
+ * readiness check saying yes to a query that selects a column that is not
+ * there.
+ */
 function pg_page_noindex_ready($recheck = false)
 {
     static $cached = null;
@@ -826,11 +833,11 @@ function pg_page_noindex_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM page WHERE Field IN ('noindex', 'nofollow')");
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
 
-    $cached = ($result && @mysqli_num_rows($result) == 2);
+    $cached = pg_schema_has('page', 'noindex') && pg_schema_has('page', 'nofollow');
 
     return $cached;
 }
@@ -842,7 +849,7 @@ function pg_page_noindex_ready($recheck = false)
  * Probes BOTH halves of the swap — the page-side tree columns and the
  * style-side asset columns — because the upgrade runs five separate ALTERs
  * and a half-applied state must read as "not ready". Same shape as
- * pg_page_noindex_ready(): one probe per request, cached.
+ * pg_page_noindex_ready(): asked once per request, cached.
  *
  * Code that takes the new files before the upgrade has run keeps working on
  * the old layout (tree on the style, assets on the page); nothing below
@@ -862,15 +869,16 @@ function pg_multi_page_design_ready($recheck = false)
         return false;
     }
 
-    $page_cols = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM page WHERE Field IN ('page_tree_json', 'page_tree_code')");
-    $style_cols = @mysqli_query(
-        db::$con,
-        "SHOW COLUMNS FROM style WHERE Field IN ('style_custom_css', 'style_custom_js', 'style_custom_fonts')");
+    if ($recheck) {
+        pg_schema_forget('page');
+        pg_schema_forget('style');
+    }
 
-    $cached = ($page_cols && @mysqli_num_rows($page_cols) == 2)
-           && ($style_cols && @mysqli_num_rows($style_cols) == 3);
+    $cached = pg_schema_has('page', 'page_tree_json')
+           && pg_schema_has('page', 'page_tree_code')
+           && pg_schema_has('style', 'style_custom_css')
+           && pg_schema_has('style', 'style_custom_js')
+           && pg_schema_has('style', 'style_custom_fonts');
 
     return $cached;
 }
@@ -932,8 +940,42 @@ function pg_page_custom_jsonld_ready($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW COLUMNS FROM page LIKE 'custom_jsonld'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
+
+    $cached = pg_schema_has('page', 'custom_jsonld');
+
+    return $cached;
+}
+
+/**
+ * True when the page table carries the canonical address and the two robots
+ * directives (page.canonical_url, page.noarchive, page.max_snippet; 2026.11.0,
+ * 11.0.22). All three are probed by name: the step adds them together, and a
+ * database that has only some of them shows no field and writes none.
+ */
+function pg_page_seo_extras_ready($recheck = false)
+{
+    static $cached = null;
+
+    if ($cached !== null && !$recheck) {
+        return $cached;
+    }
+
+    $cached = false;
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    if ($recheck) {
+        pg_schema_forget('page');
+    }
+
+    $cached = pg_schema_has('page', 'canonical_url')
+           && pg_schema_has('page', 'noarchive')
+           && pg_schema_has('page', 'max_snippet');
 
     return $cached;
 }
@@ -1603,6 +1645,227 @@ function pg_page_custom_jsonld_message($error, $page_name)
 }
 
 /**
+ * Check a page's own canonical address before it is stored (page.canonical_url).
+ *
+ * Two forms are kept, trimmed, as typed: a full http or https address (on
+ * this site or another one, for a page first published elsewhere), or a path
+ * on this site starting with a single "/", which keeps pointing at this site
+ * after a change of host name. Anything a search engine could read as a
+ * relative or scheme-less address is refused, and so are white space, control
+ * characters and the characters no address carries unescaped.
+ *
+ * Returns array('ok' => bool, 'value' => string, 'error' => '' | 'size' |
+ * 'chars' | 'scheme').
+ */
+function pg_page_canonical_url_check($raw)
+{
+    $raw = trim((string) $raw);
+
+    if ($raw === '') {
+        return array('ok' => true, 'value' => '', 'error' => '');
+    }
+
+    $refuse = function ($error) {
+        return array('ok' => false, 'value' => '', 'error' => $error);
+    };
+
+    if (strlen($raw) > 2000) {
+        return $refuse('size');
+    }
+
+    if (preg_match('~[\x00-\x20\x7F"<>\\\\]~', $raw)) {
+        return $refuse('chars');
+    }
+
+    if ($raw[0] === '/') {
+        // "//host/path" is an address on another host without a scheme.
+        if ((strlen($raw) > 1) && ($raw[1] === '/')) {
+            return $refuse('scheme');
+        }
+
+        return array('ok' => true, 'value' => $raw, 'error' => '');
+    }
+
+    if (!preg_match('~^https?://~i', $raw)) {
+        return $refuse('scheme');
+    }
+
+    $host = parse_url($raw, PHP_URL_HOST);
+
+    if (!is_string($host) || ($host === '')) {
+        return $refuse('scheme');
+    }
+
+    return array('ok' => true, 'value' => $raw, 'error' => '');
+}
+
+/**
+ * The sentence for a refused canonical address (pg_page_canonical_url_check()),
+ * naming the page: one save of the visual designer covers every page of a
+ * design.
+ */
+function pg_page_canonical_url_message($error, $page_name)
+{
+    $page_name = ((string) $page_name !== '') ? (string) $page_name : lang('New Page');
+
+    switch ($error) {
+        case 'size':
+            return lang(array('string' => 'The canonical address of {var:1} is too long; it can be at most 2000 characters.', 'vars' => array($page_name)));
+        case 'chars':
+            return lang(array('string' => 'The canonical address of {var:1} cannot contain spaces, quotation marks or angle brackets.', 'vars' => array($page_name)));
+        default:
+            return lang(array('string' => 'The canonical address of {var:1} must be a full address starting with http:// or https://, or a path on this site starting with /.', 'vars' => array($page_name)));
+    }
+}
+
+/**
+ * The longest text snippet, in characters, a page may ask for with
+ * max-snippet. Search engines show far less; a larger number would only be
+ * a roundabout way of writing -1.
+ */
+function pg_page_max_snippet_limit()
+{
+    return 10000;
+}
+
+/**
+ * Check a page's max-snippet value before it is stored (page.max_snippet).
+ *
+ * Empty means no directive (null): the search engine decides. Otherwise a
+ * whole number: -1 for no limit, 0 for no text snippet, or the most
+ * characters to show, up to pg_page_max_snippet_limit(). A stored number
+ * read back as a string passes the same way.
+ *
+ * Returns array('ok' => bool, 'value' => int|null, 'error' => '' | 'number').
+ */
+function pg_page_max_snippet_check($raw)
+{
+    if (is_int($raw)) {
+        $raw = (string) $raw;
+    }
+
+    $raw = is_string($raw) ? trim($raw) : (($raw === null) ? '' : false);
+
+    if ($raw === '') {
+        return array('ok' => true, 'value' => null, 'error' => '');
+    }
+
+    if (($raw === false) || !preg_match('~^(-1|0|[1-9][0-9]{0,4})$~', $raw) || ((int) $raw > pg_page_max_snippet_limit())) {
+        return array('ok' => false, 'value' => null, 'error' => 'number');
+    }
+
+    return array('ok' => true, 'value' => (int) $raw, 'error' => '');
+}
+
+/**
+ * The sentence for a refused max-snippet value, naming the page.
+ */
+function pg_page_max_snippet_message($page_name)
+{
+    $page_name = ((string) $page_name !== '') ? (string) $page_name : lang('New Page');
+
+    return lang(array('string' => 'The snippet length of {var:1} must be a whole number: -1 for no limit, 0 for no text snippet, or at most {var:2} characters.', 'vars' => array($page_name, pg_page_max_snippet_limit())));
+}
+
+/**
+ * The address a page's head names as canonical in place of the automatic
+ * one, from the stored page.canonical_url: a path on this site is put after
+ * $base (scheme and host, URL_SCHEME . HOSTNAME_SETTING), and letters outside
+ * ASCII after the host are percent-encoded, the form the automatic address
+ * has. '' when the page names none, or when what is stored no longer passes
+ * pg_page_canonical_url_check() (written outside the software): the page
+ * then keeps the automatic address rather than naming a broken one.
+ *
+ * @param string|null $stored
+ * @param string      $base
+ * @return string unescaped; the caller escapes it for HTML
+ */
+function pg_page_canonical_href($stored, $base)
+{
+    $check = pg_page_canonical_url_check($stored);
+
+    if (!$check['ok'] || ($check['value'] === '')) {
+        return '';
+    }
+
+    $value = $check['value'];
+
+    if ($value[0] === '/') {
+        $host_part = rtrim((string) $base, '/');
+        $rest = $value;
+    } else {
+        // Scheme and host are left as typed: an internationalised host name
+        // is not percent-encoded.
+        preg_match('~^(https?://[^/?#]*)(.*)$~is', $value, $parts);
+        $host_part = $parts[1];
+        $rest = $parts[2];
+    }
+
+    $rest = preg_replace_callback('~[\x80-\xFF]+~', function ($match) {
+        return rawurlencode($match[0]);
+    }, $rest);
+
+    return $host_part . $rest;
+}
+
+/**
+ * The content of a page's robots meta tag, '' for none.
+ *
+ * A page closed to search engines says only that (noindex, with follow or
+ * nofollow): the other directives describe how an indexed page is shown,
+ * and a page out of the index shows nothing. Otherwise noarchive and
+ * max-snippet are written when the page asks for them; nofollow alone is
+ * never written (page-noindex-switch).
+ *
+ * @param bool            $noindex
+ * @param bool            $nofollow
+ * @param bool            $noarchive
+ * @param int|string|null $max_snippet as stored: null or '' for none
+ * @return string
+ */
+function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet)
+{
+    if ($noindex) {
+        return 'noindex, ' . ($nofollow ? 'nofollow' : 'follow');
+    }
+
+    $directives = array();
+
+    if ($noarchive) {
+        $directives[] = 'noarchive';
+    }
+
+    $snippet = pg_page_max_snippet_check($max_snippet);
+
+    if ($snippet['ok'] && ($snippet['value'] !== null)) {
+        $directives[] = 'max-snippet:' . $snippet['value'];
+    }
+
+    return implode(', ', $directives);
+}
+
+/**
+ * The page's own address, kept while its head names another address as
+ * canonical (page.canonical_url): get_page_content() sets it for the page it
+ * draws, '' when the canonical link is the page's own. The language pass
+ * (pg_tr_render_finalize()) reads the canonical link to find the page it
+ * draws, for its alternates and its index verdict, and asks here first.
+ *
+ * @param string|null $address the address to keep; null only reads it
+ * @return string
+ */
+function pg_page_own_url($address = null)
+{
+    static $own = '';
+
+    if ($address !== null) {
+        $own = (string) $address;
+    }
+
+    return $own;
+}
+
+/**
  * Disallow lines that block crawling of the pages marked noindex.
  *
  * Returns one "Disallow: ..." line per entry and no User-agent line of its own:
@@ -1746,8 +2009,11 @@ function pg_sfv_legacy_table_exists($recheck = false)
         return false;
     }
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE 'submitted_form_views'");
-    $cached = ($result && @mysqli_num_rows($result) > 0);
+    if ($recheck) {
+        pg_schema_forget('submitted_form_views');
+    }
+
+    $cached = pg_schema_has('submitted_form_views');
 
     return $cached;
 }

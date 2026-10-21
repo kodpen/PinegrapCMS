@@ -128,11 +128,11 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['type']) == false) {
 // by both the filter below and its pick-list entry further down, so an
 // installation that has not been upgraded never offers an option that cannot
 // work.
-$refund_columns_exist = (bool) db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'");
+$refund_columns_exist = pg_schema_has('orders', 'refund_status');
 
 // paid_at arrives with the 2026.4.4 upgrade and is what tells a bank transfer
 // order that is still unpaid from one whose money came in. Probed the same way.
-$paid_at_column_exists = (bool) db_item("SHOW COLUMNS FROM orders LIKE 'paid_at'");
+$paid_at_column_exists = pg_schema_has('orders', 'paid_at');
 
 $sql_status = "";
 
@@ -2289,7 +2289,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $types[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
     $types[] = array('label' => lang('Online'), 'value' => 'online');
 
-    if (db_value("SHOW TABLES LIKE 'marketplace_accounts'")
+    if (pg_schema_has('marketplace_accounts')
         && db_value("SELECT COUNT(*) FROM marketplace_accounts")) {
 
         $types[] = array('label' => lang('Marketplace'), 'value' => 'marketplace');

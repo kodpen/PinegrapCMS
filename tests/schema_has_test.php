@@ -84,3 +84,53 @@ function test_schema_has_store_replaces_earlier_answer()
 	pg_assert_same(false, pg_schema_cache_lookup($cache, 'ws_threads'));
 	pg_assert_false(isset($cache['tables']['ws_threads']), 'columns forgotten');
 }
+
+// Forgetting a table makes it unknown again, whether it was stored with its
+// columns or as missing; other tables keep their answers.
+function test_schema_has_forget_makes_table_unknown()
+{
+	$cache = pg_schema_cache_store(array(), 'page', array('page_id', 'noindex'));
+	$cache = pg_schema_cache_store($cache, 'visitor_content_hourly', false);
+	$cache = pg_schema_cache_store($cache, 'style', array('style_id'));
+
+	$cache = pg_schema_cache_forget($cache, 'page');
+	$cache = pg_schema_cache_forget($cache, 'visitor_content_hourly');
+
+	pg_assert_same(null, pg_schema_cache_lookup($cache, 'page'), 'stored table');
+	pg_assert_same(null, pg_schema_cache_lookup($cache, 'page', 'noindex'), 'its column');
+	pg_assert_same(null, pg_schema_cache_lookup($cache, 'visitor_content_hourly'), 'missing table');
+	pg_assert_same(array(), $cache['missing']);
+	pg_assert_same(true, pg_schema_cache_lookup($cache, 'style', 'style_id'), 'another table');
+}
+
+// A table the cache never knew, or a cache that is not one yet, gives a
+// well-formed cache back.
+function test_schema_has_forget_unknown_table_and_empty_cache()
+{
+	$cache = pg_schema_cache_forget(pg_schema_cache_store(array(), 'config', array('version')), 'page');
+
+	pg_assert_same(true, pg_schema_cache_lookup($cache, 'config', 'version'));
+	pg_assert_same(array('tables' => array(), 'missing' => array()), pg_schema_cache_forget(null, 'page'));
+	pg_assert_same(array('tables' => array(), 'missing' => array()), pg_schema_cache_forget(array('tables' => 'x'), 'page'));
+}
+
+// pg_schema_forget() works on what this request holds. It loads the request's
+// state first, so a cache file read later cannot bring back the answer that
+// was just forgotten.
+function test_schema_has_forget_drops_request_answer()
+{
+	$state = &pg_schema_cache_state();
+	$saved = $state;
+
+	$cache = pg_schema_cache_store(array(), 'page', array('page_id'));
+	$cache = pg_schema_cache_store($cache, 'submitted_form_views', false);
+	$state = array('loaded' => false, 'file' => '', 'cache' => $cache);
+
+	pg_schema_forget('submitted_form_views');
+
+	pg_assert_true($state['loaded'], 'state loaded before forgetting');
+	pg_assert_same(null, pg_schema_cache_lookup($state['cache'], 'submitted_form_views'));
+	pg_assert_same(true, pg_schema_cache_lookup($state['cache'], 'page', 'page_id'));
+
+	$state = $saved;
+}

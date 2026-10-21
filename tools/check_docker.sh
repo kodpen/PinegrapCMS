@@ -4,11 +4,13 @@
 #
 # Builds the Docker images of docker/, starts the compose stack and checks it
 # the way a person trying it would use it: the installation screen answers,
-# the PHP extensions and settings System Status asks for are there, nginx
-# refuses data/ and includes/, the installer finishes against the db
-# container, the site, the control panel and an uploaded file answer, the
-# configuration survives a recreated app container and the cron container
-# runs the general job.
+# the install service leaves it to the browser when no administrator is
+# given, the PHP extensions and settings System Status asks for are there,
+# nginx refuses data/ and includes/, the install service installs the
+# starter site against the db container when the administrator is given and
+# leaves it alone on the next start, the site, the control panel and an
+# uploaded file answer, the configuration survives a recreated app container
+# and the cron container runs the general job.
 #
 # CI runs it (.github/workflows/docker-check.yml). Locally it needs Docker
 # with the compose plugin and network access to the base images:
@@ -35,6 +37,10 @@ WORK="$(mktemp -d)"
 
 export PG_HTTP_PORT="$PORT"
 export PG_CRON_INTERVAL=5
+# The images built from this checkout get their own tag: the check never
+# starts a published image in their place, and a latest image pulled on this
+# machine stays as it was.
+export PG_IMAGE_TAG=check
 
 COMPOSE=(docker compose -f "$ROOT/docker/docker-compose.yml" -p pinegrap-check)
 
@@ -66,7 +72,7 @@ cleanup() {
 	local status=$?
 
 	if [ "$status" -ne 0 ]; then
-		"${COMPOSE[@]}" logs --no-color --tail 25 app web cron 2>&1 | annotate "container logs" || true
+		"${COMPOSE[@]}" logs --no-color --tail 25 app web cron install 2>&1 | annotate "container logs" || true
 	fi
 
 	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -100,6 +106,37 @@ wait_for_installer() {
 	fail "the installation screen did not answer at $BASE_URL/pinegrap/install/"
 }
 
+# "<status> <exit code>" of the container the install service started with the
+# stack, once it has stopped.
+install_service_state() {
+	local id state
+
+	for _ in $(seq 1 60); do
+		id="$("${COMPOSE[@]}" ps -a -q install 2>/dev/null | head -1 || true)"
+
+		if [ -n "$id" ]; then
+			state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$id" 2>/dev/null || true)"
+
+			case "$state" in
+				exited*) echo "$state"; return 0 ;;
+			esac
+		fi
+
+		sleep 2
+	done
+
+	echo "${state:-not started}"
+}
+
+# The install service run once more, as a start of the stack runs it, with
+# the administrator's variables; its output goes to $1.
+run_install() {
+	PG_INSTALL_ADMIN_EMAIL="admin@example.test" \
+	PG_INSTALL_ADMIN_PASSWORD="Check-docker-1" \
+	PG_INSTALL_STARTER="$STARTER" \
+		"${COMPOSE[@]}" run --rm -T install > "$1" 2>&1
+}
+
 say "Building the images and starting the containers"
 echo "installation data" > "$LEAK_MARKER"
 
@@ -108,6 +145,12 @@ if ! "${COMPOSE[@]}" up -d --build > "$WORK/up.log" 2>&1; then
 	exit 1
 fi
 wait_for_installer
+
+say "The install service without an administrator"
+STATE="$(install_service_state)"
+[ "$STATE" = "exited 0" ] || fail "the install service is '$STATE', expected 'exited 0' when no administrator is given"
+"${COMPOSE[@]}" logs --no-color install 2>&1 | grep -q "nothing is installed here" || fail "the install service did not say that the installation is left to the browser"
+echo "OK: nothing installed; the installation screen is left to the browser."
 
 say "What the image took from pinegrap/data/"
 "${COMPOSE[@]}" exec -T app sh -c '
@@ -143,64 +186,36 @@ ASSET="$(cd "$ROOT/pinegrap" && find assets -type f -name '*.css' -print -quit)"
 [ -n "$ASSET" ] && [ "$(status_of "/pinegrap/$ASSET")" = "200" ] || fail "the static file /pinegrap/$ASSET is not served"
 echo "OK: data/ and includes/ refused, static files served."
 
-say "Installing the $STARTER starter site through the installation screen"
-token_from() {
-	grep -oE 'name="token" value="[^"]+"' "$1" | head -1 | sed -E 's/.*value="([^"]+)".*/\1/' || true
-}
-
-COOKIES="$WORK/cookies.txt"
-curl -fsS -c "$COOKIES" "$BASE_URL/pinegrap/install/" > "$WORK/form.html"
-TOKEN="$(token_from "$WORK/form.html")"
-[ -n "$TOKEN" ] || fail "the installation screen has no CSRF token; it may have changed"
-
-RESTORE_ID=""
-
-for _ in $(seq 1 100); do
-	curl -sS -m 1800 -b "$COOKIES" -c "$COOKIES" \
-		-d "token=$TOKEN" \
-		-d "submit=1" \
-		-d "install_type=install" \
-		-d "install_from_folder=$STARTER" \
-		-d "db_host=db" \
-		-d "db_username=pinegrap" \
-		-d "db_password=pinegrap" \
-		-d "db_database=pinegrap" \
-		-d "admin_username=admin" \
-		-d "admin_password=Check-docker-1" \
-		-d "admin_confirm_password=Check-docker-1" \
-		-d "admin_email_address=admin@example.test" \
-		-d "admin_confirm_email_address=admin@example.test" \
-		-d "default_software_language=en" \
-		-d "software_update_check=false" \
-		-d "send_email=false" \
-		${RESTORE_ID:+-d "restore_id=$RESTORE_ID"} \
-		"$BASE_URL/pinegrap/install/" > "$WORK/answer.html"
-
-	RESTORE_ID="$(grep -oE 'pg_install_stream_continue\("[^"]+"\)' "$WORK/answer.html" | head -1 | sed -E 's/.*\("([^"]+)"\).*/\1/' || true)"
-
-	if [ -z "$RESTORE_ID" ]; then
-		break
-	fi
-
-	TOKEN="$(token_from "$WORK/answer.html")"
-
-	if [ -z "$TOKEN" ]; then
-		curl -fsS -b "$COOKIES" -c "$COOKIES" "$BASE_URL/pinegrap/install/" > "$WORK/form.html"
-		TOKEN="$(token_from "$WORK/form.html")"
-	fi
-done
+say "Installing the $STARTER starter site with the install service"
+if ! run_install "$WORK/install.log"; then
+	tail -40 "$WORK/install.log" | annotate "install service"
+	fail "the install service did not install the site"
+fi
 
 EXPECTED="$("${COMPOSE[@]}" exec -T app php -r 'define("INSTALL_OR_UPDATE", true); $v = include "/var/www/html/pinegrap/includes/migrations/versions.php"; echo end($v);')"
 VERSION="$(sql "SELECT version FROM config")"
 
-if [ "$VERSION" != "$EXPECTED" ] || ! grep -q 'The installation is complete' "$WORK/answer.html"; then
-	echo "Last steps of the screen:" >&2
-	grep -oE 'pg_install_stream_step\([^;]*' "$WORK/answer.html" | tail -5 >&2 || true
+if [ "$VERSION" != "$EXPECTED" ] || ! grep -q '^ok: installed ' "$WORK/install.log"; then
+	tail -10 "$WORK/install.log" >&2 || true
 	fail "the database is at '${VERSION:-nothing}', expected $EXPECTED"
 fi
 
-"${COMPOSE[@]}" exec -T app grep -q "DB_HOST" /var/www/html/pinegrap/data/config.php || fail "the installer wrote no data/config.php into the volume"
-echo "OK: installed, the database is at $VERSION."
+"${COMPOSE[@]}" exec -T app sh -c 'grep -q DB_HOST /var/www/html/pinegrap/data/config.php && test "$(stat -c %U /var/www/html/pinegrap/data/config.php)" = "www-data"' || fail "the install service wrote no data/config.php into the volume, or not as www-data"
+
+[ "$(sql "SELECT COUNT(*) FROM user WHERE (user_username = 'admin') AND (user_role = '0')")" = "1" ] || fail "the install service created no administrator named admin"
+
+HOSTNAME_SETTING="$(sql "SELECT hostname FROM config")"
+[ "$HOSTNAME_SETTING" = "localhost:$PORT" ] || fail "the site's address is '$HOSTNAME_SETTING', expected localhost:$PORT"
+echo "OK: installed, the database is at $VERSION, the site's address is $HOSTNAME_SETTING."
+
+say "The install service on the next start"
+if ! run_install "$WORK/install-again.log"; then
+	tail -20 "$WORK/install-again.log" | annotate "install service, second run"
+	fail "the second run of the install service failed"
+fi
+
+grep -q '^skipped: a site is already installed' "$WORK/install-again.log" || fail "the second run of the install service did not leave the site alone: $(tail -1 "$WORK/install-again.log")"
+echo "OK: the installed site is left alone."
 
 say "The installed site"
 check_site() {

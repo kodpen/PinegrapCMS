@@ -16,6 +16,12 @@ description: Rules for opening products on a marketplace (listings.php): product
 ## Which products are not listed?
 - A product without stock tracking is not listed (a listing needs a quantity; a zero listing opens already sold out). For the same reason `quantity` is never sent in stock sends for a non-tracking product.
 
+## What is a listed product's key?
+- The seller's code (`products.name`) for n11. For a provider with `'key' => 'barcode'` (Trendyol) the mapped `remote_code`, else the product's first barcode; no barcode = article refused (`mp_listing_items()`, `trendyol-listings.md`). Items also carry `stock_code` (the name), `barcode` and `brand`.
+
+## Where does a refusal show?
+- A non-retryable refusal from the connector's `create_listings` is written to the article row (`marketplace_category_map.last_error`) as well as to the queue rows; a retryable one only to the queue rows.
+
 ## VAT and images
-- VAT: n11 accepts only 0/1/10/20; round to the nearest LOWER rate (rounding up would charge the buyer more).
+- VAT: n11 and Trendyol accept only 0/1/10/20; round to the nearest LOWER rate (rounding up would charge the buyer more).
 - `products_images_xref` has NO `id` column: `ORDER BY id` is a fatal error.

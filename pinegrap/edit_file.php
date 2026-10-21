@@ -674,12 +674,18 @@ $liveform->remove_form('edit_file');
     $stored_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
     $stored_file_extension = strtolower(pathinfo($row['name'], PATHINFO_EXTENSION));
 
+    // The record as it was, for the audit trail of whichever branch below
+    // changes it.
+    $audit_before = pg_audit_fetch('files', $file_id);
+
     // DELETE
     if (!empty($_POST['delete'])) {
         mysqli_query(db::$con, "DELETE FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
         mysqli_query(db::$con, "DELETE FROM system_theme_css_rules WHERE file_id = '" . $file_id . "'") or output_error('Query failed');
         db("DELETE FROM preview_styles WHERE theme_id = '" . $file_id . "'");
         @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);
+
+        pg_audit_record('delete', 'files', (int) $file_id, $audit_before);
 
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
@@ -834,6 +840,8 @@ $liveform->remove_form('edit_file');
             WHERE id = '" . $file_id . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed');
     
+        pg_audit_record('update', 'files', (int) $file_id, $audit_before);
+
         // Log activity
         log_activity(lang(array('string'=>'file ({var:1}) was rotated','vars'=>$name)), $_SESSION['sessionusername']);
     
@@ -909,6 +917,8 @@ $liveform->remove_form('edit_file');
             UNIX_TIMESTAMP()
         )");
 
+        pg_audit_record('create', 'files', (int) mysqli_insert_id(db::$con));
+
         log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$webpname)), $_SESSION['sessionusername']);
         imagedestroy($image);
     }
@@ -953,6 +963,7 @@ $liveform->remove_form('edit_file');
                     UNIX_TIMESTAMP()
                 )");
             $new_id = mysqli_insert_id(db::$con);
+            pg_audit_record('create', 'files', (int) $new_id);
             log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $new_name)), $_SESSION['sessionusername']);
 
             $liveform_redirect = new liveform('edit_file');
@@ -976,6 +987,8 @@ $liveform->remove_form('edit_file');
                 size      = '" . escape($new_size) . "',
                 timestamp = UNIX_TIMESTAMP()
                 WHERE id  = '" . $file_id . "'");
+
+            pg_audit_record('update', 'files', (int) $file_id, $audit_before);
 
             log_activity(lang(array('string' => 'file ({var:1}) was converted to {var:2}', 'vars' => array($name, strtoupper($target_ext)))), $_SESSION['sessionusername']);
 
@@ -1041,6 +1054,7 @@ $liveform->remove_form('edit_file');
             user = '" . $user['id'] . "'
             WHERE id = '" . $file_id . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed');
+        pg_audit_record('update', 'files', (int) $file_id, $audit_before);
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
 
@@ -1099,6 +1113,8 @@ $liveform->remove_form('edit_file');
         )";
         mysqli_query(db::$con, $query) or output_error('Query failed.');
         $new_file_id = mysqli_insert_id(db::$con);
+
+        pg_audit_record('create', 'files', (int) $new_file_id);
 
         log_activity(
             lang(array('string' => 'a new copy of the file ({var:1}) was created', 'vars' => $original_name)),

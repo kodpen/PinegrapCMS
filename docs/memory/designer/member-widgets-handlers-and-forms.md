@@ -19,4 +19,4 @@ description: Membership widgets (login/forgot/registration/membership): legacy h
 - Server wraps the form (`_pg_member_form_wrap`): `<form action=... method="post">` + `get_token_field()` + hidden fields. Designer form draws no form tag (same model as custom form).
 - Membership form is also `.pg-cf-form`: same `novalidate` + `needs-validation` classes and `pg_cf_validation_script()`. The script is emitted once per page, waits for `DOMContentLoaded` and binds EVERY `.pg-cf-form` once (`data-pg-validated`); the old immediately-running version saw only its own form.
 
-Related: docs/memory/designer/member-widgets-rendering.md, docs/memory/designer/member-widgets-tokens-and-fields.md
+Related: docs/memory/designer/member-widgets-rendering.md, docs/memory/designer/member-widgets-tokens-and-fields.md, docs/memory/designer/member-email-asked-once.md (the address asked once)

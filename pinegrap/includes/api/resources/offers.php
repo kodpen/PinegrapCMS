@@ -700,6 +700,8 @@ function api_offers_update($params) {
 
 	api_dry_run_stop('updated', 'offer', array('id' => $id, 'code' => (string)$row['code'], 'fields' => count($set)));
 
+	$audit_before = _pg_offer_audit_state($id);
+
 	api_exec("UPDATE offers SET " . implode(', ', $set) . ",
 			user = '" . (int)$app['owner']['id'] . "',
 			timestamp = UNIX_TIMESTAMP()
@@ -710,6 +712,8 @@ function api_offers_update($params) {
 		'string' => 'Offer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array((string)$row['code'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
+
+	pg_audit('update', 'offer', $id, $audit_before, _pg_offer_audit_state($id), (string)$row['code']);
 
 	$row = api_row(api_offer_select() . " WHERE offers.id = '" . $id . "' LIMIT 1");
 

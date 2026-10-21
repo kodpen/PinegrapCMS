@@ -6,6 +6,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 ## How does HTML / ZIP import work?
 - File Manager ZIP -> design: `import_design_zip.php` -> `pg_designer_create_design_from_import()` (style + pages into the `Import/<project>` folder, no sentinel written) -> editor. In-editor import also puts pages in `folder_id` and adds an option to the folder select.
 - Core `includes/designer_import.php`, endpoint `designer_import.php` (multipart; `api.php` reads JSON only). Pages are unsaved tabs; files are written at once under `Import/<project>/...`.
+- A ZIP is measured before it is read (`pg_zip_import_open()`); every entry is read by its own index through `pg_zip_entry_contents()`, a page at most 8 MB: docs/memory/platform/zip-entry-declared-size.md.
 - Inline `<svg>` is taken raw BEFORE parsing (libxml nests `<path/>`): `bi-*` class -> icon node, otherwise `.svg` file + image node. NEVER produce custom_html.
 - `srcset`/`sizes` are not carried to the image (it would override src).
 - Page names are fixed before translation (`$ctx->page_names`); cross-page links resolve from there.
@@ -14,6 +15,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - Client `_validationRules` (per node; the `seo` field = server code) -> canvas badge `applyIssueBadges()`.
 - `api.php designer/seo_check` -> `pg_seo_evaluate_meta` + `pg_seo_analyze_html('fragment')` + `pg_seo_compose`; writes nothing. Save runs `pg_seo_analyze_record` + `pg_seo_recalculate`.
 - When adding a node-level SEO check, write its client twin too: a server finding cannot be mapped to a node.
+- Text contrast is measured on the canvas, not from the tree: docs/memory/designer/designer-audit-contrast.md.
 
 ## How is the theme stored?
 - A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`).

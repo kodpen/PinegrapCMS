@@ -31,6 +31,40 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
 
+// The largest stock level or change one call may name, either way. The route
+// table declares the same bound for the single-product endpoint
+// (inventory.write in includes/api/schema.php), where the router enforces it;
+// a batch item is not a route parameter and is read by
+// api_inventory_quantity() instead. Well inside the unsigned INT column, which
+// the session's non-strict mode would otherwise clamp in silence.
+if (!defined('API_INVENTORY_QUANTITY_LIMIT')) {
+	define('API_INVENTORY_QUANTITY_LIMIT', 1000000);
+}
+
+// A batch item's quantity read the way the router reads the single endpoint's
+// int parameter (api_validate_value()): a whole number, from JSON or from a
+// numeric string, nothing after a decimal point. Returns the int, null when it
+// is not a whole number, false when it is one outside the bound above.
+function api_inventory_quantity($raw) {
+
+	if (is_bool($raw) || !is_scalar($raw) || !is_numeric($raw) || ((string)(int)$raw !== trim((string)$raw))) {
+
+		return null;
+
+	}
+
+	$quantity = (int)$raw;
+
+	if (($quantity < -API_INVENTORY_QUANTITY_LIMIT) || ($quantity > API_INVENTORY_QUANTITY_LIMIT)) {
+
+		return false;
+
+	}
+
+	return $quantity;
+
+}
+
 function api_inventory_write($params) {
 
 	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity'], true, api_dry_run_requested());
@@ -120,7 +154,9 @@ function api_inventory_bulk($params) {
 
 		}
 
-		if (!isset($item['quantity']) || !is_numeric($item['quantity'])) {
+		$quantity = api_inventory_quantity(isset($item['quantity']) ? $item['quantity'] : null);
+
+		if ($quantity === null) {
 
 			$results[] = array('index' => $index, 'id' => $id, 'sku' => $sku, 'status' => 'invalid', 'message' => lang('quantity must be a whole number.'));
 
@@ -128,7 +164,18 @@ function api_inventory_bulk($params) {
 
 		}
 
-		$outcome = api_inventory_apply($id, $sku, $op, (int)$item['quantity'], false, $dry);
+		if ($quantity === false) {
+
+			$results[] = array('index' => $index, 'id' => $id, 'sku' => $sku, 'status' => 'invalid', 'message' => lang(array(
+				'string' => 'quantity must be between {var:1} and {var:2}.',
+				'vars'   => array(-API_INVENTORY_QUANTITY_LIMIT, API_INVENTORY_QUANTITY_LIMIT)
+			)));
+
+			continue;
+
+		}
+
+		$outcome = api_inventory_apply($id, $sku, $op, $quantity, false, $dry);
 
 		if ($outcome['status'] === 'ok') {
 

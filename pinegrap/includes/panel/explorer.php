@@ -25,11 +25,10 @@ function pg_panel_file_explorer($request, $action)
 {
     // The session user and the folder list are global on purpose:
     // check_folder_access_in_array() (includes/fn/auth.php), the short-link
-    // option builders pg_explorer_handle() calls, and the
-    // get_folder_breadcrumb() / get_folder_table() functions declared below
-    // read them through `global`. As locals they would be null there, the
-    // access checks would fail closed and an administrator would see no
-    // folders at all.
+    // option builders pg_explorer_handle() calls, and the breadcrumb and
+    // folder table closures below read them through `global`. As locals they
+    // would be null there, the access checks would fail closed and an
+    // administrator would see no folders at all.
     global $user, $folders_that_user_has_access_to;
 
     $user = validate_user();
@@ -258,8 +257,7 @@ function pg_panel_file_explorer($request, $action)
             break;
 
         case 'get_breadcrumb':
-            function get_folder_breadcrumb($parent_folder_id)
-            {
+            $get_folder_breadcrumb = function ($parent_folder_id) {
                 global $user;
                 global $folders_that_user_has_access_to;
                 $output_parent_folder_name = '';
@@ -289,12 +287,12 @@ function pg_panel_file_explorer($request, $action)
                         <li class="breadcrumb-item active text-body" aria-current="page">' . h($current_folder_name) . '</li>
                     </ol>
                 </nav>';
-            }
+            };
 
             $response = array(
                 'status' => 'success',
                 'request' => $request['type'],
-                'content' => get_folder_breadcrumb($folder_id),
+                'content' => $get_folder_breadcrumb($folder_id),
             );
 
             echo encode_json($response);
@@ -304,12 +302,10 @@ function pg_panel_file_explorer($request, $action)
 
         case 'get_tables':
 
-            function get_folder_table($parent_folder_id, $folder_table_view_type)
-            {
+            $get_folder_table = function ($parent_folder_id, $folder_table_view_type) {
                 global $user;
                 global $folders_that_user_has_access_to;
-                function get_access_control_icon_classes($access_control_type)
-                {
+                $get_access_control_icon_classes = function ($access_control_type) {
                     switch ($access_control_type) {
                         case 'public':
                             $output = ' bi-people-fill public ';
@@ -328,10 +324,9 @@ function pg_panel_file_explorer($request, $action)
                             break;
                     }
                     return $output;
-                }
+                };
 
-                function get_file_icon($file_type)
-                {
+                $get_file_icon = function ($file_type) {
                     $file_class = ' bi-file-earmark ';
 
                     switch (mb_strtolower($file_type)) {
@@ -364,7 +359,7 @@ function pg_panel_file_explorer($request, $action)
                     }
 
                     return $file_class;
-                }
+                };
 
 
 
@@ -477,7 +472,7 @@ function pg_panel_file_explorer($request, $action)
                                         <div class="card-body text-center position-relative overflow-hidden p-0">
                                             <div class="text-center position-relative">
                                                 <i class="bi display-3 bi-folder ' . $access_control_type . '"></i>
-                                                <i class="bi fs-5 position-absolute top-50 start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
+                                                <i class="bi fs-5 position-absolute top-50 start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
 
                                             </div>
                                             <div class="d-none">' . h($style) . '</div>
@@ -498,7 +493,7 @@ function pg_panel_file_explorer($request, $action)
                                 '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" /></td>' .
                                 '<td class="position-relative">
                                         <span class="fs-5 bi bi-folder position-relative overflow-hidden ' . $access_control_type . '" title="' . lang(ucwords($access_control_type)) . '">
-                                            <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
+                                            <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $folder_archived . '
                                         ' . $style . '
@@ -583,7 +578,7 @@ function pg_panel_file_explorer($request, $action)
                                         <div class="card-body text-center position-relative overflow-hidden p-0">
                                             <div class="text-center position-relative">
                                                 <i class="bi display-3 bi-window-fullscreen ' . $access_control_type . '"></i>
-                                                <i style="top:58%;" class="bi fs-5 position-absolute start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
+                                                <i style="top:58%;" class="bi fs-5 position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
                                             </div>
                                             <div class="d-none">' . h($style) . '</div>
                                             <div class="d-none">' . $home . '</div>
@@ -605,7 +600,7 @@ function pg_panel_file_explorer($request, $action)
                                 '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>' .
                                 '<td class="position-relative">
                                         <span class="fs-5 position-relative  overflow-hidden bi bi-window-fullscreen ' . $access_control_type . '" title="' . $access_control_type . '">
-                                            <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
+                                            <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $folder_archived . '
                                         ' . $style . '
@@ -735,12 +730,12 @@ function pg_panel_file_explorer($request, $action)
                                     // Call function to resize image.
                                     $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
                                     $output_thumbnail = '<img ' . $output_image_style . ' title="' . $output_image_dimensions . '" class="position-absolute no-popover start-50 top-50 translate-middle " src="' . PATH . $file['name'] . '" />';
-                                    $output_file_access_icon = '<i class="bi ' . get_access_control_icon_classes($access_control_type) . ' "></i>';
+                                    $output_file_access_icon = '<i class="bi ' . $get_access_control_icon_classes($access_control_type) . ' "></i>';
                                 } else {
                                     $output_thumbnail = '
                                         <div class="text-center position-relative">
-                                            <i class="bi display-3 ' . get_file_icon($file['type']) . ' ' . $access_control_type . '"></i>
-                                            <i style="top:50%;" class="bi fs-5 position-absolute start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></i>
+                                            <i class="bi display-3 ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '"></i>
+                                            <i style="top:50%;" class="bi fs-5 position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
                                         </div>';
                                     $output_image_dimensions = '';
                                     $output_file_access_icon = '';
@@ -778,8 +773,8 @@ function pg_panel_file_explorer($request, $action)
                                     '<td class="position-relative"></td>' .
                                     '<td  class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>' .
                                     '<td class="position-relative">
-                                        <span class="fs-5 position-relative overflow-hidden bi ' . get_file_icon($file['type']) . ' ' . $access_control_type . '" title="' . $access_control_type . '">
-                                            <span style="font-size:40%" class="bi position-absolute top-50 start-50 translate-middle' . get_access_control_icon_classes($access_control_type) . ' "></span>
+                                        <span class="fs-5 position-relative overflow-hidden bi ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '" title="' . $access_control_type . '">
+                                            <span style="font-size:40%" class="bi position-absolute top-50 start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $new_file_icon . '
                                         ' . $folder_archived . '
@@ -841,12 +836,12 @@ function pg_panel_file_explorer($request, $action)
                 }
 
                 return $output;
-            }
+            };
             $response = array(
                 'status' => 'success',
                 'request' => $request['type'],
                 'view_type' => $folder_table_view_type,
-                'content' => get_folder_table($folder_id, $folder_table_view_type),
+                'content' => $get_folder_table($folder_id, $folder_table_view_type),
             );
             echo encode_json($response);
             break;

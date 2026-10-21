@@ -584,8 +584,21 @@ function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
         return 0;
     }
 
+    $registered = null;
+    $typed_title = '';
+
     if (is_array($order)) {
         $data = erp_account_data_with_order($data, $order, $contact_id);
+
+        // An account opened for an order is about to be billed: a company is
+        // given the name GİB registers its VKN under before the account (and
+        // its creation event) is written.
+        $registered = erp_account_registered_name_lookup($data);
+
+        if ($registered !== null) {
+            $typed_title = (string) $data['title'];
+            $data = erp_account_data_with_registered_name($data, $registered);
+        }
     }
 
     $data['created_by'] = $created_by;
@@ -596,6 +609,17 @@ function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
     }
 
     erp_query("UPDATE contacts SET erp_account_id = '" . (int) $result['id'] . "' WHERE id = '" . $contact_id . "'");
+
+    if ($registered !== null) {
+        erp_account_keep_taxpayer_answer((int) $result['id'], $registered);
+
+        if ((string) $data['title'] !== $typed_title) {
+            log_activity(lang(array(
+                'string' => 'erp account ({var:1}) was opened under the name GİB registers for its tax number instead of {var:2}',
+                'vars' => array((string) $data['title'], $typed_title),
+            )));
+        }
+    }
 
     return (int) $result['id'];
 }
@@ -652,6 +676,109 @@ function erp_account_data_with_order($data, $order, $contact_id)
     }
 
     return $data;
+}
+
+/**
+ * Whether a new account's number is asked about at GİB for the name it is
+ * registered under: a Turkish account's VKN that passes its check digit.
+ *
+ * GİB lists e-Invoice users only, so a number it does not list simply comes
+ * back without a name. A TCKN is not asked about: a person's invoice
+ * carries the first and the last name, and the name GİB keeps for a sole
+ * trader can be a trade name.
+ *
+ * @param string $tax_number
+ * @param string $country_code  The account's country
+ * @return bool
+ */
+function erp_account_registered_name_wanted($tax_number, $country_code)
+{
+    $number = preg_replace('/\D/', '', (string) $tax_number);
+
+    return (strtoupper(trim((string) $country_code)) === 'TR')
+        && (strlen($number) === 10)
+        && function_exists('erp_edoc_tax_number_valid')
+        && erp_edoc_tax_number_valid($number);
+}
+
+/**
+ * Asks GİB, through the active e-document provider, about the VKN of an
+ * account about to be opened from an order: the account form's Query, made
+ * before the account is written (erp_edoc_taxpayer_lookup(), which keeps
+ * nothing).
+ *
+ * @param array $data  Fields for erp_account_save()
+ * @return array|null  The lookup's answer; null when the number is not asked
+ *                     about, no provider can ask, or the question failed -
+ *                     the account is then opened as the order and the card say
+ */
+function erp_account_registered_name_lookup($data)
+{
+    if (!function_exists('erp_edoc_taxpayer_lookup')
+        || !erp_account_registered_name_wanted((string) ($data['tax_number'] ?? ''), erp_account_country((string) ($data['country_code'] ?? '')))) {
+        return null;
+    }
+
+    // The account is opened whatever happens to the question: the order is
+    // billed either way, the name is only put right.
+    try {
+        $lookup = erp_edoc_taxpayer_lookup((string) $data['tax_number']);
+    } catch (Throwable $error) {
+        return null;
+    }
+
+    return !empty($lookup['success']) ? $lookup : null;
+}
+
+/**
+ * A new account's fields with the name GİB registers its VKN under in place
+ * of the one the contact card or the order gave.
+ *
+ * The billing block says what the customer typed; the register says what the
+ * company is called on every e-Invoice it receives, so the register wins and
+ * the account is a company's. A failed lookup, a number GİB gives no name
+ * for (not an e-Invoice user), an answer about another number and a TCKN
+ * leave the fields as they were.
+ *
+ * @param array $data    Fields for erp_account_save()
+ * @param array $lookup  erp_edoc_taxpayer_lookup() output
+ * @return array
+ */
+function erp_account_data_with_registered_name($data, $lookup)
+{
+    $number = preg_replace('/\D/', '', (string) ($data['tax_number'] ?? ''));
+    $title = trim((string) preg_replace('/\s+/u', ' ', (string) ($lookup['title'] ?? '')));
+
+    if (empty($lookup['success']) || ($title === '') || (strlen($number) !== 10)
+        || ((string) ($lookup['number'] ?? '') !== $number)) {
+        return $data;
+    }
+
+    $data['title'] = mb_substr($title, 0, 255);
+    $data['is_person'] = false;
+
+    return $data;
+}
+
+/**
+ * Keeps GİB's answer about a new account's number on its card, as the
+ * account form's Query does for a saved number: whether it is an e-Invoice
+ * user, its mailboxes, and when it was asked.
+ *
+ * @param int   $account_id
+ * @param array $lookup  erp_edoc_taxpayer_lookup() output about the account's number
+ * @return void
+ */
+function erp_account_keep_taxpayer_answer($account_id, $lookup)
+{
+    $aliases = array_values(array_filter(array_map('strval', (array) ($lookup['aliases'] ?? array())), 'strlen'));
+
+    erp_query("UPDATE erp_accounts
+        SET einvoice_user = '" . (!empty($lookup['is_einvoice_user']) ? 1 : 0) . "',
+            einvoice_alias = '" . escape(mb_substr((string) ($aliases[0] ?? ''), 0, 100)) . "',
+            einvoice_aliases = '" . escape((string) json_encode($aliases, JSON_UNESCAPED_UNICODE)) . "',
+            einvoice_checked_at = '" . time() . "'
+        WHERE id = '" . (int) $account_id . "'");
 }
 
 /**

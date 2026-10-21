@@ -134,6 +134,9 @@ function pg_panel_actions()
         'get_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_shipping_methods' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_shipping_methods', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'delete_order' => array('file' => 'commerce.php', 'handler' => 'pg_panel_delete_order', 'exempt' => false, 'token' => true, 'write' => true),
+        // The refund dialog is offered to the order screen's people with the
+        // ERP right, past role 1; the handler checks them. Read only.
+        'erp_refund_preview' => array('file' => 'commerce.php', 'handler' => 'pg_panel_erp_refund_preview', 'exempt' => true, 'token' => false, 'write' => false),
         'update_order' => array('file' => 'commerce.php', 'handler' => 'pg_panel_update_order', 'exempt' => false, 'token' => true, 'write' => true),
         // The product screens admit whoever manages the store (roles 0-2, or
         // a basic user with manage_ecommerce); the handlers apply that same
@@ -282,8 +285,8 @@ function pg_panel_actions()
         'ws_notes', 'ws_note_get', 'ws_note_save', 'ws_note_delete',
         'ws_note_from_message', 'ws_note_share', 'ws_note_channel',
         'ws_note_unshare', 'ws_note_file', 'ws_note_claude',
-        'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_file_office', 'ws_file_text',
-        'ws_file_text_save', 'ws_file_history', 'ws_channel_notify',
+        'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_file_office', 'ws_file_office_save',
+        'ws_file_text', 'ws_file_text_save', 'ws_file_history', 'ws_channel_notify',
         'ws_channel_pin', 'ws_channel_order', 'ws_channel_summary',
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',

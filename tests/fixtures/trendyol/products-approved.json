@@ -1,0 +1,1 @@
+{ "totalElements": 3, "totalPages": 3, "page": 0, "size": 1, "nextPageToken": "eyJwIjoxfQ", "content": [ { "contentId": 123456789, "productMainId": "PG-KASK", "brand": { "id": 1791, "name": "Örnek" }, "title": "Muay Thai Kaskı", "variants": [ { "barcode": "8680000000017", "stockCode": "PG-KASK-S" } ] } ] }

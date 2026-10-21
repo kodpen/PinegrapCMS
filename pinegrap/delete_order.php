@@ -26,13 +26,20 @@ function delete_order($request) {
         return error_response(lang('The order could not be found.'));
     }
 
+    $audit_before = pg_audit_fetch('orders', $order['id']);
+
     db("DELETE FROM orders WHERE id = '" . e($order['id']) . "'");
+
+    pg_audit_record('delete', 'orders', (int) $order['id'], $audit_before);
     db("DELETE FROM order_items WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM ship_tos WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM order_item_gift_cards WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM applied_gift_cards WHERE order_id = '" . e($order['id']) . "'");
     db("DELETE FROM form_data WHERE (order_id = '" . e($order['id']) . "') AND (order_id != '0')");
     db("DELETE FROM shipping_tracking_numbers WHERE order_id = '" . e($order['id']) . "'");
+
+    // The order's return requests and their lines name its order lines by id.
+    pg_returns_delete_for_order($order['id']);
 
     // Cancel order abandoned auto campaign for this order, if one exists.
     db(

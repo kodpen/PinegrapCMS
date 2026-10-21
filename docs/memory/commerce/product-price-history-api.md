@@ -1,6 +1,6 @@
 ---
 name: product-price-history-api
-description: GET /products/{id}/price-history (2026.11.0): a product's price history rows through the external API and the MCP tools, paging, since and channel filters, what the rows do not contain yet
+description: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
 ---
 
 ## What does the route answer?
@@ -13,9 +13,9 @@ description: GET /products/{id}/price-history (2026.11.0): a product's price his
 - `pg_price_history_list_sql($product_id, $channel, $since, $cursor, $rows)` in `includes/fn/price_history.php`: one product only (a list of ids gives `''`), optional channel, lower bound and cursor pair, `LIMIT` at least 1. The handler asks for one row more than the page to learn whether there is another page. The same reader is what the "lowest price of a window" of the reference-price plan will walk, so a change of its order or filters reaches both.
 - Tests: `tests/api_price_history_test.php` (presenter, route, object registration), `test_price_history_list_sql` in `tests/price_history_test.php`.
 
-## What do the rows not say yet?
-- An offer's reduced price: the history keeps what `products.price` was set to, and an offer changes what the visitor pays without changing that column. The route description says so, so a client does not read the lowest row of a window as the lawful "price before the discount" (plan: docs/memory/plans/price-history-reference-price.md, step 1).
-- `compare_at_price` is not on the product object yet (plan, step 3); no retention trims the rows yet (plan, step 5).
+## What do the rows say about offers?
+- Rows of source `offer` are the price the open offers gave a visitor with no offer code, no account and an empty cart, written by the general job within the hour (docs/memory/commerce/product-price-history-offers.md). The route description says how to read the line: the newest row at or before a moment is what such a visitor paid then. A coded, member-only or cart-conditioned discount is not in it.
+- No retention trims the rows yet (plan, retention step). The merchant's `compare_at_price` is a field of the product object, not a history row (docs/memory/commerce/product-compare-at-price.md).
 
 ## How was it verified?
 - `php tools/check_api_schema.php` (presenter and declaration agree, the object is registered), `php tools/test.php price_history`; the paging, the `since` filter, the 404, the 422 and the 400 were walked with stubbed `api_rows()` / response helpers over an in-memory table. No running site was set up, so the route was not called over HTTP.

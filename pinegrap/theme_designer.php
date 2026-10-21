@@ -41,8 +41,15 @@ if ((int) db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = 
     $file = db_item("SELECT name, theme FROM files WHERE id = '" . $id . "'");
 
     if (mb_strtolower(mb_substr($file['name'], -4)) == '.css') {
+        // The notice waits in the session until the CSS editor shows it, so
+        // a second request before that (two tabs, a request the browser
+        // repeats) listed the same sentence twice.
         $liveform_edit_theme_css = new liveform('edit_theme_css');
-        $liveform_edit_theme_css->add_notice(lang('This theme has no Theme Designer settings, so it opens in the CSS editor.'));
+        $notice = lang('This theme has no Theme Designer settings, so it opens in the CSS editor.');
+
+        if (!in_array($notice, $liveform_edit_theme_css->get_notices(), true)) {
+            $liveform_edit_theme_css->add_notice($notice);
+        }
 
         $send_to = $_REQUEST['send_to'] ?? '';
 
@@ -1110,7 +1117,7 @@ if (!$_POST) {
         <body class="design coloron">
             <div id="theme_designer_toolbar">
                 <div id="header" style="    height: 50px;line-height: 50px;">
-                    <img style="height:inherit;height: 37px;width: auto;margin-left: 1rem;" src="' . LOGO_URL . '" width="auto" border="0" alt="logo" title="" /><br />
+                    <img style="height:inherit;height: 37px;width: auto;margin-left: 1rem;" src="' . h(LOGO_URL) . '" width="auto" border="0" alt="logo" title="" /><br />
                 </div>
                 <div id="subnav" style="font-weight: bold">
                     ' . h($file_name) . '
