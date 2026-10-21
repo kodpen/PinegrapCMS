@@ -16,7 +16,7 @@ description: How the Workspace writes site records: changes.php pipeline and cal
 
 ## How are amounts bounded?
 - A `money` field's limit is the column's ceiling in minor units: `price` and `extra_shipping_cost` carry 2147483647 (signed INT) and `ws_change_value()` refuses more (a non-strict session would clamp in silence); `credit_limit` (BIGINT) carries 0, no ceiling. Claude's `change_types` route shows it as `limit.max` (#516).
-- `ws_change_value_refusal()` words the refusal (proposals, drawer, bulk, scheduled): a number outside a `money`/`int`/`decimal` field's bounds is "out of range", anything else "not of the right kind" (before: always the latter).
+- `ws_change_value_refusal()` words the refusal (proposals, drawer, bulk, scheduled): a number outside a `money`/`int`/`decimal` field's bounds is "out of range", anything else "not of the right kind" (before #805: always the latter).
 
 ## Which sentences does a writer leave, and in whose name?
 - Log lines: `ws_change_log()`, silent under `$GLOBALS['ws_change_log_quiet']` (a scheduled action logs its own), else "on Claude's proposal", switched to Pinegrap AI by `ws_ai_voice()`.
