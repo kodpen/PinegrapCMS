@@ -50549,15 +50549,25 @@ const StyleDesigner = (function () {
     function _sdRevisionOpenCompare(pageId, no, done) {
         _sdRevisionFetch(pageId, no).then(function (rev) {
             if (!rev) return;
-            var nameEl = document.querySelector('[name="name"]');
-            var bcEl   = document.querySelector('[name="additional_body_classes"]');
-            var styleName = nameEl ? nameEl.value.trim() : '';
-            var addBc     = bcEl ? bcEl.value.trim() : '';
-            var nowHtml = generateHTML(styleName, addBc);
-            var revHtml = generateHTML(styleName, addBc, rev.tree);
-            var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
-            var revDoc  = _sdPreviewDocHtml(null, revHtml);
-            _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            // A shared component or system widget the page has dropped
+            // since is not in the cache, and the emitter draws nothing for
+            // a shared_ref it has no tree for: the revision's side lost the
+            // block and could even read as the same HTML. Fetch the missing
+            // ones first, as loading a tree does (_replaceTreeWithPrefetch()).
+            var sids = {};
+            collectSharedIds(rev.tree, sids);
+            var missing = Object.keys(sids).map(Number).filter(function (id) { return id > 0 && !_sharedCache[id]; });
+            prefetchShared(missing, function () {
+                var nameEl = document.querySelector('[name="name"]');
+                var bcEl   = document.querySelector('[name="additional_body_classes"]');
+                var styleName = nameEl ? nameEl.value.trim() : '';
+                var addBc     = bcEl ? bcEl.value.trim() : '';
+                var nowHtml = generateHTML(styleName, addBc);
+                var revHtml = generateHTML(styleName, addBc, rev.tree);
+                var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
+                var revDoc  = _sdPreviewDocHtml(null, revHtml);
+                _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            });
         });
     }
 
