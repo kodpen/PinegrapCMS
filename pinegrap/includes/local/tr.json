@@ -24702,6 +24702,7 @@
     "Orders fall on more than {var:1} days of this window. Ask for a shorter one, or by month.": "Bu aralıkta siparişler {var:1} günden fazlasına dağılıyor. Daha kısa bir aralık ya da aylık döküm isteyin.",
     "This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created. If its e-document did not go through, issue it from that invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var (ID: {var:1}); ikincisi oluşturulmadı. e-Belgesi çıkmadıysa Paraşüt'te o faturadan kesin.",
     "This order already has a sales invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var.",
+    "n11 answered with more than the {var:1} bytes this call reads, so the answer was cut off.": "n11, bu çağrının okuduğu {var:1} bayttan uzun bir cevap verdi; cevap kesildi.",
     "Cancelled on the marketplace before it was imported. No order was written.": "İçe aktarılmadan önce pazaryerinde iptal edilmiş; sipariş oluşturulmadı.",
     "The orders that failed will be read from the marketplace again on the next run.": "Başarısız olan siparişler bir sonraki çalışmada pazaryerinden yeniden okunacak.",
     "Match the products first. The next run reads the failed orders again.": "Önce ürünleri eşleştirin. Sonraki çalışma başarısız siparişleri yeniden okur.",
