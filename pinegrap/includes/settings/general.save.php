@@ -300,22 +300,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             )));
         }
 
-        $maintenance_until_posted = trim((string) post_value('maintenance_until'));
-        $maintenance_until_saved = 0;
+        // Read in the time zone this same save gives the site (an empty one
+        // is the server's), not the one the request started with.
+        $maintenance_timezone = (string) post_value('timezone');
 
-        if ($maintenance_until_posted !== '') {
+        if (($maintenance_timezone === '') && defined('SERVER_TIMEZONE')) {
+            $maintenance_timezone = (string) SERVER_TIMEZONE;
+        }
 
-            $maintenance_until_parsed = DateTime::createFromFormat('!Y-m-d\TH:i', substr($maintenance_until_posted, 0, 16));
+        $maintenance_until_saved = pg_maintenance_until_parse(post_value('maintenance_until'), $maintenance_timezone);
 
-            if (($maintenance_until_parsed === false) || ($maintenance_until_parsed->format('Y-m-d\TH:i') !== substr($maintenance_until_posted, 0, 16))) {
-                $liveform->mark_error('maintenance_until', lang('The end time is not a date and time.'));
-            } else {
-                $maintenance_until_saved = $maintenance_until_parsed->getTimestamp();
-
-                if ($maintenance_on && ($maintenance_until_saved <= time())) {
-                    $liveform->mark_error('maintenance_until', lang('The end time has already passed.'));
-                }
-            }
+        if ($maintenance_until_saved === false) {
+            $maintenance_until_saved = 0;
+            $liveform->mark_error('maintenance_until', lang('The end time is not a date and time.'));
+        } elseif (pg_maintenance_until_refused((bool) $maintenance_on, $maintenance_until_saved, time(), (int) $row['maintenance_mode'] === 1, (int) $row['maintenance_until'])) {
+            $liveform->mark_error('maintenance_until', lang('The end time has already passed.'));
         }
 
         if ($liveform->check_form_errors()) {

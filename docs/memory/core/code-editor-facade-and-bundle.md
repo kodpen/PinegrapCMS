@@ -17,7 +17,7 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 ## How do locks and tracked ranges work?
 - `ed.lock([{ from, to, tag, allow: [[from, to], ...] }])`: a lock is read-only; its `allow` islands stay editable (an attribute's value, an element's text). A single change touching a lock outside an island is refused (`onLockHit` once per 1.2 s burst); a multi-change transaction (replace all) keeps the changes outside the locks. `setValue()` bypasses the locks; `ed.lockAt(pos)` / `ed.canEdit(from, to)` ask without changing. `lockGutter: true` draws a lock marker beside each locked line (open when the line has an island), titled by `lockTitle(tag, partly)`.
 - Edge rule: a lock does not absorb text typed at its edges (startSide 1 / endSide -1); an island does (-1 / 1), so appending to an element's text grows the island and keeps the lock around it intact.
-- `ed.track([{ id, from, to, data, grow, cls }])`: ranges mapped through every edit; `ed.tracked(id)`, `ed.allTracked()`, `ed.trackedAt(pos)` (innermost first). `grow` as for islands. `cls` draws the range; `ed.mark(id, from, to)` highlights one.
+- `ed.track([{ id, from, to, data, grow, cls }])`: ranges mapped through every edit; `ed.tracked(id)`, `ed.allTracked()`, `ed.trackedAt(pos)` (innermost first). `grow` as for islands, `cls` draws it. `ed.mark(id, from, to)` highlights one; the others keep `grow`/`cls` (PR #1108).
 
 ## How are features added?
 - `PgCodeEditor.addCompletionSource('html', source)`: joins every editor of that language; the source gets `(context, { tree, node })`, the syntax around the cursor, so it never touches PgCM (the designer's `_sdCodeClassCompletion()` is the pattern). `PgCodeEditor.addExtension(function (opts, cm, inst) { return ext; })`: any engine extension (Emmet, minimap, a linter) for every editor created after it.
@@ -25,4 +25,4 @@ description: The code editor facade window.PgCodeEditor (assets/js/pg_code_edito
 
 ## How is the bundle built and checked?
 - `tools/code_editor/`: `package.json` (exact versions), `package-lock.json`, `entry.js` (the exports). `php tools/build_code_editor.php` runs `npm ci` + esbuild in a temp folder and writes the bundle with a banner; `--check` rebuilds and compares (CI). Upgrade: change package.json, `npm install` there, rebuild, commit all three.
-- When the facade changes, run it in jsdom (locks, islands, tracked ranges, search, attach); there is no repo test for it.
+- Facade changed: try locks, islands, search, attach in jsdom; tracked ranges have a Node test (`tests/code_editor_test.php`).

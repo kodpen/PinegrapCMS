@@ -107,6 +107,13 @@ $url = function ($changes = array()) use ($self, $language, $page_id, $group, $f
 };
 
 $pages = pg_tr_translatable_pages();
+
+// A page deleted or put in the recycle bin since the last update draws
+// nothing: its texts leave the counts before they are read.
+if ($language !== '') {
+    pg_tr_uses_prune(array_column($pages, 'page_id'));
+}
+
 $stats = ($language !== '') ? pg_tr_page_stats($language) : array();
 $site_stats = ($language !== '') ? pg_tr_language_stats($language) : array('total' => 0, 'translated' => 0, 'reviewed' => 0, 'machine' => 0, 'pending' => 0);
 $language_row = ($language !== '') ? $targets[$language] : null;

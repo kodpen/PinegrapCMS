@@ -112,13 +112,78 @@ function test_page_revisions_settings_from_row()
 	pg_assert_same(array(), pg_page_revision_settings_from_row(null));
 }
 
-// The newest revision spares a save that changed nothing it records.
+// The newest revision spares a save that changed nothing it records: the
+// tree and the settings decide, the drawn HTML does not (the renderer gives
+// a navbar or carousel a fresh id on every draw, so its hash differs between
+// two draws of one tree).
 function test_page_revisions_identical()
 {
 	$latest = array('tree_hash' => 'a', 'tree_code_hash' => 'b', 'settings_json' => '{"page_title":"x"}');
 
-	pg_assert_same(true, pg_page_revision_identical($latest, 'a', 'b', '{"page_title":"x"}'));
-	pg_assert_same(false, pg_page_revision_identical($latest, 'a', 'b', '{"page_title":"y"}'));
-	pg_assert_same(false, pg_page_revision_identical($latest, 'c', 'b', '{"page_title":"x"}'));
-	pg_assert_same(false, pg_page_revision_identical(null, 'a', 'b', '{"page_title":"x"}'));
+	pg_assert_same(true, pg_page_revision_identical($latest, 'a', '{"page_title":"x"}'));
+	pg_assert_same(false, pg_page_revision_identical($latest, 'a', '{"page_title":"y"}'));
+	pg_assert_same(false, pg_page_revision_identical($latest, 'c', '{"page_title":"x"}'));
+	pg_assert_same(false, pg_page_revision_identical(null, 'a', '{"page_title":"x"}'));
+
+	// The newest row's drawn HTML differs from this draw of the same tree.
+	$redrawn = array('tree_hash' => 'a', 'tree_code_hash' => 'other', 'settings_json' => '{"page_title":"x"}');
+	pg_assert_same(true, pg_page_revision_identical($redrawn, 'a', '{"page_title":"x"}'));
+}
+
+// A page that has no revision yet is recorded as it is stored before its
+// first changing save: the stored tree and body, the settings, the author
+// and time of the last save. A row without a tree gives nothing to record.
+function test_page_revisions_seed_values()
+{
+	$row = array(
+		'page_id'        => 7,
+		'page_style'     => 3,
+		'page_name'      => 'about',
+		'page_folder'    => 1,
+		'page_title'     => 'About us',
+		'page_tree_json' => '{"type":"root"}',
+		'page_tree_code' => '<div>About</div>',
+		'page_user'      => 5,
+		'page_timestamp' => 1700000000,
+	);
+
+	$values = pg_page_revision_seed_values($row, 1800000000);
+
+	pg_assert_same(3, $values['style_id']);
+	pg_assert_same('{"type":"root"}', $values['tree_json']);
+	pg_assert_same(sha1('{"type":"root"}'), $values['tree_hash']);
+	pg_assert_same(sha1('<div>About</div>'), $values['code_hash']);
+	pg_assert_same('{"page_name":"about","page_folder":"1","page_title":"About us"}', $values['settings_json']);
+	pg_assert_same(5, $values['user_id']);
+	pg_assert_same(1700000000, $values['created_at']);
+
+	// A row saved before the time was stamped is dated now.
+	$row['page_timestamp'] = 0;
+	pg_assert_same(1800000000, pg_page_revision_seed_values($row, 1800000000)['created_at']);
+
+	// No tree (a classic page, or one never saved by the designer): nothing.
+	$row['page_tree_json'] = '';
+	pg_assert_same(null, pg_page_revision_seed_values($row, 1800000000));
+	unset($row['page_tree_json']);
+	pg_assert_same(null, pg_page_revision_seed_values($row, 1800000000));
+	pg_assert_same(null, pg_page_revision_seed_values(null, 1800000000));
+}
+
+// History › Compare draws the revision with the shared components and
+// system widgets its tree places, also those the page has dropped since and
+// the editor's cache does not hold: they are fetched before both sides are
+// drawn, as loading a tree does.
+function test_page_revisions_compare_fetches_the_revision_shared_components()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, 'function _sdRevisionOpenCompare(');
+	$section = ($from === false) ? '' : substr($source, $from, strpos($source, 'function _sdRevisionShowCompare(', $from) - $from);
+
+	$collect = strpos($section, 'collectSharedIds(rev.tree, sids);');
+	$fetch = strpos($section, 'prefetchShared(missing, function () {');
+	$draw = strpos($section, 'generateHTML(styleName, addBc, rev.tree)');
+
+	pg_assert_true(($collect !== false) && ($fetch !== false) && ($draw !== false), 'collect, fetch and draw are there');
+	pg_assert_true(($collect < $fetch) && ($fetch < $draw), 'the revision is drawn after its components are fetched');
+	pg_assert_contains('!_sharedCache[id]', $section, 'only what the cache does not hold');
 }

@@ -88,6 +88,55 @@ function erp_invoice_for_order($order_id)
 }
 
 /**
+ * The order's lines the checkout charged when the order was placed.
+ *
+ * A recurring line that starts after the order day is not charged with the
+ * order - its first payment is taken on its start date - and on the
+ * ClearCommerce gateway no recurring line is, since the gateway bills them
+ * itself: the rule submit_order.php totals the order by
+ * (pg_order_line_charged_today()). orders.total, tax and discount cover the
+ * charged lines alone, so the invoice, and a card refund before there is one,
+ * carry those lines alone. With the others in, the invoice came to more than
+ * the order and was refused, and the discount and the shipping tax were shared
+ * with lines nobody had paid for.
+ *
+ * The day is the order's, not today's: a line that started between the order
+ * and the invoice was still no part of what the order charged. The line's own
+ * recurring_payment_period says whether it was recurring when ordered (the
+ * product may have changed since); its start date was written at checkout,
+ * and a line without one starts the product's start days after the order day,
+ * as it would have at checkout.
+ *
+ * @param array     $order          orders row (order_date)
+ * @param array     $items          order_items rows joined with the product, product_start
+ *                                  being products.start
+ * @param bool|null $clearcommerce  The gateway charges recurring lines itself; null reads
+ *                                  the store's gateway
+ * @return array  The charged rows, in their order, indexed from 0 again
+ */
+function erp_order_charged_items($order, $items, $clearcommerce = null)
+{
+    if ($clearcommerce === null) {
+        $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+            && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+    }
+
+    $order_day = date('Y-m-d', (int) ($order['order_date'] ?? time()));
+    $charged = array();
+
+    foreach ((array) $items as $item) {
+        $recurring = (trim((string) ($item['recurring_payment_period'] ?? '')) !== '');
+
+        if (pg_order_line_charged_today($recurring, (string) ($item['recurring_start_date'] ?? ''),
+            (int) ($item['product_start'] ?? 0), $order_day, (bool) $clearcommerce)) {
+            $charged[] = $item;
+        }
+    }
+
+    return $charged;
+}
+
+/**
  * Build the invoice lines for an order, header figures included.
  *
  * Returned as plain arrays rather than written, so the caller can show them
@@ -622,7 +671,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
     }
 
     $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
+            products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
@@ -630,6 +679,14 @@ function erp_invoice_from_order_locked($order_id, $options = array())
 
     if (empty($items)) {
         return $fail(lang('This order has no items.'));
+    }
+
+    // The invoice states what the order charged: a recurring line that had
+    // not started yet is billed when its first payment is taken.
+    $items = erp_order_charged_items($order, $items);
+
+    if (empty($items)) {
+        return $fail(lang('None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.'));
     }
 
     $account_id = (int) ($order['erp_account_id'] ?? 0);
@@ -1066,18 +1123,15 @@ function erp_auto_invoice_for_order($order_id, $trigger)
             $answer['error'] = lang('The order screen does not offer its invoice.');
         }
 
-        erp_auto_invoice_refused($order, $answer['error']);
-
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $result = erp_order_flow_run($order_id, 'invoice', 0);
 
     if (empty($result['success'])) {
         $answer['error'] = (string) ($result['error'] ?? '');
-        erp_auto_invoice_refused($order, $answer['error']);
 
-        return $answer;
+        return erp_auto_invoice_refuse($answer, $order);
     }
 
     $invoice = db_item("SELECT id, full_number FROM erp_invoices WHERE id = '" . erp_invoice_for_order($order_id) . "' LIMIT 1");
@@ -1091,6 +1145,33 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     log_activity(($trigger === 'order_shipped')
         ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
         : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+
+    return $answer;
+}
+
+/**
+ * The answer of an automatic invoice that did not go through, said as a
+ * refusal (erp_auto_invoice_refused()) unless the order has its invoice by
+ * now. Two requests that invoice one order at once (two shipments recorded
+ * together, the order screen's button beside the payment) both pass the
+ * decision; the one that waited on the order's lock then finds the step
+ * gone or the invoice already written. That is the order invoiced, not
+ * refused, and it is answered as skipped 'invoiced' without a word.
+ *
+ * @param array $answer erp_auto_invoice_for_order()'s answer, error set
+ * @param array $order  the orders row
+ * @return array the answer
+ */
+function erp_auto_invoice_refuse($answer, $order)
+{
+    if (erp_invoice_for_order((int) ($order['id'] ?? 0)) > 0) {
+        $answer['skipped'] = 'invoiced';
+        $answer['error'] = '';
+
+        return $answer;
+    }
+
+    erp_auto_invoice_refused($order, $answer['error']);
 
     return $answer;
 }

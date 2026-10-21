@@ -217,10 +217,23 @@ function test_sms_http_never_sent()
 		pg_assert_true(pg_sms_http_never_sent($errno), (string) $errno);
 	}
 
-	// Timeout, send error, receive error, TLS: the request may have arrived.
-	foreach (array(0, 28, 35, 52, 55, 56, 60) as $errno) {
+	// The TLS handshake and certificate checks fail before the request is
+	// written: a missing CA bundle, a broken TLS proxy.
+	foreach (array(35, 58, 59, 60, 66, 77, 83, 90, 91) as $errno) {
+		pg_assert_true(pg_sms_http_never_sent($errno), 'TLS ' . $errno);
+	}
+
+	// Timeout, send error, receive error: the request may have arrived.
+	foreach (array(0, 28, 52, 55, 56) as $errno) {
 		pg_assert_false(pg_sms_http_never_sent($errno), (string) $errno);
 	}
+
+	// Not a byte of the request went out: a timeout before the connection
+	// was made. Once the request was written, a timeout is uncertain.
+	pg_assert_true(pg_sms_http_never_sent(28, 0, 0), 'timeout, nothing written');
+	pg_assert_false(pg_sms_http_never_sent(28, 0, 250), 'timeout after the request');
+	pg_assert_false(pg_sms_http_never_sent(56, 0, 250), 'receive error after the request');
+	pg_assert_false(pg_sms_http_never_sent(0, 0, 0), 'no transport error');
 
 	// A proxy that refused the tunnel let nothing through, whatever the
 	// error number; one that opened it did not stop what followed.
@@ -793,4 +806,21 @@ function test_sms_queue_without_the_table()
 	pg_assert_false(pg_sms_queue_ready());
 	pg_assert_false(pg_sms_queue_shown());
 	pg_assert_same(array('sent' => 0, 'failed' => 0), pg_sms_queue_run());
+}
+
+// A number as the queue keeps it goes to the driver as the same number. Ten
+// digits that start with 5 used to come back as a Turkish mobile: Cuba's
+// +53 5123 4567 was sent to 0535 123 45 67.
+function test_sms_dial_reads_back_the_stored_number()
+{
+	foreach (array('+53 5123 4567', '+501 612 3456', '+507 234 5678', '+90 532 123 45 67', '0532 123 45 67', '+49 151 12345678') as $typed) {
+		$stored = pg_sms_number($typed);
+
+		pg_assert_true($stored !== '', 'stored: ' . $typed);
+		pg_assert_same($stored, pg_sms_number(pg_sms_dial($stored)), $typed);
+	}
+
+	pg_assert_same('5351234567', pg_sms_number('+53 5123 4567'), 'Cuba kept as Cuba');
+	pg_assert_same('905351234567', pg_sms_number('5351234567'), 'the same digits without the plus are a Turkish mobile');
+	pg_assert_same('', pg_sms_dial(''), 'no number');
 }

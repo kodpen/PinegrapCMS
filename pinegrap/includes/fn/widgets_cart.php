@@ -1936,6 +1936,76 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     return _pg_widget_layout_css_once() . $update_form_html . $body . _pg_qty_stepper_inline_js() . _pg_remove_from_cart_inline_js();
 }
 
+/**
+ * The totals of the cart as submit_order() charges them when the order is
+ * placed, in minor units: the lines charged today
+ * (pg_order_line_charged_today(); a recurring line that starts later is
+ * not), their tax (never below zero), the cart's order discount at most
+ * their subtotal (pg_order_charged_discount()) with the tax lowered by the
+ * discount's share, the shipping, the applied gift cards at most the total
+ * (none on an order of gift cards alone), and the card surcharge on what is
+ * left. The express order widget shows and posts these.
+ *
+ * @param array  $lines             per line: price, quantity, tax_total (the whole line), recurring,
+ *                                  recurring_start_date, start_days (the product's start), gift_card
+ * @param int    $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
+ * @param int    $shipping
+ * @param int    $gift_card_balance the applied gift cards' balance
+ * @param float  $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE
+ * @param string $today             Y-m-d
+ * @param bool   $clearcommerce     the gateway charges recurring lines itself
+ * @return array subtotal, discount, tax, shipping, gift_card_discount, total, surcharge, total_with_surcharge
+ */
+function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gift_card_balance, $surcharge_percent, $today, $clearcommerce)
+{
+    $subtotal = 0;
+    $tax = 0;
+    $only_gift_cards = true;
+
+    foreach ((array) $lines as $line) {
+        if (empty($line['gift_card'])) {
+            $only_gift_cards = false;
+        }
+
+        if (!pg_order_line_charged_today(!empty($line['recurring']), isset($line['recurring_start_date']) ? $line['recurring_start_date'] : '',
+            isset($line['start_days']) ? $line['start_days'] : 0, $today, $clearcommerce)) {
+            continue;
+        }
+
+        $subtotal += (int) $line['price'] * (int) $line['quantity'];
+        $tax += (int) $line['tax_total'];
+    }
+
+    $tax = max(0, $tax);
+    $discount = pg_order_charged_discount($order_discount, $subtotal);
+
+    if ($discount && ($subtotal > 0)) {
+        $tax = max(0, $tax - (int) round($tax * ($discount / $subtotal)));
+    }
+
+    $shipping = (int) $shipping;
+    $total = $subtotal - $discount + $tax + $shipping;
+    $gift_card_discount = 0;
+
+    if (($total > 0) && !$only_gift_cards) {
+        $gift_card_discount = min(max(0, (int) $gift_card_balance), $total);
+    }
+
+    $total = max(0, $total - $gift_card_discount);
+    $surcharge = ((float) $surcharge_percent > 0) ? (int) round((float) $surcharge_percent / 100 * $total) : 0;
+
+    return array(
+        'subtotal'             => $subtotal,
+        'discount'             => $discount,
+        'tax'                  => $tax,
+        'shipping'             => $shipping,
+        'gift_card_discount'   => $gift_card_discount,
+        'total'                => $total,
+        'surcharge'            => $surcharge,
+        'total_with_surcharge' => $total + $surcharge,
+    );
+}
+
 // ========================== EXPRESS ORDER (Phase 1) ==========================
 // Single-page checkout: cart + billing + (shipping when needed) + payment.
 // Submits to the legacy `express_order.php` action handler so all order /
@@ -2178,7 +2248,6 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // Phase-1 simplified: collapse to a single flat list. Phase-2 will split
     // by ship_to_id when multi-recipient is enabled.
     $items = array();
-    $subtotal_cents = 0;
     if ($order_id > 0) {
         // `form_name` is the admin-set heading that introduces the per-item
         // custom form (e.g. "Üyelik Bilgisi", "Katılımcı Bilgileri"). Without
@@ -2204,11 +2273,6 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
              WHERE oi.order_id = '" . (int)$order_id . "'" . pg_order_item_active_sql('oi') . "
              ORDER BY oi.id ASC"
         );
-        if (is_array($items)) {
-            foreach ($items as $it) {
-                $subtotal_cents += (int)$it['price'] * (int)$it['quantity'];
-            }
-        }
     }
     $cart_count = is_array($items) ? count($items) : 0;
 
@@ -2241,46 +2305,64 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     }
     $needs_shipping = (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING === true && $has_shippable);
 
-    // ── Pull order-level totals (already computed by apply_offers_to_cart) ───
-    // NOTE: orders.subtotal is only refreshed at FINAL submit (submit_order.php).
-    // For live preview between submits we trust the order_items SUM computed
-    // above instead — orders.subtotal is typically 0 until checkout completes.
-    // discount + gift_card_discount DO get updated by apply_offers_to_cart()
-    // so we still pull those from the orders row.
+    // ── Order totals, as submit_order.php will charge them ───────────────────
+    // The orders row carries the billing country and state the billing
+    // section reads; its discount and gift_card_discount columns are written
+    // only when the order is submitted, so they are not read here. The
+    // totals come from the lines charged today, the cart's order discount
+    // (apply_offers_to_cart() above), the applied gift cards and the
+    // shipping, in submit_order()'s order (pg_express_order_charged_totals()):
+    // the visitor confirms the amount the card is charged, and the recheck
+    // at submit compares the same figure.
     $totals = $order_id > 0
         ? db_item("SELECT subtotal, discount, gift_card_discount, surcharge, tax_exempt, billing_country, billing_state
                    FROM orders WHERE id = '" . (int)$order_id . "' LIMIT 1")
         : array();
     if (!is_array($totals)) $totals = array();
-    $sub_cents      = $subtotal_cents;  // live sum from order_items, not stale orders.subtotal
-    $discount_cents = isset($totals['discount']) ? (int)$totals['discount'] : 0;
-    $gc_disc_cents  = isset($totals['gift_card_discount']) ? (int)$totals['gift_card_discount'] : 0;
-    // order_items.tax_total is the tax on the whole line, written by
-    // update_order_item_taxes() as round(rate / 100 * price * quantity). This
-    // widget and the checkout now work the figure out the same way; they used to
-    // differ (this one on the line, the checkout per unit) and the visitor's
-    // total could fail the recheck at submit with a "tutar değişti" rejection.
-    $tax_cents = $order_id > 0
-        ? (int)db_value("SELECT COALESCE(SUM(tax_total),0) FROM order_items WHERE order_id = '" . (int)$order_id . "'" . pg_order_item_active_sql())
-        : 0;
-    $ship_cents = $order_id > 0 && $needs_shipping
-        ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
-        : 0;
-    $total_cents = $sub_cents - $discount_cents + $tax_cents + $ship_cents - $gc_disc_cents;
-    if ($total_cents < 0) $total_cents = 0;
-
-    // Surcharge — applied by submit_order.php (line 853-859) ONLY when
-    // ECOMMERCE_SURCHARGE_PERCENTAGE > 0 AND payment_method is Credit/Debit
-    // Card. We compute it separately so we can post BOTH the base total
-    // (used when surcharge=0) AND the with-surcharge total (used otherwise).
-    // The "total has changed" guard (line 1296-1306) picks one based on
-    // the runtime $surcharge value — which is computed AFTER POST. Posting
-    // both lets the comparison succeed regardless of which branch fires.
-    $surcharge_cents = 0;
-    if (defined('ECOMMERCE_SURCHARGE_PERCENTAGE') && ECOMMERCE_SURCHARGE_PERCENTAGE > 0) {
-        $surcharge_cents = (int)round((float)ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total_cents);
+    $_eo_lines = array();
+    foreach ((array)$items as $it) {
+        $_eo_lines[] = array(
+            'price'                => $it['price'],
+            'quantity'             => $it['quantity'],
+            'tax_total'            => $it['tax_total'],
+            'recurring'            => $it['recurring'],
+            'recurring_start_date' => $it['recurring_start_date'],
+            'start_days'           => $it['recurring_start_days'],
+            'gift_card'            => $it['gift_card'],
+        );
     }
-    $total_with_surcharge_cents = $total_cents + $surcharge_cents;
+    // A gift card is not taken on an order of gift cards alone; submit_order()
+    // removes the applied ones then.
+    $_eo_gift_card_balance = 0;
+    if ($order_id > 0 && defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true) {
+        $_eo_gift_card_balance = (int)db_value(
+            "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int)$order_id . "'"
+        );
+    }
+    $_eo_totals = pg_express_order_charged_totals(
+        $_eo_lines,
+        isset($_SESSION['ecommerce']['order_discount']) ? $_SESSION['ecommerce']['order_discount'] : 0,
+        ($order_id > 0 && $needs_shipping)
+            ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
+            : 0,
+        $_eo_gift_card_balance,
+        defined('ECOMMERCE_SURCHARGE_PERCENTAGE') ? (float)ECOMMERCE_SURCHARGE_PERCENTAGE : 0,
+        date('Y-m-d'),
+        (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
+            && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce')
+    );
+    $sub_cents      = $_eo_totals['subtotal'];
+    $discount_cents = $_eo_totals['discount'];
+    $tax_cents      = $_eo_totals['tax'];
+    $ship_cents     = $_eo_totals['shipping'];
+    $gc_disc_cents  = $_eo_totals['gift_card_discount'];
+    $total_cents    = $_eo_totals['total'];
+
+    // The surcharge is added by submit_order.php only when the visitor pays
+    // by card, which is decided after the POST, so both totals are posted
+    // and the "total has changed" guard compares the one that applies.
+    $surcharge_cents = $_eo_totals['surcharge'];
+    $total_with_surcharge_cents = $_eo_totals['total_with_surcharge'];
 
     // ── Currency formatter ────────────────────────────────────────────────────
     $_eo_fmt = function ($cents) {

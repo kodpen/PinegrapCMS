@@ -670,7 +670,7 @@ function translate_api_write_one($string, $language, $text, $engine, $status, $u
         return array('ok' => false, 'reason' => 'empty', 'suspicious' => false);
     }
 
-    $check = pg_tr_result_check($string['source_text'], $clean, $string['format']);
+    $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
 
     if (!$check['ok']) {
         return array('ok' => false, 'reason' => (string) $check['error'], 'suspicious' => false);
