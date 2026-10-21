@@ -12,6 +12,10 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 - An order already sent from the old buttons keeps its status rows.
 - Without the ERP, or with the ERP and no provider (its invoices stay on paper), the buttons work as before. The orders list's Excel export for Paraşüt is not affected.
 
+## What does "Create Invoice" do on an order already sent?
+- Nothing: `parasut_create_invoice()` reads `orders.parasut_invoice_id` first and refuses ("This order already has a sales invoice in Paraşüt (ID: …)…") before any token or Paraşüt request. The id is kept as soon as the sales invoice exists, also when its e-document failed or the conversion was still running, and the job id is not kept, so the e-document is finished on that record in Paraşüt. The button is drawn disabled with the Sent badge.
+- Before PR #PR759 (issue #759) every press posted a new sales invoice and a new e-Archive/e-Invoice: a second document for the same sale at GİB.
+
 ## What is left?
 - Removing the invoice and shipment code from `includes/fn/parasut.php` once no store relies on it (acceptance item of docs/memory/plans/erp-edocument-leftovers.md); `view_parasut_inbox.php` keeps working.
 
