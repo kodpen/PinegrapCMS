@@ -297,3 +297,16 @@ function test_oauth_metadata_document_refusals()
 	$refused('not json', 'not JSON');
 	$refused(json_encode(array_merge($base, array('client_name' => str_repeat('a', 6000)))), 'over 5 KB');
 }
+
+// state goes back exactly as it came: a signed state of a kilobyte and more
+// is carried whole (it used to be cut to 1000 characters); one past the
+// ceiling is refused rather than shortened.
+function test_oauth_state_is_carried_whole_or_refused()
+{
+	pg_assert_true(pg_oauth_state_is_acceptable(''), 'no state');
+	pg_assert_true(pg_oauth_state_is_acceptable(str_repeat('a', 1403)), 'a signed state of 1403 characters');
+	pg_assert_true(pg_oauth_state_is_acceptable(str_repeat('a', pg_oauth_state_max())), 'at the ceiling');
+	pg_assert_false(pg_oauth_state_is_acceptable(str_repeat('a', pg_oauth_state_max() + 1)), 'past the ceiling');
+	pg_assert_false(pg_oauth_state_is_acceptable(array('a')), 'not a string');
+	pg_assert_true(pg_oauth_state_max() >= 2048, 'room for the states clients sign');
+}

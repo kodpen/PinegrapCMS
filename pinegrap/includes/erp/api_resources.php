@@ -1356,10 +1356,16 @@ function erp_api_receipts_create($params)
     $invoice_id = (int) ($params['invoice_id'] ?? 0);
 
     if ($invoice_id > 0) {
-        $invoice = db_item("SELECT id, account_id, status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
+        $invoice = db_item("SELECT id, account_id, doc_type, status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
         if (!is_array($invoice) || ((string) $invoice['status'] === 'draft')) {
             api_fail_validation(lang('That invoice could not be found.'), 'invoice_id');
+        }
+
+        // A return (or any document that is not an invoice) is not closed by
+        // money; erp_post_receipt() refuses it as well.
+        if ((string) $invoice['doc_type'] !== 'invoice') {
+            api_fail_validation(lang('That document is not an invoice; a receipt does not close it.'), 'invoice_id');
         }
 
         if ((int) $invoice['account_id'] !== $account_id) {
@@ -1419,6 +1425,14 @@ function erp_api_receipts_cancel($params)
 
     if ((int) ($row['reversal_id'] ?? 0) > 0) {
         api_fail_validation(lang('That receipt has already been cancelled.'), 'id');
+    }
+
+    // A cheque's or note's movement is changed by the cheque's steps
+    // (POST /erp/cheques/{id}/{step}), never cancelled on its own.
+    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $row['id']) : null;
+
+    if ($cheque !== null) {
+        api_fail(409, 'receipt_belongs_to_cheque', erp_cheque_receipt_refusal($cheque));
     }
 
     $reason = trim((string) ($params['reason'] ?? ''));

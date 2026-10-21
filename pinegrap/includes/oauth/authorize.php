@@ -172,7 +172,7 @@ function pg_oauth_authorize() {
 
 	}
 
-	$state = mb_substr($param('state'), 0, 1000);
+	$state = $param('state');
 
 	// From here a refusal goes back to the client. Its description is for the
 	// client's developer and RFC 6749 4.1.2.1 keeps it to printable ASCII, so
@@ -185,6 +185,14 @@ function pg_oauth_authorize() {
 		), $state);
 
 	};
+
+	// Handed back whole with the refusal too: the client still finds its own
+	// state on the answer.
+	if (!pg_oauth_state_is_acceptable($state)) {
+
+		$fail('invalid_request', 'The state is longer than ' . pg_oauth_state_max() . ' bytes.');
+
+	}
 
 	if ($param('response_type') !== 'code') {
 

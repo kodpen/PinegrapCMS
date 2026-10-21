@@ -784,8 +784,12 @@ function mp_n11_package($entry) {
 			// tax, which is what this marketplace trades under.
 			'tax'            => 0,
 			// Per unit, like everything else the importer is handed. n11 gives
-			// the discount for the whole line.
+			// the discount for the whole line, and a line amount that does not
+			// divide by the quantity has no exact unit value (10.00 over three
+			// is 3.33 three times), so the line's own amount travels beside it
+			// and the order's discount is summed from that.
 			'discount'       => ($quantity > 0) ? (int) round($discount / $quantity) : $discount,
+			'discount_total' => $discount,
 			'status'         => isset($line['orderItemLineItemStatusName'])
 				? (string)$line['orderItemLineItemStatusName'] : ''
 		);
