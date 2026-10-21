@@ -36,12 +36,17 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_return_reminders();       // 11.0.25
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
 	upgrade_2026_11_0_page_schedule();          // 11.0.17
 	upgrade_2026_11_0_ai_crawlers();            // 11.0.21
 	upgrade_2026_11_0_privacy_logs();           // 11.0.16
 	upgrade_2026_11_0_page_canonical_robots();  // 11.0.22
+	upgrade_2026_11_0_ai_fields();              // 11.0.23
+	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
+	upgrade_2026_11_0_conversion_pack();        // 11.0.14
+	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 
 }
 
@@ -549,6 +554,24 @@ function upgrade_2026_11_0_order_returns() {
 
 }
 
+// When the refund reminders of a return were given (includes/fn/returns.php,
+// pg_return_remind_refunds()): refund_due_notified_at for "due within
+// PG_RETURN_REMIND_DAYS days", refund_overdue_notified_at for "overdue", unix
+// time, 0 until that stage was rung. The daily job claims a stage with
+// UPDATE ... WHERE <column> = 0 and rings the bell only when that claimed a
+// row, so a reminder goes out once per return and stage however often staff
+// clear the bell; until now the decision read the notification rows, which
+// "Delete all notifications" removes for everyone, and the same reminder came
+// back the next day. Same pattern as erp_invoices.overdue_notified_at.
+function upgrade_2026_11_0_return_reminders() {
+
+	install_add_column('order_returns', 'refund_due_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('order_returns', 'refund_overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Returns: each return request now records when its refund reminders were given, so a reminder cleared from the panel bell is not sent again the next day.');
+
+}
+
 // Short links as redirects (router.php, includes/fn/short_link_redirects.php).
 //
 // redirect_code says how a link answers: 0 as before (a page, product group,
@@ -780,5 +803,200 @@ function upgrade_2026_11_0_page_canonical_robots() {
 	}
 
 	install_note('Search engines: a page can now name its own canonical address and ask search engines not to keep a cached copy (noarchive) or to limit the text they show under its title (max-snippet). The fields are in the page settings and stay empty until filled in.');
+
+}
+
+// The texts written with AI (2026.11.0, 11.0.23; pg_ai_fields_*() in
+// includes/fn/ai_write.php, the product screen and the page properties screen).
+//
+// products.ai_fields and page.ai_fields hold, as a JSON object, the columns of
+// the row whose text came from an accepted "Write with AI" draft, each with a
+// fingerprint of the text it was put on ({"title":"<16 hex digits>"}); NULL is
+// none. A mark holds only while its column still has that text, so a text
+// edited by hand, on the screen or through any other way in, has lost it. Both
+// start NULL: nothing written before this version is marked.
+//
+// Added without copying the tables where the server can do that, as 11.0.2 and
+// 11.0.3 do: the catalogue and the page trees make a copy slow on a big site.
+function upgrade_2026_11_0_ai_fields() {
+
+	$tables = array(
+		'products' => array('ai_fields' => "TEXT NULL"),
+		'page'     => array('ai_fields' => "TEXT NULL"),
+	);
+
+	foreach ($tables as $table => $columns) {
+
+		if (!install_add_columns_instant($table, $columns)) {
+
+			foreach ($columns as $column => $definition) {
+
+				install_add_column($table, $column, $definition);
+
+			}
+
+		}
+
+	}
+
+	install_note('Write with AI: a text that came from an accepted AI draft on the product screen or the page properties screen is now marked beside its field. The mark goes when the text is edited by hand, when it is removed beside the field, or when the field is saved empty.');
+
+}
+
+// The two filters of the order invoice the ERP issues on its own
+// (config.erp_auto_invoice_on, erp_auto_invoice_decision() in
+// includes/erp/order_bridge.php): only buyers with a tax number, and the
+// smallest order it is issued for. The amount is kept in minor units of the
+// base currency, BIGINT like the ERP's other amounts. Both start off, so a
+// store that already invoices its orders on its own goes on as before.
+function upgrade_2026_11_0_erp_auto_invoice() {
+
+	install_add_column('config', 'erp_auto_invoice_tax_number_only', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
+
+	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
+
+}
+
+// The storefront's conversion pack (2026.11.0, 11.0.14; includes/fn/reviews.php).
+//
+// Product reviews stay comments. comments.verified_order_id is the order that
+// let a customer review the product (0: not a verified purchase - a comment
+// written before this step, a member of staff's note, a page comment), and
+// seller_reply / seller_reply_at are the store's answer shown under it.
+// products.rating_avg and rating_count are the average stars and the number of
+// a product's published reviews from verified purchases, kept on the row so a
+// product list can show them without counting; they are worked out again
+// whenever such a review changes, and once a day from the comments.
+//
+// wishlist_items keeps a product saved for later: a customer's by user_id, a
+// visitor's by the token of their cookie until they sign in. stock_notify
+// keeps a request to be told when a product is back in stock, by e-mail, user
+// or phone; sent_at is stamped once the notice went out.
+//
+// order_review_request, the e-mail that asks a customer to review what they
+// received, is added to the action enums of the campaign profiles and of the
+// campaigns made from them. Each list is read first and only widened, so a
+// value another step added stays; the default and the null rule are kept as
+// they are.
+function upgrade_2026_11_0_conversion_pack() {
+
+	$comment_columns = array(
+		'verified_order_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'seller_reply'      => "TEXT NULL",
+		'seller_reply_at'   => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $comment_columns)) {
+
+		foreach ($comment_columns as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('comments', 'idx_verified_order', "INDEX idx_verified_order (verified_order_id)");
+
+	$product_columns = array(
+		'rating_avg'   => "DECIMAL(3,2) NOT NULL DEFAULT 0.00",
+		'rating_count' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('products', $product_columns)) {
+
+		foreach ($product_columns as $column => $definition) {
+
+			install_add_column('products', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('wishlist_items', "CREATE TABLE wishlist_items (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		cookie_token  VARCHAR(64) NOT NULL DEFAULT '',
+		product_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_owner_product (user_id, cookie_token, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('stock_notify', "CREATE TABLE stock_notify (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		product_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		email_address  VARCHAR(100) NOT NULL DEFAULT '',
+		user_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		phone          VARCHAR(50) NOT NULL DEFAULT '',
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_product_sent (product_id, sent_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		if (strpos((string) $action['Type'], "'order_review_request'") !== false) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action order_review_request')));
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+		$values[] = 'order_review_request';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('Product reviews: a review of a product can now be written only by a customer who bought it, signed in with the account they ordered with, and it is marked as a verified purchase. Comments written before this version stay as they are; only verified reviews count towards the star rating given to search engines.');
+
+}
+
+// The VAT rate each order line was charged at (order_items.tax_rate, NULL for
+// a line written before this step or by a path that does not set it). The
+// checkout writes it with the line's tax (update_order_item_taxes()), the till
+// with the sale (includes/local_sale.php). Until now the rate was worked back
+// out of the line total and its tax (erp_line_tax_rate()), which only holds
+// while every line's tax is its own rate x amount; the order invoice and the
+// e-document need the rate itself. DECIMAL(6,3) like the ERP's rate columns.
+// Added in place where the server can (the table grows with every order),
+// copied otherwise.
+function upgrade_2026_11_0_erp_order_item_tax_rate() {
+
+	$columns = array(
+		'tax_rate' => "DECIMAL(6,3) NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('order_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('order_items', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: each order line now keeps the VAT rate it was charged at, so the invoice drawn from an order carries the rate itself rather than one worked back from the amounts. Lines of earlier orders keep working as before.');
 
 }

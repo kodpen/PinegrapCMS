@@ -623,7 +623,61 @@ function pg_tr_extract_all($deadline = 0, $from = 0)
         }
     }
 
+    // Every page as it is now has been read: what no page draws any more
+    // goes, before the caller counts what is pending.
+    pg_tr_uses_prune(array_column($pages, 'page_id'));
+
     return $summary;
+}
+
+/**
+ * Lets go of the uses nothing draws any more: those of a page that is not
+ * among the translatable pages (deleted, in the recycle bin, no longer of a
+ * visual design) - its body, its title and description, its references -
+ * and those of a shared component or a menu no page references. They kept
+ * the texts in the site's counts and among the pending texts sent to the
+ * engines. The strings and their translations stay, as source texts always
+ * do: a page restored from the bin has its texts back, translations and all,
+ * with the next extraction. With no translatable page at all nothing is
+ * removed, so a failed page query cannot empty the store.
+ *
+ * @param array $page_ids the translatable pages (pg_tr_translatable_pages())
+ * @return int uses removed
+ */
+function pg_tr_uses_prune($page_ids)
+{
+    $page_ids = array_values(array_unique(array_filter(array_map('intval', (array) $page_ids))));
+    $removed = 0;
+
+    if (!$page_ids) {
+        return $removed;
+    }
+
+    if (db("DELETE FROM translation_uses
+            WHERE owner_type IN ('page', 'page_seo', 'page_ref')
+              AND owner_id NOT IN (" . implode(',', $page_ids) . ")")) {
+        $removed += (int) mysqli_affected_rows(db::$con);
+    }
+
+    // What the remaining pages reference (pg_tr_extract_page()): node_id is
+    // the referenced owner's type, field its id.
+    foreach (array('shared', 'menu') as $owner_type) {
+        $referenced = array();
+
+        foreach ((array) db_items("SELECT DISTINCT field FROM translation_uses WHERE owner_type = 'page_ref' AND node_id = '$owner_type'") as $row) {
+            if ((int) $row['field'] > 0) {
+                $referenced[] = (int) $row['field'];
+            }
+        }
+
+        if (db("DELETE FROM translation_uses
+                WHERE owner_type = '$owner_type'"
+                . ($referenced ? " AND owner_id NOT IN (" . implode(',', $referenced) . ")" : ''))) {
+            $removed += (int) mysqli_affected_rows(db::$con);
+        }
+    }
+
+    return $removed;
 }
 
 /**

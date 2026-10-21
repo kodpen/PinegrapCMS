@@ -218,8 +218,7 @@ function pg_short_link_name_from_address($address, $base_path = null)
         $name = $decoded;
     }
 
-    $name = str_replace(' ', '_', $name);
-    $name = (string) preg_replace('#/{2,}#', '/', $name);
+    $name = pg_short_link_path_name($name);
     $name = (string) preg_replace('#\*{2,}#', '*', $name);
 
     if ($base_path === null) {
@@ -227,13 +226,30 @@ function pg_short_link_name_from_address($address, $base_path = null)
     }
 
     $base = trim((string) $base_path, '/');
-    $name = trim($name, '/');
 
     if (($base !== '') && (stripos($name . '/', $base . '/') === 0) && (substr($address, 0, 1) === '/' || preg_match('#^https?://#i', (string) $address) === 1)) {
         $name = trim((string) substr($name, strlen($base)), '/');
     }
 
     return $name;
+}
+
+/**
+ * A decoded path in the form names are stored in: spaces become _, runs of /
+ * become one, and no / is kept at either end. A name is saved this way
+ * (pg_short_link_name_from_address()), so the old address a visitor brings
+ * (/blog/post/, /Old%20Page, //post) is looked up in this form too when it is
+ * no name as it came: router.php for an exact name, pg_short_link_match_in()
+ * for the checks and the patterns.
+ *
+ * @param string $path
+ * @return string
+ */
+function pg_short_link_path_name($path)
+{
+    $path = str_replace(' ', '_', (string) $path);
+
+    return trim((string) preg_replace('#/{2,}#', '/', $path), '/');
 }
 
 /**
@@ -289,6 +305,27 @@ function pg_short_link_name_read($name)
     $name = is_scalar($name) ? pg_short_link_name_from_address($name) : '';
 
     return array('name' => $name, 'problem' => pg_short_link_name_problem($name));
+}
+
+/**
+ * A name with the [n] a copy or a renamed restore gets, the end of the name
+ * cut away when the suffix would make it longer than the column takes: a
+ * longer value is cut in silence on INSERT, so the copy would be written under
+ * the very name it was numbered to avoid.
+ *
+ * @param string   $wanted A stored-form name
+ * @param int      $index
+ * @param int|null $max    pg_short_link_name_max() when null
+ * @return string '' when no part of the name fits beside the suffix
+ */
+function pg_short_link_numbered_name($wanted, $index, $max = null)
+{
+    $max = ($max === null) ? pg_short_link_name_max() : (int) $max;
+    $suffix = '[' . (int) $index . ']';
+    $room = $max - strlen($suffix);
+    $base = ($room > 0) ? mb_substr((string) $wanted, 0, $room, 'UTF-8') : '';
+
+    return ($base === '') ? '' : $base . $suffix;
 }
 
 /**
@@ -348,9 +385,13 @@ function pg_short_link_is_pattern($name)
 }
 
 /**
- * The form two names are compared in, as close to the database's comparison
- * of an exact name as PHP gets: without case and without the marks on Latin
- * letters (utf8mb4_unicode_ci finds "urun" for "ürün" too).
+ * The form two names are compared in. Two names are the same name when
+ * router.php's WHERE short_links.name = '…' finds one for the other, so the
+ * database answers: the key is the weight string of the name under the name
+ * column's collation (utf8mb4_unicode_ci finds "swieta" for "święta" and
+ * "urun" for "ürün", but keeps "ı" and "i" apart). PHP does not imitate the
+ * collation; pg_short_link_fold() is only for a run without a connection
+ * (the test runner), and its keys never meet the database's.
  *
  * @param string $name
  * @return string
@@ -358,9 +399,126 @@ function pg_short_link_is_pattern($name)
 function pg_short_link_key($name)
 {
     $name = (string) $name;
+    $keys = pg_short_link_keys(array($name));
 
-    if (function_exists('pg_transliterate_to_ascii')) {
-        $name = pg_transliterate_to_ascii($name);
+    return $keys[$name];
+}
+
+/**
+ * The keys of many names (pg_short_link_key()), asked of the database a
+ * hundred at a time and kept for the request. A name the database could not
+ * be asked about gets a key of its own, so it equals no other name.
+ *
+ * @param string[] $names
+ * @return array name => key
+ */
+function pg_short_link_keys($names)
+{
+    static $keys = array();
+
+    $names = array_map('strval', (array) $names);
+    $missing = array();
+
+    foreach ($names as $name) {
+        if (!isset($keys[$name])) {
+            $missing[$name] = $name;
+        }
+    }
+
+    if ($missing) {
+        $collation = pg_short_link_name_collation();
+
+        if ($collation === '') {
+            foreach ($missing as $name) {
+                $keys[$name] = 'php:' . pg_short_link_fold($name);
+            }
+        } else {
+            // The charset is the collation's first part (utf8mb4_unicode_ci,
+            // utf8_general_ci): the literal is converted the way the router's
+            // comparison converts it.
+            $charset = substr($collation, 0, strpos($collation . '_', '_'));
+
+            foreach (array_chunk(array_values($missing), 100) as $chunk) {
+                $columns = array();
+
+                foreach ($chunk as $name) {
+                    $columns[] = "HEX(WEIGHT_STRING(CONVERT(_utf8mb4'" . mysqli_real_escape_string(db::$con, $name) . "' USING " . $charset . ") COLLATE " . $collation . "))";
+                }
+
+                $result = @mysqli_query(db::$con, "SELECT " . implode(', ', $columns));
+                $row = $result ? mysqli_fetch_row($result) : null;
+
+                if (!is_array($row)) {
+                    pg_short_link_log_failure('comparing names');
+                }
+
+                foreach ($chunk as $position => $name) {
+                    $keys[$name] = (is_array($row) && isset($row[$position])) ? 'db:' . $row[$position] : 'name:' . $name;
+                }
+            }
+        }
+    }
+
+    $found = array();
+
+    foreach ($names as $name) {
+        $found[$name] = $keys[$name];
+    }
+
+    return $found;
+}
+
+/**
+ * The collation of short_links.name, read once per request, or '' when there
+ * is no connection to ask (the test runner) or the answer is not a collation
+ * name.
+ *
+ * @return string
+ */
+function pg_short_link_name_collation()
+{
+    static $collation = null;
+
+    if ($collation !== null) {
+        return $collation;
+    }
+
+    $collation = '';
+
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return $collation;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW FULL COLUMNS FROM short_links WHERE Field = 'name'");
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    $name = is_array($row) && isset($row['Collation']) ? (string) $row['Collation'] : '';
+
+    if (preg_match('/^[a-z0-9]+_[a-z0-9_]+$/', $name) === 1) {
+        $collation = $name;
+    }
+
+    return $collation;
+}
+
+/**
+ * Two names as a run without a database compares them: without case, without
+ * the marks a letter decomposes into (é, ę, ș; not ı, ø, ł, which have none),
+ * compatibility forms as their letters. An approximation of
+ * utf8mb4_unicode_ci for tests; without the intl extension only case goes.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_short_link_fold($name)
+{
+    $name = (string) $name;
+
+    if (class_exists('Normalizer')) {
+        $decomposed = Normalizer::normalize($name, Normalizer::FORM_KD);
+
+        if (is_string($decomposed)) {
+            $name = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+        }
     }
 
     return mb_strtolower($name, 'UTF-8');
@@ -549,6 +707,11 @@ function pg_short_link_index($links)
 {
     $index = array('exact' => array(), 'patterns' => array());
 
+    // Every key in a few queries instead of one per link.
+    pg_short_link_keys(array_map(function ($link) {
+        return (string) $link['name'];
+    }, array_values((array) $links)));
+
     foreach ((array) $links as $link) {
         if ((string) $link['name'] === '') {
             continue;
@@ -568,7 +731,10 @@ function pg_short_link_index($links)
 
 /**
  * The link that answers a name, from pg_short_link_index(), with what its
- * stars matched (none for an exact name).
+ * stars matched (none for an exact name). As router.php asks: exact names
+ * first, the name as it came and then in its stored form
+ * (pg_short_link_path_name()), then each pattern in its turn, in the same two
+ * forms.
  *
  * @param string $name
  * @param array  $index
@@ -577,17 +743,26 @@ function pg_short_link_index($links)
  */
 function pg_short_link_match_in($name, $index, $exact_too = true)
 {
-    $key = pg_short_link_key($name);
+    $name = (string) $name;
+    $forms = array_unique(array($name, pg_short_link_path_name($name)));
 
-    if ($exact_too && isset($index['exact'][$key])) {
-        return array('link' => $index['exact'][$key], 'captures' => array());
+    if ($exact_too) {
+        foreach ($forms as $form) {
+            $key = pg_short_link_key($form);
+
+            if (isset($index['exact'][$key])) {
+                return array('link' => $index['exact'][$key], 'captures' => array());
+            }
+        }
     }
 
     foreach ($index['patterns'] as $link) {
-        $captures = pg_short_link_pattern_captures($link['name'], $name);
+        foreach ($forms as $form) {
+            $captures = pg_short_link_pattern_captures($link['name'], $form);
 
-        if ($captures !== null) {
-            return array('link' => $link, 'captures' => $captures);
+            if ($captures !== null) {
+                return array('link' => $link, 'captures' => $captures);
+            }
         }
     }
 
@@ -651,12 +826,16 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
         return null;
     }
 
+    // An address reaches the link the way the router finds it: as it is or in
+    // its stored form (pg_short_link_match_in()).
     $own = function ($candidate) use ($is_pattern, $name) {
-        if ($is_pattern) {
-            return (pg_short_link_pattern_captures($name, $candidate) !== null);
+        foreach (array_unique(array($candidate, pg_short_link_path_name($candidate))) as $form) {
+            if ($is_pattern ? (pg_short_link_pattern_captures($name, $form) !== null) : (pg_short_link_key($form) === pg_short_link_key($name))) {
+                return true;
+            }
         }
 
-        return (pg_short_link_key($candidate) === pg_short_link_key($name));
+        return false;
     };
 
     if ($own($path)) {
@@ -1029,7 +1208,7 @@ function pg_short_link_not_found()
     if ((string) $link['destination_type'] === 'url') {
         $back = pg_short_link_url_name(pg_short_link_fill_target($link['url'], $match['captures'], false), $site_host, $base);
 
-        if (($back !== null) && (pg_short_link_key($back) === pg_short_link_key($name))) {
+        if (($back !== null) && (pg_short_link_key(pg_short_link_path_name($back)) === pg_short_link_key(pg_short_link_path_name($name)))) {
             return false;
         }
     }
@@ -1123,41 +1302,22 @@ function pg_short_link_redirect_columns($link, $code = null, $stored = 0, $links
  * The lines of a short link CSV file.
  *
  * Columns: the address (a name, a path or a full old address), where it sends
- * visitors and, optionally, the code (301 when empty). The separator is a
- * comma, or the semicolon or tab a spreadsheet wrote when the first line has
- * one of those and no comma. A byte order mark is dropped, and bytes that are
- * not UTF-8 are read as the Windows Turkish code page (what Excel writes in
- * Turkey). A first line whose second cell holds no / is a heading (from,to,
- * Eski adres;Yeni adres) and is skipped, as are empty lines. The apostrophe
- * pg_short_link_csv() puts before a formula character is taken off again.
+ * visitors and, optionally, the code (301 when empty). The separator is the
+ * comma, semicolon or tab that splits the most lines into two or three cells
+ * (pg_short_link_csv_separator()). The text is read as UTF-8
+ * (pg_short_link_csv_text(): UTF-16 as Excel's "Unicode Text" writes it,
+ * the Windows Turkish code page for bytes that are not UTF-8). A first line
+ * whose second cell holds no / is a heading (from,to, Eski adres;Yeni adres)
+ * and is skipped, as are empty lines. The apostrophe pg_short_link_csv() puts
+ * before a formula character is taken off again.
  *
  * @param string $bytes
  * @return array[] array('line' => int, 'from' => string, 'to' => string, 'code' => string)
  */
 function pg_short_link_csv_rows($bytes)
 {
-    $bytes = (string) $bytes;
-
-    if (substr($bytes, 0, 3) === "\xEF\xBB\xBF") {
-        $bytes = substr($bytes, 3);
-    }
-
-    if (!mb_check_encoding($bytes, 'UTF-8')) {
-        $encodings = array_map('strtolower', mb_list_encodings());
-        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', in_array('windows-1254', $encodings, true) ? 'Windows-1254' : 'ISO-8859-9');
-    }
-
-    $bytes = str_replace(array("\r\n", "\r"), "\n", $bytes);
-    $first_line = (string) strtok($bytes, "\n");
-    $delimiter = ',';
-
-    if (strpos($first_line, ',') === false) {
-        if (strpos($first_line, ';') !== false) {
-            $delimiter = ';';
-        } elseif (strpos($first_line, "\t") !== false) {
-            $delimiter = "\t";
-        }
-    }
+    $bytes = str_replace(array("\r\n", "\r"), "\n", pg_short_link_csv_text($bytes));
+    $delimiter = pg_short_link_csv_separator($bytes);
 
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, $bytes);
@@ -1196,6 +1356,107 @@ function pg_short_link_csv_rows($bytes)
     fclose($handle);
 
     return $rows;
+}
+
+/**
+ * A CSV file's bytes as UTF-8 text without a byte order mark. UTF-16 is what
+ * Excel's "Unicode Text" writes (FF FE, little-endian, tab-separated); without
+ * a mark it is told by its NUL bytes, which text in any 8-bit encoding does
+ * not have. Other bytes that are not UTF-8 are read as the Windows Turkish
+ * code page (what Excel writes in Turkey; ISO-8859-9 where mbstring lacks it).
+ *
+ * @param string $bytes
+ * @return string
+ */
+function pg_short_link_csv_text($bytes)
+{
+    $bytes = (string) $bytes;
+    $utf16 = '';
+
+    if (substr($bytes, 0, 2) === "\xFF\xFE") {
+        $utf16 = 'UTF-16LE';
+    } elseif (substr($bytes, 0, 2) === "\xFE\xFF") {
+        $utf16 = 'UTF-16BE';
+    } elseif (strpos($bytes, "\0") !== false) {
+        // ASCII in UTF-16LE puts the NUL after each letter, in UTF-16BE before.
+        $sample = substr($bytes, 0, 4096);
+        $odd = 0;
+        $even = 0;
+
+        for ($at = 0, $length = strlen($sample); $at < $length; $at++) {
+            if ($sample[$at] === "\0") {
+                if ($at % 2) {
+                    $odd++;
+                } else {
+                    $even++;
+                }
+            }
+        }
+
+        $utf16 = ($odd >= $even) ? 'UTF-16LE' : 'UTF-16BE';
+    }
+
+    if ($utf16 !== '') {
+        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', $utf16);
+    }
+
+    if (substr($bytes, 0, 3) === "\xEF\xBB\xBF") {
+        $bytes = substr($bytes, 3);
+    }
+
+    if (!mb_check_encoding($bytes, 'UTF-8')) {
+        $encodings = array_map('strtolower', mb_list_encodings());
+        $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', in_array('windows-1254', $encodings, true) ? 'Windows-1254' : 'ISO-8859-9');
+    }
+
+    return $bytes;
+}
+
+/**
+ * The separator of a short link CSV file: of the comma, the semicolon and the
+ * tab, the one that splits the most of its first lines into two or three
+ * cells (from, to, code), the comma first when they split as many. A comma
+ * inside one address of a semicolon file (a name may hold one) no longer makes
+ * the whole file read as comma-separated.
+ *
+ * @param string $text UTF-8, lines ending in \n
+ * @return string
+ */
+function pg_short_link_csv_separator($text)
+{
+    $lines = array();
+
+    foreach (explode("\n", (string) $text) as $line) {
+        if (trim($line) !== '') {
+            $lines[] = $line;
+        }
+
+        if (count($lines) >= 20) {
+            break;
+        }
+    }
+
+    $best = ',';
+    $best_score = -1;
+
+    foreach (array(',', ';', "\t") as $candidate) {
+        $score = 0;
+
+        foreach ($lines as $line) {
+            $cells = count(str_getcsv($line, $candidate, '"', '\\'));
+
+            if (($cells === 2) || ($cells === 3)) {
+                $score++;
+            }
+        }
+
+        if ($score > $best_score) {
+            $best = $candidate;
+            $best_score = $score;
+        }
+    }
+
+    return $best;
 }
 
 /**
@@ -1295,9 +1556,16 @@ function pg_short_link_import($rows, $replace, $user_id = 0)
     $prepared = pg_short_link_prepare(pg_short_link_redirect_links());
     $by_key = array();
 
+    // "A short link has this name" is the database's answer (pg_short_link_key()),
+    // the one check_name_availability() and the router give: under
+    // utf8mb4_unicode_ci "kilif" is not "kılıf", "swieta" is "święta".
     foreach ($prepared['by_id'] as $link) {
         $by_key[pg_short_link_key($link['name'])] = $link;
     }
+
+    pg_short_link_keys(array_map(function ($row) {
+        return pg_short_link_name_from_address($row['from']);
+    }, array_values((array) $rows)));
 
     $modes = pg_short_link_modes_ready();
 

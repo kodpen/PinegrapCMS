@@ -638,13 +638,20 @@ function erp_edoc_account_missing($account)
         return $none;
     }
 
+    // The fields erp_edoc_invoice_party() gives a driver for the live card:
+    // a driver reads the tax office (Paraşüt, for a VKN) and the country (the
+    // postcode rule) of the party, and an absent key reads as an empty one.
     $party = array(
         'title' => (string) ($account['title'] ?? ''),
         'is_person' => ((int) ($account['is_person'] ?? 1) === 1),
         'tax_number' => (string) ($account['tax_number'] ?? ''),
+        'tax_office' => (string) ($account['tax_office'] ?? ''),
+        'email' => (string) ($account['email'] ?? ''),
+        'phone' => (string) ($account['phone'] ?? ''),
         'address' => (string) ($account['address'] ?? ''),
         'district' => (string) ($account['district'] ?? ''),
         'city' => (string) ($account['city'] ?? ''),
+        'country_code' => (string) ($account['country_code'] ?? 'TR'),
         'postcode' => (string) ($account['postcode'] ?? ''),
     );
 
@@ -870,6 +877,40 @@ function erp_edoc_invoice_party_editable($invoice)
 }
 
 /**
+ * Why a new send would duplicate a record the provider already holds, or ''.
+ *
+ * A document that exists at the provider is never created again: the repeat
+ * would leave a second record behind that nobody is watching. A draft there
+ * ('created') is handed over with its own button; a record a later step
+ * failed on ('error' with the provider's id still on the row: a conversion
+ * that failed, a document GİB did not take) is asked after, and what it is
+ * there decides what comes next. A send that failed before the provider
+ * wrote anything leaves no id and may go again; a rejected document is the
+ * buyer's answer to one that was issued, and is answered with a new one.
+ *
+ * @param array $invoice  An erp_invoices row
+ * @return string
+ */
+function erp_edoc_invoice_held_refusal($invoice)
+{
+    $status = (string) ($invoice['edoc_status'] ?? 'none');
+    $external_id = trim((string) ($invoice['edoc_external_id'] ?? ''));
+
+    if ($status === 'created') {
+        return lang('The document is already at the provider as a draft; hand that one to GİB instead of creating a second.');
+    }
+
+    if (($status === 'error') && ($external_id !== '')) {
+        return lang(array(
+            'string' => 'The provider still holds the document (id {var:1}); sending it again would create a second one there. Ask after its status: a record that is still a draft there is handed to GİB from here.',
+            'vars' => $external_id,
+        ));
+    }
+
+    return '';
+}
+
+/**
  * May this invoice be sent now, and if not, why not - in the operator's words.
  *
  * @param array $invoice  An erp_invoices row
@@ -908,11 +949,10 @@ function erp_edoc_invoice_can_send($invoice)
         return array('ok' => false, 'provider' => $provider, 'reason' => lang('The invoice carries a second tax, which an e-document cannot show; it stays a PDF document.'));
     }
 
-    // A document that exists at the provider is never created again: the
-    // repeat would leave a second draft behind that nobody is watching.
-    // Handing that one over is a separate button.
-    if ((string) $invoice['edoc_status'] === 'created') {
-        return array('ok' => false, 'provider' => $provider, 'reason' => lang('The document is already at the provider as a draft; hand that one to GİB instead of creating a second.'));
+    $held = erp_edoc_invoice_held_refusal($invoice);
+
+    if ($held !== '') {
+        return array('ok' => false, 'provider' => $provider, 'reason' => $held);
     }
 
     if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true)) {
@@ -1061,8 +1101,16 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
     $result = erp_edoc_call('send_invoice', array($invoice, $lines, array('party' => $party)), $provider);
 
     if (empty($result['success'])) {
+        // A driver that wrote a record and could not take it back names it:
+        // the row keeps it, so nothing is created over it and cancelling the
+        // invoice takes it back there.
+        $kept = trim((string) ($result['external_id'] ?? ''));
+        $keep = ($kept !== '')
+            ? "edoc_provider = '" . escape($provider) . "', edoc_external_id = '" . escape(mb_substr($kept, 0, 64)) . "',"
+            : '';
+
         erp_query("UPDATE erp_invoices
-            SET edoc_status = 'error', edoc_error = '" . escape(mb_substr((string) $result['error'], 0, 2000)) . "', updated_at = '" . time() . "'
+            SET edoc_status = 'error', " . $keep . " edoc_error = '" . escape(mb_substr((string) $result['error'], 0, 2000)) . "', updated_at = '" . time() . "'
             WHERE id = '" . $invoice_id . "'");
 
         return array('success' => false, 'message' => '', 'error' => (string) $result['error']);
@@ -1331,6 +1379,15 @@ function erp_edoc_taxpayer_lookup($tax_number)
 
     if ((strlen($number) !== 10) && (strlen($number) !== 11)) {
         $out['error'] = lang('A VKN has 10 digits and a TCKN 11.');
+        return $out;
+    }
+
+    // A mistyped number is told here rather than asked: the request costs a
+    // read at the provider (İşbaşı counts them) and its "not registered,
+    // goes as an e-Archive" would send the number on as a valid buyer. The
+    // final consumer number goes on as before.
+    if (!erp_edoc_tax_number_valid($number, true)) {
+        $out['error'] = lang('The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.');
         return $out;
     }
 

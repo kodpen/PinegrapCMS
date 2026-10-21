@@ -940,8 +940,32 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return true;
         }
 
-        if (strpos($pattern, '/') === false) {
+        // Compared packed, the way waf_ip_matches() compares: one address has
+        // many spellings (2001:DB8::1, 2001:0db8::1), and a dual-stack socket
+        // hands an IPv4 visitor over as ::ffff:a.b.c.d, which is matched as
+        // the IPv4 address. The mapped prefix is taken off here by hand: this
+        // file runs before waf.php is loaded.
+        $mapped = "\0\0\0\0\0\0\0\0\0\0\xff\xff";
+        $ip_raw = @inet_pton(trim($ip));
+
+        if ($ip_raw === false) {
             return false;
+        }
+
+        $ip_bin = ((strlen($ip_raw) === 16) && (substr($ip_raw, 0, 12) === $mapped)) ? substr($ip_raw, 12) : $ip_raw;
+
+        if (strpos($pattern, '/') === false) {
+            $pattern_bin = @inet_pton($pattern);
+
+            if ($pattern_bin === false) {
+                return false;
+            }
+
+            if ((strlen($pattern_bin) === 16) && (substr($pattern_bin, 0, 12) === $mapped)) {
+                $pattern_bin = substr($pattern_bin, 12);
+            }
+
+            return $ip_bin === $pattern_bin;
         }
 
         $parts = explode('/', $pattern, 2);
@@ -958,10 +982,22 @@ if (!defined('PG_DB_GUARD_LOADED')) {
         }
 
         $subnet_bin = @inet_pton(trim($parts[0]));
-        $ip_bin = @inet_pton($ip);
 
-        if ($subnet_bin === false || $ip_bin === false) {
+        if ($subnet_bin === false) {
             return false;
+        }
+
+        $bits = (int) $prefix;
+
+        // A range written in the mapped form is the IPv4 range it covers; any
+        // other IPv6 range is compared with the address as it came.
+        if (strlen($subnet_bin) === 16) {
+            if ((substr($subnet_bin, 0, 12) === $mapped) && ($bits >= 96)) {
+                $subnet_bin = substr($subnet_bin, 12);
+                $bits -= 96;
+            } else {
+                $ip_bin = $ip_raw;
+            }
         }
 
         // Never compare across address families: inet_pton returns 4 bytes for
@@ -970,7 +1006,6 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return false;
         }
 
-        $bits = (int) $prefix;
         $max_bits = strlen($ip_bin) * 8;
 
         if ($bits > $max_bits) {

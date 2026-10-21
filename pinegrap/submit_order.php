@@ -267,7 +267,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND products.gift_card = '0'") == 0
             ) {
                 db("DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'");
@@ -669,6 +669,11 @@ function submit_order($type) {
                         timestamp = UNIX_TIMESTAMP()
                     WHERE id = '" . $contact_id . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            } elseif ($liveform->field_in_session('tax_number')) {
+                // The card is not updated from the billing block, but a card with no
+                // tax number still takes the one typed here: the order keeps none of
+                // its own, and the account its invoice goes to is opened from the card.
+                pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id);
             }
         }
         
@@ -791,7 +796,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql() . "
         ORDER BY order_items.id ASC";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -874,15 +879,18 @@ function submit_order($type) {
         $tax = 0;
     }
     
-    // set the discount for the order if there is one
-    $discount = $_SESSION['ecommerce']['order_discount'] ?? 0;
+    // Set the discount for the order if there is one: what the cart worked
+    // out, at most the subtotal charged today (recurring lines that start
+    // later are not in $subtotal).
+    $discount = pg_order_charged_discount($_SESSION['ecommerce']['order_discount'] ?? 0, $subtotal);
     
     // store the orginal tax in case there is a discount
     // and we need to add a discount line item for PayPal Express Checkout
     $original_tax = $tax;
 
-    // if there is an order discount, adjust tax according to discount
-    if ($discount) {
+    // If there is an order discount, adjust tax according to discount. A
+    // discount is only above zero when the subtotal is.
+    if ($discount && ($subtotal > 0)) {
 
         $tax = $tax - round(($tax * ($discount / $subtotal)));
 
@@ -1385,7 +1393,7 @@ function submit_order($type) {
                 "SELECT id
                 FROM order_items
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                     AND (product_id = '" . $product['required_product'] . "')";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -1420,7 +1428,7 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
             AND (order_items.ship_to_id > 0)
             AND (order_items.price <= 0)";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1438,7 +1446,7 @@ function submit_order($type) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                 AND (ship_to_id = '" . $free_order_item['ship_to_id'] . "')
                 AND (price > 0)";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -1808,8 +1816,90 @@ function submit_order($type) {
         }
     }
     
+    // A payment a driver serves (includes/payments/) is taken by the driver,
+    // and the gateway code below does not run for it. The order records the
+    // driver's answer in the same variables the gateway code sets.
+    $payment_driver = ($nonrecurring_transaction == TRUE)
+        ? pg_payment_checkout_driver((string) $liveform->get_field_value('payment_method'), (string) ECOMMERCE_PAYMENT_GATEWAY, (string) ($_GET['mode'] ?? ''))
+        : '';
+
+    if ($payment_driver !== '') {
+        $payment_order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
+        $payment_order = is_array($payment_order) ? $payment_order : array();
+        $payment_return_mode = pg_payment_return_mode($payment_driver);
+
+        if (($payment_return_mode !== '') && (($_GET['mode'] ?? '') === $payment_return_mode)) {
+            $payment_answer = pg_payment_call($payment_driver, 'complete', array(
+                $payment_order,
+                $total,
+                $_POST,
+                $_SESSION['ecommerce']['payment_state'][$payment_driver] ?? array(),
+            ));
+        } else {
+            $payment_answer = pg_payment_call($payment_driver, 'authorize', array($payment_order, $total, array(
+                'card_number'              => isset($card_number) ? $card_number : '',
+                'expiration_month'         => isset($expiration_month) ? $expiration_month : '',
+                'expiration_year'          => isset($expiration_year) ? $expiration_year : '',
+                'card_verification_number' => $liveform->get_field_value('card_verification_number'),
+                'installment'              => (int) $liveform->get_field_value('installment'),
+                'threeds'                  => isset($_POST['threedsecure']),
+                'recurring'                => ($recurring_transaction === TRUE),
+                'subtotal'                 => $subtotal,
+                'discount'                 => $discount,
+                'lines'                    => $products,
+                'ship_to'                  => pg_payment_order_ship_to((int) ($_SESSION['ecommerce']['order_id'] ?? 0)),
+                'customer_id'              => $user_id,
+                'ip'                       => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+                'basket_id'                => (string) $page_id,
+                'return_url'               => ($payment_return_mode !== '')
+                    ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
+                    : '',
+            )));
+        }
+
+        // What the driver keeps for the visitor's return stays in the session,
+        // never in the page; an answer without it ends the wait.
+        if ($payment_answer['state'] !== array()) {
+            $_SESSION['ecommerce']['payment_state'][$payment_driver] = $payment_answer['state'];
+        } else {
+            unset($_SESSION['ecommerce']['payment_state'][$payment_driver]);
+        }
+
+        foreach ($payment_answer['log'] as $payment_log_line) {
+            log_activity($payment_log_line);
+        }
+
+        if (!$payment_answer['success']) {
+            $liveform->mark_error('payment_gateway', h($payment_answer['error']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+            exit();
+        }
+
+        // The bank's 3-D Secure page, or the service's own payment page.
+        if ($payment_answer['status'] === 'redirect') {
+            if ($payment_answer['html'] !== '') {
+                echo $payment_answer['html'];
+            } else {
+                header('Location: ' . $payment_answer['redirect_url']);
+            }
+
+            exit();
+        }
+
+        $payment_totals = pg_payment_checkout_totals($payment_answer, $total);
+        $total = $payment_totals['total'];
+        $installment_charge = $payment_totals['installment_charge'];
+        $total_witout_installment_charge = $payment_totals['total_without_installment_charge'];
+        $payment_installment = $payment_totals['payment_installment'];
+        $transaction_id = $payment_answer['transaction_id'];
+
+        if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
+            $card_type = $payment_answer['card_brand'];
+        }
+    }
+
     // if a non-recurring transaction is required, then process transaction through payment gateway, if there is one
-    if ($nonrecurring_transaction == TRUE) {
+    if (($nonrecurring_transaction == TRUE) && ($payment_driver === '')) {
         
         // process transaction differently based on selected payment method
         switch ($liveform->get_field_value('payment_method')) {
@@ -2396,7 +2486,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2585,7 +2675,7 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
@@ -2879,7 +2969,7 @@ function submit_order($type) {
                         $Iyzipay_ship_zip = '';
                         $Iyzipay_ship_country = '';
 
-                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')";
+                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')" . pg_order_item_active_sql();
                         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
@@ -3309,7 +3399,7 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON products.id = order_items.product_id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                         AND (products.shippable = '1')";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
@@ -4099,8 +4189,11 @@ function submit_order($type) {
                 $affiliate_commission_rate = AFFILIATE_DEFAULT_COMMISSION_RATE;
             }
             
-            // if there is an order discount, calculate discount percentage
-            if ($discount) {
+            // If there is an order discount, calculate discount percentage
+            // (pg_order_charged_discount() keeps a discount within a subtotal
+            // above zero; the check keeps the division safe on its own).
+            $discount_percentage = 0;
+            if ($discount && ($subtotal > 0)) {
                 $discount_percentage = $discount / $subtotal;
             }
             
@@ -4367,7 +4460,11 @@ function submit_order($type) {
                 ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
+
+    // The placed order holds what was charged: lines saved for later come off
+    // it before the receipt and the e-mails below read it.
+    pg_order_drop_saved_lines((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
     // lock table, so no one can read table, so we can get the order number
     $query = "LOCK TABLES next_order_number WRITE";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -6141,7 +6238,12 @@ function submit_order($type) {
     
     // intialize variable to keep track of the total reward points that products should give for this order
     $reward_points = 0;
-    
+
+    // The stock each product was left with by the rows above, so a product
+    // that comes twice (two recipients) announces its second row from what
+    // the first one left, not from the stock read before the loop.
+    $stock_left = array();
+
     // loop through all ordered products in order to determine if things need to be done for each product
     foreach ($products as $product) {
         $product_id = $product['product_id'];
@@ -6169,23 +6271,38 @@ function submit_order($type) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
             $query = "UPDATE products SET inventory_quantity = (inventory_quantity - '" . $quantity . "') WHERE id = '" . $product_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            //if quantity is equal to product inventory quantity than add product to out of stock. so we can find product where out of stock page and welcome page.
-            if($quantity == $inventory_quantity){
-                $query = "UPDATE products SET 
-                            out_of_stock = '1', 
-                            out_of_stock_timestamp = UNIX_TIMESTAMP() 
-                            WHERE id = '" . $product_id . "'";
-                            
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // Mark the product out of stock from the stock left after this
+            // row, not from $inventory_quantity: that value was read before
+            // the loop, so the second row of the same product (another
+            // recipient) or a row above the stock never equals it. The column
+            // is unsigned and the session sql_mode is not strict, so a sale
+            // through the stock leaves 0. The out_of_stock guard makes the
+            // flag and the warning happen once per product.
+            $result = mysqli_query(db::$con,
+                "UPDATE products SET
+                    out_of_stock = '1',
+                    out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE
+                    (id = '" . $product_id . "')
+                    AND (inventory_quantity <= 0)
+                    AND (out_of_stock != '1')") or output_error('Query failed.');
+
+            if (mysqli_affected_rows(db::$con) > 0) {
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
-            // Sold here, so the marketplace has to be told. Queued, not sent:
-            // a checkout must never wait on somebody else's server.
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed($product_id);
-            }
+            // Sold here, so the outside has to be told: the product's stamp
+            // moves for updated_since listings, inventory.changed (and
+            // stock.low on the crossing) is announced and the marketplace is
+            // queued. Queued, not sent: a checkout must never wait on
+            // somebody else's server. The stock left is read back, because
+            // the decrement happened in the UPDATE.
+            $stock_left[$product_id] = pg_product_stock_changed(
+                $product_id,
+                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $inventory_quantity,
+                null,
+                'checkout');
         }
         
         
@@ -6221,9 +6338,11 @@ function submit_order($type) {
                             AND (recurrence_number = '" . $recurrence_number . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
-                // else a remaining spots record was not found, so create new record using number of initial spots
+                // else a remaining spots record was not found, so create new
+                // record using number of initial spots less the spots this
+                // row reserves (the UPDATE branch above takes the quantity too)
                 } else {
-                    $number_of_remaining_spots = $number_of_initial_spots - 1;
+                    $number_of_remaining_spots = $number_of_initial_spots - $quantity;
                     
                     $query =
                         "INSERT INTO remaining_reservation_spots (

@@ -4,8 +4,8 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 ---
 
 ## Where does it stand?
-- Written and checked against the published swagger: the authorization-code connection (docs/memory/erp/erp-parasut-connection.md) and the driver (docs/memory/erp/erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals (withholding scale and `net_total` settled, #630), poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on it, or use a company that has one.
-- Account sync (`accounts`, #711, docs/memory/erp/erp-parasut-accounts.md): reading, linking by tax number and writing a card (PUT, POST) work live (2026-10-20).
+- Written and checked against the published swagger: the authorization-code connection (erp-parasut-connection.md) and the driver (erp-parasut-driver.md). Live on dev.pinegrap.com with the owner's demo company (830533) on 2026-10-19: connection, contacts, sales invoice, totals (withholding scale and `net_total` settled, #630), poll, delete. The demo company has no e-document integration, so conversion, job, PDF and e-Arşiv cancel are still untried; ask Paraşüt support for a test e-Arşiv / e-Fatura integration on it, or use a company that has one.
+- Account sync (`accounts`, #711, erp-parasut-accounts.md): reading (archived cards too, #884), linking by tax number and writing a card (PUT, POST) work live; unlisted cards are in no list.
 
 ## How are Paraşüt credentials obtained and stored?
 - Done: the authorization code (Connect on the Paraşüt card, `parasut_connect.php`) beside the password grant; the secret in `config.parasut_credentials_enc`, the token sealed in the service tokens; access token 2 h, refresh token rotates on every use.
@@ -29,8 +29,8 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 - No: v4 lists no incoming e-invoices (`e_invoices` has create, show and pdf only) and hands out no UBL; `purchase_bills` are Paraşüt's own expense records (what `view_parasut_inbox.php` lists). The driver declares no `inbox`.
 
 ## Can the account card fill itself?
-- Done (#625): Query beside the tax number on the account form fills the name from GİB's register (docs/memory/erp/erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
-- Done (#806): an account opened from an order takes the name GİB registers its VKN under (docs/memory/erp/erp-taxpayer-lookup.md).
+- Done (#625): Query beside the tax number on the account form fills the name from GİB's register (erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
+- Done (#806): an account opened from an order takes the name GİB registers its VKN under (erp-taxpayer-lookup.md).
 
 ## How is testing done without a sandbox?
 - Live tests only (the staging host does not take merchant credentials). The owner's demo application points at a demo company; low-value one-line invoices there, with the cancel path tried on each.

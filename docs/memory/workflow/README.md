@@ -4,8 +4,11 @@
 
 Project overview, owner rules, git and branches, sandbox and dev machine.
 
+- ci-workflows.md: GitHub Actions workflows: what each runs and when, action versions (major tags, node24) and how to bump them, the Node line of the JavaScript checks, runner labels
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, where the Claude Code PR footer comes from and who removes it, editing shared files without conflicts
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
+- pr-backlog-coordination.md: How a backlog of open PRs on development is cleared by one coordinating session: claim issue, take-over comments, active-branch rule, merge order, tr.json re-conflicts, English bodies
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
+- workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)

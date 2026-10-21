@@ -2483,7 +2483,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.0.8',
+    'version'     => '1.0.9',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',

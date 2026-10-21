@@ -80,13 +80,45 @@ function pg_audit_request_id()
 }
 
 /**
+ * Record the lines that follow as a scheduled job's, not as the work of
+ * whoever's request is running. Housekeeping that piggybacks on a visit (the
+ * Recycle Bin's daily purge runs on the first file manager or catalog visit of
+ * the day) is the software's own doing; without the switch the trail would
+ * name the operator who happened to open the screen as the one who deleted.
+ *
+ *   $was = pg_audit_as_job(true);
+ *   // … work …
+ *   pg_audit_as_job($was);
+ *
+ * @param bool|null $on  true or false to switch, null to ask
+ * @return bool  the state before this call (the current one when asking)
+ */
+function pg_audit_as_job($on = null)
+{
+    static $as_job = false;
+
+    $was = $as_job;
+
+    if ($on !== null) {
+        $as_job = (bool) $on;
+    }
+
+    return $was;
+}
+
+/**
  * Who is acting: an operator in the panel, an application through the API
- * (its owner and its name), or a scheduled job.
+ * (its owner and its name), or a scheduled job (also any work done while
+ * pg_audit_as_job() is on).
  *
  * @return array  source (panel | api | job), user_id, username
  */
 function pg_audit_actor()
 {
+    if (pg_audit_as_job()) {
+        return array('source' => 'job', 'user_id' => 0, 'username' => '');
+    }
+
     if (defined('PG_API_ENTRY') && function_exists('api_current_app')) {
         $app = api_current_app();
 
@@ -114,8 +146,16 @@ function pg_audit_actor()
 }
 
 /**
- * Whether a field holds a secret, by its name: passwords, keys, tokens,
- * encrypted blobs, card data. Its value is never written; that it changed is.
+ * Whether a field holds a secret, by its name: passwords, PINs (the
+ * developer lock's user_devpasspin), keys, tokens, private keys
+ * (push_vapid_private), licences, encrypted blobs, card data. Its value is
+ * never written; that it changed is.
+ *
+ * A few names contain "password" but hold no secret, and the trail must show
+ * their values: the Security screen's on/off rules (config.strong_password,
+ * password_hint, forgot_password_link), the user's hashing scheme and the
+ * time the password last changed, and the password rewrap job's cursor.
+ * user.user_password_hint is the hint text itself and stays masked.
  *
  * @param mixed $key
  * @return bool
@@ -123,6 +163,10 @@ function pg_audit_actor()
 function pg_audit_secret_key($key)
 {
     $key = strtolower((string) $key);
+
+    if (in_array($key, array('strong_password', 'password_hint', 'forgot_password_link', 'user_password_algo', 'user_password_changed_at', 'password_wrap_cursor', 'password_wrap_done'), true)) {
+        return false;
+    }
 
     if (in_array($key, array('pass', 'passwd', 'pin', 'otp', 'cvv', 'cvc', 'secret', 'token', 'signature', 'card_number', 'card_verification_number', 'recovery_codes'), true)) {
         return true;
@@ -132,7 +176,7 @@ function pg_audit_secret_key($key)
         return true;
     }
 
-    return preg_match('/(^|_)(api_?key|key|token|pass|enc|hash|signature|credentials?)$/', $key) === 1;
+    return preg_match('/(^|_)(api_?key|key|token|pass|pin|devpasspin|enc|hash|signature|credentials?|private|license)$/', $key) === 1;
 }
 
 /**
@@ -225,9 +269,41 @@ function pg_audit_compact($value)
 }
 
 /**
+ * A text column that holds a JSON object or list, decoded; null for any
+ * other value. Such columns (config.product_feeds) keep tokens and keys under
+ * their own names inside the text.
+ *
+ * Text longer than a whole side may be (pg_audit_limits() 'json') is not
+ * decoded: a designer tree (page.page_tree_json) can run to megabytes, and
+ * decoding it costs about ten times its size in memory on a delete. Every
+ * config column that holds a secret in JSON is far below that.
+ *
+ * @param mixed $value
+ * @return array|null
+ */
+function pg_audit_json_text($value)
+{
+    $limits = pg_audit_limits();
+
+    if (!is_string($value) || (strlen($value) < 2) || (strlen($value) > $limits['json']) || !in_array($value[0], array('{', '['), true)) {
+        return null;
+    }
+
+    $decoded = json_decode($value, true);
+
+    return is_array($decoded) ? $decoded : null;
+}
+
+/**
  * One side of a change as it is stored: secrets masked ('***' for a value,
  * an empty value left empty, so "set" and "cleared" still show), long texts
  * compacted, at any depth.
+ *
+ * JSON text is decoded so the secrets in it are masked by the same names,
+ * then kept as the masked structure while its JSON is no longer than a
+ * value may be, and otherwise as the masked text compacted like any long
+ * string. Its stored form is therefore an object, a list or a compacted
+ * text, never the original string; an empty object comes back as [].
  *
  * @param array $values
  * @return array
@@ -235,9 +311,17 @@ function pg_audit_compact($value)
 function pg_audit_redact(array $values)
 {
     $redacted = array();
+    $limits = pg_audit_limits();
 
     foreach ($values as $key => $value) {
-        if (pg_audit_secret_key($key)) {
+        $json = pg_audit_secret_key($key) ? null : pg_audit_json_text($value);
+
+        if ($json !== null) {
+            $masked = pg_audit_redact($json);
+            $text = json_encode($masked, pg_audit_json_flags());
+
+            $redacted[$key] = (is_string($text) && (strlen($text) > $limits['value'])) ? pg_audit_compact($text) : $masked;
+        } elseif (pg_audit_secret_key($key)) {
             $redacted[$key] = (($value === null) || ($value === '') || ($value === array())) ? $value : '***';
         } elseif (is_array($value)) {
             $redacted[$key] = pg_audit_redact($value);
@@ -247,6 +331,23 @@ function pg_audit_redact(array $values)
     }
 
     return $redacted;
+}
+
+/**
+ * The flags every JSON the trail writes is encoded with: readable Unicode and
+ * slashes, and invalid UTF-8 replaced rather than failing the whole side.
+ *
+ * @return int
+ */
+function pg_audit_json_flags()
+{
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
+
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
+    }
+
+    return $flags;
 }
 
 /**
@@ -263,11 +364,7 @@ function pg_audit_json(array $values)
     }
 
     $limits = pg_audit_limits();
-    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR;
-
-    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
-    }
+    $flags = pg_audit_json_flags();
 
     $json = json_encode($values, $flags);
 
@@ -392,4 +489,238 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
     }
 
     return (bool) @mysqli_query(db::$con, "INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")");
+}
+
+/**
+ * The tables whose rows the save paths hand to the trail by id: the record
+ * type they become, the id column (none for the single config row), the
+ * column that names the record, and the columns left out because every save
+ * or a background task rewrites them (last editor, usage stamps, config
+ * ciphertext encrypted again with a new IV on every save), by name
+ * ('skip') or by prefix ('skip_prefix': the SEO scores, flags and check
+ * times recalculated after every save of a page or product). Any column
+ * ending in "timestamp" is left out as well (pg_audit_volatile()).
+ *
+ * @return array  table => type, id, label (column names, first non-empty
+ *                wins), skip, skip_prefix
+ */
+function pg_audit_tables()
+{
+    $seo = array('seo_');
+
+    return array(
+        'config'   => array('type' => 'settings', 'id' => '', 'label' => array(), 'skip' => array('last_modified_user_id', 'last_sitemap_check_hash', 'software_update_available', 'mailchimp_sync_running', 'backup_remote_settings', 'parasut_credentials_enc'), 'skip_prefix' => array()),
+        'user'     => array('type' => 'user', 'id' => 'user_id', 'label' => array('user_username'), 'skip' => array('user_user', 'token'), 'skip_prefix' => array()),
+        'products' => array('type' => 'product', 'id' => 'id', 'label' => array('short_description', 'name'), 'skip' => array('user'), 'skip_prefix' => $seo),
+        'page'     => array('type' => 'page', 'id' => 'page_id', 'label' => array('page_name'), 'skip' => array('page_user', 'layout_modified'), 'skip_prefix' => $seo),
+        'orders'   => array('type' => 'order', 'id' => 'id', 'label' => array('order_number', 'reference_code'), 'skip' => array('mailchimp_sync_error'), 'skip_prefix' => array()),
+        'files'    => array('type' => 'file', 'id' => 'id', 'label' => array('name'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'offers'   => array('type' => 'offer', 'id' => 'id', 'label' => array('code'), 'skip' => array('user'), 'skip_prefix' => array()),
+        'api_apps' => array('type' => 'api_app', 'id' => 'id', 'label' => array('name'), 'skip' => array('last_used_ip'), 'skip_prefix' => array()),
+    );
+}
+
+/**
+ * A row without the columns that change on every save, so two reads around a
+ * save differ only where the save changed something.
+ *
+ * @param string $table  a key of pg_audit_tables()
+ * @param array  $row
+ * @return array
+ */
+function pg_audit_volatile($table, array $row)
+{
+    $tables = pg_audit_tables();
+    $skip = isset($tables[$table]) ? $tables[$table]['skip'] : array();
+    $prefixes = isset($tables[$table]) ? $tables[$table]['skip_prefix'] : array();
+
+    foreach (array_keys($row) as $column) {
+        $column = (string) $column;
+        $drop = in_array($column, $skip, true) || (preg_match('/(^|_)timestamp$/', $column) === 1);
+
+        foreach ($prefixes as $prefix) {
+            $drop = $drop || (strpos($column, $prefix) === 0);
+        }
+
+        if ($drop) {
+            unset($row[$column]);
+        }
+    }
+
+    return $row;
+}
+
+/**
+ * The name a row is recorded under: the first non-empty label column.
+ *
+ * A file or page in the Recycle Bin is parked under "pgbin_<id>_<name>"
+ * (pg_recycle_park_name()), and the lines for sending it to the bin and for
+ * deleting it from there read that parked row. The label is the record's name
+ * kept for when it is gone, so the prefix built from the row's own id is taken
+ * off; before_json and after_json keep the parked name as it was.
+ *
+ * @param string $table
+ * @param array  $row
+ * @return string
+ */
+function pg_audit_label_of($table, array $row)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table])) {
+        return '';
+    }
+
+    $key = $tables[$table]['id'];
+
+    foreach ($tables[$table]['label'] as $column) {
+        if (isset($row[$column]) && (trim((string) $row[$column]) !== '')) {
+            $label = (string) $row[$column];
+
+            if (($key !== '') && isset($row[$key])) {
+                $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . (int) $row[$key] . '_';
+
+                if ((strpos($label, $prefix) === 0) && (strlen($label) > strlen($prefix))) {
+                    $label = substr($label, strlen($prefix));
+                }
+            }
+
+            return $label;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Rows of a pg_audit_tables() table as the trail compares them, keyed by id.
+ * Read with the plain connection: a failed read gives no rows and stops
+ * nothing. The config table has one row, returned under key 0.
+ *
+ * @param string $table
+ * @param array  $ids
+ * @return array  id => row
+ */
+function pg_audit_fetch_many($table, array $ids)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table]) || !pg_audit_ready()) {
+        return array();
+    }
+
+    $key = $tables[$table]['id'];
+
+    if ($key === '') {
+        $sql = "SELECT * FROM `" . $table . "` LIMIT 1";
+    } else {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), function ($id) {
+            return $id > 0;
+        })));
+
+        if (!$ids) {
+            return array();
+        }
+
+        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', $ids) . ")";
+    }
+
+    $result = @mysqli_query(db::$con, $sql);
+
+    if (!$result) {
+        return array();
+    }
+
+    $rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[($key === '') ? 0 : (int) $row[$key]] = pg_audit_volatile($table, $row);
+    }
+
+    return $rows;
+}
+
+/**
+ * One row of a pg_audit_tables() table as the trail compares it; an empty
+ * array when there is none.
+ *
+ * @param string $table
+ * @param int    $id     ignored for config
+ * @return array
+ */
+function pg_audit_fetch($table, $id = 0)
+{
+    $rows = pg_audit_fetch_many($table, array($id));
+
+    return $rows ? reset($rows) : array();
+}
+
+/**
+ * Record a change to one row of a pg_audit_tables() table. The caller reads
+ * the row before the save (pg_audit_fetch()); the row after is read here,
+ * except after a delete. A row found on neither side (a failed insert, a
+ * delete of nothing) writes nothing.
+ *
+ *   $before = pg_audit_fetch('products', $id);
+ *   // … UPDATE products …
+ *   pg_audit_record('update', 'products', $id, $before);
+ *
+ * @param string $action
+ * @param string $table
+ * @param int    $id      0 for config
+ * @param array  $before  empty for a create
+ * @param string $label   the record's name; by default its label column
+ * @return bool  whether a line was written
+ */
+function pg_audit_record($action, $table, $id, array $before = array(), $label = null)
+{
+    $tables = pg_audit_tables();
+
+    if (!isset($tables[$table]) || !pg_audit_ready()) {
+        return false;
+    }
+
+    $after = ($action === 'delete') ? array() : pg_audit_fetch($table, $id);
+
+    if (!$before && !$after) {
+        return false;
+    }
+
+    if ($label === null) {
+        $label = pg_audit_label_of($table, $after ? $after : $before);
+    }
+
+    return pg_audit($action, $tables[$table]['type'], $id, $before, $after, $label);
+}
+
+/**
+ * Record a change that one statement made to several rows (WHERE id IN …):
+ * one line per row, each compared with its own row before. The caller reads
+ * the rows before with pg_audit_fetch_many().
+ *
+ * @param string $action
+ * @param string $table
+ * @param array  $before_rows  id => row, as pg_audit_fetch_many() returned them
+ * @return int  lines written
+ */
+function pg_audit_record_many($action, $table, array $before_rows)
+{
+    $tables = pg_audit_tables();
+
+    if (!$before_rows || !isset($tables[$table]) || !pg_audit_ready()) {
+        return 0;
+    }
+
+    $after_rows = ($action === 'delete') ? array() : pg_audit_fetch_many($table, array_keys($before_rows));
+    $written = 0;
+
+    foreach ($before_rows as $id => $before) {
+        $after = isset($after_rows[$id]) ? $after_rows[$id] : array();
+
+        if (pg_audit($action, $tables[$table]['type'], $id, $before, $after, pg_audit_label_of($table, $after ? $after : $before))) {
+            $written++;
+        }
+    }
+
+    return $written;
 }

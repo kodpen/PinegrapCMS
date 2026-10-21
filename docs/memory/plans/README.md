@@ -4,19 +4,19 @@
 
 Unfinished and shelved plans: remaining work, decisions made, open questions, where to start.
 
-- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; consent notice PR #619 and statement block done): designer contrast rule, nightly WCAG 2.2 Level A report, PDF export of the report
+- accessibility-and-consent-tools.md: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688 and consent notice #619 done): nightly WCAG 2.2 Level A report with its PDF export left
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, every planned text button and the browser's model done): "Write with AI"; image alt text and AI-generated labelling (schema) left
+- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
-- code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, an explicit "who may write PHP" rule; CI checks done (PR #673)
-- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model and the My Account side done): panel screens, approval mail, iyzico refund and ERP return invoice, reminders, API, the classic order view left
+- code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
+- customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model, My Account, panel, refund and reminders done): API and webhooks, staff-recorded requests, the classic order view left
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
-- docker-image.md: Plan (approved 2026-10-19, steps 1-5 built: #565, #621, #689, #737, #797): compose stack, unattended install, README section, GHCR images; owner's panel-update question left
-- erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1-2 done, PR #697): auto invoice once paid or shipped built; card filters (schema), internet-sale UBL fields, threshold warnings left
+- erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
+- erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21; steps 1-3 and 4a done, #1001, #1004, #1020, #1055): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 4b, 4c, 5, 6 remain
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
@@ -24,24 +24,25 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
-- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19, not started): Trendyol (V2 API, first) and Hepsiburada connectors on the n11 connector layer: listings, stock/price queue, orders, status, invoice link, returns, Q&A
+- marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932) done; 2b or 4 next
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export and Markdown/zip import done; enex, Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
-- page-revisions-and-scheduling.md: Plan (approved 2026-10-19; steps 1-3 done, PRs #696, #705, #743): page revision history with compare and restore, retention, scheduled publish and unpublish; API and MCP left
 - passkeys.md: Plan (approved 2026-10-19, in progress: step 1 verifier done, PR #594): WebAuthn passkeys for panel users and members as second factor or passwordless sign-in; Account Security, admin reset
-- payment-driver-layer.md: Plan (approved 2026-10-19; step 1 done, PR #740): driver layer beside submit_order.php, iyzico port next, Stripe PaymentIntents + wallets, PayTR; legacy gateways frozen, never removed
-- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis, all in the CI baselines: undefined variables, a duplicate key, nested functions, an unguarded imagecreatefrombmp(), 8.1-8.5 deprecations, dead remnants
+- payment-driver-layer.md: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
+- php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis (CI baselines): undefined variables, a duplicate key, 8.1-8.5 deprecations, dead remnants; items 3 (#972) and 4 (#1039) done
 - price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows done): automatic "price before discount" (TR 10/30-day, EU 30-day rules), retention
-- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; step 1 done, PR #738): per-person data export, erasure/anonymisation wizard respecting invoice retention, consent log, structured admin audit trail with before/after values
+- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; steps 1-3 done: #738, #813, #905, #938; next step 4): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
+- security-findings-2026-10-api.md: Security findings of the 2026-10-20 external API scan: role-3 forms folder rule (PR #933) and customers group rule (PR #956) done; left: private-folder moves pass the widening check
+- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
 - security-findings-2026-10.md: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-19 fixed, what still waits (eval re-ordering, form renderers, CVV, gateway secrets), owner questions; item 8 done (#713)
 - seo-toolkit-redirects.md: Plan (approved 2026-10-19, in progress: steps 1-3, 6 and 7 done; redirects are short link options with CSV and the File Manager choice): slug-change 301, 404 log, 404 API
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
-- shipping-management.md: Shipping plan (2026-10-08; phases 1 and 2 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- shipping-management.md: Shipping plan (2026-10-08; phases 1-4 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driver, settings card and queue done): order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
-- storefront-conversion-pack.md: Plan (approved 2026-10-19, not started): verified-buyer product reviews with request e-mail and real aggregateRating, wishlist, back-in-stock notice, bundles as a later phase
+- storefront-conversion-pack.md: Plan (approved 2026-10-19, in progress: schema, verified-buyer reviews, rating and store reply done): review request e-mail next, then wishlist, back-in-stock, bundles later
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, not started): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence

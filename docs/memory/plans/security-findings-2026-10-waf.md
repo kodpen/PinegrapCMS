@@ -1,0 +1,19 @@
+---
+name: security-findings-2026-10-waf
+description: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
+---
+
+## Where does this come from?
+- Bug scan of `development` @ `60b0d27` (2026-10-20, #706), sandbox-checked (PHP 8.3, MariaDB 10.11, firewall in block mode, trusted proxy 127.0.0.1). Kept out of public issues (SECURITY.md). The API customers item is item 3 of `security-findings-2026-10-api.md`. Check `pinegrap-verilmis-kararlar` first; none is on it.
+
+## What is still open? (one PR each)
+1. Done (PR #952): addresses are compared packed (`waf_ip_packed()`, also in `waf_ip_matches_simple()`), `::ffff:a.b.c.d` as IPv4, and `waf_client_ip()` is normalised (`tests/waf_ip_match_test.php`).
+2. **Any trusted proxy may name the visitor with a vendor header** (high, owner question). `waf_client_ip()` (~284) reads CF-Connecting-IP, True-Client-IP, X-Real-IP… from every trusted proxy before X-Forwarded-For; most proxies only add XFF and pass the client's own headers through. Sandbox: banned address with `True-Client-IP: 203.0.113.9` → 200; same for the allow list, rate limits, maintenance list and `pg_ban_shield_client_ip()`. Which header does each proxy set: a per-proxy choice, or vendor headers only from that vendor's ranges?
+3. Done (PR #953): `waf_is_excluded()` matches the path cut at the script it runs (`waf_path_to_script()`); PATH_INFO cannot claim an exclusion (`tests/waf_exclusion_test.php`).
+4. **Requests classed as bots skip every rate limit** (high, owner question). With `block_unknown_bots` off (default) `waf_handle_bot()` (~3743) defines `IS_BOT` for curl, an empty UA or any `bot` token, and for good-bot names it cannot verify (PTR-less "Googlebot", WhatsApp, Stripe…); the global, sensitive, api.php and in-flight limits return on `IS_BOT` (~4073, 4102, 4184, 4235). Sandbox: 36 POSTs/min to `index.php` → Firefox UA 6×429, curl/empty/fake Googlebot 0×429. Exempt only `waf_bot_verified()`?
+5. Done (PR #951): `pg_db_run()` (`includes/fn/core.php`) logs the MySQL message; `output_error()` shows it only with DEBUG or during an install or update.
+6. **Country rule skips the visitor scripts of the software directory** (low–medium, owner question). `waf_country_is_panel_request()` (~3857) counts `add_comment.php`, `custom_form.php`, `registration_entrance.php`, `express_order.php`… as panel; a refused country posts to them (sandbox 200, `/` 403). Staff-only, as for api.php, minus the panel sign-in screens?
+7. Done (PR #950): `pg_safe_back_url()` (`includes/fn/output.php`) refuses `/\host`, `\\host`, a backslash in an absolute URL and control characters anywhere (`tests/back_url_test.php`).
+
+## Where to start?
+- The fixes 1, 3, 5 and 7 are done; 2, 4, 6 change behaviour and wait for the owner's answer.

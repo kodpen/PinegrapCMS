@@ -134,6 +134,9 @@ function pg_panel_actions()
         'get_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_shipping_methods' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_shipping_methods', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'delete_order' => array('file' => 'commerce.php', 'handler' => 'pg_panel_delete_order', 'exempt' => false, 'token' => true, 'write' => true),
+        // The refund dialog is offered to the order screen's people with the
+        // ERP right, past role 1; the handler checks them. Read only.
+        'erp_refund_preview' => array('file' => 'commerce.php', 'handler' => 'pg_panel_erp_refund_preview', 'exempt' => true, 'token' => false, 'write' => false),
         'update_order' => array('file' => 'commerce.php', 'handler' => 'pg_panel_update_order', 'exempt' => false, 'token' => true, 'write' => true),
         // The product screens admit whoever manages the store (roles 0-2, or
         // a basic user with manage_ecommerce); the handlers apply that same

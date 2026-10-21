@@ -113,7 +113,7 @@ function add_to_cart($request) {
                 products.submit_form_quantity_type
             FROM order_items
             LEFT JOIN products ON order_items.product_id = products.id
-            WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
+            WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
 
         // Execute query
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

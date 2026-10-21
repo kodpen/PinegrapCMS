@@ -8,10 +8,12 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
+- cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy, designer read) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
+- docker-decisions.md: Owner's Docker decisions (2026-10-19/20): docker/ in the release tree, an addition only, no env in the product, nginx only, Software Update in the container left as it is
 - docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
@@ -21,14 +23,21 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, files that get none
-- image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the eight invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels).
+- image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
+- language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
+- license-check.md: When the panel's licence check (license_check() in includes/fn/output.php) asks the licence server: once per session, 12 hours after an answer, 15 minutes after a failed attempt, once per request
+- maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
 - ods-cell-ceiling.md: PHPExcel's .ods reader makes cells of repeated rows/columns and merged ranges only up to a ceiling, steps over empty runs at once; both importers also cap the first sheet's used range
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
+- office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
+- office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119)
+- office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs, refused documents
+- office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
 - openssl-key-generation.md: Why openssl_pkey_new()/openssl_pkey_export() can fail without an OpenSSL config file and the retry rule with includes/openssl.cnf (no providers section).
 - ops-alerts.md: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-day rule, channels, where each source is checked, the notification row as the record, settings columns, cron limits
 - performance-monitor-cost.md: Request-path cost rules for perf_monitor_shutdown(): fastcgi_finish_request, row cap, index cost, p95 without big OFFSET, PERF_MONITOR_SAMPLE_RATE.
@@ -40,7 +49,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.
-- short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, old addresses and any letters as names, * patterns tried only at 404, loop checks on every entry point, IIS name recovery.
+- short-link-names.md: Short link names (2026.11.0): the name rule, a pasted old address as a name, how a request finds its link (as it came, then in the stored form), IIS name recovery, how two names compare.
+- short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
 - sms-provider-layer.md: SMS layer (PR #600): pg_sms_send() rules and kinds, account in connect_apps sms_<key> (no schema), demo sites, the Communication › SMS card and its save decision, test message

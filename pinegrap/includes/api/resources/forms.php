@@ -33,10 +33,61 @@
 // Uploaded files are reported as an id and nothing else. The URL would hand a
 // file to an application that holds forms:read and not files:read, and the file
 // behind a submission is often the most private thing on the site.
+//
+// An account with the forms right but the user role reaches only the forms on
+// pages in folders it may edit, as on the submitted-form screens; a form
+// outside them, and every submission made on it, is answered 404.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 	exit;
+
+}
+
+// The condition that keeps a query to the forms an owner may open, on the
+// column that holds the form's page id; empty from the manager role up, which
+// opens every form. Below that the submitted-form screens open a form only
+// where check_edit_access() passes for its page's folder: a folder the account
+// holds edit rights on, or one below it - the set
+// get_folders_that_user_has_access_to() returns.
+function api_form_owner_filter($owner, $page_id_column) {
+
+	if ((int)$owner['role'] < 3) {
+
+		return '';
+
+	}
+
+	return api_form_folder_filter(get_folders_that_user_has_access_to($owner['id']), $page_id_column);
+
+}
+
+// The same condition for a given set of folders: the form's page is filed in
+// one of them, and no row passes when there is none. Pure, so the rule can be
+// tested without a database.
+function api_form_folder_filter($folder_ids, $page_id_column) {
+
+	$ids = array();
+
+	foreach ((array)$folder_ids as $folder_id) {
+
+		if ((int)$folder_id > 0) {
+
+			$ids[(int)$folder_id] = (int)$folder_id;
+
+		}
+
+	}
+
+	if (empty($ids)) {
+
+		return '0';
+
+	}
+
+	sort($ids);
+
+	return $page_id_column . " IN (SELECT page_id FROM page WHERE page_folder IN (" . implode(',', $ids) . "))";
 
 }
 
@@ -137,9 +188,19 @@ function api_form_submission_present($row, $values) {
 // The pages that carry a form.
 function api_forms_list($params) {
 
+	$app = api_current_app();
+
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
 	$where = array();
+
+	$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
+
+	if ($reach !== '') {
+
+		$where[] = $reach;
+
+	}
 
 	if (isset($params['cursor']) && $params['cursor'] !== '') {
 
@@ -237,13 +298,17 @@ function api_forms_list($params) {
 // One form, with its fields.
 function api_forms_get($params) {
 
+	$app = api_current_app();
+
 	$id = (int)$params['id'];
+
+	$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
 
 	$row = api_row("SELECT page.page_id, page.page_name, page.page_title,
 			COUNT(form_fields.id) AS field_count
 		FROM form_fields
 		INNER JOIN page ON page.page_id = form_fields.page_id
-		WHERE form_fields.page_id = '" . $id . "'
+		WHERE form_fields.page_id = '" . $id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
 		GROUP BY page.page_id, page.page_name, page.page_title");
 
 	if (($row === null) || ((int)$row['field_count'] === 0)) {
@@ -351,9 +416,15 @@ function api_form_submission_values($ids) {
 // What came in on one form.
 function api_form_submissions($params) {
 
+	$app = api_current_app();
+
 	$id = (int)$params['id'];
 
-	$exists = api_row("SELECT page_id FROM form_fields WHERE page_id = '" . $id . "' LIMIT 1");
+	$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
+
+	$exists = api_row("SELECT form_fields.page_id FROM form_fields
+		WHERE form_fields.page_id = '" . $id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
+		LIMIT 1");
 
 	if ($exists === null) {
 
@@ -472,11 +543,16 @@ function api_form_submission_select() {
 }
 
 // One submission of one form, or a 404. The form is part of the address so a
-// submission id cannot be read through a form it was not made on.
+// submission id cannot be read through a form it was not made on, and a form
+// the owner may not open hides its submissions the same way.
 function api_form_submission_owned($form_id, $submission_id) {
 
+	$app = api_current_app();
+
+	$reach = api_form_owner_filter($app['owner'], 'forms.page_id');
+
 	$row = api_row(api_form_submission_select() . "
-		WHERE forms.id = '" . (int)$submission_id . "' AND forms.page_id = '" . (int)$form_id . "'
+		WHERE forms.id = '" . (int)$submission_id . "' AND forms.page_id = '" . (int)$form_id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
 		LIMIT 1");
 
 	if ($row === null) {

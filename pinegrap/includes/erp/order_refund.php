@@ -58,35 +58,70 @@ function erp_order_refund_lines($order_id)
     }
 
     $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
+            products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
         ORDER BY order_items.id ASC");
 
+    // Only what the order charged can be given back: a recurring line that
+    // had not started yet took no money (erp_order_charged_items()).
+    $items = erp_order_charged_items($order, $items);
     $built = erp_order_lines($order, $items);
+
+    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '',
+        'lines' => erp_order_refund_order_lines($built['lines'], $items));
+}
+
+/**
+ * The order's built lines as erp_return_build() reads a parent's lines.
+ *
+ * Each line gets the id its quantity is posted under: the item lines keep the
+ * id of their order_items row, in the order the lines were built from the
+ * rows; the lines that have none (shipping, surcharge) come after them with
+ * -1, -2, ... Nothing has been given back yet, so returned_qty is 0 and so is
+ * each tax given back so far.
+ *
+ * Those three zeros are what make the refund meet the order. A line's tax is
+ * the order's figure: tied to the order's header by erp_order_lines(), or
+ * split out of a gross charge (shipping), so it can sit a kurus from its rate
+ * on its amount. With the taxes given back so far known, erp_return_build()
+ * lets a line given back whole take exactly the line's tax and caps a piece
+ * of it by that tax; without them it took every line's tax again, per rate
+ * group of the return, and "Everything" came a kurus short or over the
+ * amount collected - the card got one less, and the order, refunded a kurus
+ * below its total, was never marked cancelled.
+ *
+ * @param array $built_lines  erp_order_lines()['lines']
+ * @param array $items        The order_items rows the lines were built from, indexed from 0
+ * @return array
+ */
+function erp_order_refund_order_lines($built_lines, $items)
+{
     $lines = array();
     $extra = -1;
 
-    foreach ($built['lines'] as $index => $line) {
-        // Item lines keep the index of their order_items row; the two lines
-        // that have none come after them.
+    foreach ((array) $built_lines as $index => $line) {
         $line['id'] = isset($items[$index]) ? (int) $items[$index]['id'] : $extra--;
         $line['returned_qty'] = 0;
         $line['remaining_qty'] = (float) $line['quantity'];
+        $line['returned_tax'] = 0;
+        $line['returned_withholding'] = 0;
+        $line['returned_tax2'] = 0;
         $lines[] = $line;
     }
 
-    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '', 'lines' => $lines);
+    return $lines;
 }
 
 /**
  * What giving back a number of one line comes to, for every count that can
- * be chosen, so the screen can show the exact total as the boxes change.
+ * be chosen, so the screen can answer at once as the boxes change.
  *
- * Each line is worked out on its own by erp_return_build(), which is what
- * the total is on the server too: a return's figures are the sums of its
- * lines, so the screen's sum and the server's agree to the kurus.
+ * Each line is worked out on its own by erp_return_build(): exact while it is
+ * the only line chosen. With several lines the taxes of the pieces given back
+ * in part are taken per group of the return, and the dialog takes the
+ * figures for the whole choice from the server (erp_refund_preview).
  *
  * @param array $line  One line from erp_order_refund_lines()
  * @param int   $cap   Most counts to list; beyond it the screen scales
@@ -118,11 +153,13 @@ function erp_quantity_out($quantity)
 }
 
 /**
- * The refund for the chosen quantities.
+ * The refund for the chosen quantities, and what each chosen line comes to
+ * within it (its taxes are its share of the return's groups).
  *
  * @param array $source      from erp_order_refund_lines()
  * @param array $quantities  line id => count, as posted
- * @return array ['amount' => int kurus, 'quantities' => array, 'is_full' => bool, 'error' => string]
+ * @return array ['amount' => int kurus, 'quantities' => array, 'lines' => [line id => kurus],
+ *                'is_full' => bool, 'error' => string]
  */
 function erp_order_refund_amount($source, $quantities)
 {
@@ -138,12 +175,20 @@ function erp_order_refund_amount($source, $quantities)
     $built = erp_return_build($source['lines'], $chosen);
 
     if ($built['error'] !== '') {
-        return array('amount' => 0, 'quantities' => array(), 'is_full' => false, 'error' => $built['error']);
+        return array('amount' => 0, 'quantities' => array(), 'lines' => array(), 'is_full' => false, 'error' => $built['error']);
+    }
+
+    $lines = array();
+
+    foreach ($built['lines'] as $line) {
+        $lines[(int) $line['parent_line_id']] = (int) $line['line_total'] - (int) $line['discount_amount']
+            + (int) $line['tax_total'] - (int) $line['withholding_amount'];
     }
 
     return array(
         'amount' => (int) $built['totals']['grand_total'],
         'quantities' => $chosen,
+        'lines' => $lines,
         'is_full' => (bool) $built['is_full'],
         'error' => '',
     );
@@ -151,8 +196,10 @@ function erp_order_refund_amount($source, $quantities)
 
 /**
  * The body of the card refund dialog: the lines, a quantity box on each, and
- * the total as the boxes change - worked out in the page from the same
- * per-line figures the server uses, so what is shown is what is refunded.
+ * the total as the boxes change - each line priced alone at once
+ * (erp_order_refund_line_prices()), then the server's figures for the whole
+ * choice (api.php, erp_refund_preview: erp_order_refund_amount(), what the
+ * refund itself is worked out with), so what is shown is what is refunded.
  *
  * @param array $source         from erp_order_refund_lines()
  * @param int   $order_id
@@ -209,11 +256,11 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                 </table>
                             </div>
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="iyzico_refund_all">' . lang('Everything') . '</button>
-                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="iyzico_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="payment_refund_all">' . lang('Everything') . '</button>
+                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="payment_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
                             </div>
                             <div class="small text-body-secondary mt-1">' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . number_format($remaining_cents / 100, 2, '.', ',') . '</div>
-                            <div class="small text-warning-emphasis d-none" id="iyzico_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
+                            <div class="small text-warning-emphasis d-none" id="payment_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
                             <p class="form-text text-muted mt-2">' . (($source['source'] === 'invoice')
                                 ? lang(array('string' => 'After the refund, the return invoice against {var:1} opens with the same lines filled in; check it and save.', 'vars' => h($source['invoice_number'])))
                                 : lang('The order has no invoice yet. Once it is invoiced, issue a return invoice for these lines from the order\'s document card.')) . '</p>
@@ -234,22 +281,57 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                     return top ? Math.round(list[top] / top * count) : 0;
                                 };
                                 var inputs = document.querySelectorAll("[data-refund-line]");
-                                var submit = document.querySelector("#iyzico-refund-modal [name=submit_iyzico_refund]");
+                                var submit = document.querySelector("#payment-refund-modal [name=submit_payment_refund]");
+                                var orderId = ' . (int) $order_id . ';
+                                var asked = 0;
+                                var timer = null;
+                                var show = function (total, amounts, counts) {
+                                    Object.keys(counts).forEach(function (id) {
+                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = counts[id] ? money(amounts[id] || 0) : "-";
+                                    });
+                                    document.getElementById("payment_refund_total").textContent = money(Math.min(total, max));
+                                    document.getElementById("payment_refund_capped").classList.toggle("d-none", total <= max);
+                                    if (submit) { submit.disabled = (total <= 0); }
+                                };
+                                // Several lines given back in part take their taxes per
+                                // group, so the whole is the server\'s figure, not the sum
+                                // of the lines priced alone.
+                                var ask = function (counts) {
+                                    var number = ++asked;
+                                    var quantities = {};
+                                    Object.keys(counts).forEach(function (id) {
+                                        if (counts[id] > 0) { quantities[id] = counts[id]; }
+                                    });
+                                    if (!Object.keys(quantities).length || !window.fetch) { return; }
+                                    fetch("api.php", {
+                                        method: "POST",
+                                        credentials: "same-origin",
+                                        headers: {"Content-Type": "application/json"},
+                                        body: JSON.stringify({action: "erp_refund_preview", token: (typeof software_token !== "undefined") ? software_token : "", order_id: orderId, quantities: quantities})
+                                    }).then(function (response) {
+                                        return response.json();
+                                    }).then(function (answer) {
+                                        if ((number !== asked) || !answer || (answer.status !== "success") || !answer.data) { return; }
+                                        show(parseInt(answer.data.amount, 10) || 0, answer.data.lines || {}, counts);
+                                    }).catch(function () {});
+                                };
                                 var refresh = function () {
                                     var total = 0;
+                                    var amounts = {};
+                                    var counts = {};
                                     inputs.forEach(function (input) {
                                         var id = input.getAttribute("data-refund-line");
                                         var count = Math.max(0, Math.min(parseInt(input.value || "0", 10) || 0, parseInt(input.max, 10)));
-                                        var amount = line(id, count);
-                                        total += amount;
-                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = count ? money(amount) : "-";
+                                        counts[id] = count;
+                                        amounts[id] = line(id, count);
+                                        total += amounts[id];
                                     });
-                                    document.getElementById("iyzico_refund_total").textContent = money(Math.min(total, max));
-                                    document.getElementById("iyzico_refund_capped").classList.toggle("d-none", total <= max);
-                                    if (submit) { submit.disabled = (total <= 0); }
+                                    show(total, amounts, counts);
+                                    window.clearTimeout(timer);
+                                    timer = window.setTimeout(function () { ask(counts); }, 200);
                                 };
                                 inputs.forEach(function (input) { input.addEventListener("input", refresh); });
-                                document.getElementById("iyzico_refund_all").addEventListener("click", function () {
+                                document.getElementById("payment_refund_all").addEventListener("click", function () {
                                     inputs.forEach(function (input) { input.value = input.max; });
                                     refresh();
                                 });

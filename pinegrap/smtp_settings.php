@@ -482,6 +482,11 @@ if (!$_POST) {
             'SYSTEM_MAIL_CONNECTION','CAMPAIGN_MAIL_CONNECTION'
         ];
 
+        // The defines as this request loaded them and as they are written,
+        // for the audit trail.
+        $smtp_audit_before = array();
+        $smtp_audit_after = array();
+
         foreach ($config_keys as $key) {
             $field = strtolower($key);
 
@@ -497,6 +502,22 @@ if (!$_POST) {
             if (($key === 'SYSTEM_MAIL_CONNECTION') || ($key === 'CAMPAIGN_MAIL_CONNECTION')) {
                 $chosen = pg_connect_account((int) $value);
                 $value = (is_array($chosen) && ($chosen['user_id'] === 0) && in_array('mail', $chosen['purposes'], true)) ? (string) (int) $chosen['id'] : '';
+            }
+
+            $smtp_audit_was = defined($key) ? (string) constant($key) : '';
+
+            if ($key === 'EMAIL_CAMPAIGN_JOB') {
+                $smtp_audit_was = (defined($key) && ((constant($key) === true) || (constant($key) === 'true'))) ? 'true' : 'false';
+            }
+
+            $smtp_audit_before[$field] = $smtp_audit_was;
+
+            if ($key === 'EMAIL_CAMPAIGN_JOB') {
+                $smtp_audit_after[$field] = ($value === 'true') ? 'true' : 'false';
+            } elseif (($value === '') && (($key === 'SYSTEM_SMTP_PASSWORD') || ($key === 'CAMPAIGN_SMTP_PASSWORD'))) {
+                $smtp_audit_after[$field] = $smtp_audit_was;
+            } else {
+                $smtp_audit_after[$field] = $value;
             }
 
             // The job switch is stored as a real boolean. The quoted forms
@@ -544,6 +565,7 @@ if (!$_POST) {
             $liveform_settings->add_error(lang('The config file could not be written.'));
         } else {
             log_activity(lang("SMTP Settings was modified"), $_SESSION['sessionusername']);
+            pg_audit('update', 'settings', 0, $smtp_audit_before, $smtp_audit_after, 'smtp');
             $liveform_settings->add_notice(lang('The smtp settings have been saved.'));
         }
 

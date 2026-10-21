@@ -236,6 +236,24 @@ function waf_client_ip()
 {
     static $ip = null;
 
+    // In one written form (waf_ip_normalize()): the visitor behind a
+    // dual-stack socket is 1.2.3.4, not ::ffff:1.2.3.4, for the counters, the
+    // bans placed on it and the log alike.
+    if ($ip === null) {
+        $ip = waf_ip_normalize(waf_client_ip_resolve());
+    }
+
+    return $ip;
+}
+
+/**
+ * The visitor's address as the request states it, before normalisation. See
+ * waf_client_ip().
+ */
+function waf_client_ip_resolve()
+{
+    static $ip = null;
+
     if ($ip !== null) {
         return $ip;
     }
@@ -543,6 +561,59 @@ function waf_list_to_string($raw)
     return implode(',', waf_parse_list($raw));
 }
 
+/**
+ * The packed form of an address (inet_pton()), with an IPv4-mapped IPv6
+ * address (::ffff:a.b.c.d) packed as the four bytes of its IPv4 address; false
+ * when it is not an address.
+ *
+ * Addresses are compared in this form, never as text. The same address has
+ * many spellings - 2001:DB8::1, 2001:0db8::1 and 2001:db8:0:0::1 are one
+ * address - and a dual-stack socket hands an IPv4 visitor over as
+ * ::ffff:1.2.3.4. Compared as text, a ban on 2001:db8::1 or 1.2.3.0/24 matched
+ * none of those, and neither did the Cloudflare ranges or 127.0.0.0/8.
+ */
+function waf_ip_packed($ip)
+{
+    $bin = @inet_pton(trim((string) $ip));
+
+    if ($bin === false) {
+        return false;
+    }
+
+    return waf_ip_unmap($bin);
+}
+
+/**
+ * A packed IPv4-mapped IPv6 address as the four bytes of its IPv4 address;
+ * any other packed address unchanged.
+ */
+function waf_ip_unmap($bin)
+{
+    if ((strlen($bin) === 16) && (substr($bin, 0, 12) === "\0\0\0\0\0\0\0\0\0\0\xff\xff")) {
+        return substr($bin, 12);
+    }
+
+    return $bin;
+}
+
+/**
+ * An address in its one written form: IPv6 lower-case and compressed, an
+ * IPv4-mapped address as plain IPv4. Anything that is not an address comes
+ * back as it was given.
+ */
+function waf_ip_normalize($ip)
+{
+    $bin = waf_ip_packed($ip);
+
+    if ($bin === false) {
+        return $ip;
+    }
+
+    $text = @inet_ntop($bin);
+
+    return ($text === false) ? $ip : $text;
+}
+
 function waf_ip_in_any($ip, $ranges)
 {
     foreach ($ranges as $range) {
@@ -580,8 +651,11 @@ function waf_ip_matches($ip, $pattern)
         return waf_ip_in_cidr($ip, $pattern);
     }
 
-    // Legacy IPv4 wildcard (1.2.3.* / *.*.*.*)
+    // Legacy IPv4 wildcard (1.2.3.* / *.*.*.*). An IPv4 visitor handed over
+    // as ::ffff:1.2.3.4 is matched as 1.2.3.4.
     if (strpos($pattern, '*') !== false) {
+        $ip = waf_ip_normalize($ip);
+
         if (strpos($ip, ':') !== false) {
             // An all-wildcard pattern is understood as "everything", which
             // has to include IPv6 or a blanket ban would quietly leak.
@@ -608,7 +682,10 @@ function waf_ip_matches($ip, $pattern)
         return true;
     }
 
-    return false;
+    // The same address written another way. See waf_ip_packed().
+    $ip_bin = waf_ip_packed($ip);
+
+    return ($ip_bin !== false) && ($ip_bin === waf_ip_packed($pattern));
 }
 
 function waf_ip_in_cidr($ip, $cidr)
@@ -632,11 +709,26 @@ function waf_ip_in_cidr($ip, $cidr)
 
     $bits = (int) $prefix;
 
-    $ip_bin = @inet_pton($ip);
+    $ip_raw = @inet_pton(trim($ip));
     $subnet_bin = @inet_pton($subnet);
 
-    if ($ip_bin === false || $subnet_bin === false) {
+    if ($ip_raw === false || $subnet_bin === false) {
         return false;
+    }
+
+    // An IPv4 visitor handed over as ::ffff:a.b.c.d is matched against IPv4
+    // ranges as a.b.c.d. A range written in the mapped form itself
+    // (::ffff:1.2.3.0/120) is the IPv4 range it covers; any other IPv6 range
+    // (::/0) is compared with the address as it came.
+    $ip_bin = waf_ip_unmap($ip_raw);
+
+    if (strlen($subnet_bin) === 16) {
+        if ((waf_ip_unmap($subnet_bin) !== $subnet_bin) && ($bits >= 96)) {
+            $subnet_bin = substr($subnet_bin, 12);
+            $bits -= 96;
+        } else {
+            $ip_bin = $ip_raw;
+        }
     }
 
     // Never compare an IPv4 address against an IPv6 subnet or vice versa:
@@ -3355,6 +3447,31 @@ function waf_request_names_script($names)
 }
 
 /**
+ * A request path cut after the first segment that names a PHP file - the
+ * script the server runs - so that PATH_INFO behind it is not part of it.
+ * A path with no such segment (an address the router serves) is returned
+ * whole. Case-insensitive, for IIS. The same reading of the path as
+ * waf_request_names_script().
+ *
+ * @param string $path without the query string
+ * @return string
+ */
+function waf_path_to_script($path)
+{
+    $kept = array();
+
+    foreach (explode('/', (string) $path) as $segment) {
+        $kept[] = $segment;
+
+        if (strtolower(substr($segment, -4)) === '.php') {
+            break;
+        }
+    }
+
+    return implode('/', $kept);
+}
+
+/**
  * Operator-defined path exclusions.
  *
  * The realistic need is payment gateway callbacks: a 3-D Secure return posts
@@ -3390,6 +3507,13 @@ function waf_is_excluded()
     if ($question !== false) {
         $url = substr($url, 0, $question);
     }
+
+    // The path stops at the script it runs. What follows it is PATH_INFO,
+    // which the caller writes as freely as a query string: with
+    // "iyzico_callback" excluded, /index.php/iyzico_callback ran index.php
+    // with no firewall at all - the sign-in screen, a banned address, any
+    // payload.
+    $url = waf_path_to_script($url);
 
     $script = waf_script_name();
 

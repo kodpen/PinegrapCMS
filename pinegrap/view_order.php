@@ -940,67 +940,99 @@ if (!$_POST) {
                             });
                         </script>';
  
-                    $query =
-                        "SELECT number
-                        FROM shipping_tracking_numbers
-                        WHERE ship_to_id = '" . $ship_tos[$key]['ship_to_id'] . "'
-                        ORDER BY id ASC";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                    $shipping_tracking_numbers = mysqli_fetch_items($result);
-                    
-                    // loop through the shipping tracking numbers in order to output them
-                    foreach ($shipping_tracking_numbers as $shipping_tracking_number) {
-                        // if this is not the first shipping tracking number then add a comma and space for separation
-                        if ($output_shipping_tracking_numbers != '') {
-                            $output_shipping_tracking_numbers .= '<br />';
+                    // The parcels of this address, each with its carrier, its
+                    // status and the format warning the write path set
+                    // (includes/fn/shipping.php). A number whose carrier is not
+                    // known is listed as well, without a link.
+                    $ship_to_id = (int) $ship_tos[$key]['ship_to_id'];
+                    $shipment_rows = pg_shipment_rows($ship_to_id);
+
+                    // "Automatic" resolves to the carrier the shipping method
+                    // names, else to the guess every screen makes from the
+                    // method code, the site's default and the number.
+                    $shipment_method = (string) $recipient['shipping_method_code'];
+
+                    if ($recipient['shipping_method_id'] && pg_shipment_rows_ready()) {
+                        $shipment_method_carrier = (string) db_value("SELECT carrier FROM shipping_methods WHERE id = '" . (int) $recipient['shipping_method_id'] . "'");
+
+                        if (pg_shipping_carrier_exists($shipment_method_carrier)) {
+                            $shipment_method = $shipment_method_carrier;
                         }
-                        
-                        $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code']);
-                        
-                        // if a shipping tracking url was found, then output link
-                        if ($shipping_tracking_url != '') {
-                            $output_shipping_tracking_numbers .= '<a class="link-secondary d-print-none" href="' . h($shipping_tracking_url) . '" target="_blank">' . h($shipping_tracking_number['number']) . '</a>';
-                            
-                        } 
                     }
-                    
+
+                    $shipment_default = pg_shipping_default_carrier();
+
+                    foreach ($shipment_rows as $shipment_row) {
+
+                        $shipment = pg_shipment_view($shipment_row, $shipment_method, $shipment_default);
+
+                        if ($shipment['number'] === '') {
+                            continue;
+                        }
+
+                        $shipment_automatic = pg_shipment_view(array('number' => $shipment['number']), $shipment_method, $shipment_default);
+
+                        $shipment_select = 'ship_to_id_' . $ship_to_id . '_carrier_' . (int) $shipment_row['id'];
+
+                        if (!$liveform->field_in_session('id')) {
+                            $liveform->assign_field_value($shipment_select, $shipment['named'] ? $shipment['carrier'] : '');
+                        }
+
+                        $shipment_status_title = '';
+
+                        if (($shipment['status'] === 'delivered') && ((int) $shipment_row['delivered_at'] > 0)) {
+                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date'))) . '"';
+                        }
+
+                        $output_shipping_tracking_numbers .=
+                            '<li class="d-flex flex-wrap align-items-center gap-2 py-2 border-bottom">
+                                ' . (($shipment['url'] !== '')
+                                    ? '<a class="link-secondary fw-medium text-break" href="' . h($shipment['url']) . '" target="_blank" rel="noopener noreferrer">' . h($shipment['number']) . '</a>'
+                                    : '<span class="fw-medium text-break">' . h($shipment['number']) . '</span>') . '
+                                <span class="badge ' . pg_shipment_status_class($shipment['status']) . '"' . $shipment_status_title . '>' . h(pg_shipment_status_label($shipment['status'])) . '</span>
+                                <span class="ms-auto d-print-none">' .
+                                    $liveform->output_field(array(
+                                        'type'    => 'select',
+                                        'name'    => $shipment_select,
+                                        'id'      => $shipment_select,
+                                        'class'   => 'form-select form-select-sm',
+                                        'options' => pg_shipment_carrier_options($shipment_automatic['carrier_name']),
+                                    )) . '
+                                    <label class="visually-hidden" for="' . h($shipment_select) . '">' . h(lang(array('string' => 'Shipping carrier of {var:1}', 'vars' => array($shipment['number'])))) . '</label>
+                                </span>
+                                ' . ($shipment['warning']
+                                    ? '<span class="w-100 small text-warning-emphasis bg-warning-subtle rounded px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipment_warning_text($shipment['carrier_name'])) . '</span>'
+                                    : '') . '
+                            </li>';
+                    }
+
+                    if ($output_shipping_tracking_numbers !== '') {
+                        $output_shipping_tracking_numbers = '<ul class="list-unstyled mb-2">' . $output_shipping_tracking_numbers . '</ul>';
+                    }
+
                   // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
                   if ($liveform->field_in_session('id') == FALSE) {
-                    $shipping_tracking_numbers_for_field = '';
+                    $shipping_tracking_numbers_for_field = array();
 
-                    // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
-                    $last_shipping_tracking_number_key = null;
-
-                    if ($shipping_tracking_numbers) {
-                        end($shipping_tracking_numbers);
-                        $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
-                        reset($shipping_tracking_numbers);
-                    }
-
-                    // loop through the shipping tracking numbers in order to prepare value for field
-                    foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
-                        // if this is not the first shipping tracking number then add a line break
-                        if ($shipping_tracking_numbers_for_field != '') {
-                            $shipping_tracking_numbers_for_field .= "\n";
-                        }
-                    
-                        
-                        if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
-                            $shipping_tracking_numbers_for_field .= $value['number'];
-                        }else{
-                            $shipping_tracking_numbers_for_field .= $value['number'] . ',';
+                    foreach ($shipment_rows as $shipment_row) {
+                        if (trim((string) $shipment_row['number']) !== '') {
+                            $shipping_tracking_numbers_for_field[] = $shipment_row['number'];
                         }
                     }
 
-                    $liveform->assign_field_value('ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_tracking_numbers', $shipping_tracking_numbers_for_field) ;
+                    $liveform->assign_field_value('ship_to_id_' . $ship_to_id . '_tracking_numbers', implode(',', $shipping_tracking_numbers_for_field));
                 }
 
-                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>'ship_to_id_tracking_numbers', 'name'=>'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
+                // One field per address: the id carries the address, so a second
+                // recipient's field is not a duplicate id that tagin never reaches.
+                $shipment_numbers_field = 'ship_to_id_tracking_numbers_' . $ship_to_id;
+
+                $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin' )) . '
                 <script>
-                    if(document.body.contains(document.querySelector("#ship_to_id_tracking_numbers"))){
-                        tagin( document.querySelector("#ship_to_id_tracking_numbers"));
+                    if (document.getElementById("' . $shipment_numbers_field . '")) {
+                        tagin(document.getElementById("' . $shipment_numbers_field . '"));
                     }
-                </script>';  
+                </script>';
                     
                 }
 
@@ -1031,8 +1063,14 @@ if (!$_POST) {
                 
                 // loop through the custom field names in order to output cells for values
                 foreach ($custom_field_names as $custom_field_name) {
-                    $data = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['data'];
-                    $type = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['type'];
+                    // An address of a multi-address order may have no answer
+                    // for a field another address filled in.
+                    $custom_field_value = isset($ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name])
+                        ? $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]
+                        : array('data' => '', 'type' => '');
+
+                    $data = $custom_field_value['data'];
+                    $type = $custom_field_value['type'];
                     
                     // assume that we need to prepare data for HTML until we find out otherwise
                     $prepare_for_html = TRUE;
@@ -1045,7 +1083,10 @@ if (!$_POST) {
                     $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
                 }
                 
-                $output_shipping_details =
+                // Appended, one card per address: an order shipped to two
+                // addresses shows both, and saving it keeps the first one's
+                // tracking numbers.
+                $output_shipping_details .=
                     '<div class="col-12 col-md-12 col-lg-4">
                         <div class="card">
                             <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
@@ -2111,21 +2152,29 @@ if (!$_POST) {
 		}
 		if($transaction_id){
             $output_gateway_buttons = '<button type="button" class="btn btn-link link-secondary py-0 mb-2" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/transactions/' . $transaction_id . '\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">account_balance</span>' . lang('View Order') . '</button>';
-            // Show the refund button only when payment completed and the order
-            // is not already cancelled. The cancel button itself is NOT built
-            // here - it must stay gateway-independent (see $output_cancel_button
-            // below) so bank-transfer / cash-on-delivery orders can be cancelled.
-            if ($status != 'cancelled' && $status != 'incomplete') {
-                $iyzico_remaining_cents = $total_cents - $refunded_amount_cents;
-                if ($iyzico_remaining_cents > 0) {
-                    $output_gateway_buttons .= '<button type="button" class="btn btn-link link-secondary py-0 mb-2" data-bs-toggle="modal" data-bs-target="#iyzico-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
-                }
-            }
 		}else{
 		    $output_gateway_buttons = '<button type="button" class="btn btn-link link-secondary py-0 mb-2" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-2">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
 		}
 
 	}
+
+    // The refund goes through the driver that took the order's payment
+    // (pg_payment_refund_driver(): the gateway's for a card order, the
+    // method's own otherwise), only when the payment completed and the order
+    // is not cancelled and still has money on it. The cancel button is
+    // NOT built here - it stays gateway-independent (see $output_cancel_button
+    // below) so bank-transfer / cash-on-delivery orders can be cancelled.
+    $refund_driver = pg_payment_refund_driver($payment_method);
+    $refund_remaining_cents = $total_cents - $refunded_amount_cents;
+    $refund_offered = ($refund_driver !== '')
+        && $transaction_id
+        && ($status != 'cancelled')
+        && ($status != 'incomplete')
+        && ($refund_remaining_cents > 0);
+
+    if ($refund_offered) {
+        $output_gateway_buttons .= '<button type="button" class="btn btn-link link-secondary py-0 mb-2" data-bs-toggle="modal" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
+    }
 
     // With the ERP on, a card refund is chosen by line and quantity instead of
     // typed as an amount: the amount is then the same figure the return
@@ -2142,67 +2191,58 @@ if (!$_POST) {
             : null;
     }
 
-    // Build the iyzico refund modal (separate form, placed outside the main form).
+    // Build the refund modal (separate form, placed outside the main form).
     // The CANCEL modal is built further down and is gateway-independent.
-    $output_iyzico_modals = '';
-    if (
-        defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'
-        && $transaction_id
-        && $status != 'cancelled'
-        && $status != 'incomplete'
-    ) {
-        $iyzico_remaining_cents = $total_cents - $refunded_amount_cents;
+    $output_payment_refund_modal = '';
+    if ($refund_offered) {
+        $refund_service = pg_payment_driver($refund_driver)['label'];
         // The input takes the machine format; the text shows the site's.
-        $iyzico_remaining_value = number_format($iyzico_remaining_cents / 100, 2, '.', '');
-        $iyzico_remaining_formatted = pg_format_money($iyzico_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
-        $iyzico_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
+        $refund_remaining_value = number_format($refund_remaining_cents / 100, 2, '.', '');
+        $refund_remaining_formatted = pg_format_money($refund_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
+        $refund_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
 
         // What the modal asks for: an amount, or - with the ERP - the lines
         // and quantities that came back, the amount worked out from them.
-        $output_iyzico_refund_body = '
-                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $iyzico_remaining_formatted . ')</label>
+        $output_payment_refund_body = '
+                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $refund_remaining_formatted . ')</label>
                                     <div class="input-group">
                                         <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $iyzico_remaining_value . '" value="' . $iyzico_remaining_value . '" required>
+                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $refund_remaining_value . '" value="' . $refund_remaining_value . '" required>
                                     </div>
-                                    <p class="form-text text-muted mt-2">' . lang('This will refund the specified amount via iyzico.') . '</p>';
+                                    <p class="form-text text-muted mt-2">' . lang(array('string' => 'This will refund the specified amount via {var:1}.', 'vars' => h($refund_service))) . '</p>';
 
         if (is_array($erp_refund)) {
-            $erp_refund_dialog = erp_order_refund_dialog($erp_refund, (int) $_GET['id'], $refunded_amount_cents, $iyzico_remaining_cents);
+            $erp_refund_dialog = erp_order_refund_dialog($erp_refund, (int) $_GET['id'], $refunded_amount_cents, $refund_remaining_cents);
             if ($erp_refund_dialog !== '') {
-                $output_iyzico_refund_body = $erp_refund_dialog;
+                $output_payment_refund_body = $erp_refund_dialog;
             }
         }
 
-        // Refund modal
-        if ($iyzico_remaining_cents > 0) {
-            $output_iyzico_modals .=
-                '<div class="modal fade" id="iyzico-refund-modal" tabindex="-1" aria-labelledby="iyzico-refund-modal-label" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <form method="post">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                            <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="iyzico-refund-modal-label">' . lang('Refund via Iyzico') . '</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
-                                </div>
-                                <div class="modal-body">
-                                    ' . ($refunded_amount_cents > 0 ?
-                                        '<p class="text-muted small">' . lang('Total Refunded') . ': ' . $iyzico_refunded_formatted . '</p>'
-                                    : '') . $output_iyzico_refund_body . '
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                                    <button type="submit" name="submit_iyzico_refund" value="refund" class="btn btn-primary">' . lang('Confirm Refund') . '</button>
-                                </div>
+        $output_payment_refund_modal =
+            '<div class="modal fade" id="payment-refund-modal" tabindex="-1" aria-labelledby="payment-refund-modal-label" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                        <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="payment-refund-modal-label">' . lang(array('string' => 'Refund via {var:1}', 'vars' => h($refund_service))) . '</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
                             </div>
-                        </form>
-                    </div>
-                </div>';
-        }
-
+                            <div class="modal-body">
+                                ' . ($refunded_amount_cents > 0 ?
+                                    '<p class="text-muted small">' . lang('Total Refunded') . ': ' . $refund_refunded_formatted . '</p>'
+                                : '') . $output_payment_refund_body . '
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+                                <button type="submit" name="submit_payment_refund" value="refund" class="btn btn-primary">' . lang('Confirm Refund') . '</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>';
     }
 
     // ── Order cancellation (gateway-independent) ────────────────────────
@@ -2311,13 +2351,15 @@ if (!$_POST) {
     }
     if ($status != 'cancelled' && $status != 'incomplete') {
 
+        // The same driver process_order_cancellation() asks to void the payment.
+        $cancel_driver = pg_payment_cancel_driver($payment_method);
         $cancel_voids_payment =
-            defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'
+            ($cancel_driver !== '')
             && $transaction_id
             && $total_cents > $refunded_amount_cents;
 
         $cancel_payment_note = $cancel_voids_payment
-            ? '<p class="text-muted small">' . lang('This will void the payment via iyzico.') . '</p>'
+            ? '<p class="text-muted small">' . lang(array('string' => 'This will void the payment via {var:1}.', 'vars' => h(pg_payment_driver($cancel_driver)['label']))) . '</p>'
             : ($total_cents > 0
                 ? '<p class="text-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>'
                 : '');
@@ -2475,12 +2517,17 @@ if (!$_POST) {
         // follows from whether the buyer is registered with the tax authority, so
         // it is not the operator's to choose - and choosing wrong produced a
         // document that was not valid.
+        // An order that already has its sales invoice in Paraşüt is not offered
+        // the action again: parasut_create_invoice() refuses a second one.
+        $output_parasut_invoice_action = ($parasut_invoice_id !== '')
+            ? ' disabled title="' . h(lang('This order already has a sales invoice in Paraşüt.')) . '"'
+            : ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
+                title="Paraşüt"';
+
         $output_parasut_buttons = '
         <div class="btn-group btn-group-sm flex-wrap">
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_id ? 'link-success' : 'link-secondary') . '"
-                onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
-                title="Paraşüt">
+                class="btn btn-link py-0 mb-2 ' . (($parasut_invoice_id !== '') ? 'link-success' : 'link-secondary') . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>
             ' . $output_parasut_shipment_button . '
@@ -2687,6 +2734,7 @@ if (!$_POST) {
                             ' . $output_applied_gift_cards . '
                             ' . $output_affiliate . '
                             ' . pg_legal_documents_panel_card((int) $_GET['id']) . '
+                            ' . pg_returns_panel_card((int) $_GET['id']) . '
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
                             <div class="card">
@@ -2812,7 +2860,7 @@ if (!$_POST) {
             </div>
         </div>
     ' .
-        $output_iyzico_modals .
+        $output_payment_refund_modal .
         $output_cancel_modal .
         $output_refund_modal .
         $output_parasut_forms .
@@ -2825,6 +2873,10 @@ if (!$_POST) {
     validate_token_field();
     
     $liveform->add_fields_to_session();
+
+    // The order row as it was, for the audit trail of whichever action below
+    // changes it.
+    $audit_before = pg_audit_fetch('orders', (int) $liveform->get('id'));
     
     // if the operator submitted the cancel modal
     if ($liveform->get_field_value('submit_cancel_order') == 'cancel') {
@@ -2859,6 +2911,8 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
+        pg_audit_record('cancel', 'orders', $order_id, $audit_before);
+
         $liveform->add_notice(lang('The order has been cancelled.'));
 
         // Surface the refund outcome so a failed void is never silent.
@@ -2870,17 +2924,15 @@ if (!$_POST) {
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
-    // if the user submitted the iyzico refund modal
-    } elseif ($liveform->get_field_value('submit_iyzico_refund') == 'refund') {
+    // if the user submitted the refund modal
+    } elseif ($liveform->get_field_value('submit_payment_refund') == 'refund') {
 
         $order_id = (int)$liveform->get('id');
         $refund_amount = (float)$liveform->get_field_value('refund_amount');
 
-        // Load order to validate against remaining refundable amount.
-        $order_row = db_item(
-            "SELECT total, refunded_amount, transaction_id, payment_method, status
-             FROM orders WHERE id = '" . e($order_id) . "'"
-        );
+        // Load order to validate against remaining refundable amount; the
+        // whole row, because it is what the payment driver is given.
+        $order_row = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
 
         if (!$order_row) {
             output_error(lang('Order not found.'));
@@ -2931,30 +2983,31 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Call iyzico AmountBaseRefund API.
-        require_once(dirname(__FILE__) . '/includes/iyzipay-php/IyzipayBootstrap.php');
-        IyzipayBootstrap::init();
+        // The driver that took the order's payment gives the money back, the
+        // same one the modal was offered for.
+        $refund_driver = pg_payment_refund_driver((string) $order_row['payment_method']);
 
-        $gateway_host = (ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test')
-            ? 'https://sandbox-api.iyzipay.com'
-            : 'https://api.iyzipay.com';
+        if ($refund_driver === '') {
+            $liveform->mark_error('_error', lang('This payment method cannot do that.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        }
 
-        $options = new \Iyzipay\Options();
-        $options->setApiKey(ECOMMERCE_IYZIPAY_API_KEY);
-        $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
-        $options->setBaseUrl($gateway_host);
+        // The order's lines, for a service that refunds per line; a line saved
+        // for later was not bought.
+        $refund_order_lines = db_items(
+            "SELECT * FROM order_items
+             WHERE order_id = '" . e($order_id) . "'"
+             . (waf_table_has_column('order_items', 'saved_for_later') ? " AND saved_for_later = 0" : '') . "
+             ORDER BY id ASC");
 
-        $refund_request = new \Iyzipay\Request\AmountBaseRefundRequest();
-        $refund_request->setLocale(\Iyzipay\Model\Locale::TR);
-        $refund_request->setConversationId((string)rand(100000000, 999999999));
-        $refund_request->setPaymentId($order_row['transaction_id']);
-        $refund_request->setPrice($refund_amount);
-        $refund_request->setIp($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        $refund_result = pg_payment_call($refund_driver, 'refund', array($order_row, $refund_cents, is_array($refund_order_lines) ? $refund_order_lines : array()));
 
-        $refund_result = \Iyzipay\Model\AmountBaseRefund::create($refund_request, $options);
+        foreach ($refund_result['log'] as $refund_log_line) {
+            log_activity($refund_log_line);
+        }
 
-        if ($refund_result->getStatus() != 'success') {
-            $liveform->mark_error('_error',h($refund_result->getErrorMessage()));
+        if (!$refund_result['success']) {
+            $liveform->mark_error('_error',h($refund_result['error']));
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
@@ -2962,7 +3015,7 @@ if (!$_POST) {
         $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
         db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "' WHERE id = '" . e($order_id) . "'");
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
-            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result->getPaymentId()) . "', NOW())");
+            VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
 
         // If full amount has been refunded, mark order as cancelled.
         if ($new_refunded_total >= (int)$order_row['total']) {
@@ -2970,6 +3023,8 @@ if (!$_POST) {
         }
 
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
+
+        pg_audit_record('refund', 'orders', $order_id, $audit_before);
 
         // The return invoice for the same lines comes next, filled in; the
         // operator checks it and saves. Nothing is issued without them.
@@ -3009,6 +3064,8 @@ if (!$_POST) {
         // The helper writes paid_at and the activity log entry; it is a no-op
         // when another path recorded the payment in the meantime.
         pg_order_mark_paid($order_id, (int) (isset($user['id']) ? $user['id'] : 0));
+
+        pg_audit_record('update', 'orders', $order_id, $audit_before);
 
         $liveform->add_notice(lang('Payment recorded.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
@@ -3057,6 +3114,8 @@ if (!$_POST) {
             'Refund marked as processed by operator for order #' . $order_id
             . ($refund_reference !== '' ? '. Reference: ' . $refund_reference : ''));
 
+        pg_audit_record('update', 'orders', $order_id, $audit_before);
+
         $liveform->add_notice(lang('The refund has been marked as processed.'));
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
 
@@ -3098,6 +3157,8 @@ if (!$_POST) {
               AND expiration_date <= '" . date('Y-m-d') . "'");
 
         log_activity('Restored cancelled order #' . $order_id . ' to complete.');
+
+        pg_audit_record('restore', 'orders', $order_id, $audit_before);
 
         // The move back is a status change like any other: announced with the
         // shape the API and the workspace give order.status_changed.
@@ -3151,20 +3212,52 @@ if (!$_POST) {
 
             foreach ($order['recipients'] as $key => $recipient) {
 
-                $recipient['ship_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_ship_date'), 'date');
+                // Only an address whose shipping fields were on the screen is
+                // written. One that was not (an address with no order lines is
+                // not drawn) would otherwise be saved as "no tracking numbers"
+                // and lose the ones it has.
+                if (array_key_exists('ship_to_id_' . $recipient['id'] . '_tracking_numbers', $_POST)) {
 
-                $recipient['delivery_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_delivery_date'), 'date');
+                    $recipient['ship_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_ship_date'), 'date');
 
-                $recipient['tracking_numbers'] = array();
+                    $recipient['delivery_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_delivery_date'), 'date');
 
-                if ($liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers')) {
+                    // The carrier chosen for each number already on the
+                    // address, by the number as the table compares it (case and
+                    // trailing spaces aside). A number typed in this save has no
+                    // select yet and takes the automatic carrier.
+                    $chosen_carriers = array();
 
-                    $tracking_numbers = $liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers');
-                    $tracking_numbers = explode(',',$tracking_numbers);
-                    
-                    foreach ($tracking_numbers as $tracking_number) {
-                        if ($tracking_number) {
-                            $recipient['tracking_numbers'][] = $tracking_number;
+                    foreach (pg_shipment_rows($recipient['id']) as $shipment_row) {
+
+                        $select = 'ship_to_id_' . $recipient['id'] . '_carrier_' . (int) $shipment_row['id'];
+
+                        if (array_key_exists($select, $_POST)) {
+                            $chosen_carriers[mb_strtolower(trim((string) $shipment_row['number']))] = (string) $liveform->get($select);
+                        }
+
+                    }
+
+                    $recipient['tracking_numbers'] = array();
+
+                    if ($liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers')) {
+
+                        $tracking_numbers = $liveform->get('ship_to_id_' . $recipient['id'] . '_tracking_numbers');
+                        $tracking_numbers = explode(',',$tracking_numbers);
+
+                        foreach ($tracking_numbers as $tracking_number) {
+
+                            $tracking_number = trim($tracking_number);
+
+                            if ($tracking_number === '') {
+                                continue;
+                            }
+
+                            $chosen_key = mb_strtolower($tracking_number);
+
+                            $recipient['tracking_numbers'][] = isset($chosen_carriers[$chosen_key])
+                                ? array('number' => $tracking_number, 'carrier' => $chosen_carriers[$chosen_key])
+                                : $tracking_number;
                         }
                     }
                 }

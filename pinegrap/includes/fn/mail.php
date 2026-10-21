@@ -35,36 +35,20 @@ function convert_html_to_text($html)
     $content = preg_replace('/<title[^>]*>.*?<\/title>/i', '', $content);
     $content = preg_replace('/<script[^>]*>.*?<\/script>/i', '', $content);
     $content = preg_replace('/<style[^>]*>.*?<\/style>/i', '', $content);
-    if (!function_exists('convert_html_to_text_heading_big_callback')) {
-        function convert_html_to_text_heading_big_callback($matches)
-        {
-            return "\n\n" . mb_strtoupper($matches[1]) . "\n\n";
-        }
-    }
-    $content = preg_replace_callback('/<h[123][^>]*>(.+?)<\/h[123]>/i', 'convert_html_to_text_heading_big_callback', $content);
-    if (!function_exists('convert_html_to_text_heading_small_callback')) {
-        function convert_html_to_text_heading_small_callback($matches)
-        {
-            return "\n\n" . ucwords($matches[1]) . "\n\n";
-        }
-    }
-    $content = preg_replace_callback('/<h[456][^>]*>(.+?)<\/h[456]>/i', 'convert_html_to_text_heading_small_callback', $content);
+    $content = preg_replace_callback('/<h[123][^>]*>(.+?)<\/h[123]>/i', function ($matches) {
+        return "\n\n" . mb_strtoupper($matches[1]) . "\n\n";
+    }, $content);
+    $content = preg_replace_callback('/<h[456][^>]*>(.+?)<\/h[456]>/i', function ($matches) {
+        return "\n\n" . ucwords($matches[1]) . "\n\n";
+    }, $content);
     $content = preg_replace('/<p[^>]*>/i', "\n\n", $content);
     $content = preg_replace('/<br[^>]*>/i', "\n", $content);
-    if (!function_exists('convert_html_to_text_bold_callback')) {
-        function convert_html_to_text_bold_callback($matches)
-        {
-            return mb_strtoupper($matches[1]);
-        }
-    }
-    $content = preg_replace_callback('/<b[^>]*>(.+?)<\/b>/i', 'convert_html_to_text_bold_callback', $content);
-    if (!function_exists('convert_html_to_text_strong_callback')) {
-        function convert_html_to_text_strong_callback($matches)
-        {
-            return mb_strtoupper($matches[1]);
-        }
-    }
-    $content = preg_replace_callback('/<strong[^>]*>(.+?)<\/strong>/i', 'convert_html_to_text_strong_callback', $content);
+    $content = preg_replace_callback('/<b[^>]*>(.+?)<\/b>/i', function ($matches) {
+        return mb_strtoupper($matches[1]);
+    }, $content);
+    $content = preg_replace_callback('/<strong[^>]*>(.+?)<\/strong>/i', function ($matches) {
+        return mb_strtoupper($matches[1]);
+    }, $content);
     $content = preg_replace('/<i[^>]*>(.+?)<\/i>/i', '_\\1_', $content);
     $content = preg_replace('/<em[^>]*>(.+?)<\/em>/i', '_\\1_', $content);
     $content = preg_replace('/(<ul[^>]*>|<\/ul>)/i', "\n\n", $content);
@@ -76,13 +60,9 @@ function convert_html_to_text($html)
     $content = preg_replace('/(<table[^>]*>|<\/table>)/i', "\n\n", $content);
     $content = preg_replace('/(<tr[^>]*>|<\/tr>)/i', "\n", $content);
     $content = preg_replace('/<td[^>]*>(.+?)<\/td>/i', "\t\t\\1\n", $content);
-    if (!function_exists('convert_html_to_text_table_heading_callback')) {
-        function convert_html_to_text_table_heading_callback($matches)
-        {
-            return "\t\t" . mb_strtoupper($matches[1]) . "\n";
-        }
-    }
-    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', 'convert_html_to_text_table_heading_callback', $content);
+    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', function ($matches) {
+        return "\t\t" . mb_strtoupper($matches[1]) . "\n";
+    }, $content);
     $content = preg_replace('/&nbsp;/i', ' ', $content);
     $content = preg_replace('/&quot;/i', '"', $content);
     $content = preg_replace('/&gt;/i', '>', $content);
@@ -770,7 +750,7 @@ function get_email_campaign_profile_options()
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "order_delivered", "product_ordered"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
 // order_id: Used by order_abandoned action.
@@ -1207,6 +1187,9 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'order_shipped':
                     $log_action = lang('order shipped');
+                    break;
+                case 'order_delivered':
+                    $log_action = lang('order delivered');
                     break;
                 case 'product_ordered':
                     $log_action = lang('product ordered');

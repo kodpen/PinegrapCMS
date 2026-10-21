@@ -33,6 +33,10 @@
  * built from escaped words, whichever model wrote it; a one-line draft is
  * only ever set as text.
  *
+ * A used draft is announced with the event pg:ai-write-used from the field
+ * (announce()); the screens that mark the texts written with AI listen for
+ * it (assets/js/pg_ai_fields.js).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -79,11 +83,28 @@
         return (editors && editors[id]) ? editors[id] : null;
     }
 
+    // The TinyMCE 3 editor of a textarea (the "previous" editor version)
+    // once it runs on it. It keeps its own copy of the text and writes it
+    // back into the textarea when the form is sent, so the textarea alone is
+    // neither read nor written while it runs. While it loads, or when it is
+    // turned off, the textarea is the field.
+    function tinyOf(id) {
+        var tiny = window.tinymce || window.tinyMCE;
+        var editor = (tiny && (typeof tiny.get === 'function')) ? tiny.get(id) : null;
+
+        return (editor && editor.initialized && !editor.isHidden()) ? editor : null;
+    }
+
     function valueOf(id) {
         var editor = editorOf(id);
+        var tiny = editor ? null : tinyOf(id);
 
         if (editor) {
             return String(editor.getData() || '');
+        }
+
+        if (tiny) {
+            return String(tiny.getContent() || '');
         }
 
         var el = document.getElementById(id);
@@ -236,7 +257,13 @@
         hint.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                ask(panel);
+
+                // Like "Try again" and the tone, Enter does nothing while a
+                // request runs: each request takes a draft from the day's
+                // quota.
+                if (!again.disabled) {
+                    ask(panel);
+                }
             }
         });
 
@@ -327,10 +354,12 @@
         box.style.maxHeight = '18rem';
         box.style.overflow = 'auto';
 
-        // The html format is markup the server built from escaped words.
+        // The html format is markup the server built from escaped words; a
+        // plain text draft keeps its line breaks, as the field will.
         if (state.settings.format === 'html') {
             box.innerHTML = String(result.html || '');
         } else {
+            box.style.whiteSpace = 'pre-wrap';
             box.textContent = String(result.text || '');
         }
 
@@ -807,6 +836,32 @@
         });
     }
 
+    // Tells the screen that a draft went into a field: pg:ai-write-used,
+    // sent from the field's element (from the document when it has none)
+    // once the field holds the draft, bubbling, naming the field. A screen
+    // that marks the texts written with AI (assets/js/pg_ai_fields.js)
+    // listens for it; others do not.
+    function announce(settings) {
+        var detail = {
+            field: String(settings.field || ''),
+            target: String(settings.target || ''),
+            record: String(settings.record || ''),
+            record_id: recordIdOf(settings),
+            format: String(settings.format || '')
+        };
+        var source = document.getElementById(detail.field) || document;
+        var event;
+
+        try {
+            event = new CustomEvent('pg:ai-write-used', { bubbles: true, detail: detail });
+        } catch (e) {
+            event = document.createEvent('CustomEvent');
+            event.initCustomEvent('pg:ai-write-used', true, false, detail);
+        }
+
+        source.dispatchEvent(event);
+    }
+
     // The draft into the field, the way typing would have put it there: the
     // field's own listeners (the SEO counters, the unsaved-changes check)
     // hear about it.
@@ -820,13 +875,30 @@
         }
 
         var editor = editorOf(settings.field);
+        var tiny = editor ? null : tinyOf(settings.field);
         var field = document.getElementById(settings.field);
         var value = (settings.format === 'html') ? String(result.html || '') : String(result.text || '');
 
+        // The editor loads new data in the background: the draft is announced
+        // once it is in, so that a listener reads the field's new text.
         if (editor && (settings.format === 'html')) {
-            editor.setData(value);
+            editor.setData(value, function () {
+                announce(settings);
+            });
             closePanel(panel, false);
             editor.focus();
+            return;
+        }
+
+        // TinyMCE takes the draft at once. Through its command the change is
+        // one undo step and raises the editor's change event; the textarea is
+        // written as well, for whatever reads it before the save.
+        if (tiny && (settings.format === 'html')) {
+            tiny.execCommand('mceSetContent', false, value);
+            tiny.save();
+            announce(settings);
+            closePanel(panel, false);
+            tiny.focus();
             return;
         }
 
@@ -851,6 +923,7 @@
             field.dispatchEvent(event);
         }
 
+        announce(settings);
         closePanel(panel, false);
         field.focus();
     }
