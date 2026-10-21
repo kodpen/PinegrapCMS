@@ -284,6 +284,21 @@ function test_marketplace_n11_cut_off_answer_is_named_as_such()
 	pg_assert_contains('not JSON', $result['error']);
 }
 
+function test_marketplace_n11_long_error_page_is_still_retried()
+{
+	$calls = array();
+
+	// A 503 page longer than the call's limit is an outage, not a cut answer:
+	// the sync queue must still try it again.
+	$result = mp_n11_call(n11_test_account(), 'POST', '/ms/product/tasks/price-stock-update',
+		array('payload' => array()), 8000,
+		n11_test_fixed_transport(503, '<html>' . str_repeat('x', 9000) . '</html>', $calls));
+
+	pg_assert_false($result['ok']);
+	pg_assert_contains('not JSON', $result['error']);
+	pg_assert_true(!empty($result['retry']), 'a failed status keeps its retry flag');
+}
+
 function test_marketplace_n11_category_tree_flattens_the_fixture()
 {
 	$calls = array();

@@ -152,8 +152,11 @@ function mp_n11_call($account, $method, $path, $body = null, $max_body = 0, $tra
 
 		// A body as long as the limit was cut off there, and what is left is
 		// never JSON. Said as what it is: "not JSON" reads like a fault on
-		// their side, and asking again gets the same cut.
-		if (($max_body > 0) && (strlen((string)$outcome['body']) >= $max_body)) {
+		// their side, and asking again gets the same cut. Only a successful
+		// answer is treated as cut off: a failed status (5xx, 408) keeps the
+		// not-JSON error below, which names the status and keeps
+		// api_http_should_retry() so the sync queue still tries it again.
+		if ($outcome['ok'] && ($max_body > 0) && (strlen((string)$outcome['body']) >= $max_body)) {
 
 			return mp_error(lang(array(
 				'string' => 'n11 answered with more than the {var:1} bytes this call reads, so the answer was cut off.',
