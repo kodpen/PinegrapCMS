@@ -42,9 +42,11 @@ To the bin (`recycled = 1` plus a `recycle_bin` row,
 `pg_short_link_to_bin()`) from the wizard, the API and, since #487, the
 classic edit screen's Delete (before, it deleted the row outright). Restore or
 permanent delete happen in the File Manager's bin. `view_short_links.php`
-leaves binned links out; `edit_short_link.php` answers 409 "This short link
-is in the recycle bin…" for one. Before the 2026.4.4 upgrade, delete is still
-permanent.
+and the rich text editor's link picker (`editor_select_page_or_file.php`,
+type `short_link`; since #PR835, before it offered them and the link put in
+the content answered 404) leave binned links out; `edit_short_link.php`
+answers 409 "This short link is in the recycle bin…" for one. Before the
+2026.4.4 upgrade, delete is still permanent.
 
 ## What about values posted as a list?
 They count as not given (`core/request-parameter-arrays.md`): the wizard reads
