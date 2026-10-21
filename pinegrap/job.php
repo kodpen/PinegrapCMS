@@ -129,6 +129,28 @@ if ($number_of_comments) {
 
 }
 
+// The rating of the products whose reviews were just published, and once a
+// day the rating of every product from its reviews (includes/fn/reviews.php):
+// that pass catches what no write path reported, such as a page deleted with
+// its comments. A tick between passes reads one small file.
+$reviewed_products = array();
+
+foreach ($comments as $comment) {
+    if ($comment['item_type'] == 'product') {
+        $reviewed_products[] = (int) $comment['item_id'];
+    }
+}
+
+pg_review_refresh_products($reviewed_products);
+
+$rerated_products = pg_review_refresh_daily();
+
+if ($rerated_products > 0) {
+
+    log_activity(lang(array('string' => 'general job corrected the rating of {var:1} product(s) from their reviews', 'vars' => array(pg_format_number($rerated_products, 0)))), 'UNKNOWN');
+
+}
+
 
 // If commerce is enabled and there is at least one enabled campaign profile
 // that creates auto campaigns for abandoned orders, then check if any orders
