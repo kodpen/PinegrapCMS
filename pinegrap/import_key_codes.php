@@ -164,6 +164,27 @@ if (!$_POST) {
             continue;
         }
 
+        // A code can have one row per offer (the affiliate flows add them so).
+        // When the file's offer code matches one of those rows, only that row
+        // is compared and updated, so each line of an export changes only its
+        // own row instead of stamping its offer code on the code's other rows.
+        $where_offer = '';
+
+        if ($existing && isset($values['offer_code'])) {
+            $same_offer = array();
+
+            foreach ($existing as $current) {
+                if ((string) $current['offer_code'] === (string) $values['offer_code']) {
+                    $same_offer[] = $current;
+                }
+            }
+
+            if ($same_offer) {
+                $existing = $same_offer;
+                $where_offer = " AND offer_code = '" . e($values['offer_code']) . "'";
+            }
+        }
+
         // A new code: what the file does not give takes the default, and a
         // code is enabled unless the file says otherwise.
         if (!$existing) {
@@ -212,7 +233,7 @@ if (!$_POST) {
             SET " . implode(', ', $sets) . ",
                 user = '" . (int) $user['id'] . "',
                 timestamp = UNIX_TIMESTAMP()
-            WHERE code = '" . e($values['code']) . "'");
+            WHERE code = '" . e($values['code']) . "'" . $where_offer);
 
         $summary['changed']++;
     }

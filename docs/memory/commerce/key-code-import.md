@@ -6,7 +6,8 @@ description: Key code CSV import (import_key_codes.php): a code already there is
 ## What does the import do with a code that is already there?
 - It is updated in the columns the file has, and only when one of them differs; then `user` and `timestamp` become the importer's. Nothing differs: the row is left alone and counted "unchanged".
 - Before #735 (PR #1060) every code in the file was deleted and inserted again, `enabled = 1` when the file had no enabled column: re-importing a file reopened used single-use codes (checkout sets `enabled = 0`) and stamped every row.
-- `key_codes.code` is not unique: the update writes every row with that code.
+- `key_codes.code` is not unique (the affiliate flows add one row per code and offer). When the file's offer code matches one of the code's rows, only those rows are compared and updated, so an export of a code with several offers imports back unchanged (before, each line stamped its offer code on all rows and one offer was lost). Otherwise every row with that code is updated.
+- An enabled column in the file is written as given: re-importing an export taken before a single-use code was used opens it again. A file without the enabled column leaves enabled alone.
 
 ## And a new code?
 - It needs an offer code that an offer has (the rule of `add_key_code.php`); the defaults are enabled 1, single use 0, report `key_code`, no expiration date, no notes.
