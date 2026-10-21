@@ -282,6 +282,7 @@ if (!isset($_POST['name'])) {
 
     $optimize_button = '';
     $image_buttons = '';
+    $output_rotate_form = '';
     $output_convert_rows = '';
     $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file_name) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
     // Convert file size to a user friendly output.
@@ -440,7 +441,23 @@ if (!isset($_POST['name'])) {
                         'vars'   => array($image_settings['file_max_dimension']))) . '</a>';
             }
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            // The rotate buttons sit in the edit form's button bar but submit
+            // a form of their own. As submit buttons of the edit form they
+            // would be its first ones, and Return in the name field submits
+            // with the first submit button: the picture would turn to the
+            // left and the name typed would be lost. This way Return reaches
+            // Save & Return, as for every other file. The form carries the
+            // stored name: this screen tells a submission from a page view
+            // by the posted name, and checks it before it looks at which
+            // button was pressed.
+            $output_rotate_form = '
+                <form action="edit_file.php" method="post" id="edit_file_rotate" class="disable_shortcut d-none">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="name" value="' . h($file_name) . '">
+                </form>';
+
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link link-secondary py-0 mb-2" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link link-secondary py-0 mb-2" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">
@@ -521,7 +538,7 @@ if (!isset($_POST['name'])) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                
+                ' . $output_rotate_form . '
                 <form action="edit_file.php" method="post" submitshortcut="submit_save">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
