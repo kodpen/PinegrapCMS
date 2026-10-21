@@ -14,6 +14,8 @@
  *                                sections, for the designer
  *   add_to_cart                  adds a product to the visitor's cart
  *   delete_order                 deletes an order
+ *   erp_refund_preview           what a card refund chosen by line comes to,
+ *                                for the order screen's refund dialog
  *   get_cross_sell_items         products ordered together with the given
  *                                ones
  *   get_cross_sell_for_product   cross-sell items for one product,
@@ -428,6 +430,46 @@ function pg_panel_delete_order($request, $action)
 
     echo encode_json($response);
     exit();
+}
+
+/**
+ * What a card refund chosen by line comes to: each chosen line's amount and
+ * the whole, from the function the refund and its return invoice are worked
+ * out with (erp_order_refund_amount()). The order screen's refund dialog
+ * asks as its quantities change: the taxes of lines given back in part are
+ * taken per group of the return, so the whole is not the sum of the lines
+ * priced one by one. Read only; open to whoever the dialog is shown to.
+ */
+function pg_panel_erp_refund_preview($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    $user = validate_user();
+    validate_ecommerce_access($user);
+
+    if (!defined('ERP_ENABLED') || !ERP_ENABLED || !(((int) $user['role'] < 3) || !empty($user['manage_erp']))
+        || !waf_table_has_column('orders', 'erp_invoice_id')) {
+        respond(array('status' => 'error', 'message' => lang('Access denied.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_refund.php');
+
+    $source = erp_order_refund_lines((int) ($request['order_id'] ?? 0));
+
+    if ($source === null) {
+        respond(array('status' => 'error', 'message' => lang('Order not found.')));
+    }
+
+    $refund = erp_order_refund_amount($source, is_array($request['quantities'] ?? null) ? $request['quantities'] : array());
+
+    if ($refund['error'] !== '') {
+        respond(array('status' => 'error', 'message' => $refund['error']));
+    }
+
+    respond(array('status' => 'success', 'data' => array('amount' => $refund['amount'], 'lines' => $refund['lines'])));
 }
 
 function pg_panel_get_cross_sell_items($request, $action)
