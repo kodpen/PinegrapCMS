@@ -323,7 +323,9 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * shipping are the sums of its item and recipient rows (the same sums the
  * placed order stores). The total is the one the checkout page showed and
  * submit_order.php compares against, so offers, gift cards and rounding are
- * the checkout's own; the difference to the row sums is placed below.
+ * the checkout's own; the difference to the row sums is placed below. The
+ * cart's order discount ($seen['order_discount']) is taken first and lowers
+ * the tax by its share, so the discount and the tax read as the checkout's.
  * Billing fields the visitor has typed or the page filled in replace the
  * row's, which a cart has only after an earlier submit. A field the page drew
  * empty says nothing and keeps the row's value; a field the checkout link
@@ -333,7 +335,7 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * @param array $order     orders row fields
  * @param array $lines     each with line_total and tax (minor units)
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), billing (field => value), payment_method, typed (bool)
+ * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool)
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -351,19 +353,30 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
         $shipping += (int) round($ship_to['cost'] ?? 0);
     }
 
-    $before = $subtotal + $tax + $shipping;
+    // The order discount the cart worked out (apply_offers_to_cart()) lowers
+    // the tax in its own proportion, as submit_order.php and the checkout
+    // pages do; never more than the subtotal.
+    $order_discount = (int) round((float) ($seen['order_discount'] ?? 0));
+    $order_discount = max(0, min($order_discount, max(0, $subtotal)));
+
+    if (($order_discount > 0) && ($subtotal > 0)) {
+        $tax = max(0, $tax - (int) round($tax * ($order_discount / $subtotal)));
+    }
+
+    $goods = $subtotal - $order_discount + $tax;
+    $before = $goods + $shipping;
     $total = (isset($seen['total']) && is_int($seen['total']) && ($seen['total'] >= 0)) ? $seen['total'] : $before;
-    $discount = 0;
+    $discount = $order_discount;
 
     // A recipient row keeps the cost of a shipping method the checkout no
     // longer offers or has not had chosen yet; the checkout then shows no
     // shipping, and its total is the goods with their tax. Any other shortfall
-    // is what the checkout took off (offers, gift cards); a higher total is
+    // is what else the checkout took off (gift cards); a higher total is
     // shipping the rows do not know yet.
-    if (($total !== $before) && ($total === ($subtotal + $tax))) {
+    if (($total !== $before) && ($total === $goods)) {
         $shipping = 0;
     } elseif ($total < $before) {
-        $discount = $before - $total;
+        $discount += $before - $total;
     } elseif ($total > $before) {
         $shipping += $total - $before;
     }
@@ -1096,6 +1109,10 @@ function pg_legal_documents_for_cart(array $posted = array())
     if (!empty($posted)) {
         $seen = pg_legal_document_typed_snapshot($seen, $posted);
     }
+
+    // The cart's order discount as the checkout last worked it out; the
+    // documents split it from the tax the way the checkout does.
+    $seen['order_discount'] = (int) round((float) ($_SESSION['ecommerce']['order_discount'] ?? 0));
 
     return pg_legal_documents_for_order($order_id, $seen);
 }
