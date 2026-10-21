@@ -704,8 +704,9 @@ function mp_sync_orders_account($account, &$summary) {
 
 	$account_id = (int) $account['id'];
 
-	$result = mp_call($account['provider'], 'pull_orders',
-		array($account, (int)$account['last_order_pull']));
+	$since = (int) $account['last_order_pull'];
+
+	$result = mp_call($account['provider'], 'pull_orders', array($account, $since));
 
 	// A failed pull can still have read some pages. They are imported, and the
 	// cursor stays put so the rest is asked for again.
@@ -751,9 +752,12 @@ function mp_sync_orders_account($account, &$summary) {
 		// anything written while the pages were being walked.
 		$read_to = isset($result['data']['read_to']) ? (int)$result['data']['read_to'] : time();
 
+		// Compare-and-set on the cursor this pull started from: if "Try again"
+		// moved the cursor back while the pages were being walked, nothing is
+		// changed and the next run reads from the rolled-back cursor.
 		db("UPDATE marketplace_accounts
 			SET last_order_pull = '" . e($read_to) . "', updated_timestamp = UNIX_TIMESTAMP()
-			WHERE id = '" . e($account_id) . "'");
+			WHERE (id = '" . e($account_id) . "') AND (last_order_pull = '" . e($since) . "')");
 
 	}
 
@@ -775,6 +779,15 @@ function mp_sync_approve($account, $package, $order_id) {
 	}
 
 	if (!mp_can($account['provider'], 'approve_lines')) {
+
+		return;
+
+	}
+
+	// Only an open package is accepted. One that arrived already shipped or
+	// delivered is past the step acceptance moves it to, and the marketplace
+	// refuses it.
+	if (mp_order_stage($account, $package) !== 'open') {
 
 		return;
 

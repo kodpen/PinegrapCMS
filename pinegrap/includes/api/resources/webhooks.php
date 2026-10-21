@@ -35,13 +35,15 @@ function api_webhook_present($row) {
 	// The dispatcher deletes a row the moment it is delivered, so the newest
 	// row with an attempt on it is the newest failure still on file - a
 	// subscription that is delivering cleanly has none, and reports null.
-	// pending counts rows that are waiting or scheduled for a retry; a row
-	// that has used up its attempts has next_attempt_at = 0 and is not pending.
+	// pending counts rows that are waiting or scheduled for a retry, and the
+	// ones held for a failing subscription (attempts 0, next_attempt_at 0,
+	// api_webhook_queue_hold()) until it is retried; a row that has used up
+	// its attempts has next_attempt_at = 0 and is not pending.
 	$id = (int)$row['id'];
 
 	$queue = api_row("SELECT
 			(SELECT COUNT(*) FROM api_webhook_queue
-				WHERE webhook_id = '" . $id . "' AND next_attempt_at > 0) AS pending,
+				WHERE webhook_id = '" . $id . "' AND (next_attempt_at > 0 OR attempts = 0)) AS pending,
 			(SELECT last_error FROM api_webhook_queue
 				WHERE webhook_id = '" . $id . "' AND attempts > 0 ORDER BY id DESC LIMIT 1) AS last_error,
 			(SELECT last_status_code FROM api_webhook_queue
