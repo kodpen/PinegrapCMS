@@ -305,9 +305,23 @@ function api_idempotency_store($app_id, $key, $body_hash, $status_code, $respons
 
 	}
 
+	// Encoded the way the answer itself was (api_json_encode()), so a stored
+	// record is never an empty string the replay cannot read back. An answer
+	// that cannot be encoded was already turned into a 500 by api_send(); the
+	// key is given back rather than kept with nothing to replay.
+	$json = api_json_encode($response);
+
+	if ($json === null) {
+
+		api_idempotency_forget($app_id, $key);
+
+		return;
+
+	}
+
 	api_exec("UPDATE api_idempotency SET
 			status_code = '" . (int)$status_code . "',
-			response = '" . escape(json_encode($response, JSON_UNESCAPED_UNICODE)) . "'
+			response = '" . escape($json) . "'
 		WHERE app_id = '" . (int)$app_id . "' AND idem_key = '" . escape($key) . "'
 			AND request_hash = '" . escape($body_hash) . "' AND status_code = '0'
 		LIMIT 1");
@@ -387,6 +401,21 @@ function api_idempotency_hash($input) {
 
 	ksort($input);
 
-	return hash('sha256', api_request_method() . ' ' . api_request_path() . ' ' . json_encode($input));
+	return hash('sha256', api_request_method() . ' ' . api_request_path() . ' ' . api_idempotency_input_text($input));
+
+}
+
+// The parsed input as the text its fingerprint is taken over. JSON, as it has
+// always been, so a key recorded before keeps matching its retry. A value that
+// is not valid UTF-8 (a form field from a client encoding Windows-1254) made
+// json_encode() return false, and every such body hashed as "METHOD PATH " -
+// the same key sent with another body was answered from the first one's record
+// instead of 409. That input is written with serialize(), which keeps every
+// byte; substituting the broken bytes would make two different bodies alike.
+function api_idempotency_input_text($input) {
+
+	$json = json_encode($input);
+
+	return is_string($json) ? $json : 'php:' . serialize($input);
 
 }
