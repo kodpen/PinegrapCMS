@@ -380,6 +380,35 @@ function test_short_link_redirects_csv_reader()
 	pg_assert_same(array(), pg_short_link_csv_rows(''), 'empty file');
 }
 
+function test_short_link_redirects_csv_reader_reads_excel_unicode_text()
+{
+	$text = "Eski adres\tYeni adres\r\n/gtest-sl/utf16-a\t/about-us\r\n/gtest-sl/ürün\t/contact-us\r\n";
+	$little = "\xFF\xFE" . mb_convert_encoding($text, 'UTF-16LE', 'UTF-8');
+	$rows = pg_short_link_csv_rows($little);
+
+	pg_assert_same(2, count($rows), 'UTF-16LE with its mark: heading skipped, two lines');
+	pg_assert_same(array('line' => 2, 'from' => '/gtest-sl/utf16-a', 'to' => '/about-us', 'code' => ''), $rows[0], 'line numbers as the file counts them');
+	pg_assert_same(array('line' => 3, 'from' => '/gtest-sl/ürün', 'to' => '/contact-us', 'code' => ''), $rows[1], 'a Turkish letter');
+
+	pg_assert_same($rows, pg_short_link_csv_rows("\xFE\xFF" . mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')), 'UTF-16BE with its mark');
+	pg_assert_same($rows, pg_short_link_csv_rows(mb_convert_encoding($text, 'UTF-16LE', 'UTF-8')), 'UTF-16LE without a mark');
+	pg_assert_same($rows, pg_short_link_csv_rows(mb_convert_encoding($text, 'UTF-16BE', 'UTF-8')), 'UTF-16BE without a mark');
+}
+
+function test_short_link_redirects_csv_separator_is_the_one_most_lines_split_by()
+{
+	$rows = pg_short_link_csv_rows("/gtest-csv/kalem,defter;/about-us;301\n/gtest-csv/eski-sayfa;/contact-us;301\n/gtest-csv/eski-iki;/contact-us;302\n");
+
+	pg_assert_same(3, count($rows), 'semicolons, a comma inside the first address');
+	pg_assert_same(array('line' => 1, 'from' => '/gtest-csv/kalem,defter', 'to' => '/about-us', 'code' => '301'), $rows[0], 'the comma stays in the address');
+
+	pg_assert_same(',', pg_short_link_csv_separator("from,to,code\n/a,/b?x=1;y=2,301\n"), 'a semicolon in a query string');
+	pg_assert_same(',', pg_short_link_csv_separator("/a,/b\n"), 'one line, commas');
+	pg_assert_same(';', pg_short_link_csv_separator("Eski adres;Yeni adres\n/a;/b\n"), 'semicolons with a heading');
+	pg_assert_same("\t", pg_short_link_csv_separator("/a\t/b\t302\n"), 'tabs');
+	pg_assert_same(',', pg_short_link_csv_separator(''), 'nothing to go by: the comma');
+}
+
 function test_short_link_redirects_csv_writer()
 {
 	$links = array(
