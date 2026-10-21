@@ -75,7 +75,7 @@ if (!$_POST) {
     validate_token_field();
     
     // if no file was uploaded
-    if (!$_FILES['file']['name']) {
+    if (empty($_FILES['file']['name'])) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -86,145 +86,157 @@ if (!$_POST) {
 
     // get file handle for uploaded CSV file
     $handle = fopen($_FILES['file']['tmp_name'], "r");
+
+    // The header line says which separator the file uses. A byte order mark
+    // (Excel's "CSV UTF-8") is stepped over before the cells are read: left
+    // in front of a quoted heading it keeps the quotes in the name.
+    $header_line = (string) fgets($handle);
+    $separator = pg_key_code_import_separator($header_line);
+    fseek($handle, (substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0);
+
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",");
+    $columns = fgetcsv($handle, 100000, $separator);
 
     // if file is empty
     if (!$columns) {
         output_error(lang('The file was empty') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
-    
-    // create array with column field names
+
+    // cell index => key_codes column, for the columns the import reads
+    $column_names = array();
+
     foreach ($columns as $key => $value) {
-        $column_names[] = convert_column_name($value);
-    }
+        $column = pg_key_code_import_column($value);
 
-    // Assume that enabled column does not exist, until we find out otherwise.
-    // We use this later to determine whether we need to enable by default,
-    // in case enabled column was not included.
-    $enabled_column_exists = false;
-
-    // foreach column field name
-    foreach ($column_names as $key => $value) {
-        // if the column is invalid, remove from column list
-        if ($value === false) {
-            unset($column_names[$key]);
-        }
-
-        // if column is key code, then store key location for key code
-        if ($value == 'code') {
-            $key_code_key = $key;
-
-        } else if ($value == 'enabled') {
-            $enabled_column_exists = true;
+        if (($column !== '') && !in_array($column, $column_names, true)) {
+            $column_names[$key] = $column;
         }
     }
-    
+
     // if key code column could not be found, output error
-    if (isset($key_code_key) == false) {
+    if (!in_array('code', $column_names, true)) {
         output_error(lang('A key code column could not be found') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    // build list of column names for database query
-    $column_list = '';
-    foreach ($column_names as $key => $value) {
-        $column_list .= "$value, ";
-    }
-    
-    $column_list .= 'user, timestamp';
-
-    // If an enabled column does not exist in the CSV file,
-    // then add column so key codes are enabled by default.
-    if (!$enabled_column_exists) {
-        $column_list .= ', enabled';
-    }
-
-    $imported_key_codes = 0;
+    $summary = array('added' => 0, 'changed' => 0, 'unchanged' => 0);
+    $problems = array();
+    $offer_found = array();
+    $line = 1;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",")) {
-        $key_code = $row[$key_code_key];
-        
-        // if there is a key code
-        if ($key_code) {
-            // delete key code if key code already exists
-            $query = "DELETE FROM key_codes WHERE code = '" . escape($key_code) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    while (($row = fgetcsv($handle, 100000, $separator)) !== false) {
+        $line++;
 
-            $data_list = '';            
-            
-            // foreach field
-            foreach ($column_names as $key => $value) {
-                // create value list
-                $value = escape($row[$key]);
-                $data_list .= "'$value', ";
-            }
+        $read = pg_key_code_import_row($row, $column_names, DATE_FORMAT);
+        $values = $read['values'];
 
-            $data_list .= "'$user[id]', UNIX_TIMESTAMP()";
-
-            // If an enabled column does not exist in the CSV file,
-            // then add column so key codes are enabled by default.
-            if (!$enabled_column_exists) {
-                $data_list .= ", '1'";
-            }
-            
-            // insert row of data into database
-            $query = "INSERT INTO key_codes ($column_list)
-                     VALUES ($data_list)";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-            $imported_key_codes++;
+        // A row without a key code (a blank line) is passed over.
+        if ($values['code'] === '') {
+            continue;
         }
+
+        $problem = $read['error'];
+
+        if (($problem === '') && isset($values['offer_code'])) {
+            if (!isset($offer_found[$values['offer_code']])) {
+                $offer_found[$values['offer_code']] = (db_value("SELECT COUNT(*) FROM offers WHERE code = '" . e($values['offer_code']) . "'") > 0);
+            }
+
+            if (!$offer_found[$values['offer_code']]) {
+                $problem = lang('Sorry, we cannot find an offer for the offer code that you entered.') . ' (' . $values['offer_code'] . ')';
+            }
+        }
+
+        // The rows already there with this code (the column is not unique).
+        $existing = ($problem === '')
+            ? db_items("SELECT offer_code, enabled, expiration_date, notes, single_use, report FROM key_codes WHERE code = '" . e($values['code']) . "'")
+            : array();
+
+        if (($problem === '') && !$existing && !isset($values['offer_code'])) {
+            $problem = lang('Offer Code is required.');
+        }
+
+        if ($problem !== '') {
+            $problems[] = lang(array('string' => 'Line {var:1}: {var:2}', 'vars' => array($line, $values['code'] . ' — ' . $problem)));
+            continue;
+        }
+
+        // A new code: what the file does not give takes the default, and a
+        // code is enabled unless the file says otherwise.
+        if (!$existing) {
+            $values += array('enabled' => 1, 'expiration_date' => '0000-00-00', 'single_use' => 0, 'report' => 'key_code', 'notes' => '');
+
+            db("INSERT INTO key_codes (code, offer_code, enabled, expiration_date, single_use, report, notes, user, timestamp)
+                VALUES (
+                    '" . e($values['code']) . "',
+                    '" . e($values['offer_code']) . "',
+                    '" . (int) $values['enabled'] . "',
+                    '" . e($values['expiration_date']) . "',
+                    '" . (int) $values['single_use'] . "',
+                    '" . e($values['report']) . "',
+                    '" . e($values['notes']) . "',
+                    '" . (int) $user['id'] . "',
+                    UNIX_TIMESTAMP())");
+
+            $summary['added']++;
+            continue;
+        }
+
+        // A code already there changes only in the columns the file gives,
+        // and only when one of them differs: a used single-use code (enabled
+        // 0) stays used unless the file's enabled column opens it again.
+        $sets = array();
+
+        foreach ($values as $column => $value) {
+            if ($column === 'code') {
+                continue;
+            }
+
+            foreach ($existing as $current) {
+                if ((string) $current[$column] !== (string) $value) {
+                    $sets[$column] = $column . " = '" . e((string) $value) . "'";
+                    break;
+                }
+            }
+        }
+
+        if (!$sets) {
+            $summary['unchanged']++;
+            continue;
+        }
+
+        db("UPDATE key_codes
+            SET " . implode(', ', $sets) . ",
+                user = '" . (int) $user['id'] . "',
+                timestamp = UNIX_TIMESTAMP()
+            WHERE code = '" . e($values['code']) . "'");
+
+        $summary['changed']++;
     }
     
     fclose($handle);
 
-    log_activity(lang(array('string'=>'{var:1} key codes were imported','vars'=>$imported_key_codes)), $_SESSION['sessionusername']);
+    $message = lang(array(
+        'string' => 'Key codes imported: {var:1} added, {var:2} changed, {var:3} unchanged, {var:4} line(s) skipped.',
+        'vars'   => array($summary['added'], $summary['changed'], $summary['unchanged'], count($problems)),
+    ));
+
+    log_activity($message, $_SESSION['sessionusername']);
+
+    $liveform_view_key_codes = new liveform('view_key_codes');
+    $liveform_view_key_codes->add_notice(h($message));
+
+    // The first lines that could not be used, each with its reason.
+    if ($problems) {
+        $shown = array_map('h', array_slice($problems, 0, 20));
+
+        if (count($problems) > 20) {
+            $shown[] = h(lang(array('string' => 'and {var:1} more line(s) that could not be used.', 'vars' => array(count($problems) - 20))));
+        }
+
+        $liveform_view_key_codes->add_warning(implode('<br>', $shown));
+    }
 
     // forward user to view key codes screen
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_key_codes.php');
-}
-
-function convert_column_name($column_name)
-{
-    // convert column name to lowercase
-    $column_name = mb_strtolower($column_name);
-    // remove spaces from column name
-    $column_name = str_replace(' ', '', $column_name);
-    // remove underscores from column name
-    $column_name = str_replace('_', '', $column_name);
-    // remove dashes from column name
-    $column_name = str_replace('-', '', $column_name);
-
-    switch ($column_name) {
-        case 'keycode':
-            return('code');
-            break;
-
-        case 'offercode':
-            return('offer_code');
-            break;
-
-        case 'enabled':
-            return('enabled');
-            break;
-
-        case 'expirationdate':
-            return('expiration_date');
-            break;
-
-        case 'notes':
-            return('notes');
-            break;
-
-        case 'singleuse':
-            return('single_use');
-            break;
-
-        case 'report':
-            return('report');
-            break;
-    }
-
-    return false;
 }

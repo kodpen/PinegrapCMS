@@ -24702,5 +24702,10 @@
     "Orders fall in more than {var:1} months of this window. Ask for a shorter one.": "Bu aralıkta siparişler {var:1} aydan fazlasına dağılıyor. Daha kısa bir aralık isteyin.",
     "Orders fall on more than {var:1} days of this window. Ask for a shorter one, or by month.": "Bu aralıkta siparişler {var:1} günden fazlasına dağılıyor. Daha kısa bir aralık ya da aylık döküm isteyin.",
     "This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created. If its e-document did not go through, issue it from that invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var (ID: {var:1}); ikincisi oluşturulmadı. e-Belgesi çıkmadıysa Paraşüt'te o faturadan kesin.",
-    "This order already has a sales invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var."
+    "This order already has a sales invoice in Paraşüt.": "Bu siparişin Paraşüt'te zaten bir satış faturası var.",
+    "\"{var:1}\" is longer than 50 characters.": "\"{var:1}\" 50 karakterden uzun.",
+    "\"{var:1}\" in the {var:2} column is neither yes nor no.": "{var:2} sütunundaki \"{var:1}\" ne evet ne hayır.",
+    "\"{var:1}\" is not an expiration date.": "\"{var:1}\" bir son kullanma tarihi değil.",
+    "\"{var:1}\" in the report column is neither key_code nor offer_code.": "Rapor sütunundaki \"{var:1}\" ne key_code ne offer_code.",
+    "Key codes imported: {var:1} added, {var:2} changed, {var:3} unchanged, {var:4} line(s) skipped.": "Anahtar kodlar içe aktarıldı: {var:1} eklendi, {var:2} değişti, {var:3} aynı kaldı, {var:4} satır atlandı."
 }
