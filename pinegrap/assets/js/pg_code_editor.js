@@ -243,7 +243,24 @@
     // error node at its start and the JSON parser reports an unexpected end,
     // which would mark every empty field red. A blank JSON document counts as
     // empty too.
-    function _syntaxLinter(cm, lang, labels) {
+    //
+    // The tree is read only once it covers the whole document. The engine
+    // parses in the background no further than 100,000 characters past the
+    // visible part, and a tree cut there carries an error node at the cut:
+    // a valid line of a larger file was marked, and nothing after it was
+    // checked. The rest is parsed here in slices of 50 ms with a pause
+    // between them, so a 2 MB file does not freeze the page; the parse goes
+    // on from where the last slice stopped, and an edit reuses the tree
+    // outside the changed part. A result for a text that has changed since
+    // is dropped (by the lint extension as well).
+    //
+    // `alive()` says whether this linter is still the editor's current one.
+    // When it was replaced (setLanguage, setLint) or the editor was closed,
+    // the run stops at its next slice and never delivers: the lint extension
+    // applies any result whose document is unchanged, and adds its state
+    // back when the linter was switched off, so a late result would leave
+    // marks that no linter clears.
+    function _syntaxLinter(cm, lang, labels, alive) {
         if (lang === 'json') {
             var json = cm.langJson.jsonParseLinter();
             return cm.lint.linter(function (view) {
@@ -252,19 +269,27 @@
         }
         var message = (labels && labels.syntaxError) ? String(labels.syntaxError) : 'Syntax error';
         return cm.lint.linter(function (view) {
-            var out = [];
-            if (view.state.doc.length === 0) return out;
-            var tree = cm.language.syntaxTree(view.state);
-            tree.iterate({
-                enter: function (node) {
-                    if (!node.type.isError) return;
-                    var from = node.from, to = node.to;
-                    if (from === to) { to = Math.min(view.state.doc.length, from + 1); }
-                    out.push({ from: from, to: to, severity: 'error', message: message });
-                    if (out.length >= 200) return false;
-                }
+            var state = view.state, len = state.doc.length;
+            if (len === 0) return [];
+            return new Promise(function (resolve) {
+                (function slice() {
+                    if (alive && !alive()) return;
+                    if (view.state.doc !== state.doc) { resolve([]); return; }
+                    var tree = cm.language.ensureSyntaxTree(state, len, 50);
+                    if (!tree) { setTimeout(slice, 0); return; }
+                    var out = [];
+                    tree.iterate({
+                        enter: function (node) {
+                            if (out.length >= 200) return false;
+                            if (!node.type.isError) return;
+                            var from = node.from, to = node.to;
+                            if (from === to) { to = Math.min(len, from + 1); }
+                            out.push({ from: from, to: to, severity: 'error', message: message });
+                        }
+                    });
+                    resolve(out);
+                })();
             });
-            return out;
         }, { delay: 500 });
     }
 
@@ -561,6 +586,17 @@
         var useVscode = (opts.keymap !== 'default');
         var lockHitAt = 0;
         var destroyed = false;
+        // Bumped by every linter built, by setLint() and by destroy(): a lint
+        // run still parsing for an older generation stops without a result.
+        var lintGen = 0;
+
+        function lintExtension() {
+            var gen = ++lintGen;
+            if (opts.lint === false) return [];
+            return _syntaxLinter(cm, lang, opts.labels, function () {
+                return !destroyed && gen === lintGen;
+            });
+        }
 
         inst.cm = cm;
         inst.host = host;
@@ -617,7 +653,7 @@
             keymapComp.of(keymapExtensions()),
             langComp.of(_languageExtension(cm, lang)),
             completionsComp.of(_completionExtensions(cm, lang)),
-            lintComp.of(opts.lint === false ? [] : _syntaxLinter(cm, lang, opts.labels)),
+            lintComp.of(lintExtension()),
             // Read-only keeps the content focusable: the cursor, the keyboard
             // and the search panel work, only changes are refused.
             readOnlyComp.of(S.EditorState.readOnly.of(!!opts.readOnly)),
@@ -713,7 +749,7 @@
             view.dispatch({ effects: [
                 langComp.reconfigure(_languageExtension(cm, lang)),
                 completionsComp.reconfigure(_completionExtensions(cm, lang)),
-                lintComp.reconfigure(opts.lint === false ? [] : _syntaxLinter(cm, lang, opts.labels))
+                lintComp.reconfigure(lintExtension())
             ] });
         };
         inst.refreshCompletions = function () {
@@ -723,7 +759,7 @@
         // plain text (a file whose type is chosen after it is opened).
         inst.setLint = function (on) {
             opts.lint = !!on;
-            view.dispatch({ effects: lintComp.reconfigure(opts.lint ? _syntaxLinter(cm, lang, opts.labels) : []) });
+            view.dispatch({ effects: lintComp.reconfigure(lintExtension()) });
         };
         inst.setReadOnly = function (on) {
             view.dispatch({ effects: readOnlyComp.reconfigure(S.EditorState.readOnly.of(!!on)) });
@@ -877,6 +913,7 @@
         inst.destroy = function () {
             if (destroyed) return;
             destroyed = true;
+            lintGen++;
             view.destroy();
         };
         inst.isDestroyed = function () { return destroyed; };
