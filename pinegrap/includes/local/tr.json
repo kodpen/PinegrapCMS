@@ -24717,6 +24717,7 @@
     "For a signed-in user, remembers whether pages show their editing tools.": "Oturum açmış kullanıcı için sayfaların düzenleme araçlarıyla gösterilip gösterilmeyeceğini hatırlar.",
     "Remembers the language you chose for the site.": "Site için seçtiğiniz dili hatırlar.",
     "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
+    "The answer cannot be posted there any more: the person who asked has left that channel or discussion, or it was archived or concluded.": "Cevap artık oraya yazılamıyor: soran kişi o kanaldan ya da tartışmadan ayrılmış ya da orası arşivlenmiş veya sonuçlandırılmış.",
     "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin.",
     "This movement is a step of {var:1}, which changes only by its own steps on its screen; it cannot be cancelled on its own.": "Bu hareket {var:1} kaydının bir adımı; çek ve senet yalnız kendi ekranındaki adımlarla değişir, hareket tek başına iptal edilemez.",
     "Open the cheque or note": "Çeki veya Senedi Aç",
