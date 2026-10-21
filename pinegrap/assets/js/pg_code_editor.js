@@ -243,6 +243,16 @@
     // error node at its start and the JSON parser reports an unexpected end,
     // which would mark every empty field red. A blank JSON document counts as
     // empty too.
+    //
+    // The tree is read only once it covers the whole document. The engine
+    // parses in the background no further than 100,000 characters past the
+    // visible part, and a tree cut there carries an error node at the cut:
+    // a valid line of a larger file was marked, and nothing after it was
+    // checked. The rest is parsed here in slices of 50 ms with a pause
+    // between them, so a 2 MB file does not freeze the page; the parse goes
+    // on from where the last slice stopped, and an edit reuses the tree
+    // outside the changed part. A result for a text that has changed since
+    // is dropped (by the lint extension as well).
     function _syntaxLinter(cm, lang, labels) {
         if (lang === 'json') {
             var json = cm.langJson.jsonParseLinter();
@@ -252,19 +262,26 @@
         }
         var message = (labels && labels.syntaxError) ? String(labels.syntaxError) : 'Syntax error';
         return cm.lint.linter(function (view) {
-            var out = [];
-            if (view.state.doc.length === 0) return out;
-            var tree = cm.language.syntaxTree(view.state);
-            tree.iterate({
-                enter: function (node) {
-                    if (!node.type.isError) return;
-                    var from = node.from, to = node.to;
-                    if (from === to) { to = Math.min(view.state.doc.length, from + 1); }
-                    out.push({ from: from, to: to, severity: 'error', message: message });
-                    if (out.length >= 200) return false;
-                }
+            var state = view.state, len = state.doc.length;
+            if (len === 0) return [];
+            return new Promise(function (resolve) {
+                (function slice() {
+                    if (view.state.doc !== state.doc) { resolve([]); return; }
+                    var tree = cm.language.ensureSyntaxTree(state, len, 50);
+                    if (!tree) { setTimeout(slice, 0); return; }
+                    var out = [];
+                    tree.iterate({
+                        enter: function (node) {
+                            if (out.length >= 200) return false;
+                            if (!node.type.isError) return;
+                            var from = node.from, to = node.to;
+                            if (from === to) { to = Math.min(len, from + 1); }
+                            out.push({ from: from, to: to, severity: 'error', message: message });
+                        }
+                    });
+                    resolve(out);
+                })();
             });
-            return out;
         }, { delay: 500 });
     }
 

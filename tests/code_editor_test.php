@@ -96,8 +96,8 @@ function test_code_editor_lint_skips_an_empty_document()
 
 	pg_assert_true($linter !== '', 'the linter is found');
 
-	$empty = strpos($linter, 'if (view.state.doc.length === 0) return out;');
-	$tree = strpos($linter, 'cm.language.syntaxTree(view.state)');
+	$empty = strpos($linter, 'if (len === 0) return [];');
+	$tree = strpos($linter, 'cm.language.ensureSyntaxTree(state, len, 50)');
 
 	pg_assert_true(($empty !== false) && ($tree !== false) && ($empty < $tree), 'an empty document is not parsed for errors');
 
@@ -134,4 +134,27 @@ function test_code_editor_ckeditor_source_dialog()
 	pg_assert_contains('keepKeys(instance.container || instance.host);', $dialog, 'its keys stop at the editor');
 	pg_assert_contains("if ((event.key === 'Enter') || (event.key === 'Tab') || event.defaultPrevented) {", $plugin, 'Enter, Tab and the keys the editor used');
 	pg_assert_contains('event.stopPropagation();', $plugin, 'do not reach the dialog');
+}
+
+// The linter reads the syntax tree only once it covers the whole document.
+// The engine parses no further than 100,000 characters past the visible
+// part on its own, and a tree cut there carries an error node at the cut: a
+// valid line of a larger file was marked and nothing after it was checked.
+// The rest is parsed in 50 ms slices with a pause between them, a result for
+// a text that changed meanwhile is dropped, and at most 200 errors are
+// marked.
+function test_code_editor_lint_reads_the_whole_document()
+{
+	$linter = code_editor_test_linter_source();
+
+	pg_assert_false(strpos($linter, 'cm.language.syntaxTree(') !== false, 'the tree as far as the background parse got is not read');
+	pg_assert_contains('var tree = cm.language.ensureSyntaxTree(state, len, 50);', $linter, 'parsed to the end of the document, 50 ms at a time');
+	pg_assert_contains('if (!tree) { setTimeout(slice, 0); return; }', $linter, 'the next slice after a pause');
+	pg_assert_contains('if (view.state.doc !== state.doc) { resolve([]); return; }', $linter, 'a text changed meanwhile is not parsed further');
+	pg_assert_contains('if (out.length >= 200) return false;', $linter, 'at most 200 errors');
+
+	$cap = strpos($linter, 'if (out.length >= 200) return false;');
+	$push = strpos($linter, 'out.push(');
+
+	pg_assert_true(($cap !== false) && ($push !== false) && ($cap < $push), 'the cap is checked before each node, not only after a push');
 }
