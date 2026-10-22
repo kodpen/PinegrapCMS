@@ -20,4 +20,4 @@ description: The "PHP Security Fixes" System Status check (PHP2Shell, CVE-2026-1
 - The base `php:8.3-fpm-alpine` carried 8.3.36 on 2026-10-22, so a rebuild has the fixes. Images published before that need the Docker publish workflow run again for their tag (docker-image-publishing.md).
 
 ## Tests
-- `tests/php_security_fixes_test.php`: the states, the build date parser, the Docker setting. PR: #1284
+- `tests/php_security_fixes_test.php`: the states, the build date parser, the Docker setting. PR: #1284, #1286
