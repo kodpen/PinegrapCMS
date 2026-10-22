@@ -31,4 +31,4 @@ description: Legal documents (pre-information form, distance sales contract): se
 - The order view widget (My Account, thank-you page) links each kept copy: docs/memory/commerce/order-view-legal-documents.md.
 
 ## What is left?
-- docs/memory/plans/checkout-legal-documents.md (KVKK consent, withdrawal timer).
+- plans/checkout-legal-documents.md (KVKK); order-withdrawal-deadline.md.

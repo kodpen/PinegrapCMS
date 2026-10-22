@@ -27,5 +27,6 @@ description: custom_form options live on the element, page_type is not the form 
 - **The canvas is the record**: `pg_cf_sync_page_form()` rewrites every column on the next design save, so `view_fields.php` / `edit_field.php` only show it (PR #1204). The list has the `^^name^^` variable under each name, no Create / Delete Selected / select column; `edit_field.php` shows one field read-only and refuses a POST. Both say so and link to the editor (`pg_page_edit_url_by_id()`).
 - Recognised by `pg_page_has_designer_form()` (`pg_form_page_sql()` and type not `custom form`), which sets `form_type = 'custom'`. The form-name table comes from `pg_form_settings_table($page_type, $form_type)` (`includes/fn/forms.php`), not from `page_type`: `standard_pages` does not exist, and both screens answered "Query failed.".
 - `add_field.php` / `delete_fields.php` still build the table from `page_type`; for a designer form they stop at that query before writing.
+- A rich-text flag (`wysiwyg`) stored on a field before is kept while the control has no `_cf.wysiwyg`; the Form Field panel switch changes it (`custom-form-rich-text.md`).
 
 Related: docs/memory/designer/custom-form-model.md

@@ -135,6 +135,8 @@ function ws_openapi_objects()
         'WorkspaceTaskNote'   => 'ws_api_task_note_schema',
         'WorkspaceClaudeRequest'  => 'ws_api_claude_request_schema',
         'WorkspaceChannelContext' => 'ws_api_channel_context_schema',
+        'WorkspaceContextThread'  => 'ws_api_context_thread_schema',
+        'WorkspaceContextMessage' => 'ws_api_context_message_schema',
         'WorkspaceChangeType'     => 'ws_api_claude_change_type_schema',
         'WorkspaceRecord'         => 'ws_api_claude_record_schema',
         'WorkspaceRecordLine'     => 'ws_api_claude_record_line_schema',

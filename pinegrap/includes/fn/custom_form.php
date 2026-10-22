@@ -710,6 +710,26 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
 }
 
 /**
+ * The `wysiwyg` (rich-text editor) column a designed field is written with.
+ *
+ * Only a text area can be rich. $wanted is what the control's `_cf.wysiwyg`
+ * says: true or false once the designer's switch has been used, and the
+ * control then decides. null means the control does not say - a tree drawn
+ * before the switch existed, or a flag set on the classic field screen - and
+ * the row keeps the flag it has ($stored, the existing form_fields row with
+ * its `type` and `wysiwyg`), so a designer save no longer switches it off.
+ */
+function pg_cf_rich_text_flag($wanted, $type, $stored = null)
+{
+    if ((string)$type !== 'text area') return 0;
+    if ($wanted === null) {
+        return (is_array($stored) && isset($stored['type']) && (string)$stored['type'] === 'text area'
+                && !empty($stored['wysiwyg'])) ? 1 : 0;
+    }
+    return $wanted ? 1 : 0;
+}
+
+/**
  * Write a page's form: `custom_form_pages` + `form_fields` + `form_field_options`.
  *
  * The list is AUTHORITATIVE - pg_cf_reconcile_page_form() derives it from the
@@ -766,7 +786,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $old_list = array();
     $old_title_id = 0;
     foreach ((array)db_items(
-        "SELECT id, name, label, rss_field FROM form_fields
+        "SELECT id, name, label, type, wysiwyg, rss_field FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
@@ -809,7 +829,9 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             'required'                          => !empty($f['required']) ? 1 : 0,
             'multiple'                          => !empty($f['multiple']) ? 1 : 0,
             'office_use_only'                   => !empty($f['office_use_only']) ? 1 : 0,
-            'wysiwyg'                           => !empty($f['wysiwyg']) ? 1 : 0,
+            'wysiwyg'                           => pg_cf_rich_text_flag(
+                                                       array_key_exists('wysiwyg', $f) ? $f['wysiwyg'] : false, $type,
+                                                       ($id > 0 && isset($existing[$id])) ? $existing[$id] : null),
             'rss_field'                         => (isset($f['rss_field']) && isset($valid_rss[(string)$f['rss_field']]))
                                                        ? (string)$f['rss_field'] : '',
             'contact_field'                     => (isset($f['contact_field']) && isset($valid_contact[(string)$f['contact_field']]))
@@ -1253,6 +1275,13 @@ function pg_cf_link_labels(&$tree)
  *
  * $lf is the page's liveform, used to re-fill what the visitor typed when the
  * submission came back with an error.
+ *
+ * A text area whose row is rich text (`wysiwyg`) gets `data-pg-rich-text`,
+ * and the page brings the editor for it (pg_cf_rich_text_inject()). Its
+ * `required` moves to `aria-required`, because the editor hides the control
+ * the browser would check; the server still refuses an empty answer. Its
+ * starting value goes through pg_sanitize_rich_text(), because the editor
+ * reads that text as HTML and a pre-fill link can put anything there.
  */
 function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0, $staff = false)
 {
@@ -1299,6 +1328,23 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             $array_post = ($tag_lc === 'select' && !empty($row['multiple']))
                        || ($input_type === 'checkbox' && !empty($row['multiple']));
             $set_attr($tree['props']['_attrs'], 'name', $field_id . ($array_post ? '[]' : ''));
+
+            // A rich-text text area is marked for the page, which loads one
+            // editor for every marked control once the page is drawn in
+            // (pg_cf_rich_text_inject()). The editor hides the text area and
+            // copies its text back only on submit (TinyMCE) or removes
+            // `required` itself (CKEditor), so a browser check on the hidden
+            // control would block every submit: `required` becomes
+            // aria-required and the server's required check stands.
+            $cf_rich = ($tag_lc === 'textarea') && !empty($row['wysiwyg'])
+                    && isset($row['type']) && (string)$row['type'] === 'text area';
+            if ($cf_rich) {
+                $set_attr($tree['props']['_attrs'], 'data-pg-rich-text', '');
+                if (array_key_exists('required', $attrs)) {
+                    $set_attr($tree['props']['_attrs'], 'required', null);
+                    $set_attr($tree['props']['_attrs'], 'aria-required', 'true');
+                }
+            }
 
             // `required` on every box of a checkbox GROUP would make the
             // browser demand all of them ticked. The server checks that one
@@ -1354,7 +1400,12 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             // folder name, the field default - in that order.
             $stored = pg_cf_field_initial_value($row, $lf, $cf_folder_id);
             if ($tag_lc === 'textarea') {
-                if (!is_array($stored) && $stored !== '') $tree['props']['text'] = (string)$stored;
+                // The editor parses a rich text area's text as HTML, and the
+                // text can come from the address (?value_<id>): it is filtered
+                // the way the stored answer will be.
+                if (!is_array($stored) && $stored !== '') {
+                    $tree['props']['text'] = $cf_rich ? pg_sanitize_rich_text((string)$stored) : (string)$stored;
+                }
             } elseif ($input_type === 'checkbox' || $input_type === 'radio') {
                 $own = isset($attrs['value']) ? (string)$attrs['value'] : '';
                 $hit = is_array($stored) ? in_array($own, $stored, true) : ((string)$stored === $own && $own !== '');
@@ -1453,6 +1504,74 @@ function pg_cf_validation_script()
          . 'form.classList.add("was-validated");},false);});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';
+}
+
+/**
+ * The ids of the rich-text text areas in a drawn page, in document order,
+ * each once: the `<textarea>` tags pg_cf_apply_field_bindings() marked with
+ * `data-pg-rich-text`.
+ *
+ * get_wysiwyg_editor_code() writes every id into a script as it is, so only
+ * an id of letters, digits and `_ : . -` that starts with a letter is kept;
+ * a text area with any other id gets no editor and stays a plain text area.
+ *
+ * Both editors attach to the first element in the document with the id, so
+ * an id that more than one element of the page carries is left out too: the
+ * editor would otherwise take over another control (a plain text area whose
+ * starting value never went through pg_sanitize_rich_text()).
+ */
+function pg_cf_rich_text_ids($html)
+{
+    $ids = array();
+    $html = (string)$html;
+    if (strpos($html, 'data-pg-rich-text') === false) return $ids;
+    if (!preg_match_all('~<textarea\b[^>]*>~i', $html, $tags)) return $ids;
+    foreach ($tags[0] as $tag) {
+        if (!preg_match('~\sdata-pg-rich-text(?:\s*=|[\s>/])~i', $tag)) continue;
+        // The leading space keeps data-id and the like out.
+        if (!preg_match('~\sid\s*=\s*"([^"]*)"~i', $tag, $m)) continue;
+        $id = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (!preg_match('~^[A-Za-z][A-Za-z0-9_:.\-]*$~', $id)) continue;
+        if (in_array($id, $ids, true)) continue;
+        if (pg_cf_id_count($html, $id) + ($m[1] !== $id ? pg_cf_id_count($html, $m[1]) : 0) > 1) continue;
+        $ids[] = $id;
+    }
+    return $ids;
+}
+
+/**
+ * How many tags in $html carry the id attribute $id, quoted either way or
+ * bare. The leading space keeps `data-id` and the like out, and `for=` never
+ * matches; the value compares case-sensitively, as getElementById() does.
+ */
+function pg_cf_id_count($html, $id)
+{
+    $q = preg_quote((string)$id, '~');
+    return (int)preg_match_all('~\s(?i:id)\s*=\s*(?:"' . $q . '"|\'' . $q . '\'|' . $q . '(?=[\s/>]))~', (string)$html);
+}
+
+/**
+ * Bring the rich-text editor to a drawn page that has rich-text text areas.
+ *
+ * Asked once the whole page is drawn in (get_page_content.php), so one editor
+ * serves every designed form on the page: two forms, and a form inside a
+ * shared component, alike. The editor is the site's own setting
+ * (`page_editor_version`: CKEditor, or TinyMCE for "previous"), the one the
+ * classic form pages load. The code goes before the last `</body>`.
+ */
+function pg_cf_rich_text_inject($content)
+{
+    $content = (string)$content;
+    if (strpos($content, 'data-pg-rich-text') === false) return $content;
+    $ids = pg_cf_rich_text_ids($content);
+    if (!$ids) return $content;
+
+    $code = get_wysiwyg_editor_code($ids) . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $code, $body, 0) : $content . $code;
 }
 
 /**
@@ -1616,7 +1735,9 @@ function _pg_cf_type_by_input()
     );
 }
 
-// The `_cf` record a control carries, with every key present.
+// The `_cf` record a control carries, with every key present. `wysiwyg` is
+// three-state: null when the control does not say (the field row keeps the
+// flag it has), otherwise true or false.
 function _pg_cf_node_record($node)
 {
     $cf = (is_array($node) && isset($node['props']['_cf']) && is_array($node['props']['_cf']))
@@ -1631,6 +1752,7 @@ function _pg_cf_node_record($node)
         'upload_folder_id'   => (int)(isset($cf['upload_folder_id']) ? $cf['upload_folder_id'] : 0),
         'quiz_question'      => !empty($cf['quiz_question']),
         'quiz_answer'        => isset($cf['quiz_answer']) ? (string)$cf['quiz_answer'] : '',
+        'wysiwyg'            => array_key_exists('wysiwyg', $cf) ? !empty($cf['wysiwyg']) : null,
     );
 }
 
@@ -1649,6 +1771,10 @@ function _pg_cf_node_record($node)
  *
  * $page_id selects which row id the control's `_cf.ids` map carries for this
  * page; a shared widget drawn on two pages has a row on each.
+ *
+ * `wysiwyg` (rich text) is read for a text area only and stays null when
+ * the control's `_cf` has no such key: the writer then keeps the row's own
+ * flag (pg_cf_rich_text_flag()). The editor's twin is _cfFieldsOf().
  */
 function _pg_cf_controls($widget_tree, $page_id = 0)
 {
@@ -1752,7 +1878,7 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'required'        => array_key_exists('required', $a),
                         'multiple'        => ($tag === 'select' && array_key_exists('multiple', $a)) || $it === 'checkbox',
                         'office_use_only' => $cf['office_use_only'],
-                        'wysiwyg'         => false,
+                        'wysiwyg'         => ($tag === 'textarea') ? $cf['wysiwyg'] : false,
                         'rss_field'       => $rss,
                         'contact_field'   => $cf['contact_field'],
                         'default_value'   => $default,
@@ -2015,7 +2141,8 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
  *
  * 'blog': the posts of the sample blog (the form the sample data names
  * BLOG) become posts of this form - title, a short summary, the body as
- * plain text with its paragraphs, and a cover: the post's own picture when
+ * plain text with its paragraphs (as filtered HTML when the form's body is a
+ * rich-text text area), and a cover: the post's own picture when
  * it has one in the file manager, otherwise a sample photo. The newest six,
  * dated over the last weeks and signed by the operator who published the
  * page, so the blog looks alive on the first visit and every post can be
@@ -2038,7 +2165,7 @@ function pg_cf_seed_sample_records($page_id, $source, $user_id)
 
     $fields_of = function ($pid) {
         $out = array();
-        foreach ((array)db_items("SELECT id, name, type FROM form_fields WHERE page_id = '" . (int)$pid . "'") as $f) {
+        foreach ((array)db_items("SELECT id, name, type, wysiwyg FROM form_fields WHERE page_id = '" . (int)$pid . "'") as $f) {
             $out[mb_strtolower((string)$f['name'], 'UTF-8')] = $f;
         }
         return $out;
@@ -2087,7 +2214,8 @@ function pg_cf_seed_sample_records($page_id, $source, $user_id)
         $title = trim($plain(isset($values['title']) ? $values['title'] : ''));
         if ($title === '') continue;
         $summary = $plain(isset($values['summary']) && trim(strip_tags($values['summary'])) !== '' ? $values['summary'] : (isset($values['description']) ? $values['description'] : ''));
-        $body = $plain(isset($values['details']) ? $values['details'] : (isset($values['content']) ? $values['content'] : ''));
+        $body_html = isset($values['details']) ? $values['details'] : (isset($values['content']) ? $values['content'] : '');
+        $body = $plain($body_html);
 
         // The cover: a picture of the post's media that is in the file
         // manager ("{path}name.jpg" in the sample data), else a sample photo.
@@ -2107,20 +2235,52 @@ function pg_cf_seed_sample_records($page_id, $source, $user_id)
         $form_id = (int)mysqli_insert_id(db::$con);
         if ($form_id <= 0) continue;
 
-        $put = function ($name, $data, $file_id = 0) use ($dst, $form_id) {
+        $put = function ($name, $data, $file_id = 0, $type = 'standard') use ($dst, $form_id) {
             if (!isset($dst[$name])) return;
             db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
-                VALUES ('$form_id', '" . (int)$dst[$name]['id'] . "', '" . (int)$file_id . "', '" . e($data) . "', '" . e($dst[$name]['name']) . "', 'standard')");
+                VALUES ('$form_id', '" . (int)$dst[$name]['id'] . "', '" . (int)$file_id . "', '" . e($data) . "', '" . e($dst[$name]['name']) . "', '" . e($type) . "')");
         };
         $put('title', $title);
         $put('summary', $short($summary, 220));
-        $put('content', $body);
+        // A rich-text body keeps the post's own markup, filtered like an
+        // editor's answer; a plain one gets the text with its paragraphs.
+        if (isset($dst['content']) && (string)$dst['content']['type'] === 'text area' && !empty($dst['content']['wysiwyg'])) {
+            $put('content', prepare_rich_text_editor_content_for_input(pg_cf_seed_rich_value($body_html)), 0, 'html');
+        } else {
+            $put('content', $body);
+        }
         $put('cover_image', $cover_data, $cover_file);
 
         if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
         $copied++;
     }
     return $copied;
+}
+
+/**
+ * A sample value for a rich-text text area, as the HTML its editor would have
+ * stored: text without block markup gets a paragraph per blank-line-separated
+ * part and a <br> per single line break (its characters escaped); markup is
+ * kept. Either way it is filtered like a visitor's answer.
+ *
+ * The {path} placeholder is the store's business
+ * (prepare_rich_text_editor_content_for_input(), which needs the site path),
+ * so the caller adds it when it writes the row.
+ */
+function pg_cf_seed_rich_value($value)
+{
+    $value = trim(str_replace(array("\r\n", "\r"), "\n", (string)$value));
+    if ($value === '') return '';
+    if (!preg_match('~<(p|h[1-6]|ul|ol|blockquote|div|table|pre|figure|hr|br)\b~i', $value)) {
+        $html = '';
+        foreach (preg_split('~\n\s*\n~', $value) as $para) {
+            $para = trim($para);
+            if ($para === '') continue;
+            $html .= '<p>' . nl2br(h($para), false) . '</p>';
+        }
+        $value = $html;
+    }
+    return pg_sanitize_rich_text($value);
 }
 
 // The records a template hands pg_cf_seed_sample_records(), written into the
@@ -2132,7 +2292,7 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
     if ((int)db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$page_id'") > 0) return 0;
 
     $fields = array();
-    foreach ((array)db_items("SELECT id, name FROM form_fields WHERE page_id = '$page_id'") as $f) {
+    foreach ((array)db_items("SELECT id, name, type, wysiwyg FROM form_fields WHERE page_id = '$page_id'") as $f) {
         $fields[mb_strtolower((string)$f['name'], 'UTF-8')] = $f;
     }
     if (!$fields) return 0;
@@ -2151,10 +2311,15 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
         if ($form_id <= 0) continue;
         // One row per value: a check box group keeps each ticked answer in
         // a row of its own, which is what its filters and the edit screen read.
+        // A rich-text text area holds HTML, stored the way its editor's
+        // answer is (type html): the record page then prints paragraphs and
+        // the RSS feed reads text, not tags.
         foreach ($values as $key => $list) {
+            $rich = (string)$fields[$key]['type'] === 'text area' && !empty($fields[$key]['wysiwyg']);
             foreach ($list as $value) {
+                if ($rich) $value = prepare_rich_text_editor_content_for_input(pg_cf_seed_rich_value($value));
                 db("INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
-                    VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', 'standard')");
+                    VALUES ('$form_id', '" . (int)$fields[$key]['id'] . "', '0', '" . e($value) . "', '" . e($fields[$key]['name']) . "', '" . ($rich ? 'html' : 'standard') . "')");
             }
         }
         if ($pretty && function_exists('update_submitted_form_address_name')) update_submitted_form_address_name($form_id);
