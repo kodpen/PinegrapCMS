@@ -13879,10 +13879,9 @@ const StyleDesigner = (function () {
                             { name: 'data-bs-slide-to', value: String(n) },
                             { name: 'aria-label',      value: _sdT('Slide {var}', (n + 1)) }
                         ];
-                        if (active) {
-                            attrs.push({ name: 'class',        value: 'active' });
-                            attrs.push({ name: 'aria-current', value: 'true' });
-                        }
+                        // The class comes from cssClass; a class in _attrs as well is
+                        // written as a second, duplicate class attribute.
+                        if (active) attrs.push({ name: 'aria-current', value: 'true' });
                         return createNode('semantic', { tag: 'button', cssClass: active ? 'active' : '', customName: _sdT('Indicator {var}', (n + 1)), _attrs: attrs });
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('Testimonial (Carousel)') }, [
@@ -14461,7 +14460,9 @@ const StyleDesigner = (function () {
                     };
                     var _tlLeader = function (n, seed, badge, name, title, bio, quote) {
                         return createNode('col', { xs: '12', sm: '', md: '', lg: '6', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Leader {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow bg-body-tertiary h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
+                            // On the body colour: the palette makes text-primary readable
+                            // against it only (on body-tertiary it fell to 3.9:1 in dark mode).
+                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'row g-0 h-100', customName: _sdT('Leader Row') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-5', customName: _sdT('Leader Image Col') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/500/600', alt: name, cssClass: 'img-fluid h-100 w-100 object-fit-cover'
@@ -14471,7 +14472,7 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Leader Body') }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: badge, cssClass: 'badge text-bg-primary mb-2' }),
                                             createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-bold mb-1' }),
-                                            createNode('content', { contentType: 'paragraph', text: title, cssClass: 'text-primary-emphasis mb-3' }),
+                                            createNode('content', { contentType: 'paragraph', text: title, cssClass: 'text-primary mb-3' }),
                                             createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary mb-3' }),
                                             createNode('semantic', { tag: 'blockquote', cssClass: 'border-start border-primary border-3 ps-3 fst-italic mb-3', customName: _sdT('Leader Quote') }, [
                                                 createNode('content', { contentType: 'paragraph', text: quote, cssClass: 'mb-0' })
@@ -18485,7 +18486,7 @@ const StyleDesigner = (function () {
                     var _nlId = 'nav_' + Math.random().toString(36).substr(2, 6);
                     return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom shadow-sm', customName: 'Navbar' }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler border-0', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nlId }, { name: 'aria-controls', value: _nlId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18511,7 +18512,7 @@ const StyleDesigner = (function () {
                     return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md bg-body border-bottom', customName: 'Navbar',
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nsId }, { name: 'aria-controls', value: _nsId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18557,7 +18558,7 @@ const StyleDesigner = (function () {
                     return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom', customName: 'Navbar',
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _ndId }, { name: 'aria-controls', value: _ndId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18580,7 +18581,7 @@ const StyleDesigner = (function () {
                 // Footer: minimal — copyright + social icons
                 if (ctype === 'footer-minimal') {
                     var _socialIcon = function(icon, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', href: href || '#',
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary',
                             _attrs: [{ name: 'href', value: href || '#' }, { name: 'aria-label', value: icon.replace('bi-', '') }], customName: _sdT('{var} Link', icon.replace('bi-', '')) }, [
                             createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'fs-5' })
                         ]);
