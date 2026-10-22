@@ -3253,6 +3253,16 @@ if (function_exists('pg_version_assets')) {
 }
 
 echo $content;
+// A record a designed record page showed (form_item_view) counts one view on
+// that page, as the legacy form item view counts - but not for crawlers,
+// scripts or other Pinegrap installations, and only for a GET. Outside the
+// visitor tracking switch, like the legacy counter. Background renders (the
+// search index, the SEO pass, the canvas preview, e-mails) never reach this
+// point, so they never count.
+$pg_record_view = pg_sw_record_view_seen();
+if ($pg_record_view && pg_sw_should_count_record_view($pg_record_view, isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '', pg_request_is_automated())) {
+	pg_sfv_count_view($pg_record_view['form_id'], $pg_record_view['page_id']);
+}
 // Remember which page this was, for the performance monitor. It runs at
 // shutdown, after this file has finished, and binds its measurement to the
 // record the SEO score keeps. Outside the visitor tracking switch on purpose:
@@ -3287,37 +3297,9 @@ if ($access_control_type == 'private')
 }
 function init_tracking()
 {
-	// Skip visitor tracking for bots (allowed or unknown).
-	if (defined('IS_BOT') && IS_BOT) {
-		return;
-	}
-
-	// The firewall marks bots only when it runs: with it switched off, on an
-	// allow-listed address or on an excluded path it never classifies the
-	// request, and every crawler page was written as a visit. The same user
-	// agent classes it skips are skipped here; nothing is blocked or logged.
-	if (!defined('IS_BOT') && function_exists('waf_classify_bot')) {
-		$tracking_bot = waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
-
-		if ($tracking_bot['class'] !== 'human') {
-			return;
-		}
-	}
-
-	// Skip other Pinegrap installations calling in — licence checks, update
-	// checks, and anything else server-to-server.
-	//
-	// These do not reach the IS_BOT branch above: they are classified as
-	// ordinary clients on purpose, so that they are never blocked, and a
-	// licence endpoint is usually excluded from the firewall entirely, which
-	// skips classification altogether. Without this they would be counted as
-	// human visitors, and a site that serves fifty installations would see
-	// thousands of daily "visitors" that are all itself.
-	//
-	// Deliberately here rather than via IS_BOT: that constant also exempts a
-	// request from rate limiting, and nothing that is merely claimed in a
-	// user agent should buy that.
-	if (function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client()) {
+	// No visitor row for crawlers, scripts, uptime monitors or other Pinegrap
+	// installations: the rule the record view counters share (seo.php).
+	if (pg_request_is_automated()) {
 		return;
 	}
 

@@ -9868,6 +9868,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $new_file_id = (int) mysqli_insert_id(db::$con);
 
+            pg_audit_record('create', 'files', $new_file_id);
+
             log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $zip_name)), $_SESSION['sessionusername']);
 
             $message = lang(array('string' => '{var:1} files were compressed', 'vars' => $added));
@@ -10307,6 +10309,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $style_skipped = count($allowed) - count($style_targets);
             }
 
+            $audit_before = (count($allowed) > 0) ? pg_audit_fetch_many('page', $allowed) : array();
+
             if ((count($assignments) > 0) && (count($allowed) > 0)) {
                 db(
                     "UPDATE page
@@ -10328,6 +10332,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         page_user = '" . USER_ID . "'
                     WHERE page_id IN (" . implode(',', $style_targets) . ")");
             }
+
+            pg_audit_record_many('update', 'page', $audit_before);
 
             if (count($allowed) > 0) {
                 log_activity(lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);

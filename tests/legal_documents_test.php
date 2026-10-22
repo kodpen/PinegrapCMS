@@ -280,6 +280,26 @@ function test_legal_documents_cart_order_discount_taxes_per_rate()
 	pg_assert_same(228 - 100 + 18, $order['total'], 'the checkout total');
 }
 
+// Where the shipping holds tax on the order's invoice the documents show it
+// as the checkout charges it: 9.99 that would bring 39.95 with 7.99 of tax
+// to 57.93, which no amount at 20% reaches, is 9.98.
+function test_legal_documents_cart_order_settles_the_shipping()
+{
+	$lines = array(array('line_total' => 3995, 'tax' => 799, 'rate' => '20.000'));
+	$ship_tos = array(array('cost' => 999));
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('settle_rates' => true));
+	pg_assert_same(998, $order['shipping']);
+	pg_assert_same(5792, $order['total']);
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('total' => 5792, 'settle_rates' => true));
+	pg_assert_same(998, $order['shipping'], 'the total the checkout showed');
+	pg_assert_same(0, $order['discount'], 'and no discount made up for it');
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array());
+	pg_assert_same(999, $order['shipping'], 'without the rule');
+}
+
 // Typed billing values replace the row's; empty ones and the country code do not.
 function test_legal_documents_cart_order_billing()
 {
