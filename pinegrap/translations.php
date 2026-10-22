@@ -352,7 +352,11 @@ foreach ($pages as $row) {
     // depends on everything drawn on it, so the answer it gave is shown
     // beside the counter.
     if ($index_watch) {
-        switch (pg_tr_screen_verdict_state($verdicts, $pid)) {
+        switch (pg_tr_screen_verdict_state($verdicts, $pid, (int) $row['noindex'] === 1)) {
+            case 'own_noindex':
+                $verdict_icon = 'bi-slash-circle opacity-75';
+                $verdict_label = lang('Kept out of search results by the page\'s own setting');
+                break;
             case 'indexed':
                 $verdict_icon = 'bi-search';
                 $verdict_label = lang('In search results');
@@ -589,11 +593,16 @@ if ($language_row) {
 $output_index_note = '';
 
 if ($index_watch && $selected_page) {
-    $index_state = pg_tr_screen_verdict_state($verdicts, $page_id);
+    $index_state = pg_tr_screen_verdict_state($verdicts, $page_id, (int) $selected_page['noindex'] === 1);
     $index_language = pg_tr_language_label($language);
     $index_why = ($filter !== 'blocking') ? ' <a href="' . h($url(array('filter' => 'blocking', 'p' => 0))) . '">' . lang('Why?') . '</a>' : '';
 
-    if ($index_state === 'noindex') {
+    // The page's own setting writes noindex whatever its translations, so
+    // no translation is named as the reason and no "Why?" is offered.
+    if ($index_state === 'own_noindex') {
+        $output_index_note = '<div class="small text-body-secondary py-2 border-bottom"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Kept out of search results in {var:1} by the page\'s own setting ("Close to Search Engines" in the page properties), whatever its translations.', 'vars' => array($index_language))));
+    } elseif ($index_state === 'noindex') {
         $output_index_note = '<div class="alert alert-warning py-2 small mt-3 mb-2"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>'
             . h(lang(array('string' => 'Kept out of search results in {var:1}: when the page was last drawn, some of the texts on it had no approved translation.', 'vars' => array($index_language)))) . $index_why;
     } elseif ($index_state === 'indexed') {
@@ -614,7 +623,7 @@ if ($index_watch && $selected_page) {
             }
 
             $output_index_note .= '</ul>';
-        } else {
+        } elseif ($index_state !== 'own_noindex') {
             $output_index_note .= '<div class="mt-2">' . lang('None of the texts last read from this page is pending. Run "Update this page" so they are read again, then open the page once in this language.') . '</div>';
         }
 

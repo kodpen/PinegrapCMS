@@ -25329,5 +25329,8 @@
     "The selected texts are kept as they are written in the source language: the source text becomes their translation, approved by hand. Meant for names, codes and words that read the same in both languages. A machine translation among them is replaced; a text used in other places too is approved there as well.": "Seçili metinler kaynak dildeki yazılışıyla bırakılır: kaynak metin, elle onaylanmış çevirileri olur. İki dilde aynı okunan adlar, kodlar ve sözcükler içindir. Aralarındaki makine çevirisinin yerine geçer; başka yerlerde de kullanılan bir metin oralarda da onaylanır.",
     "texts were approved as written in the source language ({var:1}, {var:2} text(s))": "metinler kaynak dildeki yazılışıyla onaylandı ({var:1}, {var:2} metin)",
     "{var:1} text(s) approved as written in the source language; {var:2} reviewed translation(s) left as they were.": "{var:1} metin kaynak dildeki yazılışıyla onaylandı; gözden geçirilmiş {var:2} çeviri olduğu gibi bırakıldı.",
-    "{var:1} text(s) approved as written in the source language.": "{var:1} metin kaynak dildeki yazılışıyla onaylandı."
+    "{var:1} text(s) approved as written in the source language.": "{var:1} metin kaynak dildeki yazılışıyla onaylandı.",
+    "Kept out of search results by the page's own setting": "Sayfanın kendi ayarıyla arama sonuçlarının dışında",
+    "Kept out of search results in {var:1} by the page's own setting (\"Close to Search Engines\" in the page properties), whatever its translations.": "Çevirileri ne olursa olsun, sayfanın kendi ayarıyla (sayfa özelliklerinde \"Arama Motorlarına Kapat\") {var:1} dilinde arama sonuçlarının dışında.",
+    "{var:1} text(s) were skipped because their source contains markup that cannot be kept as written; translate them by hand.": "{var:1} metin atlandı: kaynakları yazıldığı gibi korunamayan işaretler içeriyor; bunları elle çevirin."
 }

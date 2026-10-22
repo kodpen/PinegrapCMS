@@ -381,9 +381,17 @@ if (!$translations_is_import && !$translations_is_export) {
                 log_activity(lang(array('string' => 'texts were approved as written in the source language ({var:1}, {var:2} text(s))', 'vars' => array($language, $accepted['written']))), $_SESSION['sessionusername']);
             }
 
-            translations_respond(array('status' => 'success', 'count' => $accepted['written'], 'kept' => $accepted['kept'], 'message' => ($accepted['kept'] > 0)
+            $accept_message = ($accepted['kept'] > 0)
                 ? lang(array('string' => '{var:1} text(s) approved as written in the source language; {var:2} reviewed translation(s) left as they were.', 'vars' => array($accepted['written'], $accepted['kept'])))
-                : lang(array('string' => '{var:1} text(s) approved as written in the source language.', 'vars' => array($accepted['written'])))));
+                : lang(array('string' => '{var:1} text(s) approved as written in the source language.', 'vars' => array($accepted['written'])));
+
+            // A source the incoming-text sanitizer would alter (a plain text
+            // with "<" in it) is not written shortened; the operator is told.
+            if ($accepted['changed'] > 0) {
+                $accept_message .= ' ' . lang(array('string' => '{var:1} text(s) were skipped because their source contains markup that cannot be kept as written; translate them by hand.', 'vars' => array($accepted['changed'])));
+            }
+
+            translations_respond(array('status' => 'success', 'count' => $accepted['written'], 'kept' => $accepted['kept'], 'changed' => $accepted['changed'], 'message' => $accept_message));
             break;
 
         // The translations of the scope deleted, so the next update sends

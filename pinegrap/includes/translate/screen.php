@@ -25,13 +25,23 @@ define('PG_TR_ACCEPT_SOURCE_LIMIT', 500);
  * What a page answered the search engines the last time it was drawn in a
  * language, as the page list shows it.
  *
- * @param array $verdicts page id => 0|1 (pg_tr_page_verdicts())
+ * The stored answer is made from the page's texts only; a page its own SEO
+ * setting (page.noindex) closes writes noindex in every language anyway, so
+ * that state comes first and the stored answer is not read.
+ *
+ * @param array $verdicts     page id => 0|1 (pg_tr_page_verdicts())
  * @param int   $page_id
+ * @param bool  $page_noindex the page's own noindex setting
  * @return string indexed | noindex | unknown (not drawn since the
- *                translations last changed)
+ *                translations last changed) | own_noindex (closed by the
+ *                page's own setting)
  */
-function pg_tr_screen_verdict_state($verdicts, $page_id)
+function pg_tr_screen_verdict_state($verdicts, $page_id, $page_noindex = false)
 {
+    if ($page_noindex) {
+        return 'own_noindex';
+    }
+
     $page_id = (int) $page_id;
 
     if (!is_array($verdicts) || !isset($verdicts[$page_id])) {
@@ -184,8 +194,9 @@ function pg_tr_screen_reasons($language, $page_id)
 }
 
 /**
- * For each of the listed texts, the first place of the page it is drawn
- * from, in the order pg_tr_screen_reason_lines() puts the places.
+ * For each of the listed texts, one place of the page it is drawn from: the
+ * page itself first, then its title and description, then the others by
+ * kind and id.
  *
  * @param array $string_ids
  * @param int   $page_id
@@ -255,6 +266,29 @@ function pg_tr_screen_string_ids($value, $limit = PG_TR_ACCEPT_SOURCE_LIMIT)
 }
 
 /**
+ * The source text "keep as in the source" writes as the translation: the
+ * sanitized source, only when sanitizing leaves it as it is. A plain text is
+ * stored decoded and escaped on output, so the sanitizer's strip_tags() and
+ * entity decoding would shorten one like "Size <M>" to "Size"; such a source
+ * gets '' and is not written.
+ *
+ * @param string $source the stored source text
+ * @param string $format text | inline
+ * @return string the text to write, or '' when it would change or is empty
+ */
+function pg_tr_accept_source_text($source, $format)
+{
+    $format = ($format === 'inline') ? 'inline' : 'text';
+    $text = pg_tr_sanitize_incoming((string) $source, $format);
+
+    if (($text === '') || ($text !== pg_tr_normalize((string) $source, $format))) {
+        return '';
+    }
+
+    return $text;
+}
+
+/**
  * Keeps the selected texts as they are written in the source language: the
  * source text becomes the translation, approved by hand - a name, a code, a
  * word that reads the same in both languages. A text that already has a
@@ -263,11 +297,13 @@ function pg_tr_screen_string_ids($value, $limit = PG_TR_ACCEPT_SOURCE_LIMIT)
  * @param string $language
  * @param array  $string_ids
  * @param int    $user_id
- * @return array('written' => int, 'kept' => int) kept: reviewed ones left alone
+ * @return array('written' => int, 'kept' => int, 'changed' => int) kept:
+ *         reviewed ones left alone; changed: sources the incoming-text
+ *         sanitizer would alter, not written (pg_tr_accept_source_text())
  */
 function pg_tr_accept_source($language, $string_ids, $user_id = 0)
 {
-    $result = array('written' => 0, 'kept' => 0);
+    $result = array('written' => 0, 'kept' => 0, 'changed' => 0);
     $string_ids = array_values(array_filter(array_map('intval', (array) $string_ids)));
 
     if (!$string_ids) {
@@ -285,9 +321,13 @@ function pg_tr_accept_source($language, $string_ids, $user_id = 0)
             continue;
         }
 
-        $text = pg_tr_sanitize_incoming((string) $row['source_text'], (string) $row['format']);
+        $text = pg_tr_accept_source_text((string) $row['source_text'], (string) $row['format']);
 
-        if (trim($text) === '') {
+        if ($text === '') {
+            if (trim((string) $row['source_text']) !== '') {
+                $result['changed']++;
+            }
+
             continue;
         }
 

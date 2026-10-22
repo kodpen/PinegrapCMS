@@ -52,6 +52,6 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-modal-navigation.md: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, preloader curtain, nested modals, return URL, notice handoff.
 - sortable-init-pitfall.md: Pitfall installing jQuery UI .sortable() on a panel screen: backend.src.js overrides options of every ui-sortable; init in $(function(){}) with all options.
 - step-rail.md: Numbered step rail for top-to-bottom screens (edit_offer.php): .pg-step classes, Bootstrap-only rule for everything else, d-none instead of hidden.
-- translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
+- translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope (all, group:catalog / forms / ui, page:ID) is labelled
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, panels, z-index, multiselect pitfalls.

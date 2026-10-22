@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/store.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/screen.php');
 
 // A stored answer of 1 or 0; no row means the page was not drawn since.
@@ -30,6 +31,35 @@ function test_translations_screen_verdict_state()
 	pg_assert_same('unknown', pg_tr_screen_verdict_state($verdicts, 9), 'not drawn since');
 	pg_assert_same('noindex', pg_tr_screen_verdict_state($verdicts, '7'), 'a page id as a string');
 	pg_assert_same('unknown', pg_tr_screen_verdict_state(null, 4), 'no answers read');
+	pg_assert_same('indexed', pg_tr_screen_verdict_state($verdicts, 4, false), 'own setting open');
+}
+
+// A page its own SEO setting closes is kept out in every language, whatever
+// its translations: the stored answer is not read.
+function test_translations_screen_verdict_state_own_noindex()
+{
+	$verdicts = array(4 => 1, 7 => 0);
+
+	pg_assert_same('own_noindex', pg_tr_screen_verdict_state($verdicts, 4, true), 'stored 1');
+	pg_assert_same('own_noindex', pg_tr_screen_verdict_state($verdicts, 7, true), 'stored 0');
+	pg_assert_same('own_noindex', pg_tr_screen_verdict_state($verdicts, 9, true), 'no row');
+	pg_assert_same('own_noindex', pg_tr_screen_verdict_state(null, 4, true), 'no answers read');
+}
+
+// "Keep as in the source" writes the source only when the incoming-text
+// sanitizer would keep it as it is; otherwise nothing ('').
+function test_translations_screen_accept_source_text()
+{
+	pg_assert_same('Plain name', pg_tr_accept_source_text('Plain name', 'text'), 'a plain name');
+	pg_assert_same('Plain name', pg_tr_accept_source_text('  Plain   name ', 'text'), 'whitespace is normalised, not a change');
+	pg_assert_same('', pg_tr_accept_source_text('Size <M>', 'text'), 'angle brackets would be stripped');
+	pg_assert_same('', pg_tr_accept_source_text('Ali <ali@example.com>', 'text'), 'an address in brackets');
+	pg_assert_same('', pg_tr_accept_source_text('A &amp; B', 'text'), 'an entity would be decoded');
+	pg_assert_same('', pg_tr_accept_source_text('Note <!--pg-x-->', 'text'), 'a pipeline marker would be defused');
+	pg_assert_same('A & B', pg_tr_accept_source_text('A & B', 'text'), 'a bare ampersand stays');
+	pg_assert_same('<strong>Ok</strong>', pg_tr_accept_source_text('<strong>Ok</strong>', 'inline'), 'inline markup the editor allows');
+	pg_assert_same('Fish & chips <em>now</em>', pg_tr_accept_source_text('Fish & chips <em>now</em>', 'inline'), 'an inline source in its stored form');
+	pg_assert_same('', pg_tr_accept_source_text('   ', 'text'), 'an empty source');
 }
 
 // The page itself first, its title and description next, then what it
