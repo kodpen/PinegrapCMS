@@ -58471,6 +58471,11 @@ const StyleDesigner = (function () {
                 function hasSubmit(n) {
                     if (n.type === 'content' && n.props.contentType === 'button') return true;
                     if (n.type === 'semantic' && n.props.tag === 'button') return true;
+                    // A Button component submits only when it is drawn as a
+                    // <button> or <input> of type submit; by default it is a link.
+                    if (n.type === 'component' && n.props.componentType === 'btn' &&
+                        (n.props.btnElement === 'button' || n.props.btnElement === 'input') &&
+                        n.props.btnType === 'submit') return true;
                     if (n.children) return n.children.some(hasSubmit);
                     return false;
                 }
