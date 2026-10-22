@@ -338,7 +338,8 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * @param array $lines     each with line_total and tax (minor units) and rate (the line's tax rate,
  *                         null when not kept), in the order of their ids
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool)
+ * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool),
+ *                         settle_rates (bool, pg_order_charges_settle_rates())
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -371,6 +372,14 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
 
     if (($order_discount > 0) && ($subtotal > 0)) {
         $tax = pg_order_charged_tax($charged, $order_discount);
+    }
+
+    // Where the shipping holds tax on the order's invoice it is a minor unit
+    // lower when it would leave a rate's total no amount reaches, as the
+    // checkout shows and submit_order.php charges it
+    // (pg_order_charges_reachable()).
+    if (!empty($seen['settle_rates']) && ($shipping > 0)) {
+        $shipping = pg_order_charges_reachable($charged, $order_discount, array('shipping' => $shipping))['shipping'];
     }
 
     $goods = $subtotal - $order_discount + $tax;
@@ -879,6 +888,10 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
     }
 
     if ($order['status'] === 'incomplete') {
+        if (!array_key_exists('settle_rates', $seen)) {
+            $seen['settle_rates'] = pg_order_charges_settle_rates();
+        }
+
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
         // The checkout posts a country code; the documents name the country.

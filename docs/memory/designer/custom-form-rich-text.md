@@ -5,7 +5,7 @@ description: Rich-text text areas on designed forms: three-state _cf.wysiwyg, on
 
 ## How does a designed field become rich text?
 - Form Field panel switch "Rich-text Editor" (owned-form text areas) writes `props._cf.wysiwyg` true/false. `_pg_cf_controls()` reads it three-state: absent = `null`, and `pg_cf_rich_text_flag()` keeps the stored row's flag (a text-area row only); true/false = the canvas wins. Non-text-area fields are always 0.
-- So a flag set on the classic field screen (`edit_field.php`) survives designer saves and template publish until the switch is used. A page duplicate without `_cf.wysiwyg` starts plain; undo to a tree without the key keeps the stored flag. The panel shows the stored row state (`_cfRichOn()` reads `_formFieldsCache`, refetched after each save and form move); `_cfBuildFromFields()` copies the flag with `_cfFlagOn()` (rows carry `true` or `'1'`).
+- So a flag set earlier on `edit_field.php` (read-only since #1204) survives designer saves and template publish until the switch is used. A page duplicate without `_cf.wysiwyg` starts plain; undo to a tree without the key keeps the stored flag. The panel shows the stored row state (`_cfRichOn()` reads `_formFieldsCache`, refetched after each save and form move); `_cfBuildFromFields()` copies the flag with `_cfFlagOn()` (rows carry `true` or `'1'`).
 - Symptom fixed: "a field-screen rich flag vanished after a designer save" (`_pg_cf_controls()` wrote `wysiwyg => false`).
 
 ## When and how does the page load the editor?

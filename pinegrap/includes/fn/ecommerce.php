@@ -2682,6 +2682,285 @@ function pg_order_line_taxes($lines)
     return $taxes;
 }
 
+/**
+ * Whether an order's shipping and surcharges hold tax: the checkout adds none
+ * to them, and on the order's invoice the tax is inside the amount charged, at
+ * the goods' rate. Where VAT applies the charge for delivering goods is part of
+ * the supply and is taxed with them; a United States store's checkout collects
+ * sales tax on the goods alone, so there the charges are left untaxed unless
+ * the settings say otherwise (config.erp_shipping_tax: 'included', 'none', or
+ * empty for the store's country to decide). The ERP asks the same
+ * (erp_shipping_taxed()). Read once per request.
+ *
+ * @return bool
+ */
+function pg_order_charges_taxed()
+{
+    static $taxed = null;
+
+    if ($taxed === null) {
+        $setting = pg_schema_has('config', 'erp_shipping_tax')
+            ? trim((string) db_value("SELECT erp_shipping_tax FROM config LIMIT 1"))
+            : '';
+
+        if (($setting === 'included') || ($setting === 'none')) {
+            $taxed = ($setting === 'included');
+        } else {
+            $country = strtoupper(trim((string) db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1")));
+            $taxed = ($country !== 'US');
+        }
+    }
+
+    return $taxed;
+}
+
+/**
+ * Whether the checkout keeps the total of every rate on its orders one that
+ * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
+ * store invoices its orders in the ERP, charges tax, and its shipping and
+ * surcharges hold tax (pg_order_charges_taxed()).
+ *
+ * @return bool
+ */
+function pg_order_charges_settle_rates()
+{
+    return defined('ERP_ENABLED') && ERP_ENABLED
+        && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
+        && pg_order_charges_taxed();
+}
+
+/**
+ * The amount before tax that comes to a total once the tax at the rate is
+ * taken on the whole of it, rounded half away from zero; null when no amount
+ * does. There is one at most: a minor unit more on the amount puts one or two
+ * on the total, so at 20% one total in six (57.93) is never reached. The ERP's
+ * erp_rate_amount(), here for the checkout, which runs without the ERP.
+ *
+ * @param int   $total  minor units, tax included
+ * @param float $rate   percent
+ * @return int|null
+ */
+function pg_tax_rate_amount($total, $rate)
+{
+    $total = (int) $total;
+    $near = (int) round($total * 100 / (100 + (float) $rate));
+
+    foreach (array($near, $near - 1, $near + 1) as $amount) {
+        if (($amount >= 0) && (($amount + (int) round($amount * (float) $rate / 100)) === $total)) {
+            return $amount;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * How a charge holding tax is shared between the rates of an order's goods.
+ *
+ * In proportion to what the goods of each rate come to after the order
+ * discount (pg_tax_spread()). Where a rate's share would leave its total one
+ * the tax, taken on the whole, never reaches (pg_tax_rate_amount()), a minor
+ * unit of the charge goes to the first other rate whose total stays one it
+ * reaches with it, else comes from the first that stays reachable without
+ * it: one total in six is out of reach at 20%, never two in a row, so with a
+ * second rate there is always a way. With a single rate nothing moves; the
+ * checkout then lowers the charge (pg_order_charges_reachable()). The order's
+ * invoice shares its charges this way (erp_order_charge_lines()).
+ *
+ * @param int   $gross   minor units, tax inside
+ * @param array $groups  rate key => ['rate' => float percent, 'net' => int, what the goods of the rate
+ *                       come to after the discount, above zero, 'total' => int, the rate's lines so
+ *                       far with their tax], in the order the rates first appear on the lines
+ * @return array  rate key => int minor units, adding up to $gross
+ */
+function pg_order_charge_shares($gross, $groups)
+{
+    $weights = array();
+
+    foreach ($groups as $key => $group) {
+        $weights[$key] = (int) $group['net'];
+    }
+
+    $shares = pg_tax_spread((int) $gross, $weights);
+
+    if (count($groups) < 2) {
+        return $shares;
+    }
+
+    $fits = function ($key, $share) use ($groups) {
+        $rate = (float) $groups[$key]['rate'];
+
+        return ($rate <= 0) || ($share <= 0) || (pg_tax_rate_amount((int) $groups[$key]['total'] + $share, $rate) !== null);
+    };
+
+    foreach (array_keys($groups) as $key) {
+        if ($fits($key, $shares[$key])) {
+            continue;
+        }
+
+        foreach (array_keys($groups) as $other) {
+            if (($other !== $key) && $fits($other, $shares[$other] + 1)) {
+                $shares[$key]--;
+                $shares[$other]++;
+                continue 2;
+            }
+        }
+
+        foreach (array_keys($groups) as $other) {
+            if (($other !== $key) && ($shares[$other] > 0) && $fits($other, $shares[$other] - 1)) {
+                $shares[$key]++;
+                $shares[$other]--;
+                continue 2;
+            }
+        }
+    }
+
+    return $shares;
+}
+
+/**
+ * The charges an order adds to its lines - the shipping, then the card
+ * surcharge - each lowered by the fewest minor units that leave the total of
+ * every rate one the tax, taken on the whole, can reach.
+ *
+ * A charge holding tax is shared on the order's invoice between the rates of
+ * the goods (pg_order_charge_shares()), and its tax is taken with the goods of
+ * the rate on their sum (erp_order_charge_lines()), the way an e-document provider
+ * takes it. Some totals no amount reaches: 39.95 with 7.99 of tax and
+ * shipping 9.99 come to 57.93, which no amount at 20% does. The shipping is
+ * then charged at 9.98: the customer never pays more than the page showed,
+ * and the invoice is the payment. A minor unit off is all it ever takes in
+ * practice; the first of ten that serves is taken, else the charge stays as
+ * it is. Lines without a kept rate leave the charges alone.
+ *
+ * @param array $lines     key => ['amount' => int minor units, 'rate' => float|string|null],
+ *                         the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @param array $charges   name => int minor units, tax inside, in the order they are settled
+ * @return array  name => int, as they are charged
+ */
+function pg_order_charges_reachable($lines, $discount, $charges)
+{
+    $charged = array_map('intval', (array) $charges);
+    $amounts = array();
+    $subtotal = 0;
+
+    foreach ((array) $lines as $key => $line) {
+        if (!isset($line['rate']) || ($line['rate'] === '')) {
+            return $charged;
+        }
+
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+    }
+
+    $discount = max(0, min((int) $discount, $subtotal));
+    $shares = ($discount > 0) ? pg_tax_spread($discount, $amounts) : array();
+
+    // What the lines of each rate come to after the discount with their tax
+    // as the checkout takes it (pg_tax_by_rate(): once on the sum of a rate's
+    // lines): the rates' totals the invoice starts from. The rates a charge
+    // is shared by are those whose lines come to something, in the order they
+    // first do so.
+    $nets = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $nets[$key] = array('amount' => $amounts[$key] - (int) ($shares[$key] ?? 0), 'rate' => max(0, (float) $line['rate']));
+    }
+
+    $taxes = pg_tax_by_rate($nets);
+    $totals = array();
+    $groups = array();
+
+    foreach ($nets as $key => $net) {
+        $group = number_format($net['rate'], 3, '.', '');
+        $totals[$group] = ($totals[$group] ?? 0) + $net['amount'] + (int) $taxes[$key];
+
+        if ($net['amount'] > 0) {
+            if (!isset($groups[$group])) {
+                $groups[$group] = array('rate' => $net['rate'], 'net' => 0, 'total' => 0);
+            }
+
+            $groups[$group]['net'] += $net['amount'];
+        }
+    }
+
+    if (empty($groups)) {
+        return $charged;
+    }
+
+    foreach (array_keys($groups) as $group) {
+        $groups[$group]['total'] = $totals[$group];
+    }
+
+    foreach ($charged as $name => $gross) {
+        $parts = array();
+
+        for ($less = 0; ($less <= 10) && ($less < $gross); $less++) {
+            $parts = pg_order_charge_shares($gross - $less, $groups);
+            $reached = true;
+
+            foreach ($parts as $group => $part) {
+                if (($part > 0) && ($groups[$group]['rate'] > 0)
+                    && (pg_tax_rate_amount($groups[$group]['total'] + $part, $groups[$group]['rate']) === null)) {
+                    $reached = false;
+                    break;
+                }
+            }
+
+            if ($reached) {
+                $charged[$name] = $gross - $less;
+                break;
+            }
+        }
+
+        if ($charged[$name] > 0) {
+            if (array_sum($parts) !== $charged[$name]) {
+                $parts = pg_order_charge_shares($charged[$name], $groups);
+            }
+
+            foreach ($parts as $group => $part) {
+                $groups[$group]['total'] += $part;
+            }
+        }
+    }
+
+    return $charged;
+}
+
+/**
+ * pg_order_charges_reachable() for order lines given by id, read from the
+ * order with the rate each was taxed at: for the pages that show an order's
+ * totals while drawing its lines.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  the order discount charged today, minor units
+ * @param array $charges   name => int minor units, tax inside, in the order they are settled
+ * @return array  name => int, as they are charged
+ */
+function pg_order_items_charges_reachable($item_ids, $discount, $charges)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids || !pg_schema_has('order_items', 'tax_rate')) {
+        return array_map('intval', (array) $charges);
+    }
+
+    $lines = array();
+
+    foreach ((array) db_items("SELECT id, price, quantity, tax_rate
+        FROM order_items
+        WHERE id IN (" . implode(', ', $ids) . ")
+        ORDER BY id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $item['tax_rate'],
+        );
+    }
+
+    return pg_order_charges_reachable($lines, $discount, $charges);
+}
+
 function update_order_item_taxes()
 {
     // get information from order
@@ -8275,6 +8554,7 @@ function duplicate_product($id)
     // The copy starts a price history of its own at the original's price.
     pg_price_history_record($new_product_id, 'panel');
 
+    pg_audit_record('create', 'products', (int) $new_product_id);
 
     return $new_product_id;
 }
@@ -9108,8 +9388,11 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     }
 
     // Minimal selection — enough for cancel gating + email + refund.
+    // refunded_amount: what the order screen or a return gave back already,
+    // which the cancellation must not return a second time.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
+                " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date
          FROM orders
@@ -9226,13 +9509,21 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $has_txn     = !empty($order['transaction_id']);
-    $order_total = (int) $order['total']; // cents
-    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
-        ? pg_payment_cancel_driver((string) $order['payment_method'])
-        : '';
+    // The money left on the order decides (pg_order_cancel_payment_plan()):
+    // an order refunded in full is not voided and not flagged, and one partly
+    // refunded is not voided either (a void reverses the whole payment); its
+    // remaining amount is flagged. The cancel window asks the same.
+    $cancel_driver = pg_payment_cancel_driver((string) $order['payment_method']);
+    $payment_plan  = pg_order_cancel_payment_plan(
+        $order['total'],
+        $order['refunded_amount'],
+        $order['payment_method'],
+        !empty($order['transaction_id']),
+        $cancel_driver,
+        $auto_refund
+    );
 
-    if ($cancel_driver !== '') {
+    if ($payment_plan['action'] === 'void') {
         // The driver is given the orders row as the cancellation left it, so
         // the reason just typed goes to the service as the description.
         $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
@@ -9256,12 +9547,17 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
         $refund_status_outcome = $cancel_outcome['refund_status'];
         $refund_reference      = $cancel_outcome['refund_reference'];
-    } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
+    } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
         log_activity(lang(array(
             'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
-            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($order_total / 100, 2, '.', ',')))));
+            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($payment_plan['remaining'] / 100, 2, '.', ',')))));
+        if ($payment_plan['refunded'] > 0) {
+            log_activity(lang(array(
+                'string' => 'Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.',
+                'vars'   => array((int) $order_id, number_format($payment_plan['refunded'] / 100, 2, '.', ',')))));
+        }
     }
 
     // What gift cards paid of the order does not go back to them by itself,
@@ -9322,6 +9618,41 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         'refund_status' => $refund_status_outcome,
         'order_id'      => $order_id,
     );
+}
+
+// What cancelling an order does to the money its payment took. The order
+// screen's cancel window and process_order_cancellation() both decide by it,
+// so the window says what the cancellation then does.
+// 'remaining' is the money still on the order (total less what was refunded
+// already, never below 0), 'refunded' what was refunded, and 'action' one of:
+//  'void'   the payment driver cancels the payment: the auto refund is on, a
+//           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
+//           the order has a transaction and nothing was refunded yet;
+//  'manual' money is left and a payment method took it, but it is not voided:
+//           the operator returns it (REFUND ACTION REQUIRED, manual_required);
+//  'none'   nothing is left (refunded in full, a free order), or no method
+//           took the money (Offline Payment, none).
+// A void takes no amount and reverses the whole payment, so a payment partly
+// refunded already (the order screen's or a return's refund) is not voided:
+// what is left goes to the operator. Amounts are minor units.
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+{
+    $total_cents    = (int) $total_cents;
+    $refunded_cents = max(0, (int) $refunded_cents);
+    $remaining      = max(0, $total_cents - $refunded_cents);
+    $payment_method = (string) $payment_method;
+
+    if ($remaining <= 0) {
+        $action = 'none';
+    } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
+        $action = 'void';
+    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+        $action = 'manual';
+    } else {
+        $action = 'none';
+    }
+
+    return array('action' => $action, 'remaining' => $remaining, 'refunded' => $refunded_cents);
 }
 
 // The site log line that tells the operator what a cancelled order took off
