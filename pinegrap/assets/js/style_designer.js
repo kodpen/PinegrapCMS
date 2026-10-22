@@ -27832,7 +27832,7 @@ const StyleDesigner = (function () {
         }
         if (Array.isArray(p._attrs)) {
             return p._attrs.some(function (a) {
-                return a && /^(title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
+                return a && /^(alt|title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
             });
         }
         return false;
@@ -27869,6 +27869,10 @@ const StyleDesigner = (function () {
             headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
             _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
+        // An attribute of a text or of stored HTML (pg_tr_node_texts(),
+        // pg_tr_field_segments()): "<field>@<attribute>#n".
+        var at = field.indexOf('@');
+        if (at > 0) return _sdTrFieldLabel(field.slice(0, at)) + ': ' + field.slice(at + 1).replace(/#\d+$/, '');
         return labels[field] || field;
     }
 
