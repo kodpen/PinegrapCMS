@@ -352,7 +352,7 @@ function test_office_edit_scan()
 
 	$reader = new XMLReader();
 	$reader->XML($xml);
-	$scan = pg_office_xlsx_scan($reader, 3, array(3 => true));
+	$scan = pg_office_xlsx_scan($reader, 3, array(3 => true), pg_office_xlsx_column_styles($xml, ''));
 
 	pg_assert_same(array(array(1, 2), array(4, 199)), $scan['columns'], 'the columns whose style opens a new cell, 0-based and cut to the columns shown');
 	pg_assert_same(array(1 => true, 2 => false), $scan['rows'], 'the rows with a style of their own, open or locked, up to the rows asked for');
