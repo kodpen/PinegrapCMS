@@ -523,6 +523,11 @@ function test_office_edit_write_reservation()
 	pg_assert_false(pg_office_xlsx_write_reserved($book('<fileSharing hashValue="" reservationPassword=""/>')), 'an empty password is none');
 	pg_assert_false(pg_office_xlsx_write_reserved($book('')), 'no sharing settings');
 	pg_assert_false(pg_office_xlsx_write_reserved($book('<fileSharingExt hashValue="q1w2e3=="/>')), 'another element');
+	pg_assert_true(pg_office_xlsx_write_reserved($book('<fileSharing readOnlyRecommended="1" userName="R&amp;D >Team" algorithmName="SHA-512" hashValue="q1w2"/>')), 'a raw > in an earlier attribute does not hide the hash');
+	pg_assert_true(pg_office_xlsx_write_reserved($book('<fileSharing userName="a>b" reservationPassword="83AF"/>')), 'a raw > in an earlier attribute does not hide the old password');
+	pg_assert_true(pg_office_xlsx_write_reserved($book("<fileSharing userName='a>b' hashValue='q1w2'/>")), 'nor in single quotes');
+	pg_assert_false(pg_office_xlsx_write_reserved($book("<fileSharing userName=\"x hashValue='q1w2'\"/>")), 'a password name inside another value is no password');
+	pg_assert_true(pg_office_xlsx_write_reserved($book('<fileSharing' . str_repeat(' x="1"', 100000) . ' hashValue="q1w2"/>')), 'a start tag too long to walk still keeps its password');
 }
 
 // A zip whose entry says it unpacks to fewer bytes than it does: the central
