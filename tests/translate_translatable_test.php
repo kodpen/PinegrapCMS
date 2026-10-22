@@ -54,17 +54,45 @@ function test_translate_translatable_skips_json()
 	pg_assert_true(pg_tr_translatable('{Merhaba} dünya'), 'braces that are not JSON');
 }
 
-// A lone address has nothing to translate.
-function test_translate_translatable_skips_lone_addresses()
+// A lone address stays translatable: a site can give each language its own
+// address (a support mailbox, a localized page), and a reviewed translation
+// of it must keep being drawn and stay editable.
+function test_translate_translatable_keeps_lone_addresses()
 {
-	pg_assert_false(pg_tr_translatable('https://kodpen.com/araclar/pdf-birlestir?kaynak=ana-sayfa'), 'a URL');
-	pg_assert_false(pg_tr_translatable('http://example.com'), 'an http URL');
-	pg_assert_false(pg_tr_translatable('//cdn.example.com/icons/tool.svg'), 'a protocol-relative URL');
-	pg_assert_false(pg_tr_translatable('www.kodpen.com'), 'a www address');
-	pg_assert_false(pg_tr_translatable('mailto:info@kodpen.com'), 'a mailto link');
-	pg_assert_false(pg_tr_translatable('info@kodpen.com'), 'an e-mail address');
-	pg_assert_false(pg_tr_translatable('<a href="https://kodpen.com">https://kodpen.com</a>'), 'a link whose text is its address');
+	pg_assert_true(pg_tr_translatable('https://kodpen.com/araclar/pdf-birlestir?kaynak=ana-sayfa'), 'a URL');
+	pg_assert_true(pg_tr_translatable('http://example.com'), 'an http URL');
+	pg_assert_true(pg_tr_translatable('//cdn.example.com/icons/tool.svg'), 'a protocol-relative URL');
+	pg_assert_true(pg_tr_translatable('www.kodpen.com'), 'a www address');
+	pg_assert_true(pg_tr_translatable('mailto:info@kodpen.com'), 'a mailto link');
+	pg_assert_true(pg_tr_translatable('destek@firma.com.tr'), 'an e-mail address');
+	pg_assert_true(pg_tr_translatable('<a href="https://kodpen.com">https://kodpen.com</a>'), 'a link whose text is its address');
 	pg_assert_true(pg_tr_translatable('www sitemiz yenilendi'), 'www as a word');
+}
+
+// Code inside a sentence, or a sentence that names a tag, is still a
+// sentence: only code that makes up the whole value is data.
+function test_translate_translatable_keeps_sentences_with_code()
+{
+	pg_assert_true(pg_tr_translatable(pg_tr_normalize('Rengi değiştirmek için <code>.btn { color: red; }</code> kuralını sayfanın stiline ekleyin.', 'inline')), 'inline code with a CSS rule');
+	pg_assert_true(pg_tr_translatable(pg_tr_normalize('Butona tıklanınca çalışması için <code>function init() { start(); }</code> yazın ve kaydedin.', 'inline')), 'inline code with a function');
+	pg_assert_true(pg_tr_translatable(pg_tr_normalize('Diziyi dolaşmak için <code>items.forEach((x) =&gt; { log(x); })</code> kullanın.', 'inline')), 'inline code with an arrow function');
+	pg_assert_true(pg_tr_translatable(pg_tr_normalize('Kısayol: <kbd>Ctrl</kbd> + <kbd>S</kbd> ile kaydedin; {var:1} kez deneyin.', 'inline')), 'keys in a sentence');
+	pg_assert_true(pg_tr_translatable('HTML <script> etiketi nedir, nasıl kullanılır?'), 'a heading that names the script tag');
+	pg_assert_true(pg_tr_translatable('CSS <style> etiketiyle sayfaya stil ekleme'), 'a heading that names the style tag');
+	pg_assert_true(pg_tr_translatable('Toplam => {var:1} TL'), 'an arrow before a placeholder');
+	pg_assert_true(pg_tr_translatable('Seçenekler { renk: kırmızı; beden: M }'), 'braces around words');
+	pg_assert_true(pg_tr_translatable('Showing {var:1} of {var:2}'), 'an English sentence with placeholders');
+	pg_assert_true(pg_tr_translatable('Function keys {var:1}'), 'a placeholder after the word function');
+}
+
+// A custom HTML paragraph that names an escaped tag still gives its text.
+function test_translate_translatable_html_segment_naming_a_tag()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
+
+	$segments = pg_tr_html_segments('<p>HTML &lt;script&gt; etiketi sayfaya kod ekler.</p>');
+
+	pg_assert_same(1, count($segments), 'one segment');
 }
 
 // Code: a script, a style sheet, a function.
