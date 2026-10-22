@@ -747,7 +747,9 @@ function ws_change_value($field, $value)
 
         case 'date':
             // Empty, or the zero date a DATE NOT NULL column keeps for empty:
-            // both are the empty date (ws_change_date_column() writes it).
+            // both are the empty date. Each writer stores it its own way
+            // (ws_change_date_column(), ws_change_offer_date_column(), NULL
+            // for a task).
             if (is_string($value) && ((trim($value) === '') || (trim($value) === '0000-00-00'))) {
                 return '';
             }
@@ -916,8 +918,10 @@ function ws_change_current_value($field, $row)
 }
 
 /**
- * A date as a DATE NOT NULL column takes it: the empty date is written as
- * the zero date, since MySQL in strict mode refuses '' for a DATE.
+ * A date as a DATE NOT NULL column that means "no date" by the zero date
+ * takes it: contacts.expiration_date, which the contact screen stores as
+ * '0000-00-00' for a membership without an end. The empty date is therefore
+ * written as the zero date explicitly.
  *
  * @param string $value A date from ws_change_value(): 'YYYY-MM-DD' or ''.
  * @return string
@@ -925,6 +929,30 @@ function ws_change_current_value($field, $row)
 function ws_change_date_column($value)
 {
     return ((string) $value === '') ? '0000-00-00' : (string) $value;
+}
+
+/**
+ * A date as the offers table takes it. An offer without an end carries the
+ * offer screen's open end date (PG_OFFER_OPEN_END_DATE), never the zero
+ * date: checkout applies an offer only while CURRENT_DATE() <= end_date, so
+ * a zero end would end it at once. An empty start date is refused by
+ * ws_change_check() before it gets here.
+ *
+ * @param string $name  'start_date' or 'end_date'.
+ * @param string $value A date from ws_change_value(): 'YYYY-MM-DD' or ''.
+ * @return string
+ */
+function ws_change_offer_date_column($name, $value)
+{
+    if (($name === 'end_date') && ((string) $value === '')) {
+        if (!defined('PG_OFFER_OPEN_END_DATE')) {
+            require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+        }
+
+        return PG_OFFER_OPEN_END_DATE;
+    }
+
+    return (string) $value;
 }
 
 /**
@@ -1394,6 +1422,12 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             return '';
 
         case 'offer':
+            // The offer screen needs a start date; an empty end date is the
+            // open end (ws_change_offer_date_column()).
+            if (array_key_exists('start_date', $values) && ((string) $values['start_date'] === '')) {
+                return lang('An offer needs a start date.');
+            }
+
             $start = $values['start_date'] ?? ($record['start_date'] ?? '');
             $end = $values['end_date'] ?? ($record['end_date'] ?? '');
 
@@ -3917,7 +3951,7 @@ function ws_change_write_offer($viewer, $action, $record, $values)
 
     foreach ($values as $name => $value) {
         if (isset($fields[$name])) {
-            $parts[] = $fields[$name][3] . " = '" . e((string) (($fields[$name][0] === 'date') ? ws_change_date_column($value) : $value)) . "'";
+            $parts[] = $fields[$name][3] . " = '" . e((string) (($fields[$name][0] === 'date') ? ws_change_offer_date_column($name, $value) : $value)) . "'";
         }
     }
 

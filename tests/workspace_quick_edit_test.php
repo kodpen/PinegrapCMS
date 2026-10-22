@@ -136,9 +136,9 @@ function test_workspace_quick_edit_writers_carry_a_person_sentence()
 
 // A DATE NOT NULL column holds the zero date when it is empty. The drawer is
 // given '' for it (a date input cannot show "0000-00-00" and empties itself),
-// the save takes '' and the zero date alike, and the writers put the zero
-// date back into the column; so a contact without a membership end can be
-// saved again.
+// the save takes '' and the zero date alike, and the contact writer puts the
+// zero date back into the column; so a contact without a membership end can
+// be saved again. Offers have their own empty dates (the next test).
 function test_workspace_quick_edit_zero_date_reads_and_saves_as_empty()
 {
 	$field = array('date', 0, 'Expiration Date', 'expiration_date');
@@ -161,11 +161,34 @@ function test_workspace_quick_edit_zero_date_reads_and_saves_as_empty()
 	pg_assert_same('2026-10-22', ws_change_date_column('2026-10-22'), 'a date is written as it is');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+	$writers = array('ws_change_write_contact' => 'ws_change_date_column(', 'ws_change_write_offer' => 'ws_change_offer_date_column(');
 
-	foreach (array('ws_change_write_contact', 'ws_change_write_offer') as $writer) {
+	foreach ($writers as $writer => $call) {
 		$start = strpos($source, 'function ' . $writer . '(');
 		$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
 
-		pg_assert_contains('ws_change_date_column(', $body, $writer . ' writes the zero date for an empty date');
+		pg_assert_contains($call, $body, $writer . ' writes an empty date through ' . $call . ')');
 	}
+}
+
+// An offer never holds the zero date: checkout applies an offer only while
+// CURRENT_DATE() <= end_date, so a zero end would end it at once. An emptied
+// end date is the offer screen's open end, and an emptied start is refused.
+function test_workspace_quick_edit_offer_empty_dates_keep_the_offer_running()
+{
+	require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+
+	pg_assert_same('2099-12-31', PG_OFFER_OPEN_END_DATE, 'the open end of an offer');
+	pg_assert_same(PG_OFFER_OPEN_END_DATE, ws_change_offer_date_column('end_date', ''), 'an emptied end date is the open end');
+	pg_assert_same('2026-10-22', ws_change_offer_date_column('end_date', '2026-10-22'), 'an end date as it is');
+	pg_assert_same('2026-10-22', ws_change_offer_date_column('start_date', '2026-10-22'), 'a start date as it is');
+
+	$viewer = array('id' => 1, 'role' => 0);
+	$offer = array('id' => 5, 'code' => 'AUTUMN', 'start_date' => '2026-10-01', 'end_date' => '2026-10-31');
+
+	pg_assert_true(ws_change_check($viewer, 'offer', 'update', $offer, array('start_date' => '')) !== '', 'an emptied start date is refused');
+	pg_assert_same('', ws_change_check($viewer, 'offer', 'update', $offer, array('end_date' => '')), 'an emptied end date is taken');
+	pg_assert_same('', ws_change_check($viewer, 'offer', 'update', $offer, array('start_date' => '2026-10-05')), 'a start date is taken');
+	pg_assert_true(ws_change_check($viewer, 'offer', 'update', $offer, array('end_date' => '2026-09-30')) !== '', 'an end before the start is refused');
+	pg_assert_same('', ws_change_check($viewer, 'offer', 'delete', $offer, array()), 'a deletion has no dates to check');
 }

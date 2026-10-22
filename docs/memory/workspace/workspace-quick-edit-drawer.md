@@ -14,5 +14,9 @@ description: The "Fields" section of the record drawer (openRecord, quickEditSec
 - Errors: `stale` → the status line with "Load it again"; a refused value → the server's sentence on the status line; `code: rights` on load → no section at all; `rule` or `gone` → the section with the reason and no form.
 
 ## How is an empty date handled?
-- `contacts.expiration_date` and `offers.start_date`/`end_date` are `DATE NOT NULL DEFAULT '0000-00-00'`. A date input cannot show the zero date and empties itself, so a drawer given `0000-00-00` sent `''` as a change and both values were refused: no field of a contact without a membership could be saved (issue #776, PR #1264).
-- Now `ws_change_current_value()` gives the zero date as `''`, `ws_change_value()` takes `''` and `0000-00-00` as `''`, and the contact and offer writers write `''` back as the zero date (`ws_change_date_column()`). Tasks keep NULL through `ws_task_update()`. In the drawer, `quickEditChanged()` and `saValueInput()` treat the zero date as empty; the apply check takes a stored `from` of `0000-00-00` as `''`.
+- Symptom (issue #776, PR #1264): a contact without a membership end has `expiration_date = '0000-00-00'` (the contact screen's "no end"). A date input cannot show the zero date and empties itself, so the drawer sent `''` as a change, `ws_change_value()` refused both values, and no field of such a contact could be saved.
+- Now `ws_change_current_value()` gives the zero date (or NULL) as `''`, and `ws_change_value()` takes `''` and `0000-00-00` for any `date` field as `''`. In the drawer, `quickEditChanged()` and `saValueInput()` treat the zero date as empty; the apply check takes a stored `from` of `0000-00-00` as `''`.
+- Each writer stores `''` its own way:
+  - contact: `ws_change_date_column()` writes `0000-00-00`; only `contacts.expiration_date` means "no date" by the zero date.
+  - offer: never the zero date. Checkout applies an offer only while `CURRENT_DATE() <= offers.end_date`, so a zero end would end it at once and the offer screen would call it expired. An emptied `end_date` is written as `PG_OFFER_OPEN_END_DATE` (`2099-12-31`, edit_offer_f.php) by `ws_change_offer_date_column()`; an emptied `start_date` is refused by `ws_change_check()` with "An offer needs a start date." (the offer screen needs one).
+  - task: NULL through `ws_task_update()`.
