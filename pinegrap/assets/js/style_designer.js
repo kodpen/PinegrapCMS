@@ -44158,7 +44158,7 @@ const StyleDesigner = (function () {
             }
             // If we just emptied the block, drop the whole rule.
             if (!/[^\s;]/.test(newBody.replace(/\/\*[\s\S]*?\*\//g, ''))) {
-                return (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '');
+                return (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
             }
             return content.slice(0, blk.bodyStart) + newBody + content.slice(blk.bodyEnd);
         }
@@ -44209,7 +44209,7 @@ const StyleDesigner = (function () {
                 if (here) {
                     content = content.slice(0, blk.selStart) + here + content.slice(blk.bodyEnd + 1);
                 } else {
-                    content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '');
+                    content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
                 }
                 if (darkBefore) {
                     content = content.slice(0, dark.selStart) + sharedPart + '\n\n' + content.slice(dark.selStart);
