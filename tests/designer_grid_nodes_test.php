@@ -74,6 +74,13 @@ function _test_designer_grid_cases()
 		'row tooltip without placement' => _test_designer_grid_node('row', array('tooltipEnabled' => true, 'tooltipTitle' => 'Tip')),
 		'container tooltip off' => _test_designer_grid_node('container', array('tooltipEnabled' => false, 'tooltipTitle' => 'Tip')),
 		'col tooltip and popover' => _test_designer_grid_node('col', array('xs' => '12', 'tooltipEnabled' => true, 'tooltipTitle' => 'Tip', '_attrs' => $attrs(array('data-bs-toggle' => 'popover', 'data-bs-placement' => 'end')))),
+		'row gutter 0' => _test_designer_grid_node('row', array('gutter' => '0', 'justify' => '', 'align' => '')),
+		'row gutter number 0' => _test_designer_grid_node('row', array('gutter' => 0, 'justify' => 'between')),
+		'col offset and order 0' => _test_designer_grid_node('col', array('xs' => '6', 'offsetXs' => '3', 'offsetMd' => '0', 'order' => '0')),
+		'col offset 0' => _test_designer_grid_node('col', array('xs' => '6', 'offsetXs' => '0', 'offsetMd' => 'none', 'order' => 'default')),
+		'col number widths' => _test_designer_grid_node('col', array('xs' => 6, 'md' => 4, 'order' => 2)),
+		'container toggles not in cssClass' => _test_designer_grid_node('container', array('placeholderMode' => true, 'placeholderAnim' => 'glow', 'focusRing' => true, 'srOnly' => true, 'aspectRatioEnabled' => true, 'aspectRatio' => '1x1')),
+		'col typed search mark' => _test_designer_grid_node('col', array('xs' => '12', 'id' => 'faq', 'searchSection' => true, 'title' => 'T', '_attrs' => $attrs(array('data-pg-search-section' => '')))),
 	);
 }
 
@@ -137,6 +144,44 @@ function test_designer_grid_col_css_class_once()
 	pg_assert_same('<div class="col-12 col-lg-8 mx-auto text-center">', _test_designer_grid_php($cases['col with classes']));
 	pg_assert_same('<div class="col-12 py-3">', _test_designer_grid_php($cases['col width class in cssClass']), 'a width class also typed into cssClass');
 	pg_assert_same('<div class="col offset-1 offset-md-2 order-last">', _test_designer_grid_php($cases['col offsets']));
+}
+
+// The option '0' is a value: a row's Gutter 0 (g-0), a column's Offset 0,
+// Offset MD 0 (which resets a smaller screen's offset) and order 0. A
+// number 0 is no option, as in the editor.
+function test_designer_grid_zero_options()
+{
+	$cases = _test_designer_grid_cases();
+
+	pg_assert_same('<div class="row g-0">', _test_designer_grid_php($cases['row gutter 0']));
+	pg_assert_same('<div class="row justify-content-between">', _test_designer_grid_php($cases['row gutter number 0']));
+	pg_assert_same('<div class="col-6 offset-3 offset-md-0 order-0">', _test_designer_grid_php($cases['col offset and order 0']));
+	pg_assert_same('<div class="col-6 offset-0">', _test_designer_grid_php($cases['col offset 0']));
+	pg_assert_same('<div class="col-6 col-md-4 order-2">', _test_designer_grid_php($cases['col number widths']));
+}
+
+// The Display & Sizing classes not mirrored in cssClass come in one order:
+// ratio, visually-hidden, focus-ring, placeholder.
+function test_designer_grid_toggle_class_order()
+{
+	$cases = _test_designer_grid_cases();
+
+	pg_assert_same('<div class="container ratio ratio-1x1 visually-hidden focus-ring placeholder placeholder-glow">', _test_designer_grid_php($cases['container toggles not in cssClass']));
+}
+
+// The col case writes what _build_col_classes() gives, which already ends
+// with cssClass; appending it again is hidden by the dedupe, so the source
+// is checked.
+function test_designer_grid_col_case_does_not_append_css_class()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	$from = strpos($source, "        case 'col':");
+	$to = ($from !== false) ? strpos($source, 'break;', $from) : false;
+	$case = ($from !== false && $to !== false) ? substr($source, $from, $to - $from) : '';
+
+	pg_assert_true($case !== '', 'the col case is found');
+	pg_assert_true(strpos($case, '_build_col_classes($props)') !== false, 'the col case writes _build_col_classes()');
+	pg_assert_false(strpos($case, '$props[\'cssClass\']') !== false, 'the col case does not add cssClass itself');
 }
 
 // A column without a width is a full row, the 12 its Column options show;
@@ -232,6 +277,7 @@ function test_designer_grid_editor_writes_the_same()
 	}
 
 	pg_assert_same('<div class="col-12" id="faq">', $js['col search section'], 'no search section mark in the editor');
+	pg_assert_same('<div class="col-12" id="faq" title="T">', $js['col typed search mark'], 'a typed search section mark is not written in the editor');
 }
 
 // A search section mark typed into the Attributes panel is not written a

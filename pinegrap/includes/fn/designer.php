@@ -4064,9 +4064,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
         case 'row':
             $rc = 'row';
-            if (!empty($props['gutter'])) $rc .= ' g-' . $props['gutter'];
-            if (!empty($props['justify'])) $rc .= ' justify-content-' . $props['justify'];
-            if (!empty($props['align'])) $rc .= ' align-items-' . $props['align'];
+            // Gutter 0 is a value (g-0), as in the editor.
+            $_g = _pg_grid_class_value($props, 'gutter');
+            $_j = _pg_grid_class_value($props, 'justify');
+            $_a = _pg_grid_class_value($props, 'align');
+            if ($_g !== '') $rc .= ' g-' . $_g;
+            if ($_j !== '') $rc .= ' justify-content-' . $_j;
+            if ($_a !== '') $rc .= ' align-items-' . $_a;
             if (!empty($props['cssClass'])) $rc .= ' ' . $props['cssClass'];
             $html .= $pad . _pg_grid_open_tag($rc, $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
@@ -4290,18 +4294,32 @@ function _pg_grid_open_tag($classes, $props, $sz)
         . _render_extra_attrs($props, array(), true) . '>';
 }
 
-// Build Bootstrap column classes from column props
+// A row or column option as a class suffix, '' when it is not set. The
+// options are strings and '0' is one of them (Gutter 0, Offset 0, order 0),
+// so it is tested as the editor's buildColClasses() and _sdEmitNode() test
+// it: a non-empty string or a non-zero number is set, anything else is not.
+function _pg_grid_class_value($props, $key)
+{
+    if (!is_array($props) || !isset($props[$key])) return '';
+    $v = $props[$key];
+    if (is_string($v)) return $v;
+    if ((is_int($v) || is_float($v)) && $v != 0) return (string)$v;
+    return '';
+}
+
+// Build Bootstrap column classes from column props. Twin of the editor's
+// buildColClasses().
 function _build_col_classes($props)
 {
     $classes = array();
-    $xs = isset($props['xs']) ? $props['xs'] : '';
-    $sm = isset($props['sm']) ? $props['sm'] : '';
-    $md = isset($props['md']) ? $props['md'] : '';
-    $lg = isset($props['lg']) ? $props['lg'] : '';
-    $xl = isset($props['xl']) ? $props['xl'] : '';
-    $xxl = isset($props['xxl']) ? $props['xxl'] : '';
+    $xs  = _pg_grid_class_value($props, 'xs');
+    $sm  = _pg_grid_class_value($props, 'sm');
+    $md  = _pg_grid_class_value($props, 'md');
+    $lg  = _pg_grid_class_value($props, 'lg');
+    $xl  = _pg_grid_class_value($props, 'xl');
+    $xxl = _pg_grid_class_value($props, 'xxl');
 
-    if ($xs && $xs !== '' && $xs !== 'none') {
+    if ($xs !== '' && $xs !== 'none') {
         // 'col'  → equal-width sentinel (Bootstrap class is bare `col`)
         // 'auto' → content-fit width (`col-auto`)
         // anything else → numeric span (`col-N`)
@@ -4312,22 +4330,27 @@ function _build_col_classes($props)
         if ($xs === 'auto')     $classes[] = 'col-auto';
         else if ($xs === 'col') $classes[] = 'col';
         else                    $classes[] = 'col-' . $xs;
-    } else if (!$sm && !$md && !$lg && !$xl && !$xxl) {
+    } else if ($sm === '' && $md === '' && $lg === '' && $xl === '' && $xxl === '') {
         $classes[] = 'col-12';
     }
     // 'col' (Equal) at a breakpoint is Bootstrap's bare `col-<bp>`; there
     // is no `col-md-col`.
     $bps = array('sm' => $sm, 'md' => $md, 'lg' => $lg, 'xl' => $xl, 'xxl' => $xxl);
     foreach ($bps as $bp => $val) {
-        if ($val && $val !== '' && $val !== 'none') {
+        if ($val !== '' && $val !== 'none') {
             if ($val === 'auto')    $classes[] = 'col-' . $bp . '-auto';
             else if ($val === 'col') $classes[] = 'col-' . $bp;
             else                    $classes[] = 'col-' . $bp . '-' . $val;
         }
     }
-    if (!empty($props['offsetXs']) && $props['offsetXs'] !== 'none') $classes[] = 'offset-' . $props['offsetXs'];
-    if (!empty($props['offsetMd']) && $props['offsetMd'] !== 'none') $classes[] = 'offset-md-' . $props['offsetMd'];
-    if (!empty($props['order']) && $props['order'] !== 'default') $classes[] = 'order-' . $props['order'];
+    // Offset 0 and order 0 are values: offset-md-0 resets an offset set
+    // for smaller screens.
+    $off_xs = _pg_grid_class_value($props, 'offsetXs');
+    $off_md = _pg_grid_class_value($props, 'offsetMd');
+    $order  = _pg_grid_class_value($props, 'order');
+    if ($off_xs !== '' && $off_xs !== 'none')  $classes[] = 'offset-' . $off_xs;
+    if ($off_md !== '' && $off_md !== 'none')  $classes[] = 'offset-md-' . $off_md;
+    if ($order !== '' && $order !== 'default') $classes[] = 'order-' . $order;
     if (!empty($props['cssClass'])) $classes[] = $props['cssClass'];
     return implode(' ', $classes);
 }

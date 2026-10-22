@@ -23089,26 +23089,29 @@ const StyleDesigner = (function () {
         var cls = (p.cssClass || '').split(/\s+/).filter(function (c) {
             return c && !_SD_SIZING_CLASS_RE.test(c);
         });
-        // Re-add active sizing classes (matches getNodeExtraClasses logic)
-        if (p.srOnly) cls.push('visually-hidden');
+        // Re-add active sizing classes (matches getNodeExtraClasses logic,
+        // in its order)
         if (p.aspectRatioEnabled) {
             cls.push('ratio');
             var _ar = p.aspectRatio || '16x9';
             if (_ar && _ar !== 'custom') cls.push('ratio-' + _ar);
         }
+        if (p.srOnly) cls.push('visually-hidden');
+        if (p.focusRing) cls.push('focus-ring');
         if (p.placeholderMode) {
             cls.push('placeholder');
             if (p.placeholderAnim === 'glow') cls.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') cls.push('placeholder-wave');
         }
-        if (p.focusRing) cls.push('focus-ring');
         p.cssClass = cls.join(' ').trim();
     }
 
+    // The Display & Sizing classes in the order of
+    // _build_node_sizing_attrs(), which writes the saved page: ratio,
+    // visually-hidden, focus-ring, placeholder.
     function getNodeExtraClasses(n) {
         var p = n.props;
         var classes = [];
-        if (p.srOnly) classes.push('visually-hidden');
         if (p.aspectRatioEnabled) {
             classes.push('ratio');
             // Default to 16x9 when toggle is enabled but no preset has been chosen yet —
@@ -23116,6 +23119,8 @@ const StyleDesigner = (function () {
             var _arVal = _sdSizingValue(p.aspectRatio) || '16x9';
             if (_arVal !== 'custom' && /^\d+x\d+$/.test(_arVal)) classes.push('ratio-' + _arVal);
         }
+        if (p.srOnly) classes.push('visually-hidden');
+        if (p.focusRing) classes.push('focus-ring');
         // Loading-skeleton mode: puts a .placeholder class on the element itself. Bootstrap's
         // animation classes (.placeholder-glow / .placeholder-wave) are traditionally set on the
         // parent, but applying them to the element works in practice — keeps the tree clean
@@ -23125,7 +23130,6 @@ const StyleDesigner = (function () {
             if (p.placeholderAnim === 'glow') classes.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') classes.push('placeholder-wave');
         }
-        if (p.focusRing) classes.push('focus-ring');
         return classes.join(' ');
     }
 
@@ -50401,7 +50405,8 @@ const StyleDesigner = (function () {
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
     // Twin of _render_extra_attrs($props, $skip, true), less the search
-    // section mark the page adds after the id.
+    // section mark the page adds after the id; a copy of that mark typed
+    // into the panel of a search section is left out as the page leaves it.
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
@@ -50410,6 +50415,7 @@ const StyleDesigner = (function () {
             if (!a || !a.name) return;
             var name = String(a.name), lname = name.toLowerCase();
             if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
             var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
             out += ' ' + esc(name) + '="' + esc(val) + '"';
         });
