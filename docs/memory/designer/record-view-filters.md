@@ -15,6 +15,7 @@ description: form_item_view filters (opt-in record visibility, e.g. Status = Pub
 - Feeds: the record page applies its own; a list's feed, the sitemap and the search index (`designer-records-site-search.md`) use `pg_sw_list_record_filter_clause()` (detail page's filters, then the list's).
 - Canvas preview and the SEO pass (`pg_seo_widget_record_query()`): the newest record that passes; none → preview shows not-found, SEO skips the page.
 - Editor: Filters section in the record-view panel (`_swFormListFiltersHtml()` with a note, same `.sd-sw-filter` handlers). An unknown field or operator shows "(incompatible — choose again)".
+- The `url parameter` dynamic value is list-only (`form-list-url-filters.md`): not offered here; a record view carrying one is closed (`address`).
 
 ## What must the operator do?
 - Filters belong to the widget, not the form. Every public list and every other public record view of the form, on any page, needs the same filter: a pretty name resolves on any page whose first record view shows the form, and head/feed read only that widget. E-mail pages can carry it (the bypass below).

@@ -280,6 +280,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   alanının adı; dinamik değer alanın tipine göre (tarih → bugün / gün önce,
   username → izleyici, e-posta → izleyicinin e-postası). Editör etiketleri
   `_sdT('…')` literal'i olmalı: çeviri haritası literal çağrılardan taranır.
+  `url parameter` yalnız listede: değer `?<ad>=`'dan gelir
+  (`pg_sw_url_param_name()`, ayrılmış adlar; adreste yoksa filtre atlanır;
+  `$request` null = adres yok, kayıt görünümü kapanır). `__filter_value`,
+  `has_filter_value` / `no_filter_value`, `filter_title`; sayfa başı
+  `pg_sw_url_filter_state()`. Bkz. `docs/memory/designer/form-list-url-filters.md`.
 - `form_item_view` cfg `filters` (aynı biçim): kaydın görünürlüğüdür
   (`pg_sw_record_view_filters()`, `pg_sw_record_passes_filters()`; alanı
   kalmayan ya da operatörü listede olmayan filtrede kapalı kalır, operatör
