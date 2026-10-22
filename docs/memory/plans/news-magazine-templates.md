@@ -25,6 +25,7 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4
 7p. Done (#1275): record-page privacy guards before the news template: the BlogPosting author never falls back to the login username; a list never redirects into a closed record page.
 7q. Done (#1287): the 7 built-in templates printed `submitter` (the login username) as the visible author of a blog post; a `submitter_name` field and those bylines.
 7r. Follow-up (not started): a member whose comment form gives no name choice is stored and shown under the login username (`add_comment.php`); every site's comments, so a product decision first.
+7s. Designed lists fail closed when a filter's field is gone, its operator is unknown or it is past the fifty-row cap (a renamed Status field listed drafts).
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
 

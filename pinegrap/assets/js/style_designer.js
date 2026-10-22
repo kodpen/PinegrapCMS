@@ -47239,8 +47239,8 @@ const StyleDesigner = (function () {
 
             var rawOp = String(f.operator == null ? '' : f.operator);
             var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
-            // An operator outside the list (a hand-written config) is skipped
-            // by a list and closes a record view, so on a row with a field it
+            // An operator outside the list (a hand-written config) shows no
+            // record on a list or a record view, so on a row with a field it
             // stays visible here instead of reading as "is equal to".
             var opBad = !opKnown && field !== '';
             var op = opKnown ? rawOp : 'is equal to';
@@ -47248,6 +47248,15 @@ const StyleDesigner = (function () {
                 return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
             if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
+
+            // Why the list or the record page is empty: the server shows no
+            // record while a row names a field the form does not have or an
+            // operator outside the list (pg_sw_filter_sql_closed()).
+            var rowWarn = (!known && !loading)
+                ? _sdT('This field is not in the form, so no record is shown. Choose the field again.')
+                : opBad
+                ? _sdT('This operator is not known, so no record is shown. Choose the operator again.')
+                : '';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -47259,6 +47268,9 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
                     '</div>' +
+                    (rowWarn
+                        ? '<div class="sd-sw-filter-warn" style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(rowWarn) + '</div>'
+                        : '') +
                     '<select class="form-select form-select-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
                     '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '" value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
                     (dynOpts.length
