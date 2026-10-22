@@ -5,7 +5,7 @@ description: ERP bank statement import (includes/erp/bank_import.php): how a CSV
 
 ## How is a CSV statement's separator chosen?
 - `erp_bank_csv_separator()` splits the first 50 non-empty lines with each candidate (`;`, `,`, tab, `|`) as CSV, quotes respected, and counts the lines of each column width above one. The candidate whose most common width covers the most lines wins; a tie goes to the earlier one (`;` first); no line of two columns falls back to `;`.
-- Before (#1076, PR #PRNO) the character seen most often in the first ten lines won. A Turkish export (`;` separator, commas in descriptions, decimal commas) came apart on the commas: date and description in one cell, the amount in two, no right column to choose.
+- Before (#1076, PR #1219) the character seen most often in the first ten lines won. A Turkish export (`;` separator, commas in descriptions, decimal commas) came apart on the commas: date and description in one cell, the amount in two, no right column to choose.
 - The heading line decides the common case: it has no decimal commas, so `;` covers one line more than `,` even when every transaction carries the same number of commas.
 - There is no separator choice on the column screen; a file the guess gets wrong cannot be fixed there.
 - `str_getcsv()` is called with the escape argument (a backslash, the old default): PHP 8.4+ deprecates leaving it out.
