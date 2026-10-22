@@ -14,16 +14,19 @@ description: How the Image element's size is written: whole-number width/height 
 ## What does the ratio box take?
 - The image has its own box (`<div class="ratio ratio-XxY">`) for a preset `aspectRatio`, and (`<div class="ratio">` with `--bs-aspect-ratio`) for the Sizing panel's custom ratio when it is switched on with a value. Same test on both sides: `_sdImgInRatio()` and the image case of `_render_content_html()`. `'custom'` alone is no box (the editor used to wrap it in `ratio-custom`, a box with no height).
 - The box takes the sizing style: the size (a whole number as `px`), min/max, offsets, z-index, overflow, plus the image's `rounded*` classes.
-- The `<img>`, the element the operator selected, keeps its id, the Attributes panel's entries, its `style` (font, `object-position`, user style), its classes and the Sizing panel's classes. The editor and the canvas used to put id, attributes and style on the box (`addGlobalAttrs()` wrote on the first tag; `buildNodeEl()` on the inner element), the page on the `<img>`.
+- The `<img>`, the element the operator selected, keeps its id, the Attributes panel's entries, its `style` (font, `object-position`, user style), its classes and the Sizing panel's classes. The editor and the canvas used to put them on the box, the page on the `<img>`.
 
 ## Which writers follow it?
 - The page: the image case of `_render_content_html()` (`includes/fn/designer.php`), so also shared components and system widgets. The e-mail pass (`pg_img_strip_responsive()`) drops only `srcset`/`sizes`/`<source>`.
 - The editor's HTML (code view, preview, SEO check, revision diff): `CONTENT.image.toHTML()` writes the tags and the attributes; `addGlobalAttrs()` the style, on the `<img>` or the box.
 - The canvas: `CONTENT.image.render()` and `buildNodeEl()` (`_attrEl` / `_boxEl`). A percentage width, min-width or max-width makes the image's wrapper a block, or the percentage resolved against the shrunk wrapper.
-- `tests/designer_image_size_test.php` cuts the editor's functions out and compares their markup with the page's (attribute order aside) for each case (Node; skipped without it).
+- `tests/designer_image_size_test.php` runs the editor's functions under Node (skipped without it) against the page's markup, attribute order aside.
 
-## What was wrong before (first round)?
-- Blocks such as team-profiles (`'112'`) and the testimonials (`'48'`) printed `style="width:48;height:48"` in the editor's HTML; the page wrote every value as an attribute (`width="12rem"` read as 12 px); a second `style` attribute on the `<img>` or the box was dropped; a percentage width on the canvas also went on the wrapper.
+## How does the Attributes panel list them?
+- `getNodeBuiltinAttrs()`: `width`/`height` rows only while they are attributes (empty or a whole number). A unit is in the merged `style` row outside a ratio box (`_sdInlineStyleProps()`: an edit there writes the prop, a whole number goes back to the attribute); in a ratio box it is the box's and not listed.
+
+## What was wrong before?
+- Editor: `style="width:48;height:48"` beside the attributes (team-profiles, testimonials); page: every value an attribute (`width="12rem"` read as 12 px); a second, dropped `style` attribute; the panel listed `width: 50%` as an attribute.
 
 ## What about pages already saved?
 - `page.page_tree_code` keeps the HTML drawn at its last save; the tree is unchanged. A page gets the new markup when it is saved again or by Rebuild Page HTML (docs/memory/designer/page-html-rebuild.md). Shared components and widgets are drawn per request and follow at once. No migration.

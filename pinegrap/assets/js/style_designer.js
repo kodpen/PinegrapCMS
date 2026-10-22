@@ -21251,8 +21251,13 @@ const StyleDesigner = (function () {
             // Image attrs are editable — propKey links the input directly to n.props[propKey]
             attrs.push({ name: 'src',    value: p.src    || '', propKey: 'src'    });
             attrs.push({ name: 'alt',    value: p.alt    !== undefined ? p.alt : '', propKey: 'alt'    });
-            attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
-            attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
+            // width / height are attribute rows while they are written as
+            // attributes (empty or a whole number, _sdImgDim()). A value with
+            // a unit is a style: outside a ratio box it is shown in the
+            // merged 'style' row (_sdInlineStyleProps()), in a ratio box it
+            // is the box's, not the image's, and is not listed here.
+            if (!_sdImgDim(p.width).css)  attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
+            if (!_sdImgDim(p.height).css) attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
             // Note: objectPosition is shown in the merged, editable 'style'
             // row (_sdInlineStyleProps()) — not locked here.
         }
@@ -21918,6 +21923,18 @@ const StyleDesigner = (function () {
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
+            // A width / height with a unit is written in the image's style
+            // (outside a ratio box): listed there, not as an attribute row
+            // (getNodeBuiltinAttrs()). A whole number written in the style
+            // row goes back to the prop and so to the attribute.
+            if (!_sdImgInRatio(p)) {
+                ['width', 'height'].forEach(function (k) {
+                    if (!_sdImgDim(p[k]).css) return;
+                    out.push({ prop: k, css: k,
+                               toCss: function (v) { return _sdImgDim(v).css; },
+                               fromCss: function (v) { var t = String(v).trim(); return t === '' ? null : t; } });
+                });
+            }
         }
         if (node && node.type === 'content' && p.contentType === 'icon') {
             out.push({ prop: 'fontSize', css: 'font-size',

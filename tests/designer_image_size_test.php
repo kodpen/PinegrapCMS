@@ -187,10 +187,10 @@ function designer_image_size_test_cut($source, $start)
 	return '';
 }
 
-// Runs $body under Node after the designer's sizing helpers and its Image
-// element, cut out of assets/js/style_designer.js; $body fills `out`, which
-// comes back decoded. null without Node.
-function designer_image_size_test_js($body)
+// Runs $body under Node after the designer's sizing helpers, the declarations
+// $more names and its Image element, cut out of assets/js/style_designer.js;
+// $body fills `out`, which comes back decoded. null without Node.
+function designer_image_size_test_js($body, $more = array())
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -207,7 +207,7 @@ function designer_image_size_test_js($body)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code_js = '';
 
-	foreach (array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'function addGlobalAttrs(') as $start) {
+	foreach (array_merge(array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'function addGlobalAttrs('), $more) as $start) {
 		$found = designer_image_size_test_cut($source, $start);
 		pg_assert_true($found !== '', $start . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -356,4 +356,66 @@ function test_designer_sizing_length_editor_matches_page()
 		$page = _build_node_sizing_attrs($props);
 		pg_assert_same($page['style'], $result[$label], $label);
 	}
+}
+
+// The Attributes panel of an image (getNodeBuiltinAttrs(), the merged style
+// row _currentInlineStyleValue() and its write-back _sdApplyInlineStyle()):
+// width / height are attribute rows while they are attributes, a value with
+// a unit is in the style row, in a ratio box neither (the box takes it).
+function test_designer_image_size_attributes_panel()
+{
+	$cases = array(
+		'whole numbers' => array('width' => '48', 'height' => '48'),
+		'a unit and a whole number' => array('width' => '50%', 'height' => '48'),
+		'units in a ratio box' => array('width' => '50%', 'height' => '12rem', 'aspectRatio' => '16x9'),
+		'a whole number in a ratio box' => array('width' => '200', 'aspectRatio' => '16x9'),
+		'with object-position and the user style' => array('width' => '12rem', 'objectPosition' => 'top', '_attrs' => array(array('name' => 'style', 'value' => 'opacity: .9'))),
+		'a whole number beside the user style' => array('width' => '72', '_attrs' => array(array('name' => 'style', 'value' => 'width: 72px'))),
+	);
+	$writes = array(
+		'a unit edited' => array(array('width' => '50%'), 'width: 30%; opacity: .5'),
+		'the unit taken out' => array(array('width' => '50%', 'height' => '2rem'), 'height: 2rem'),
+		'a whole number typed' => array(array('width' => '50%'), 'width: 48'),
+		'a whole number keeps the user style' => array(array('width' => '72', '_attrs' => array(array('name' => 'style', 'value' => 'width: 72px'))), 'width: 80px'),
+	);
+	$result = designer_image_size_test_js(
+		'var cases = ' . json_encode($cases) . ', writes = ' . json_encode($writes) . ';'
+		. 'var mk = function (p) { return { type: "content", props: Object.assign({ contentType: "image", src: "a.jpg", alt: "A" }, JSON.parse(JSON.stringify(p))) }; };'
+		. 'Object.keys(cases).forEach(function (k) {'
+		. '  var n = mk(cases[k]);'
+		. '  out[k] = { rows: getNodeBuiltinAttrs(n).filter(function (a) { return a.name === "width" || a.name === "height"; }).map(function (a) { return a.name + "=" + a.value; }), style: _currentInlineStyleValue(n) };'
+		. '});'
+		. 'Object.keys(writes).forEach(function (k) {'
+		. '  var n = mk(writes[k][0]);'
+		. '  _sdApplyInlineStyle(n, writes[k][1]);'
+		. '  var st = (n.props._attrs || []).filter(function (a) { return a.name === "style"; });'
+		. '  out["write " + k] = { width: n.props.width || "", height: n.props.height || "", attrStyle: st.length ? st[0].value : "" };'
+		. '});',
+		array('function getNodeBuiltinAttrs(', 'function _sdInlineStyleProps(', 'function _propDerivedInlineDecls(', 'function _currentInlineStyleValue(', 'function _sdApplyInlineStyle(', 'function _parseInlineStyle(', 'function _serializeInlineDecls(')
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+
+	$want = array(
+		'whole numbers' => array(array('width=48', 'height=48'), ''),
+		'a unit and a whole number' => array(array('height=48'), 'width: 50%'),
+		'units in a ratio box' => array(array(), ''),
+		'a whole number in a ratio box' => array(array('width=200', 'height='), ''),
+		'with object-position and the user style' => array(array('height='), 'object-position: top; width: 12rem; opacity: .9'),
+		'a whole number beside the user style' => array(array('width=72', 'height='), 'width: 72px'),
+	);
+
+	foreach ($want as $label => $w) {
+		pg_assert_same($w[0], $result[$label]['rows'], $label . ': attribute rows');
+		pg_assert_same($w[1], $result[$label]['style'], $label . ': style row');
+	}
+
+	pg_assert_same(array('width' => '30%', 'height' => '', 'attrStyle' => 'opacity: .5'), $result['write a unit edited'], 'a unit edited in the style row stays the prop');
+	pg_assert_same(array('width' => '', 'height' => '2rem', 'attrStyle' => ''), $result['write the unit taken out'], 'a width taken out of the style row clears the prop');
+	pg_assert_same(array('width' => '48', 'height' => '', 'attrStyle' => ''), $result['write a whole number typed'], 'a whole number goes back to the attribute');
+	pg_assert_same(array('width' => '72', 'height' => '', 'attrStyle' => 'width: 80px'), $result['write a whole number keeps the user style'], 'beside an attribute the user style stays the user\'s');
 }
