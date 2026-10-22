@@ -13,4 +13,4 @@ description: External API product name (SKU) rule on create and update (trimmed,
 
 ## What bounds do the dimensions have?
 - `weight`, `length`, `width`, `height` are `decimal(12,4) unsigned`. Both product routes declare `'min' => 0, 'max' => 99999999.9999` (`includes/api/schema.php`); the router answers 422 outside it. Before, the update declared neither: `-5` gave 200 and stored 0 (the non-strict session clamps an unsigned column), and on both routes a figure past the top was stored as the top.
-- `tests/api_decimal_bounds_test.php` reads the columns from both setup SQL files and checks every decimal body parameter of the two routes that names one declares a floor and a top the column holds. Text limits have the same guard: `core/api-text-field-limits.md`.
+- `tests/api_decimal_bounds_test.php` reads the columns from both setup SQL files and checks every decimal body parameter of the two routes that names one declares a floor and a top the column holds. Text limits have the same guard: `api/api-text-field-limits.md`.

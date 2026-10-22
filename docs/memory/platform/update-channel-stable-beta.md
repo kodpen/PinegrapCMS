@@ -4,10 +4,10 @@ description: Update channel (stable/beta): config key, the three channel functio
 ---
 
 ## Where is the channel stored and asked?
-- `config.software_update_channel` (`ENUM('stable','beta')`, migration 4.21) -> `init.php` constant `SOFTWARE_UPDATE_CHANNEL`. Missing column or value outside the enum = `stable`.
-- Ask the channel from ONE place in code (functions.php): `pg_update_channel()` -> `'stable'`/`'beta'`; `pg_update_request_key()` -> `latest_version` / `latest_beta_version`; `pg_update_package_file()` -> `pinegrap_software_update.zip` / `pinegrap_software_update_beta.zip`.
-- Three callers must ALL ask from the same place: the daily check (`software_update_check.php`), the updater screen (`software_update.php`) and the updater steps (`api.php` -> check / download / replace). A site that asks the version on one channel and downloads the package from the other installs a package it never compared to its own version.
-- `api.php` takes the package name once in the download step and puts it in `$update_package`; the `replace` step calls the same function: if the two sides diverge, the extract step looks for a file that does not exist.
+- `config.software_update_channel` (`ENUM('stable','beta')`, 2026.4.4 step 4.21) -> `init.php` constant `SOFTWARE_UPDATE_CHANNEL`. Missing column or value outside the enum = `stable`.
+- Ask the channel from ONE place in code (`includes/fn/update.php`): `pg_update_channel()` -> `'stable'`/`'beta'`; `pg_update_request_key()` -> `latest_version` / `latest_beta_version`; `pg_update_package_file()` -> `pinegrap_software_update.zip` / `pinegrap_software_update_beta.zip`.
+- Three callers must ALL ask from the same place: the daily check (`software_update_check.php`), the updater screen (`software_update.php`) and the updater steps (`pg_panel_software_update()` in `includes/panel/software.php`, `api.php` action `software_update`: check / download / backup / replace). A site that asks the version on one channel and downloads the package from the other installs a package it never compared to its own version.
+- The download step takes the package name once and puts it in `$update_package`; the backup and `replace` steps call the same function: if the two sides diverge, the extract step looks for a file that does not exist.
 
 ## What stays on stable?
 - `download_assistant.php` stays on stable and never reads the channel: it is the manual rescue path for a site with broken software, and its answer is the release everyone runs. Repair (overwriting files) is NOT there since 2026.4.8; it lives in the panel at `software_repair.php`.

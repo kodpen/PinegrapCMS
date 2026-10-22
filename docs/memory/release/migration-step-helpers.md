@@ -21,7 +21,7 @@ install_note('...');   // note shown on screen under that version
 ## What are the probe and data-statement rules?
 - Probes match the exact name (`SHOW COLUMNS ... WHERE Field =`, `information_schema`); never `LIKE`, because `_` is a wildcard.
 - Data statements (`UPDATE` / `DELETE`) are written re-runnable (`WHERE ... IS NULL`, `WHERE created_at = 0`).
-- A `MODIFY` that narrows an enum always checks the previous shape with `install_column_info()` first (examples: 2026.1.14 / 2026.1.26).
+- A `MODIFY` that narrows an enum always reads the previous shape with `install_column_info()` first and keeps it (examples: 2026.1.14 / 2026.1.26); written blind, it turns the column's rows into `''`.
 - An unguarded `ADD` / `CREATE` is forbidden: every step is "exists -> skip", which is also the function's double-run test.
 
 Related: docs/memory/release/upgrade-runner-behavior.md

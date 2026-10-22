@@ -13,5 +13,6 @@ Files `includes/erp/cashflow.php`, `erp_cashflow.php` (gate `'cash'`); entry fro
 ## What UI and translation traps exist on this screen?
 - Several `form-control`s inside `.pg-toolbar`: do NOT give the form `flex-wrap`, and put `w-auto` on the fields; otherwise the 100% width of `form-control` throws every field onto its own line.
 - Existing `tr.json` entries do not fit as screen labels: `From` → "Şundan", `To` → "Şuna", `Net` → "KDV Hariç", `Method` → "Metod". Use `Start` / `End` / `Net change` / a separate key. Check existing translations before writing a new key.
+- Other ERP traps: docs/memory/erp/erp-translation-traps.md.
 
 Related: docs/memory/erp/erp-aging-and-due-date.md
