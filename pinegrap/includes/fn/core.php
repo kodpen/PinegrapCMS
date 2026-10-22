@@ -758,17 +758,48 @@ function pg_defuse_page_message($html)
 //
 // A message is HTML: the alerts print it as it is, some carry a link, and a
 // value it names (a refused file name) is escaped before it goes in. Shown in
-// a text node its tags must not appear and its entities must be read once, so
-// the markup is dropped and the entities are resolved; the caller escapes the
-// result for its own context. Reading the HTML as text here also means a byte
-// the HTML escape replaced survives instead of emptying the whole sentence.
+// a text node it must read as the alert reads: what a browser hides is
+// dropped (tags, comments, <!...> and <?...>), a line break or a block
+// boundary becomes a space, and the entities are resolved once; the caller
+// escapes the result for its own context. A "<" that does not start a tag
+// ("must be <5", "a <= b") is text in HTML and stays; strip_tags() dropped
+// everything after it. Reading the HTML as text here also means a byte the
+// HTML escape replaced survives instead of emptying the whole sentence.
 function pg_liveform_message_text($message)
 {
     if ($message === null || $message === '') {
         return '';
     }
 
-    return trim(html_entity_decode(strip_tags((string) $message), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    // The rest of a tag: attribute text, where a quoted ">" does not end it.
+    // A quote or a comment that is never closed runs to the end, as in a
+    // browser, so every match that starts succeeds and the scan stays linear;
+    // the possessive quantifiers keep PCRE from backtracking.
+    $tag_rest = '(?:[^>"\']++|"[^"]*+(?:"|\z)|\'[^\']*+(?:\'|\z))*+(?:>|\z)';
+
+    // One pass, so a tag inside a comment or inside another tag's quoted
+    // attribute is read as part of it, as a browser reads it. A comment ends
+    // at "-->", or at once as "<!-->" and "<!--->".
+    $text = preg_replace_callback(
+        '/<!--(?:-?>|(?:[^-]++|-(?!->))*+(?:-->|\z))|<[!?][^>]*+(?:>|\z)|<\/?([a-z][^\s\/>"\']*+)' . $tag_rest . '/i',
+        function ($match) {
+            // A line break or a block boundary reads as a space between words.
+            return (isset($match[1]) && preg_match('/^(?:br|p|div|li|ul|ol|h[1-6]|hr|tr|td|th|table)$/i', $match[1])) ? ' ' : '';
+        },
+        (string) $message
+    );
+
+    if ($text !== null) {
+        $text = preg_replace('/[ \t\n\r\f\x0B]+/', ' ', $text);
+    }
+
+    // A PCRE limit reached on an outsized message: strip_tags() still gives
+    // its words.
+    if ($text === null) {
+        $text = strip_tags((string) $message);
+    }
+
+    return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
 function escape($string)
