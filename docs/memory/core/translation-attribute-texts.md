@@ -4,7 +4,7 @@ description: Translating worded attributes (alt, title, placeholder, aria-label,
 ---
 
 ## Which attributes are texts?
-`pg_tr_worded_attrs()` (`includes/translate/content.php`): `alt`, `title`, `placeholder`, `aria-label`, `aria-description`, `data-bs-title`, `data-bs-content`. One list feeds a node's `_attrs` (`pg_tr_node_fields()`), the tags inside HTML (`pg_tr_html_attr_texts()`) and the drawing (`pg_tr_render_attrs()`). A `value` is a text only where it is the label: an input of type submit, button or reset (`pg_tr_input_value_is_label()`), in a node's `_attrs` and in HTML alike (HTML since #1216, PR #PRNUM). Any other input's value is posted data and is left alone; so is a `<button>`'s value in HTML (its label is its content). A node's `_attrs` still takes a `<button>`'s value as its label.
+`pg_tr_worded_attrs()` (`includes/translate/content.php`): `alt`, `title`, `placeholder`, `aria-label`, `aria-description`, `data-bs-title`, `data-bs-content`. One list feeds a node's `_attrs` (`pg_tr_node_fields()`), the tags inside HTML (`pg_tr_html_attr_texts()`) and the drawing (`pg_tr_render_attrs()`). A `value` is a text only where it is the label: an input of type submit, button or reset (`pg_tr_input_value_is_label()`), in a node's `_attrs` and in HTML alike (HTML since #1216, PR #1218). Any other input's value is posted data and is left alone; so is a `<button>`'s value in HTML (its label is its content). A node's `_attrs` still takes a `<button>`'s value as its label.
 
 ## Where can one stand, and who extracts it?
 - A designer node's attributes panel: `_attrs:<name>` fields, drawn by the tree hook (`pg_tr_render_props()`). Since 2026.4.6.
