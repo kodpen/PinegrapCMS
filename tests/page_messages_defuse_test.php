@@ -174,6 +174,48 @@ function test_page_message_text_for_inline_feedback()
 	pg_assert_same('', pg_liveform_message_text(''));
 }
 
+// The inline text is what the alert shows of the same message: a "<" that is
+// not the start of a tag is text there and stays (strip_tags() dropped the
+// rest of the sentence after it), what a browser hides goes, and a line break
+// reads as a space instead of joining two words.
+function test_page_message_text_keeps_what_the_alert_shows()
+{
+	pg_assert_same('Quantity must be <5 and >0', pg_liveform_message_text('Quantity must be <5 and >0'));
+	pg_assert_same('Use 1 < 2 always', pg_liveform_message_text('Use 1 < 2 always'));
+	pg_assert_same('a <= b, c <- d', pg_liveform_message_text('a <= b, c <- d'));
+	pg_assert_same('2 line(s) could not be used: line 1: x line 2: y', pg_liveform_message_text('2 line(s) could not be used:<br>line 1: x<br />line 2: y'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- note --> <a class="alert-link" href="e.php?id=1&amp;x=2" onclick="return a > b;">Open the expense</a>'));
+	pg_assert_same('Sorry, x was not accepted.', pg_liveform_message_text('Sorry, <?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Sorry, <?php echo 1; ?>x was not accepted.', pg_liveform_message_text('Sorry, &lt;?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Mail rejected', pg_liveform_message_text('Mail <info@example.com> rejected'));
+	pg_assert_same('Footer', pg_liveform_message_text('<cregion>Footer</cregion>'));
+}
+
+// A quote or a comment that is never closed runs to the end, as a browser
+// reads it, and an outsized one is read in one pass: an unclosed quote after
+// many tags rescanned the rest of the message from every tag, and a comment
+// over a megabyte ran PCRE out of backtracking and came back as null.
+function test_page_message_text_unclosed_quote_and_comment()
+{
+	pg_assert_same('Sorry', pg_liveform_message_text('Sorry<a title="x>more text'));
+	pg_assert_same('Saved.', pg_liveform_message_text('Saved.<!-- note that never closes'));
+	pg_assert_same('', pg_liveform_message_text(str_repeat('<br ', 20000) . '"'));
+	pg_assert_same('x', pg_liveform_message_text('x<!--' . str_repeat('a', 1000100)));
+}
+
+// A tag inside a comment or inside another tag's quoted attribute is part of
+// that comment or attribute, and an empty comment ends where it opens: the
+// text after them stays, as the alert shows it.
+function test_page_message_text_tags_inside_comments_and_attributes()
+{
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- <p --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- old <br here --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved. <a title="<p class=\'x>">Open</a> the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!--> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!---> Open the expense'));
+	pg_assert_same('ab', pg_liveform_message_text('a<!---->b'));
+}
+
 // The two inline-feedback consumers (output_field and the per-field JS map)
 // take the message through pg_liveform_message_text(), not the raw stored
 // string, so an escaped file name is not escaped a second time.
