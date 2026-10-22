@@ -1,6 +1,6 @@
 ---
 name: designer-records-site-search
-description: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation
+description: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 ---
 
 ## What did it fix?
