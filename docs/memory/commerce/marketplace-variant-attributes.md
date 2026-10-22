@@ -4,10 +4,10 @@ description: Where a listed product's variant attributes come from (Trendyol var
 ---
 
 ## Which attributes count as variant attributes?
-- `is_variant` in `marketplace_category_attributes`. n11: `isVariant`. Trendyol: `varianter` **or** `slicer` (`mp_trendyol_attribute_rows()`, #980). The slicer (usually Renk) splits one `productMainId` into pages per value, so like the varianter it differs between the products of one article: the chair whose products are its colours.
+- `is_variant` in `marketplace_category_attributes`. n11: `isVariant`. Trendyol: `varianter` **or** `slicer` (`mp_trendyol_attribute_rows()`, #980, PR #1239). The slicer (usually Renk) splits one `productMainId` into pages per value, so like the varianter it differs between the products of one article: the chair whose products are its colours.
 
 ## What symptom did the slicer fix?
-- The slicer was stored as an ordinary attribute, asked once per article on the mapping screen, and every product of a colour-split article went out in that one colour: rows Trendyol cannot tell apart, or the wrong colour shown to buyers (#980).
+- The slicer was stored as an ordinary attribute, asked once per article on the mapping screen, and every product of a colour-split article went out in that one colour: rows Trendyol cannot tell apart, or the wrong colour shown to buyers (#980, PR #1239).
 
 ## Where does a product's value come from?
 - `mp_listing_attributes()` reads the product's own options and hands them to the pure `mp_listing_attributes_of($definitions, $chosen, $own)`.
