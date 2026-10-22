@@ -5390,6 +5390,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     $sql_ids = implode(',', array_map('intval', $subtree));
 
+                    // A parent deleted outright while the group sat in the bin
+                    // would leave it under a group that no longer exists, out
+                    // of the catalog tree; it comes back under the root group.
+                    $restore_parent_id = (int) db_value("SELECT parent_id FROM product_groups WHERE id = '" . e($item_id) . "'");
+
+                    if (($restore_parent_id > 0) && ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id = '" . e($restore_parent_id) . "'") == 0)) {
+
+                        $restore_root_id = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id LIMIT 1");
+
+                        if (($restore_root_id > 0) && ($restore_root_id != $item_id)) {
+                            db("UPDATE product_groups SET parent_id = '" . e($restore_root_id) . "' WHERE id = '" . e($item_id) . "'");
+                        }
+                    }
+
                     db(
                         "UPDATE product_groups
                         SET recycled = '0',

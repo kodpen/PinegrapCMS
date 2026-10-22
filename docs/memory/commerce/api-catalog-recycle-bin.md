@@ -1,6 +1,6 @@
 ---
 name: api-catalog-recycle-bin
-description: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count
+description: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups
 ---
 
 ## Which columns mark a binned record?
@@ -14,3 +14,7 @@ description: How the external API treats products and product groups in the cata
 ## Does a group's product_ids include binned products?
 - No (since #1046). `api_product_group_extras()` joins `products_groups_xref` to `products` with `products.recycled = '0'`, so `product_ids` (the group's variants) leaves a binned product out, and `attributes[].options[].in_use` no longer counts the options only it carries. Symptom it fixed (#876): a connector building variants from `product_ids` published a product the shop no longer sells, and a size only that product had showed as in use.
 - The inner join also drops link rows whose product no longer exists.
+
+## When is a group delete refused for its subgroups?
+- `POST /product-groups/{id}/delete` (and `DELETE`) answers 409 `group_not_empty` while live groups sit inside it. With `permanent: true` the groups inside it that are in the Recycle Bin count too ("…inside it in the Recycle Bin. Delete those from the Recycle Bin first."). Symptom it fixed (#875): the parent went, the binned child kept `parent_id` of a group that no longer existed, and once restored it was missing from the catalog tree.
+- The Catalog Manager's restore (`explorer_catalog_restore`) puts a group whose parent no longer exists under the root group (`parent_id = '0'`); a parent that is only binned is kept.
