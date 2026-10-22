@@ -13827,7 +13827,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: 'bi-check-circle-fill', cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Feature Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-bold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-bold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary small mb-0' })
                             ])
                         ]);
@@ -14095,7 +14095,7 @@ const StyleDesigner = (function () {
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-5 fw-bold' }),
                                 createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -14261,7 +14261,7 @@ const StyleDesigner = (function () {
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptoFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 // data-price-monthly / data-price-yearly carry both values; script swaps textContent
                                 createNode('content', { contentType: 'heading', tag: 'span', text: priceM, cssClass: 'display-5 fw-bold',
@@ -14396,7 +14396,7 @@ const StyleDesigner = (function () {
                         return createNode('col', { xs: '12', sm: '', md: '6', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Progress Stat {var}', n) }, [
                             createNode('semantic', { tag: 'div', cssClass: 'p-4 bg-body-tertiary rounded h-100', customName: _sdT('Progress Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-between align-items-end mb-2', customName: _sdT('Progress Header') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'mb-0' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 mb-0' }),
                                     createNode('content', { contentType: 'heading', tag: 'span', text: '%' + percent, cssClass: 'h4 fw-bold text-primary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-8', customName: _sdT('Progress Track')
@@ -14448,7 +14448,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/400/400', alt: name, cssClass: 'card-img-top object-fit-cover pg-ratio-1x1'
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Member Body') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-1' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-1' }),
                                     createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-primary small mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center', customName: _sdT('Social Links') }, [
@@ -14481,7 +14481,7 @@ const StyleDesigner = (function () {
                     var _tmMember = function (n, seed, name, role) {
                         return createNode('semantic', { tag: 'div', cssClass: 'col text-center', customName: _sdT('Member {var}', n) }, [
                             createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/200/200', alt: name, cssClass: 'rounded-circle mb-3', width: '100', height: '100' }),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: name, cssClass: 'fw-semibold mb-0' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h6 fw-semibold mb-0' }),
                             createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-body-secondary small mb-0' })
                         ]);
                     };
@@ -14527,7 +14527,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Leader Text Col') }, [
                                         createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Leader Body') }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: badge, cssClass: 'badge text-bg-primary mb-2' }),
-                                            createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-bold mb-1' }),
+                                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-bold mb-1' }),
                                             createNode('content', { contentType: 'paragraph', text: title, cssClass: 'text-primary mb-3' }),
                                             createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary mb-3' }),
                                             createNode('semantic', { tag: 'blockquote', cssClass: 'border-start border-primary border-3 ps-3 fst-italic mb-3', customName: _sdT('Leader Quote') }, [
@@ -14700,9 +14700,9 @@ const StyleDesigner = (function () {
                 if (ctype === 'faq-twocol') {
                     var _ftBlock = function (n, q, a) {
                         return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('FAQ Block {var}', n) }, [
-                            createNode('semantic', { tag: 'h5', cssClass: 'fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
+                            createNode('semantic', { tag: 'h3', cssClass: 'h5 fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
                                 createNode('content', { contentType: 'icon', iconName: 'bi-question-circle-fill', cssClass: 'text-primary flex-shrink-0', fontSize: '20' }),
-                                createNode('content', { contentType: 'paragraph', text: q, cssClass: 'mb-0' })
+                                createNode('content', { contentType: 'heading', tag: 'span', text: q, cssClass: '' })
                             ]),
                             createNode('content', { contentType: 'paragraph', text: a, cssClass: 'text-body-secondary mb-0 ps-4' })
                         ]);
@@ -14738,7 +14738,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: 'bi-circle-fill', cssClass: 'text-primary', fontSize: '14' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('Content Col') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -14768,7 +14768,7 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow-sm', customName: _sdT('Timeline Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: date, cssClass: 'badge text-bg-primary mb-2' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                                 ])
                             ])
@@ -14799,7 +14799,7 @@ const StyleDesigner = (function () {
  }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: num, cssClass: 'h4 fw-bold mb-0' })
                             ]),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-2' }),
                             createNode('content', { contentType: 'paragraph', text: body, cssClass: 'small text-body-secondary mb-0' })
                         ]);
                     };
@@ -14828,7 +14828,7 @@ const StyleDesigner = (function () {
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body d-flex flex-column', customName: _sdT('Article Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2 align-self-start' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary mt-auto', customName: _sdT('Meta') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + authorSeed + '/48/48', alt: author, cssClass: 'rounded-circle', width: '24', height: '24' }),
@@ -14863,7 +14863,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Small Article Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-secondary small mb-1' }),
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: date, cssClass: 'small text-body-secondary mb-0' })
                             ])
                         ]);
@@ -14910,7 +14910,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Article Content') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2' }),
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary mb-3' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary', customName: _sdT('Article Meta') }, [
                                     createNode('content', { contentType: 'paragraph', text: author, cssClass: 'mb-0 fw-semibold' }),
@@ -15139,7 +15139,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Product Body') }, [
                                     createNode('content', { contentType: 'image', src: url, alt: brand, cssClass: 'mb-3 pg-logo-60'
  }),
-                                    createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-semibold mb-2' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Price') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-6 fw-bold text-primary' }),
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -15236,7 +15236,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Info Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -15245,7 +15245,7 @@ const StyleDesigner = (function () {
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: '', cssClass: 'g-lg-5', customName: _sdT('Contact Row') }, [
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Info Col') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Contact Us'), cssClass: 'fw-bold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Contact Us'), cssClass: 'h3 fw-bold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Write to us with any question, feedback or partnership idea.'), cssClass: 'lead text-body-secondary mb-4' }),
                                     _ciInfoItem('bi-geo-alt-fill',   _sdT('Address'),    _sdT('42 Main Street, New York')),
                                     _ciInfoItem('bi-telephone-fill', _sdT('Phone'),  '+90 212 555 0100'),
@@ -16433,11 +16433,13 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
-                    // price, then an optional description and diet tags.
-                    var _bkMenuItem = function (name, desc, price, tags) {
+                    // price, then an optional description and diet tags. The
+                    // name is an h4 under a category h3; a block without
+                    // category headings passes 'h3' so no level is skipped.
+                    var _bkMenuItem = function (name, desc, price, tags, tag) {
                         var kids = [
                             _bkDiv('d-flex align-items-baseline gap-2', _sdT('Item Head'), [
-                                _bkH('h4', name, 'h6 fw-semibold mb-0'),
+                                _bkH(tag || 'h4', name, 'h6 fw-semibold mb-0'),
                                 _bkDiv('flex-grow-1 border-bottom border-secondary-subtle', _sdT('Leader')),
                                 _bkH('span', price, 'fw-semibold text-nowrap')
                             ])
@@ -16725,6 +16727,8 @@ const StyleDesigner = (function () {
                     // Menu: Tabs — pill tabs per category, two columns of priced lines in each pane
                     if (ctype === 'menu-tabs') {
                         var _mtPfx = _bkUid('mt');
+                        // The items sit right under the block's h2 (the tabs are buttons).
+                        var _mtItem = function (name, desc, price, tags) { return _bkMenuItem(name, desc, price, tags, 'h3'); };
                         var _mtTab = function (i, label, icon) {
                             return _bkTag('li', 'nav-item', label, [
                                 _bkTag('button', 'nav-link d-flex align-items-center gap-2' + (i === 0 ? ' active' : ''), _sdT('Tab Button'), [
@@ -16758,31 +16762,31 @@ const StyleDesigner = (function () {
                             ], [{ name: 'role', value: 'tablist' }]),
                             _bkDiv('tab-content', _sdT('Menu Panes'), [
                                 _mtPane(0, _sdT('Coffee'), [
-                                    _bkMenuItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
-                                    _bkMenuItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
-                                    _bkMenuItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
+                                    _mtItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
+                                    _mtItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
+                                    _mtItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
                                 ], [
-                                    _bkMenuItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
-                                    _bkMenuItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
-                                    _bkMenuItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
+                                    _mtItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
+                                    _mtItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
+                                    _mtItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
                                 ]),
                                 _mtPane(1, _sdT('Breakfast'), [
-                                    _bkMenuItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
-                                    _bkMenuItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
-                                    _bkMenuItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
+                                    _mtItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
+                                    _mtItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
+                                    _mtItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
                                 ], [
-                                    _bkMenuItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
-                                    _bkMenuItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
+                                    _mtItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
+                                    _mtItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
                                 ]),
                                 _mtPane(2, _sdT('Desserts'), [
-                                    _bkMenuItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
-                                    _bkMenuItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
+                                    _mtItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
+                                    _mtItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
                                 ], [
-                                    _bkMenuItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
-                                    _bkMenuItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
-                                    _bkMenuItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
+                                    _mtItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
+                                    _mtItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
+                                    _mtItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
                                 ])
                             ])
                         ]);
@@ -16906,8 +16910,8 @@ const StyleDesigner = (function () {
                                         _bkH('span', _sdT('Served until 15:00'), 'small text-body-secondary')
                                     ]),
                                     _bkDiv('border-top pt-3', _sdT('More Specials'), [
-                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00')),
-                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'))
+                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00'), null, 'h3'),
+                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'), null, 'h3')
                                     ])
                                 ], '6')
                             ], 'align-items-center g-lg-5')
