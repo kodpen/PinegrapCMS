@@ -60,7 +60,7 @@ function _test_designer_grid_cases()
 		'container' => _test_designer_grid_node('container', array('cssClass' => 'py-5')),
 		'container fluid' => _test_designer_grid_node('container', array('fluid' => true, 'cssClass' => 'py-5 bg-body-tertiary', 'id' => 'top', '_attrs' => $attrs(array('data-bs-theme' => 'dark', 'class' => 'x', 'ID' => 'y')))),
 		'container escaping' => _test_designer_grid_node('container', array('cssClass' => 'a"b&c', '_attrs' => $attrs(array('title' => 'x<y & "z"')))),
-		'container sizing order' => _test_designer_grid_node('container', array('zIndex' => '5', 'left' => '1rem', 'top' => '0', 'overflowX' => 'auto', 'height' => '10px', 'width' => '5px')),
+		'container sizing order' => _test_designer_grid_node('container', array('zIndex' => '5', 'left' => '1rem', 'top' => '0px', 'overflowX' => 'auto', 'height' => '10px', 'width' => '5px')),
 		'container zero and z-index' => _test_designer_grid_node('container', array('zIndex' => '0', 'bottom' => 0, 'minWidth' => '', 'maxHeight' => '50vh')),
 		'container bad z-index' => _test_designer_grid_node('container', array('zIndex' => '9; color:red', 'width' => 'calc(100% - 2rem)')),
 		'row ratio unpicked' => _test_designer_grid_node('row', array('aspectRatioEnabled' => true)),
@@ -204,14 +204,15 @@ function test_designer_grid_toggle_class_once()
 	pg_assert_same('<div class="row ratio ratio-4x3" style="max-width:60rem">', _test_designer_grid_php($cases['row ratio']));
 }
 
-// The sizing props in one order, 0 as a value, z-index only as an integer
-// or auto, a ratio switched on with no preset as 16:9; the style escaped once.
+// The sizing props in the editor's order (z-index first), the string '0' a
+// value and the number 0 none, z-index only as an integer or auto, a ratio
+// switched on with no preset as 16:9; the style escaped once.
 function test_designer_grid_sizing()
 {
 	$cases = _test_designer_grid_cases();
 
-	pg_assert_same('<div class="container" style="width:5px;height:10px;overflow-x:auto;top:0;left:1rem;z-index:5">', _test_designer_grid_php($cases['container sizing order']));
-	pg_assert_same('<div class="container" style="max-height:50vh;bottom:0;z-index:0">', _test_designer_grid_php($cases['container zero and z-index']));
+	pg_assert_same('<div class="container" style="z-index:5;width:5px;height:10px;overflow-x:auto;top:0px;left:1rem">', _test_designer_grid_php($cases['container sizing order']));
+	pg_assert_same('<div class="container" style="z-index:0;max-height:50vh">', _test_designer_grid_php($cases['container zero and z-index']));
 	pg_assert_same('<div class="container" style="width:calc(100% - 2rem)">', _test_designer_grid_php($cases['container bad z-index']));
 	pg_assert_same('<div class="row ratio ratio-16x9">', _test_designer_grid_php($cases['row ratio unpicked']));
 	pg_assert_same('<div class="row ratio" style="--bs-aspect-ratio:40%">', _test_designer_grid_php($cases['row ratio custom']));

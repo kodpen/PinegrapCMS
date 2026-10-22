@@ -3489,19 +3489,28 @@ function _build_node_sizing_attrs($props)
     $cls_parts   = array();
     if (!is_array($props)) return array('style' => '', 'class' => '');
 
-    // A typed value, 0 included (`top: 0` for a sticky bar); '' and a
-    // missing prop are none.
+    // A prop as the editor's getNodeExtraStyle() tests it: a value
+    // JavaScript takes as true. The string '0' is a value (`top: 0` for a
+    // sticky bar); the number 0, false, '', a list and a missing prop are
+    // none. empty() is not that test: it drops the string '0'.
     $value = function ($key) use ($props) {
         if (!isset($props[$key])) return '';
         $v = $props[$key];
-        return (is_string($v) || is_int($v) || is_float($v)) ? trim((string)$v) : '';
+        if (is_string($v)) return trim($v);
+        return ((is_int($v) || is_float($v)) && $v != 0) ? trim((string)$v) : '';
     };
 
+    // The editor's order: z-index (a unitless integer, digits or 'auto'
+    // only), the lengths, overflow, the offsets, then a custom ratio.
+    $zi = $value('zIndex');
+    if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
+        $style_parts[] = 'z-index:' . $zi;
+    }
     $style_props_map = array(
         'width'      => 'width',
-        'height'     => 'height',
         'minWidth'   => 'min-width',
         'maxWidth'   => 'max-width',
+        'height'     => 'height',
         'minHeight'  => 'min-height',
         'maxHeight'  => 'max-height',
         'overflow'   => 'overflow',
@@ -3516,11 +3525,6 @@ function _build_node_sizing_attrs($props)
         if ($value($prop_key) !== '') {
             $style_parts[] = $css_key . ':' . $value($prop_key);
         }
-    }
-    // z-index is unitless integer — sanitize to digits + 'auto'
-    $zi = $value('zIndex');
-    if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
-        $style_parts[] = 'z-index:' . $zi;
     }
     // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
     $ar = $value('aspectRatio');
@@ -4265,16 +4269,23 @@ function _pg_unique_classes($classes)
 }
 
 // The Display & Sizing props of a content node, as _build_node_sizing_attrs()
-// gives them and the editor's _sdContentSizingNode() reads them. An image's
-// width and height and a spacer's height are the element's own props, not
-// sizing; an image in a ratio box (aspectRatio preset) hands its overflow to
-// the box it is drawn in.
+// gives them and the editor's _sdContentSizingNode() reads them. A spacer's
+// height is the element's own prop, not sizing. An image's width and height
+// are its attributes; in a ratio box (aspectRatio preset) the box takes the
+// whole style, the image's width and height in it (a bare number in px), so
+// the ratio applies to that size.
 function _pg_content_sizing($props, $ct)
 {
     if ($ct === 'image') {
-        unset($props['width'], $props['height']);
         if (isset($props['aspectRatio']) && preg_match('/^[0-9]+x[0-9]+$/', (string)$props['aspectRatio'])) {
-            unset($props['overflow'], $props['overflowX'], $props['overflowY']);
+            foreach (array('width', 'height') as $k) {
+                $v = isset($props[$k]) ? $props[$k] : '';
+                if ((is_int($v) && $v > 0) || (is_string($v) && preg_match('/^\d+$/', trim($v)))) {
+                    $props[$k] = trim((string)$v) . 'px';
+                }
+            }
+        } else {
+            unset($props['width'], $props['height']);
         }
     } elseif ($ct === 'spacer') {
         unset($props['height']);
@@ -5008,11 +5019,15 @@ function _render_content_html($props, $pad, $kids = '')
             $img_h_raw = !empty($props['height']) ? (string)$props['height'] : '';
             $w_attr  = $img_w_raw !== '' ? ' width="'  . h($img_w_raw) . '"' : '';
             $h_attr  = $img_h_raw !== '' ? ' height="' . h($img_h_raw) . '"' : '';
+            $_ar       = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
+            $_in_ratio = ($_ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $_ar));
             // Image's case-specific style: object-position. Everything else
             // (fontFamily — rare on <img> but possible, inlineStyle, user style)
-            // is composed by the helper.
+            // is composed by the helper. In a ratio box the box takes the
+            // sizing style (_pg_content_sizing()); the <img>, the element the
+            // operator selected, keeps its own style and attributes.
             $extra_style = !empty($props['objectPosition']) ? 'object-position:' . $props['objectPosition'] : '';
-            $obj_pos     = _compose_inline_style($props, $extra_style, $sz_style);
+            $obj_pos     = _compose_inline_style($props, $extra_style, $_in_ratio ? '' : $sz_style);
             $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'), true);
 
             // A file of this site gets its derivatives (pg_img_responsive()):
@@ -5022,8 +5037,6 @@ function _render_content_html($props, $pad, $kids = '')
             // Attributes panel (imported markup) is the author's and stays
             // alone. How it loads: pg_img_loading_attrs().
             $_written  = _pg_attr_names($props);
-            $_ar       = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-            $_in_ratio = ($_ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $_ar));
             $_sets     = ($raw_src !== '' && $raw_src !== '#' && !in_array('srcset', $_written, true)) ? pg_img_responsive($raw_src) : null;
             $_loading  = pg_img_loading_attrs(isset($props['loading']) ? $props['loading'] : '', $_written);
             $_resp     = '';
@@ -5057,29 +5070,13 @@ function _render_content_html($props, $pad, $kids = '')
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
             // Aspect Ratio wrapper: Bootstrap's .ratio class only works on a parent div.
-            // When width/height are set on the image, ALSO mirror them as inline-style on
-            // the wrapper so the ratio applies to a fixed size (instead of the default 100%
-            // width). Numeric inputs ("100") get a 'px' suffix; values with units pass through
-            // ("50%", "200px", "20rem", etc.).
-            //
-            // Overflow on a ratio'd image must apply to the WRAPPER, not the
-            // <img> itself — the wrapper is the box .ratio sizes, so clipping
-            // (object-fit:cover edges, scale-up, etc.) only works when the
-            // wrapper has overflow:hidden. We pull `overflow*` props out of
-            // the image's inline style and onto the wrapper when ratio is on.
-            $ar = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-            if ($ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $ar)) {
-                $wrapper_style_parts = array();
-                if ($img_w_raw !== '') {
-                    $wrapper_style_parts[] = 'width:' . (preg_match('/^\d+$/', $img_w_raw) ? ($img_w_raw . 'px') : h($img_w_raw));
-                }
-                if ($img_h_raw !== '') {
-                    $wrapper_style_parts[] = 'height:' . (preg_match('/^\d+$/', $img_h_raw) ? ($img_h_raw . 'px') : h($img_h_raw));
-                }
-                // Hoist overflow / overflow-x / overflow-y to the wrapper.
-                if (!empty($props['overflow']))  $wrapper_style_parts[] = 'overflow:'   . h($props['overflow']);
-                if (!empty($props['overflowX'])) $wrapper_style_parts[] = 'overflow-x:' . h($props['overflowX']);
-                if (!empty($props['overflowY'])) $wrapper_style_parts[] = 'overflow-y:' . h($props['overflowY']);
+            // The wrapper is the box .ratio sizes, so it takes the node's
+            // whole sizing style (_pg_content_sizing()): the image's width
+            // and height, so the ratio applies to a fixed size instead of the
+            // default 100% width, and overflow, so clipping (object-fit:cover
+            // edges, scale-up) works against the ratio'd box.
+            if ($_in_ratio) {
+                $ar = $_ar;
                 // border-radius classes on the IMG would round just the img,
                 // but with overflow:hidden on the wrapper the rounded corners
                 // need to be on the wrapper too. Mirror the image's rounded
@@ -5091,9 +5088,7 @@ function _render_content_html($props, $pad, $kids = '')
                         $wrapper_class .= ' ' . $_ic;
                     }
                 }
-                $wrapper_style_attr = $wrapper_style_parts
-                    ? ' style="' . implode(';', $wrapper_style_parts) . '"'
-                    : '';
+                $wrapper_style_attr = $sz_style !== '' ? ' style="' . h($sz_style) . '"' : '';
                 $html .= $pad . '<div class="' . $wrapper_class . '"' . $wrapper_style_attr . '>' . "\n"
                       . $pad . '    ' . ($_sources ? pg_img_picture($img_tag, $_sources, $_sizes, $pad . '    ', true) : $img_tag) . "\n"
                       . $pad . '</div>' . "\n";

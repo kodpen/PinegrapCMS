@@ -183,7 +183,8 @@ function test_designer_attrs_sizing()
 	pg_assert_same('<div class="p-2 visually-hidden">', _test_designer_attrs_php($cases['semantic sizing once']));
 	pg_assert_same('<div style="height:40px;min-width:1rem" id="gap">', _test_designer_attrs_php($cases['spacer own height']));
 	pg_assert_contains('width="72" height="72" style="object-position:top;max-width:100%" title="Tip" data-bs-toggle="tooltip" data-bs-placement="top"', _test_designer_attrs_php($cases['image own size']));
-	pg_assert_contains('style="min-height:5rem" id="pic"', _test_designer_attrs_php($cases['image in a ratio box']), 'the overflow goes on the ratio box');
+	pg_assert_contains('alt="A" id="pic"', _test_designer_attrs_php($cases['image in a ratio box']), 'the image keeps its id, the box takes the sizing style');
+	pg_assert_contains('<div class="ratio ratio-16x9" style="min-height:5rem;overflow:hidden">', _render_tree_node($cases['image in a ratio box'], 0, 0), 'the ratio box takes the sizing style');
 }
 
 // The Attributes panel's list never writes a second class, style or id, or
@@ -226,15 +227,17 @@ function test_designer_attrs_editor_writes_the_same()
 	pg_assert_same('<h2 id="q1">', $js['heading search section']);
 }
 
-// An image in a ratio box: the box gets the image's width and height (a
-// bare number in px), then its overflow, and the image's rounded classes in
-// their order, on the page and in the editor's HTML.
+// An image in a ratio box: the box takes the node's whole sizing style in
+// its order, the image's width and height in it (a bare number in px), and
+// the image's rounded classes in their order, on the page and in the
+// editor's HTML.
 function test_designer_attrs_image_ratio_box()
 {
 	$nodes = array(
 		'sized' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '1x1', 'width' => '200', 'height' => '50%', 'overflow' => 'hidden')),
 		'rounded' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '4x3', 'rounded' => true, 'cssClass' => 'shadow rounded-3', 'width' => '20rem')),
 		'plain' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '16x9')),
+		'whole style' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '1x1', 'overflow' => 'hidden', 'minHeight' => '5rem', 'width' => '200', 'zIndex' => '2', 'inlineStyle' => 'opacity:.5')),
 	);
 	$php = array();
 
@@ -245,6 +248,7 @@ function test_designer_attrs_image_ratio_box()
 	pg_assert_same('<div class="ratio ratio-1x1" style="width:200px;height:50%;overflow:hidden">', $php['sized']);
 	pg_assert_same('<div class="ratio ratio-4x3 rounded rounded-3" style="width:20rem">', $php['rounded']);
 	pg_assert_same('<div class="ratio ratio-16x9">', $php['plain']);
+	pg_assert_same('<div class="ratio ratio-1x1" style="z-index:2;width:200px;min-height:5rem;overflow:hidden">', $php['whole style']);
 
 	$js = _test_designer_attrs_js($nodes, true);
 
@@ -255,6 +259,12 @@ function test_designer_attrs_image_ratio_box()
 	foreach ($php as $name => $tag) {
 		pg_assert_same($tag, $js[$name], $name);
 	}
+
+	// The <img> keeps its own style, without the box's.
+	$img = preg_match('~<img\b[^>]*>~', _render_tree_node($nodes['whole style'], 0, 0), $m) ? preg_replace('~ onerror="[^"]*"~', '', $m[0]) : '';
+	pg_assert_same('<img src="https://example.com/a.png" alt="A" width="200" style="opacity:.5">', $img);
+	$js_img = _test_designer_attrs_js(array($nodes['whole style']));
+	pg_assert_same($img, $js_img[0]);
 }
 
 // The page marks a search section after its id, for the structured data.
