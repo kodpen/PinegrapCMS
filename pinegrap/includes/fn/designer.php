@@ -4030,16 +4030,8 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
         case 'container':
             $class = (!empty($props['fluid'])) ? 'container-fluid' : 'container';
-            if (!empty($props['cssClass'])) $class .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $class .= ' ' . $_sz['class'];
-            // Merge sizing inline style with any user-supplied style attr.
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $class . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            if (!empty($props['cssClass'])) $class .= ' ' . $props['cssClass'];
+            $html .= $pad . _pg_grid_open_tag($class, $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
@@ -4063,33 +4055,18 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
         case 'row':
             $rc = 'row';
-            if (!empty($props['gutter'])) $rc .= ' g-' . h($props['gutter']);
-            if (!empty($props['justify'])) $rc .= ' justify-content-' . h($props['justify']);
-            if (!empty($props['align'])) $rc .= ' align-items-' . h($props['align']);
-            if (!empty($props['cssClass'])) $rc .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $rc .= ' ' . $_sz['class'];
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $rc . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            if (!empty($props['gutter'])) $rc .= ' g-' . $props['gutter'];
+            if (!empty($props['justify'])) $rc .= ' justify-content-' . $props['justify'];
+            if (!empty($props['align'])) $rc .= ' align-items-' . $props['align'];
+            if (!empty($props['cssClass'])) $rc .= ' ' . $props['cssClass'];
+            $html .= $pad . _pg_grid_open_tag($rc, $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
 
         case 'col':
-            $cc = _build_col_classes($props);
-            if (!empty($props['cssClass'])) $cc .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $cc .= ' ' . $_sz['class'];
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $cc . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            // _build_col_classes() already ends with props.cssClass.
+            $html .= $pad . _pg_grid_open_tag(_build_col_classes($props), $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
@@ -4275,6 +4252,34 @@ function _pg_attr_names($props)
         if (is_array($a) && !empty($a['name'])) $names[] = strtolower((string)$a['name']);
     }
     return $names;
+}
+
+// A class attribute's value with each class once, in the order first
+// written. A grid node's classes come from its props, its cssClass and its
+// sizing toggles, and the Display & Sizing panel also writes the toggles'
+// classes into cssClass (_syncSizingClassesToCssClass() in the editor).
+function _pg_unique_classes($classes)
+{
+    $out = array();
+    foreach (preg_split('/\s+/', trim((string)$classes)) as $c) {
+        if ($c !== '' && !in_array($c, $out, true)) $out[] = $c;
+    }
+    return implode(' ', $out);
+}
+
+// The opening tag of a grid node (container, row, col), as the editor's
+// _sdGridOpenTag() writes it: the classes once each and escaped once, the
+// sizing style before the Attributes panel's style, then the id and the
+// panel's other attributes.
+function _pg_grid_open_tag($classes, $props, $sz)
+{
+    $style = array();
+    if ($sz['style'] !== '') $style[] = $sz['style'];
+    $user_style = _user_attr_value($props, 'style');
+    if ($user_style !== '') $style[] = $user_style;
+    return '<div class="' . h(_pg_unique_classes($classes . ' ' . $sz['class'])) . '"'
+        . ($style ? ' style="' . h(implode(';', $style)) . '"' : '')
+        . _render_extra_attrs($props) . '>';
 }
 
 // Build Bootstrap column classes from column props

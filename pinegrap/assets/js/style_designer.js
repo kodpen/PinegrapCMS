@@ -50092,10 +50092,8 @@ const StyleDesigner = (function () {
         var kidsMark = sink ? sink.ranges.length : 0;
         switch (n.type) {
             case 'container': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '');
+                h += pad + _sdGridOpenTag(n, cc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
@@ -50161,23 +50159,17 @@ const StyleDesigner = (function () {
                 }
                 break; }
             case 'row': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
                 var rc = 'row';
                 if (n.props.gutter) rc += ' g-' + n.props.gutter;
                 if (n.props.justify) rc += ' justify-content-' + n.props.justify;
                 if (n.props.align) rc += ' align-items-' + n.props.align;
                 if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                if (_pEC) rc += ' ' + _pEC;
-                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, rc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'col': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, buildColClasses(n.props)) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
@@ -50240,6 +50232,40 @@ const StyleDesigner = (function () {
         }
         if (rec) rec.to = base + h.length;
         return h;
+    }
+
+    // The opening tag of a grid node (container, row, col), twin of
+    // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
+    // saved page: the classes once each (the Display & Sizing toggles are
+    // in cssClass as well), the sizing style before the Attributes panel's
+    // style, then the id, the search section mark and the panel's other
+    // attributes (class, style and id are never printed from the list).
+    function _sdGridOpenTag(n, classes) {
+        var p = n.props || {};
+        var seen = [];
+        (classes + ' ' + getNodeExtraClasses(n)).split(/\s+/).forEach(function (c) {
+            if (c && seen.indexOf(c) === -1) seen.push(c);
+        });
+        var style = [];
+        var sz = getNodeExtraStyle(n);
+        if (sz) style.push(sz);
+        var userStyle = '', extra = '', styleFound = false;
+        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
+            if (!a || !a.name) return;
+            var name = String(a.name), lname = name.toLowerCase();
+            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
+            if (lname === 'style') { if (!styleFound) { styleFound = true; userStyle = val; } return; }
+            if (lname === 'class' || lname === 'id') return;
+            extra += ' ' + esc(name) + '="' + esc(val) + '"';
+        });
+        if (userStyle !== '') style.push(userStyle);
+        var out = '<div class="' + esc(seen.join(' ')) + '"';
+        if (style.length) out += ' style="' + esc(style.join(';')) + '"';
+        if (p.id) {
+            out += ' id="' + esc(p.id) + '"';
+            if (p.searchSection) out += ' data-pg-search-section';
+        }
+        return out + extra + '>';
     }
 
     // Children written into a component's output (see _sdEmitNode): their
