@@ -12,3 +12,7 @@ description: The "Fields" section of the record drawer (openRecord, quickEditSec
 ## What does a save send?
 - `fields`: only the changed ones (`quickEditChanged()`: lines and keywords compared as trimmed lists, decimals as numbers, datetimes to the minute, texts with line endings folded); `from`: the originals of those fields; `channel_id` and `decision` on the channel screen. The answer's `lines` are what the toast and the decision say; after a save the drawer reloads itself (`reopen`).
 - Errors: `stale` → the status line with "Load it again"; a refused value → the server's sentence on the status line; `code: rights` on load → no section at all; `rule` or `gone` → the section with the reason and no form.
+
+## How is an empty date handled?
+- `contacts.expiration_date` and `offers.start_date`/`end_date` are `DATE NOT NULL DEFAULT '0000-00-00'`. A date input cannot show the zero date and empties itself, so a drawer given `0000-00-00` sent `''` as a change and both values were refused: no field of a contact without a membership could be saved (issue #776, PR #PRNUM).
+- Now `ws_change_current_value()` gives the zero date as `''`, `ws_change_value()` takes `''` and `0000-00-00` as `''`, and the contact and offer writers write `''` back as the zero date (`ws_change_date_column()`). Tasks keep NULL through `ws_task_update()`. In the drawer, `quickEditChanged()` and `saValueInput()` treat the zero date as empty; the apply check takes a stored `from` of `0000-00-00` as `''`.

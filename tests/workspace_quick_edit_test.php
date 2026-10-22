@@ -133,3 +133,39 @@ function test_workspace_quick_edit_writers_carry_a_person_sentence()
 	pg_assert_contains("null, 'Cancelled in the Workspace by {var:1}.');", $source, 'the order writer');
 	pg_assert_contains("(string) \$record['code'], 'Offer ({var:1}) was deleted in the Workspace by {var:2}.'));", $source, 'the offer writer');
 }
+
+// A DATE NOT NULL column holds the zero date when it is empty. The drawer is
+// given '' for it (a date input cannot show "0000-00-00" and empties itself),
+// the save takes '' and the zero date alike, and the writers put the zero
+// date back into the column; so a contact without a membership end can be
+// saved again.
+function test_workspace_quick_edit_zero_date_reads_and_saves_as_empty()
+{
+	$field = array('date', 0, 'Expiration Date', 'expiration_date');
+
+	pg_assert_same('', ws_change_current_value($field, array('expiration_date' => '0000-00-00')), 'the zero date is given as empty');
+	pg_assert_same('', ws_change_current_value($field, array('expiration_date' => null)), 'a NULL date is given as empty');
+	pg_assert_same('2026-10-22', ws_change_current_value($field, array('expiration_date' => '2026-10-22')), 'a date as it is');
+
+	pg_assert_same('', ws_change_value($field, ''), 'an empty date is taken');
+	pg_assert_same('', ws_change_value($field, ' 0000-00-00 '), 'the zero date is taken as empty');
+	pg_assert_same('2026-10-22', ws_change_value($field, '2026-10-22'), 'a date is taken');
+	pg_assert_same(null, ws_change_value($field, '2026-02-30'), 'a day that does not exist is not');
+	pg_assert_same('', ws_change_value_refusal($field, '', 'Expiration Date'), 'and nothing to refuse for the empty date');
+
+	// A drawer opened before this change was given the zero date.
+	pg_assert_false(ws_quick_edit_moved($field, '0000-00-00', ''), 'the zero date and empty are the same value');
+	pg_assert_true(ws_quick_edit_moved($field, '', '2026-10-22'), 'a date that was set meanwhile is a move');
+
+	pg_assert_same('0000-00-00', ws_change_date_column(''), 'the empty date is written as the zero date');
+	pg_assert_same('2026-10-22', ws_change_date_column('2026-10-22'), 'a date is written as it is');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+
+	foreach (array('ws_change_write_contact', 'ws_change_write_offer') as $writer) {
+		$start = strpos($source, 'function ' . $writer . '(');
+		$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+		pg_assert_contains('ws_change_date_column(', $body, $writer . ' writes the zero date for an empty date');
+	}
+}
