@@ -110,8 +110,8 @@
     // Whether a cell of a protected sheet is unlocked: by its own style when
     // the file holds the cell (open, or closed when its row or column would
     // say otherwise), else by the style a new cell takes, the row's own
-    // first, then the column's, as the save gives it
-    // (pg_office_xlsx_new_cell_style()).
+    // first, then the column's, else the default style (edit.other), as the
+    // save gives it (pg_office_xlsx_new_cell_style()).
     function openOf(edit, address, row, column) {
         if (edit.open && own(edit.open, address)) {
             return true;
@@ -133,7 +133,15 @@
             }
         }
 
-        return false;
+        var closedColumns = edit.closed_columns || [];
+
+        for (var spot = 0; spot < closedColumns.length; spot++) {
+            if (column >= closedColumns[spot][0] && column <= closedColumns[spot][1]) {
+                return false;
+            }
+        }
+
+        return !!edit.other;
     }
 
     // Why a cell of a sheet may not be changed, as the server sorted it
@@ -219,6 +227,16 @@
         sheet.rows.forEach(function (row) {
             width = Math.max(width, row.cells.length);
         });
+
+        // A column opened by its style holds no cell in the file until one
+        // is typed into it, so a protected sheet is drawn out to the last
+        // such column (the server cuts the ranges to PG_OFFICE_MAX_COLUMNS).
+        // Rows and the default style do not widen it.
+        if (state && sheet.edit && sheet.edit.ok && sheet.edit.protected) {
+            (sheet.edit.columns || []).forEach(function (range) {
+                width = Math.max(width, Math.min(range[1] + 1, 200));
+            });
+        }
 
         var table = el('table', 'office-sheet');
         var index = state ? rangeIndex(sheet) : null;

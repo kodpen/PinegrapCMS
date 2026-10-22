@@ -1006,26 +1006,51 @@ function local_sale_complete($user, $input)
     // 5. Stock goes down for tracked products. Each one then tells the
     //    outside the same way a web sale does: the stamp for updated_since
     //    listings, inventory.changed (stock.low on the crossing) and the
-    //    marketplace queue. The stock left is carried from line to line, so
-    //    a product on two lines announces its second from what the first
-    //    left.
+    //    marketplace queue. The first line of a product reads its stock
+    //    again right before the decrement, so another till's sale since the
+    //    cart was read is not counted from the old level; later lines carry
+    //    on from what the line above left ($stock_left, only set for a
+    //    product that tracks stock).
     $stock_left = array();
 
     foreach ($lines as $line) {
         $product_id = (int) $line['product_id'];
+        $tracked = ((int) $line['inventory'] === 1);
+        $stock_before = (int) $line['inventory_quantity'];
 
-        if (((int) $line['inventory'] === 1) && ((int) $line['inventory_quantity'] > 0)) {
+        if (isset($stock_left[$product_id])) {
+            $tracked = true;
+            $stock_before = $stock_left[$product_id];
+        } else {
+            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+            if ($stock_now) {
+                $tracked = ((int) $stock_now['inventory'] === 1);
+                $stock_before = (int) $stock_now['inventory_quantity'];
+            }
+        }
+
+        if ($tracked && ($stock_before > 0)) {
             db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
 
-            if ((int) $line['quantity'] >= (int) $line['inventory_quantity']) {
-                db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP() WHERE id = '" . $product_id . "'");
+            // The flag comes from the stock left, as in the checkout: one
+            // line's quantity against the stock read before the loop missed
+            // a product on two lines (2 + 3 of 5). The column is unsigned
+            // and the session sql_mode is not strict, so selling through
+            // the stock leaves 0; the out_of_stock guard raises the bell
+            // once per product.
+            db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE id = '" . $product_id . "' AND inventory_quantity <= 0 AND out_of_stock != '1'");
+
+            if (mysqli_affected_rows(db::$con) > 0) {
+                create_notification(array(
+                    'action' => 'out_stock',
+                    'type' => 'warning',
+                    'title' => $line['name'] . ' - ' . $line['short_description'],
+                    'product_id' => $product_id));
             }
 
-            $stock_left[$product_id] = pg_product_stock_changed(
-                $product_id,
-                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $line['inventory_quantity'],
-                null,
-                'local_sale');
+            $stock_left[$product_id] = pg_product_stock_changed($product_id, $stock_before, null, 'local_sale');
         }
     }
 
