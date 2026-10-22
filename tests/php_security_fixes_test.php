@@ -104,6 +104,19 @@ function test_php_security_fixes_build_date_text_is_utc()
 	}
 }
 
+// PHP 8.5 gives the build date as PHP_BUILD_DATE, so a host that disables
+// phpinfo() still gets an answer there; it is the date phpinfo() prints.
+function test_php_security_fixes_build_time_from_the_constant()
+{
+	$time = pg_php_build_time();
+
+	if (defined('PHP_BUILD_DATE')) {
+		pg_assert_same(pg_php_build_time_from_info('Build Date => ' . constant('PHP_BUILD_DATE')), $time);
+	} else {
+		pg_assert_true(($time === null) || is_int($time), 'phpinfo() gives a time or nothing');
+	}
+}
+
 // The Docker image runs a PHP the fixes reach on every rebuild, and turns off
 // the session upload progress Pinegrap never uses: one of the ways in on a
 // PHP without them.
