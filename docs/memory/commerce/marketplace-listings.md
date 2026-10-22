@@ -1,6 +1,6 @@
 ---
 name: marketplace-listings
-description: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching, SET order, stock tracking, n11 VAT.
+description: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 ---
 
 ## What is a listing "article"?
@@ -10,11 +10,17 @@ description: Rules for opening products on a marketplace (listings.php): product
 - The category tree is cached PER PROVIDER. Attributes are fetched per category and on demand: fetching all of them is tens of thousands of calls against the per-minute limit.
 - Attributes come from two sources: what the category wants from the product, answered once in the matching screen; and the variant-distinguishing attribute, taken from the product's own option (`mp_listing_variant_value()` looks at the name first, then the VALUE).
 
+## What if the category's attributes cannot be read?
+- The article is refused with the error (`mp_listing_definitions()`): shown at once by "List on the marketplace" and written on the article row by the job; the queue tries again when the connector said `retry` (timeout, 5xx, rate limit). It used to be read as an empty list, so the mandatory check passed and the article went out with no attributes, the variant one included (#916). Only the first listing of a category and a forced refresh are affected; the cache answers otherwise.
+
 ## What happens when the category changes?
 - Old answers are deleted. MySQL evaluates `SET` left to right and a later assignment sees the NEW value of an earlier column, so `attributes_json` is assigned BEFORE `remote_category_id`.
 
 ## Which products are not listed?
 - A product without stock tracking is not listed (a listing needs a quantity; a zero listing opens already sold out). For the same reason `quantity` is never sent in stock sends for a non-tracking product.
+
+## Are products in the Recycle Bin listed?
+- No. A binned product keeps its `products_groups_xref` row (so restore puts it back) but is switched off; sent, it opened a sold-out variant that stayed after the bin was emptied (#916). `mp_listing_articles()` (variant count), `mp_listing_items()` and `mp_listing_enqueue()` add `pg_catalog_bin_live_sql('products')`. A row queued before binning is not sent and closes as done with its batch.
 
 ## What is a listed product's key?
 - The seller's code (`products.name`) for n11. For a provider with `'key' => 'barcode'` (Trendyol) the mapped `remote_code`, else the product's first barcode; no barcode = article refused (`mp_listing_items()`, `trendyol-listings.md`). Items also carry `stock_code` (the name), `barcode`, `brand`, `taxable` and `price_major` = the checkout's tax-inclusive price (`marketplace-price.md`).
