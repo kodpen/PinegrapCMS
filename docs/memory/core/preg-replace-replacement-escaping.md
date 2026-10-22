@@ -21,4 +21,4 @@ description: Text put into a page through preg_replace() goes through pg_regex_r
 
 ## How is it kept?
 - `tests/regex_replacement_test.php`: "$400'dan", "$50/yıl", `\1`, `${1}` and CSS escapes arrive as written. A token scan also fails any `preg_replace()` in `get_page_content.php` or `get_page.php` whose replacement is neither a plain literal nor a `pg_regex_replacement()` call.
-- PR #PRNUM.
+- PR #1203.
