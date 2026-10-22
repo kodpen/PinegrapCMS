@@ -25,6 +25,9 @@ user. Rules, all keeping the output a web run produces:
   `UPDATE_SEARCH_INDEX` is set the list is left out instead, as for a visitor
   without view access; before, the run stopped there and left every later
   page unindexed and every old item undeleted.
+- Records of visual pages render with `$_GET['r']` + `form_id` under
+  `pg_error_throws(true)`, restored in `finally`; `$_GET['page']` is not set
+  (`designer/designer-records-site-search.md`).
 
 ## What happens to a <system> region naming a page that is not there?
 The page was deleted, or it is in the Recycle Bin, which parks a binned
@@ -50,5 +53,12 @@ only to signed-in users (for example a "my conversations" link) and the files
 they link reach the index, and `includes/fn/mail.php` and
 `includes/fn/content.php` warn about the missing session user. The command
 line run indexes what a visitor sees. Not changed here.
+
+## How does a web run read a visual page's records?
+As an anonymous visitor while `UPDATE_SEARCH_INDEX` is set:
+`pg_sw_submitted_form_visible()` denies `logged_in` and `submitter_only`
+record views, and the comments region of a record on a visual page lists only
+published comments (legacy pages unchanged). Commenter usernames shown to
+editors still reach a web run.
 
 Test: `tests/cli_job_warnings_test.php`. PR #493.

@@ -10,7 +10,7 @@ description: custom_form options belong to the element (no _choices array), page
 - **No duplicate key in an object literal.** Read text with `_sdTextOf()`.
 
 ## How is a page with a form recognised?
-- A visual page stays `page_type='standard'`; the `custom_form_pages` row + being a visual design says it has a form. Every query that counts/lists forms uses `pg_form_page_sql($alias)`. Sitemap / search index / legacy render branches are type semantics and are not touched. When writing a new form list, never write `page_type = 'custom form'`.
+- A visual page stays `page_type='standard'`; the `custom_form_pages` row + being a visual design says it has a form. Every query that counts/lists forms uses `pg_form_page_sql($alias)`. Sitemap / search index / legacy render branches are type semantics and are not touched; visual pages have their own designer branches in the sitemap and the search index (`designer-records-site-search.md`). When writing a new form list, never write `page_type = 'custom form'`.
 
 ## What other rules apply?
 - **Validation in two places:** `pattern` in the browser, `custom_form.php` with `/^(?:…)$/u` on the server; a broken expression is ignored. Form is `novalidate` + `needs-validation`; `pg_cf_validation_script()` once per page.

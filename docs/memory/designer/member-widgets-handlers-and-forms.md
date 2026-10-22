@@ -13,6 +13,7 @@ description: Membership widgets (login/forgot/registration/membership): legacy h
 - `username` not posted -> derived from email (`field_in_session` separates "absent" from "empty"). Activation reads the address as `email_address` or `email`, whichever came.
 - `$opts['contact_fields']` (column => value) is filtered against `pg_cf_contact_fields()`; a column name is NEVER read from POST. The form posts hidden `pg_widget_id`; `pg_member_widget_register_opts($sid, $form, $type)` resolves columns from that widget's own `tree_json` `_cf.contact_field`s and rejects another type's id.
 - On activation `member_id` / `expiration_date` are the member list's data; the form cannot write them.
+- After `ok` the entrance scripts (and `signin.php` create mode) call `pg_account_email_send_welcome()`: docs/memory/designer/account-email-pages.md.
 
 ## How are controls and forms handled?
 - A control is a field, its name is the contract: `input`/`select`/`textarea` inside the widget are the form's fields; `name` is legacy's (`email`, `password`, `remember_me`, `screen`). Server finds a control by name (`_pg_member_control_name`), fills it (`_pg_member_fill_control`; password never filled), drops a closed feature's control. Button is `<button type="submit">`; `<a href="#">` is not a button.

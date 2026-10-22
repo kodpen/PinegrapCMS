@@ -11,8 +11,8 @@
 // A module of functions.php: the account system widgets - logout, change
 // password, set password, profile, email preferences, address book and
 // account security - the designed pages that stand in for the legacy page
-// types, the member's invoices from the ERP, and the login region a site
-// header carries.
+// types, the member's invoices from the ERP, the login region a site
+// header carries, and the designed welcome and password reset e-mails.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -1729,4 +1729,379 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
     $tokens = $values;
     foreach ($links as $k => $v) $tokens[$k] = h($v);
     return _pg_member_apply_tokens($rendered, $tokens);
+}
+
+// ============================================================================
+// account_email: the designed welcome and password reset e-mails
+// ============================================================================
+//
+// The registration and membership widgets name a page as their welcome
+// e-mail (welcome_email_page_id, welcome_email_subject), the forgot password
+// widget one as its reset e-mail (reset_email_page_id, reset_email_subject).
+// The sender draws that page with get_page_content() in e-mail mode and the
+// render context key 'account_email' => array('kind' => 'welcome' |
+// 'password_reset', 'user_id' => N, 'set_password_url' => the reset link);
+// the Account E-mail widget on the page reads the member from there. No
+// page chosen: no welcome e-mail, and the built-in plain-text reset e-mail.
+
+// Whether the address typed into the forgot password form is the account's
+// stored address, letter case aside (pg_email_address_matches()): the
+// lookup folds accents, and the reset link must never go to the look-alike
+// domain "exámple.com" for the account of "example.com".
+function pg_password_reset_address_matches($typed, $stored)
+{
+    return pg_email_address_matches($typed, $stored);
+}
+
+// The widget setting keys of an account e-mail: 'welcome' or 'reset' =>
+// array(page key, subject key).
+function pg_account_email_keys($kind)
+{
+    return ((string)$kind === 'reset')
+        ? array('reset_email_page_id', 'reset_email_subject')
+        : array('welcome_email_page_id', 'welcome_email_subject');
+}
+
+// The e-mail page a widget config names: a page id, or 0 for none and for a
+// tab of an unpublished design ('tab:<key>').
+function _pg_account_email_page_ref($cfg, $key)
+{
+    if (!is_array($cfg) || !isset($cfg[$key]) || !is_scalar($cfg[$key])) return 0;
+    $v = (string)$cfg[$key];
+    return ctype_digit($v) ? (int)$v : 0;
+}
+
+// Which widget's setting answers: the widget the form was drawn by
+// ($posted: null, or array('id', 'cfg') of a widget of the right type)
+// decides, even when it names no page; otherwise the first of $candidates
+// (array of array('id', 'cfg')) that names a page. $kind is 'welcome' or
+// 'reset'. Returns array('widget_id', 'page_id', 'subject').
+function pg_account_email_pick($posted, $candidates, $kind)
+{
+    list($page_key, $subject_key) = pg_account_email_keys($kind);
+    $chosen = null;
+    if (is_array($posted) && isset($posted['cfg'])) {
+        $chosen = $posted;
+    } else {
+        foreach ((array)$candidates as $c) {
+            if (is_array($c) && isset($c['cfg']) && _pg_account_email_page_ref($c['cfg'], $page_key) > 0) {
+                $chosen = $c;
+                break;
+            }
+        }
+    }
+    if ($chosen === null) return array('widget_id' => 0, 'page_id' => 0, 'subject' => '');
+    $cfg = is_array($chosen['cfg']) ? $chosen['cfg'] : array();
+    return array(
+        'widget_id' => isset($chosen['id']) ? (int)$chosen['id'] : 0,
+        'page_id'   => _pg_account_email_page_ref($cfg, $page_key),
+        'subject'   => (isset($cfg[$subject_key]) && is_scalar($cfg[$subject_key])) ? trim((string)$cfg[$subject_key]) : '',
+    );
+}
+
+// Whether a page row (page_id, page_folder) can be sent: it exists, is not
+// in the recycle bin and is not a draft.
+function pg_account_email_page_usable($row, $binned_ids, $draft_folder_id)
+{
+    if (!is_array($row) || empty($row['page_id']) || (int)$row['page_id'] <= 0) return false;
+    $folder = isset($row['page_folder']) ? (int)$row['page_folder'] : 0;
+    if (in_array($folder, array_map('intval', (array)$binned_ids), true)) return false;
+    if ((int)$draft_folder_id > 0 && $folder === (int)$draft_folder_id) return false;
+    return true;
+}
+
+// The account e-mail setting that applies to a sign-up or reset made through
+// a widget of $type ('registration', 'membership', 'forgot_password'):
+// the posted widget's own, else the first widget of that type on a published
+// page that names a page. A widget placed only inside a shared component is
+// not found. Returns array('widget_id', 'page_id' (0 when the page cannot be
+// sent), 'subject', 'chosen' (the page id the setting names)).
+function pg_account_email_setting($type, $kind, $posted_widget_id)
+{
+    $out = array('widget_id' => 0, 'page_id' => 0, 'subject' => '', 'chosen' => 0);
+    // page_tree_json arrived with the multi-page editor; before that upgrade
+    // no designed page can carry a widget.
+    if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $out;
+
+    $type   = (string)$type;
+    $posted = null;
+    $posted_widget_id = (int)$posted_widget_id;
+    if ($posted_widget_id > 0) {
+        $row = db_item("SELECT system_region_config FROM shared_components WHERE id = '" . $posted_widget_id . "' LIMIT 1");
+        $cfg = is_array($row) ? json_decode((string)$row['system_region_config'], true) : null;
+        if (is_array($cfg) && isset($cfg['regionType']) && $cfg['regionType'] === $type) {
+            $posted = array('id' => $posted_widget_id, 'cfg' => $cfg);
+        }
+    }
+
+    // Only widgets that name a page are looked for: a site that names none
+    // pays one shared_components query, and no page tree is scanned.
+    $candidates = array();
+    if ($posted === null) {
+        list($page_key) = pg_account_email_keys($kind);
+        $names_page = function ($cfg) use ($page_key) {
+            return _pg_account_email_page_ref($cfg, $page_key) > 0;
+        };
+        foreach (pg_sw_widget_pages($type, $names_page) as $p) {
+            $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
+            if (pg_page_is_draft((int)$folder)) continue;
+            $w = pg_sw_page_widget((int)$p['page_id'], $type, $names_page);
+            if ($w !== null) {
+                $candidates[] = $w;
+                break;
+            }
+        }
+    }
+
+    $out = pg_account_email_pick($posted, $candidates, $kind);
+    $out['chosen'] = $out['page_id'];
+    if ($out['page_id'] > 0) {
+        $page = db_item("SELECT page_id, page_folder FROM page WHERE page_id = '" . (int)$out['page_id'] . "' LIMIT 1");
+        if (!pg_account_email_page_usable($page, pg_recycle_bin_folder_ids(), pg_page_draft_folder_id(false))) {
+            $out['page_id'] = 0;
+        }
+    }
+    return $out;
+}
+
+// The subject line: the configured text (already translated) without
+// ^^tokens^^ and line breaks, else $fallback. Plain text: nothing is filled
+// into it.
+function pg_account_email_subject($configured, $fallback)
+{
+    $s = is_scalar($configured) ? (string)$configured : '';
+    $s = preg_replace('/\^\^[^\^]*\^\^(%%.*?%%)?/', '', $s);
+    $s = trim(preg_replace('/\s*[\r\n]+\s*/', ' ', $s));
+    return ($s !== '') ? $s : (string)$fallback;
+}
+
+// The Account E-mail widget's tokens (raw, unescaped) and flags.
+// $kind: 'welcome' or 'password_reset' in an e-mail render, 'preview' for
+// the editor's preview (sample values, both parts shown); anything else
+// leaves every token empty, so no account data and no link is drawn.
+// $member: user_username, user_email, first_name, last_name. $links: the
+// absolute '__login_url' and '__my_account_url'. $set_password_url is used
+// for a reset (and the preview) only.
+function pg_account_email_values($kind, $member, $links, $set_password_url, $site_name = '')
+{
+    $tokens = array(
+        '__site_name'        => '',
+        '__user_name'        => '',
+        '__user_first_name'  => '',
+        '__user_email'       => '',
+        '__username'         => '',
+        '__login_url'        => '',
+        '__my_account_url'   => '',
+        '__set_password_url' => '',
+    );
+    $flags = array('is_welcome' => false, 'is_password_reset' => false);
+    $kind  = (string)$kind;
+    if ($kind !== 'welcome' && $kind !== 'password_reset' && $kind !== 'preview') {
+        return array('tokens' => $tokens, 'flags' => $flags);
+    }
+
+    if (!is_array($member)) $member = array();
+    if (!is_array($links)) $links = array();
+    $username = _pg_account_email_field($member, 'user_username');
+    $first    = _pg_account_email_field($member, 'first_name');
+    $full     = trim($first . ' ' . _pg_account_email_field($member, 'last_name'));
+
+    $tokens['__site_name']       = (string)$site_name;
+    $tokens['__user_name']       = ($full !== '') ? $full : $username;
+    $tokens['__user_first_name'] = ($first !== '') ? $first : (($full !== '') ? $full : $username);
+    $tokens['__user_email']      = _pg_account_email_field($member, 'user_email');
+    $tokens['__username']        = $username;
+    $tokens['__login_url']       = isset($links['__login_url']) ? (string)$links['__login_url'] : '';
+    $tokens['__my_account_url']  = isset($links['__my_account_url']) ? (string)$links['__my_account_url'] : '';
+    if ($kind !== 'welcome') $tokens['__set_password_url'] = (string)$set_password_url;
+
+    $flags['is_welcome']        = ($kind !== 'password_reset');
+    $flags['is_password_reset'] = ($kind !== 'welcome');
+    return array('tokens' => $tokens, 'flags' => $flags);
+}
+
+// One trimmed text column of a member row, '' when absent.
+function _pg_account_email_field($member, $key)
+{
+    return (isset($member[$key]) && is_scalar($member[$key])) ? trim((string)$member[$key]) : '';
+}
+
+// Whether an e-mail body carries the reset link of $token (k=<token> as a
+// query parameter, wherever the language prefix put the path).
+function pg_account_email_has_link($body, $token)
+{
+    $token = is_scalar($token) ? (string)$token : '';
+    if ($token === '' || !is_string($body) || $body === '') return false;
+    return (bool)preg_match('/[?&;]k=' . preg_quote($token, '/') . '(?![A-Za-z0-9])/', $body);
+}
+
+// The e-mail page drawn for the member, in the visitor's language.
+function pg_account_email_body($page_id, $ctx)
+{
+    require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+    $body = get_page_content((int)$page_id, '', '', 'preview', true, array('account_email' => $ctx));
+    return function_exists('pg_tr_email') ? pg_tr_email($body) : $body;
+}
+
+// The welcome e-mail after a sign-up through a widget of $type
+// ('registration', 'membership'), queued to the account's stored address.
+// No page chosen: nothing is sent. $widget_id is the widget the form was
+// drawn by, 0 for the legacy screens and the social sign-up.
+function pg_account_email_send_welcome($user_id, $type, $widget_id)
+{
+    $user_id = (int)$user_id;
+    if ($user_id <= 0) return false;
+    $set = pg_account_email_setting($type, 'welcome', $widget_id);
+    if ($set['page_id'] <= 0) {
+        if ($set['chosen'] > 0) {
+            log_activity(lang('The welcome e-mail was not sent because its page is no longer available.'));
+        }
+        return false;
+    }
+    $to = (string)db_value("SELECT user_email FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+    if ($to === '') return false;
+
+    $body = pg_account_email_body($set['page_id'], array('kind' => 'welcome', 'user_id' => $user_id));
+    $subject = pg_account_email_subject(
+        function_exists('pg_tr_text') ? pg_tr_text($set['subject']) : $set['subject'],
+        lang(array('string' => 'Welcome to {var:1}', 'vars' => ORGANIZATION_NAME)));
+
+    return email(array(
+        'to'                 => $to,
+        'from_name'          => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => $subject,
+        'format'             => 'html',
+        'body'               => $body,
+        'queue'              => true));
+}
+
+// The unknown-address answer of a forgot password request draws the reset
+// page too, with no member (every token empty) and throws it away: the page
+// render is the slow part of the known-address answer, and a time that
+// differs with whether an account exists tells which addresses have one.
+function pg_account_email_reset_unsent($set)
+{
+    if (!is_array($set) || empty($set['page_id']) || (int)$set['page_id'] <= 0) return;
+    pg_account_email_body((int)$set['page_id'], array('kind' => ''));
+}
+
+// The designed password reset e-mail. $set is the request's forgot_password
+// pg_account_email_setting(), $to the account's stored address, $link the
+// reset link with $token in it. True once the designed page was sent (even
+// when the mail server refused it, so the member never gets two e-mails);
+// false when the caller sends the built-in e-mail: no page chosen, the page
+// cannot be sent, or its body does not carry the link.
+function pg_account_email_send_reset($user_id, $to, $link, $token, $set)
+{
+    if (!is_array($set) || empty($set['page_id']) || (int)$set['page_id'] <= 0) return false;
+
+    $body = pg_account_email_body($set['page_id'], array(
+        'kind'             => 'password_reset',
+        'user_id'          => (int)$user_id,
+        'set_password_url' => (string)$link,
+    ));
+    if (!pg_account_email_has_link($body, $token)) {
+        log_activity(lang('The password reset e-mail page shows no set password link, so the built-in e-mail was sent.'));
+        return false;
+    }
+
+    email(array(
+        'to'                 => (string)$to,
+        'from_name'          => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => pg_account_email_subject(
+            function_exists('pg_tr_text') ? pg_tr_text($set['subject']) : $set['subject'],
+            lang('Reset Password')),
+        'format'             => 'html',
+        'body'               => $body,
+        'queue'              => true,
+        // The body holds a live reset link: kept out of the failure log
+        // and the failure notice.
+        'secret'             => true));
+    return true;
+}
+
+// An absolute address on the configured host for an account page path,
+// '' when there is none. Links in an e-mail leave the request, so the
+// request's own host is never used.
+function _pg_account_email_absolute($path)
+{
+    $path = (string)$path;
+    if ($path === '') return '';
+    return URL_SCHEME . HOSTNAME_SETTING . $path;
+}
+
+// Render an 'account_email' system widget: the member part of a welcome or
+// password reset e-mail page.
+//
+// Flags: is_welcome, is_password_reset. Tokens: ^^__site_name^^,
+// ^^__user_name^^, ^^__user_first_name^^, ^^__user_email^^, ^^__username^^,
+// and the links ^^__login_url^^, ^^__my_account_url^^,
+// ^^__set_password_url^^ (the reset link, reset only). A link with nowhere
+// to go leaves with its node.
+//
+// Filled only in an e-mail render the sender told about the member (the
+// render context's 'account_email'). Anywhere else - a visitor or staff
+// opening the page, the search index, the SEO pass - every token is empty
+// and every bound link drops; the editor's preview shows sample values.
+function _render_system_widget_account_email($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
+{
+    if ($tree_json === '' || $tree_json === null) return '';
+    $tree = json_decode($tree_json, true);
+    if (!is_array($tree)) return '';
+
+    $ctx  = pg_sw_render_context();
+    $acct = (!empty($ctx['email']) && isset($ctx['account_email']) && is_array($ctx['account_email'])) ? $ctx['account_email'] : null;
+
+    $kind   = '';
+    $member = array();
+    $links  = array();
+    $reset  = '';
+    if ($acct !== null) {
+        $kind = isset($acct['kind']) ? (string)$acct['kind'] : '';
+        $user_id = isset($acct['user_id']) ? (int)$acct['user_id'] : 0;
+        $row = ($user_id > 0) ? db_item(
+            "SELECT user.user_username, user.user_email, contacts.first_name, contacts.last_name
+             FROM user
+             LEFT JOIN contacts ON contacts.id = user.user_contact
+             WHERE user.user_id = '" . $user_id . "'
+             LIMIT 1") : null;
+        // The links are looked up even with no member (the unknown-address
+        // answer of a reset draws the page that way): finding the account
+        // pages is the slow part of the render, and the two answers of a
+        // reset request take the same time only when both do it.
+        $links  = array(
+            '__login_url'      => _pg_account_email_absolute(_pg_acct_page_url(0, 'login')),
+            '__my_account_url' => _pg_account_email_absolute(_pg_acct_page_url(0, 'my account')),
+        );
+        if (is_array($row)) {
+            $member = $row;
+            if (isset($acct['set_password_url']) && is_scalar($acct['set_password_url'])) $reset = (string)$acct['set_password_url'];
+        } else {
+            $kind = '';
+        }
+    } elseif (function_exists('pg_sw_preview_overrides') && pg_sw_preview_overrides()) {
+        $kind   = 'preview';
+        $member = array('user_username' => 'jane.cooper', 'user_email' => 'jane.cooper@example.com', 'first_name' => lang('Jane'));
+        $links  = array('__login_url' => '#', '__my_account_url' => '#');
+        $reset  = '#';
+    }
+
+    $values = pg_account_email_values($kind, $member, $links, $reset, _pg_member_site_name());
+    if ($kind === 'preview') $values['tokens']['__user_name'] = lang('Jane Cooper');
+
+    _eo_apply_visibility_bindings($tree, array(
+        'is_welcome'        => $values['flags']['is_welcome'],
+        'is_password_reset' => $values['flags']['is_password_reset'],
+    ));
+    _pg_member_drop_empty_links($tree, $values['tokens']);
+    pg_cf_link_labels($tree);
+    // Stamped with a name nothing posts to: an e-mail shows no alerts, and a
+    // visitor opening the page must not see another form's.
+    _pg_inject_messages_node($tree, 'account_email');
+
+    $split    = _split_widget_tree($tree);
+    $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    return _pg_member_apply_tokens($rendered, pg_sw_escape_token_values($values['tokens']));
 }
