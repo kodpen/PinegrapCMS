@@ -24,7 +24,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice send/poll line.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye, not e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
-- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what cancel does to ledger and numbers, and how open amount and paid status treat returns.
+- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what cancel does to ledger and numbers, how open amount and paid status treat returns, which invoice a bank statement line suggests.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
 - erp-invoice-editor-catalog-offers.md: Invoice/waybill editor catalogue read (product name rule, erp_product_for_line shape), product offers, two-discount order, field-level errors, barcode box.
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting.

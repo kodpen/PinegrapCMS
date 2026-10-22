@@ -382,3 +382,35 @@ function test_erp_bank_line_hashes_count_repeats_per_file()
 	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), $first[1], 'the first fee keeps the old hash');
 	pg_assert_same($first, $hashes(), 'taken in again, the same hashes');
 }
+
+// The "one open invoice of this amount" a statement line suggests is an
+// invoice, never a return document, in the line's currency, open by what is
+// left once its returns are taken off.
+function test_erp_bank_open_invoice_query_invoices_only()
+{
+	$sql = erp_bank_open_invoice_query('sales', 'TRY', 'TRY', 30000);
+
+	pg_assert_contains("i.doc_type = 'invoice'", $sql, 'invoices only');
+	pg_assert_contains("i.direction = 'sales'", $sql, 'money in closes a sale');
+	pg_assert_contains("ret.parent_invoice_id = i.id", $sql, 'returns taken off');
+	pg_assert_contains("COALESCE(ret.returned, 0)", $sql, 'by what they gave back');
+	pg_assert_contains("r.doc_type = 'return'", $sql, 'returns only');
+	pg_assert_contains("r.status <> 'cancelled'", $sql, 'a cancelled return gives nothing back');
+	pg_assert_contains("= '30000'", $sql, 'the amount');
+	pg_assert_contains("LIMIT 2", $sql, 'one is told from several');
+
+	pg_assert_contains("i.direction = 'purchase'", erp_bank_open_invoice_query('purchase', 'TRY', 'TRY', 850), 'money out closes a purchase');
+}
+
+// The line's currency decides; a document written with no currency counts as
+// the store's own.
+function test_erp_bank_open_invoice_query_currency()
+{
+	$home = erp_bank_open_invoice_query('sales', 'try', 'TRY', 100);
+	$foreign = erp_bank_open_invoice_query('sales', 'USD', 'TRY', 100);
+
+	pg_assert_contains("(i.currency = 'TRY' OR i.currency = '')", $home, 'home currency');
+	pg_assert_contains("i.currency = 'USD'", $foreign, 'foreign currency');
+	pg_assert_true(strpos($foreign, "i.currency = ''") === false, 'no blank currency for a foreign line');
+	pg_assert_contains("i.currency = 'USD'", erp_bank_open_invoice_query('sales', "US'D", 'TRY', 100), 'letters only');
+}

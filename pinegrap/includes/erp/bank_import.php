@@ -811,9 +811,61 @@ function erp_bank_statement_lines($statement_id)
 }
 
 /**
+ * The currency a bank account's lines are recorded in: the till's own when
+ * foreign currencies are on, the store's otherwise (erp_bank_line_record()).
+ *
+ * @param string $till_currency
+ * @return string
+ */
+function erp_bank_line_currency($till_currency)
+{
+    return (erp_fx_enabled() && ((string) $till_currency !== '')) ? strtoupper((string) $till_currency) : erp_base_currency();
+}
+
+/**
+ * The query for the open invoices a statement line's amount closes exactly.
+ *
+ * Only invoices: a return document has nothing to collect against it
+ * (erp_invoice_open_amount()), and a receipt named after one is refused
+ * (erp_post_receipt()). Only the line's currency, the store's own taking in
+ * documents written with no currency. Open is what erp_invoice_open_amount()
+ * counts - the total less what was paid and less the returns that are not
+ * cancelled (erp_invoice_returned_total()) - so a partly returned invoice is
+ * matched by what it still asks for.
+ *
+ * @param string $direction  sales | purchase
+ * @param string $currency   The line's currency
+ * @param string $base       The store's currency
+ * @param int    $amount     kurus, unsigned
+ * @return string
+ */
+function erp_bank_open_invoice_query($direction, $currency, $base, $amount)
+{
+    $currency = preg_replace('/[^A-Z]/', '', strtoupper((string) $currency));
+    $currency_rule = ($currency === strtoupper(trim((string) $base)))
+        ? "(i.currency = '" . $currency . "' OR i.currency = '')"
+        : "i.currency = '" . $currency . "'";
+
+    // The returns are summed once per query rather than once per open
+    // invoice: parent_invoice_id has no index of its own.
+    return "SELECT i.id, i.account_id FROM erp_invoices i
+        LEFT JOIN (SELECT r.parent_invoice_id, SUM(r.grand_total) AS returned FROM erp_invoices r
+            WHERE r.parent_invoice_id > 0
+              AND r.doc_type = 'return'
+              AND r.status <> 'cancelled'
+            GROUP BY r.parent_invoice_id) ret ON ret.parent_invoice_id = i.id
+        WHERE i.direction = '" . (((string) $direction === 'purchase') ? 'purchase' : 'sales') . "'
+          AND i.doc_type = 'invoice'
+          AND i.status IN ('issued', 'partially_paid')
+          AND " . $currency_rule . "
+          AND (i.grand_total - i.paid_total - COALESCE(ret.returned, 0)) = '" . (int) $amount . "'
+        LIMIT 2";
+}
+
+/**
  * Who an unmatched line is likely from: an account whose tax number, or
  * whose name, the bank wrote in the line; failing that, the one open invoice
- * the amount closes exactly.
+ * the amount closes exactly (erp_bank_open_invoice_query()).
  *
  * @param array $line
  * @return array ['account_id' => int, 'invoice_id' => int, 'why' => string]
@@ -821,6 +873,7 @@ function erp_bank_statement_lines($statement_id)
 function erp_bank_line_suggestion($line)
 {
     static $accounts = null;
+    static $till_currencies = array();
 
     if ($accounts === null) {
         $accounts = (array) db_items("SELECT id, title, tax_number FROM erp_accounts WHERE status = 'active'");
@@ -845,11 +898,15 @@ function erp_bank_line_suggestion($line)
         }
     }
 
+    $till_id = (int) $line['cash_account_id'];
+
+    if (!array_key_exists($till_id, $till_currencies)) {
+        $till_currencies[$till_id] = (string) db_value("SELECT currency FROM erp_cash_accounts WHERE id = '" . $till_id . "' LIMIT 1");
+    }
+
     $amount = abs((int) $line['amount']);
     $direction = ((int) $line['amount'] > 0) ? 'sales' : 'purchase';
-    $open = (array) db_items("SELECT id, account_id FROM erp_invoices
-        WHERE direction = '" . $direction . "' AND status IN ('issued', 'partially_paid') AND (grand_total - paid_total) = '" . $amount . "'
-        LIMIT 2");
+    $open = (array) db_items(erp_bank_open_invoice_query($direction, erp_bank_line_currency($till_currencies[$till_id]), erp_base_currency(), $amount));
 
     if (count($open) === 1) {
         return array('account_id' => (int) $open[0]['account_id'], 'invoice_id' => (int) $open[0]['id'], 'why' => lang('the one open invoice of this amount'));
@@ -879,7 +936,7 @@ function erp_bank_line_record($line_id, $what, $user_id)
 
     $amount = abs((int) $line['amount']);
     $base = erp_base_currency();
-    $currency = (erp_fx_enabled() && ((string) $line['till_currency'] !== '')) ? strtoupper((string) $line['till_currency']) : $base;
+    $currency = erp_bank_line_currency((string) $line['till_currency']);
     $rate = array('rate' => 1.0, 'rate_date' => (string) $line['doc_date'], 'source' => 'base');
 
     if ($currency !== $base) {

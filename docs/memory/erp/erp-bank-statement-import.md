@@ -25,4 +25,4 @@ description: ERP bank statement import (bank_import.php): CSV separator guess, a
 - Known limit: an overlapping file that starts between two such lines holds only the later one, counts it as the first and skips it. Taking in whole days avoids it.
 - `mb_strtolower()` turns `İ` into `i` + U+0307, so `EFT ÜCRETİ` and `Eft Ücreti` hash differently; kept so stored hashes still match.
 
-Tests: `tests/erp_bank_import_test.php`.
+Tests: `tests/erp_bank_import_test.php`. The invoice a line suggests: erp-invoice-cancel-and-open-amount.
