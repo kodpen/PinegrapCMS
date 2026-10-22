@@ -42711,6 +42711,14 @@ const StyleDesigner = (function () {
                 if (jsFiles[j].meta === 'bootstrap-js' && jsFiles[j].content !== BS_JS_URL) { jsFiles[j].content = BS_JS_URL; changedJs = true; }
                 if (jsFiles[j].meta === 'jquery-js'    && jsFiles[j].content !== JQUERY_URL) { jsFiles[j].content = JQUERY_URL; changedJs = true; }
             }
+            // The Themes panel's light block in the old selector form is
+            // rewritten when the design loads, so the next save publishes
+            // the form that lets a theme switcher's dark mode through.
+            for (var ui = 0; ui < cssFiles.length; ui++) {
+                if (cssFiles[ui].meta !== 'user-styles') continue;
+                var upgraded = _themeUpgradeLightSelector(cssFiles[ui].content || '');
+                if (upgraded !== (cssFiles[ui].content || '')) { cssFiles[ui].content = upgraded; changedCss = true; }
+            }
             if (changedCss) saveFiles('sd-custom-css-field', cssFiles);
             if (changedJs)  saveFiles('sd-custom-js-field',  jsFiles);
         }
@@ -43845,7 +43853,8 @@ const StyleDesigner = (function () {
         _flushPendingOverlays = function (done) { done(); };
 
         // ── Theme: Bootstrap CSS variable overrides ─────────────────────────
-        // Edits write `:root, [data-bs-theme="light"] { … }` (light mode) or
+        // Edits write `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"] { … }`
+        // (light mode, see _themeCanonicalSelector()) or
         // `[data-bs-theme="dark"] { … }` (dark mode) into the user-styles
         // content. Single source of truth — same place the bottom Styles
         // panel and "Dosyaya Aktar" extract from.
@@ -44028,7 +44037,8 @@ const StyleDesigner = (function () {
         }
 
         // Selector regex per mode. Light accepts any of:
-        //   :root, [data-bs-theme="light"]
+        //   :root:not([data-bs-theme="dark"]), [data-bs-theme="light"]
+        //   :root, [data-bs-theme="light"]   (written before; see below)
         //   :root
         //   [data-bs-theme="light"]
         // Dark only matches `[data-bs-theme="dark"]`. The lookahead ensures
@@ -44038,17 +44048,34 @@ const StyleDesigner = (function () {
             if (mode === 'dark') {
                 return /\[data-bs-theme=["']dark["']\]\s*(?=\{)/g;
             }
-            return /(?::root\s*,\s*\[data-bs-theme=["']light["']\]|\[data-bs-theme=["']light["']\]|:root)\s*(?=\{)/g;
+            return /(?::root:not\(\[data-bs-theme=["']dark["']\]\)\s*,\s*\[data-bs-theme=["']light["']\]|:root\s*,\s*\[data-bs-theme=["']light["']\]|\[data-bs-theme=["']light["']\]|:root)\s*(?=\{)/g;
         }
 
         // Canonical selector string used when CREATING a new block for a mode
-        // that doesn't yet exist in user-styles. Light writes the combined
-        // form `:root, [data-bs-theme="light"]` so the variables apply both
-        // to default rendering AND when the user toggles `data-bs-theme`.
+        // that doesn't yet exist in user-styles. Light covers the default page
+        // and an explicit light section, but never an <html> a theme switcher
+        // set to dark: a plain `:root` matches that <html> too, and since the
+        // user styles load after bootstrap.css at the same specificity, every
+        // light value would beat Bootstrap's `[data-bs-theme=dark]` block.
+        // A dark section inside a light page still gets the dark values: its
+        // own declarations win over the inherited ones.
         function _themeCanonicalSelector(mode) {
             return (mode === 'dark')
                 ? '[data-bs-theme="dark"]'
-                : ':root,\n[data-bs-theme="light"]';
+                : ':root:not([data-bs-theme="dark"]),\n[data-bs-theme="light"]';
+        }
+
+        // Rewrites the light block selector the panel used to write
+        // (`:root, [data-bs-theme="light"]`) to the canonical one, so the
+        // variables stop overriding a dark page. A bare `:root` or
+        // `[data-bs-theme="light"]` block was written by hand and may carry
+        // the operator's own variables that must stay in dark mode: left as
+        // written. Returns the content unchanged when there is nothing to do.
+        function _themeUpgradeLightSelector(content) {
+            if (!content) return content;
+            return content.replace(/:root\s*,\s*\[data-bs-theme=["']light["']\]\s*(?=\{)/g, function () {
+                return _themeCanonicalSelector('light') + ' ';
+            });
         }
 
         // Parse declarations inside a rule body into a { name: value } map.
@@ -44135,7 +44162,9 @@ const StyleDesigner = (function () {
             } else {
                 entry = cssFiles[entryIdx];
             }
-            var content = entry.content || '';
+            // A light block in the old form is rewritten on every write, so a
+            // value set now never overrides a dark page.
+            var content = _themeUpgradeLightSelector(entry.content || '');
             var blk = _findRuleBlock(content, _themeSelectorRe(mode));
             var declRe = new RegExp('(^|\\s|;)\\s*(' + varName.replace(/-/g, '\\-') + ')\\s*:\\s*([^;}\\n]*)\\s*(;?)', 'g');
 
