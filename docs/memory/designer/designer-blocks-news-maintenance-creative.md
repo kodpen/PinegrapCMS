@@ -18,7 +18,7 @@ description: Maintenance, news and creative block families (2026.11.0): palette 
 
 ## What is special about the maintenance blocks?
 - While maintenance mode is on, every address answers with the error page's maintenance screen (`docs/memory/designer/error-page-widget.md`), so these blocks carry no menu, no Home button and no other link into the site: only `mailto:`, `tel:` and social links. They can be dropped into the Error Page widget's maintenance block or onto a page of their own. Their headings are `h1` (they are the page); other blocks start at `h2`.
-- Notify forms are samples like the newsletter blocks: they have no action until the operator wires them. Their submit is a semantic `<button type="submit">`, which the editor's form audit recognises (a `component` btn it does not).
+- Notify forms are samples like the newsletter blocks: they have no action until the operator wires them. Their submit is a semantic `<button type="submit">` (form rules: `docs/memory/designer/designer-block-forms.md`).
 
 ## What guards the palette?
 - `tests/designer_blocks_test.php` reads `style_designer.js`: every palette block has a reachable builder in `createFromPalette()` and a group, every `_SD_BLOCK_CSS_NEEDS` name is a rule, every rule's key appears as a class in its own rule (otherwise `_sdEnsureBlockStyles()` never finds it and appends it again on every drop), and no rule uses `!important`.
