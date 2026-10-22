@@ -175,7 +175,7 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
     // if selected arrival date has a custom field, set arrival date to custom arrival date and require custom field
     if ($arrival_date_custom == 1) {
         $arrival_date = prepare_form_data_for_input($liveform->get_field_value('custom_arrival_date_' . $liveform->get_field_value('arrival_date')), 'date');
-        $liveform->validate_required_field('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), 'A custom arrival date is required, because you selected ' . $arrival_date_name . '.');
+        $liveform->validate_required_field('custom_arrival_date_' . $liveform->get_field_value('arrival_date'), 'A custom arrival date is required, because you selected ' . h($arrival_date_name) . '.');
         
         // if there is not already an error for the custom date field, then validate date
         if ($liveform->check_field_error('custom_arrival_date_' . $liveform->get_field_value('arrival_date')) == false) {
