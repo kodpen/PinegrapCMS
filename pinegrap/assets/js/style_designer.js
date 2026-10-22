@@ -12075,6 +12075,7 @@ const StyleDesigner = (function () {
         affiliate_code:                'AFF-0042',
         referring_url:                 'https://example.com/',
         submitter:                     _sdT('Alex Morgan'),
+        submitter_name:                _sdT('Alex Morgan'),
         last_modifier:                 _sdT('Alex Morgan'),
         submitted_date_and_time:       _sdDatePlaceholder,
         last_modified_date_and_time:   _sdDatePlaceholder,
@@ -27831,7 +27832,7 @@ const StyleDesigner = (function () {
         }
         if (Array.isArray(p._attrs)) {
             return p._attrs.some(function (a) {
-                return a && /^(title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
+                return a && /^(alt|title|placeholder|aria-label|aria-description|data-bs-title|data-bs-content|value)$/i.test(String(a.name || '')) && String(a.value || '').trim() !== '';
             });
         }
         return false;
@@ -27868,6 +27869,10 @@ const StyleDesigner = (function () {
             headerText: _sdT('Header'), footerText: _sdT('Footer'), brand: _sdT('Brand'), alt: _sdT('Alt text'), html: _sdT('HTML'),
             _labelDetail: _sdT('Caption: to the detail'), _labelExpand: _sdT('Caption: expanding') };
         if (field.indexOf('_attrs:') === 0) return field.slice(7);
+        // An attribute of a text or of stored HTML (pg_tr_node_texts(),
+        // pg_tr_field_segments()): "<field>@<attribute>#n".
+        var at = field.indexOf('@');
+        if (at > 0) return _sdTrFieldLabel(field.slice(0, at)) + ': ' + field.slice(at + 1).replace(/#\d+$/, '');
         return labels[field] || field;
     }
 
@@ -29870,8 +29875,18 @@ const StyleDesigner = (function () {
 
                 // ── Filters (form_list_view): which records the list shows ──
                 if (_isFormListView) {
+                    var _flvFilters = Array.isArray(_cfg.filters) ? _cfg.filters : [];
+                    // A filter reading the page address makes the page an
+                    // archive (an author, a tag): its title for each value.
+                    var _flvUrlFilter = _flvFilters.some(function (f) { return f && f.dynamic_value === 'url parameter'; });
+                    var _flvFilterTitle = (typeof _cfg.filter_title === 'string') ? _cfg.filter_title : '';
                     systemSection += sect('bi-funnel', _sdT('Filters'),
-                        _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _ff, _fieldsLoading));
+                        _swFormListFiltersHtml(sid, _flvFilters, _ff, _fieldsLoading, null, true) +
+                        (_flvUrlFilter
+                            ? row(_sdT('Page title for an address value'),
+                                '<input type="text" class="form-control form-control-sm" id="sd-sw-flv-filter-title" data-sw-id="' + sid + '" value="' + esc(_flvFilterTitle) + '" maxlength="120" placeholder="' + esc(_sdT('Articles by {value}')) + '">' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.')) + '</div>')
+                            : ''));
                 }
 
                 // ── Phase 2 Catalog-only sections ─────────────────────────
@@ -32088,12 +32103,22 @@ const StyleDesigner = (function () {
                 var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
                 var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
                 if (q('.sd-sw-filter-value') && q('.sd-sw-filter-value').type === 'datetime-local' && val) val = val.replace('T', ' ');
+                // The days for "days ago" (a number), the parameter name for
+                // a value from the address (a string, as the input holds it:
+                // the stored name, or the edited one that its change handler
+                // normalised; a stored name the server refuses keeps its
+                // warning until the designer edits it).
+                var attr = '';
+                if (dyn === 'days ago' && q('.sd-sw-filter-days')) attr = parseInt(q('.sd-sw-filter-days').value, 10) || 0;
+                if (dyn === 'url parameter') attr = q('.sd-sw-filter-param')
+                    ? String(q('.sd-sw-filter-param').value || '')
+                    : String(el.getAttribute('data-attr') || '');
                 out.push({
                     field: q('.sd-sw-filter-field') ? q('.sd-sw-filter-field').value : '',
                     operator: q('.sd-sw-filter-op') ? q('.sd-sw-filter-op').value : 'is equal to',
                     value: dyn ? '' : val.slice(0, 255),
                     dynamic_value: dyn,
-                    dynamic_value_attribute: (dyn === 'days ago' && q('.sd-sw-filter-days')) ? (parseInt(q('.sd-sw-filter-days').value, 10) || 0) : ''
+                    dynamic_value_attribute: attr
                 });
             });
             return out;
@@ -32120,6 +32145,15 @@ const StyleDesigner = (function () {
             ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
                 var inp = el.querySelector(c);
                 if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+            });
+            // The name being edited is stored normalised (lower case, a-z,
+            // 0-9 and _ only, at most 32 characters; the re-rendered input
+            // shows the result). The hint and the warning under the row
+            // follow it: a reserved name, a leading digit or an empty name.
+            var paramEl = el.querySelector('.sd-sw-filter-param');
+            if (paramEl) paramEl.addEventListener('change', function () {
+                this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+                save(_swReadFilters(), true);
             });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
@@ -32470,6 +32504,18 @@ const StyleDesigner = (function () {
                 _patchSysCfg(sid, function (cfg) {
                     if (v === '') delete cfg.title_field;
                     else cfg.title_field = v;
+                }, { afterSave: function () { renderProperties(); } });
+            });
+        }
+        var flvFilterTitleEl = document.getElementById('sd-sw-flv-filter-title');
+        if (flvFilterTitleEl) {
+            flvFilterTitleEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = ('' + this.value).trim().slice(0, 120);
+                _patchSysCfg(sid, function (cfg) {
+                    if (v === '') delete cfg.filter_title;
+                    else cfg.filter_title = v;
                 }, { afterSave: function () { renderProperties(); } });
             });
         }
@@ -33491,6 +33537,9 @@ const StyleDesigner = (function () {
         ['reference_code',                _sdT('Reference Code')],
         ['submitted_date_and_time',       _sdT('Submitted Date & Time'), 'date'],
         ['submitter',                     _sdT('Submitter')],
+        // The contact's name (never the login username submitter prints):
+        // the one to bind on a public byline.
+        ['submitter_name',                _sdT('Author Name')],
         ['complete',                      _sdT('Complete')],
         ['address_name',                  _sdT('Address Name')],
         ['tracking_code',                 _sdT('Tracking Code')],
@@ -33511,8 +33560,41 @@ const StyleDesigner = (function () {
         ['submitter_user_id',             _sdT('Submitter User ID')]
     ];
 
-    // The list view offers exactly the shared set.
-    var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS;
+    // The list view offers the shared set plus its own state: the value a
+    // URL-parameter filter took from the page address (?author=Jane),
+    // filled only when "is equal to" finds records for it.
+    var SW_FORM_LIST_VIEW_TOKENS = [
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+    ];
+    var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
+
+    // Standard names a form's own field overrides on the server
+    // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
+    // list). The form decides: a field answering to the name by its name or
+    // by its label (pg_sw_form_field_identifiers()) takes it, and the
+    // dropdowns then do not offer the standard one.
+    var _SW_FORM_FIELD_WINS = ['submitter_name'];
+    // pg_sw_slugify(): "Yazar Adı" → "yazar_adi".
+    function _swFieldKeySlug(s) {
+        var map = { 'ı':'i','İ':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u',
+                    'ö':'o','Ö':'o','ç':'c','Ç':'c','â':'a','î':'i','û':'u' };
+        return String(s || '').trim()
+            .replace(/[ıİşŞğĞüÜöÖçÇâîû]/g, function (ch) { return map[ch]; })
+            .toLowerCase()
+            .replace(/[^a-z0-9_]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    }
+    function _swStandardYields(token, fields) {
+        var t = String(token || '').toLowerCase();
+        if (_SW_FORM_FIELD_WINS.indexOf(t) === -1) return false;
+        return (fields || []).some(function (ff) {
+            if (!ff) return false;
+            var name = String(ff.name || '').trim(), label = String(ff.label || '').trim();
+            return [name, name.replace(/[^a-z0-9_]/gi, ''), label, _swFieldKeySlug(label)].some(function (k) {
+                return k !== '' && k.toLowerCase() === t;
+            });
+        });
+    }
 
     // The detail view offers the same set plus its own not-found state, which is
     // a property of the widget rather than of a record.
@@ -34997,6 +35079,10 @@ const StyleDesigner = (function () {
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')]
         ],
+        form_list_view: [
+            ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
+            ['no_filter_value',  _sdT('No value from the page address is applied')]
+        ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
             ['record_found',           _sdT('The record is shown')],
@@ -36193,6 +36279,7 @@ const StyleDesigner = (function () {
             // depends on regionType — see _builtins resolution above.
             html += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
             _builtins.forEach(function (o) {
+                if (_swStandardYields(o[0], formFields)) return;
                 html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(_builtinLabel(o)) + '</option>';
             });
             html += '</optgroup>';
@@ -47026,7 +47113,8 @@ const StyleDesigner = (function () {
     // The classic form list view's filters (edit_form_list_view.php), kept in
     // system_region_config.filters and applied on the server by
     // pg_sw_form_list_filter_sql(). Standard fields mirror
-    // get_standard_fields_for_view(); the type decides which dynamic values
+    // get_standard_fields_for_view(), plus submitter_name (the contact's
+    // name, pg_sw_standard_fields()); the type decides which dynamic values
     // a filter offers, exactly as the classic screen decides it.
     var _SW_FILTER_STANDARD = [
         ['reference_code', _sdT('Reference Code'), ''],
@@ -47036,6 +47124,7 @@ const StyleDesigner = (function () {
         ['affiliate_code', _sdT('Affiliate Code'), ''],
         ['referring_url', _sdT('Referring URL'), ''],
         ['submitter', _sdT('Submitter'), 'username'],
+        ['submitter_name', _sdT('Author Name'), ''],
         ['submitted_date_and_time', _sdT('Submitted Date & Time'), 'date and time'],
         ['last_modifier', _sdT('Last Modifier'), 'username'],
         ['last_modified_date_and_time', _sdT('Last Modified Date & Time'), 'date and time'],
@@ -47069,14 +47158,18 @@ const StyleDesigner = (function () {
         });
     }
     function _swFilterFieldType(field, fields) {
-        for (var i = 0; i < _SW_FILTER_STANDARD.length; i++) {
+        var yields = _swStandardYields(field, fields);
+        for (var i = 0; i < _SW_FILTER_STANDARD.length && !yields; i++) {
             if (_SW_FILTER_STANDARD[i][0] === field) return _SW_FILTER_STANDARD[i][2];
         }
         var lc = String(field || '').toLowerCase();
         var ff = _swFilterFormFields(fields).filter(function (f) { return String(f.name).trim().toLowerCase() === lc; })[0];
         return ff ? String(ff.type || '') : '';
     }
-    function _swFilterDynamicOptions(type) {
+    // `withUrl`: a list's filters may also read their value from the page
+    // address. A record view's may not (the server closes such a page), so
+    // its panel does not offer it.
+    function _swFilterDynamicOptions(type, withUrl) {
         var o = [];
         if (type === 'date') o.push(['current date', _sdT('Current Date')]);
         if (type === 'date and time') o.push(['current date and time', _sdT('Current Date & Time')]);
@@ -47084,9 +47177,30 @@ const StyleDesigner = (function () {
         if (type === 'time') o.push(['current time', _sdT('Current Time')]);
         if (type === 'username') o.push(['viewer', _sdT('Viewer')]);
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
+        if (withUrl) o.push(['url parameter', _sdT('URL parameter')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
+    // Query parameter names the software reads itself, so a filter may not
+    // take its value from them; twin of pg_sw_url_param_reserved() in
+    // includes/fn/widgets.php (a test compares the two lists).
+    var _SW_URL_PARAM_RESERVED = [
+        'page', 'page_number', 'query', 'r', 'rss', 'pdf', 'icalendar', 'email',
+        'edit', 'edit_theme', 'edit_submitted_form', 'theme_id', 'from', 'logged_out',
+        'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
+        'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
+        'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
+        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
+        'token', 'password', 'add_watcher', 'connect_to_contact'
+    ];
+    // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
+    function _swUrlParamName(v) {
+        var n = String(v == null ? '' : v).trim().toLowerCase();
+        if (!/^[a-z][a-z0-9_]{0,31}$/.test(n)) return '';
+        if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
+        if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
+        return n;
+    }
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -47094,15 +47208,22 @@ const StyleDesigner = (function () {
             var field = String(f.field || '');
             var type  = _swFilterFieldType(field, fields);
             var dyn   = String(f.dynamic_value || '');
-            var dynOpts = _swFilterDynamicOptions(type);
+            var dynOpts = _swFilterDynamicOptions(type, withUrl);
+            // A value from the address on a panel that does not offer it (a
+            // record view, hand-written config): kept and marked, since the
+            // server closes the page on it.
+            var dynBad = !withUrl && dyn === 'url parameter' && field !== '';
+            if (dynBad) dynOpts = dynOpts.concat([['url parameter', _sdT('URL parameter') + ' ' + _sdT('(incompatible — choose again)')]]);
             if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
+            var urlParam = (dyn === 'url parameter') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
 
             var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
                 '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
                 _SW_FILTER_STANDARD.map(function (sf) {
+                    if (_swStandardYields(sf[0], fields)) return '';
                     return '<option value="' + sf[0] + '"' + (sf[0] === field ? ' selected' : '') + '>' + esc(sf[1]) + '</option>';
                 }).join('') + '</optgroup>';
-            var known = !field || _SW_FILTER_STANDARD.some(function (sf) { return sf[0] === field; });
+            var known = !field || _SW_FILTER_STANDARD.some(function (sf) { return sf[0] === field && !_swStandardYields(sf[0], fields); });
             if (formFields.length) {
                 fieldOpts += '<optgroup label="' + esc(_sdT('Form Fields')) + '">' +
                     formFields.map(function (ff) {
@@ -47133,7 +47254,7 @@ const StyleDesigner = (function () {
             if (inputType === 'datetime-local') val = val.replace(' ', 'T').slice(0, 16);
 
             html +=
-                '<div class="sd-sw-filter" data-idx="' + i + '" style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                '<div class="sd-sw-filter" data-idx="' + i + '"' + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
                         '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
@@ -47149,7 +47270,18 @@ const StyleDesigner = (function () {
                               (dyn === 'days ago'
                                   ? '<input type="number" min="0" max="36500" class="form-control form-control-sm sd-sw-filter-days" data-sw-id="' + sid + '" value="' + esc(String(parseInt(f.dynamic_value_attribute, 10) || 0)) + '" style="width:72px" aria-label="' + esc(_sdT('Day(s) Ago')) + '">'
                                   : '') +
+                              (dyn === 'url parameter' && !dynBad
+                                  ? '<input type="text" class="form-control form-control-sm sd-sw-filter-param" data-sw-id="' + sid + '" value="' + esc(urlParam) + '" maxlength="32" placeholder="author" style="width:110px" aria-label="' + esc(_sdT('Parameter name')) + '">'
+                                  : '') +
                           '</div>'
+                        : '') +
+                    (dyn === 'url parameter' && !dynBad
+                        ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field matches ?{var}=… in the page address. Without it, this filter is left out and every record is listed.', _swUrlParamName(urlParam) || 'author')) + '</div>' +
+                          (urlParam.trim() === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('Type a parameter name, such as author or tag. Without one, this filter is left out.')) + '</div>'
+                              : _swUrlParamName(urlParam) === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.')) + '</div>'
+                              : '')
                         : '') +
                 '</div>';
         });
@@ -47207,6 +47339,7 @@ const StyleDesigner = (function () {
                 (fields || []).forEach(function (ff) { out.push({ token: _swFormFieldToken(ff).toLowerCase() + '__label', label: fieldLabel(ff) }); });
             }
             (isItem ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS).forEach(function (o) {
+                if (_swStandardYields(o[0], fields)) return;
                 out.push({ token: o[0], label: _swBindLabel(type, o[0]) });
             });
             return out;
@@ -52242,18 +52375,7 @@ const StyleDesigner = (function () {
             return (widgetHtml && widgetHtml[id] != null) ? String(widgetHtml[id]) : '';
         });
 
-        // Mirror the editor's current canvas theme (light/dark) into the
-        // preview window. The user expects "preview shows what I'm seeing
-        // in the editor" — without this the dark cascade rules would be
-        // emitted but ignored because <body> has no `data-bs-theme="dark"`.
-        if (canvasDarkTheme) {
-            html = html.replace(/<body([^>]*)>/i, function (m, attrs) {
-                if (/\bdata-bs-theme\s*=/.test(attrs)) {
-                    return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/, 'data-bs-theme="dark"');
-                }
-                return '<body' + attrs + ' data-bs-theme="dark">';
-            });
-        }
+        if (canvasDarkTheme) html = _sdPreviewDarkView(html);
 
         // Compute absolute site base URL. OUTPUT_PATH is Pinegrap's URL path prefix
         // ("/" or "/subfolder/") — prepend scheme+host for a blob:-safe absolute base.
@@ -52380,28 +52502,143 @@ const StyleDesigner = (function () {
             }
         });
 
-        // Inject Bootstrap JS bundle + tooltip auto-init before </body>. Tooltips need explicit
-        // construction — Bootstrap ships no auto-init; the init loop here mirrors what frontend
-        // pages are expected to do and matches the canvas iframe's _initCanvasTooltips().
         var _pvJsInject = '';
         if (_pvExtJs) _pvJsInject += _pvExtJs;
         // Same order as the front end: JSON data, classic code, modules.
         if (_pvJsonJs) _pvJsInject += _pvJsonJs;
         if (_pvInlineJs.trim()) _pvJsInject += '    <script id="pg-page-js">\n' + _pvInlineJs + '    <\/script>\n';
         if (_pvModuleJs) _pvJsInject += _pvModuleJs;
-        html = html.replace('</body>',
-            _pvJsInject +
-            (_pvFw.js
-                ? '    <script src="' + esc(_pvFw.js) + '"></script>\n' +
-                  '    <script>document.addEventListener("DOMContentLoaded",function(){' +
-                  'document.querySelectorAll(\'[data-bs-toggle="tooltip"]\').forEach(function(el){' +
-                  'try{new bootstrap.Tooltip(el);}catch(e){}});' +
-                  'document.querySelectorAll(\'[data-bs-toggle="popover"]\').forEach(function(el){' +
-                  'try{new bootstrap.Popover(el);}catch(e){}});});</script>\n'
-                : '') +
-            '</body>');
+        // The framework's script is the renderer's fallback for a design
+        // whose assets panel has no enabled Bootstrap JS row on this page
+        // (get_page_content.php, $pg_has_bs_js_sentinel); the row itself is
+        // in _pvExtJs. A second copy would bind every dropdown, collapse
+        // and tab twice, so one click opens and closes it again.
+        var _pvBsJsRow = _pvJsRows.some(function (f) { return f.meta === 'bootstrap-js'; });
+        if (_pvFw.js && !_pvBsJsRow) _pvJsInject += '    <script src="' + esc(_pvFw.js) + '"><\/script>\n';
+        // The platform scripts the page's markup asks for, as on the front
+        // end; deferred, so they run after the framework's script.
+        _sdPageScriptFiles(html).forEach(function (src) {
+            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+        });
+        html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
+
+        // The preview's own harness, ahead of the page's scripts.
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
 
         return html;
+    }
+
+    // The preview document `html` in the editor's dark view. The theme goes
+    // to <html>, where a theme switcher writes. Without a switcher it goes to
+    // <body> as well, as on the canvas: a light block of the Themes panel
+    // written as `:root, [data-bs-theme="light"]` matches a dark <html> too
+    // and, loaded after bootstrap.css, wins there, while on <body>
+    // Bootstrap's dark block wins. With a switcher <body> is left alone, or
+    // it would outrank the switcher's choice for every element of the page.
+    function _sdPreviewDarkView(html) {
+        html = _sdSetDarkThemeAttr(html, 'html');
+        if (!/data-pg-theme-switcher/.test(html)) html = _sdSetDarkThemeAttr(html, 'body');
+        return html;
+    }
+
+    // `html` with data-bs-theme="dark" on its first <tag> (`tag` is "html"
+    // or "body"), replacing a theme the tag already names.
+    function _sdSetDarkThemeAttr(html, tag) {
+        return html.replace(new RegExp('<' + tag + '\\b([^>]*)>', 'i'), function (m, attrs) {
+            if (/\sdata-bs-theme\s*=/i.test(attrs)) {
+                return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/i, 'data-bs-theme="dark"');
+            }
+            return '<' + tag + attrs + ' data-bs-theme="dark">';
+        });
+    }
+
+    // `html` with `inject` written just before its last </body> (the page's
+    // own end tag; an earlier one can sit in a script or a code sample), or
+    // appended when it has none. The tag is looked for in `html` itself:
+    // an index taken from a lower-cased copy drifts, since lower-casing can
+    // change the length ("İ" becomes two code units).
+    function _sdInsertBeforeBodyEnd(html, inject) {
+        var re = /<\/body\s*>/gi, m, at = -1;
+        while ((m = re.exec(html)) !== null) at = m.index;
+        return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
+    }
+
+    // The editor's own ?v= stamp (designer_screen.php prints it on this
+    // script), added to the platform scripts the Preview loads so a copy
+    // cached before an upgrade is not used; the page uses ?v= too.
+    var _SD_ASSET_STAMP = (function () {
+        try {
+            var src = (document.currentScript && document.currentScript.src) || '';
+            var m = /[?&]v=([^&#]*)/.exec(src);
+            return m ? m[1] : '';
+        } catch (e) { return ''; }
+    })();
+
+    // Platform scripts a visitor page gets when its markup holds their
+    // marker. The server's twins add the same file to the published page:
+    // pg_theme_switcher_inject() and pg_bs_tips_inject() (its expression is
+    // pg_bs_tips_pattern()). A new row here needs its server step too.
+    var _SD_PAGE_SCRIPTS = [
+        { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
+        { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' }
+    ];
+
+    // The absolute addresses of the platform scripts `markup` asks for (the
+    // blob preview has no base of its own for them).
+    function _sdPageScriptFiles(markup) {
+        var out = [];
+        _SD_PAGE_SCRIPTS.forEach(function (row) {
+            if (!row.test.test(markup)) return;
+            try {
+                var url = new URL(row.file, document.baseURI);
+                if (_SD_ASSET_STAMP) url.searchParams.set('v', _SD_ASSET_STAMP);
+                out.push(url.href);
+            } catch (e) {}
+        });
+        return out;
+    }
+
+    // What makes the blob preview behave like the page without leaving it:
+    //   • the document's <base> is the site, so href="#id" would load the
+    //     site's home page and href="#" the site root: a link to a fragment
+    //     scrolls to its target here, a bare "#" does nothing (links to
+    //     real pages still go there). A form with no action would post to
+    //     the blob address, which no longer exists: it stays.
+    //     Both only when nothing on the page took the event first
+    //     (Bootstrap's toggles cancel their own).
+    //   • theme switchers start from the editor's view (Dark on the
+    //     toolbar: dark) and change the preview's <html> only: the choice
+    //     is not stored as the visitor's. pg_theme_switcher.js keeps an
+    //     engine that is already there.
+    function _sdPreviewHarness(markup) {
+        var js = '(function(){' +
+            'function hashOf(e){if(e.defaultPrevented||!e.target||!e.target.closest)return null;' +
+                'var a=e.target.closest("a[href]");if(!a)return null;' +
+                'var h=a.getAttribute("href");return(h.charAt(0)==="#")?h:null;}' +
+            'function go(e){var h=hashOf(e);if(h===null)return;e.preventDefault();' +
+                'if(e.type!=="click"||h.length<2)return;var id=h.slice(1);' +
+                'try{id=decodeURIComponent(id);}catch(x){}' +
+                'var el=document.getElementById(id)||document.getElementsByName(id)[0];' +
+                'if(el&&el.scrollIntoView)el.scrollIntoView();}' +
+            'window.addEventListener("click",go);window.addEventListener("auxclick",go);' +
+            'window.addEventListener("submit",function(e){var f=e.target;' +
+                'if(e.defaultPrevented||!f||!f.getAttribute)return;var act=f.getAttribute("action");' +
+                'if(!act||act.charAt(0)==="#")e.preventDefault();});' +
+            '})();';
+        if (/data-pg-theme-switcher/.test(markup)) {
+            js += '(function(){var m=' + JSON.stringify(canvasDarkTheme ? 'dark' : 'light') + ',' +
+                'r=document.documentElement,q=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;' +
+                'function res(t){return(!t||t==="auto")?((q&&q.matches)?"dark":"light"):t;}' +
+                'function ap(){r.setAttribute("data-bs-theme",res(m));}' +
+                'window.pgThemeInit=true;ap();' +
+                'window.pgSetTheme=function(t){m=t;ap();var ev;' +
+                    'try{ev=new Event("pg-theme-change");}catch(x){ev=document.createEvent("Event");ev.initEvent("pg-theme-change",false,false);}' +
+                    'document.dispatchEvent(ev);};' +
+                'window.pgGetTheme=function(){return m;};' +
+                'window.pgResolvedTheme=function(){return res(m);};' +
+                '})();';
+        }
+        return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
 
     // The request body of designer/preview_widgets for the system widgets

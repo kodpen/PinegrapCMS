@@ -1541,7 +1541,7 @@ function ws_claude_settings_post($viewer, $action, $liveform)
         if ($result['ok']) {
             $liveform->add_notice(lang('claude.ai started the routine. It finds nothing to do in the queue and stops; the run shows among the routine\'s runs on claude.ai.'));
         } else {
-            $liveform->add_error($result['error']);
+            $liveform->add_error(h($result['error']));
         }
 
         return;

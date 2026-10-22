@@ -17,3 +17,5 @@ description: The error page system widget: when it is shown, which block shows f
 ## Which tokens does it fill?
 - `__error_code`, `__error_message` (plain text, markup dropped), `__requested_url`, `__site_name`, `__home_url`, `__back_url` (the link drops without a same-site referrer).
 - Tests: `tests/error_page_test.php`.
+
+Related: docs/memory/designer/account-widget-forms.md

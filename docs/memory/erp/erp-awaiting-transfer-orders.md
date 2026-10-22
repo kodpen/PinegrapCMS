@@ -7,6 +7,7 @@ description: Awaiting-payment (bank transfer) orders: derived state predicate, p
 - Derived state, not a new enum value: `pg_order_awaiting_payment($order)` (`includes/fn/ecommerce.php`, under `_pg_order_status_stage`): `payment_method === 'Offline Payment' && (int)paid_at === 0 && status IN ('complete','exported')`. The order stays `complete`, so reports and `IN ('complete','exported')` queries work untouched.
 - List filter `view_orders.php` `case 'awaiting_transfer'` builds the same predicate in SQL and is offered like `refund_pending` by probing the `paid_at` column (`$paid_at_column_exists`); the row gets a second "Ödeme bekleniyor" badge.
 - Status badge while waiting: text `Awaiting Payment` in the `pending` colour.
+- An order put on the customer's ERP account (`orders.erp_on_account = 1`, 10.60) is an `Offline Payment` with `paid_at = 0` too: `pg_order_awaiting_payment()` and the `awaiting_transfer` filter include it, the auto-cancel sweep skips it (`erp_on_account = 0`): docs/memory/erp/erp-credit-limit-and-on-account.md.
 
 ## Who records the payment?
 - `pg_order_mark_paid(int $order_id, int $user_id): bool`: `UPDATE orders SET paid_at = time() WHERE id = ? AND paid_at = 0` (second click is a no-op; `log_activity` when a row changed). The line is `pg_order_paid_log_text()`, through `lang()`: "Order (#…) was marked paid.", "… automatically." on a system path (`$user_id = 0`); who did it is the log's user column (#941; until then English with `user_id=`).

@@ -199,6 +199,121 @@ function pg_image_is_animated_gif($file_path)
 
 
 /**
+ * Whether a PNG is an animated PNG (APNG).
+ *
+ * Both libraries decode only the default image of an APNG, so a derivative
+ * or an optimized copy of one is a still picture and the animation is gone
+ * from the file for good. An APNG says so with an acTL chunk before its first
+ * IDAT; a still PNG has none there. Only the chunk headers are read, the
+ * data of each chunk is skipped with a seek.
+ *
+ * @param string $file_path
+ * @return bool
+ */
+function pg_image_is_animated_png($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return false;
+    }
+
+    $animated = false;
+
+    if (@fread($handle, 8) === "\x89PNG\r\n\x1A\n") {
+
+        while (true) {
+
+            $header = @fread($handle, 8);
+
+            if (!is_string($header) || (strlen($header) !== 8)) {
+                break;
+            }
+
+            $length = unpack('N', substr($header, 0, 4));
+            $length = $length[1];
+            $type = substr($header, 4, 4);
+
+            if ($type === 'acTL') {
+                $animated = true;
+                break;
+            }
+
+            // The animation control chunk comes before the image data, so the
+            // first IDAT ends the search.
+            if (($type === 'IDAT') || ($type === 'IEND')) {
+                break;
+            }
+
+            // The chunk's data and its CRC. A length that would overflow the
+            // offset on 32-bit PHP ends the search: fseek() throws a TypeError
+            // on a float, and no real PNG chunk comes near that size.
+            if (($length < 0) || ($length > 0x7FFFFFFF) || ($length > PHP_INT_MAX - 4) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
+                break;
+            }
+        }
+    }
+
+    fclose($handle);
+
+    return $animated;
+}
+
+
+/**
+ * Whether a WebP is animated: the animation flag of its VP8X header (bit 1 of
+ * the first byte after the chunk size). GD cannot decode an animated WebP at
+ * all and Imagick writes its first frame back as a still.
+ *
+ * @param string $file_path
+ * @return bool
+ */
+function pg_image_is_animated_webp($file_path)
+{
+    $head = @file_get_contents($file_path, false, null, 0, 21);
+
+    return is_string($head)
+        && (strlen($head) === 21)
+        && (substr($head, 0, 4) === 'RIFF')
+        && (substr($head, 8, 8) === 'WEBPVP8X')
+        && ((ord($head[20]) & 0x02) !== 0);
+}
+
+
+/**
+ * Whether an image file holds an animation: a GIF with more than one frame,
+ * an APNG or an animated WebP. Told by the file's own first bytes, not by its
+ * name. The engine leaves these files as they are (no optimize, no resize, no
+ * derivative), and the markup gives them no srcset.
+ *
+ * @param string $file_path
+ * @return bool
+ */
+function pg_image_is_animated($file_path)
+{
+    $head = @file_get_contents($file_path, false, null, 0, 12);
+
+    if (!is_string($head) || (strlen($head) < 12)) {
+        return false;
+    }
+
+    if (substr($head, 0, 4) === 'GIF8') {
+        return pg_image_is_animated_gif($file_path);
+    }
+
+    if (substr($head, 0, 8) === "\x89PNG\r\n\x1A\n") {
+        return pg_image_is_animated_png($file_path);
+    }
+
+    if ((substr($head, 0, 4) === 'RIFF') && (substr($head, 8, 4) === 'WEBP')) {
+        return pg_image_is_animated_webp($file_path);
+    }
+
+    return false;
+}
+
+
+/**
  * Make sure there is room to decode an image of this size, raising the limit
  * when that is allowed.
  *
@@ -393,7 +508,10 @@ function pg_process_image_file($file_path, $options = array())
         return $report;
     }
 
-    if (($type == IMAGETYPE_GIF) && pg_image_is_animated_gif($file_path)) {
+    // An animated GIF, PNG or WebP: both libraries would keep only one frame.
+    if (in_array($type, array(IMAGETYPE_GIF, IMAGETYPE_PNG, defined('IMAGETYPE_WEBP') ? IMAGETYPE_WEBP : -1), true)
+        && pg_image_is_animated($file_path)
+    ) {
         $report['reason'] = 'animated';
         return $report;
     }

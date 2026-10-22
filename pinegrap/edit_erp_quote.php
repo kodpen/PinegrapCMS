@@ -66,7 +66,7 @@ if ($_POST) {
         $result = erp_quote_save($data, $quote_id, (int) $user['id']);
 
         if (!$result['success']) {
-            $liveform->mark_error($result['field'] ?? '_error', $result['error']);
+            $liveform->mark_error($result['field'] ?? '_error', h($result['error']));
             go($self_url);
         }
 

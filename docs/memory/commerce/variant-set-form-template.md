@@ -15,7 +15,7 @@ description: Variant-set product form model: template rows on the product group,
 - `form_field_options` is unchanged: it hangs off `form_field_id`, so it also carries the template row's options.
 
 ## Why not a separate table?
-- `select_field_position()` (functions.php:3143) already branches on `product_id` / `page_id`, and the field edit screens carry that split. A third branch is cheaper than rewriting the 24-column schema and all field-type logic a second time.
+- `select_field_position()` (`includes/fn/forms.php`) already branches on `product_id` / `page_id`, and the field edit screens carry that split. A third branch is cheaper than rewriting the 24-column schema and all field-type logic a second time.
 
 ## How does `pg_pb_apply_form_template($group_id)` (product_builder.php) behave?
 - Rule: fields from the template are rewritten; fields hand-added to a variant are kept.

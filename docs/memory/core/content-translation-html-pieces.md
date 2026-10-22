@@ -14,6 +14,7 @@ The inline cleaner (`pg_tr_clean_inline()`) keeps only inline tags and a few att
 
 ## What about the attributes the cleaner drops?
 The store keeps the cleaned tag (`<a href="#x">`); `pg_tr_inline_restore_attrs()` puts the page's own tag back for every tag that lost an attribute (id, data-bs-*, name, role ...), the k-th cleaned tag of the translation getting the k-th raw tag of that form. A collapse link or tooltip keeps working. The kept list is `pg_tr_inline_attrs()` (same as `pg_design_ai_clean_inline()`).
+The worded attributes (alt, title, aria-label ...) are texts of their own after the block's texts: `translation-attribute-texts.md`.
 
 ## What happened to translations made before?
 A block that had no cut keeps its hash. A block that had one is new texts now (the plain parts change format to `text`); the old string loses its use on the next extraction and needs translating again.
