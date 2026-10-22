@@ -1605,12 +1605,12 @@ $widgets = array(
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('a', 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/e11d48/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '28', 'height' => '28', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),
-                ), array('href' => '#', '_attrs' => array(
-                    $attr('role', 'button'),
+                ), array('_attrs' => array(
+                    $attr('type', 'button'),
                     $attr('data-bs-toggle', 'dropdown'),
                     $attr('aria-expanded', 'false'),
                 ))),

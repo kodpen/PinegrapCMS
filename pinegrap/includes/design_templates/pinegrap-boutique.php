@@ -1813,11 +1813,11 @@ $widgets = array(
                 $link(lang('Sign Up'), '#', 'text-nowrap link-body-emphasis link-offset-2', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('a', 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
                     $icon('bi-person-circle', ''),
                     $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
-                ), array('href' => '#', '_attrs' => array(
-                    $attr('role', 'button'),
+                ), array('_attrs' => array(
+                    $attr('type', 'button'),
                     $attr('data-bs-toggle', 'dropdown'),
                     $attr('aria-expanded', 'false'),
                 ))),

@@ -49496,9 +49496,11 @@ const StyleDesigner = (function () {
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'dropdown', customName: _sdT('Signed In'),
                         _bindings: { eo_visible_if: 'is_signed_in' } }, [
-                        createNode('semantic', { tag: 'a', cssClass: 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle',
-                            href: '#', customName: _sdT('Account Button'),
-                            _attrs: [{ name: 'role', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
+                        // A real button: Space opens the menu as well as
+                        // Enter, which an <a role="button"> does not do.
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle',
+                            customName: _sdT('Account Button'),
+                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
                             createNode('content', { contentType: 'image', src: 'https://placehold.co/64x64/4f6bed/ffffff?text=JC', alt: _sdT('Jane Cooper'),
                                 cssClass: 'rounded-circle object-fit-cover', width: '32', height: '32',
                                 _bindings: { src: '__user_avatar_url' } }),

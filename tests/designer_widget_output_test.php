@@ -95,6 +95,22 @@ function test_designer_widget_output_description_in_a_div()
 	pg_assert_true(preg_match("/contentType: 'paragraph',[^}]*\n[^}]*_bindings: \{ text: '__description' \}/", $source) === 0, 'no paragraph');
 }
 
+// The signed-in account menu of the login region opens from a real button
+// (Space opens it as well as Enter), in the editor's starter layout and in
+// every design template's own.
+function test_designer_widget_output_account_toggle_is_a_button()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_true(preg_match("/createNode\('semantic', \{ tag: 'button', cssClass: 'btn btn-link [^']*dropdown-toggle',\n\s*customName: _sdT\('Account Button'\),\n\s*_attrs: \[\{ name: 'type', value: 'button' \}, \{ name: 'data-bs-toggle', value: 'dropdown' \}/", $source) === 1, 'starter layout');
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/*.php') as $file) {
+		$template = (string) file_get_contents($file);
+		if (strpos($template, "lang('Account Button')") === false) continue;
+		pg_assert_false(strpos($template, "\$el('a', 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle") !== false, basename($file) . ': no link toggle');
+		pg_assert_true(preg_match("/\\\$el\('button', 'btn btn-link [^']*dropdown-toggle[^']*', lang\('Account Button'\)/", $template) === 1, basename($file) . ': a button');
+	}
+}
+
 // -- calendar empty state ------------------------------------------------------
 
 // One setting serves the month, the week and the upcoming list: the default
