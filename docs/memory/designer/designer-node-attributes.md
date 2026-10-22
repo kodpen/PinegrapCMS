@@ -8,7 +8,7 @@ description: The attributes every designer content, semantic and grid node write
 - Tests: `tests/designer_node_attrs_test.php`, `tests/designer_grid_nodes_test.php` (both run the cut-out emitter under Node), `tests/designer_code_view_attrs_test.php`.
 
 ## In what order is the style written?
-- One `style` attribute: `fontFamily`, the old `inlineStyle` field, the type's own style (icon font-size, image object-position, spacer height, an SVG's own), the Display & Sizing props, then the Attributes panel's `style`; the last wins on a repeat (the canvas uses the same order). Before, the editor wrote `inlineStyle` first and gave an icon, image or spacer a second style attribute.
+- One `style` attribute: `fontFamily`, the old `inlineStyle` field, the type's own style (icon font-size, image object-position, spacer height, an SVG's own), the Display & Sizing props, then the Attributes panel's `style`; the last wins on a repeat (the canvas uses the same order). The editor once wrote a second style attribute.
 - The font is quoted only when it holds a space or starts with a digit, then `,sans-serif` (`_sdFontFamilyCss()`); a bare name (`serif`) stays a generic family.
 
 ## How are the title and the tooltip written?
@@ -20,7 +20,8 @@ description: The attributes every designer content, semantic and grid node write
 
 ## What do content nodes get from Display & Sizing?
 - The classes join `cssClass` once, the style goes in the style attribute, as on the canvas. An image's `width`/`height` and a spacer's `height` are the element's own props, not sizing (`_pg_content_sizing()` / `_sdContentSizingNode()`). In a ratio box (a preset) the box takes an image's whole sizing style, its width and height in it (a bare number in px), and its rounded classes; the `<img>` keeps its id, attributes and own style.
-- Only the types whose page markup carries attributes get them: heading, paragraph, span, text, link, icon, image, divider, spacer, svg. Custom HTML and a PHP block print as written; carousel, messages, breadcrumb, variant picker and applied offers are the server's. The editor used to write the node's attributes into their first tag.
+- A divider writes `my-<margin>`, then `cssClass`, each class once. The Divider component sets `margin`, no class; its old `cssClass: 'my-4'` gave `<hr class="my-4 my-4">`.
+- Only the types whose page markup carries attributes get them: heading, paragraph, span, text, link, icon, image, divider, spacer, svg. Custom HTML and a PHP block print as written; carousel, messages, breadcrumb, variant picker and applied offers are the server's.
 
 ## What is the page's alone?
 - `data-pg-search-section` after the id (the Search section switch; its cue to add the sections' structured data). Not in the editor's HTML (typing it there would change nothing), nor a copy typed in the panel. An image's `onerror`, `srcset`, `sizes`, `<picture>`.

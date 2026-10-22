@@ -67,6 +67,9 @@ function _test_designer_attrs_cases()
 		'text title' => _test_designer_attrs_content('text', array('text' => 'T', 'title' => 'Plain')),
 		'heading tooltip and popover' => _test_designer_attrs_content('heading', array('tag' => 'h3', 'text' => 'H', 'tooltipEnabled' => true, 'tooltipTitle' => 'Tip', '_attrs' => $a(array('data-bs-toggle' => 'popover', 'title' => 'Typed')))),
 		'divider sizing' => _test_designer_attrs_content('divider', array('margin' => '3', 'maxWidth' => '30rem', 'srOnly' => true, 'cssClass' => 'visually-hidden')),
+		'divider margin class in cssClass' => _test_designer_attrs_content('divider', array('margin' => '4', 'cssClass' => 'my-4')),
+		'divider repeated classes' => _test_designer_attrs_content('divider', array('margin' => '2', 'cssClass' => 'border-secondary my-2  border-secondary')),
+		'divider default margin' => _test_designer_attrs_content('divider', array('cssClass' => 'my-4 opacity-50')),
 		'paragraph sizing not in cssClass' => _test_designer_attrs_content('paragraph', array('text' => 'P', 'srOnly' => true, 'minHeight' => '4rem')),
 		'heading attributes panel' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'H', '_attrs' => $a(array('class' => 'ac', 'Style' => 'gap:1px', 'ID' => 'dup', 'aria-label' => 'L')))),
 		'link built-ins' => _test_designer_attrs_content('link', array('text' => 'L', 'href' => '/x', 'target' => '_blank', 'cssClass' => 'link-primary', '_attrs' => $a(array('href' => '/stale', 'target' => '_self', 'rel' => 'nofollow')))),
@@ -185,6 +188,25 @@ function test_designer_attrs_sizing()
 	pg_assert_contains('width="72" height="72" style="object-position:top;max-width:100%" title="Tip" data-bs-toggle="tooltip" data-bs-placement="top"', _test_designer_attrs_php($cases['image own size']));
 	pg_assert_contains('alt="A" id="pic"', _test_designer_attrs_php($cases['image in a ratio box']), 'the image keeps its id, the box takes the sizing style');
 	pg_assert_contains('<div class="ratio ratio-16x9" style="min-height:5rem;overflow:hidden">', _render_tree_node($cases['image in a ratio box'], 0, 0), 'the ratio box takes the sizing style');
+}
+
+// A divider writes its margin class first, then cssClass, each class once:
+// a cssClass that repeats the margin class is not written twice. The
+// Divider component sets the margin prop, not a class the Margin control
+// could not change. The editor's HTML is compared in
+// test_designer_attrs_editor_writes_the_same().
+function test_designer_attrs_divider_classes_once()
+{
+	$cases = _test_designer_attrs_cases();
+
+	pg_assert_same('<hr class="my-4">', _test_designer_attrs_php($cases['divider margin class in cssClass']));
+	pg_assert_same('<hr class="my-2 border-secondary">', _test_designer_attrs_php($cases['divider repeated classes']));
+	pg_assert_same('<hr class="my-4 opacity-50">', _test_designer_attrs_php($cases['divider default margin']));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, "if (ctype === 'divider_line') {");
+	$block = ($from !== false) ? substr($source, $from, 160) : '';
+	pg_assert_contains("createNode('content', { contentType: 'divider', margin: '4' })", $block, 'the Divider component sets the margin, no class');
 }
 
 // The Attributes panel's list never writes a second class, style or id, or

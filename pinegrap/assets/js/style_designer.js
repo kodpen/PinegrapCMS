@@ -4580,13 +4580,16 @@ const StyleDesigner = (function () {
         divider: {
             label: _sdT('Divider'), icon: 'bi-dash-lg',
             defaultProps: { margin: '4', cssClass: '' },
+            // The margin class first, then cssClass, each class once (a
+            // cssClass that repeats the margin class is not written twice),
+            // as the divider case of _render_content_html() does.
             render: function (doc, p) {
                 var el = doc.createElement('hr');
-                el.className = 'my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '');
+                el.className = _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || ''));
                 return el;
             },
             toHTML: function (p, pad) {
-                return pad + '<hr class="my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '') + '">\n';
+                return pad + '<hr class="' + _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || '')) + '">\n';
             }
         },
         spacer: {
@@ -18914,7 +18917,7 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'divider_line') {
-                    return createNode('content', { contentType: 'divider', cssClass: 'my-4' });
+                    return createNode('content', { contentType: 'divider', margin: '4' });
                 }
 
                 if (ctype === 'table') {

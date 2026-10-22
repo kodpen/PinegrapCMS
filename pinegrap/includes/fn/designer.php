@@ -5098,9 +5098,10 @@ function _render_content_html($props, $pad, $kids = '')
             break;
 
         case 'divider':
+            // The margin class first, then cssClass, each class once: a
+            // cssClass that repeats the margin class is not written twice.
             $margin = isset($props['margin']) ? $props['margin'] : '4';
-            $cls = 'my-' . h($margin);
-            if (!empty($props['cssClass'])) $cls .= ' ' . h($props['cssClass']);
+            $cls = h(_pg_unique_classes('my-' . $margin . ' ' . (isset($props['cssClass']) ? (string)$props['cssClass'] : '')));
             $style_attr  = _compose_inline_style($props, '', $sz_style);
             $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<hr class="' . $cls . '"' . $style_attr . $extra_attrs . '>' . "\n";
