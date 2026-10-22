@@ -1544,6 +1544,50 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
 }
 
 /**
+ * The attributes of an order's e-document, as the ERP's Paraşüt driver
+ * writes them for the order's invoice (erp_edoc_parasut_edoc_attributes()):
+ * the exemption behind a zero-rated line, the scenario and the buyer's
+ * mailbox of an e-Invoice, and for an internet sale's e-Archive the web
+ * address, the payment and the carrier (VUK 509). What such an e-Archive
+ * cannot go without is refused here, before anything is sent.
+ *
+ * @param array  $sale        erp_order_sale_fields()
+ * @param array  $lines       The order's invoice lines, each with its vat_exemption_code
+ * @param string $kind        'einvoice' | 'earchive'
+ * @param string $alias       The buyer's GİB mailbox (e-Invoice)
+ * @param string $issue_date  'Y-m-d': the sales invoice's day, which a payment or
+ *                            shipment date the order does not give falls back to
+ * @return array ['attributes' => array, 'error' => string]
+ */
+function parasut_order_edoc_attributes($sale, $lines, $kind, $alias, $issue_date)
+{
+    // These documents have always gone as commercial e-Invoices, and an order
+    // carries no invoice note to name an "other" exemption in words.
+    $invoice = array_merge((array) $sale, array(
+        'issue_date' => (string) $issue_date,
+        'edoc_scenario' => 'commercial',
+        'notes' => '',
+    ));
+
+    $missing = erp_edoc_parasut_document_missing($invoice, $kind);
+
+    if (!empty($missing)) {
+        return array('attributes' => array(), 'error' => lang(array(
+            'string' => 'An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order\'s shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.',
+            'vars' => implode(', ', $missing),
+        )));
+    }
+
+    $attributes = erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $alias);
+
+    if (isset($attributes['error'])) {
+        return array('attributes' => array(), 'error' => (string) $attributes['error']);
+    }
+
+    return array('attributes' => $attributes, 'error' => '');
+}
+
+/**
  * Create a Paraşüt sales invoice for an order and turn it into its
  * e-document: an e-invoice for a buyer registered with GİB, an e-archive
  * invoice otherwise (_parasut_resolve_edoc_kind()).
@@ -1554,9 +1598,12 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
  * out itself, once per rate on the whole amount of its lines; where that is
  * not the order's VAT the rate's amount there moves by a kurus or so, so
  * that the invoice still comes to what the customer paid
- * (erp_edoc_parasut_vat_shift()). Whatever can be refused from the order
- * alone is refused before anything is sent, and a sales invoice Paraşüt
- * totals differently is deleted before it becomes a document.
+ * (erp_edoc_parasut_vat_shift()). The e-document carries what the driver
+ * gives the order's invoice too (parasut_order_edoc_attributes()): a
+ * zero-rated line's exemption, an internet sale's address, payment and
+ * carrier. Whatever can be refused from the order alone is refused before
+ * anything is sent, and a sales invoice Paraşüt totals differently is
+ * deleted before it becomes a document.
  *
  * @param int $order_id  orders.id
  * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
@@ -1643,13 +1690,6 @@ function parasut_create_invoice($order_id)
     }
     $token = $token_result['token'];
 
-    // Sync (or retrieve) the Parasut contact.
-    $contact_result = parasut_sync_contact($order);
-    if (!$contact_result['success']) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $contact_result['error']];
-    }
-    $parasut_contact_id = $contact_result['parasut_contact_id'];
-
     // Which document this has to be is settled before anything is created: a
     // sales invoice raised here and then found to need the other kind cannot be
     // taken back.
@@ -1667,6 +1707,25 @@ function parasut_create_invoice($order_id)
     }
     $issue_date = date('Y-m-d', $ts);
     $order_number = trim((string) ($order['order_number'] ?? ''));
+
+    // What the e-document says besides the lines, as the order's ERP invoice
+    // would carry it: each zero-rated line's exemption, an internet sale's
+    // address, payment and carrier. Settled here too, so that an e-Archive
+    // that cannot go leaves no buyer card or sales invoice at Paraşüt.
+    foreach ($built['lines'] as $index => $line) {
+        $built['lines'][$index]['vat_exemption_code'] = erp_vat_line_exemption_code($line);
+    }
+    $edoc = parasut_order_edoc_attributes(erp_order_sale_fields($order), $built['lines'], $edoc_kind, $edoc_alias, $issue_date);
+    if ($edoc['error'] !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $edoc['error']];
+    }
+
+    // Sync (or retrieve) the Parasut contact.
+    $contact_result = parasut_sync_contact($order);
+    if (!$contact_result['success']) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $contact_result['error']];
+    }
+    $parasut_contact_id = $contact_result['parasut_contact_id'];
 
     // The body the ERP's driver writes for an invoice of the order: its lines
     // with their products, the kurus each rate moves, the order's number and
@@ -1742,17 +1801,15 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => $gone ? null : $sales_invoice_id, 'error' => $message];
     }
 
-    // Now issue the e-invoice or e-archive document.
+    // Now issue the e-invoice or e-archive document. An e-invoice's attributes
+    // carry the buyer's GİB mailbox from the registration lookup (one with
+    // nowhere to go is rejected); the two requests name the sales invoice
+    // under different relationship keys.
     if ($edoc_kind === 'einvoice') {
         $doc_body = [
             'data' => [
                 'type' => 'e_invoices',
-                'attributes' => [
-                    'scenario' => 'commercial',
-                    // The buyer's GIB address, from the registration lookup. An
-                    // e-invoice with nowhere to go is rejected.
-                    'to' => $edoc_alias,
-                ],
+                'attributes' => $edoc['attributes'],
                 'relationships' => [
                     'invoice' => ['data' => ['type' => 'sales_invoices', 'id' => $sales_invoice_id]],
                 ],
@@ -1760,11 +1817,10 @@ function parasut_create_invoice($order_id)
         ];
         $doc_result = _parasut_request('POST', _parasut_prefix() . '/e_invoices', $doc_body, $token);
     } else {
-        // e_archive
         $doc_body = [
             'data' => [
                 'type' => 'e_archives',
-                'attributes' => [],
+                'attributes' => $edoc['attributes'],
                 'relationships' => [
                     'sales_invoice' => ['data' => ['type' => 'sales_invoices', 'id' => $sales_invoice_id]],
                 ],
