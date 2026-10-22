@@ -4128,16 +4128,20 @@ const StyleDesigner = (function () {
     var _myAccountDetailPagesCache = null;
 
     // ========================= COL CLASSES =========================
+    // Twin of _build_col_classes() (includes/fn/designer.php), which writes
+    // the saved page. A column with no width is a full row (col-12), the
+    // width the Column options show for it; 'col' (Equal) at a breakpoint
+    // is Bootstrap's col-<bp>.
     function buildColClasses(p) {
         var c = [];
         if (p.xs && p.xs !== '' && p.xs !== 'none') {
             if (p.xs === 'auto') c.push('col-auto');
             else if (p.xs === 'col') c.push('col');
             else c.push('col-' + p.xs);
-        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col');
+        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col-12');
         ['sm','md','lg','xl','xxl'].forEach(function(bp) {
             if (p[bp] && p[bp] !== '' && p[bp] !== 'none')
-                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : 'col-' + bp + '-' + p[bp]);
+                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : (p[bp] === 'col' ? 'col-' + bp : 'col-' + bp + '-' + p[bp]));
         });
         if (p.offsetXs && p.offsetXs !== '' && p.offsetXs !== 'none') c.push('offset-' + p.offsetXs);
         if (p.offsetMd && p.offsetMd !== '' && p.offsetMd !== 'none') c.push('offset-md-' + p.offsetMd);
@@ -4741,21 +4745,17 @@ const StyleDesigner = (function () {
                 var h = p.height ? ' height="' + esc(p.height) + '"' : '';
                 var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
-                if (p.aspectRatio) {
+                if (_sdImgInRatioBox(p)) {
+                    // The box as _render_content_html() writes it: the
+                    // image's rounded classes in their order. Its size and
+                    // overflow are the node's sizing style, which
+                    // addGlobalAttrs() writes on this first tag.
                     var wrapClsExp = 'ratio ratio-' + esc(p.aspectRatio);
-                    if (p.cssClass) {
-                        var _wcArr = String(p.cssClass).split(/\s+/);
-                        for (var _wi = 0; _wi < _wcArr.length; _wi++) {
-                            if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
-                        }
+                    var _wcArr = cls.split(/\s+/);
+                    for (var _wi = 0; _wi < _wcArr.length; _wi++) {
+                        if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
                     }
-                    if (p.rounded) wrapClsExp += ' rounded';
-                    var wrapStyleExpParts = [];
-                    if (p.overflow)  wrapStyleExpParts.push('overflow:'   + esc(p.overflow));
-                    if (p.overflowX) wrapStyleExpParts.push('overflow-x:' + esc(p.overflowX));
-                    if (p.overflowY) wrapStyleExpParts.push('overflow-y:' + esc(p.overflowY));
-                    var wrapStyleExp = wrapStyleExpParts.length ? ' style="' + wrapStyleExpParts.join(';') + '"' : '';
-                    return pad + '<div class="' + wrapClsExp + '"' + wrapStyleExp + '>\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
+                    return pad + '<div class="' + wrapClsExp + '">\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
                 }
                 return pad + imgTag + '\n';
             }
@@ -4763,13 +4763,16 @@ const StyleDesigner = (function () {
         divider: {
             label: _sdT('Divider'), icon: 'bi-dash-lg',
             defaultProps: { margin: '4', cssClass: '' },
+            // The margin class first, then cssClass, each class once (a
+            // cssClass that repeats the margin class is not written twice),
+            // as the divider case of _render_content_html() does.
             render: function (doc, p) {
                 var el = doc.createElement('hr');
-                el.className = 'my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '');
+                el.className = _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || ''));
                 return el;
             },
             toHTML: function (p, pad) {
-                return pad + '<hr class="my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '') + '">\n';
+                return pad + '<hr class="' + _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || '')) + '">\n';
             }
         },
         spacer: {
@@ -5073,7 +5076,8 @@ const StyleDesigner = (function () {
                 return el;
             },
             toHTML: function(p, pad, children) {
-                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '') + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '');
+                // The page's order (_render_content_html()): href, class, target, rel.
+                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '') + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '');
                 var kids = children || '';
                 if (kids) return pad + '<a' + attrs + '>' + (p.text || '') + '\n' + kids + pad + '</a>\n';
                 return pad + '<a' + attrs + '>' + (p.text || '') + '</a>\n';
@@ -19320,7 +19324,7 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'divider_line') {
-                    return createNode('content', { contentType: 'divider', cssClass: 'my-4' });
+                    return createNode('content', { contentType: 'divider', margin: '4' });
                 }
 
                 if (ctype === 'table') {
@@ -22307,7 +22311,14 @@ const StyleDesigner = (function () {
     //           _attrs.style and the prop is cleared, since the style wins
     function _sdInlineStyleProps(node) {
         var same = function (v) { return String(v); };
-        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: same }];
+        // A family as the page writes it (_sdFontFamilyCss(): quoted, with
+        // the sans-serif fallback) reads back as the bare family; a stack
+        // of several stays in the style (null).
+        var family = function (v) {
+            var m = /^\s*(?:'([^',]+)'|"([^",]+)"|([^'",]+?))\s*(?:,\s*sans-serif\s*)?$/i.exec(String(v));
+            return m ? (m[1] || m[2] || m[3]).trim() : null;
+        };
+        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: family }];
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
@@ -23348,86 +23359,151 @@ const StyleDesigner = (function () {
     end legacy renderStylesPanel */
 
     // ========================= HTML COMPILER =========================
-    function addGlobalAttrs(htmlStr, node) {
-        var extraCls   = getNodeExtraClasses(node);
-        var extraStyle = getNodeExtraStyle(node);
-        var hasAttrs = node.props.id || node.props.title || node.props.inlineStyle || node.props.fontFamily ||
-            (node.props._attrs && node.props._attrs.length) ||
-            node.props.tooltipEnabled || node.props.srOnly || extraStyle || extraCls;
-        if (!hasAttrs) return htmlStr;
-        var firstTagEnd = htmlStr.indexOf('>');
-        if (firstTagEnd === -1) return htmlStr;
-        // 1. Inject extra classes into existing class="" or add new class attr
-        if (extraCls) {
-            var ft = htmlStr.slice(0, firstTagEnd);
-            var clsIdx = ft.indexOf(' class="');
-            if (clsIdx !== -1) {
-                var clsEnd = ft.indexOf('"', clsIdx + 8);
-                var existing = ft.slice(clsIdx + 8, clsEnd);
-                htmlStr = ft.slice(0, clsIdx) + ' class="' + (existing ? existing + ' ' : '') + extraCls + '"' +
-                    htmlStr.slice(clsEnd + 1);
-            } else {
-                htmlStr = htmlStr.slice(0, firstTagEnd) + ' class="' + extraCls + '"' + htmlStr.slice(firstTagEnd);
+    // The content types whose page markup carries the node's own attributes
+    // (_render_content_html() writes them through _compose_inline_style()
+    // and _render_extra_attrs()). The others print their markup as it is on
+    // the page (Custom HTML, a PHP block) or are drawn by the server
+    // (carousel, messages, breadcrumb, variant picker, applied offers).
+    var _SD_CONTENT_GLOBAL_ATTRS = { heading: 1, paragraph: 1, span: 1, text: 1, link: 1, icon: 1, image: 1, divider: 1, spacer: 1, svg: 1 };
+
+    // The node the Display & Sizing style of a content node is read from:
+    // a spacer's height is the element's own prop. An image's width and
+    // height are its attributes; in a ratio box (_sdImgInRatioBox()) the box
+    // takes the whole style, the image's width and height in it (a bare
+    // number in px), so the ratio applies to that size. Twin of
+    // _pg_content_sizing().
+    function _sdContentSizingNode(n) {
+        var p = n.props || {}, ct = p.contentType, drop = null, px = null;
+        if (ct === 'image') {
+            if (_sdImgInRatioBox(p)) px = ['width', 'height'];
+            else drop = ['width', 'height'];
+        } else if (ct === 'spacer') {
+            drop = ['height'];
+        }
+        if (!drop && !px) return n;
+        var copy = {};
+        Object.keys(p).forEach(function (k) {
+            if (drop && drop.indexOf(k) !== -1) return;
+            var v = p[k];
+            if (px && px.indexOf(k) !== -1 && ((typeof v === 'number' && v > 0 && v % 1 === 0) || (typeof v === 'string' && /^\d+$/.test(v.trim())))) {
+                v = String(v).trim() + 'px';
             }
-            firstTagEnd = htmlStr.indexOf('>');
-        }
-        // 2. Build attribute string
-        var attrs = '';
-        if (node.props.id) attrs += ' id="' + esc(node.props.id) + '"';
-        var _titleVal = (node.props.tooltipEnabled && node.props.tooltipTitle) ? node.props.tooltipTitle : node.props.title;
-        if (_titleVal) attrs += ' title="' + esc(_titleVal) + '"';
-        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-            attrs += ' data-bs-toggle="tooltip"';
-            attrs += ' data-bs-placement="' + esc(node.props.tooltipPlacement || 'top') + '"';
-        }
-        // Merge inlineStyle, fontFamily, extraStyle, _attrs.style into one style attribute
-        var styleParts = [];
-        if (node.props.inlineStyle) styleParts.push(node.props.inlineStyle.replace(/;?\s*$/, ''));
-        if (node.props.fontFamily) {
-            // Quote the family name so multi-word ("Press Start 2P") faces
-            // tokenize as one identifier in the resulting `style` attribute.
-            var _ffhq = String(node.props.fontFamily).replace(/'/g, '');
-            styleParts.push("font-family:'" + _ffhq + "',sans-serif");
-        }
-        if (extraStyle) styleParts.push(extraStyle);
-        var _attrStyleVal = '';
-        if (node.props._attrs) {
-            node.props._attrs.forEach(function(attr) {
-                if (attr.name === 'style') { _attrStyleVal = attr.value || ''; }
-                // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                else if (attr.name && attr.name.trim() && attr.name !== 'id') {
-                    attrs += ' ' + attr.name.trim() + '="' + esc(attr.value || '') + '"';
-                }
-            });
-        }
-        if (_attrStyleVal) styleParts.push(_attrStyleVal);
-        if (styleParts.length) attrs += ' style="' + esc(styleParts.join(';')) + '"';
-        htmlStr = htmlStr.slice(0, firstTagEnd) + attrs + htmlStr.slice(firstTagEnd);
-        return htmlStr;
+            copy[k] = v;
+        });
+        return { type: n.type, props: copy };
     }
 
+    // Whether an image is drawn in its own .ratio box: an aspectRatio
+    // preset ('16x9'). The page uses the same test (the image case of
+    // _render_content_html()).
+    function _sdImgInRatioBox(p) {
+        return /^[0-9]+x[0-9]+$/.test(String((p && p.aspectRatio) || ''));
+    }
+
+    // The props a content node's toHTML() writes from: the sizing classes
+    // join cssClass once, as in _render_content_html().
+    function _sdContentProps(n, P) {
+        var extra = getNodeExtraClasses(n);
+        if (!extra || !_SD_CONTENT_GLOBAL_ATTRS[n.props.contentType]) return P;
+        var out = {};
+        Object.keys(P).forEach(function (k) { out[k] = P[k]; });
+        out.cssClass = _sdUniqueClasses((P.cssClass || '') + ' ' + extra);
+        return out;
+    }
+
+    function _sdDecodeAttr(s) {
+        return String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    }
+
+    // A content node's own attributes on the tag its toHTML() wrote (an
+    // image's <img>, inside a ratio box too), as the page writes them: one
+    // style attribute (_sdNodeStyle(): font, inline style, the type's own
+    // style, sizing, the Attributes panel's style) where the type wrote its
+    // own, or after the type's attributes; then the id, the title and
+    // tooltip and the Attributes panel's entries. An entry the type wrote
+    // from its props (a link's href, an image's src) is not written twice.
+    // `P`: the props the markup was written from (the code view's carry
+    // {{tokens}} for bound values).
+    function addGlobalAttrs(htmlStr, node, P) {
+        var p = node.props;
+        var ct = p.contentType;
+        if (!_SD_CONTENT_GLOBAL_ATTRS[ct]) return htmlStr;
+        P = P || p;
+        var list = P._attrs;
+        var sizing = getNodeExtraStyle(_sdContentSizingNode(node));
+        // An image in its own ratio box: the box (the first tag) takes the
+        // sizing style, the <img> its own attributes and style.
+        var boxStyle = '';
+        if (ct === 'image' && _sdImgInRatioBox(p)) { boxStyle = sizing; sizing = ''; }
+        var hasAttrs = p.id || p.title || p.inlineStyle || p.fontFamily || sizing || boxStyle ||
+            (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle);
+        if (!hasAttrs) return htmlStr;
+        var start = ct === 'image' ? htmlStr.indexOf('<img') : htmlStr.indexOf('<');
+        if (start === -1) return htmlStr;
+        var end = htmlStr.indexOf('>', start);
+        if (end === -1) return htmlStr;
+        var open = htmlStr.slice(start, end);
+        var close = '';
+        if (open.charAt(open.length - 1) === '/') { close = '/'; open = open.slice(0, -1); }
+        var names = [];
+        open.replace(/\s([^\s="]+)(?:="[^"]*")?/g, function (all, name) { names.push(name.toLowerCase()); return all; });
+        // The type's own style is taken out and written back, merged, in
+        // its place.
+        var own = '', styleAt = -1;
+        var sm = /\sstyle="([^"]*)"/i.exec(open);
+        if (sm) {
+            own = _sdDecodeAttr(sm[1]);
+            styleAt = sm.index;
+            open = open.slice(0, sm.index) + open.slice(sm.index + sm[0].length);
+        }
+        var style = _sdNodeStyle({ fontFamily: p.fontFamily, inlineStyle: p.inlineStyle, _attrs: list }, own, sizing);
+        var styleAttr = style ? ' style="' + esc(style) + '"' : '';
+        open = styleAt !== -1 ? open.slice(0, styleAt) + styleAttr + open.slice(styleAt) : open + styleAttr;
+        // What _render_content_html() leaves out of the Attributes panel's
+        // list: an image's own attributes, a link's href and the window and
+        // relationship its props set.
+        var skip = [];
+        if (ct === 'image') skip = ['src', 'alt', 'width', 'height', 'onerror'];
+        if (ct === 'link') skip = ['href', 'target', 'rel'].filter(function (k) { return names.indexOf(k) !== -1; });
+        open += _sdNodeExtraAttrs(p, list, skip);
+        var out = htmlStr.slice(0, start) + open + close + htmlStr.slice(end);
+        if (boxStyle) {
+            var boxEnd = out.indexOf('>');
+            out = out.slice(0, boxEnd) + ' style="' + esc(boxStyle) + '"' + out.slice(boxEnd);
+        }
+        return out;
+    }
 
     // ── Sizing / Tooltip / A11y helpers ──
     // Returns extra inline style string from prop-based sizing inputs.
+    // Twin of _build_node_sizing_attrs() (includes/fn/designer.php), which
+    // writes the saved page: the same order (z-index, the lengths, overflow,
+    // the offsets, a custom ratio), z-index only as an integer or auto.
+    // A Display & Sizing option as text: a string trimmed ('0' is a value),
+    // a non-zero finite number as written, anything else (the number 0,
+    // false, no value) ''.
+    function _sdSizingValue(v) {
+        if (typeof v === 'string') return v.trim();
+        return (typeof v === 'number' && isFinite(v) && v !== 0) ? String(v) : '';
+    }
+    var _SD_SIZING_STYLE_PROPS = [
+        ['width', 'width'], ['minWidth', 'min-width'], ['maxWidth', 'max-width'],
+        ['height', 'height'], ['minHeight', 'min-height'], ['maxHeight', 'max-height'],
+        ['overflow', 'overflow'], ['overflowX', 'overflow-x'], ['overflowY', 'overflow-y'],
+        ['top', 'top'], ['right', 'right'], ['bottom', 'bottom'], ['left', 'left']
+    ];
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
-        if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
-        if (p.width)     parts.push('width:'       + p.width);
-        if (p.minWidth)  parts.push('min-width:'   + p.minWidth);
-        if (p.maxWidth)  parts.push('max-width:'   + p.maxWidth);
-        if (p.height)    parts.push('height:'      + p.height);
-        if (p.minHeight) parts.push('min-height:'  + p.minHeight);
-        if (p.maxHeight) parts.push('max-height:'  + p.maxHeight);
-        if (p.overflow)  parts.push('overflow:'    + p.overflow);
-        if (p.overflowX) parts.push('overflow-x:'  + p.overflowX);
-        if (p.overflowY) parts.push('overflow-y:'  + p.overflowY);
-        if (p.top)       parts.push('top:'         + p.top);
-        if (p.right)     parts.push('right:'       + p.right);
-        if (p.bottom)    parts.push('bottom:'      + p.bottom);
-        if (p.left)      parts.push('left:'        + p.left);
-        if (p.aspectRatioEnabled && p.aspectRatio === 'custom' && p.aspectRatioCustom) {
-            parts.push('--bs-aspect-ratio:' + p.aspectRatioCustom);
+        var zi = _sdSizingValue(p.zIndex);
+        if (zi === 'auto' || /^-?\d+$/.test(zi)) parts.push('z-index:' + zi);
+        _SD_SIZING_STYLE_PROPS.forEach(function (m) {
+            var v = _sdSizingValue(p[m[0]]);
+            if (v !== '') parts.push(m[1] + ':' + v);
+        });
+        var arc = _sdSizingValue(p.aspectRatioCustom);
+        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && arc !== '') {
+            parts.push('--bs-aspect-ratio:' + arc);
         }
         return parts.join(';');
     }
@@ -23448,33 +23524,38 @@ const StyleDesigner = (function () {
         var cls = (p.cssClass || '').split(/\s+/).filter(function (c) {
             return c && !_SD_SIZING_CLASS_RE.test(c);
         });
-        // Re-add active sizing classes (matches getNodeExtraClasses logic)
-        if (p.srOnly) cls.push('visually-hidden');
+        // Re-add active sizing classes (matches getNodeExtraClasses logic,
+        // in its order)
         if (p.aspectRatioEnabled) {
             cls.push('ratio');
             var _ar = p.aspectRatio || '16x9';
             if (_ar && _ar !== 'custom') cls.push('ratio-' + _ar);
         }
+        if (p.srOnly) cls.push('visually-hidden');
+        if (p.focusRing) cls.push('focus-ring');
         if (p.placeholderMode) {
             cls.push('placeholder');
             if (p.placeholderAnim === 'glow') cls.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') cls.push('placeholder-wave');
         }
-        if (p.focusRing) cls.push('focus-ring');
         p.cssClass = cls.join(' ').trim();
     }
 
+    // The Display & Sizing classes in the order of
+    // _build_node_sizing_attrs(), which writes the saved page: ratio,
+    // visually-hidden, focus-ring, placeholder.
     function getNodeExtraClasses(n) {
         var p = n.props;
         var classes = [];
-        if (p.srOnly) classes.push('visually-hidden');
         if (p.aspectRatioEnabled) {
             classes.push('ratio');
             // Default to 16x9 when toggle is enabled but no preset has been chosen yet —
             // matches the dropdown's UI default so the visual effect is immediate.
-            var _arVal = p.aspectRatio || '16x9';
-            if (_arVal && _arVal !== 'custom') classes.push('ratio-' + _arVal);
+            var _arVal = _sdSizingValue(p.aspectRatio) || '16x9';
+            if (_arVal !== 'custom' && /^\d+x\d+$/.test(_arVal)) classes.push('ratio-' + _arVal);
         }
+        if (p.srOnly) classes.push('visually-hidden');
+        if (p.focusRing) classes.push('focus-ring');
         // Loading-skeleton mode: puts a .placeholder class on the element itself. Bootstrap's
         // animation classes (.placeholder-glow / .placeholder-wave) are traditionally set on the
         // parent, but applying them to the element works in practice — keeps the tree clean
@@ -23484,7 +23565,6 @@ const StyleDesigner = (function () {
             if (p.placeholderAnim === 'glow') classes.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') classes.push('placeholder-wave');
         }
-        if (p.focusRing) classes.push('focus-ring');
         return classes.join(' ');
     }
 
@@ -25352,6 +25432,10 @@ const StyleDesigner = (function () {
         }
         if (name === 'style') {
             if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            // The typed style is the whole attribute: the old inline style
+            // field, printed ahead of the Attributes panel's style
+            // (_sdNodeStyle()), is folded into it.
+            if (p.inlineStyle) p.inlineStyle = '';
             _sdApplyInlineStyle(node, now || '');
             return;
         }
@@ -25360,8 +25444,7 @@ const StyleDesigner = (function () {
         // literal; a literal written over a binding ends it.
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
-        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
-        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (_sdCodeSetTitleAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -25370,6 +25453,37 @@ const StyleDesigner = (function () {
         if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
         else if (idx === -1) p._attrs.push({ name: name, value: now });
         else p._attrs[idx].value = now;
+    }
+
+    // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
+    // to the props they came from: the tooltip's text, placement and switch,
+    // or the plain title. false when the attribute is the Attributes
+    // panel's (an entry of that name, or another toggle's data-bs-toggle),
+    // which the caller then writes to the list.
+    function _sdCodeSetTitleAttr(node, name, now) {
+        var p = node.props;
+        if (name !== 'title' && name !== 'data-bs-placement' && name !== 'data-bs-toggle') return false;
+        var written = {};
+        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        if (written[name]) return false;
+        var tipOn = !!p.tooltipEnabled && !written['data-bs-toggle'];
+        if (name === 'title') {
+            if (tipOn) { p.tooltipTitle = now || ''; return true; }
+            if (p.title && ['content', 'semantic', 'container', 'row', 'col'].indexOf(node.type) !== -1) { p.title = now || ''; return true; }
+            return false;
+        }
+        if (name === 'data-bs-placement') {
+            if (tipOn) { p.tooltipPlacement = now || 'top'; return true; }
+            return false;
+        }
+        // data-bs-toggle="tooltip" is the tooltip's switch; another value
+        // typed over it turns the tooltip off and goes to the list.
+        if (!tipOn || !p.tooltipTitle) return false;
+        if (now === 'tooltip') return true;
+        p.tooltipEnabled = false;
+        return now === undefined;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -34884,10 +34998,7 @@ const StyleDesigner = (function () {
         // The semantic element has no font picker or style field: both go
         // into its style attribute, ahead of the one already typed there.
         var style = [];
-        if (p.fontFamily) {
-            var fam = String(p.fontFamily);
-            style.push('font-family:' + ((/\s/.test(fam) || /^[0-9]/.test(fam)) ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif');
-        }
+        if (p.fontFamily) style.push(_sdFontFamilyCss(p.fontFamily));
         if (p.inlineStyle) style.push(String(p.inlineStyle).replace(/[;\s]+$/, ''));
         var attrs = [];
         (p._attrs || []).forEach(function (at) {
@@ -50767,35 +50878,27 @@ const StyleDesigner = (function () {
         var kidsMark = sink ? sink.ranges.length : 0;
         switch (n.type) {
             case 'container': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '');
+                h += pad + _sdGridOpenTag(n, cc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'semantic': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                // The attributes as the page writes them (the semantic case
+                // of _render_tree_node()): id, class (cssClass and the sizing
+                // classes, each once), a link's href, target and rel or an
+                // image's src and alt, the title and tooltip, the Attributes
+                // panel's entries, then the style.
                 var stg = n.props.tag || 'section';
-                var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
-                var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
-                var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
-                var sStyleParts = [];
-                if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
-                if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
-                if (_pES) sStyleParts.push(_pES);
-                var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                var shref = (stg === 'a' && P.href) ? ' href="' + esc(P.href) + '"' : '';
-                var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
-                var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
-                var sattrs = '';
-                if (P._attrs) P._attrs.forEach(function(a) {
-                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                    if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
-                });
-                if (n.props.tooltipEnabled && n.props.tooltipTitle) {
-                    sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
-                }
+                var _stgL = stg.toLowerCase();
+                var _semCls = _sdUniqueClasses((n.props.cssClass || '') + ' ' + getNodeExtraClasses(n));
+                var shead = (n.props.id ? ' id="' + esc(n.props.id) + '"' : '') + (_semCls ? ' class="' + esc(_semCls) + '"' : '');
+                var sbuilt = [];
+                if (_stgL === 'a') ['href', 'target', 'rel'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                if (_stgL === 'img') ['src', 'alt'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
+                var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
+                if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
                 var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
                 var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
                 // Whitespace is CONTENT in these two. The pretty-printer's
@@ -50807,7 +50910,7 @@ const StyleDesigner = (function () {
                 // gain is indentation the visitor reads.
                 var _semWsTags = ['pre', 'textarea', 'code'];
                 var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
-                h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
+                h += pad + '<' + stg + shead + sattrs + '>';
                 if (_semIsVoid) {
                     // Void elements: no content, no closing tag
                     h += '\n';
@@ -50836,23 +50939,17 @@ const StyleDesigner = (function () {
                 }
                 break; }
             case 'row': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
                 var rc = 'row';
                 if (n.props.gutter) rc += ' g-' + n.props.gutter;
                 if (n.props.justify) rc += ' justify-content-' + n.props.justify;
                 if (n.props.align) rc += ' align-items-' + n.props.align;
                 if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                if (_pEC) rc += ' ' + _pEC;
-                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, rc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'col': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, buildColClasses(n.props)) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
@@ -50873,8 +50970,9 @@ const StyleDesigner = (function () {
                 if (cnt && cnt.toHTML) {
                     var _pctChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
-                    var cHtml = cnt.toHTML(P, pad, _pctChildren);
-                    cHtml = addGlobalAttrs(cHtml, n);
+                    var _pcP = _sdContentProps(n, P);
+                    var cHtml = cnt.toHTML(_pcP, pad, _pctChildren);
+                    cHtml = addGlobalAttrs(cHtml, n, _pcP);
                     h += cHtml;
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
                 }
@@ -50915,6 +51013,116 @@ const StyleDesigner = (function () {
         }
         if (rec) rec.to = base + h.length;
         return h;
+    }
+
+    // The opening tag of a grid node (container, row, col), twin of
+    // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
+    // saved page: the classes once each (the Display & Sizing toggles are
+    // in cssClass as well), the style as on any other node, then the id,
+    // the title or tooltip and the panel's other attributes (class, style
+    // and id are never printed from the list). The page's search section
+    // mark (data-pg-search-section) is the Search section switch's and is
+    // left out here as on every other node: typed or removed in the code
+    // view it would change nothing.
+    function _sdGridOpenTag(n, classes) {
+        var p = n.props || {};
+        var style = _sdNodeStyle(p, '', getNodeExtraStyle(n));
+        var out = '<div class="' + esc(_sdUniqueClasses(classes + ' ' + getNodeExtraClasses(n))) + '"';
+        if (style) out += ' style="' + esc(style) + '"';
+        return out + _sdNodeExtraAttrs(p, p._attrs, []) + '>';
+    }
+
+    // A class attribute's value with each class once, in the order first
+    // written. Twin of _pg_unique_classes().
+    function _sdUniqueClasses(classes) {
+        var seen = [];
+        String(classes || '').split(/\s+/).forEach(function (c) {
+            if (c && seen.indexOf(c) === -1) seen.push(c);
+        });
+        return seen.join(' ');
+    }
+
+    // The value of a node's Attributes panel entry (the first of that name,
+    // any case), '' when there is none. Twin of _user_attr_value().
+    function _sdUserAttrValue(list, name) {
+        if (!Array.isArray(list)) return '';
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            if (a && a.name && String(a.name).toLowerCase() === name) {
+                return (a.value === undefined || a.value === null) ? '' : String(a.value);
+            }
+        }
+        return '';
+    }
+
+    // The font picker's family as a declaration: quoted when it holds a
+    // space or starts with a digit, then the sans-serif fallback. A bare
+    // name stays bare, so a generic family (serif) keeps working.
+    function _sdFontFamilyCss(family) {
+        var fam = String(family);
+        var quote = fam.indexOf(' ') !== -1 || /^[0-9]/.test(fam);
+        return 'font-family:' + (quote ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif';
+    }
+
+    // The style attribute's value of a content, semantic or grid node,
+    // unescaped: the font, the old inline style field, the type's own
+    // style, the Display & Sizing props, then the Attributes panel's style;
+    // the last wins on a property written twice. Twin of
+    // _compose_inline_style(), which writes the saved page.
+    function _sdNodeStyle(p, own, sizing) {
+        var parts = [];
+        var trim = function (s) { return String(s).replace(/^[; ]+|[; ]+$/g, ''); };
+        if (p.fontFamily) parts.push(_sdFontFamilyCss(p.fontFamily));
+        if (p.inlineStyle) parts.push(String(p.inlineStyle).replace(/[; ]+$/, ''));
+        if (own) parts.push(trim(own));
+        if (sizing) parts.push(trim(sizing));
+        var u = _sdUserAttrValue(p._attrs, 'style');
+        if (u !== '') parts.push(trim(u));
+        return parts.join(';');
+    }
+
+    // The title and the tooltip of a content, semantic or grid node: the
+    // tooltip's text while the tooltip is on, the plain title otherwise,
+    // then data-bs-toggle and data-bs-placement. An element that is another
+    // toggle's (data-bs-toggle in the Attributes panel) gets no tooltip;
+    // title and placement yield to a panel entry of the same name. Twin of
+    // _pg_node_title_attrs().
+    function _sdNodeTitleAttrs(p, list) {
+        var written = {};
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        var tip = !!(p.tooltipEnabled && p.tooltipTitle) && !written['data-bs-toggle'];
+        var title = tip ? p.tooltipTitle : p.title;
+        var out = '';
+        if (title && !written.title) out += ' title="' + esc(String(title)) + '"';
+        if (tip) {
+            out += ' data-bs-toggle="tooltip"';
+            if (!written['data-bs-placement']) out += ' data-bs-placement="' + esc(p.tooltipPlacement || 'top') + '"';
+        }
+        return out;
+    }
+
+    // The id, the title and tooltip, then the Attributes panel's entries
+    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
+    // the id out. class, style and id are never written from the list.
+    // Twin of _render_extra_attrs($props, $skip, true), less the search
+    // section mark the page adds after the id; a copy of that mark typed
+    // into the panel of a search section is left out as the page leaves it.
+    function _sdNodeExtraAttrs(p, list, skip) {
+        var out = '';
+        if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
+        out += _sdNodeTitleAttrs(p, list);
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (!a || !a.name) return;
+            var name = String(a.name), lname = name.toLowerCase();
+            if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
+            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
+            out += ' ' + esc(name) + '="' + esc(val) + '"';
+        });
+        return out;
     }
 
     // Children written into a component's output (see _sdEmitNode): their
