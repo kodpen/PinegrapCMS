@@ -11,7 +11,8 @@
  * builder writes is defined by a rule the block needs; no block rule
  * uses !important (Bootstrap utilities would lose the override war silently);
  * no builder writes a fixed colour class that ignores the colour palette and
- * dark mode; and no builder carousel plays by itself.
+ * dark mode; no builder carousel plays by itself; every component type a
+ * builder writes exists; and every block form can be submitted.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -441,4 +442,108 @@ function test_designer_blocks_carousels_do_not_autoplay()
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
 	pg_assert_false(in_array('data-bs-ride', $strings, true), 'no builder writes data-bs-ride');
 	pg_assert_false(in_array('data-bs-interval', $strings, true), 'no builder writes data-bs-interval');
+}
+
+// Keys of the COMPONENTS registry: the component types the emitter can draw.
+function _test_blocks_component_keys()
+{
+	$at = strpos(_test_blocks_js(), 'var COMPONENTS = {');
+	$block = $at === false ? null : _test_blocks_block($at);
+	if (!$block) {
+		return array();
+	}
+	$body = substr(_test_blocks_js(), $block[0], $block[1] - $block[0]);
+	preg_match_all("/^        '?([a-z0-9_-]+)'?\\s*:\\s*\\{/m", $body, $m);
+	return array_values(array_unique($m[1]));
+}
+
+// A component node whose type has no COMPONENTS entry is emitted as nothing:
+// navbar-search and footer-newsletter asked for 'form-search' and
+// 'form-email', and their forms were saved without a field.
+function test_designer_blocks_component_types_exist()
+{
+	$keys = _test_blocks_component_keys();
+	pg_assert_true(in_array('btn', $keys, true), 'the COMPONENTS registry is read');
+	$range = _test_blocks_cfp_range();
+	$body = $range ? substr(_test_blocks_js(), $range[0], $range[1] - $range[0]) : '';
+	preg_match_all("/createNode\\('component',\\s*\\{\\s*componentType:\\s*'([a-z0-9_-]+)'/", $body, $m);
+	pg_assert_true(count($m[1]) > 10, 'the component nodes of createFromPalette() are read');
+	pg_assert_same(array(), array_values(array_diff(array_unique($m[1]), $keys)), 'component types createFromPalette() writes without a COMPONENTS entry');
+}
+
+// Offset of the ')' closing the call whose '(' is at $open, skipping string
+// literals and line comments; -1 when it is not found.
+function _test_blocks_call_end($js, $open)
+{
+	$len = strlen($js);
+	$depth = 0;
+	for ($i = $open; $i < $len; $i++) {
+		$c = $js[$i];
+		if ($c === "'" || $c === '"' || $c === '`') {
+			for ($i++; $i < $len && $js[$i] !== $c; $i++) {
+				if ($js[$i] === '\\') {
+					$i++;
+				}
+			}
+			continue;
+		}
+		if ($c === '/' && $i + 1 < $len && $js[$i + 1] === '/') {
+			$nl = strpos($js, "\n", $i);
+			$i = $nl === false ? $len : $nl;
+			continue;
+		}
+		if ($c === '(') {
+			$depth++;
+		} elseif ($c === ')') {
+			$depth--;
+			if ($depth === 0) {
+				return $i;
+			}
+		}
+	}
+	return -1;
+}
+
+// Source of every createNode('semantic', { tag: 'form', … }) call written by
+// createFromPalette(), keyed by its line number.
+function _test_blocks_form_calls()
+{
+	$js = _test_blocks_js();
+	$range = _test_blocks_cfp_range();
+	$out = array();
+	if (!$range) {
+		return $out;
+	}
+	$at = $range[0];
+	while (($at = strpos($js, "createNode('semantic', { tag: 'form'", $at)) !== false && $at < $range[1]) {
+		$open = strpos($js, '(', $at);
+		$end = _test_blocks_call_end($js, $open);
+		$out[substr_count($js, "\n", 0, $at) + 1] = $end < 0 ? '' : substr($js, $at, $end - $at + 1);
+		$at = $open + 1;
+	}
+	return $out;
+}
+
+// A Button component is an <a href="#"> unless it says otherwise, and a form
+// whose only button is a link cannot be sent: every Button component inside a
+// block form is a <button>, and every block form has a submit button.
+function test_designer_blocks_forms_can_be_submitted()
+{
+	$forms = _test_blocks_form_calls();
+	pg_assert_true(count($forms) > 10, 'the forms of createFromPalette() are read');
+	$links = array();
+	$no_submit = array();
+	foreach ($forms as $line => $src) {
+		preg_match_all("/componentType:\\s*'btn'[^}]*\\}/", $src, $btns);
+		foreach ($btns[0] as $btn) {
+			if (!preg_match("/btnElement:\\s*'(button|input)'/", $btn)) {
+				$links[] = 'line ' . $line;
+			}
+		}
+		if (!preg_match("/btnType:\\s*'submit'|name:\\s*'type',\\s*value:\\s*'submit'/", $src)) {
+			$no_submit[] = 'line ' . $line;
+		}
+	}
+	pg_assert_same(array(), array_values(array_unique($links)), 'block forms holding a Button component drawn as a link');
+	pg_assert_same(array(), $no_submit, 'block forms without a submit button');
 }

@@ -15159,7 +15159,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15230,7 +15230,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                         ])
                                     ])
                                 ])
@@ -15293,7 +15293,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12 text-center', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15323,7 +15323,7 @@ const StyleDesigner = (function () {
                                             { name: 'placeholder', value: _sdT('Your email address') },
                                             { name: 'required',    value: 'required' }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('No spam, unsubscribe any time.'), cssClass: 'small text-body-secondary mt-3 mb-0' })
                             ])
@@ -15354,7 +15354,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: nsId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'secondary', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'secondary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15391,7 +15391,7 @@ const StyleDesigner = (function () {
                                                             { name: 'name',        value: ncId + '_email' },
                                                             { name: 'placeholder', value: _sdT('Your email address') }
                                                         ] }),
-                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                                 ])
                                             ])
                                         ])
@@ -15459,7 +15459,7 @@ const StyleDesigner = (function () {
                                                 ])
                                             ]),
                                             createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                             ])
                                         ]),
                                         createNode('semantic', { tag: 'hr', cssClass: 'my-4', customName: _sdT('Divider') }),
@@ -15542,7 +15542,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                         ])
                                     ])
                                 ])
@@ -15579,7 +15579,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Login Form') }, [
                                     _lmFloating(lmId + '_email', 'email',    _sdT('Email')),
                                     _lmFloating(lmId + '_pass',  'password', _sdT('Password')),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', href: '#', cssClass: 'w-100 mb-3' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: 'w-100 mb-3' }),
                                     createNode('semantic', { tag: 'p', cssClass: 'small text-center mb-0', customName: _sdT('Signup Link') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Don\'t have an account?'), cssClass: 'mb-0 d-inline text-body-secondary' }),
                                         createNode('semantic', { tag: 'a', cssClass: 'text-decoration-none', customName: _sdT('Signup Anchor'),
@@ -15752,7 +15752,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: fnId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ]),
@@ -16057,7 +16057,7 @@ const StyleDesigner = (function () {
                                             { name: 'name',        value: 'q' },
                                             { name: 'placeholder', value: _sdT('What are you looking for?') }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary', customName: _sdT('Quick Links') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Frequently visited:'), cssClass: 'mb-0 d-inline' }),
@@ -18517,9 +18517,22 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'collapse navbar-collapse', id: _nsId, customName: _sdT('Nav Content') }, [
-                                createNode('semantic', { tag: 'form', cssClass: 'd-flex mx-auto', customName: _sdT('Search Form') }, [
-                                    createNode('component', { componentType: 'form-search', cssClass: 'me-2', placeholder: _sdT('Search...') }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: '' })
+                                // A real field, its hidden label and a submit button: the form
+                                // can be sent with Enter or the button.
+                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mx-auto my-2 my-md-0', customName: _sdT('Search Form'),
+                                    _attrs: [{ name: 'role', value: 'search' }] }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
+                                        _attrs: [{ name: 'for', value: _nsId + '_q' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
+                                    ]),
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Search Input'),
+                                        _attrs: [
+                                            { name: 'type',        value: 'search' },
+                                            { name: 'id',          value: _nsId + '_q' },
+                                            { name: 'name',        value: 'q' },
+                                            { name: 'placeholder', value: _sdT('Search...') }
+                                        ] }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                 ]),
                                 createNode('semantic', { tag: 'ul', cssClass: 'navbar-nav ms-3', customName: _sdT('User Menu') }, [
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item dropdown', customName: _sdT('User Dropdown') }, [
@@ -18621,6 +18634,7 @@ const StyleDesigner = (function () {
 
                 // Footer: newsletter subscription + copyright
                 if (ctype === 'footer-newsletter') {
+                    var _fnlId = 'fnl_' + Math.random().toString(36).substr(2, 6);
                     return createNode('semantic', { tag: 'footer', cssClass: 'py-5 bg-body text-body', customName: _sdT('Footer'),
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Footer Container') }, [
@@ -18630,9 +18644,21 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-body-secondary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Newsletter Form') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2', customName: _sdT('Subscribe Form') }, [
-                                        createNode('component', { componentType: 'form-email', cssClass: 'flex-grow-1', placeholder: _sdT('Enter your email') }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '' })
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Subscribe Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: _fnlId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
+                                        createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                            _attrs: [
+                                                { name: 'type',         value: 'email' },
+                                                { name: 'id',           value: _fnlId + '_email' },
+                                                { name: 'name',         value: 'email' },
+                                                { name: 'placeholder',  value: _sdT('Enter your email') },
+                                                { name: 'autocomplete', value: 'email' },
+                                                { name: 'required',     value: 'required' }
+                                            ] }),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                     ])
                                 ])
                             ]),
