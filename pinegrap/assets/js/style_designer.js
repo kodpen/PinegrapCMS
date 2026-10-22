@@ -58341,32 +58341,52 @@ const StyleDesigner = (function () {
     // alt, role="presentation" / "none", and aria-hidden="true" on the image
     // or an ancestor (ctx._ariaHidden, kept by validateTree()). An image with
     // no alt prop at all, such as an imported <img> without the attribute,
-    // has none.
+    // has none, and neither has one that still carries the palette image's
+    // placeholder alt (CONTENT.image.defaultProps.alt, 'Image') or its
+    // translation in the editor's language: nobody wrote it.
     function _sdAuditAltDecided(node, ctx) {
         var p = node.props;
-        if (typeof p.alt === 'string') return true;
         if (p._bindings && p._bindings.alt) return true;
         var role = (_sdAttr(node, 'role') || '').trim().toLowerCase();
         if (role === 'presentation' || role === 'none') return true;
-        return _sdAttr(node, 'aria-hidden') === 'true' || !!(ctx && ctx._ariaHidden > 0);
+        if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return true;
+        if (typeof p.alt !== 'string') return false;
+        var alt = p.alt.trim().toLowerCase();
+        return alt === '' || (alt !== 'image' && alt !== _sdT('Image').trim().toLowerCase());
     }
 
-    // Whether a form holds a control that submits it: a <button>, an
+    // Whether a node is a control that submits the form it sits in, as the
+    // renderer prints it: a <button> with no type or type="submit" (a
+    // semantic node, or a text node drawn with the button tag), an
     // <input type="submit"> or <input type="image">, or a Button component
     // drawn as <button type="submit"> / <input type="submit"> (btnElement
-    // and btnType; drawn as a link it does not submit).
+    // and btnType; drawn as a link it does not submit). A type="button" or
+    // "reset" button does not; nor does the old content button, which has
+    // no renderer.
+    function _sdAuditSubmits(n) {
+        var p = n.props || {};
+        var type = String(_sdAttr(n, 'type') || '').trim().toLowerCase();
+        if (n.type === 'semantic' || (n.type === 'content' && p.contentType === 'heading')) {
+            var tag = String(p.tag || '').toLowerCase();
+            if (tag === 'button') return type === '' || type === 'submit';
+            if (tag === 'input' && n.type === 'semantic') {
+                type = type || String(p.inputType || '').trim().toLowerCase();
+                return type === 'submit' || type === 'image';
+            }
+            return false;
+        }
+        if (n.type === 'component' && p.componentType === 'btn') {
+            var btnType = String(p.btnType || '').trim().toLowerCase();
+            if (p.btnElement === 'button') return btnType === 'submit';
+            if (p.btnElement === 'input') return btnType === 'submit' || btnType === 'image';
+        }
+        return false;
+    }
+
+    // Whether a form holds a control that submits it, at any depth.
     function _sdAuditFormHasSubmit(node) {
         return !!(node.children && node.children.some(function (n) {
-            var p = n.props || {};
-            if (n.type === 'content' && p.contentType === 'button') return true;
-            if (n.type === 'semantic' && p.tag === 'button') return true;
-            if (n.type === 'semantic' && p.tag === 'input') {
-                var type = String(_sdAttr(n, 'type') || p.inputType || 'text').trim().toLowerCase();
-                if (type === 'submit' || type === 'image') return true;
-            }
-            if (n.type === 'component' && p.componentType === 'btn' &&
-                (p.btnElement === 'button' || p.btnElement === 'input') && p.btnType === 'submit') return true;
-            return _sdAuditFormHasSubmit(n);
+            return _sdAuditSubmits(n) || _sdAuditFormHasSubmit(n);
         }));
     }
 

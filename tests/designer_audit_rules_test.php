@@ -76,7 +76,7 @@ function designer_audit_rules_test_run($script)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code_js = '';
 
-	foreach (array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditFormHasSubmit', 'validateTree') as $name) {
+	foreach (array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditSubmits', '_sdAuditFormHasSubmit', 'validateTree') as $name) {
 		$found = designer_audit_rules_test_function($source, $name);
 		pg_assert_true($found !== '', $name . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -85,7 +85,8 @@ function designer_audit_rules_test_run($script)
 	$rules = designer_audit_rules_test_rules($source);
 	pg_assert_true($rules !== '', 'the rule list is in the designer');
 
-	$stubs = 'function _sdT(s) { return s; }'
+	// _sdT() answers from sdTMap, so a case can set the editor language.
+	$stubs = 'var sdTMap = {}; function _sdT(s) { return sdTMap.hasOwnProperty(s) ? sdTMap[s] : s; }'
 		. 'function getNodeLabel(n) { return (n && n.props && n.props.customName) || ""; }'
 		. 'function _pageLevelIssues() { return []; }'
 		. 'function _sdCanvasAuditIssues() { return []; }'
@@ -169,11 +170,20 @@ function test_designer_audit_rules_empty_button_or_link()
 
 // An image is flagged only when it carries no alt decision: alt="" is the
 // decorative one, and role="presentation" / "none", aria-hidden on it or an
-// ancestor and a bound alt are decisions too. No alt prop at all is none.
+// ancestor and a bound alt are decisions too. No alt prop at all is none,
+// and neither is the palette image's placeholder alt, in English or in the
+// editor's language.
 function test_designer_audit_rules_image_alt_decision()
 {
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_true(
+		(bool) preg_match("/\n        image: \\{\n(?:.*\n){0,12}?\\s*defaultProps: \\{ src: '', alt: 'Image',/", $source),
+		'the palette image starts with the alt the rule reads as a placeholder'
+	);
+
 	$result = designer_audit_rules_test_run(
-		'function img(name, extra) { var p = { contentType: "image", src: "/a.jpg", customName: name }; for (var k in extra) p[k] = extra[k]; return N("content", p); }'
+		'sdTMap.Image = "Görsel";'
+		. 'function img(name, extra) { var p = { contentType: "image", src: "/a.jpg", customName: name }; for (var k in extra) p[k] = extra[k]; return N("content", p); }'
 		. 'console.log(JSON.stringify(flagged("img_alt", ['
 		. 'img("no alt", {}),'
 		. 'img("null alt", { alt: null }),'
@@ -186,7 +196,14 @@ function test_designer_audit_rules_image_alt_decision()
 		. 'img("none", { _attrs: [{ name: "role", value: "none" }] }),'
 		. 'img("hidden", { _attrs: hidden }),'
 		. 'N("semantic", { tag: "div", _attrs: hidden }, [N("semantic", { tag: "div" }, [img("under hidden copy", {})])]),'
-		. 'img("after the hidden copy", {})'
+		. 'img("after the hidden copy", {}),'
+		. 'img("palette default", { alt: "Image" }),'
+		. 'img("default with spaces", { alt: " image " }),'
+		. 'img("translated default", { alt: "Görsel" }),'
+		. 'img("words around it", { alt: "Image of the team" }),'
+		. 'img("bound over the default", { alt: "Image", _bindings: { alt: "__title" } }),'
+		. 'img("default but presentation", { alt: "Image", _attrs: [{ name: "role", value: "presentation" }] }),'
+		. 'N("semantic", { tag: "div", _attrs: hidden }, [img("default under hidden copy", { alt: "Image" })])'
 		. '])));'
 	);
 
@@ -195,10 +212,16 @@ function test_designer_audit_rules_image_alt_decision()
 	}
 
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
-	pg_assert_same(array('no alt', 'null alt', 'other role', 'aria-hidden false', 'after the hidden copy'), $result, 'only the images with no decision');
+	pg_assert_same(array(
+		'no alt', 'null alt', 'other role', 'aria-hidden false', 'after the hidden copy',
+		'palette default', 'default with spaces', 'translated default',
+	), $result, 'only the images with no decision');
 }
 
-// A form is flagged when nothing in it submits it. A Button component
+// A form is flagged when nothing in it submits it. A <button> counts when it
+// has no type or type="submit" (a semantic node, or a text node drawn with
+// the button tag); type="button" or "reset" does not, nor does the old
+// content button, which no renderer draws. A Button component
 // counts when it is drawn as <button type="submit"> or <input
 // type="submit">; drawn as a link, or as a plain button, it does not.
 function test_designer_audit_rules_form_submit_control()
@@ -216,7 +239,15 @@ function test_designer_audit_rules_form_submit_control()
 		. 'form("input component", [btn({ btnElement: "input", btnType: "submit" })]),'
 		. 'form("submit input", [N("semantic", { tag: "input", _attrs: [{ name: "type", value: "submit" }] })]),'
 		. 'form("image input", [N("semantic", { tag: "input", _attrs: [{ name: "type", value: "IMAGE" }] })]),'
-		. 'form("nested", [N("semantic", { tag: "div", cssClass: "input-group" }, [btn({ btnElement: "button", btnType: "submit" })])])'
+		. 'form("nested", [N("semantic", { tag: "div", cssClass: "input-group" }, [btn({ btnElement: "button", btnType: "submit" })])]),'
+		. 'form("type button", [N("semantic", { tag: "button", text: "Show", _attrs: [{ name: "type", value: "button" }] })]),'
+		. 'form("reset button", [N("semantic", { tag: "button", text: "Clear", _attrs: [{ name: "type", value: "reset" }] })]),'
+		. 'form("text drawn as type button", [N("content", { contentType: "heading", tag: "button", text: "Tab", _attrs: [{ name: "type", value: "button" }] })]),'
+		. 'form("old content button", [N("content", { contentType: "button", text: "Send" })]),'
+		. 'form("button without type", [N("semantic", { tag: "button", text: "Send" })]),'
+		. 'form("submit written loosely", [N("semantic", { tag: "button", text: "Send", _attrs: [{ name: "type", value: " Submit " }] })]),'
+		. 'form("text drawn as button", [N("content", { contentType: "heading", tag: "button", text: "Send" })]),'
+		. 'form("show and send", [N("semantic", { tag: "button", text: "Show", _attrs: [{ name: "type", value: "button" }] }), btn({ btnElement: "button", btnType: "submit" })])'
 		. '])));'
 	);
 
@@ -225,5 +256,8 @@ function test_designer_audit_rules_form_submit_control()
 	}
 
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
-	pg_assert_same(array('fields only', 'link button', 'plain button component', 'reset input'), $result, 'only the forms nothing submits');
+	pg_assert_same(array(
+		'fields only', 'link button', 'plain button component', 'reset input',
+		'type button', 'reset button', 'text drawn as type button', 'old content button',
+	), $result, 'only the forms nothing submits');
 }
