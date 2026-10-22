@@ -1745,15 +1745,12 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 // page chosen: no welcome e-mail, and the built-in plain-text reset e-mail.
 
 // Whether the address typed into the forgot password form is the account's
-// stored address, letter case aside. The lookup compares under the column's
-// collation, which also folds accents: "exámple.com" finds the account of
-// "example.com", and the reset link must never go to the look-alike domain.
+// stored address, letter case aside (pg_email_address_matches()): the
+// lookup folds accents, and the reset link must never go to the look-alike
+// domain "exámple.com" for the account of "example.com".
 function pg_password_reset_address_matches($typed, $stored)
 {
-    $typed  = is_scalar($typed) ? trim((string)$typed) : '';
-    $stored = is_scalar($stored) ? trim((string)$stored) : '';
-    if ($typed === '' || $stored === '') return false;
-    return mb_strtolower($typed, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
+    return pg_email_address_matches($typed, $stored);
 }
 
 // The widget setting keys of an account e-mail: 'welcome' or 'reset' =>
