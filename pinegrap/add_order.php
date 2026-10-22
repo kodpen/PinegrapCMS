@@ -268,7 +268,7 @@ if ($action !== '') {
 
     // Without the script: back to the screen, or to the order once it is done.
     if (!$res['ok'] && ($res['message'] !== '')) {
-        $liveform->mark_error('error', $res['message']);
+        $liveform->mark_error('error', h($res['message']));
     }
 
     if (!empty($res['result'])) {
