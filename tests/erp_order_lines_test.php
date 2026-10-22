@@ -151,3 +151,20 @@ function test_erp_order_lines_of_the_charged_lines_meet_the_order()
 	pg_assert_same(1800, $built['lines'][0]['tax_total']);
 	pg_assert_same(10800, $built['totals']['grand_total']);
 }
+
+// A discount re-takes the tax once per rate on the discounted lines and
+// spreads it back: 1.03 and 2.03 at 20% less 0.03 come to 1.02 and 2.01,
+// 0.61 of VAT on 3.03, 0.21 and 0.40 - not 0.20 and 0.40 with the order's
+// kurus put on the larger line afterwards.
+function test_erp_order_lines_take_a_discounted_rate_once()
+{
+	$order = array('discount' => 3, 'tax' => 61);
+	$built = erp_order_lines($order, array(
+		pg_test_erp_order_item(103, 1, 21, '20.000'),
+		pg_test_erp_order_item(203, 1, 40, '20.000'),
+	));
+
+	pg_assert_same(array(1, 2), array($built['lines'][0]['discount_amount'], $built['lines'][1]['discount_amount']));
+	pg_assert_same(array(21, 40), array($built['lines'][0]['tax_total'], $built['lines'][1]['tax_total']));
+	pg_assert_same(306 - 3 + 61, $built['totals']['grand_total']);
+}

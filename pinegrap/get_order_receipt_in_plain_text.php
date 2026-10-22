@@ -40,6 +40,9 @@ function get_order_receipt_in_plain_text($order_id)
     // when the totals are assembled below.
     $subtotal = 0;
     $grand_tax = 0;
+    // The lines charged today, for their tax after the order discount
+    // (pg_order_items_charged_tax()).
+    $charged_item_ids = array();
 
     // Only ever appended to, inside loops that do not run for every order,
     // so they have to start out empty.
@@ -400,6 +403,7 @@ function get_order_receipt_in_plain_text($order_id)
                 // if product is in non-recurring order
                 if ($in_nonrecurring) {
                     $subtotal = $subtotal + $total_price;
+                    $charged_item_ids[] = $order_item['id'];
                     $grand_tax = $grand_tax + $total_tax;
 
                     $output_products .=
@@ -766,7 +770,9 @@ function get_order_receipt_in_plain_text($order_id)
     if (ECOMMERCE_TAX == true) {
         // if there is an order discount, adjust tax
         if (($subtotal > 0) && ($order_discount > 0)) {
-            $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
+            // Taken again per rate on what the discount leaves of the lines,
+            // as submit_order.php charges it.
+            $grand_tax = pg_order_items_charged_tax($charged_item_ids, (int) round($order_discount * 100)) / 100;
         }
 
         // If the tax is negative then set it to zero.  The tax might be negative

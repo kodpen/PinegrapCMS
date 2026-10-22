@@ -99,6 +99,24 @@ function api_device_token_new($kind) {
 
 }
 
+// The token an exchange of $refresh_token hands out, in the same shape as a
+// fresh one. It is derived rather than drawn so that every exchange of the
+// same refresh token gives the same pair: requests that arrive together with
+// one token (an app whose calls all ran into an expired access token at once)
+// and a retry after a dropped answer all end up holding the pair that is on
+// the row, instead of each overwriting the one handed to the others. Keyed
+// with the site key, so the next token cannot be worked out from the last
+// one without it.
+function api_device_token_next($kind, $refresh_token, $key) {
+
+	$label = ($kind === 'refresh') ? 'refresh' : 'access';
+
+	$mac = hash_hmac('sha256', 'pg-device-next-' . $label . "\n" . trim((string)$refresh_token), (string)$key);
+
+	return (($kind === 'refresh') ? 'pgrt_' : 'pgat_') . substr($mac, 0, 48);
+
+}
+
 // The application that devices sign in through.
 //
 // A client that names its key gets that application, provided it is a device
@@ -308,8 +326,9 @@ function api_device_find_refresh($refresh_token) {
 //
 // The token is looked up among the current ones first. Found among the
 // previous ones instead, it was already exchanged: within the grace period that
-// is the same app retrying and it is exchanged again; after it, somebody else
-// is holding a copy, and the device is ended so that neither copy works.
+// is the same app retrying, or a request that ran alongside the one that
+// exchanged it, and it gets the same pair again; after it, somebody else is
+// holding a copy, and the device is ended so that neither copy works.
 function api_device_rotate_pair($refresh_token) {
 
 	$hash = api_secret_hash(trim((string)$refresh_token));
@@ -356,8 +375,12 @@ function api_device_rotate_pair($refresh_token) {
 
 	}
 
-	$access  = api_device_token_new('access');
-	$refresh = api_device_token_new('refresh');
+	// The same refresh token always gives the same pair, so concurrent
+	// exchanges and a retry within the grace period agree on it.
+	$access  = api_device_token_next('access', $refresh_token, ENCRYPTION_KEY);
+	$refresh = api_device_token_next('refresh', $refresh_token, ENCRYPTION_KEY);
+
+	$refresh_hash = api_secret_hash($refresh);
 
 	$now = time();
 
@@ -367,16 +390,30 @@ function api_device_rotate_pair($refresh_token) {
 	// The hash the caller just presented becomes the previous one. On a retry
 	// within the grace period that is the same hash again, which is right: it
 	// is still the one this app last held.
+	//
+	// Written only while the row still holds the presented token or the pair
+	// it gives. A request that read the row before a concurrent exchange and
+	// is only now writing finds the app already one exchange further on, and
+	// leaves that newer pair in place rather than putting the older one back.
+	//
+	// The exchange time is the time of the first exchange of the presented
+	// token. A repeat of that token within the grace period, or a concurrent
+	// writer that finds the row already on the derived pair, keeps that time,
+	// so presenting a used token again cannot extend the grace period and a
+	// copy seen after it still ends the device. It is assigned before
+	// refresh_hash because MySQL evaluates single-table UPDATE assignments
+	// left to right: placed after, the IF would see the new hash.
 	api_exec("UPDATE api_devices SET
+			refresh_rotated_at = IF(refresh_hash = '" . escape($refresh_hash) . "', refresh_rotated_at, '" . $now . "'),
 			access_hash = '" . escape(api_secret_hash($access)) . "',
 			access_expires = '" . $access_expires . "',
 			refresh_prev_hash = '" . escape($hash) . "',
-			refresh_hash = '" . escape(api_secret_hash($refresh)) . "',
+			refresh_hash = '" . escape($refresh_hash) . "',
 			refresh_expires = '" . $refresh_expires . "',
-			refresh_rotated_at = '" . $now . "',
 			last_used_timestamp = '" . $now . "',
 			last_used_ip = '" . escape(mb_substr(api_client_ip(), 0, 45)) . "'
-		WHERE id = '" . (int)$row['id'] . "'");
+		WHERE id = '" . (int)$row['id'] . "'
+		AND refresh_hash IN ('" . escape($hash) . "', '" . escape($refresh_hash) . "')");
 
 	$row['access_expires']  = $access_expires;
 	$row['refresh_expires'] = $refresh_expires;

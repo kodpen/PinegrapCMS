@@ -1,6 +1,6 @@
 ---
 name: erp-local-sale
-description: Counter sale (add_order.php) customer handling, walk-in account, VAT per line, invoice from order screen, waybill from invoice and write-back rules (4.59).
+description: Counter sale (add_order.php) customer handling, walk-in account, VAT per rate, invoice from order screen, waybill from invoice and write-back rules (4.59).
 ---
 
 ## How is the customer of a counter sale kept?
@@ -8,7 +8,7 @@ description: Counter sale (add_order.php) customer handling, walk-in account, VA
 - Walk-in account: `config.erp_walkin_account_id` (4.59, INT UNSIGNED; constant `ERP_WALKIN_ACCOUNT_ID`; Settings → E-Ticaret → ERP card; active customer/both accounts). If undefined, a customer-less sale cannot be invoiced and the screen says so. No VARCHAR on `config`.
 
 ## How is VAT set on a counter-sale line?
-- `local_sale_line_tax()`: if the product is `taxable`, rate = `get_effective_tax_rate(products.tax_rate, get_default_tax_rate())`; `order_items.tax_total` from the line total, `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `total = subtotal + tax`.
+- `local_sale_line_rate()`: if the product is `taxable`, rate = `get_effective_tax_rate(products.tax_rate, get_default_tax_rate())`. `local_sale_lines()` takes the sale's VAT per rate on the sum of its lines and spreads it back (`pg_tax_by_rate()`, #1168), as the checkout does; `order_items.tax_total` is the line's share, `tax_rate` the rate, `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `total = subtotal + tax`.
 - The bridge check "invoice total = order total" passes through this; an order closed without tax cannot be invoiced.
 
 ## How is the invoice made from the order screen?

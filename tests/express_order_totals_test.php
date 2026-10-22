@@ -73,6 +73,21 @@ function test_express_order_totals_tax_and_shipping()
 	pg_assert_same(500, $totals['total'], 'the lines without it');
 }
 
+// With the lines' rates kept, a discount takes the tax again per rate on
+// what it leaves of the lines (pg_order_charged_tax()), as submit_order()
+// does: 1.01 at 20% and 1.27 at 10% less 1.00 carry 0.11 and 0.07.
+function test_express_order_totals_discounted_tax_per_rate()
+{
+	$lines = array(
+		express_order_totals_test_line(101, 1, 20, array('tax_rate' => '20.000')),
+		express_order_totals_test_line(127, 1, 13, array('tax_rate' => '10.000')),
+	);
+
+	$totals = pg_express_order_charged_totals($lines, 100, 0, 0, 0, '2026-10-21', false);
+	pg_assert_same(18, $totals['tax'], 'the tax per rate after the discount');
+	pg_assert_same(228 - 100 + 18, $totals['total'], 'the total with it');
+}
+
 // Only the lines charged today count: a recurring line starting later does
 // not, nor any recurring line on ClearCommerce.
 function test_express_order_totals_lines_charged_today()
