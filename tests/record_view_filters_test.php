@@ -126,7 +126,7 @@ function test_record_view_filters_email_bypass_needs_record_id()
 // No filters: nothing to add to a query, and every record passes.
 function test_record_view_filters_clause_empty()
 {
-	$none = array('join' => '', 'where' => '', 'closed' => false);
+	$none = array('join' => '', 'where' => '', 'closed' => false, 'params' => array(), 'inexact' => false, 'exact' => '');
 	pg_assert_same($none, pg_sw_record_filter_clause(12, array()));
 	pg_assert_same($none, pg_sw_record_filter_clause(12, 'status'));
 	pg_assert_same($none, pg_sw_record_filter_clause(12, array(), 0, true));
@@ -159,7 +159,7 @@ function test_record_view_filters_invalid_operator_closes()
 	pg_assert_true(pg_sw_list_record_filter_clause(12, array(), array('filters' => array($bad)))['closed']);
 
 	$list = pg_sw_record_filter_clause(12, array($bad));
-	pg_assert_same(array('join' => '', 'where' => '', 'closed' => false), $list);
+	pg_assert_same(array('join' => '', 'where' => '', 'closed' => false, 'params' => array(), 'inexact' => false, 'exact' => ''), $list);
 
 	$no_operator = array('field' => 'reference_code', 'value' => 'X');
 	pg_assert_true(pg_sw_record_filter_clause(12, array($no_operator), 0, true)['closed']);

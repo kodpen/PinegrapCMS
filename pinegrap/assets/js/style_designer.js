@@ -29870,8 +29870,18 @@ const StyleDesigner = (function () {
 
                 // ── Filters (form_list_view): which records the list shows ──
                 if (_isFormListView) {
+                    var _flvFilters = Array.isArray(_cfg.filters) ? _cfg.filters : [];
+                    // A filter reading the page address makes the page an
+                    // archive (an author, a tag): its title for each value.
+                    var _flvUrlFilter = _flvFilters.some(function (f) { return f && f.dynamic_value === 'url parameter'; });
+                    var _flvFilterTitle = (typeof _cfg.filter_title === 'string') ? _cfg.filter_title : '';
                     systemSection += sect('bi-funnel', _sdT('Filters'),
-                        _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _ff, _fieldsLoading));
+                        _swFormListFiltersHtml(sid, _flvFilters, _ff, _fieldsLoading, null, true) +
+                        (_flvUrlFilter
+                            ? row(_sdT('Page title for an address value'),
+                                '<input type="text" class="form-control form-control-sm" id="sd-sw-flv-filter-title" data-sw-id="' + sid + '" value="' + esc(_flvFilterTitle) + '" maxlength="120" placeholder="' + esc(_sdT('Articles by {value}')) + '">' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.')) + '</div>')
+                            : ''));
                 }
 
                 // ── Phase 2 Catalog-only sections ─────────────────────────
@@ -32088,12 +32098,22 @@ const StyleDesigner = (function () {
                 var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
                 var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
                 if (q('.sd-sw-filter-value') && q('.sd-sw-filter-value').type === 'datetime-local' && val) val = val.replace('T', ' ');
+                // The days for "days ago" (a number), the parameter name for
+                // a value from the address (a string, as the input holds it:
+                // the stored name, or the edited one that its change handler
+                // normalised; a stored name the server refuses keeps its
+                // warning until the designer edits it).
+                var attr = '';
+                if (dyn === 'days ago' && q('.sd-sw-filter-days')) attr = parseInt(q('.sd-sw-filter-days').value, 10) || 0;
+                if (dyn === 'url parameter') attr = q('.sd-sw-filter-param')
+                    ? String(q('.sd-sw-filter-param').value || '')
+                    : String(el.getAttribute('data-attr') || '');
                 out.push({
                     field: q('.sd-sw-filter-field') ? q('.sd-sw-filter-field').value : '',
                     operator: q('.sd-sw-filter-op') ? q('.sd-sw-filter-op').value : 'is equal to',
                     value: dyn ? '' : val.slice(0, 255),
                     dynamic_value: dyn,
-                    dynamic_value_attribute: (dyn === 'days ago' && q('.sd-sw-filter-days')) ? (parseInt(q('.sd-sw-filter-days').value, 10) || 0) : ''
+                    dynamic_value_attribute: attr
                 });
             });
             return out;
@@ -32120,6 +32140,15 @@ const StyleDesigner = (function () {
             ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
                 var inp = el.querySelector(c);
                 if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+            });
+            // The name being edited is stored normalised (lower case, a-z,
+            // 0-9 and _ only, at most 32 characters; the re-rendered input
+            // shows the result). The hint and the warning under the row
+            // follow it: a reserved name, a leading digit or an empty name.
+            var paramEl = el.querySelector('.sd-sw-filter-param');
+            if (paramEl) paramEl.addEventListener('change', function () {
+                this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+                save(_swReadFilters(), true);
             });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
@@ -32470,6 +32499,18 @@ const StyleDesigner = (function () {
                 _patchSysCfg(sid, function (cfg) {
                     if (v === '') delete cfg.title_field;
                     else cfg.title_field = v;
+                }, { afterSave: function () { renderProperties(); } });
+            });
+        }
+        var flvFilterTitleEl = document.getElementById('sd-sw-flv-filter-title');
+        if (flvFilterTitleEl) {
+            flvFilterTitleEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var v = ('' + this.value).trim().slice(0, 120);
+                _patchSysCfg(sid, function (cfg) {
+                    if (v === '') delete cfg.filter_title;
+                    else cfg.filter_title = v;
                 }, { afterSave: function () { renderProperties(); } });
             });
         }
@@ -33511,8 +33552,13 @@ const StyleDesigner = (function () {
         ['submitter_user_id',             _sdT('Submitter User ID')]
     ];
 
-    // The list view offers exactly the shared set.
-    var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS;
+    // The list view offers the shared set plus its own state: the value a
+    // URL-parameter filter took from the page address (?author=Jane),
+    // filled only when "is equal to" finds records for it.
+    var SW_FORM_LIST_VIEW_TOKENS = [
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+    ];
+    var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
 
     // The detail view offers the same set plus its own not-found state, which is
     // a property of the widget rather than of a record.
@@ -34996,6 +35042,10 @@ const StyleDesigner = (function () {
             ['has_orders', _sdT('The member has orders')],
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')]
+        ],
+        form_list_view: [
+            ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
+            ['no_filter_value',  _sdT('No value from the page address is applied')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -46905,7 +46955,10 @@ const StyleDesigner = (function () {
         var ff = _swFilterFormFields(fields).filter(function (f) { return String(f.name).trim().toLowerCase() === lc; })[0];
         return ff ? String(ff.type || '') : '';
     }
-    function _swFilterDynamicOptions(type) {
+    // `withUrl`: a list's filters may also read their value from the page
+    // address. A record view's may not (the server closes such a page), so
+    // its panel does not offer it.
+    function _swFilterDynamicOptions(type, withUrl) {
         var o = [];
         if (type === 'date') o.push(['current date', _sdT('Current Date')]);
         if (type === 'date and time') o.push(['current date and time', _sdT('Current Date & Time')]);
@@ -46913,9 +46966,30 @@ const StyleDesigner = (function () {
         if (type === 'time') o.push(['current time', _sdT('Current Time')]);
         if (type === 'username') o.push(['viewer', _sdT('Viewer')]);
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
+        if (withUrl) o.push(['url parameter', _sdT('URL parameter')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
+    // Query parameter names the software reads itself, so a filter may not
+    // take its value from them; twin of pg_sw_url_param_reserved() in
+    // includes/fn/widgets.php (a test compares the two lists).
+    var _SW_URL_PARAM_RESERVED = [
+        'page', 'page_number', 'query', 'r', 'rss', 'pdf', 'icalendar', 'email',
+        'edit', 'edit_theme', 'edit_submitted_form', 'theme_id', 'from', 'logged_out',
+        'send_to', 'mode', 'name', 'local', 't', 'a', 'o', 'k', 'sig', 'secure_mode',
+        'highlight', 'preview_auto_dialog', 'pg_lang', 'id', 'date', 'view', 'cat',
+        'pid', 'pmin', 'pmax', 'sort', 'stock', 'q', 'search', 'calendar_id',
+        'recurrence_number', 'folder_id', 'comments', 'order_id', 'oid', 'cancelled',
+        'token', 'password', 'add_watcher', 'connect_to_contact'
+    ];
+    // Twin of pg_sw_url_param_name(): the usable parameter name, or ''.
+    function _swUrlParamName(v) {
+        var n = String(v == null ? '' : v).trim().toLowerCase();
+        if (!/^[a-z][a-z0-9_]{0,31}$/.test(n)) return '';
+        if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
+        if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
+        return n;
+    }
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -46923,8 +46997,14 @@ const StyleDesigner = (function () {
             var field = String(f.field || '');
             var type  = _swFilterFieldType(field, fields);
             var dyn   = String(f.dynamic_value || '');
-            var dynOpts = _swFilterDynamicOptions(type);
+            var dynOpts = _swFilterDynamicOptions(type, withUrl);
+            // A value from the address on a panel that does not offer it (a
+            // record view, hand-written config): kept and marked, since the
+            // server closes the page on it.
+            var dynBad = !withUrl && dyn === 'url parameter' && field !== '';
+            if (dynBad) dynOpts = dynOpts.concat([['url parameter', _sdT('URL parameter') + ' ' + _sdT('(incompatible — choose again)')]]);
             if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
+            var urlParam = (dyn === 'url parameter') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
 
             var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
                 '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
@@ -46962,7 +47042,7 @@ const StyleDesigner = (function () {
             if (inputType === 'datetime-local') val = val.replace(' ', 'T').slice(0, 16);
 
             html +=
-                '<div class="sd-sw-filter" data-idx="' + i + '" style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                '<div class="sd-sw-filter" data-idx="' + i + '"' + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
                         '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
@@ -46978,7 +47058,18 @@ const StyleDesigner = (function () {
                               (dyn === 'days ago'
                                   ? '<input type="number" min="0" max="36500" class="form-control form-control-sm sd-sw-filter-days" data-sw-id="' + sid + '" value="' + esc(String(parseInt(f.dynamic_value_attribute, 10) || 0)) + '" style="width:72px" aria-label="' + esc(_sdT('Day(s) Ago')) + '">'
                                   : '') +
+                              (dyn === 'url parameter' && !dynBad
+                                  ? '<input type="text" class="form-control form-control-sm sd-sw-filter-param" data-sw-id="' + sid + '" value="' + esc(urlParam) + '" maxlength="32" placeholder="author" style="width:110px" aria-label="' + esc(_sdT('Parameter name')) + '">'
+                                  : '') +
                           '</div>'
+                        : '') +
+                    (dyn === 'url parameter' && !dynBad
+                        ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field matches ?{var}=… in the page address. Without it, this filter is left out and every record is listed.', _swUrlParamName(urlParam) || 'author')) + '</div>' +
+                          (urlParam.trim() === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('Type a parameter name, such as author or tag. Without one, this filter is left out.')) + '</div>'
+                              : _swUrlParamName(urlParam) === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.')) + '</div>'
+                              : '')
                         : '') +
                 '</div>';
         });
