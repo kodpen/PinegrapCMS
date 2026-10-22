@@ -18,7 +18,7 @@ description: custom_form widget model: controls are the fields (no field list), 
 | `validation_regex` | `pattern` attribute |
 | `multiple` | `select[multiple]` or checkbox |
 
-- What markup cannot say lives in the node's **`props._cf`**: `ids` (`{page_id: form_fields.id}`), `label` (if the label element was deleted), `rss_field`, `contact_field`, `office_use_only`, `validation_message`, `upload_folder_id`, `quiz_question` / `quiz_answer`.
+- What markup cannot say lives in the node's **`props._cf`**: `ids` (`{page_id: form_fields.id}`), `label` (if the label element was deleted), `rss_field`, `contact_field`, `office_use_only`, `validation_message`, `upload_folder_id`, `quiz_question` / `quiz_answer`, `wysiwyg` (text area with the rich-text editor; absent = the row keeps its flag, `custom-form-rich-text.md`).
 
 ## What does `form_source` mean?
 - `page` (default): the form belongs to the page the widget **stands on**; controls are its fields. Template: one input + CAPTCHA + Submit (`_cfStarterTree`).

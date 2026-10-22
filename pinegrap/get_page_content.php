@@ -541,6 +541,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_ai_summary_inject($content);
     }
 
+    // ── Rich-text editor for designed forms ─────────────────────────────────────
+    // A designed form's rich-text text areas carry data-pg-rich-text; one
+    // editor for all of them is loaded once everything is drawn in, so a
+    // second form and a form inside a shared component are covered
+    // (pg_cf_rich_text_inject()). Not in an e-mail, not in a background
+    // render (the SEO pass, the editor's Preview, the search index).
+    if (!$email && !pg_seo_rendering() && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
+        && strpos($content, 'data-pg-rich-text') !== false && function_exists('pg_cf_rich_text_inject')) {
+        $content = pg_cf_rich_text_inject($content);
+    }
+
     // ── Search marking ──────────────────────────────────────────────────────────
     // A site search result that matched a search section links here with
     // ?highlight= and the section's anchor: the words are marked in yellow

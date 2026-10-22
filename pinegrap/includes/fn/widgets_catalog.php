@@ -3160,8 +3160,10 @@ function _pg_render_order_item_form_data_readonly($order_item_id, $product_id, $
             // the visitor, while printing it as-is would trust whatever was
             // stored (rows saved before the store path filtered, or written
             // by any other route). Same treatment as the other order views.
+            // Printed raw, so PHP open tags are defused before the page's
+            // PHP_REGIONS eval.
             $output_data = !empty($f['wysiwyg'])
-                ? prepare_form_data_for_output(pg_sanitize_rich_text($data), $type, false)
+                ? prepare_form_data_for_output(pg_defuse_php_tags(pg_sanitize_rich_text($data)), $type, false)
                 : prepare_form_data_for_output($data, $type, true);
 
             // No grid opinion here — label above, value below, full width.

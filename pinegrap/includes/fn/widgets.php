@@ -309,10 +309,11 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
             $type = (string)$custom[$name]['type'];
             $data = (string)$custom[$name]['data'];
             // Markup from a WYSIWYG area was typed by the submitter, so it is
-            // filtered rather than escaped.
+            // filtered rather than escaped. It is printed raw, so PHP open
+            // tags are defused before the page's PHP_REGIONS eval.
             if (!empty($custom[$name]['wysiwyg'])) {
                 $prepare_for_html = false;
-                $data = pg_sanitize_rich_text($data);
+                $data = pg_defuse_php_tags(pg_sanitize_rich_text($data));
             }
         } else {
             // Not a field of this form. Left in place here and swept by the
