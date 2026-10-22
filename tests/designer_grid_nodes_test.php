@@ -188,7 +188,7 @@ function test_designer_grid_attributes()
 // The font, the old inline style field, the title and the tooltip, which
 // the canvas applies to a grid node, are written as on any other node: the
 // style in _compose_inline_style()'s order, the title and the tooltip after
-// the id; a tooltip attribute yields to an Attributes panel entry.
+// the id; an element that is another toggle's gets no tooltip.
 function test_designer_grid_font_style_title_tooltip()
 {
 	$cases = _test_designer_grid_cases();
@@ -199,7 +199,7 @@ function test_designer_grid_font_style_title_tooltip()
 	pg_assert_same('<div class="col-6" title="Tip" data-bs-toggle="tooltip" data-bs-placement="bottom" data-x="1">', _test_designer_grid_php($cases['col tooltip']));
 	pg_assert_same('<div class="row" title="Tip" data-bs-toggle="tooltip" data-bs-placement="top">', _test_designer_grid_php($cases['row tooltip without placement']));
 	pg_assert_same('<div class="container">', _test_designer_grid_php($cases['container tooltip off']));
-	pg_assert_same('<div class="col-12" title="Tip" data-bs-toggle="popover" data-bs-placement="end">', _test_designer_grid_php($cases['col tooltip and popover']));
+	pg_assert_same('<div class="col-12" data-bs-toggle="popover" data-bs-placement="end">', _test_designer_grid_php($cases['col tooltip and popover']));
 }
 
 // The class and the attributes are escaped once.

@@ -4091,11 +4091,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             if (!empty($props['id'])) $attrs .= ' id="' . h($props['id']) . '"';
             // A search section (pg_search_sections()): see _render_extra_attrs().
             if (!empty($props['id']) && !empty($props['searchSection'])) $attrs .= ' data-pg-search-section';
-            // Combine cssClass + sizing classes into a single class attribute
-            $sem_cls_parts = array();
-            if (!empty($props['cssClass'])) $sem_cls_parts[] = $props['cssClass'];
-            if ($_sz['class'] !== '')       $sem_cls_parts[] = $_sz['class'];
-            $sem_cls_combined = trim(implode(' ', $sem_cls_parts));
+            // cssClass and the sizing classes in one class attribute, each
+            // once: the Display & Sizing panel writes its classes into
+            // cssClass as well.
+            $sem_cls_combined = _pg_unique_classes((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' ' . $_sz['class']);
             if ($sem_cls_combined !== '')   $attrs .= ' class="' . h($sem_cls_combined) . '"';
             // Tag-specific attributes — emitted directly so bindings on href/src work.
             // Track which builtin attrs we emit so the _attrs loop below can skip
@@ -4113,28 +4112,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 if (!empty($props['src'])) { $attrs .= ' src="' . h($props['src']) . '"'; $builtin_attrs_emitted['src'] = true; }
                 if (!empty($props['alt'])) { $attrs .= ' alt="' . h($props['alt']) . '"'; $builtin_attrs_emitted['alt'] = true; }
             }
-            // Sizing inline style — appended BEFORE _attrs so user-defined style attr can override
-            $sem_style_parts = array();
-            if ($_sz['style'] !== '') $sem_style_parts[] = $_sz['style'];
-            if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
-                foreach ($props['_attrs'] as $a) {
-                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                    if (!empty($a['name']) && $a['name'] !== 'id' && $a['name'] !== 'class') {
-                        if ($a['name'] === 'style') {
-                            // Merge user-defined style with sizing style; later wins on duplicate keys
-                            if (!empty($a['value'])) $sem_style_parts[] = $a['value'];
-                        } elseif (isset($builtin_attrs_emitted[$a['name']])) {
-                            // A bound/builtin value already covers this attribute — skip the
-                            // _attrs entry to avoid emitting a duplicate (which would shadow
-                            // the binding token in some browsers).
-                            continue;
-                        } else {
-                            $attrs .= ' ' . h($a['name']) . '="' . h(isset($a['value']) ? $a['value'] : '') . '"';
-                        }
-                    }
-                }
-            }
-            if (!empty($sem_style_parts)) $attrs .= ' style="' . h(implode(';', $sem_style_parts)) . '"';
+            // The title and tooltip, then the Attributes panel's entries: not
+            // the id (props.id is written above), the class, the style
+            // (merged below) or one a bound or built-in value covers.
+            $attrs .= _render_extra_attrs($props, array_merge(array('id'), array_keys($builtin_attrs_emitted)), true);
+            // The style as on any other node: font, inline style, sizing,
+            // then the Attributes panel's style, which wins on a repeat.
+            $attrs .= _compose_inline_style($props, '', $_sz['style']);
             // A bare <img> (imported or written markup) keeps its markup: it
             // gets the srcset of its file's widths in the file's own format,
             // never a <picture> around it, whose CSS may not expect one. How
@@ -4274,6 +4258,24 @@ function _pg_unique_classes($classes)
         if ($c !== '' && !in_array($c, $out, true)) $out[] = $c;
     }
     return implode(' ', $out);
+}
+
+// The Display & Sizing props of a content node, as _build_node_sizing_attrs()
+// gives them and the editor's _sdContentSizingNode() reads them. An image's
+// width and height and a spacer's height are the element's own props, not
+// sizing; an image in a ratio box (aspectRatio preset) hands its overflow to
+// the box it is drawn in.
+function _pg_content_sizing($props, $ct)
+{
+    if ($ct === 'image') {
+        unset($props['width'], $props['height']);
+        if (isset($props['aspectRatio']) && preg_match('/^[0-9]+x[0-9]+$/', (string)$props['aspectRatio'])) {
+            unset($props['overflow'], $props['overflowX'], $props['overflowY']);
+        }
+    } elseif ($ct === 'spacer') {
+        unset($props['height']);
+    }
+    return _build_node_sizing_attrs($props);
 }
 
 // The opening tag of a grid node (container, row, col), as the editor's
@@ -4423,20 +4425,23 @@ function _user_attr_value($props, $name)
 // The title and the tooltip of a content, semantic or grid node, as the
 // editor's _sdNodeTitleAttrs() writes them: title is the tooltip's text
 // while the tooltip is on, the plain title prop otherwise, then the
-// tooltip's data-bs-toggle and data-bs-placement. Each yields to an
-// Attributes panel entry of the same name, so a popover or a modal toggle
-// typed there keeps working and no attribute is written twice.
+// tooltip's data-bs-toggle and data-bs-placement. An element that is
+// another toggle's (a data-bs-toggle in the Attributes panel: a modal, a
+// popover, a collapse) gets no tooltip, whose toggle and title would take
+// its place; title and placement yield to a panel entry of the same name,
+// so no attribute is written twice.
 function _pg_node_title_attrs($props)
 {
     $written = _pg_attr_names($props);
     $tip = !empty($props['tooltipEnabled']) && isset($props['tooltipTitle'])
-        && is_scalar($props['tooltipTitle']) && (string)$props['tooltipTitle'] !== '';
+        && is_scalar($props['tooltipTitle']) && (string)$props['tooltipTitle'] !== ''
+        && !in_array('data-bs-toggle', $written, true);
     $title = $tip ? (string)$props['tooltipTitle']
         : ((isset($props['title']) && is_scalar($props['title'])) ? (string)$props['title'] : '');
     $out = '';
     if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . h($title) . '"';
     if ($tip) {
-        if (!in_array('data-bs-toggle', $written, true)) $out .= ' data-bs-toggle="tooltip"';
+        $out .= ' data-bs-toggle="tooltip"';
         if (!in_array('data-bs-placement', $written, true)) {
             $out .= ' data-bs-placement="' . h(!empty($props['tooltipPlacement']) ? (string)$props['tooltipPlacement'] : 'top') . '"';
         }
@@ -4865,6 +4870,13 @@ function _render_content_html($props, $pad, $kids = '')
     $ct = isset($props['contentType']) ? $props['contentType'] : '';
     $props = _apply_bindings($props, in_array($ct, array('heading', 'link', 'paragraph', 'span', 'text'), true));
     $html = '';
+    // The Display & Sizing props (_pg_content_sizing()): the classes join
+    // cssClass once, the style is the third part of the style attribute.
+    $sz = _pg_content_sizing($props, $ct);
+    if ($sz['class'] !== '') {
+        $props['cssClass'] = _pg_unique_classes((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' ' . $sz['class']);
+    }
+    $sz_style = $sz['style'];
 
     switch ($ct) {
         case 'heading':
@@ -4874,8 +4886,8 @@ function _render_content_html($props, $pad, $kids = '')
             $cls = '';
             if (!empty($props['align'])) $cls .= 'text-' . h($props['align']);
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<' . $tag
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</' . $tag . '>' . "\n";
@@ -4887,7 +4899,7 @@ function _render_content_html($props, $pad, $kids = '')
             $cls    = !empty($props['cssClass'])  ? ' class="' . h($props['cssClass']) . '"' : '';
             $target = !empty($props['target'])    ? ' target="' . h($props['target']) . '"' : '';
             $rel    = !empty($props['rel'])       ? ' rel="'    . h($props['rel'])    . '"' : '';
-            $style_attr  = _compose_inline_style($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
             // The window and the relationship are the Link Options' props.
             // When a prop is empty, an _attrs entry of the same name (typed
             // in the Attrs panel, or kept there by an older layout) prints,
@@ -4897,7 +4909,7 @@ function _render_content_html($props, $pad, $kids = '')
             $link_skip = array('href');
             if ($target !== '') $link_skip[] = 'target';
             if ($rel !== '')    $link_skip[] = 'rel';
-            $extra_attrs = _render_extra_attrs($props, $link_skip);
+            $extra_attrs = _render_extra_attrs($props, $link_skip, true);
             $html  .= $pad . '<a href="' . $href . '"' . $cls . $target . $rel
                 . $style_attr . $extra_attrs . '>' . $text
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
@@ -4909,9 +4921,9 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['cssClass'])) $cls .= ' ' . h($props['cssClass']);
             // Pass icon's font-size as the case-specific extra; _compose_inline_style
             // handles fontFamily + inlineStyle + user style merge.
-            $extra_style = !empty($props['fontSize']) ? 'font-size:' . h($props['fontSize']) . 'px' : '';
-            $style_attr  = _compose_inline_style($props, $extra_style);
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_style = !empty($props['fontSize']) ? 'font-size:' . $props['fontSize'] . 'px' : '';
+            $style_attr  = _compose_inline_style($props, $extra_style, $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<i class="' . $cls . '"' . $style_attr . $extra_attrs . '></i>' . "\n";
             break;
 
@@ -4921,8 +4933,8 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['lead'])) $cls .= 'lead';
             if (!empty($props['align'])) $cls .= ($cls ? ' ' : '') . 'text-' . h($props['align']);
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<p'
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</p>' . "\n";
@@ -4936,8 +4948,8 @@ function _render_content_html($props, $pad, $kids = '')
             // <span>, drop a small "New!" badge after a heading, etc.
             $text = isset($props['text']) ? $props['text'] : '';
             $cls = !empty($props['cssClass']) ? h($props['cssClass']) : '';
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<span'
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</span>' . "\n";
@@ -4972,9 +4984,9 @@ function _render_content_html($props, $pad, $kids = '')
             // Image's case-specific style: object-position. Everything else
             // (fontFamily — rare on <img> but possible, inlineStyle, user style)
             // is composed by the helper.
-            $extra_style = !empty($props['objectPosition']) ? 'object-position:' . h($props['objectPosition']) : '';
-            $obj_pos     = _compose_inline_style($props, $extra_style);
-            $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'));
+            $extra_style = !empty($props['objectPosition']) ? 'object-position:' . $props['objectPosition'] : '';
+            $obj_pos     = _compose_inline_style($props, $extra_style, $sz_style);
+            $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'), true);
 
             // A file of this site gets its derivatives (pg_img_responsive()):
             // a srcset in its own format on the <img>, and AVIF / WebP
@@ -5067,16 +5079,16 @@ function _render_content_html($props, $pad, $kids = '')
             $margin = isset($props['margin']) ? $props['margin'] : '4';
             $cls = 'my-' . h($margin);
             if (!empty($props['cssClass'])) $cls .= ' ' . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<hr class="' . $cls . '"' . $style_attr . $extra_attrs . '>' . "\n";
             break;
 
         case 'spacer':
             $height = isset($props['height']) ? $props['height'] : '40';
             $cls = !empty($props['cssClass']) ? ' class="' . h($props['cssClass']) . '"' : '';
-            $style_attr  = _compose_inline_style($props, 'height:' . h($height) . 'px');
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, 'height:' . $height . 'px', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<div' . $style_attr . $cls . $extra_attrs . '></div>' . "\n";
             break;
 
@@ -5103,8 +5115,8 @@ function _render_content_html($props, $pad, $kids = '')
                     $attrs = str_replace($sm[0], '', $attrs);
                 }
                 $cls = trim(html_entity_decode($own_class, ENT_QUOTES, 'UTF-8') . ' ' . (isset($props['cssClass']) ? (string)$props['cssClass'] : ''));
-                $style_attr = _compose_inline_style($props, html_entity_decode($own_style, ENT_QUOTES, 'UTF-8'));
-                $extra_attrs = _render_extra_attrs($props);
+                $style_attr = _compose_inline_style($props, html_entity_decode($own_style, ENT_QUOTES, 'UTF-8'), $sz_style);
+                $extra_attrs = _render_extra_attrs($props, array(), true);
                 $svg = '<svg' . ($cls !== '' ? ' class="' . h($cls) . '"' : '') . $style_attr . $attrs . $extra_attrs . $open[2] . '>'
                      . substr($svg, strlen($open[0]));
             }
@@ -5263,8 +5275,8 @@ function _render_content_html($props, $pad, $kids = '')
             // Render as a plain <span> so existing tables aren't silently empty.
             $text = isset($props['text']) ? $props['text'] : '';
             $cls  = !empty($props['cssClass']) ? ' class="' . h($props['cssClass']) . '"' : '';
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<span' . $cls . $style_attr . $extra_attrs . '>' . $text . '</span>' . "\n";
             break;
 
