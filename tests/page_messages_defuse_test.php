@@ -191,6 +191,18 @@ function test_page_message_text_keeps_what_the_alert_shows()
 	pg_assert_same('Footer', pg_liveform_message_text('<cregion>Footer</cregion>'));
 }
 
+// A quote or a comment that is never closed runs to the end, as a browser
+// reads it, and an outsized one is read in one pass: an unclosed quote after
+// many tags rescanned the rest of the message from every tag, and a comment
+// over a megabyte ran PCRE out of backtracking and came back as null.
+function test_page_message_text_unclosed_quote_and_comment()
+{
+	pg_assert_same('Sorry', pg_liveform_message_text('Sorry<a title="x>more text'));
+	pg_assert_same('Saved.', pg_liveform_message_text('Saved.<!-- note that never closes'));
+	pg_assert_same('', pg_liveform_message_text(str_repeat('<br ', 20000) . '"'));
+	pg_assert_same('x', pg_liveform_message_text('x<!--' . str_repeat('a', 1000100)));
+}
+
 // The two inline-feedback consumers (output_field and the per-field JS map)
 // take the message through pg_liveform_message_text(), not the raw stored
 // string, so an escaped file name is not escaped a second time.

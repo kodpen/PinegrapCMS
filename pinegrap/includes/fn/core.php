@@ -772,12 +772,26 @@ function pg_liveform_message_text($message)
     }
 
     // The rest of a tag: attribute text, where a quoted ">" does not end it.
-    // Possessive, so an unclosed quote fails at once instead of backtracking.
-    $tag_rest = '(?:[^>"\']++|"[^"]*+"|\'[^\']*+\')*+(?:>|\z)';
+    // A quote or a comment that is never closed runs to the end, as in a
+    // browser, so every match that starts succeeds and the scan stays linear;
+    // the possessive quantifiers keep PCRE from backtracking.
+    $tag_rest = '(?:[^>"\']++|"[^"]*+(?:"|\z)|\'[^\']*+(?:\'|\z))*+(?:>|\z)';
 
     $text = preg_replace('/<\/?(?:br|p|div|li|ul|ol|h[1-6]|hr|tr|td|th|table)\b' . $tag_rest . '/i', ' ', (string) $message);
-    $text = preg_replace('/<!--.*?(?:-->|\z)|<[!?][^>]*+(?:>|\z)|<\/?[a-z]' . $tag_rest . '/is', '', $text);
-    $text = preg_replace('/[ \t\n\r\f\x0B]+/', ' ', $text);
+
+    if ($text !== null) {
+        $text = preg_replace('/<!--(?:[^-]++|-(?!->))*+(?:-->|\z)|<[!?][^>]*+(?:>|\z)|<\/?[a-z]' . $tag_rest . '/i', '', $text);
+    }
+
+    if ($text !== null) {
+        $text = preg_replace('/[ \t\n\r\f\x0B]+/', ' ', $text);
+    }
+
+    // A PCRE limit reached on an outsized message: strip_tags() still gives
+    // its words.
+    if ($text === null) {
+        $text = strip_tags((string) $message);
+    }
 
     return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
