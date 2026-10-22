@@ -1,6 +1,6 @@
 ---
 name: designer-block-style
-description: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element.
+description: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 ---
 
 ## Where may block CSS live?
@@ -18,3 +18,8 @@ Extra CSS either does not exist or is defined in the design's Styles panel. Inli
 ## What is the one exception?
 - Style properties written by the properties panel itself: `background-image` / `-size` / `-position` / `-repeat` / `-attachment`, `background-color`, `font-size`, `object-position` (`setAttrStyleProp`). There the `style` attribute is the panel's **store**; moving it to a stylesheet takes the control away from the operator.
 - Also inline: the `progress-bar` width Bootstrap writes as data.
+
+## How does a design template ship block CSS?
+- In its `assets` 'css': `pg_design_template_user_styles(array('news-ticker', 'pg-shade-bottom'), $own_css)` (`includes/fn/designer.php`) returns the one User Styles entry (`meta: user-styles`). Names are block types (their `_SD_BLOCK_CSS_NEEDS`) or rule names.
+- `pg_designer_block_css()` reads `_SD_BLOCK_CSS` out of `style_designer.js` (no PHP copy) and writes the text byte for byte as a drop does, so a later drop finds the rules and adds only missing ones (`tests/design_template_assets_test.php`).
+- Not a separate `css` entry: the drop checks only User Styles, and a named `.css` entry is also written to the file manager. `$own_css` never names a block rule's class.

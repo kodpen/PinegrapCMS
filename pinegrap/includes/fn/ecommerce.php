@@ -1882,8 +1882,37 @@ function pg_product_stock_delta($was_tracked, $was_quantity, $tracked, $quantity
 
 
 /**
+ * The products.out_of_stock assignment for a write that sets a stock count,
+ * for an UPDATE's SET list: tracked with nothing left is out of stock, any
+ * other row is not (the rule of pg_pb_apply_stock_flag()).
+ *
+ * out_of_stock_timestamp is the "out of stock since" column, so it is
+ * stamped only on the way in: a row that was flagged already keeps the day
+ * it ran out.
+ *
+ * @param bool       $tracked     products.inventory after the write
+ * @param int|string $quantity    products.inventory_quantity after the write
+ * @param bool|string $was_flagged products.out_of_stock before the write
+ * @return string the assignment(s), without a trailing comma
+ */
+function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
+{
+    if (!$tracked || ((int) $quantity > 0)) {
+        return "out_of_stock = '0'";
+    }
+
+    if (($was_flagged === true) || ((string) $was_flagged === '1')) {
+        return "out_of_stock = '1'";
+    }
+
+    return "out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()";
+}
+
+
+/**
  * A product's stock was written somewhere on the site: the checkout, a local
- * sale, the product screen and its list, a barcode scan, the bulk edit. One
+ * sale, the product screen and its list, a barcode scan, the bulk edit, the
+ * file manager's catalogue (quick edit and bulk edit). One
  * call after the write does everything a stock change owes the outside:
  *
  *   - products.timestamp moves, so GET /products?updated_since= lists the
@@ -2263,6 +2292,12 @@ function get_effective_tax_rate($product_rate, $zone_rate)
  * shop has tax switched off, the product is not taxable, or the shop's
  * country is in no tax zone (a zone rate of false, as get_default_tax_rate()
  * answers it).
+ *
+ * It is the no-buyer twin of local_sale_line_rate(): with the ERP on the
+ * till takes the ERP store's zone (state included), while a marketplace
+ * always takes the shop country's zone, the same source its declared VAT
+ * rate comes from (mp_applied_vat_rate()), so the price and the rate stated
+ * beside it agree.
  *
  * @param  int|string   $price        minor units as stored in products.price
  * @param  int|string   $taxable      products.taxable

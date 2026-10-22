@@ -54,9 +54,16 @@ $send_to = $form->get_field_value('send_to');
 // every answer below - the error, the hint screen, the confirmation - goes
 // back to that page instead of the legacy screen. The widget reads the same
 // liveform fields (screen, email) and notices this script leaves behind.
+// Such a page also names its widget in pg_widget_id, whose
+// reset_email_page_id chooses the e-mail; the legacy screens send neither.
 $return_to = $form->get_field_value('return_to');
+$pg_widget_id = 0;
 if (!$pg_kept_to_panel && is_scalar($return_to) && (string) $return_to !== '') {
-    $url = pg_safe_redirect_path((string) $return_to, $url);
+    $pg_return_path = pg_safe_redirect_path((string) $return_to, '/__none__');
+    if ($pg_return_path !== '/__none__') {
+        $url = $pg_return_path;
+        $pg_widget_id = (isset($_POST['pg_widget_id']) && is_scalar($_POST['pg_widget_id'])) ? (int) $_POST['pg_widget_id'] : 0;
+    }
 }
 
 $form->validate_required_field('email', lang(array('string'=>'{var:1} is required.','vars'=>lang('Email') )) );
@@ -84,12 +91,19 @@ if ($set_password_url === false) {
 // max_user_connections and took a live site down on 2026-08-31.
 pg_password_reset_guard($email);
 
+// The designed reset e-mail the request would get (see
+// pg_account_email_setting()), found before the account lookup: the search
+// and the page render cost time, and both answers below pay for them alike.
+// A visitor kept to the panel gets the built-in e-mail, so nothing is found.
+$pg_reset_email = $pg_kept_to_panel ? null : pg_account_email_setting('forgot_password', 'reset', $pg_widget_id);
+
 // If there is not an error then get user info.
 if (!$form->check_form_errors()) {
     $user = db_item(
         "SELECT
             user_id AS id,
             user_username AS username,
+            user_email AS email,
             user_password_hint AS password_hint
         FROM user
         WHERE user_email = '" . e($email) . "'");
@@ -104,7 +118,14 @@ if (!$form->check_form_errors()) {
     // The confirmation below is deliberately worded as a condition ("if this
     // address is registered") rather than a claim, so it is true either way
     // and no one is told their mail is on its way when it is not.
-    if (empty($user['id'])) {
+    //
+    // The column's collation also folds accents, so "jane@exámple.com" finds
+    // the account of "jane@example.com". An address that differs from the
+    // stored one by more than letter case is treated as unknown: no token is
+    // written, and the reset link only ever goes to the stored address.
+    if (empty($user['id']) || !pg_password_reset_address_matches($email, $user['email'])) {
+        pg_account_email_reset_unsent($pg_reset_email);
+
         $form->remove();
         $form->assign_field_value('screen', 'confirm');
         $form->add_notice(lang('If this email address is registered, then we have sent password reset instructions to it. Please also check your spam folder.'));
@@ -182,19 +203,34 @@ db(
 // The link is built from the configured hostname, never from the request's
 // Host header: this endpoint takes anonymous posts, so a spoofed header would
 // otherwise mail the victim a reset link that hands the token to another host.
+//
+// Both e-mails go to the address stored on the account, never the one typed,
+// and are marked secret: the link is kept out of the failure log and the
+// failure notice to the site's address. The designed e-mail (the page the
+// forgot password widget names, see pg_account_email_send_reset()) is sent
+// when its page shows the link; otherwise, and for a visitor kept to the
+// panel (whose link opens the panel's own screen), the built-in text.
 
-email(array(
-    'to' => $email,
-    'from_name' => ORGANIZATION_NAME,
-    'from_email_address' => EMAIL_ADDRESS,
-    'subject' => lang('Reset Password'),
-    'body' =>
-        lang('We received a request to reset your password. You can reset your password by clicking the link below.') . "\n" .
-        "\n" .
-        URL_SCHEME . HOSTNAME_SETTING . $set_password_url . '?k=' . $token['token'] . "\n" .
-        "\n" .
-        lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.'),
-    'queue' => true));
+$reset_link = URL_SCHEME . HOSTNAME_SETTING . $set_password_url . '?k=' . $token['token'];
+
+if (
+    $pg_kept_to_panel
+    || !pg_account_email_send_reset($user['id'], $user['email'], $reset_link, $token['token'], $pg_reset_email)
+) {
+    email(array(
+        'to' => $user['email'],
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => lang('Reset Password'),
+        'body' =>
+            lang('We received a request to reset your password. You can reset your password by clicking the link below.') . "\n" .
+            "\n" .
+            $reset_link . "\n" .
+            "\n" .
+            lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.'),
+        'queue' => true,
+        'secret' => true));
+}
 
 log_activity(lang('User requested reset password email.'), $user['username']);
 

@@ -10,6 +10,7 @@ description: The 2026.4.8 modules errors, mail_queue, backup and consent in incl
 ## mail_queue (outgoing mail queue)
 - `mail_outbox` write/read: `pg_mail_enqueue()`, `pg_mail_queue_run()`. The queue decision is `pg_mail_job_alive()` (`job` or `mail_job` ran in the last 15 min). Backoff schedule: `pg_mail_backoff()` (the campaign job uses it too). List-Unsubscribe headers live here.
 - Gate: `pg_mail_queue_ready()`. Screen `mail_queue.php`; separate cron entry `mail_job.php`.
+- `email()` property `'secret' => true` (password reset link): `pg_mail_failure_body_shown()` keeps the body out of the failure log and notice; the queue stores it unchanged and re-calls `email()`.
 
 ## backup (automatic backup)
 - Weekly zip (`pg_backup_run_auto()`; a folder if ZipArchive is missing). Retention: `pg_backup_prune_list()` (only `auto_backup_*` names).

@@ -1339,20 +1339,27 @@ function mp_n11_create_listings($account, $items) {
 // number can be anything; a product with 8.5 per cent has to be sent as
 // something from their list or the SKU is refused. The nearest of the four is
 // the honest answer, and it is rounded down rather than up - overstating the
-// rate on a marketplace listing overcharges the buyer. A product the shop
-// does not tax (taxable off) is reported at zero: its price carries no tax,
-// so the zone's rate would be a tax the shop never charges.
+// rate on a marketplace listing overcharges the buyer.
+//
+// The rate is the one inside the price that is sent (vat_rate,
+// mp_applied_vat_rate()): 0 for a product the shop does not tax or a country
+// in no tax zone, because n11 works the VAT back out of the sale price and a
+// rate the price does not carry would come out of the seller's net. Without
+// one (tax off: the stored price is final, VAT inside) the product's own
+// rate, else the zone's.
 function mp_n11_vat_rate($item) {
 
-	if (isset($item['taxable']) && !$item['taxable']) {
+	if (isset($item['vat_rate']) && $item['vat_rate'] !== null) {
 
-		return 0;
+		$rate = (float) $item['vat_rate'];
+
+	} else {
+
+		$rate = isset($item['tax_rate']) && $item['tax_rate'] !== null
+			? (float) $item['tax_rate']
+			: (function_exists('get_default_tax_rate') ? (float) get_default_tax_rate() : 20.0);
 
 	}
-
-	$rate = isset($item['tax_rate']) && $item['tax_rate'] !== null
-		? (float) $item['tax_rate']
-		: (function_exists('get_default_tax_rate') ? (float) get_default_tax_rate() : 20.0);
 
 	$allowed = array(0, 1, 10, 20);
 

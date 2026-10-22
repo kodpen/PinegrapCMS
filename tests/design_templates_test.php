@@ -285,3 +285,28 @@ function test_design_templates_link_widgets_nested()
 	$out = _pg_tpl_link_widgets($tree, array('login' => array('id' => 42, 'name' => 'login-widget')), array());
 	pg_assert_same(array('sharedId' => 42, 'sharedName' => 'login-widget'), $out['children'][0]['children'][0]['props']);
 }
+
+// The installer's "E-postalar" row lists the account e-mail pages a
+// registration and a forgot password widget name, as it lists every widget
+// setting ending in _email_page_id; a page a widget does not name as an
+// e-mail stays out.
+function test_design_templates_email_pages_account_emails()
+{
+	$page = function ($key, $title) {
+		return array('key' => $key, 'title' => $title, 'folder' => 'private',
+			'tree' => array('type' => 'root', 'props' => array(), 'children' => array()));
+	};
+	$tpl = array(
+		'pages' => array(
+			$page('register', 'Sign up'),
+			$page('email_account_welcome', 'Welcome e-mail'),
+			$page('email_password_reset', 'Reset e-mail'),
+		),
+		'widgets' => array(
+			'register'        => array('type' => 'registration', 'config' => array('welcome_email_page_id' => '{{tab:email_account_welcome}}')),
+			'forgot_password' => array('type' => 'forgot_password', 'config' => array('reset_email_page_id' => '{{tab:email_password_reset}}')),
+		),
+	);
+	pg_assert_same(array('email_account_welcome' => 'Welcome e-mail', 'email_password_reset' => 'Reset e-mail'),
+		pg_design_template_email_pages($tpl));
+}
