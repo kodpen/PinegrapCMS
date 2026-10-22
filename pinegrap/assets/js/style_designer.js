@@ -2874,36 +2874,84 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // Rotating gradient palette for new carousel slides — keeps each visually distinct.
-    var CAROUSEL_GRADIENTS = [
-        'linear-gradient(135deg,#667eea,#764ba2)',
-        'linear-gradient(135deg,#f093fb,#f5576c)',
-        'linear-gradient(135deg,#4facfe,#00f2fe)',
-        'linear-gradient(135deg,#43e97b,#38f9d7)',
-        'linear-gradient(135deg,#fa709a,#fee140)',
-        'linear-gradient(135deg,#30cfd0,#330867)',
-        'linear-gradient(135deg,#a8edea,#fed6e3)',
-        'linear-gradient(135deg,#f6d365,#fda085)'
-    ];
+    // Rotating theme surfaces for new carousel slides, so neighbouring slides
+    // differ while every one follows the colour palette.
+    var CAROUSEL_SURFACES = ['bg-primary-subtle', 'bg-body-tertiary', 'bg-secondary-subtle'];
 
     /**
-     * Build a fully-structured carousel slide: gradient/image background hero with title,
+     * Build a fully-structured carousel slide: a palette surface with title,
      * description, and a primary button. Returns a semantic tree ready to push into
      * the carousel-inner children array.
+     *
+     * The slide stays light in a dark design too: Bootstrap draws the carousel
+     * controls and indicators dark under data-bs-theme="dark" (and with
+     * .carousel-dark, which the carousel ships with), so a dark slide would hide them.
      */
     function makeCarouselSlide(idx, isActive) {
-        var bg = CAROUSEL_GRADIENTS[(idx - 1) % CAROUSEL_GRADIENTS.length];
+        var bg = CAROUSEL_SURFACES[(idx - 1) % CAROUSEL_SURFACES.length];
         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (isActive ? ' active' : ''), customName: _sdT('Slide {var}', idx) }, [
-            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center text-white text-center p-5', customName: _sdT('Slide Background'),
-                _attrs: [{ name: 'style', value: 'min-height:360px;background:' + bg + ';background-size:cover;background-position:center' }] }, [
+            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center text-center p-5 ' + bg + ' text-body', customName: _sdT('Slide Background'),
+                _attrs: [{ name: 'data-bs-theme', value: 'light' }, { name: 'style', value: 'min-height:360px' }] }, [
                 createNode('semantic', { tag: 'div', cssClass: 'mx-auto', customName: _sdT('Slide Content'),
                     _attrs: [{ name: 'style', value: 'max-width:720px' }] }, [
                     createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Slide {var} Title', idx), cssClass: 'display-5 fw-bold mb-3' }),
                     createNode('content', { contentType: 'paragraph', text: _sdT('A short description that reinforces the slide’s message and guides the reader to the next step.'), cssClass: 'lead mb-4' }),
-                    createNode('component', { componentType: 'btn', text: _sdT('Learn More'), variant: 'light', size: 'lg', href: '#', target: '' })
+                    createNode('component', { componentType: 'btn', text: _sdT('Learn More'), variant: 'primary', size: 'lg', href: '#', target: '' })
                 ])
             ])
         ]);
+    }
+
+    /**
+     * Copy of a carousel node for Carousel Options > Add slide: fresh node ids,
+     * no 'active' class or aria-current on the copy itself, no element id (a
+     * copied id would be on the page twice), and every layer name carrying the
+     * copied slide's number (Slide 3, Carousel Caption 3) renumbered to newN.
+     */
+    function _sdCopyCarouselNode(src, oldN, newN) {
+        var copy = cloneTree(src);
+        var numRe = new RegExp('(^|\\D)' + oldN + '(?!\\d)');
+        (function walk(node, top) {
+            if (!node) return;
+            node._id = gid();
+            var p = node.props || (node.props = {});
+            if (top) {
+                p.cssClass = (p.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'active'; }).join(' ');
+                if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'aria-current'; });
+            }
+            delete p.id;
+            if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'id'; });
+            if (p.customName && numRe.test(p.customName)) p.customName = p.customName.replace(numRe, '$1' + newN);
+            if (node.children) node.children.forEach(function (c) { walk(c, false); });
+        })(copy, true);
+        return copy;
+    }
+
+    /**
+     * The slide Carousel Options > Add slide appends (newN is its 1-based
+     * number): a copy of the carousel's last slide, so it matches the slides
+     * the carousel's controls were drawn for. A photo slide brings its caption
+     * scrim, a quote slide its quote; a light makeCarouselSlide() surface would
+     * hide the white controls of a carousel without .carousel-dark
+     * (image-carousel). A palette surface takes the next surface colour and
+     * "Slide N Title" the new number. makeCarouselSlide() when there is no
+     * slide to copy.
+     */
+    function copyCarouselSlide(last, newN) {
+        if (!last) return makeCarouselSlide(newN, false);
+        var copy = _sdCopyCarouselNode(last, newN - 1, newN);
+        var oldTitle = _sdT('Slide {var} Title', newN - 1);
+        (function walk(node) {
+            var p = node.props || {};
+            var cls = (p.cssClass || '').split(/\s+/);
+            for (var i = 0; i < cls.length; i++) {
+                if (CAROUSEL_SURFACES.indexOf(cls[i]) !== -1) cls[i] = CAROUSEL_SURFACES[(newN - 1) % CAROUSEL_SURFACES.length];
+            }
+            p.cssClass = cls.join(' ');
+            if (p.text === oldTitle) p.text = _sdT('Slide {var} Title', newN);
+            if (node.children) node.children.forEach(walk);
+        })(copy);
+        return copy;
     }
 
     function createDefaultTree() {
@@ -14032,13 +14080,16 @@ const StyleDesigner = (function () {
 
                 // Hero Explosion
                 if (ctype === 'hero') {
-                    return createNode('semantic', { tag: 'div', cssClass: 'py-5 text-center text-white bg-dark mb-4 rounded-3', customName: _sdT('Hero Section') }, [
+                    // A dark band in any mode: the theme switch makes text-body and
+                    // the palette's dark colours apply inside it.
+                    return createNode('semantic', { tag: 'div', cssClass: 'py-5 px-3 text-center bg-body text-body mb-4 rounded-3', customName: _sdT('Hero Section'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Hero title'), cssClass: 'display-5 fw-bold' }),
                         createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 mx-auto', customName: _sdT('Hero Body') }, [
                              createNode('content', { contentType: 'paragraph', text: _sdT('Quickly design and customize responsive mobile-first sites with Bootstrap.'), cssClass: 'lead mb-4' }),
                              createNode('semantic', { tag: 'div', cssClass: 'd-grid gap-2 d-sm-flex justify-content-sm-center', customName: _sdT('Hero Buttons') }, [
                                   createNode('component', { componentType: 'btn', text: _sdT('Primary button'), variant: 'primary', size: 'lg' }),
-                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-light', size: 'lg' })
+                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-secondary', size: 'lg' })
                              ])
                         ])
                     ]);
@@ -14088,21 +14139,26 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
-                // Hero: Image Background — full-width section, bg-image via _attrs, dark overlay, centered content
+                // Hero: Image Background — full-width section, bg-image via _attrs, centered content
+                // on the shared dark scrim. The scrim is the section's only child and
+                // stretches with it, so long text grows the hero instead of being cut;
+                // its data-bs-theme="dark" keeps the text light whatever the photo is.
                 if (ctype === 'hero-image-bg') {
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-white position-relative overflow-hidden pg-hero-tall', customName: _sdT('Hero (Image Background)'),
+                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-hero-tall', customName: _sdT('Hero (Image Background)'),
                         _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/1600/900); background-size: cover; background-position: center;' }] }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50', customName: _sdT('Overlay') }),
-                        createNode('container', { fluid: false, cssClass: 'position-relative py-5 text-center' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 py-5 text-body pg-shade-bottom', customName: _sdT('Overlay'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                        createNode('container', { fluid: false, cssClass: 'py-5 text-center' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Hero Body') }, [
-                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('New!'), cssClass: 'badge text-bg-light text-dark rounded-pill mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('New!'), cssClass: 'badge text-bg-primary rounded-pill mb-3' }),
                                 createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Tell powerful stories with images'), cssClass: 'display-3 fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Catch your visitors\' attention from the first second with striking background images.'), cssClass: 'lead mb-4' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('Hero CTA Group') }, [
-                                    createNode('component', { componentType: 'btn', text: _sdT('Explore'),        variant: 'light',         size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Get in Touch'), variant: 'outline-light', size: 'lg', href: '#' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Explore'),        variant: 'primary',           size: 'lg', href: '#' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Get in Touch'), variant: 'secondary',         size: 'lg', href: '#' })
                                 ])
                             ])
+                        ])
                         ])
                     ]);
                 }
@@ -14116,7 +14172,8 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Thousands of teams use our tool to speed up their work. Start today.'), cssClass: 'lead mb-4 text-body-secondary' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('CTA Group') }, [
                                     createNode('component', { componentType: 'btn', text: _sdT('Try It Free'), variant: 'primary',           size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Contact Us'),      variant: 'outline-secondary', size: 'lg', href: '#' })
+                                    // Solid: an outline button's text is readable on bg-body only.
+                                    createNode('component', { componentType: 'btn', text: _sdT('Contact Us'),      variant: 'secondary', size: 'lg', href: '#' })
                                 ])
                             ])
                         ])
@@ -14140,18 +14197,20 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
-                // CTA: Gradient — strong accent, gradient bg via _attrs (attributes-driven, Section 7 C)
+                // CTA: Gradient — strong accent band on the palette's primary colour.
+                // text-bg-primary writes the palette's on-primary text colour; a fixed
+                // gradient image here ignored the palette and left the text contrast
+                // unknown. An operator can still add a gradient in Background.
                 if (ctype === 'cta-gradient') {
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-white position-relative', customName: _sdT('CTA (Gradient)'),
-                        _attrs: [{ name: 'style', value: 'background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);' }] }, [
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-bg-primary', customName: _sdT('CTA (Gradient)') }, [
                         createNode('container', { fluid: false, cssClass: 'text-center' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('CTA Body') }, [
-                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Limited Time'), cssClass: 'badge bg-white bg-opacity-25 text-white rounded-pill mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Limited Time'), cssClass: 'badge text-bg-secondary rounded-pill mb-3' }),
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Fifty percent off the first month'), cssClass: 'display-5 fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Take advantage of this limited-time offer to speed up your rollout.'), cssClass: 'lead mb-4' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('CTA Group') }, [
-                                    createNode('component', { componentType: 'btn', text: _sdT('Claim It Now'), variant: 'light',         size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Details'),       variant: 'outline-light', size: 'lg', href: '#' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Claim It Now'), variant: 'secondary', size: 'lg', href: '#' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Details'),       variant: 'link',      size: 'lg', href: '#', cssClass: 'text-reset' })
                                 ])
                             ])
                         ])
@@ -14208,10 +14267,10 @@ const StyleDesigner = (function () {
                     var _flItem = function (n, title, body) {
                         return createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3', customName: _sdT('Feature Item {var}', n) }, [
                             createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Check Icon Wrap') }, [
-                                createNode('content', { contentType: 'icon', iconName: 'bi-check-circle-fill', cssClass: 'text-success', fontSize: '24' })
+                                createNode('content', { contentType: 'icon', iconName: 'bi-check-circle-fill', cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Feature Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-bold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-bold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary small mb-0' })
                             ])
                         ]);
@@ -14315,20 +14374,23 @@ const StyleDesigner = (function () {
                             { name: 'data-bs-slide-to', value: String(n) },
                             { name: 'aria-label',      value: _sdT('Slide {var}', (n + 1)) }
                         ];
-                        if (active) {
-                            attrs.push({ name: 'class',        value: 'active' });
-                            attrs.push({ name: 'aria-current', value: 'true' });
-                        }
+                        // The class comes from cssClass; a class in _attrs as well is
+                        // written as a second, duplicate class attribute.
+                        if (active) attrs.push({ name: 'aria-current', value: 'true' });
                         return createNode('semantic', { tag: 'button', cssClass: active ? 'active' : '', customName: _sdT('Indicator {var}', (n + 1)), _attrs: attrs });
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('Testimonial (Carousel)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Carousel Body') }, [
-                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide', customName: 'Carousel',
+                                // No autoplay: Bootstrap's carousel keeps cycling under keyboard
+                                // focus and reduced motion and has no pause button (WCAG 2.2.2),
+                                // so the indicators move it. Carousel Options > Autoplay
+                                // switches it on. pg-carousel-ink draws the indicators in the
+                                // text colour: Bootstrap's white (black in dark mode) assumes
+                                // a photo behind them.
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: 'Carousel',
                                     _attrs: [
-                                        { name: 'id',              value: carId },
-                                        { name: 'data-bs-ride',    value: 'carousel' },
-                                        { name: 'data-bs-interval', value: '6000' }
+                                        { name: 'id',              value: carId }
                                     ] }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'carousel-inner text-center', customName: _sdT('Carousel Inner') }, [
                                         _tcSlide(1, true,  _sdT('This product transformed how our team works: we halved our processes.'), _sdT('Jane Cooper'),  _sdT('Marketing Director, Vertex'), 'avatar1'),
@@ -14352,7 +14414,10 @@ const StyleDesigner = (function () {
                     var _icSlide = function (n, active, src, alt, title, caption) {
                         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (active ? ' active' : ''), customName: _sdT('Carousel Item {var}', n) }, [
                             createNode('content', { contentType: 'image', src: src, alt: alt, cssClass: 'd-block w-100' }),
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', customName: _sdT('Carousel Caption {var}', n) }, [
+                            // The caption sits on the shared dark scrim, across the slide's
+                            // full width, with the theme switch keeping its text light.
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block start-0 end-0 bottom-0 px-5 pt-5 pb-4 text-body pg-shade-bottom', customName: _sdT('Carousel Caption {var}', n),
+                                _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: '' }),
                                 createNode('content', { contentType: 'paragraph', text: caption, cssClass: '' })
                             ])
@@ -14377,18 +14442,19 @@ const StyleDesigner = (function () {
                             ] }, [
                             createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
                                 _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
-                            createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', customName: _sdT('SR Label') }, [
-                                createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0' })
-                            ])
+                            // Inline text: a <button> holds phrasing content only.
+                            createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'visually-hidden' })
                         ]);
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5', customName: _sdT('Image Carousel') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide', customName: 'Carousel',
+                            // No autoplay (WCAG 2.2.2): the controls and indicators move it;
+                            // Carousel Options > Autoplay switches it on. pg-carousel-photo
+                            // keeps the controls and indicators white over the photos and
+                            // the caption scrim in a dark design too.
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: 'Carousel',
                                 _attrs: [
-                                    { name: 'id',               value: imgCarId },
-                                    { name: 'data-bs-ride',     value: 'carousel' },
-                                    { name: 'data-bs-interval', value: '5000' }
+                                    { name: 'id',               value: imgCarId }
                                 ] }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Carousel Indicators') }, [
                                     _icIndicator(0, true),
@@ -14465,14 +14531,14 @@ const StyleDesigner = (function () {
                         var cardCss = highlight ? 'card h-100 border-primary shadow' : 'card h-100 border-0 shadow-sm';
                         var children = [];
                         if (highlight) {
-                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header bg-primary text-white text-center fw-semibold', customName: _sdT('Plan Badge') }, [
+                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header text-bg-primary text-center fw-semibold', customName: _sdT('Plan Badge') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Most Popular'), cssClass: 'mb-0' })
                             ]));
                         }
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-5 fw-bold' }),
                                 createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -14509,7 +14575,7 @@ const StyleDesigner = (function () {
                 // Pricing: Comparison — full feature matrix table with check/x icons per tier
                 if (ctype === 'pricing-comparison') {
                     var _pcTh = function (label, highlight, wrap) {
-                        var cls = 'text-center p-3' + (highlight ? ' bg-primary text-white' : '');
+                        var cls = 'text-center p-3' + (highlight ? ' text-bg-primary' : '');
                         return createNode('semantic', { tag: 'th', cssClass: cls, customName: (wrap || _sdT('Column Header')) }, [
                             createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0 fw-semibold' })
                         ]);
@@ -14543,7 +14609,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Compare the Plans'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('See what every plan offers in a single table.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('Compare the Plans') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded overflow-hidden shadow-sm mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -14628,14 +14697,14 @@ const StyleDesigner = (function () {
                         var cardCss = highlight ? 'card h-100 border-primary shadow' : 'card h-100 border-0 shadow-sm';
                         var children = [];
                         if (highlight) {
-                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header bg-primary text-white text-center fw-semibold', customName: _sdT('Plan Badge') }, [
+                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header text-bg-primary text-center fw-semibold', customName: _sdT('Plan Badge') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Best Value'), cssClass: 'mb-0' })
                             ]));
                         }
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptoFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 // data-price-monthly / data-price-yearly carry both values; script swaps textContent
                                 createNode('content', { contentType: 'heading', tag: 'span', text: priceM, cssClass: 'display-5 fw-bold',
@@ -14770,7 +14839,7 @@ const StyleDesigner = (function () {
                         return createNode('col', { xs: '12', sm: '', md: '6', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Progress Stat {var}', n) }, [
                             createNode('semantic', { tag: 'div', cssClass: 'p-4 bg-body-tertiary rounded h-100', customName: _sdT('Progress Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-between align-items-end mb-2', customName: _sdT('Progress Header') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'mb-0' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 mb-0' }),
                                     createNode('content', { contentType: 'heading', tag: 'span', text: '%' + percent, cssClass: 'h4 fw-bold text-primary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-8', customName: _sdT('Progress Track')
@@ -14822,7 +14891,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/400/400', alt: name, cssClass: 'card-img-top object-fit-cover pg-ratio-1x1'
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Member Body') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-1' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-1' }),
                                     createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-primary small mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center', customName: _sdT('Social Links') }, [
@@ -14855,7 +14924,7 @@ const StyleDesigner = (function () {
                     var _tmMember = function (n, seed, name, role) {
                         return createNode('semantic', { tag: 'div', cssClass: 'col text-center', customName: _sdT('Member {var}', n) }, [
                             createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/200/200', alt: name, cssClass: 'rounded-circle mb-3', width: '100', height: '100' }),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: name, cssClass: 'fw-semibold mb-0' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h6 fw-semibold mb-0' }),
                             createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-body-secondary small mb-0' })
                         ]);
                     };
@@ -14890,7 +14959,9 @@ const StyleDesigner = (function () {
                     };
                     var _tlLeader = function (n, seed, badge, name, title, bio, quote) {
                         return createNode('col', { xs: '12', sm: '', md: '', lg: '6', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Leader {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow bg-body-tertiary h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
+                            // On the body colour: the palette makes text-primary readable
+                            // against it only (on body-tertiary it fell to 3.9:1 in dark mode).
+                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'row g-0 h-100', customName: _sdT('Leader Row') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-5', customName: _sdT('Leader Image Col') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/500/600', alt: name, cssClass: 'img-fluid h-100 w-100 object-fit-cover'
@@ -14899,7 +14970,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Leader Text Col') }, [
                                         createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Leader Body') }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: badge, cssClass: 'badge text-bg-primary mb-2' }),
-                                            createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-bold mb-1' }),
+                                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-bold mb-1' }),
                                             createNode('content', { contentType: 'paragraph', text: title, cssClass: 'text-primary mb-3' }),
                                             createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary mb-3' }),
                                             createNode('semantic', { tag: 'blockquote', cssClass: 'border-start border-primary border-3 ps-3 fst-italic mb-3', customName: _sdT('Leader Quote') }, [
@@ -15072,9 +15143,9 @@ const StyleDesigner = (function () {
                 if (ctype === 'faq-twocol') {
                     var _ftBlock = function (n, q, a) {
                         return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('FAQ Block {var}', n) }, [
-                            createNode('semantic', { tag: 'h5', cssClass: 'fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
+                            createNode('semantic', { tag: 'h3', cssClass: 'h5 fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
                                 createNode('content', { contentType: 'icon', iconName: 'bi-question-circle-fill', cssClass: 'text-primary flex-shrink-0', fontSize: '20' }),
-                                createNode('content', { contentType: 'paragraph', text: q, cssClass: 'mb-0' })
+                                createNode('content', { contentType: 'heading', tag: 'span', text: q, cssClass: '' })
                             ]),
                             createNode('content', { contentType: 'paragraph', text: a, cssClass: 'text-body-secondary mb-0 ps-4' })
                         ]);
@@ -15110,7 +15181,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: 'bi-circle-fill', cssClass: 'text-primary', fontSize: '14' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('Content Col') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -15140,7 +15211,7 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow-sm', customName: _sdT('Timeline Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: date, cssClass: 'badge text-bg-primary mb-2' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                                 ])
                             ])
@@ -15167,11 +15238,11 @@ const StyleDesigner = (function () {
                 if (ctype === 'timeline-horizontal') {
                     var _thStep = function (n, num, title, body) {
                         return createNode('semantic', { tag: 'div', cssClass: 'col text-center', customName: _sdT('Step {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3 pg-circle-60', customName: _sdT('Step Number Circle')
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center rounded-circle text-bg-primary mx-auto mb-3 pg-circle-60', customName: _sdT('Step Number Circle')
  }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: num, cssClass: 'h4 fw-bold mb-0' })
                             ]),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-2' }),
                             createNode('content', { contentType: 'paragraph', text: body, cssClass: 'small text-body-secondary mb-0' })
                         ]);
                     };
@@ -15200,7 +15271,7 @@ const StyleDesigner = (function () {
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body d-flex flex-column', customName: _sdT('Article Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2 align-self-start' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary mt-auto', customName: _sdT('Meta') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + authorSeed + '/48/48', alt: author, cssClass: 'rounded-circle', width: '24', height: '24' }),
@@ -15235,7 +15306,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Small Article Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-secondary small mb-1' }),
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: date, cssClass: 'small text-body-secondary mb-0' })
                             ])
                         ]);
@@ -15282,7 +15353,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Article Content') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2' }),
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary mb-3' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary', customName: _sdT('Article Meta') }, [
                                     createNode('content', { contentType: 'paragraph', text: author, cssClass: 'mb-0 fw-semibold' }),
@@ -15398,8 +15469,10 @@ const StyleDesigner = (function () {
                             itemNodes.push(_cvItem(variant === 'danger' ? 'bi-x' : 'bi-check-lg', variant, items[i]));
                         }
                         return createNode('col', { xs: '12', sm: '', md: '6', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('VS Side {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card h-100 border-' + variant + ' border-opacity-25', customName: _sdT('VS Card') }, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card-header bg-' + variant + ' bg-opacity-10 text-' + variant + ' fw-semibold d-flex align-items-center gap-2', customName: _sdT('VS Header') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'card h-100 border-' + variant + '-subtle', customName: _sdT('VS Card') }, [
+                                // Status text on its tint: the -emphasis shade is readable on
+                                // the -subtle surface in light and dark mode alike.
+                                createNode('semantic', { tag: 'div', cssClass: 'card-header bg-' + variant + '-subtle text-' + variant + '-emphasis fw-semibold d-flex align-items-center gap-2', customName: _sdT('VS Header') }, [
                                     createNode('content', { contentType: 'icon', iconName: headerIcon, cssClass: '', fontSize: '20' }),
                                     createNode('content', { contentType: 'paragraph', text: headerText, cssClass: 'mb-0' })
                                 ]),
@@ -15452,7 +15525,7 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     var _ctTh = function (label, highlight) {
-                        var cls = 'text-center p-3' + (highlight ? ' bg-primary text-white' : '');
+                        var cls = 'text-center p-3' + (highlight ? ' text-bg-primary' : '');
                         return createNode('semantic', { tag: 'th', cssClass: cls, customName: _sdT('Col Header') }, [
                             createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0 fw-semibold' })
                         ]);
@@ -15463,7 +15536,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('How We Compare'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('We put ourselves next to the rest of the market, feature by feature.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('How We Compare') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded shadow-sm overflow-hidden mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -15506,7 +15582,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Product Body') }, [
                                     createNode('content', { contentType: 'image', src: url, alt: brand, cssClass: 'mb-3 pg-logo-60'
  }),
-                                    createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-semibold mb-2' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Price') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-6 fw-bold text-primary' }),
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -15586,7 +15662,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15603,7 +15679,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Info Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -15612,7 +15688,7 @@ const StyleDesigner = (function () {
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: '', cssClass: 'g-lg-5', customName: _sdT('Contact Row') }, [
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Info Col') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Contact Us'), cssClass: 'fw-bold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Contact Us'), cssClass: 'h3 fw-bold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Write to us with any question, feedback or partnership idea.'), cssClass: 'lead text-body-secondary mb-4' }),
                                     _ciInfoItem('bi-geo-alt-fill',   _sdT('Address'),    _sdT('42 Main Street, New York')),
                                     _ciInfoItem('bi-telephone-fill', _sdT('Phone'),  '+90 212 555 0100'),
@@ -15657,7 +15733,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                         ])
                                     ])
                                 ])
@@ -15720,7 +15796,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12 text-center', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15738,6 +15814,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Join Our Weekly Newsletter'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('The newest posts in your inbox every Monday.'), cssClass: 'lead text-body-secondary mb-0' }),
                                 createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mt-4 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                        _attrs: [{ name: 'for', value: nlId + '_email' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                    ]),
                                     createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                         _attrs: [
                                             { name: 'type',        value: 'email' },
@@ -15746,7 +15826,7 @@ const StyleDesigner = (function () {
                                             { name: 'placeholder', value: _sdT('Your email address') },
                                             { name: 'required',    value: 'required' }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('No spam, unsubscribe any time.'), cssClass: 'small text-body-secondary mt-3 mb-0' })
                             ])
@@ -15757,15 +15837,19 @@ const StyleDesigner = (function () {
                 // Newsletter: Split — primary bg section, left text + right form
                 if (ctype === 'newsletter-split') {
                     var nsId = 'ns_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-primary text-white', customName: _sdT('Newsletter (Split)') }, [
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-bg-primary', customName: _sdT('Newsletter (Split)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: 'center', cssClass: '', customName: _sdT('Newsletter Row') }, [
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Text Col') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Never Miss an Update'), cssClass: 'fw-bold mb-2' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Product updates, new features and industry news straight to your inbox.'), cssClass: 'lead mb-0 opacity-75' })
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Product updates, new features and industry news straight to your inbox.'), cssClass: 'lead mb-0' })
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Form Col') }, [
                                     createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: nsId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
                                         createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                             _attrs: [
                                                 { name: 'type',        value: 'email' },
@@ -15773,7 +15857,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: nsId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'light', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'secondary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15799,6 +15883,10 @@ const StyleDesigner = (function () {
                                                 createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Content Full of Ideas'), cssClass: 'fw-bold mb-2' }),
                                                 createNode('content', { contentType: 'paragraph', text: _sdT('Selected articles, product updates and notes from our team every month. Short and worthwhile, with nothing wasted.'), cssClass: 'text-body-secondary mb-4' }),
                                                 createNode('semantic', { tag: 'form', cssClass: 'd-grid gap-2', customName: _sdT('Newsletter Form') }, [
+                                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                                        _attrs: [{ name: 'for', value: ncId + '_email' }] }, [
+                                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                                    ]),
                                                     createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Email Input'),
                                                         _attrs: [
                                                             { name: 'type',        value: 'email' },
@@ -15806,7 +15894,7 @@ const StyleDesigner = (function () {
                                                             { name: 'name',        value: ncId + '_email' },
                                                             { name: 'placeholder', value: _sdT('Your email address') }
                                                         ] }),
-                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                                 ])
                                             ])
                                         ])
@@ -15874,7 +15962,7 @@ const StyleDesigner = (function () {
                                                 ])
                                             ]),
                                             createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                             ])
                                         ]),
                                         createNode('semantic', { tag: 'hr', cssClass: 'my-4', customName: _sdT('Divider') }),
@@ -15915,10 +16003,10 @@ const StyleDesigner = (function () {
                     };
                     return createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Login (Split)') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'row g-0', customName: _sdT('Login Row') }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 d-none d-lg-flex align-items-center justify-content-center bg-primary text-white py-5 px-4 px-md-5', customName: _sdT('Marketing Col') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 d-none d-lg-flex align-items-center justify-content-center text-bg-primary py-5 px-4 px-md-5', customName: _sdT('Marketing Col') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Marketing Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Welcome Back'), cssClass: 'fw-bold mb-3' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Pick up where you left off, together with your team.'), cssClass: 'lead opacity-75 mb-4' }),
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Pick up where you left off, together with your team.'), cssClass: 'lead mb-4' }),
                                     _lsFeature(_sdT('Reach all your projects in one click')),
                                     _lsFeature(_sdT('Real-time team collaboration')),
                                     _lsFeature(_sdT('End-to-end encrypted data'))
@@ -15957,7 +16045,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                         ])
                                     ])
                                 ])
@@ -15994,7 +16082,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Login Form') }, [
                                     _lmFloating(lmId + '_email', 'email',    _sdT('Email')),
                                     _lmFloating(lmId + '_pass',  'password', _sdT('Password')),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', href: '#', cssClass: 'w-100 mb-3' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: 'w-100 mb-3' }),
                                     createNode('semantic', { tag: 'p', cssClass: 'small text-center mb-0', customName: _sdT('Signup Link') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Don\'t have an account?'), cssClass: 'mb-0 d-inline text-body-secondary' }),
                                         createNode('semantic', { tag: 'a', cssClass: 'text-decoration-none', customName: _sdT('Signup Anchor'),
@@ -16012,14 +16100,14 @@ const StyleDesigner = (function () {
                 if (ctype === 'footer-columns') {
                     var _fcLink = function (label) {
                         return createNode('semantic', { tag: 'li', cssClass: 'mb-2', customName: _sdT('Link Item') }, [
-                            createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Link'),
+                            createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Link'),
                                 _attrs: [{ name: 'href', value: '#' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'mb-0 d-inline' })
                             ])
                         ]);
                     };
                     var _fcSocial = function (icon, label) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-white-50', customName: label,
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', customName: label,
                             _attrs: [
                                 { name: 'href',       value: '#' },
                                 { name: 'aria-label', value: label }
@@ -16035,7 +16123,10 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'ul', cssClass: 'list-unstyled', customName: _sdT('{var} Links', title) }, nodes)
                         ]);
                     };
-                    return createNode('semantic', { tag: 'footer', cssClass: 'bg-dark text-light pt-5 pb-3', customName: _sdT('Footer (Columns)') }, [
+                    // Dark band: the theme switch plus bg-body text-body, so the
+                    // palette's dark colours and readable text apply inside it.
+                    return createNode('semantic', { tag: 'footer', cssClass: 'pt-5 pb-3 bg-body text-body', customName: _sdT('Footer (Columns)'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: '', cssClass: '', customName: _sdT('Footer Row') }, [
                                 createNode('col', { xs: '12', sm: '6', md: '', lg: '3', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Brand Col') }, [
@@ -16043,7 +16134,7 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'icon', iconName: 'bi-hexagon-fill', cssClass: 'text-primary', fontSize: '24' }),
                                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('ACME'), cssClass: 'fw-bold mb-0' })
                                     ]),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('The cloud platform that automates how teams work.'), cssClass: 'text-white-50 small mb-3' }),
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('The cloud platform that automates how teams work.'), cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3', customName: _sdT('Social Links') }, [
                                         _fcSocial('bi-twitter-x', 'Twitter'),
                                         _fcSocial('bi-linkedin',  'LinkedIn'),
@@ -16056,18 +16147,18 @@ const StyleDesigner = (function () {
                                 _fcCol(_sdT('Resources'), [_sdT('Documentation'), 'Blog', _sdT('Community'), _sdT('Support')])
                             ]),
                             createNode('semantic', { tag: 'hr', cssClass: 'my-4 border-secondary', customName: _sdT('Divider') }),
-                            createNode('semantic', { tag: 'div', cssClass: 'd-md-flex justify-content-between align-items-center text-center small text-white-50', customName: _sdT('Bottom Bar') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-md-flex justify-content-between align-items-center text-center small text-body-secondary', customName: _sdT('Bottom Bar') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('© 2026 ACME. All rights reserved.'), cssClass: 'mb-2 mb-md-0' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 justify-content-center', customName: _sdT('Policies') }, [
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Privacy'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Privacy'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Privacy'), cssClass: 'mb-0 d-inline' })
                                     ]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Privacy Policy'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Privacy Policy'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Privacy Policy'), cssClass: 'mb-0 d-inline' })
                                     ]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Cookies'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Cookies'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Cookies'), cssClass: 'mb-0 d-inline' })
                                     ])
@@ -16153,6 +16244,10 @@ const StyleDesigner = (function () {
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Newsletter Form Col') }, [
                                     createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: fnId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
                                         createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                             _attrs: [
                                                 { name: 'type',        value: 'email' },
@@ -16160,7 +16255,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: fnId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ]),
@@ -16280,7 +16375,7 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     var _ndSocial = function (icon, label) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-white-50', customName: label,
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', customName: label,
                             _attrs: [
                                 { name: 'href',       value: '#' },
                                 { name: 'aria-label', value: label }
@@ -16297,7 +16392,8 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     return createNode('semantic', { tag: 'header', cssClass: '', customName: _sdT('Navbar (Double)') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'bg-dark text-white-50 py-2 small', customName: _sdT('Utility Bar') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'py-2 small bg-body text-body-secondary', customName: _sdT('Utility Bar'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                             createNode('semantic', { tag: 'div', cssClass: 'container d-md-flex justify-content-between align-items-center', customName: _sdT('Utility Container') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 justify-content-center justify-content-md-start', customName: _sdT('Utility Left') }, [
                                     _ndUtilItem('bi-telephone-fill', '+90 212 555 0100'),
@@ -16445,13 +16541,18 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'mb-0 d-inline' })
                         ]);
                     };
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('404 (Search)') }, [
+                    // On bg-body: the palette makes link text readable against it only.
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5', customName: _sdT('404 (Search)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-7 mx-auto text-center', customName: _sdT('404 Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'div', text: '404', cssClass: 'display-3 fw-bold text-primary mb-2' }),
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('We could not find what you were looking for'), cssClass: 'fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Would you like to search instead? You may find what you need in our content.'), cssClass: 'lead text-body-secondary mb-4' }),
                                 createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mb-4 flex-column flex-sm-row', customName: _sdT('Search Form') }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
+                                        _attrs: [{ name: 'for', value: e4sId + '_q' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
+                                    ]),
                                     createNode('semantic', { tag: 'input', cssClass: 'form-control form-control-lg flex-grow-1', customName: _sdT('Search Input'),
                                         _attrs: [
                                             { name: 'type',        value: 'search' },
@@ -16459,7 +16560,7 @@ const StyleDesigner = (function () {
                                             { name: 'name',        value: 'q' },
                                             { name: 'placeholder', value: _sdT('What are you looking for?') }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary', customName: _sdT('Quick Links') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Frequently visited:'), cssClass: 'mb-0 d-inline' }),
@@ -16521,7 +16622,8 @@ const StyleDesigner = (function () {
                             ])
                         ]);
                     };
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('Breadcrumbs (Header)') }, [
+                    // On bg-body: the palette makes link text readable against it only.
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 border-bottom', customName: _sdT('Breadcrumbs (Header)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'nav', cssClass: 'mb-3', customName: _sdT('Breadcrumbs Nav'),
                                 _attrs: [{ name: 'aria-label', value: 'breadcrumb' }] }, [
@@ -16618,7 +16720,7 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 flex-shrink-0 mt-3 mt-md-0', customName: _sdT('Action Group') }, [
                             createNode('component', { componentType: 'btn', text: _sdT('View'),       variant: 'warning',           size: 'sm', href: '#', cssClass: '' }),
-                            createNode('component', { componentType: 'btn', text: _sdT('Later'),   variant: 'outline-secondary', size: 'sm', href: '#', cssClass: '' })
+                            createNode('component', { componentType: 'btn', text: _sdT('Later'),   variant: 'link',              size: 'sm', href: '#', cssClass: 'text-reset' })
                         ])
                     ]);
                 }
@@ -16774,11 +16876,13 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
-                    // price, then an optional description and diet tags.
-                    var _bkMenuItem = function (name, desc, price, tags) {
+                    // price, then an optional description and diet tags. The
+                    // name is an h4 under a category h3; a block without
+                    // category headings passes 'h3' so no level is skipped.
+                    var _bkMenuItem = function (name, desc, price, tags, tag) {
                         var kids = [
                             _bkDiv('d-flex align-items-baseline gap-2', _sdT('Item Head'), [
-                                _bkH('h4', name, 'h6 fw-semibold mb-0'),
+                                _bkH(tag || 'h4', name, 'h6 fw-semibold mb-0'),
                                 _bkDiv('flex-grow-1 border-bottom border-secondary-subtle', _sdT('Leader')),
                                 _bkH('span', price, 'fw-semibold text-nowrap')
                             ])
@@ -16931,7 +17035,7 @@ const StyleDesigner = (function () {
                                     _bkCol(_sdT('Booking Actions'), [
                                         _bkDiv('d-grid gap-2', _sdT('Action Group'), [
                                             _bkBtn(_sdT('Book an Appointment'), 'primary', 'lg'),
-                                            _bkLink(_sdT('Call +1 202 555 0143'), 'tel:+12025550143', 'btn btn-outline-primary btn-lg', _sdT('Phone Button'))
+                                            _bkLink(_sdT('Call +1 202 555 0143'), 'tel:+12025550143', 'btn btn-secondary btn-lg', _sdT('Phone Button'))
                                         ])
                                     ], '4')
                                 ], 'align-items-center')
@@ -17066,6 +17170,8 @@ const StyleDesigner = (function () {
                     // Menu: Tabs — pill tabs per category, two columns of priced lines in each pane
                     if (ctype === 'menu-tabs') {
                         var _mtPfx = _bkUid('mt');
+                        // The items sit right under the block's h2 (the tabs are buttons).
+                        var _mtItem = function (name, desc, price, tags) { return _bkMenuItem(name, desc, price, tags, 'h3'); };
                         var _mtTab = function (i, label, icon) {
                             return _bkTag('li', 'nav-item', label, [
                                 _bkTag('button', 'nav-link d-flex align-items-center gap-2' + (i === 0 ? ' active' : ''), _sdT('Tab Button'), [
@@ -17099,31 +17205,31 @@ const StyleDesigner = (function () {
                             ], [{ name: 'role', value: 'tablist' }]),
                             _bkDiv('tab-content', _sdT('Menu Panes'), [
                                 _mtPane(0, _sdT('Coffee'), [
-                                    _bkMenuItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
-                                    _bkMenuItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
-                                    _bkMenuItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
+                                    _mtItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
+                                    _mtItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
+                                    _mtItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
                                 ], [
-                                    _bkMenuItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
-                                    _bkMenuItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
-                                    _bkMenuItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
+                                    _mtItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
+                                    _mtItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
+                                    _mtItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
                                 ]),
                                 _mtPane(1, _sdT('Breakfast'), [
-                                    _bkMenuItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
-                                    _bkMenuItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
-                                    _bkMenuItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
+                                    _mtItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
+                                    _mtItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
+                                    _mtItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
                                 ], [
-                                    _bkMenuItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
-                                    _bkMenuItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
+                                    _mtItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
+                                    _mtItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
                                 ]),
                                 _mtPane(2, _sdT('Desserts'), [
-                                    _bkMenuItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
-                                    _bkMenuItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
+                                    _mtItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
+                                    _mtItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
                                 ], [
-                                    _bkMenuItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
-                                    _bkMenuItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
-                                    _bkMenuItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
+                                    _mtItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
+                                    _mtItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
+                                    _mtItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
                                 ])
                             ])
                         ]);
@@ -17247,8 +17353,8 @@ const StyleDesigner = (function () {
                                         _bkH('span', _sdT('Served until 15:00'), 'small text-body-secondary')
                                     ]),
                                     _bkDiv('border-top pt-3', _sdT('More Specials'), [
-                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00')),
-                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'))
+                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00'), null, 'h3'),
+                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'), null, 'h3')
                                     ])
                                 ], '6')
                             ], 'align-items-center g-lg-5')
@@ -17346,7 +17452,7 @@ const StyleDesigner = (function () {
                                     _bkH('span', '4.9', 'display-4 fw-bold d-block lh-1 mb-2'),
                                     _bkStars('20'),
                                     _bkP(_sdT('Average of 320 reviews'), 'text-body-secondary mb-4'),
-                                    _bkBtn(_sdT('Write a review'), 'outline-primary')
+                                    _bkBtn(_sdT('Write a review'), 'primary')
                                 ], '3', '', '', 'text-center text-lg-start'),
                                 _bkCol(_sdT('Reviews'), [
                                     _bkRow(_sdT('Reviews Row'), [
@@ -18852,9 +18958,12 @@ const StyleDesigner = (function () {
                 // Navbar Explosion
                 if (ctype === 'navbar') {
                     var navId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-dark bg-dark', customName: 'Navbar' }, [
+                    // Dark bar through the theme switch (navbar-dark is deprecated in
+                    // Bootstrap 5.3); the brand takes the palette's readable shade.
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + navId }, { name: 'aria-controls', value: navId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18881,9 +18990,9 @@ const StyleDesigner = (function () {
                 // Navbar: Brand + links + CTA button (light theme)
                 if (ctype === 'navbar-light-cta') {
                     var _nlId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom shadow-sm', customName: 'Navbar' }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler border-0', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nlId }, { name: 'aria-controls', value: _nlId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18906,17 +19015,31 @@ const StyleDesigner = (function () {
                 // Navbar: Brand + search input + user dropdown
                 if (ctype === 'navbar-search') {
                     var _nsId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md navbar-dark bg-dark', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nsId }, { name: 'aria-controls', value: _nsId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'collapse navbar-collapse', id: _nsId, customName: _sdT('Nav Content') }, [
-                                createNode('semantic', { tag: 'form', cssClass: 'd-flex mx-auto', customName: _sdT('Search Form') }, [
-                                    createNode('component', { componentType: 'form-search', cssClass: 'me-2', placeholder: _sdT('Search...') }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'outline-light', size: '' })
+                                // A real field, its hidden label and a submit button: the form
+                                // can be sent with Enter or the button.
+                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mx-auto my-2 my-md-0', customName: _sdT('Search Form'),
+                                    _attrs: [{ name: 'role', value: 'search' }] }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
+                                        _attrs: [{ name: 'for', value: _nsId + '_q' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
+                                    ]),
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Search Input'),
+                                        _attrs: [
+                                            { name: 'type',        value: 'search' },
+                                            { name: 'id',          value: _nsId + '_q' },
+                                            { name: 'name',        value: 'q' },
+                                            { name: 'placeholder', value: _sdT('Search...') }
+                                        ] }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                 ]),
                                 createNode('semantic', { tag: 'ul', cssClass: 'navbar-nav ms-3', customName: _sdT('User Menu') }, [
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item dropdown', customName: _sdT('User Dropdown') }, [
@@ -18938,9 +19061,10 @@ const StyleDesigner = (function () {
                 // Navbar: Dark theme, centered links
                 if (ctype === 'navbar-dark-center') {
                     var _ndId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-dark bg-dark', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _ndId }, { name: 'aria-controls', value: _ndId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -18952,7 +19076,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [createNode('content', { contentType: 'link', text: _sdT('Portfolio'),     href: '#', cssClass: 'nav-link' })]),
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [createNode('content', { contentType: 'link', text: _sdT('Contact us'),  href: '#', cssClass: 'nav-link' })])
                                 ]),
-                                createNode('content', { contentType: 'link', text: _sdT('Get in touch →'), href: '#', cssClass: 'nav-link text-warning fw-semibold' })
+                                createNode('content', { contentType: 'link', text: _sdT('Get in touch →'), href: '#', cssClass: 'nav-link link-primary fw-semibold' })
                             ])
                         ])
                     ]);
@@ -18963,7 +19087,7 @@ const StyleDesigner = (function () {
                 // Footer: minimal — copyright + social icons
                 if (ctype === 'footer-minimal') {
                     var _socialIcon = function(icon, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', href: href || '#',
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary',
                             _attrs: [{ name: 'href', value: href || '#' }, { name: 'aria-label', value: icon.replace('bi-', '') }], customName: _sdT('{var} Link', icon.replace('bi-', '')) }, [
                             createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'fs-5' })
                         ]);
@@ -19017,27 +19141,41 @@ const StyleDesigner = (function () {
 
                 // Footer: newsletter subscription + copyright
                 if (ctype === 'footer-newsletter') {
-                    return createNode('semantic', { tag: 'footer', cssClass: 'py-5 bg-dark text-white', customName: _sdT('Footer') }, [
+                    var _fnlId = 'fnl_' + Math.random().toString(36).substr(2, 6);
+                    return createNode('semantic', { tag: 'footer', cssClass: 'py-5 bg-body text-body', customName: _sdT('Footer'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Footer Container') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'row align-items-center mb-5 pb-4 border-bottom border-secondary', customName: _sdT('Newsletter Row') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-5 mb-3 mb-md-0', customName: _sdT('Newsletter Text') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Stay in the loop'), cssClass: 'fw-bold mb-1' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-white-50 mb-0' })
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-body-secondary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Newsletter Form') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2', customName: _sdT('Subscribe Form') }, [
-                                        createNode('component', { componentType: 'form-email', cssClass: 'flex-grow-1', placeholder: _sdT('Enter your email') }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '' })
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Subscribe Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: _fnlId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
+                                        createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                            _attrs: [
+                                                { name: 'type',         value: 'email' },
+                                                { name: 'id',           value: _fnlId + '_email' },
+                                                { name: 'name',         value: 'email' },
+                                                { name: 'placeholder',  value: _sdT('Enter your email') },
+                                                { name: 'autocomplete', value: 'email' },
+                                                { name: 'required',     value: 'required' }
+                                            ] }),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                     ])
                                 ])
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-between align-items-center', customName: _sdT('Footer Bar') }, [
-                                createNode('content', { contentType: 'paragraph', text: _sdT('© 2025 Company Name. All rights reserved.'), cssClass: 'mb-0 text-white-50 small' }),
+                                createNode('content', { contentType: 'paragraph', text: _sdT('© 2025 Company Name. All rights reserved.'), cssClass: 'mb-0 text-body-secondary small' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 align-items-center', customName: _sdT('Social Links') }, [
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Twitter' }], customName: 'Twitter'   }, [createNode('content', { contentType: 'icon', iconName: 'bi-twitter-x', cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'GitHub' }], customName: 'GitHub'    }, [createNode('content', { contentType: 'icon', iconName: 'bi-github',    cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'LinkedIn' }], customName: 'LinkedIn'  }, [createNode('content', { contentType: 'icon', iconName: 'bi-linkedin',  cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Instagram' }], customName: 'Instagram' }, [createNode('content', { contentType: 'icon', iconName: 'bi-instagram', cssClass: 'fs-5' })])
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Twitter' }], customName: 'Twitter'   }, [createNode('content', { contentType: 'icon', iconName: 'bi-twitter-x', cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'GitHub' }], customName: 'GitHub'    }, [createNode('content', { contentType: 'icon', iconName: 'bi-github',    cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'LinkedIn' }], customName: 'LinkedIn'  }, [createNode('content', { contentType: 'icon', iconName: 'bi-linkedin',  cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Instagram' }], customName: 'Instagram' }, [createNode('content', { contentType: 'icon', iconName: 'bi-instagram', cssClass: 'fs-5' })])
                                 ])
                             ])
                         ])
@@ -19086,7 +19224,7 @@ const StyleDesigner = (function () {
                             ])
                         ];
                         if (featured) {
-                            children.unshift(createNode('semantic', { tag: 'span', cssClass: 'badge bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2 rounded-pill',
+                            children.unshift(createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2 rounded-pill',
                                 text: _sdT('Most Popular'), customName: _sdT('Badge') }));
                         }
                         return createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('{var} Column', tier) }, [
@@ -19105,17 +19243,17 @@ const StyleDesigner = (function () {
  }, [
                         // Monthly/Annual toggle — Bootstrap pill tabs
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-center mb-4', customName: _sdT('Billing Toggle') }, [
-                            createNode('semantic', { tag: 'ul', cssClass: 'nav nav-pills bg-body-tertiary rounded-pill p-1', customName: _sdT('Toggle Group'),
+                            createNode('semantic', { tag: 'ul', cssClass: 'nav nav-pills bg-body border rounded-pill p-1', customName: _sdT('Toggle Group'),
                                 _attrs: [{ name: 'role', value: 'tablist' }] }, [
                                 createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Monthly'),
                                     _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                     createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Monthly'), cssClass: 'nav-link rounded-pill px-4 active',
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_m' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_m' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: ptId + '_m' }, { name: 'aria-selected', value: 'true' }] })
                                 ]),
                                 createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Annual'),
                                     _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                     createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Annual'), cssClass: 'nav-link rounded-pill px-4',
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_a' }, { name: 'role', value: 'tab' }] }),
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_a' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: ptId + '_a' }, { name: 'aria-selected', value: 'false' }] }),
                                     createNode('content', { contentType: 'heading', tag: 'span', text: '−20%', cssClass: 'badge bg-success-subtle text-success-emphasis ms-1' })
                                 ])
                             ])
@@ -19156,17 +19294,17 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 1),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 1), cssClass: 'nav-link active',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_0' }, { name: 'aria-selected', value: 'true' }] })
                             ]),
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 2),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 2), cssClass: 'nav-link',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_1' }, { name: 'role', value: 'tab' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_1' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_1' }, { name: 'aria-selected', value: 'false' }] })
                             ]),
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 3),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 3), cssClass: 'nav-link',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_2' }, { name: 'role', value: 'tab' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_2' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_2' }, { name: 'aria-selected', value: 'false' }] })
                             ])
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'tab-content p-3 border border-top-0', customName: _sdT('Tab Content') }, [
@@ -19191,14 +19329,17 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'badge') {
-                    return createNode('semantic', { tag: 'span', cssClass: 'badge bg-primary rounded-pill', text: _sdT('New'), customName: _sdT('Badge') });
+                    return createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-primary rounded-pill', text: _sdT('New'), customName: _sdT('Badge') });
                 }
 
                 if (ctype === 'progress') {
                     return createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-18', customName: _sdT('Progress')
  }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar progress-bar-striped bg-primary', customName: _sdT('Progress Bar'),
-                            _attrs: [{ name: 'role', value: 'progressbar' }, { name: 'style', value: 'width:50%' },
+                        // Plain bar: the label stays readable on it. Stripes lay 15% white
+                        // over the primary colour and drop white text to 3.97:1 (classic
+                        // palette); Striped is a switch in the Progress panel.
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar text-bg-primary', customName: _sdT('Progress Bar'),
+                            _attrs: [{ name: 'role', value: 'progressbar' }, { name: 'aria-label', value: _sdT('Progress') }, { name: 'style', value: 'width:50%' },
                                      { name: 'aria-valuenow', value: '50' }, { name: 'aria-valuemin', value: '0' }, { name: 'aria-valuemax', value: '100' }] }, [
                             createNode('content', { contentType: 'heading', tag: 'span', text: '50%', cssClass: '' })
                         ])
@@ -19209,8 +19350,10 @@ const StyleDesigner = (function () {
                     var crId = 'cr_' + Math.random().toString(36).substr(2, 6);
                     // 3 slides with distinct gradient hero backgrounds + title/desc/button — _crId lets
                     // propsCarouselOptions add more slides with stable data-bs-target references.
-                    return createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: crId, customName: 'Carousel',
-                        _attrs: [{ name: 'data-bs-ride', value: 'carousel' }] }, [
+                    // No autoplay: Bootstrap's carousel keeps cycling under keyboard
+                    // focus and reduced motion and has no pause button (WCAG 2.2.2).
+                    // Carousel Options > Autoplay switches it on.
+                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: 'Carousel' }, [
                         createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Indicators') }, [
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'active',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: '0' }, { name: 'aria-current', value: 'true' }, { name: 'aria-label', value: _sdT('Slide 1') }] }),
@@ -19248,7 +19391,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'div', cssClass: 'modal-header', customName: _sdT('Modal Header') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Modal Title'), cssClass: 'modal-title' }),
                                     createNode('semantic', { tag: 'button', cssClass: 'btn-close ms-auto', text: '', customName: _sdT('Close Button'),
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'modal' }, { name: 'aria-label', value: 'Close' }] })
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'modal' }, { name: 'aria-label', value: _sdT('Close') }] })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'modal-body', customName: _sdT('Modal Body') }, [
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Modal body text goes here.'), cssClass: '' })
@@ -19319,9 +19462,9 @@ const StyleDesigner = (function () {
                         _attrs: [{ name: 'role', value: 'alert' }, { name: 'aria-live', value: 'assertive' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'toast-header', customName: _sdT('Toast Header') }, [
                             createNode('content', { contentType: 'heading', tag: 'strong', text: _sdT('Notification'), cssClass: 'me-auto' }),
-                            createNode('content', { contentType: 'heading', tag: 'small', text: _sdT('just now'), cssClass: 'text-muted' }),
+                            createNode('content', { contentType: 'heading', tag: 'small', text: _sdT('just now'), cssClass: 'text-body-secondary' }),
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'btn-close ms-2',
-                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'toast' }] })
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'toast' }, { name: 'aria-label', value: _sdT('Close') }] })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'toast-body', customName: _sdT('Toast Body') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Your message here.'), cssClass: '' })
@@ -19340,7 +19483,7 @@ const StyleDesigner = (function () {
                             // class keeps the look.
                             createNode('content', { contentType: 'heading', tag: 'p', text: _sdT('Menu'), cssClass: 'offcanvas-title h5' }),
                             createNode('semantic', { tag: 'button', cssClass: 'btn-close ms-auto', text: '', customName: _sdT('Close Button'),
-                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'offcanvas' }, { name: 'aria-label', value: 'Close' }] })
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'offcanvas' }, { name: 'aria-label', value: _sdT('Close') }] })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'offcanvas-body', customName: _sdT('Offcanvas Body') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Offcanvas content here.'), cssClass: '' })
@@ -19349,7 +19492,7 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'callout') {
-                    return createNode('semantic', { tag: 'div', cssClass: 'p-3 mb-3 border-start border-4 border-primary bg-primary bg-opacity-10', customName: _sdT('Callout') }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'p-3 mb-3 border-start border-4 border-primary bg-primary-subtle', customName: _sdT('Callout') }, [
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Note'), cssClass: 'fw-bold mb-1' }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('Callout content goes here.'), cssClass: 'mb-0' })
                     ]);
@@ -19434,7 +19577,8 @@ const StyleDesigner = (function () {
                 if (ctype === 'pagination') {
                     var _pgItems = [
                         createNode('semantic', { tag: 'li', cssClass: 'page-item disabled', customName: _sdT('Prev') }, [
-                            createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '‹', customName: _sdT('Page Link') })
+                            createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '‹', customName: _sdT('Page Link'),
+                                _attrs: [{ name: 'aria-label', value: _sdT('Previous page') }] })
                         ])
                     ];
                     for (var _pi = 1; _pi <= 5; _pi++) {
@@ -19443,11 +19587,16 @@ const StyleDesigner = (function () {
                         ]));
                     }
                     _pgItems.push(createNode('semantic', { tag: 'li', cssClass: 'page-item', customName: _sdT('Next') }, [
-                        createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '›', customName: _sdT('Page Link') })
+                        createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '›', customName: _sdT('Page Link'),
+                            _attrs: [{ name: 'aria-label', value: _sdT('Next page') }] })
                     ]));
+                    // flex-wrap: seven items in a look with wide buttons (bold, …)
+                    // are wider than a 360 px phone, and every page added with
+                    // New Page widens it further; the row wraps instead of
+                    // scrolling the page sideways, as the site's own pagers do.
                     return createNode('semantic', { tag: 'nav', customName: _sdT('Pagination'),
                         _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
-                        createNode('semantic', { tag: 'ul', cssClass: 'pagination', customName: _sdT('Page List') }, _pgItems)
+                        createNode('semantic', { tag: 'ul', cssClass: 'pagination flex-wrap', customName: _sdT('Page List') }, _pgItems)
                     ]);
                 }
 
@@ -19471,7 +19620,7 @@ const StyleDesigner = (function () {
                 // ── Close Button ──
                 if (ctype === 'close-btn') {
                     return createNode('semantic', { tag: 'button', cssClass: 'btn-close', customName: _sdT('Close Button'),
-                        _attrs: [{ name: 'type', value: 'button' }, { name: 'aria-label', value: 'Close' }] });
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'aria-label', value: _sdT('Close') }] });
                 }
 
                 // ── Placeholder (loading skeleton) ──
@@ -19499,7 +19648,7 @@ const StyleDesigner = (function () {
                 // ── Ratio (aspect-ratio wrapper) ──
                 if (ctype === 'ratio') {
                     return createNode('semantic', { tag: 'div', cssClass: 'ratio ratio-16x9', customName: _sdT('Ratio {var}', '16:9') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center bg-light text-muted', customName: _sdT('Ratio Content'), text: '16:9' })
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center bg-body-tertiary text-body-secondary', customName: _sdT('Ratio Content'), text: '16:9' })
                     ]);
                 }
 
@@ -19521,19 +19670,19 @@ const StyleDesigner = (function () {
                 // ── Horizontal Stack ──
                 if (ctype === 'hstack') {
                     return createNode('semantic', { tag: 'div', cssClass: 'hstack gap-3', customName: _sdT('Horizontal Stack') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border ms-auto', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border ms-auto', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
                         createNode('semantic', { tag: 'div', cssClass: 'vr', customName: _sdT('Vertical Rule') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
                     ]);
                 }
 
                 // ── Vertical Stack ──
                 if (ctype === 'vstack') {
                     return createNode('semantic', { tag: 'div', cssClass: 'vstack gap-3', customName: _sdT('Vertical Stack') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
                     ]);
                 }
 
@@ -19555,7 +19704,9 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'blockquote', cssClass: 'blockquote', customName: _sdT('Quote') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('A well-known quote, contained in a blockquote element.'), cssClass: 'mb-0' })
                         ]),
-                        createNode('semantic', { tag: 'figcaption', cssClass: 'blockquote-footer', customName: _sdT('Attribution') }, [
+                        // .blockquote-footer is a literal grey in Bootstrap 5.3.8 and
+                        // does not follow dark mode; text-body-secondary does.
+                        createNode('semantic', { tag: 'figcaption', cssClass: 'blockquote-footer text-body-secondary', customName: _sdT('Attribution') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Someone famous in <cite>Source Title</cite>'), cssClass: 'mb-0' })
                         ])
                     ]);
@@ -37041,7 +37192,23 @@ const StyleDesigner = (function () {
         var cls = (n.props.cssClass || '').split(/\s+/);
         var isStriped  = cls.indexOf('progress-bar-striped')  !== -1;
         var isAnimated = cls.indexOf('progress-bar-animated') !== -1;
-        var bgClasses  = ['bg-primary','bg-secondary','bg-success','bg-danger','bg-warning','bg-info','bg-dark'];
+        // The bar colour is written as text-bg-*, which also sets the label
+        // colour that reads on that background. Bars saved with a plain bg-*
+        // show that colour here, and picking one takes the bg-* class off too:
+        // Bootstrap's bg-* utilities come after text-bg-* and would win.
+        var barColors = [['primary', _sdT('Primary')], ['secondary', _sdT('Secondary')], ['success', _sdT('Success')],
+            ['danger', _sdT('Danger')], ['warning', _sdT('Warning')], ['info', _sdT('Info')], ['dark', _sdT('Dark')]];
+        var barGroup = [];
+        var barCurrent = '';
+        barColors.forEach(function (c) {
+            barGroup.push('text-bg-' + c[0], 'bg-' + c[0]);
+            if (cls.indexOf('text-bg-' + c[0]) !== -1 || cls.indexOf('bg-' + c[0]) !== -1) barCurrent = c[0];
+        });
+        var colorSel = '<select class="form-select form-select-sm" data-stylegroup="' + barGroup.join(',') + '">' +
+            '<option value="">' + _sdT('Default') + '</option>' +
+            barColors.map(function (c) {
+                return '<option value="text-bg-' + c[0] + '"' + (c[0] === barCurrent ? ' selected' : '') + '>' + c[1] + '</option>';
+            }).join('') + '</select>';
 
         // Read width % from style attr
         var attrs = n.props._attrs || [];
@@ -37055,7 +37222,7 @@ const StyleDesigner = (function () {
                 '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
                 '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
                 '</div>') +
-            row(_sdT('Color'), selStyleGroup(n.props, bgClasses, 'Default')) +
+            row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
             row(_sdT('Animated'),  swAttr('data-util-toggle="progress-bar-animated"', isAnimated))
         );
@@ -40950,15 +41117,31 @@ const StyleDesigner = (function () {
                 });
                 if (!innerNode) return;
                 saveState();
+                // The block carousels keep their id in _attrs, the Components
+                // carousel in the id prop.
                 var crId = n.props.id || '';
+                (n.props._attrs || []).forEach(function (a) { if (!crId && a.name === 'id') crId = a.value || ''; });
                 if (action === 'add-slide') {
                     var idx = innerNode.children ? innerNode.children.length : 0;
                     if (!innerNode.children) innerNode.children = [];
-                    innerNode.children.push(makeCarouselSlide(idx + 1, false));
+                    innerNode.children.push(copyCarouselSlide(idx ? innerNode.children[idx - 1] : null, idx + 1));
                     if (indicatorsNode) {
                         if (!indicatorsNode.children) indicatorsNode.children = [];
-                        indicatorsNode.children.push(createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
-                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] }));
+                        var tailInd = indicatorsNode.children[indicatorsNode.children.length - 1];
+                        var newInd;
+                        if (tailInd) {
+                            // A copy keeps the indicator's own node kind, classes and
+                            // target; only its slide number and name change.
+                            newInd = _sdCopyCarouselNode(tailInd, idx, idx + 1);
+                            newInd.props._attrs = (newInd.props._attrs || []).filter(function (a) {
+                                return a.name !== 'data-bs-slide-to' && a.name !== 'aria-label';
+                            });
+                            newInd.props._attrs.push({ name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) });
+                        } else {
+                            newInd = createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] });
+                        }
+                        indicatorsNode.children.push(newInd);
                     }
                 } else if (action === 'remove-slide') {
                     if (innerNode.children && innerNode.children.length > 1) {
@@ -58367,6 +58550,14 @@ const StyleDesigner = (function () {
         // live badge): under reduced motion it stands still and stays
         // visible (a resting .spinner-grow is transparent).
         'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
+        // Carousel indicators in the text colour, for a carousel on a plain
+        // surface: Bootstrap paints them white (black in dark mode) for a photo.
+        'pg-carousel-ink': '.pg-carousel-ink { --bs-carousel-indicator-active-bg: var(--bs-emphasis-color); }',
+        // Carousel controls and indicators over photos keep Bootstrap's
+        // light-mode white in a dark design too: under data-bs-theme="dark"
+        // Bootstrap paints them black, which vanishes on a caption scrim and
+        // on dark photos. Carousel Options > Dark (.carousel-dark) still wins.
+        'pg-carousel-photo': '.pg-carousel-photo:not(.carousel-dark) { --bs-carousel-indicator-active-bg: var(--bs-white); --bs-carousel-control-icon-filter: none; }',
         // News: stories and articles
         // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
         // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
@@ -58396,7 +58587,9 @@ const StyleDesigner = (function () {
     // ctype -> the rules that block needs. Kept next to the rules so adding a
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
-        'hero-image-bg':        ['pg-hero-tall'],
+        'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
+        'testimonial-carousel': ['pg-carousel-ink'],
+        'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
         'team-grid':            ['pg-ratio-1x1'],
         'blog-grid':            ['pg-ratio-16x9'],
@@ -58582,7 +58775,7 @@ const StyleDesigner = (function () {
                                     d: _sdT('A note with a coloured edge that draws attention to a remark.') },
             'c:spinner':          { v: 'spinner', h: '<div class="spinner-border">', k: 'spinner loader loading',
                                     d: _sdT('A spinning sign that something is loading.') },
-            'c:pagination':       { v: 'pagination', h: '<ul class="pagination">', k: 'pagination pager pages paging',
+            'c:pagination':       { v: 'pagination', h: '<ul class="pagination flex-wrap">', k: 'pagination pager pages paging',
                                     d: _sdT('Page numbers for moving through a long list.') },
             'c:input-group':      { v: 'input-group', h: '<div class="input-group">', k: 'input group addon field button text',
                                     d: _sdT('A text box with a piece of text or a button attached to its side.') },

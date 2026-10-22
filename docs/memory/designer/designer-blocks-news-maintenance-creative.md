@@ -9,7 +9,7 @@ description: Maintenance, news and creative block families (2026.11.0): palette 
 
 ## Where is their code?
 - Inside the family branch of `createFromPalette()` (`if (/^(services|…|scroller)-/.test(ctype) …)`), with the `_bk*` helpers. A new family joins by adding its prefix to that regex.
-- All helpers of the branch share one function scope (`var` hoisting): a family's own helpers carry a prefix no other block in `createFromPalette()` uses (grep `var _xx` first): maintenance `_mn` (`_mt` belongs to `menu-tabs`), news bands `_nb`, news stories `_ns`, creative `_cr`. Pieces every family needs are shared `_bk*` helpers: `_bkTime` (semantic `time` with the `text` prop and `datetime`), `_bkRegion` (role/label/tabindex of a scrollable strip), `_bkIconLink` (icon-only link with `aria-label`), `_bkMarqueePause` (the marquee pause control, `docs/memory/designer/designer-block-motion.md`).
+- All helpers of the branch share one function scope (`var` hoisting): a family's own helpers carry a prefix no other block in `createFromPalette()` uses (grep `var _xx` first): maintenance `_mn` (`_mt` belongs to `menu-tabs`), news bands `_nb`, news stories `_ns`, creative `_cr`. Pieces every family needs are shared `_bk*` helpers: `_bkTime` (semantic `time` with the `text` prop and `datetime`), `_bkRegion` (role/label/tabindex of a scrollable strip; the older `pricing-comparison` and `compare-table` write the same on their `table-responsive`), `_bkIconLink` (icon-only link with `aria-label`), `_bkMarqueePause` (the marquee pause control, `docs/memory/designer/designer-block-motion.md`).
 
 ## Which node types drop attributes?
 - `row`, `col` and `container` nodes do not write `_attrs` (editor emitter and the PHP mirror alike). A row that needs `role`, `tabindex` or `aria-label` (a horizontal scroller) is a semantic `div` with `row …` / `col-*` classes, as `loyalty-stamps` and `scroller-cards` do. `_bkCol()` always writes `xs: '12'`.
@@ -18,7 +18,7 @@ description: Maintenance, news and creative block families (2026.11.0): palette 
 
 ## What is special about the maintenance blocks?
 - While maintenance mode is on, every address answers with the error page's maintenance screen (`docs/memory/designer/error-page-widget.md`), so these blocks carry no menu, no Home button and no other link into the site: only `mailto:`, `tel:` and social links. They can be dropped into the Error Page widget's maintenance block or onto a page of their own. Their headings are `h1` (they are the page); other blocks start at `h2`.
-- Notify forms are samples like the newsletter blocks: they have no action until the operator wires them. Their submit is a semantic `<button type="submit">`, which the editor's form audit recognises (a `component` btn it does not).
+- Notify forms are samples like the newsletter blocks: they have no action until the operator wires them. Their submit is a semantic `<button type="submit">` (form rules: `docs/memory/designer/designer-block-forms.md`).
 
 ## What guards the palette?
 - `tests/designer_blocks_test.php` reads `style_designer.js`: every palette block has a reachable builder in `createFromPalette()` and a group, every `_SD_BLOCK_CSS_NEEDS` name is a rule, every rule's key appears as a class in its own rule (otherwise `_sdEnsureBlockStyles()` never finds it and appends it again on every drop), and no rule uses `!important`.
