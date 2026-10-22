@@ -16,5 +16,5 @@ description: How the external API treats products and product groups in the cata
 - The inner join also drops link rows whose product no longer exists.
 
 ## When is a group delete refused for its subgroups?
-- `POST /product-groups/{id}/delete` (and `DELETE`) answers 409 `group_not_empty` while live groups sit inside it. With `permanent: true` the groups inside it that are in the Recycle Bin count too ("…inside it in the Recycle Bin. Delete those from the Recycle Bin first."). Symptom it fixed (#875): the parent went, the binned child kept `parent_id` of a group that no longer existed, and once restored it was missing from the catalog tree.
+- `POST /product-groups/{id}/delete` (and `DELETE`) answers 409 `group_not_empty` while live groups sit inside it. With `permanent: true` the groups inside it that are in the Recycle Bin count too ("…inside it in the Recycle Bin. Delete those from the Recycle Bin first."). Symptom it fixed (#875, PR #1236): the parent went, the binned child kept `parent_id` of a group that no longer existed, and once restored it was missing from the catalog tree.
 - The Catalog Manager's restore (`explorer_catalog_restore`) puts a group whose parent no longer exists under the root group (`parent_id = '0'`); a parent that is only binned is kept.
