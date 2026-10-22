@@ -300,6 +300,39 @@ function test_legal_documents_cart_order_settles_the_shipping()
 	pg_assert_same(999, $order['shipping'], 'without the rule');
 }
 
+// A recurring line that starts later is charged on its own once it starts:
+// the checkout's subtotal and tax leave it out, so the documents count it in
+// no total and make up no discount for it.
+function test_legal_documents_cart_order_leaves_out_lines_charged_later()
+{
+	$lines = array(
+		array('line_total' => 10000, 'tax' => 2000, 'rate' => '20.000'),
+		array('line_total' => 5000, 'tax' => 1000, 'rate' => '20.000', 'charged' => false),
+	);
+
+	$order = pg_legal_document_cart_order(array(), $lines, array(), array('total' => 12000));
+
+	pg_assert_same(10000, $order['subtotal'], 'the line charged today');
+	pg_assert_same(2000, $order['tax'], 'its tax');
+	pg_assert_same(0, $order['discount'], 'no discount made up for the later line');
+	pg_assert_same(12000, $order['total'], 'checkout total');
+
+	$discounted = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 1000));
+
+	pg_assert_same(1800, $discounted['tax'], 'the discount retaxes the line charged today only');
+	pg_assert_same(10800, $discounted['total'], 'as the checkout totals it');
+}
+
+// The documents read the lines the checkout reads: a line saved for later is
+// no part of the order, and each line says whether the order charges it.
+function test_legal_documents_for_order_reads_the_checkout_lines()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+
+	pg_assert_contains('pg_order_item_active_sql()', $section, 'saved-for-later lines are left out');
+	pg_assert_contains('pg_order_line_charged_today(', $section, 'lines charged later are marked');
+}
+
 // Typed billing values replace the row's; empty ones and the country code do not.
 function test_legal_documents_cart_order_billing()
 {

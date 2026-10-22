@@ -2717,14 +2717,19 @@ function pg_order_charges_taxed()
 /**
  * Whether the checkout keeps the total of every rate on its orders one that
  * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
- * store invoices its orders in the ERP, charges tax, and its shipping and
- * surcharges hold tax (pg_order_charges_taxed()).
+ * store invoices its orders in the ERP, or sends them to Paraşüt from the
+ * order screen without it (parasut_order_buttons_on(); those invoices carry
+ * the ERP's lines, parasut_create_invoice()), charges tax, and its shipping
+ * and surcharges hold tax (pg_order_charges_taxed()).
  *
  * @return bool
  */
 function pg_order_charges_settle_rates()
 {
-    return defined('ERP_ENABLED') && ERP_ENABLED
+    $invoiced = (defined('ERP_ENABLED') && ERP_ENABLED)
+        || (function_exists('parasut_order_buttons_on') && parasut_order_buttons_on());
+
+    return $invoiced
         && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
         && pg_order_charges_taxed();
 }
@@ -2959,6 +2964,35 @@ function pg_order_items_charges_reachable($item_ids, $discount, $charges)
     }
 
     return pg_order_charges_reachable($lines, $discount, $charges);
+}
+
+/**
+ * The instalment charge a card payment takes: the one the bank quoted,
+ * lowered by the fewest minor units that leave the total of every rate one
+ * the tax, taken on the whole, can reach (pg_order_charges_reachable(), after
+ * the shipping and the surcharge as they are charged). Like those charges it
+ * is shared between the goods' rates on the order's invoice, so with two
+ * rates or more a minor unit moves to another rate instead; with one the
+ * customer pays a minor unit less, and the invoice is still the payment.
+ *
+ * @param array $lines        the lines charged today, as pg_order_charges_reachable() takes them
+ * @param int   $discount     the order discount charged today, minor units
+ * @param array $charges      name => int minor units charged, tax inside: the shipping, the surcharge
+ * @param int   $installment  the instalment charge the bank quoted, minor units
+ * @return int  the instalment charge to take
+ */
+function pg_order_installment_charge($lines, $discount, $charges, $installment)
+{
+    $installment = (int) $installment;
+
+    if (($installment <= 0) || empty($lines)) {
+        return $installment;
+    }
+
+    $charges = array_map('intval', (array) $charges);
+    $charges['installment'] = $installment;
+
+    return (int) pg_order_charges_reachable($lines, $discount, $charges)['installment'];
 }
 
 function update_order_item_taxes()
@@ -8634,6 +8668,7 @@ function duplicate_product($id)
     // The copy starts a price history of its own at the original's price.
     pg_price_history_record($new_product_id, 'panel');
 
+    pg_audit_record('create', 'products', (int) $new_product_id);
 
     return $new_product_id;
 }
@@ -9467,8 +9502,11 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     }
 
     // Minimal selection — enough for cancel gating + email + refund.
+    // refunded_amount: what the order screen or a return gave back already,
+    // which the cancellation must not return a second time.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
+                " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date
          FROM orders
@@ -9585,13 +9623,21 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $has_txn     = !empty($order['transaction_id']);
-    $order_total = (int) $order['total']; // cents
-    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
-        ? pg_payment_cancel_driver((string) $order['payment_method'])
-        : '';
+    // The money left on the order decides (pg_order_cancel_payment_plan()):
+    // an order refunded in full is not voided and not flagged, and one partly
+    // refunded is not voided either (a void reverses the whole payment); its
+    // remaining amount is flagged. The cancel window asks the same.
+    $cancel_driver = pg_payment_cancel_driver((string) $order['payment_method']);
+    $payment_plan  = pg_order_cancel_payment_plan(
+        $order['total'],
+        $order['refunded_amount'],
+        $order['payment_method'],
+        !empty($order['transaction_id']),
+        $cancel_driver,
+        $auto_refund
+    );
 
-    if ($cancel_driver !== '') {
+    if ($payment_plan['action'] === 'void') {
         // The driver is given the orders row as the cancellation left it, so
         // the reason just typed goes to the service as the description.
         $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
@@ -9615,12 +9661,17 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
         $refund_status_outcome = $cancel_outcome['refund_status'];
         $refund_reference      = $cancel_outcome['refund_reference'];
-    } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
+    } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
         log_activity(lang(array(
             'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
-            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($order_total / 100, 2, '.', ',')))));
+            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($payment_plan['remaining'] / 100, 2, '.', ',')))));
+        if ($payment_plan['refunded'] > 0) {
+            log_activity(lang(array(
+                'string' => 'Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.',
+                'vars'   => array((int) $order_id, number_format($payment_plan['refunded'] / 100, 2, '.', ',')))));
+        }
     }
 
     // What gift cards paid of the order does not go back to them by itself,
@@ -9683,6 +9734,41 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     );
 }
 
+// What cancelling an order does to the money its payment took. The order
+// screen's cancel window and process_order_cancellation() both decide by it,
+// so the window says what the cancellation then does.
+// 'remaining' is the money still on the order (total less what was refunded
+// already, never below 0), 'refunded' what was refunded, and 'action' one of:
+//  'void'   the payment driver cancels the payment: the auto refund is on, a
+//           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
+//           the order has a transaction and nothing was refunded yet;
+//  'manual' money is left and a payment method took it, but it is not voided:
+//           the operator returns it (REFUND ACTION REQUIRED, manual_required);
+//  'none'   nothing is left (refunded in full, a free order), or no method
+//           took the money (Offline Payment, none).
+// A void takes no amount and reverses the whole payment, so a payment partly
+// refunded already (the order screen's or a return's refund) is not voided:
+// what is left goes to the operator. Amounts are minor units.
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+{
+    $total_cents    = (int) $total_cents;
+    $refunded_cents = max(0, (int) $refunded_cents);
+    $remaining      = max(0, $total_cents - $refunded_cents);
+    $payment_method = (string) $payment_method;
+
+    if ($remaining <= 0) {
+        $action = 'none';
+    } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
+        $action = 'void';
+    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+        $action = 'manual';
+    } else {
+        $action = 'none';
+    }
+
+    return array('action' => $action, 'remaining' => $remaining, 'refunded' => $refunded_cents);
+}
+
 // The site log line that tells the operator what a cancelled order took off
 // gift cards: each card with its masked code (the shop's own card also with
 // its id, a Givex card marked) and the amount, '' when no card paid anything.
@@ -9710,6 +9796,56 @@ function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
     return lang(array(
         'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.',
         'vars'   => array((int) $order_id, number_format($total / 100, 2, '.', ','), implode(', ', $parts))));
+}
+
+// Taking a cancelled order back to $status ('complete' or 'exported'): the
+// cancellation's bookkeeping (cancelled_at, cancelled_by, the reason) is
+// cleared, a refund flag that did not end in a refund is dropped, and the gift
+// cards the cancellation expired get their date back. The order screen's
+// Restore and the external API's status change both come here; a plain status
+// write kept the cancellation line and the refund banner on a completed order
+// and left its gift cards expired. Only a cancelled order moves: the status
+// UPDATE carries status = 'cancelled', so of two restores at once one does the
+// work. Returns false when the order was not cancelled (or is not there).
+// The caller records the audit row and announces the status change.
+function pg_order_restore_cancelled($order_id, $status = 'complete')
+{
+    $order_id = (int) $order_id;
+    $status   = ($status === 'exported') ? 'exported' : 'complete';
+
+    // Read before the bookkeeping is cleared: the gift cards step needs the
+    // order number and the time of the cancellation.
+    $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
+    $cancelled_order = db_item(
+        "SELECT order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+         FROM orders
+         WHERE id = '" . $order_id . "' AND status = 'cancelled'
+         LIMIT 1");
+    if (!is_array($cancelled_order)) {
+        return false;
+    }
+
+    db("UPDATE orders SET status = '" . $status . "' WHERE id = '" . $order_id . "' AND status = 'cancelled'");
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    // Columns are 2026.1.26 / 2026.1.27 additions, so both groups are probed.
+    // A refund that went through stays on the record.
+    if ($has_cancel_columns) {
+        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
+            WHERE id = '" . $order_id . "'");
+    }
+    if (_orders_has_refund_columns()) {
+        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
+            WHERE id = '" . $order_id . "' AND refund_status != 'refunded'");
+    }
+
+    pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
+
+    log_activity('Restored cancelled order #' . $order_id . ' to ' . $status . '.');
+
+    return true;
 }
 
 // Restoring a cancelled order: the gift cards it issued that the cancellation

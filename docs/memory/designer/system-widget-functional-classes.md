@@ -17,5 +17,6 @@ JS/CSS behaviour hangs on them:
 
 ## What is the designer rule?
 - A designer may delete an element, add a new one, make the same binding from the data binding menu, and the system keeps working. Classes are NOT the function; data binding is.
+- Never hang new behaviour on a decorative class or add a new "magic" class: give the element a binding (system-widget-bindings.md).
 
 Related: docs/memory/designer/system-widget-bindings.md

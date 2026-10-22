@@ -13,7 +13,7 @@ description: Designer _sdT() rules: editor data block must print before style_de
 - **No number embedded:** `_sdT('Tab {var}', 1)`, `_sdT('Item {var}', n)`; `'Tab 1'` splits the translation into three and breaks the `{var}` rule.
 - **No variable embedded.** Translation is found by key and replaces the whole text; a name embedded in it is lost with the translation. Use `{var}`: `_sdT('It stays in {var} as it was.', owner)`.
 - **Prices go through `_sdT()`:** key is the English source (`_sdT('$199')`), Turkish `₺199` lives in tr.json. A raw `'₺199'` prices an English site in lira.
-- **Palette record `label` and visible texts in `defaultProps` are wrapped in `_sdT()`.** The checker treats a single capitalized word in that position as an identifier and skips it, so it stays **silent**; verify by eye.
+- **Palette record `label` and visible texts in `defaultProps` are wrapped in `_sdT()`.** No check catches a raw literal there: `tools/check_lang.php` reads only `lang()` / `_sdT()` calls, and the audit tool (`core/designer-i18n-audit-tool.md`) takes a single capitalized word in that position for an identifier and stays **silent**; verify by eye.
 - **Placeholder text is never Latin.** A dropped component's default text tells the operator what to do; Lorem ipsum is neither readable nor clearly meant to be deleted.
 
-Related: docs/memory/designer/designer-layer-names.md, .claude/skills/pinegrap-ceviri/SKILL.md
+Related: docs/memory/designer/designer-layer-names.md, docs/memory/core/sdt-designer-js-text-rules.md, docs/memory/core/translation-rules.md

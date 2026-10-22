@@ -14,7 +14,7 @@ Core `includes/designer_collab.php`; endpoints `api.php` -> `designer/presence|l
 - **Identity is the tab.** Key lives in `sessionStorage` (`pg_sd_tab`); one person's two tabs must not fight over one lock.
 - **Lock is taken with one `INSERT ... ON DUPLICATE KEY UPDATE`.** SELECT-then-INSERT races. Takeover condition: `(session_key = <mine> OR last_seen < <stale>)`.
 - **`session_key` goes LAST in the SET list.** MySQL evaluates assignments left to right; if the key updates first, every later condition says "mine" and the lock goes to whoever asks.
-- **The lock is an authority.** `pg_collab_may_edit_page()` is called on the **save path** (`includes/designer_screen.php`). Disabling the Save button is not an authorization check; the POST need not come from that screen.
+- **The lock is an authority.** `pg_collab_may_edit_page()` is called on the **save path** (`includes/designer_screen.php`). Disabling the Save button is not an authorization check; the POST need not come from that screen. The external API (`includes/api/resources/design.php`) and the AI assistant (`includes/designer_ai.php`) call it with an empty key: they write a page only while no editor tab holds it.
 - **A locked page is skipped, not a save failure**, and reported as a warning. The editor saves all tabs at once.
 - **Staleness (`PG_COLLAB_STALE`, 65 s) is the real retirement mechanism**; `leave` / `lock_release` only speed up handover. A killed browser cannot say goodbye.
 - `pg_collab_ready()` probes both tables; on a non-upgraded install the endpoint returns `ready:false` + `may_edit:true` and the editor behaves as before.

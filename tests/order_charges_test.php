@@ -150,3 +150,27 @@ function test_order_charges_reachable_meet_the_invoice()
 
 	pg_assert_true($lowered > 0, 'some charges were lowered');
 }
+
+// A card instalment charge is settled after the shipping and the surcharge
+// as charged: 57.92 and 2.05 come to 59.97, out of reach at 20%, so 2.04 is
+// taken; 2.06 (59.98) is reached as it is. A single minor unit is never
+// taken to nothing, and lines without a kept rate leave it alone.
+function test_order_installment_charge_goes_a_kurus_lower()
+{
+	$lines = array(442 => array('amount' => 3995, 'rate' => '20.000', 'tax' => 799));
+	$charges = array('shipping' => 998, 'surcharge' => 0);
+
+	pg_assert_same(204, pg_order_installment_charge($lines, 0, $charges, 205));
+	pg_assert_same(206, pg_order_installment_charge($lines, 0, $charges, 206));
+	pg_assert_same(0, pg_order_installment_charge($lines, 0, $charges, 0));
+	pg_assert_same(205, pg_order_installment_charge(array(), 0, $charges, 205));
+	pg_assert_same(205, pg_order_installment_charge(array(1 => array('amount' => 3995, 'rate' => null)), 0, $charges, 205));
+
+	// With a second rate the charge is shared so that both are reached, at
+	// the price the bank quoted.
+	$two = array(
+		442 => array('amount' => 3995, 'rate' => '20.000', 'tax' => 799),
+		443 => array('amount' => 49995, 'rate' => '10.000', 'tax' => 5000),
+	);
+	pg_assert_same(205, pg_order_installment_charge($two, 0, $charges, 205));
+}

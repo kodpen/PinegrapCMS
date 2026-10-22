@@ -13,6 +13,8 @@ description: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg)
 - Always byte mode (UTF-8 as-is). Version 1-40 is chosen from the RS block table.
 - The library's `getMinimumQRCode()` / `getMaxLength()` path fatals for version 11+: do NOT use it. `getMode()` may mistake UTF-8 for Kanji: do NOT use it.
 
+- Never embed a second generator, and never ask an external QR service: the text (a TOTP secret included) would go to a third party.
+
 ## Where may a secret QR be rendered?
 - A QR of secret text (TOTP key) is printed ONLY as inline SVG. No `<img src="qr.php?...">`-style endpoint and no external QR service (logs, Referer, third party).
 - Used by two-factor setup: `mfa.php` `setup`, `pg_mfa_account_section()`.
