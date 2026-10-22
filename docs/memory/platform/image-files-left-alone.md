@@ -1,6 +1,6 @@
 ---
 name: image-files-left-alone
-description: Images the engine refuses to process and why: animated GIF/APNG/WebP (reason animated, PR #NNNN); how each is told from the file's bytes, and what the screens, derivatives and markup do with them
+description: Images the engine refuses to process and why: animated GIF/APNG/WebP (reason animated, PR #1234); how each is told from the file's bytes, and what the screens, derivatives and markup do with them
 ---
 
 ## Which images does pg_process_image_file() leave alone?
@@ -20,5 +20,5 @@ description: Images the engine refuses to process and why: animated GIF/APNG/Web
 - Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
 
 ## What went wrong before?
-- Until PR #NNNN only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
+- Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
 - Not covered: the image editor's Replace still checks only GIFs (`image_editor_save.php`).
