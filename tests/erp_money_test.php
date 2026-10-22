@@ -208,3 +208,54 @@ function test_erp_quantity_round_keeps_four_places()
 	pg_assert_same(2.0, erp_quantity_round(2));
 	pg_assert_same(0.0, erp_quantity_round(0.00004));
 }
+
+// A line total and a rate are worked out on the decimals as written, the
+// same on every PHP version and in the invoice editor: 13.10 x 1.15 is
+// 15.065, so 15.07, although 1310 * 1.15 is 1506.4999... in binary; 4.35% of
+// 30.00 is 1.305, so 1.31.
+function test_erp_money_rounds_the_written_decimals()
+{
+	pg_assert_same(1507, erp_line_total(1310, 1.15));
+	pg_assert_same(794, erp_line_total(345, 2.3));
+	pg_assert_same(131, erp_apply_rate(3000, 4.35));
+	pg_assert_same(35, erp_apply_rate(1500, 2.3));
+	pg_assert_same(-131, erp_apply_rate(-3000, 4.35));
+	pg_assert_same(-1507, erp_line_total(-1310, '1.1500'));
+	pg_assert_same(0, erp_line_total(0, 3.5));
+	pg_assert_same(199995, erp_line_total(150000, 1.3333333333));
+	// Past 2^31: the store's servers run 64-bit PHP.
+	if (PHP_INT_SIZE >= 8) {
+		pg_assert_same(43211394672705, erp_line_total(123456789012, 350.0123));
+	}
+}
+
+// On random figures the result is the exact product rounded half away from
+// zero, worked out here in whole numbers. Every other run takes a shop's
+// figures - prices in steps of 0.05, quantities and rates with one or two
+// places - where a product of floats lands next to a half most often.
+function test_erp_money_line_total_and_rate_match_whole_number_arithmetic()
+{
+	// The reference products pass 2^31; the store's servers run 64-bit PHP.
+	if (PHP_INT_SIZE < 8) {
+		return;
+	}
+
+	mt_srand(20261022);
+
+	for ($run = 0; $run < 10000; $run++) {
+		$sign = mt_rand(0, 9) ? 1 : -1;
+
+		if ($run % 2) {
+			$amount = mt_rand(20, 4000) * 5;
+			$quantity = mt_rand(1, 999) * (mt_rand(0, 1) ? 100 : 1000);
+			$rate = mt_rand(1, 9999) * 10;
+		} else {
+			$amount = mt_rand(0, 1) ? mt_rand(0, 99999) : mt_rand(0, 999999999);
+			$quantity = mt_rand(1, 999999);
+			$rate = mt_rand(0, 100000);
+		}
+
+		pg_assert_same($sign * intdiv(2 * $amount * $quantity + 10000, 20000), erp_line_total($sign * $amount, $quantity / 10000), 'line total, run ' . $run);
+		pg_assert_same($sign * intdiv(2 * $amount * $rate + 100000, 200000), erp_apply_rate($sign * $amount, $rate / 1000), 'rate, run ' . $run);
+	}
+}
