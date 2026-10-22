@@ -2,13 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for three rules of the visual designer's audit (_validationRules in
+ * Tests for four rules of the visual designer's audit (_validationRules in
  * assets/js/style_designer.js): an empty link or button (empty_btn), an
- * image without an alt decision (img_alt) and a form without a submit
- * control (form_no_submit). The designer's own validateTree(), its rules and
- * their helpers are cut out of the file and run under Node on node trees,
- * with the editor's page-level and canvas passes stubbed; on a machine
- * without Node the run is skipped.
+ * image without an alt decision (img_alt), a form without a submit control
+ * (form_no_submit) and an empty heading (heading_empty). The designer's
+ * own validateTree(), its rules and their helpers are cut out of the file
+ * and run under Node on node trees, with the editor's page-level and canvas
+ * passes stubbed; on a machine without Node the run is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -76,7 +76,7 @@ function designer_audit_rules_test_run($script)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code_js = '';
 
-	foreach (array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditSubmits', '_sdAuditFormHasSubmit', 'validateTree') as $name) {
+	foreach (array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', 'validateTree') as $name) {
 		$found = designer_audit_rules_test_function($source, $name);
 		pg_assert_true($found !== '', $name . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -123,7 +123,10 @@ function designer_audit_rules_test_run($script)
 // A link or button is empty only when nothing gives it a name: its text
 // prop (the model the ready-made blocks use), a bound text, a child that is
 // read (an icon beside a visually hidden label), an image's alt, or an
-// aria-label / aria-labelledby / title. Hidden ones are not looked at.
+// aria-label / aria-labelledby / title. Hidden ones are not looked at. A
+// text node drawn with the button or a tag is one too, and a child whose
+// markup the server writes (custom PHP, messages, applied offers,
+// breadcrumb, variant choices, the product gallery) is taken as named.
 function test_designer_audit_rules_empty_button_or_link()
 {
 	$result = designer_audit_rules_test_run(
@@ -139,6 +142,8 @@ function test_designer_audit_rules_empty_button_or_link()
 		. 'N("semantic", { tag: "a", href: "#", customName: "decorative picture" }, [N("content", { contentType: "image", src: "/a.jpg", alt: "" })]),'
 		. 'N("content", { contentType: "link", text: "", href: "#", customName: "content link" }),'
 		. 'N("content", { contentType: "link", text: "", href: "#", customName: "content icon link" }, [icon()]),'
+		. 'N("content", { contentType: "heading", tag: "button", text: "", customName: "text drawn as empty button" }),'
+		. 'N("semantic", { tag: "a", href: "#", customName: "around an svg" }, [N("content", { contentType: "svg", html: "<svg></svg>" })]),'
 		// Not flagged.
 		. 'N("semantic", { tag: "a", href: "#", text: "Headline", customName: "text prop" }),'
 		. 'N("semantic", { tag: "button", text: "Notify me", customName: "button text" }),'
@@ -153,8 +158,15 @@ function test_designer_audit_rules_empty_button_or_link()
 		. 'N("semantic", { tag: "div", _attrs: hidden }, [N("semantic", { tag: "a", href: "#", customName: "under aria-hidden" })]),'
 		. 'N("semantic", { tag: "a", href: "#", customName: "shared" }, [N("shared_ref", { sharedId: 4 })]),'
 		. 'N("content", { contentType: "link", text: "", href: "#", customName: "content link child" }, [icon(), N("content", { contentType: "span", text: "Next", cssClass: "visually-hidden" })]),'
-		. 'N("content", { contentType: "link", text: "Contact", href: "#", customName: "content link text" })'
-		. '])));'
+		. 'N("content", { contentType: "link", text: "Contact", href: "#", customName: "content link text" }),'
+		. 'N("content", { contentType: "heading", tag: "button", text: "", customName: "indicator", _attrs: [{ name: "aria-label", value: "Slide 1" }] }),'
+		. 'N("content", { contentType: "heading", tag: "BUTTON", text: "Tab", customName: "text drawn as button" }),'
+		. 'N("content", { contentType: "heading", tag: "button", text: "", cssClass: "btn-close", customName: "text drawn as dismiss" }),'
+		. 'N("content", { contentType: "heading", tag: "span", text: "", customName: "empty span text" }),'
+		. '["custom_php", "messages", "applied_offers", "breadcrumb", "variant_attr", "carousel"].map(function (t) {'
+		. '  return N("semantic", { tag: "a", href: "#", customName: "around " + t }, [N("content", { contentType: t })]);'
+		. '})'
+		. '].reduce(function (a, b) { return a.concat(b); }, []))));'
 	);
 
 	if ($result === null) {
@@ -164,7 +176,7 @@ function test_designer_audit_rules_empty_button_or_link()
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
 	pg_assert_same(array(
 		'bare link', 'blank text', 'icon only', 'empty span', 'hidden label', 'markup only', 'blank label',
-		'decorative picture', 'content link', 'content icon link',
+		'decorative picture', 'content link', 'content icon link', 'text drawn as empty button', 'around an svg',
 	), $result, 'only the links and buttons with no name');
 }
 
@@ -218,12 +230,15 @@ function test_designer_audit_rules_image_alt_decision()
 	), $result, 'only the images with no decision');
 }
 
-// A form is flagged when nothing in it submits it. A <button> counts when it
-// has no type or type="submit" (a semantic node, or a text node drawn with
-// the button tag); type="button" or "reset" does not, nor does the old
-// content button, which no renderer draws. A Button component
-// counts when it is drawn as <button type="submit"> or <input
-// type="submit">; drawn as a link, or as a plain button, it does not.
+// A form is flagged when nothing in it submits it, read as the browser
+// reads the printed type: a <button> (a semantic node, or a text node drawn
+// with the button tag) submits unless its type is "button" or "reset" in
+// any case, so a missing, blank or invalid type submits; an <input> submits
+// only with type "submit" or "image", and the value is not trimmed. The old
+// content button, which no renderer draws, does not count, and neither does
+// an inputType prop, which no renderer prints. A Button component counts
+// when it is drawn as a <button> or <input> that submits by its btnType
+// (missing, it prints "button"); drawn as a link it does not.
 function test_designer_audit_rules_form_submit_control()
 {
 	$result = designer_audit_rules_test_run(
@@ -247,7 +262,18 @@ function test_designer_audit_rules_form_submit_control()
 		. 'form("button without type", [N("semantic", { tag: "button", text: "Send" })]),'
 		. 'form("submit written loosely", [N("semantic", { tag: "button", text: "Send", _attrs: [{ name: "type", value: " Submit " }] })]),'
 		. 'form("text drawn as button", [N("content", { contentType: "heading", tag: "button", text: "Send" })]),'
-		. 'form("show and send", [N("semantic", { tag: "button", text: "Show", _attrs: [{ name: "type", value: "button" }] }), btn({ btnElement: "button", btnType: "submit" })])'
+		. 'form("show and send", [N("semantic", { tag: "button", text: "Show", _attrs: [{ name: "type", value: "button" }] }), btn({ btnElement: "button", btnType: "submit" })]),'
+		. 'form("input type prop only", [N("semantic", { tag: "input", inputType: "submit" })]),'
+		. 'form("input type with spaces", [N("semantic", { tag: "input", _attrs: [{ name: "type", value: " submit " }] })]),'
+		. 'form("type button in capitals", [N("semantic", { tag: "button", text: "Show", _attrs: [{ name: "type", value: "BUTTON" }] })]),'
+		. 'form("blank button type", [N("semantic", { tag: "button", text: "Send", _attrs: [{ name: "type", value: "" }] })]),'
+		. 'form("invalid button type", [N("semantic", { tag: "button", text: "Send", _attrs: [{ name: "type", value: "bogus" }] })]),'
+		. 'form("type button with spaces", [N("semantic", { tag: "button", text: "Send", _attrs: [{ name: "type", value: " button " }] })]),'
+		. 'form("text drawn with blank type", [N("content", { contentType: "heading", tag: "button", text: "Send", _attrs: [{ name: "type", value: "" }] })]),'
+		. 'form("button component without type", [btn({ btnElement: "button" })]),'
+		. 'form("button component blank type", [btn({ btnElement: "button", btnType: "" })]),'
+		. 'form("reset button component", [btn({ btnElement: "button", btnType: "Reset" })]),'
+		. 'form("input component without type", [btn({ btnElement: "input" })])'
 		. '])));'
 	);
 
@@ -259,5 +285,48 @@ function test_designer_audit_rules_form_submit_control()
 	pg_assert_same(array(
 		'fields only', 'link button', 'plain button component', 'reset input',
 		'type button', 'reset button', 'text drawn as type button', 'old content button',
+		'input type prop only', 'input type with spaces', 'type button in capitals',
+		'button component without type', 'reset button component', 'input component without type',
 	), $result, 'only the forms nothing submits');
+}
+
+// A text node is an empty heading only when it prints as a heading: the tag
+// it is drawn with is h1-h6, in any case, or missing or malformed, which
+// the renderer prints as h2. Drawn as a button, span, div or paragraph (the
+// carousel's indicators and arrows, the toast's dismiss button, badges and
+// labels) it is not a heading.
+function test_designer_audit_rules_empty_heading()
+{
+	$result = designer_audit_rules_test_run(
+		'function h(name, extra) { var p = { contentType: "heading", text: "", customName: name }; for (var k in extra) p[k] = extra[k]; return N("content", p); }'
+		. 'console.log(JSON.stringify(flagged("heading_empty", ['
+		// Flagged.
+		. 'h("empty h2", { tag: "h2" }),'
+		. 'h("capital tag", { tag: "H3", text: "&nbsp;" }),'
+		. 'h("markup only", { tag: "h4", text: "<b></b>" }),'
+		. 'h("no tag", {}),'
+		. 'h("malformed tag", { tag: "h2 class=x" }),'
+		. 'h("blank tag", { tag: "" }),'
+		. 'N("semantic", { tag: "h3", customName: "semantic heading" }),'
+		// Not flagged.
+		. 'h("written", { tag: "h2", text: "Our services" }),'
+		. 'h("bound", { tag: "h1", _bindings: { text: "__title" } }),'
+		. 'h("indicator", { tag: "button", _attrs: [{ name: "aria-label", value: "Slide 1" }] }),'
+		. 'h("arrow", { tag: "span", _attrs: hidden }),'
+		. 'h("dismiss", { tag: "button", cssClass: "btn-close" }),'
+		. 'h("division", { tag: "div" }),'
+		. 'h("paragraph", { tag: "p" }),'
+		. 'h("past h6", { tag: "h7" }),'
+		. 'N("semantic", { tag: "h3", customName: "semantic heading with a child" }, [N("content", { contentType: "span", text: "Hi" })])'
+		. '])));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(
+		'empty h2', 'capital tag', 'markup only', 'no tag', 'malformed tag', 'blank tag', 'semantic heading',
+	), $result, 'only the text nodes printed as an empty h1-h6');
 }

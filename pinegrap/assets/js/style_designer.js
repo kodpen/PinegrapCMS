@@ -58315,8 +58315,11 @@ const StyleDesigner = (function () {
     // props.text after its children, a content link before them), a bound
     // text, an aria-label / aria-labelledby / title, an image's alt, or a
     // child that does. A visually hidden span counts (it is read); an icon
-    // or anything under aria-hidden="true" does not. A shared component or a
-    // raw HTML block is not read from the tree, so it is taken as named.
+    // or anything under aria-hidden="true" does not. A shared component, a
+    // raw HTML block and content whose markup the server writes when the page
+    // is served (custom PHP, the form's messages, applied offers, the catalog
+    // breadcrumb, variant choices, the product gallery) are not read from the
+    // tree, so they are taken as named.
     function _sdAuditHasName(node) {
         if (!node || !node.props) return false;
         var p = node.props;
@@ -58325,7 +58328,7 @@ const StyleDesigner = (function () {
         if (p.tooltipEnabled && String(p.tooltipTitle || '').trim() !== '') return true;
         if (p._bindings && p._bindings.text) return true;
         if (node.type === 'shared_ref') return true;
-        if (node.type === 'content' && p.contentType === 'custom_html') return true;
+        if (node.type === 'content' && ['custom_html', 'custom_php', 'messages', 'applied_offers', 'breadcrumb', 'variant_attr', 'carousel'].indexOf(p.contentType) !== -1) return true;
         if ((node.type === 'content' && p.contentType === 'image') || (node.type === 'semantic' && p.tag === 'img')) {
             return !!(p._bindings && p._bindings.alt) || (typeof p.alt === 'string' && p.alt.trim() !== '') || _sdAuditAttr(node, 'alt');
         }
@@ -58355,30 +58358,32 @@ const StyleDesigner = (function () {
         return alt === '' || (alt !== 'image' && alt !== _sdT('Image').trim().toLowerCase());
     }
 
+    // Whether a printed type attribute makes a <button> or an <input> submit
+    // its form, as the browser reads it: the keyword is matched in any case
+    // but not trimmed, and a <button> whose type is missing, blank or not a
+    // keyword falls back to the Submit state. type is null when the element
+    // prints none.
+    function _sdAuditTypeSubmits(tag, type) {
+        var t = type === null ? '' : type.toLowerCase();
+        if (tag === 'button') return t !== 'button' && t !== 'reset';
+        return t === 'submit' || t === 'image';
+    }
+
     // Whether a node is a control that submits the form it sits in, as the
-    // renderer prints it: a <button> with no type or type="submit" (a
-    // semantic node, or a text node drawn with the button tag), an
-    // <input type="submit"> or <input type="image">, or a Button component
-    // drawn as <button type="submit"> / <input type="submit"> (btnElement
-    // and btnType; drawn as a link it does not submit). A type="button" or
-    // "reset" button does not; nor does the old content button, which has
-    // no renderer.
+    // renderer prints it: a <button> (a semantic node, or a text node drawn
+    // with the button tag, which print only the _attrs type) or an <input>
+    // (semantic, _attrs type), and a Button component drawn as <button> or
+    // <input>, whose type is btnType ("button" when it has none; drawn as a
+    // link it does not submit). The old content button has no renderer.
     function _sdAuditSubmits(n) {
         var p = n.props || {};
-        var type = String(_sdAttr(n, 'type') || '').trim().toLowerCase();
         if (n.type === 'semantic' || (n.type === 'content' && p.contentType === 'heading')) {
             var tag = String(p.tag || '').toLowerCase();
-            if (tag === 'button') return type === '' || type === 'submit';
-            if (tag === 'input' && n.type === 'semantic') {
-                type = type || String(p.inputType || '').trim().toLowerCase();
-                return type === 'submit' || type === 'image';
-            }
+            if (tag === 'button' || (tag === 'input' && n.type === 'semantic')) return _sdAuditTypeSubmits(tag, _sdAttr(n, 'type'));
             return false;
         }
-        if (n.type === 'component' && p.componentType === 'btn') {
-            var btnType = String(p.btnType || '').trim().toLowerCase();
-            if (p.btnElement === 'button') return btnType === 'submit';
-            if (p.btnElement === 'input') return btnType === 'submit' || btnType === 'image';
+        if (n.type === 'component' && p.componentType === 'btn' && (p.btnElement === 'button' || p.btnElement === 'input')) {
+            return _sdAuditTypeSubmits(p.btnElement, p.btnType == null ? 'button' : String(p.btnType));
         }
         return false;
     }
@@ -58398,7 +58403,8 @@ const StyleDesigner = (function () {
         },
         { id: 'empty_btn', label: _sdT('Empty button/link'),
             check: function(node, ctx) {
-                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link');
+                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link' ||
+                    (node.props.contentType === 'heading' && /^(a|button)$/i.test(String(node.props.tag || ''))));
                 var isSemBtn = node.type === 'semantic' && (node.props.tag === 'button' || node.props.tag === 'a');
                 if (!isContentBtn && !isSemBtn) return false;
                 // A control hidden from assistive technology announces no
@@ -58492,6 +58498,15 @@ const StyleDesigner = (function () {
         { id: 'heading_empty', label: _sdT('Empty heading'), seo: 'heading_empty',
             check: function(node) {
                 if (node.type === 'content' && node.props.contentType === 'heading') {
+                    // A text node is a heading only when it prints as one.
+                    // The renderer draws it with its tag, h2 when the tag is
+                    // missing or malformed; drawn as a button, span or div
+                    // (carousel indicators and arrows, a dismiss button, a
+                    // badge) it is a control or a label, and an empty
+                    // control is empty_btn's to report.
+                    var tag = String(node.props.tag == null ? '' : node.props.tag);
+                    if (!/^[a-z][a-z0-9]*$/i.test(tag)) tag = 'h2';
+                    if (!/^h[1-6]$/i.test(tag)) return false;
                     return !String(node.props.text || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() && !(node.props._bindings && node.props._bindings.text);
                 }
                 if (node.type === 'semantic' && /^h[1-6]$/.test(node.props.tag || '')) {

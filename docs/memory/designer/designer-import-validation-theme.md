@@ -17,7 +17,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - `api.php designer/seo_check` -> `pg_seo_evaluate_meta` + `pg_seo_analyze_html('fragment')` + `pg_seo_compose`; writes nothing. Save runs `pg_seo_analyze_record` + `pg_seo_recalculate`.
 - When adding a node-level SEO check, write its client twin too: a server finding cannot be mapped to a node.
 - Text contrast is measured on the canvas, not from the tree: docs/memory/designer/designer-audit-contrast.md.
-- Empty link/button, image alt and form submit rules (what counts as a name, an alt decision, a submit control): docs/memory/designer/designer-audit-tree-rules.md.
+- Empty link/button, image alt, form submit and empty heading rules (what counts as a name, an alt decision, a submit, a heading): docs/memory/designer/designer-audit-tree-rules.md.
 
 ## How is the theme stored?
 - A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`).
