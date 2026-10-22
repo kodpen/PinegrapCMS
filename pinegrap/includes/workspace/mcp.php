@@ -1142,7 +1142,7 @@ function ws_mcp_settings_post($viewer, $action, $liveform)
             if ($refresh['ok']) {
                 $liveform->add_notice(lang(array('string' => '@{var:1} answered with {var:2} tools.', 'vars' => array($server['alias'], $refresh['count']))));
             } else {
-                $liveform->add_error(lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], $refresh['error']))));
+                $liveform->add_error(lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], h($refresh['error'])))));
             }
 
             return $anchor;
@@ -1398,7 +1398,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
             $setup = ws_mcp_oauth_setup($saved, $oauth_client_id, ($oauth_client_secret !== '') ? $oauth_client_secret : null, (int) $viewer['id']);
 
             if (!$setup['ok']) {
-                $liveform->add_error(lang(array('string' => '@{var:1} was saved, but the sign-in to it could not be set up: {var:2}', 'vars' => array($alias, $setup['error']))));
+                $liveform->add_error(lang(array('string' => '@{var:1} was saved, but the sign-in to it could not be set up: {var:2}', 'vars' => array($alias, h($setup['error'])))));
                 return '#ws-mcp-' . $id;
             }
         }
@@ -1419,7 +1419,7 @@ function ws_mcp_settings_save($viewer, $server, $liveform, $username)
     if ($refresh['ok']) {
         $liveform->add_notice(lang(array('string' => '@{var:1} was saved and answered with {var:2} tools. Turn on the ones that may be used.', 'vars' => array($alias, $refresh['count']))));
     } else {
-        $liveform->add_error(lang(array('string' => '@{var:1} was saved but could not be reached: {var:2}', 'vars' => array($alias, $refresh['error']))));
+        $liveform->add_error(lang(array('string' => '@{var:1} was saved but could not be reached: {var:2}', 'vars' => array($alias, h($refresh['error'])))));
     }
 
     return '#ws-mcp-' . $id;
@@ -1445,7 +1445,7 @@ function ws_mcp_settings_connect($viewer, $server, $liveform)
         $setup = ws_mcp_oauth_setup($server, $manual, null, (int) $viewer['id']);
 
         if (!$setup['ok']) {
-            $liveform->add_error(lang(array('string' => 'The sign-in to @{var:1} could not be set up: {var:2}', 'vars' => array($server['alias'], $setup['error']))));
+            $liveform->add_error(lang(array('string' => 'The sign-in to @{var:1} could not be set up: {var:2}', 'vars' => array($server['alias'], h($setup['error'])))));
             return;
         }
     }
@@ -1514,11 +1514,11 @@ function ws_mcp_settings_returned($viewer, $liveform)
     }
 
     if ($flash['kind'] === 'error') {
-        $liveform->add_error($flash['text']);
+        $liveform->add_error(h($flash['text']));
         return;
     }
 
-    $liveform->add_notice($flash['text']);
+    $liveform->add_notice(h($flash['text']));
 
     $server = ws_mcp_server($id);
 
@@ -1531,7 +1531,7 @@ function ws_mcp_settings_returned($viewer, $liveform)
     if ($refresh['ok']) {
         $liveform->add_notice(lang(array('string' => '@{var:1} answered with {var:2} tools. Turn on the ones that may be used.', 'vars' => array($server['alias'], $refresh['count']))));
     } else {
-        $liveform->add_error(lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], $refresh['error']))));
+        $liveform->add_error(lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], h($refresh['error'])))));
     }
 }
 

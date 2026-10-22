@@ -143,8 +143,8 @@ function test_record_view_filters_no_record_fails()
 }
 
 // An operator outside the list (here the Turkish "eşittir" a hand-written
-// config might carry) is counted, not silently dropped: a record view
-// closes on it, a list keeps skipping it. A blank row counts in neither.
+// config might carry) is counted, not silently dropped: a record view and
+// a list both close on it. A blank row counts in neither.
 function test_record_view_filters_invalid_operator_closes()
 {
 	$bad = array('field' => 'status', 'operator' => 'eşittir', 'value' => 'Published');
@@ -159,7 +159,8 @@ function test_record_view_filters_invalid_operator_closes()
 	pg_assert_true(pg_sw_list_record_filter_clause(12, array(), array('filters' => array($bad)))['closed']);
 
 	$list = pg_sw_record_filter_clause(12, array($bad));
-	pg_assert_same(array('join' => '', 'where' => '', 'closed' => false, 'params' => array(), 'inexact' => false, 'exact' => ''), $list);
+	pg_assert_same(array('join' => '', 'where' => ' AND (0 = 1)', 'closed' => true, 'params' => array(), 'inexact' => false, 'exact' => ''), $list);
+	pg_assert_true(pg_sw_list_record_filter_clause(12, array('filters' => array($bad)), array())['closed']);
 
 	$no_operator = array('field' => 'reference_code', 'value' => 'X');
 	pg_assert_true(pg_sw_record_filter_clause(12, array($no_operator), 0, true)['closed']);

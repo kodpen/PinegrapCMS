@@ -49,7 +49,7 @@ if ($_POST) {
         $result = erp_waybill_invoice($waybill_id, (int) $user['id']);
 
         if (!$result['success']) {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
             go($self_url);
         }
 
@@ -61,12 +61,12 @@ if ($_POST) {
             // Typed by hand: the lines are on a draft, the prices are the
             // operator's to finish. The editor is where that happens.
             $liveform_draft = new liveform('edit_erp_invoice_draft');
-            $liveform_draft->add_notice(lang(array('string' => 'The lines of delivery note {var:1} are on this draft. Fill in the prices and issue the invoice.', 'vars' => $waybill['full_number'])));
+            $liveform_draft->add_notice(lang(array('string' => 'The lines of delivery note {var:1} are on this draft. Fill in the prices and issue the invoice.', 'vars' => h($waybill['full_number']))));
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id']);
         }
 
         $liveform_document = new liveform('edit_erp_invoice');
-        $liveform_document->add_notice(lang(array('string' => 'Delivery note {var:1} has been invoiced.', 'vars' => $waybill['full_number'])));
+        $liveform_document->add_notice(lang(array('string' => 'Delivery note {var:1} has been invoiced.', 'vars' => h($waybill['full_number']))));
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . (int) $result['invoice_id']);
     }
 
