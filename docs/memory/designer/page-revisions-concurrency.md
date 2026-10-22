@@ -12,7 +12,7 @@ description: Two writes of one page's revision at the same moment: which errors 
 - `pg_page_revision_seed()` (revision 1 of a page with none) asks the same rule with `$duplicate_ends = true`: a 1062 there means the other save wrote revision 1, not an error, and is not logged.
 - The number of the written row is read back by `mysqli_insert_id()` (#899), not `MAX()`.
 
-## What was wrong before (#827)?
+## What was wrong before (#827, PR #1246)?
 - Only 1062 was tried again, once. Lock errors ended the loop at the first statement: the page was saved but its revision was not, only a "Page revisions: writing the revision of page … failed" line in the error log showed it. Measured on MariaDB 10.11: 11 of 200 revisions lost with two writers, 39 of 240 with six.
 - An atomic counter (`UPDATE … SET n = LAST_INSERT_ID(n + 1)`) would need a column, i.e. a schema step; not done.
 
