@@ -4278,17 +4278,13 @@ function _pg_unique_classes($classes)
 
 // The opening tag of a grid node (container, row, col), as the editor's
 // _sdGridOpenTag() writes it: the classes once each and escaped once, the
-// sizing style before the Attributes panel's style, then the id and the
-// panel's other attributes.
+// style as on any other node (_compose_inline_style(), the sizing props in
+// it), then the id, the title or tooltip and the panel's other attributes.
 function _pg_grid_open_tag($classes, $props, $sz)
 {
-    $style = array();
-    if ($sz['style'] !== '') $style[] = $sz['style'];
-    $user_style = _user_attr_value($props, 'style');
-    if ($user_style !== '') $style[] = $user_style;
     return '<div class="' . h(_pg_unique_classes($classes . ' ' . $sz['class'])) . '"'
-        . ($style ? ' style="' . h(implode(';', $style)) . '"' : '')
-        . _render_extra_attrs($props) . '>';
+        . _compose_inline_style($props, '', $sz['style'])
+        . _render_extra_attrs($props, array(), true) . '>';
 }
 
 // Build Bootstrap column classes from column props
@@ -4377,7 +4373,11 @@ function _render_region_tag($props)
 // case-specific class/style and so are handled in the caller via
 // _user_attr_value(). 'id' is sourced from props.id and rendered only
 // when the caller didn't already include it in $skip_names.
-function _render_extra_attrs($props, $skip_names = array())
+//
+// $title: also write the node's title and tooltip (_pg_node_title_attrs())
+//   after the id. Content, semantic and grid nodes pass true; a component's
+//   props.title is its heading text, not an attribute.
+function _render_extra_attrs($props, $skip_names = array(), $title = false)
 {
     $skip_map = array();
     foreach ($skip_names as $n) $skip_map[strtolower((string)$n)] = true;
@@ -4388,6 +4388,7 @@ function _render_extra_attrs($props, $skip_names = array())
         // render knows to describe its parts in the structured data.
         if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
+    if ($title) $out .= _pg_node_title_attrs($props);
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -4419,19 +4420,45 @@ function _user_attr_value($props, $name)
     return '';
 }
 
+// The title and the tooltip of a content, semantic or grid node, as the
+// editor's _sdNodeTitleAttrs() writes them: title is the tooltip's text
+// while the tooltip is on, the plain title prop otherwise, then the
+// tooltip's data-bs-toggle and data-bs-placement. Each yields to an
+// Attributes panel entry of the same name, so a popover or a modal toggle
+// typed there keeps working and no attribute is written twice.
+function _pg_node_title_attrs($props)
+{
+    $written = _pg_attr_names($props);
+    $tip = !empty($props['tooltipEnabled']) && isset($props['tooltipTitle'])
+        && is_scalar($props['tooltipTitle']) && (string)$props['tooltipTitle'] !== '';
+    $title = $tip ? (string)$props['tooltipTitle']
+        : ((isset($props['title']) && is_scalar($props['title'])) ? (string)$props['title'] : '');
+    $out = '';
+    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . h($title) . '"';
+    if ($tip) {
+        if (!in_array('data-bs-toggle', $written, true)) $out .= ' data-bs-toggle="tooltip"';
+        if (!in_array('data-bs-placement', $written, true)) {
+            $out .= ' data-bs-placement="' . h(!empty($props['tooltipPlacement']) ? (string)$props['tooltipPlacement'] : 'top') . '"';
+        }
+    }
+    return $out;
+}
+
 // Compose the full inline `style="..."` value for any leaf renderer.
 // Combines (in this order, last wins on duplicate keys):
 //   • props.fontFamily       — Font picker (Body / heading / etc.).
 //   • props.inlineStyle      — Legacy direct-input field.
 //   • $extra (caller-built)  — node-specific built-in styles (e.g. icon's
 //                              font-size, image's object-position, hero's
-//                              background, spacer's height, sizing helpers).
+//                              background, spacer's height).
+//   • $sizing                — the Display & Sizing props
+//                              (_build_node_sizing_attrs()'s style).
 //   • _attrs.style           — user-typed style="..." in the Attrs panel.
 // Returns ' style="..."' (leading space, ready to splice) or '' when nothing.
-// The iframe canvas applies these same parts via JS — keeping this list in
-// sync with assets/js/style_designer.js's getNodeExtraStyle() prevents the
-// classic "looks right in editor, wrong on the rendered page" bug.
-function _compose_inline_style($props, $extra = '')
+// The parts are not escaped by the caller: the attribute is escaped here,
+// once. The editor's HTML writes the same through _sdNodeStyle() in
+// assets/js/style_designer.js; the canvas applies the parts in this order.
+function _compose_inline_style($props, $extra = '', $sizing = '')
 {
     $parts = array();
     if (!empty($props['fontFamily'])) {
@@ -4446,6 +4473,9 @@ function _compose_inline_style($props, $extra = '')
     }
     if ($extra !== '' && $extra !== null) {
         $parts[] = trim($extra, '; ');
+    }
+    if ($sizing !== '' && $sizing !== null) {
+        $parts[] = trim($sizing, '; ');
     }
     $u = _user_attr_value($props, 'style');
     if ($u !== '') $parts[] = trim($u, '; ');

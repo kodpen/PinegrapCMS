@@ -67,6 +67,13 @@ function _test_designer_grid_cases()
 		'row ratio custom' => _test_designer_grid_node('row', array('aspectRatioEnabled' => true, 'aspectRatio' => 'custom', 'aspectRatioCustom' => '40%')),
 		'col style escaping' => _test_designer_grid_node('col', array('xs' => '6', 'maxWidth' => 'min(40rem, 100% - "a" & b)')),
 		'container toggles' => _test_designer_grid_node('container', array('focusRing' => true, 'placeholderMode' => true, 'placeholderAnim' => 'wave', 'cssClass' => 'focus-ring placeholder placeholder-wave')),
+		'container font and inline style' => _test_designer_grid_node('container', array('fontFamily' => 'Press Start 2P', 'inlineStyle' => 'color:red; ', 'maxWidth' => '60rem', '_attrs' => $attrs(array('style' => 'margin:0;')))),
+		'row bare font' => _test_designer_grid_node('row', array('fontFamily' => 'Inter')),
+		'col title' => _test_designer_grid_node('col', array('xs' => '6', 'id' => 'c1', 'title' => 'Plain "t"')),
+		'col tooltip' => _test_designer_grid_node('col', array('xs' => '6', 'title' => 'Plain', 'tooltipEnabled' => true, 'tooltipTitle' => 'Tip', 'tooltipPlacement' => 'bottom', '_attrs' => $attrs(array('data-x' => '1')))),
+		'row tooltip without placement' => _test_designer_grid_node('row', array('tooltipEnabled' => true, 'tooltipTitle' => 'Tip')),
+		'container tooltip off' => _test_designer_grid_node('container', array('tooltipEnabled' => false, 'tooltipTitle' => 'Tip')),
+		'col tooltip and popover' => _test_designer_grid_node('col', array('xs' => '12', 'tooltipEnabled' => true, 'tooltipTitle' => 'Tip', '_attrs' => $attrs(array('data-bs-toggle' => 'popover', 'data-bs-placement' => 'end')))),
 	);
 }
 
@@ -178,6 +185,23 @@ function test_designer_grid_attributes()
 	pg_assert_same('<div class="container-fluid py-5 bg-body-tertiary" id="top" data-bs-theme="dark">', _test_designer_grid_php($cases['container fluid']));
 }
 
+// The font, the old inline style field, the title and the tooltip, which
+// the canvas applies to a grid node, are written as on any other node: the
+// style in _compose_inline_style()'s order, the title and the tooltip after
+// the id; a tooltip attribute yields to an Attributes panel entry.
+function test_designer_grid_font_style_title_tooltip()
+{
+	$cases = _test_designer_grid_cases();
+
+	pg_assert_same('<div class="container" style="font-family:&#039;Press Start 2P&#039;,sans-serif;color:red;max-width:60rem;margin:0">', _test_designer_grid_php($cases['container font and inline style']));
+	pg_assert_same('<div class="row" style="font-family:Inter,sans-serif">', _test_designer_grid_php($cases['row bare font']));
+	pg_assert_same('<div class="col-6" id="c1" title="Plain &quot;t&quot;">', _test_designer_grid_php($cases['col title']));
+	pg_assert_same('<div class="col-6" title="Tip" data-bs-toggle="tooltip" data-bs-placement="bottom" data-x="1">', _test_designer_grid_php($cases['col tooltip']));
+	pg_assert_same('<div class="row" title="Tip" data-bs-toggle="tooltip" data-bs-placement="top">', _test_designer_grid_php($cases['row tooltip without placement']));
+	pg_assert_same('<div class="container">', _test_designer_grid_php($cases['container tooltip off']));
+	pg_assert_same('<div class="col-12" title="Tip" data-bs-toggle="popover" data-bs-placement="end">', _test_designer_grid_php($cases['col tooltip and popover']));
+}
+
 // The class and the attributes are escaped once.
 function test_designer_grid_escaped_once()
 {
@@ -189,7 +213,8 @@ function test_designer_grid_escaped_once()
 // -- the editor ----------------------------------------------------------------
 
 // The editor's HTML (code view, preview, revision compare) opens every grid
-// node as the page does.
+// node as the page does. h() writes a single quote as &#039;, the editor's
+// esc() leaves it; both read the same.
 function test_designer_grid_editor_writes_the_same()
 {
 	$cases = _test_designer_grid_cases();
@@ -200,7 +225,7 @@ function test_designer_grid_editor_writes_the_same()
 	}
 
 	foreach ($cases as $name => $node) {
-		pg_assert_same(_test_designer_grid_php($node), $js[$name], $name);
+		pg_assert_same(str_replace('&#039;', "'", _test_designer_grid_php($node)), $js[$name], $name);
 	}
 }
 

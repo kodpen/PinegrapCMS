@@ -50246,35 +50246,109 @@ const StyleDesigner = (function () {
     // The opening tag of a grid node (container, row, col), twin of
     // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
     // saved page: the classes once each (the Display & Sizing toggles are
-    // in cssClass as well), the sizing style before the Attributes panel's
-    // style, then the id, the search section mark and the panel's other
+    // in cssClass as well), the style as on any other node, then the id,
+    // the search section mark, the title or tooltip and the panel's other
     // attributes (class, style and id are never printed from the list).
     function _sdGridOpenTag(n, classes) {
         var p = n.props || {};
-        var seen = [];
-        (classes + ' ' + getNodeExtraClasses(n)).split(/\s+/).forEach(function (c) {
-            if (c && seen.indexOf(c) === -1) seen.push(c);
-        });
-        var style = [];
-        var sz = getNodeExtraStyle(n);
-        if (sz) style.push(sz);
-        var userStyle = '', extra = '', styleFound = false;
-        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
-            if (!a || !a.name) return;
-            var name = String(a.name), lname = name.toLowerCase();
-            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
-            if (lname === 'style') { if (!styleFound) { styleFound = true; userStyle = val; } return; }
-            if (lname === 'class' || lname === 'id') return;
-            extra += ' ' + esc(name) + '="' + esc(val) + '"';
-        });
-        if (userStyle !== '') style.push(userStyle);
-        var out = '<div class="' + esc(seen.join(' ')) + '"';
-        if (style.length) out += ' style="' + esc(style.join(';')) + '"';
+        var style = _sdNodeStyle(p, '', getNodeExtraStyle(n));
+        var out = '<div class="' + esc(_sdUniqueClasses(classes + ' ' + getNodeExtraClasses(n))) + '"';
+        if (style) out += ' style="' + esc(style) + '"';
         if (p.id) {
             out += ' id="' + esc(p.id) + '"';
             if (p.searchSection) out += ' data-pg-search-section';
         }
-        return out + extra + '>';
+        return out + _sdNodeExtraAttrs(p, p._attrs, ['id']) + '>';
+    }
+
+    // A class attribute's value with each class once, in the order first
+    // written. Twin of _pg_unique_classes().
+    function _sdUniqueClasses(classes) {
+        var seen = [];
+        String(classes || '').split(/\s+/).forEach(function (c) {
+            if (c && seen.indexOf(c) === -1) seen.push(c);
+        });
+        return seen.join(' ');
+    }
+
+    // The value of a node's Attributes panel entry (the first of that name,
+    // any case), '' when there is none. Twin of _user_attr_value().
+    function _sdUserAttrValue(list, name) {
+        if (!Array.isArray(list)) return '';
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            if (a && a.name && String(a.name).toLowerCase() === name) {
+                return (a.value === undefined || a.value === null) ? '' : String(a.value);
+            }
+        }
+        return '';
+    }
+
+    // The font picker's family as a declaration: quoted when it holds a
+    // space or starts with a digit, then the sans-serif fallback. A bare
+    // name stays bare, so a generic family (serif) keeps working.
+    function _sdFontFamilyCss(family) {
+        var fam = String(family);
+        var quote = fam.indexOf(' ') !== -1 || /^[0-9]/.test(fam);
+        return 'font-family:' + (quote ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif';
+    }
+
+    // The style attribute's value of a content, semantic or grid node,
+    // unescaped: the font, the old inline style field, the type's own
+    // style, the Display & Sizing props, then the Attributes panel's style;
+    // the last wins on a property written twice. Twin of
+    // _compose_inline_style(), which writes the saved page.
+    function _sdNodeStyle(p, own, sizing) {
+        var parts = [];
+        var trim = function (s) { return String(s).replace(/^[; ]+|[; ]+$/g, ''); };
+        if (p.fontFamily) parts.push(_sdFontFamilyCss(p.fontFamily));
+        if (p.inlineStyle) parts.push(String(p.inlineStyle).replace(/[; ]+$/, ''));
+        if (own) parts.push(trim(own));
+        if (sizing) parts.push(trim(sizing));
+        var u = _sdUserAttrValue(p._attrs, 'style');
+        if (u !== '') parts.push(trim(u));
+        return parts.join(';');
+    }
+
+    // The title and the tooltip of a content, semantic or grid node: the
+    // tooltip's text while the tooltip is on, the plain title otherwise,
+    // then data-bs-toggle and data-bs-placement; each yields to an
+    // Attributes panel entry of the same name. Twin of
+    // _pg_node_title_attrs().
+    function _sdNodeTitleAttrs(p, list) {
+        var written = {};
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        var tip = !!(p.tooltipEnabled && p.tooltipTitle);
+        var title = tip ? p.tooltipTitle : p.title;
+        var out = '';
+        if (title && !written.title) out += ' title="' + esc(String(title)) + '"';
+        if (tip) {
+            if (!written['data-bs-toggle']) out += ' data-bs-toggle="tooltip"';
+            if (!written['data-bs-placement']) out += ' data-bs-placement="' + esc(p.tooltipPlacement || 'top') + '"';
+        }
+        return out;
+    }
+
+    // The id, the title and tooltip, then the Attributes panel's entries
+    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
+    // the id out. class, style and id are never written from the list.
+    // Twin of _render_extra_attrs($props, $skip, true) without the search
+    // section mark.
+    function _sdNodeExtraAttrs(p, list, skip) {
+        var out = '';
+        if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
+        out += _sdNodeTitleAttrs(p, list);
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (!a || !a.name) return;
+            var name = String(a.name), lname = name.toLowerCase();
+            if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
+            out += ' ' + esc(name) + '="' + esc(val) + '"';
+        });
+        return out;
     }
 
     // Children written into a component's output (see _sdEmitNode): their
