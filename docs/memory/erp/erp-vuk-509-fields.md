@@ -4,12 +4,12 @@ description: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge deriv
 ---
 
 ## Which fields does the bridge derive?
-Fields e-Arşiv treats as mandatory live on `erp_invoices` and `erp_invoice_from_order()` derives them from the order. A return document COPIES all of them from the parent invoice (`returns.php`), it does not re-derive.
+Fields e-Arşiv treats as mandatory live on `erp_invoices`. `erp_order_sale_fields()` derives them from the order, for `erp_invoice_from_order()` and for the order screen's own Paraşüt button, which sends them with its e-document (#1278, erp-parasut-legacy-order-buttons.md). A return document COPIES all of them from the parent invoice (`returns.php`), it does not re-derive.
 
 | Field | Source |
 |---|---|
-| `is_internet_sale` | `orders.type`: `local` → 0, anything else (web, marketplace, older rows) → 1 |
-| `web_address` | internet sale only: `ERP_WEB_ADDRESS`; if empty `URL_SCHEME . HOSTNAME` |
+| `is_internet_sale` | `erp_order_internet_sale()`: `orders.type` `local` → 0, anything else (web, marketplace, older rows) → 1 |
+| `web_address` | the same, internet sale only: `ERP_WEB_ADDRESS`; if empty `URL_SCHEME . HOSTNAME` |
 | `payment_method` | `erp_order_payment_method_code()`: `DIGER` for an order put on the account (`orders.erp_on_account`, 10.60), else `erp_payment_method_code()` → GİB `OdemeSekli`: card `KREDIKARTI/BANKAKARTI`, PayPal and Pay With Iyzico `ODEMEARACISI`, Offline Payment `EFT/HAVALE`, unknown '' |
 | `payment_date` | `erp_order_payment_date()` → `orders.paid_at`; else, with `transaction_id` filled, `order_date` |
 | `shipment_date` / `carrier_title` / `carrier_vkn` | `erp_order_shipment()`: earliest non-zero `ship_tos.ship_date` of a complete recipient, if not later than today; carrier from that recipient's shipping method, or before anything ships from the first recipient with a method; title falls back to the method name |
