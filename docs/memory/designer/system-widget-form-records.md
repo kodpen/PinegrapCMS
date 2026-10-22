@@ -15,6 +15,7 @@ description: Form list and form detail widgets: one record address (pg_sw_record
 - `form_list_view` config `filters` holds the classic list view's filters (`field`, `operator`, `value`, `dynamic_value`, `dynamic_value_attribute`), turned into SQL by `pg_sw_form_list_filter_sql()`; all must match (AND). The field is a standard field key (`pg_sw_standard_fields()`) or a form field's name; a missing field or an unknown operator is skipped, never an error.
 - A filter without a value compares with its dynamic value, worked out per request (`get_dynamic_value()`) and offered by field type: date → today or N days ago, time → now, username → the viewer, e-mail address → the viewer's address.
 - Editor labels are `_sdT('…')` literals: the translation map is built by scanning literal calls.
+- The `url parameter` dynamic value is list-only: the value comes from `?<name>=` (`pg_sw_url_param_name()`, reserved names); absent from the address, the filter is skipped; `$request` null means no address and closes a record view. Tokens and flags: `__filter_value`, `has_filter_value` / `no_filter_value`, `filter_title`; page head from `pg_sw_url_filter_state()`. See `form-list-url-filters.md`.
 
 ## What does the detail show without a record?
 - `hide_when_not_found` (default on): `pg_sw_prune_record_layout()` keeps only the elements meant for that state (`eo_visible_if = record_not_found`, text bound to `not_found`), the Messages node and what surrounds them. When none is left the renderer writes the message itself.
