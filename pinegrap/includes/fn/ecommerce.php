@@ -1882,8 +1882,37 @@ function pg_product_stock_delta($was_tracked, $was_quantity, $tracked, $quantity
 
 
 /**
+ * The products.out_of_stock assignment for a write that sets a stock count,
+ * for an UPDATE's SET list: tracked with nothing left is out of stock, any
+ * other row is not (the rule of pg_pb_apply_stock_flag()).
+ *
+ * out_of_stock_timestamp is the "out of stock since" column, so it is
+ * stamped only on the way in: a row that was flagged already keeps the day
+ * it ran out.
+ *
+ * @param bool       $tracked     products.inventory after the write
+ * @param int|string $quantity    products.inventory_quantity after the write
+ * @param bool|string $was_flagged products.out_of_stock before the write
+ * @return string the assignment(s), without a trailing comma
+ */
+function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
+{
+    if (!$tracked || ((int) $quantity > 0)) {
+        return "out_of_stock = '0'";
+    }
+
+    if (($was_flagged === true) || ((string) $was_flagged === '1')) {
+        return "out_of_stock = '1'";
+    }
+
+    return "out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()";
+}
+
+
+/**
  * A product's stock was written somewhere on the site: the checkout, a local
- * sale, the product screen and its list, a barcode scan, the bulk edit. One
+ * sale, the product screen and its list, a barcode scan, the bulk edit, the
+ * file manager's catalogue (quick edit and bulk edit). One
  * call after the write does everything a stock change owes the outside:
  *
  *   - products.timestamp moves, so GET /products?updated_since= lists the
