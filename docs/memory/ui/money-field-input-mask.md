@@ -17,7 +17,7 @@ description: Panel money boxes with the currency input mask: panel-language sepa
 
 ## What were the symptoms?
 - #728 (PR #925): the gift card balance was filled as `pg_format_number()` text the mask read as "." decimal; ₺50,00 saved as ₺5.000. Fixed then by machine-format filling.
-- #986: the mask read "." as the decimal point in every language, so on a Turkish panel `12.500` saved ₺12,50 and `1.234,56` ₺1,56 (gift cards, product prices, zone and shipping rates). The variable base rates stripped every comma (`1.234,56` → 1.23456). The product screen also put the extra shipping cost in its box in minor units (500 for ₺5,00), so every save multiplied it by 100.
+- #986 (PR #1263): the mask read "." as the decimal point in every language, so on a Turkish panel `12.500` saved ₺12,50 and `1.234,56` ₺1,56 (gift cards, product prices, zone and shipping rates). The variable base rates stripped every comma (`1.234,56` → 1.23456). The product screen also put the extra shipping cost in its box in minor units (500 for ₺5,00), so every save multiplied it by 100.
 
 ## What was checked?
 - `tests/money_mask_test.php`. A static page with the panel's jQuery, Inputmask 5.0.7 and binding: Turkish and English boxes fill `1234,56` / `1234.56` as `1.234,56` / `1,234.56`, a reposted `12.500,00` stays, typed `12.500` and `1.234,56` (text input) stay; without the extension the Turkish box carries the `.` → `,` substitute. Not checked on a running panel with real keyboard keypresses.
