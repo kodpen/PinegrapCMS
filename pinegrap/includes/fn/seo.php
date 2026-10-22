@@ -2071,6 +2071,91 @@ function pg_sfv_record_view($submitted_form_id, $page_id)
 }
 
 /**
+ * Count one view of a record shown on a page built in the visual editor.
+ *
+ * The designed record page's twin of the counting block in
+ * get_form_item_view.php: the running total in
+ * submitted_form_info.number_of_views and the day's row in
+ * submitted_form_view_stats, both per (record, page). get_page.php calls it
+ * once the page has been sent, for the record the form_item_view widget
+ * registered (pg_sw_record_view_seen()).
+ *
+ * submitted_form_info has no unique key, so two first views arriving at once
+ * could each find no row and insert one. The first-insert path therefore takes
+ * a named lock, updates again under it and inserts only if that still matched
+ * nothing. A lock that times out ('0': another request is inserting) drops this
+ * one view rather than risk a second row. A server without a lock service
+ * (the query fails or returns NULL, as on Galera/PXC) inserts unlocked, like
+ * the legacy page: a rare duplicate row is read correctly by the MAX()
+ * readers, while skipping would leave the record without a counter for good.
+ *
+ * Every statement goes through @mysqli_query, never db(): db() turns a failed
+ * query into an error screen, and a lock wait or deadlock on a busy record's
+ * counter must not replace the page a visitor has already received.
+ */
+function pg_sfv_count_view($submitted_form_id, $page_id)
+{
+    $submitted_form_id = (int) $submitted_form_id;
+    $page_id           = (int) $page_id;
+
+    if ($submitted_form_id <= 0 || $page_id <= 0 || !isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    pg_sfv_record_view($submitted_form_id, $page_id);
+
+    $update = "UPDATE submitted_form_info
+               SET number_of_views = number_of_views + 1
+               WHERE submitted_form_id = '" . $submitted_form_id . "'
+                 AND page_id = '" . $page_id . "'";
+
+    if (!@mysqli_query(db::$con, $update)) {
+        return;
+    }
+
+    if (mysqli_affected_rows(db::$con) === 0) {
+        // Under 64 characters whatever the ids; no database prefix, which
+        // could push it over the limit and make every call fail.
+        $lock = "'pg_sfi_" . $submitted_form_id . "_" . $page_id . "'";
+        $insert = "INSERT INTO submitted_form_info (submitted_form_id, page_id, number_of_views)
+                   VALUES ('" . $submitted_form_id . "', '" . $page_id . "', 1)";
+        $result = @mysqli_query(db::$con, "SELECT GET_LOCK($lock, 1)");
+        $row = ($result instanceof mysqli_result) ? mysqli_fetch_row($result) : null;
+        $lock_state = ($row && $row[0] !== null) ? (string) $row[0] : null;
+
+        if ($lock_state === '1') {
+            if (@mysqli_query(db::$con, $update) && mysqli_affected_rows(db::$con) === 0) {
+                @mysqli_query(db::$con, $insert);
+            }
+
+            @mysqli_query(db::$con, "SELECT RELEASE_LOCK($lock)");
+        } elseif ($lock_state === null) {
+            // No lock service: insert unlocked (legacy behaviour).
+            @mysqli_query(db::$con, $insert);
+        }
+        // '0': the lock timed out while another request holds it; drop this view.
+    }
+
+    pg_sfv_sweep_sampled();
+}
+
+/**
+ * Now and then, drop daily view rows older than six months.
+ *
+ * The same rule and sample as the legacy record page, so a site whose record
+ * pages are all designed keeps the table bounded too. Only the rollup table:
+ * the old per-view table is read by the backfill and is never swept here.
+ */
+function pg_sfv_sweep_sampled()
+{
+    if (mt_rand(1, 500) !== 1 || !pg_sfv_stats_ready()) {
+        return;
+    }
+
+    @mysqli_query(db::$con, "DELETE FROM submitted_form_view_stats WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH)");
+}
+
+/**
  * Remove view history for a deleted article or page.
  *
  * Clears both tables while the legacy one is still around. Clearing only the
@@ -2535,6 +2620,35 @@ function pg_visitor_stats_range($start_date, $end_date)
     }
 
     return $out;
+}
+
+/**
+ * True when the request comes from an automated client rather than a person.
+ *
+ * The "bots are not recorded" rule, shared by the visitor row
+ * (init_tracking()) and the record view counters: a bot the firewall marked
+ * (IS_BOT); without that mark (firewall off, allow-listed address, excluded
+ * path) any user agent class other than human; and other Pinegrap
+ * installations, which the firewall treats as ordinary clients so they are
+ * never blocked (not through IS_BOT: that constant also exempts a request
+ * from rate limiting, which a claimed user agent must not buy). Not cached:
+ * called once per counted page.
+ */
+function pg_request_is_automated()
+{
+    if (defined('IS_BOT') && IS_BOT) {
+        return true;
+    }
+
+    if (!defined('IS_BOT') && function_exists('waf_classify_bot')) {
+        $class = waf_classify_bot(isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '');
+
+        if ($class['class'] !== 'human') {
+            return true;
+        }
+    }
+
+    return function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client();
 }
 
 function update_visitor_page_data($page_name, $page_id = 0)
