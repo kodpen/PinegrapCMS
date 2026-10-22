@@ -7,10 +7,12 @@
  * product, stock.low once on the crossing of the low-stock line, nothing for
  * a product that does not track stock; and for the rule that decides
  * whether a save of the whole row moved the stock at all
- * (pg_product_stock_delta()). Also that every stock writer on the site calls
- * pg_product_stock_changed(), that the API's own writer announces the
- * same keys, and that the quiet bulk writers (a marketplace order import or
- * cancellation, an ERP stock count) still move products.timestamp.
+ * (pg_product_stock_delta()), and for the out-of-stock flag a stock count
+ * write sets (pg_product_out_of_stock_sql()). Also that every stock writer on
+ * the site calls pg_product_stock_changed(), the file manager's catalogue
+ * included, that the API's own writer announces the same keys, and that the
+ * quiet bulk writers (a marketplace order import or cancellation, an ERP stock
+ * count) still move products.timestamp.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -172,7 +174,79 @@ function test_product_stock_delta_untracked_after_is_no_change()
 	pg_assert_same(null, pg_product_stock_delta(false, '5', false, '5'));
 }
 
+// -- pg_product_out_of_stock_sql() ------------------------------------------
+
+function test_product_stock_out_of_stock_sql_sold_out_flags_and_stamps()
+{
+	pg_assert_same(
+		"out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()",
+		pg_product_out_of_stock_sql(true, 0, false));
+	pg_assert_same(
+		"out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()",
+		pg_product_out_of_stock_sql(true, '-2', '0'),
+		'below zero is sold out too');
+}
+
+// The stamp is the "out of stock since" column: a product already flagged
+// keeps the day it ran out.
+function test_product_stock_out_of_stock_sql_already_flagged_keeps_the_stamp()
+{
+	pg_assert_same("out_of_stock = '1'", pg_product_out_of_stock_sql(true, 0, '1'));
+}
+
+function test_product_stock_out_of_stock_sql_stock_on_the_shelf_clears_the_flag()
+{
+	pg_assert_same("out_of_stock = '0'", pg_product_out_of_stock_sql(true, 3, '1'));
+	pg_assert_same("out_of_stock = '0'", pg_product_out_of_stock_sql(true, '1', false));
+}
+
+function test_product_stock_out_of_stock_sql_untracked_is_never_out_of_stock()
+{
+	pg_assert_same("out_of_stock = '0'", pg_product_out_of_stock_sql(false, 0, '1'));
+}
+
 // -- the writers ------------------------------------------------------------
+
+// The text of one case of a switch, from its label to the next label at the
+// same indentation: enough to tell what one handler of a long file does.
+function product_stock_events_test_case($code, $label)
+{
+	$start = strpos($code, "case '" . $label . "':");
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($code, "\n        case '", $start + 1);
+
+	return (string) substr($code, $start, ($end === false) ? null : ($end - $start));
+}
+
+// The file manager's catalogue writes stock from two handlers: the quick
+// edit of one product and the bulk edit of a selection. Both announce the
+// stock change like the product screen and edit_products.php; the quick edit
+// flags a product it empties and announces product.updated on a real change.
+function test_product_stock_explorer_quick_edit_announces_the_change()
+{
+	$code = product_stock_events_test_case(product_stock_events_test_source('view_folder_and_files_f.php'), 'explorer_catalog_quick_edit');
+
+	pg_assert_true($code !== '', 'quick edit handler found');
+	pg_assert_contains('pg_product_stock_changed(', $code);
+	pg_assert_contains("'panel'", $code);
+	pg_assert_contains('pg_product_out_of_stock_sql(', $code);
+	pg_assert_contains("pg_announce('product.updated'", $code);
+}
+
+function test_product_stock_explorer_bulk_edit_announces_the_change()
+{
+	$code = product_stock_events_test_case(product_stock_events_test_source('view_folder_and_files_f.php'), 'explorer_products_bulk_edit');
+
+	pg_assert_true($code !== '', 'bulk edit handler found');
+	pg_assert_contains('pg_product_stock_delta(', $code);
+	pg_assert_contains('pg_product_stock_changed(', $code);
+	pg_assert_contains("'bulk_edit'", $code);
+}
+
 
 // Every stock writer on the site goes through the one helper: a writer that
 // does not leaves updated_since and the inventory.changed subscribers blind
