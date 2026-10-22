@@ -522,16 +522,16 @@ if (isset($_GET['pdf']) && $_GET['pdf'] == 'true')
 	// get content for page
 	$content = get_page_content($page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false);
 	// change relative URLs to absolute URLs for links
-	$content = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1http://" . HOSTNAME . "/$2", $content);
+	$content = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', '$1' . pg_regex_replacement('http://' . HOSTNAME . '/') . '$2', $content);
 	// if there is not a base tag in the content, then add a base tag
 	if (preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $content) == 0)
 	{
 		// Originally we used URL_SCHEME in the base tag below instead of "http://", however this caused stylesheets to not work,
 		// when site was in secure mode, so now we just use "http://".  We do not know why this happened.  Probably a bug or limitation in wkhtmltopdf.
 		$base = '<head>' . "\n" . '<base href="http://' . HOSTNAME . '/" />';
-		$content = preg_replace('/<head>/i', $base, $content);
+		$content = preg_replace('/<head>/i', pg_regex_replacement($base), $content);
 	}
-	$content = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(' . escape_regex(OUTPUT_PATH) . ')(files\/)*(.*?["\'].*?>)/is', "$1file://" . FILE_DIRECTORY_PATH . "/$4", $content);
+	$content = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(' . escape_regex(OUTPUT_PATH) . ')(files\/)*(.*?["\'].*?>)/is', '$1' . pg_regex_replacement('file://' . FILE_DIRECTORY_PATH . '/') . '$4', $content);
 	$descriptor = array(
 		0 => array(
 			'pipe',
@@ -2977,19 +2977,19 @@ else
 		// if </head> is in the HTML, place CSS before </head>
 		if (stristr($content, '</head>'))
 		{
-			$content = preg_replace('/<\/head>/i', $output_css . '</head>', $content);
+			$content = preg_replace('/<\/head>/i', pg_regex_replacement($output_css) . '</head>', $content);
 			// else if </body> is in the HTML, place CSS before </body>
 			
 		}
 		elseif (stristr($content, '</body>'))
 		{
-			$content = preg_replace('/<\/body>/i', $output_css . '</body>', $content);
+			$content = preg_replace('/<\/body>/i', pg_regex_replacement($output_css) . '</body>', $content);
 			// else if </html> is in the HTML, place CSS before </html>
 			
 		}
 		elseif (stristr($content, '</html>'))
 		{
-			$content = preg_replace('/<\/html>/i', $output_css . '</html>', $content);
+			$content = preg_replace('/<\/html>/i', pg_regex_replacement($output_css) . '</html>', $content);
 			// else HTML does not contain </head>, </body>, or </html>, so just place CSS at the end of the content
 			
 		}
@@ -3179,21 +3179,20 @@ else
 		// or a backslash is a backreference rather than a character. The SEO
 		// panel carries real page content - a title, a link, a finding's detail
 		// - so anything reading like $1 in it would be substituted away or
-		// swallow part of the markup. Escaped once here, for every branch below.
-		$output_toolbar_replacement = str_replace(array('\\', '$'), array('\\\\', '\\$'), $output_toolbar);
+		// swallow part of the markup: pg_regex_replacement() in both branches.
 
 		// We are using stristr instead of mb_stristr because mb_stristr requires PHP 5.2,
 		// and we still have some sites on PHP 5.1 (probably won't cause any utf-8 issue).
 		// if there is a body tag in the HTML, then add toolbar after body tag
 		if (stristr($content, '<body') == true)
 		{
-			$content = preg_replace('/(<body.*?>)/i', '$1' . $output_toolbar_replacement, $content);
+			$content = preg_replace('/(<body.*?>)/i', '$1' . pg_regex_replacement($output_toolbar), $content);
 			// else if there is an html tag in the HTML, then add toolbar after html tag
 			
 		}
 		else if (stristr($content, '<html') == true)
 		{
-			$content = preg_replace('/(<html.*?>)/i', '$1' . $output_toolbar_replacement, $content);
+			$content = preg_replace('/(<html.*?>)/i', '$1' . pg_regex_replacement($output_toolbar), $content);
 			// else HTML does not contain body tag or html tag, so add toolbar to the beginning of the content
 			
 		}
@@ -3227,11 +3226,11 @@ else
                 }';
 		}
 		// Replace path placeholders in CSS.
-		$code = preg_replace('/{path}/i', PATH, $code);
+		$code = preg_replace('/{path}/i', pg_regex_replacement(PATH), $code);
 		// Replace software directory placeholders.
-		$code = preg_replace('/{software_directory}/i', SOFTWARE_DIRECTORY, $code);
+		$code = preg_replace('/{software_directory}/i', pg_regex_replacement(SOFTWARE_DIRECTORY), $code);
 		// put the code that is in the session into the document's head tag
-		$content = preg_replace('/(<\/head>)/i', '<style type="text/css">' . h($code) . '</style>' . '$1', $content);
+		$content = preg_replace('/(<\/head>)/i', pg_regex_replacement('<style type="text/css">' . h($code) . '</style>') . '$1', $content);
 	}
 }
 // Stamp local assets with their last-modified time on the way out.

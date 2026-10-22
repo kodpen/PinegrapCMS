@@ -47,6 +47,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
 	upgrade_2026_11_0_conversion_pack();        // 11.0.14
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
+	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
+}
+
 	upgrade_2026_11_0_passkeys();               // 11.0.13
 
 }
@@ -1000,6 +1003,46 @@ function upgrade_2026_11_0_erp_order_item_tax_rate() {
 
 	install_note('Orders: each order line now keeps the VAT rate it was charged at, so the invoice drawn from an order carries the rate itself rather than one worked back from the amounts. Lines of earlier orders keep working as before.');
 
+}
+
+// The Stripe payment driver on the PaymentIntents API (2026.11.0, 11.0.24;
+// includes/payments/stripe.php).
+//
+// config.ecommerce_payment_gateway is an ENUM and the connection runs without
+// strict mode, so a gateway value outside the list is stored as '': selecting
+// the driver would quietly switch the card gateway off. 'Stripe PaymentIntents'
+// is appended to the list the column already has, as 4.48 appended
+// 'Pay With Iyzico' to orders.payment_method; the value 'Stripe' stays the
+// classic Charges code. Nullability and default are copied from the column as
+// it is. The driver keeps its keys in connect_apps, so no other column is
+// needed.
+function upgrade_2026_11_0_stripe_payment_intents() {
+
+	$column = install_column_info('config', 'ecommerce_payment_gateway');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('config.ecommerce_payment_gateway does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'Stripe PaymentIntents'") !== false) {
+
+		install_skipped(lang('config.ecommerce_payment_gateway already knows about Stripe PaymentIntents'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('config', 'ecommerce_payment_gateway',
+			"ENUM(" . $enum_match[1] . ",'Stripe PaymentIntents') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('config.ecommerce_payment_gateway is not an ENUM, skipped'));
+
+	}
+
+	install_note('Stripe can now take card payments on the PaymentIntents API, with the card, Apple Pay and Google Pay typed into Stripe\'s own fields on the checkout page and 3-D Secure. Choose "Stripe" as the Payment Gateway in the Ecommerce settings; "Stripe (classic)" keeps working as before.');
 }
 
 // Passkeys (2026.11.0, 11.0.13; includes/fn/passkeys.php, passkey.php).
