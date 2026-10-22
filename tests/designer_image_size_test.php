@@ -7,9 +7,10 @@
  * style with that unit, never a number without a unit in a style
  * (pg_img_dimension() and the image case of _render_content_html()). The
  * editor's side (_sdImgDim(), _sdImgSizeCss(), the image's toHTML() and
- * addGlobalAttrs()) is cut out of assets/js/style_designer.js and run under
- * Node, and has to write the same markup as the page; on a machine without
- * Node that part is skipped.
+ * addGlobalAttrs()) and the canvas's (the image's render() and
+ * _sdApplyNodeAttrs(), on a small DOM stand-in) are cut out of
+ * assets/js/style_designer.js and run under Node, and have to write the same
+ * markup as the page; on a machine without Node that part is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -467,4 +468,102 @@ function test_designer_image_size_attributes_panel()
 	pg_assert_same(array('width' => '', 'height' => '2rem', 'attrStyle' => ''), $result['write the unit taken out'], 'a width taken out of the style row clears the prop');
 	pg_assert_same(array('width' => '48', 'height' => '', 'attrStyle' => ''), $result['write a whole number typed'], 'a whole number goes back to the attribute');
 	pg_assert_same(array('width' => '72', 'height' => '', 'attrStyle' => 'width: 80px'), $result['write a whole number keeps the user style'], 'beside an attribute the user style stays the user\'s');
+}
+
+// A small stand-in for the canvas document: elements keep their attributes,
+// classes and style declarations in order, and every style property set is
+// logged, so the test sees what the canvas would draw. setAttribute('style')
+// replaces the declarations, as in a browser.
+function designer_image_size_test_dom_stub()
+{
+	return 'function _sdResolveAttrTokens(v) { return v; }'
+		. 'var styleLog = [];'
+		. 'var kebab = function (k) { return k.replace(/[A-Z]/g, function (c) { return "-" + c.toLowerCase(); }); };'
+		. 'function StubEl(tag) {'
+		. '  var self = this; this.tagName = tag.toUpperCase(); this.attrs = []; this.children = []; this.decls = []; this.className = "";'
+		. '  var put = function (name, value) { styleLog.push([name, String(value)]); self.decls = self.decls.filter(function (d) { return d[0] !== name; }); if (String(value) !== "") self.decls.push([name, String(value)]); };'
+		. '  this.style = new Proxy({}, { set: function (t, k, v) { put(kebab(String(k)), v); return true; },'
+		. '    get: function (t, k) { if (k === "setProperty") return function (n, v) { put(n, v); }; var d = self.decls.filter(function (x) { return x[0] === kebab(String(k)); }); return d.length ? d[0][1] : ""; } });'
+		. '  this.classList = { add: function (c) { var l = self.className.split(/\s+/).filter(Boolean); if (l.indexOf(c) === -1) l.push(c); self.className = l.join(" "); },'
+		. '    contains: function (c) { return self.className.split(/\s+/).indexOf(c) !== -1; } };'
+		. '}'
+		. 'StubEl.prototype.setAttribute = function (n, v) {'
+		. '  if (n === "style") { var self = this; this.decls = []; String(v).split(";").forEach(function (d) { var i = d.indexOf(":"); if (i > 0) { var k = d.slice(0, i).trim(), val = d.slice(i + 1).trim(); styleLog.push([k, val]); self.decls.push([k, val]); } }); return; }'
+		. '  if (n === "class") { this.className = String(v); return; }'
+		. '  this.attrs = this.attrs.filter(function (a) { return a[0] !== n; }); this.attrs.push([n, String(v)]);'
+		. '};'
+		. 'StubEl.prototype.appendChild = function (c) { this.children.push(c); return c; };'
+		. 'Object.defineProperty(StubEl.prototype, "firstElementChild", { get: function () { return this.children[0] || null; } });'
+		. 'var stubDoc = { createElement: function (t) { return new StubEl(t); } };'
+		. 'var serialize = function (el) {'
+		. '  var a = [];'
+		. '  ["src", "alt", "id", "title"].forEach(function (k) { if (el[k] !== undefined && el[k] !== "") a.push(" " + k + "=\"" + el[k] + "\""); });'
+		. '  el.attrs.forEach(function (x) { a.push(" " + x[0] + "=\"" + x[1] + "\""); });'
+		. '  var cls = el.className.split(/\s+/).filter(Boolean).join(" "); if (cls) a.push(" class=\"" + cls + "\"");'
+		. '  if (el.decls.length) a.push(" style=\"" + el.decls.map(function (d) { return d[0] + ":" + d[1]; }).join(";") + "\"");'
+		. '  var tag = el.tagName.toLowerCase(), html = "<" + tag + a.join("") + ">";'
+		. '  if (tag === "img") return html;'
+		. '  return html + el.children.map(serialize).join("") + "</" + tag + ">";'
+		. '};';
+}
+
+// The canvas (CONTENT.image.render() and _sdApplyNodeAttrs(), which
+// buildNodeEl() calls) draws what the page writes: the id, attributes and
+// style on the <img>, the sizing style on a ratio box, no length without a
+// unit; and a percentage width makes the image's wrapper a block.
+function test_designer_image_size_canvas_matches_page()
+{
+	$cases = array();
+
+	foreach (designer_image_size_test_cases() as $label => $case) {
+		$cases[$label] = $case[0];
+	}
+
+	$cases['decimal without a leading zero'] = array('width' => '.5', 'height' => ' 48 ');
+	$wrappers = array(
+		'a percentage width' => array(array('width' => '50%'), true),
+		'a percentage maximum width' => array(array('width' => '200', 'maxWidth' => '100%'), true),
+		'a percentage minimum width' => array(array('minWidth' => '25%'), true),
+		'whole numbers' => array(array('width' => '200', 'height' => '100'), false),
+		'a unit that is not a percentage' => array(array('width' => '12rem'), false),
+		'no size' => array(array(), false),
+	);
+	$result = designer_image_size_test_js(
+		designer_image_size_test_dom_stub()
+		. 'var cases = ' . json_encode($cases) . ', wrappers = ' . json_encode($wrappers) . ';'
+		. 'Object.keys(cases).forEach(function (k) {'
+		. '  var p = Object.assign({ contentType: "image", src: "https://example.com/a.jpg", alt: "A" }, JSON.parse(JSON.stringify(cases[k])));'
+		. '  var node = { type: "content", props: p };'
+		. '  styleLog = [];'
+		. '  var el = CONTENT.image.render(stubDoc, p);'
+		. '  _sdApplyNodeAttrs(el, node);'
+		. '  out[k] = { html: serialize(el), log: styleLog };'
+		. '});'
+		. 'Object.keys(wrappers).forEach(function (k) {'
+		. '  out["wrapper " + k] = _sdImgWrapperIsBlock({ type: "content", props: Object.assign({ contentType: "image", src: "a.jpg" }, wrappers[k][0]) });'
+		. '});'
+		. 'out["wrapper of a heading"] = _sdImgWrapperIsBlock({ type: "content", props: { contentType: "heading", width: "50%" } });',
+		array('function _sdApplyNodeAttrs(', 'function _sdImgWrapperIsBlock(', 'function getAttrStyleProp(', 'function splitStylePairs(')
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+
+	foreach ($cases as $label => $props) {
+		pg_assert_same(designer_image_size_test_canon(designer_image_size_test_page($props)), designer_image_size_test_canon($result[$label]['html']), $label . ' on the canvas');
+
+		foreach ($result[$label]['log'] as $set) {
+			$is_length = in_array($set[0], array('width', 'height', 'min-width', 'max-width', 'min-height', 'max-height', 'top', 'right', 'bottom', 'left'), true);
+			pg_assert_false($is_length && (bool) preg_match('/^[-+]?[0-9.]+$/', $set[1]), $label . ': the canvas set ' . $set[0] . ':' . $set[1]);
+		}
+	}
+
+	foreach ($wrappers as $label => $w) {
+		pg_assert_same($w[1], $result['wrapper ' . $label], 'wrapper: ' . $label);
+	}
+
+	pg_assert_false($result['wrapper of a heading'], 'only an image\'s wrapper');
 }

@@ -15,13 +15,13 @@ description: How the Image element's size is written: whole-number width/height 
 ## What does the ratio box take?
 - The image has its own box (`<div class="ratio ratio-XxY">`) for a preset `aspectRatio`, and (`<div class="ratio">` with `--bs-aspect-ratio`) for the Sizing panel's custom ratio when it is switched on with a value. Same test on both sides: `_sdImgInRatio()` and the image case of `_render_content_html()`. `'custom'` alone is no box (the editor used to wrap it in `ratio-custom`, a box with no height).
 - The box takes the sizing style: the size (a whole number as `px`), min/max, offsets, z-index, overflow, plus the image's `rounded*` classes.
-- The `<img>`, the element the operator selected, keeps its id, the Attributes panel's entries, its `style` (font, `object-position`, user style), its classes and the Sizing panel's classes. The editor and the canvas used to put them on the box, the page on the `<img>`.
+- The `<img>`, the element the operator selected, keeps its id, the Attributes panel's entries, its `style` (font, `object-position`, user style), its classes and the Sizing panel's classes. The editor and the canvas used to put them on the box.
 
 ## Which writers follow it?
 - The page: the image case of `_render_content_html()` (`includes/fn/designer.php`), so also shared components and system widgets. The e-mail pass (`pg_img_strip_responsive()`) drops only `srcset`/`sizes`/`<source>`.
-- The editor's HTML (code view, preview, SEO check, revision diff): `CONTENT.image.toHTML()` writes the tags and the attributes; `addGlobalAttrs()` the style, on the `<img>` or the box.
-- The canvas: `CONTENT.image.render()` and `buildNodeEl()` (`_attrEl` / `_boxEl`). A percentage width, min-width or max-width makes the image's wrapper a block, else it resolves against the shrunk wrapper.
-- `tests/designer_image_size_test.php` runs the editor's functions under Node (skipped without it) against the page's markup, attribute order aside.
+- The editor's HTML (code view, preview, SEO check, revision diff): `CONTENT.image.toHTML()` writes the tags and attributes, `addGlobalAttrs()` the style.
+- The canvas: `CONTENT.image.render()`, then `_sdApplyNodeAttrs()` from `buildNodeEl()`. A percentage width, min-width or max-width makes the wrapper a block (`_sdImgWrapperIsBlock()`), else it resolves against the shrunk wrapper.
+- `tests/designer_image_size_test.php` runs the editor's and the canvas's functions (a DOM stand-in) under Node, skipped without it, against the page's markup.
 
 ## How does the Attributes panel list them?
 - `getNodeBuiltinAttrs()`: `width`/`height` rows only while they are attributes (empty or a whole number). A unit is in the merged `style` row outside a ratio box (`_sdInlineStyleProps()`: an edit there writes the prop, a whole number goes back to the attribute); in a ratio box it is the box's and not listed.

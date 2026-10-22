@@ -10130,6 +10130,89 @@ const StyleDesigner = (function () {
         }
     }
 
+    // The canvas side of a node's own attributes (buildNodeEl()): its id,
+    // title, Attributes-panel entries, tooltip, classes and style on the
+    // element buildInnerElement() drew, as addGlobalAttrs() writes them in
+    // the editor's HTML.
+    function _sdApplyNodeAttrs(innerEl, node) {
+        // The element that takes the node's id, classes, attributes and
+        // style. An image in its own ratio box keeps them on the <img>
+        // (the element the operator selected), and the box takes the
+        // sizing style - as on the page and in the editor's HTML
+        // (addGlobalAttrs()).
+        var _attrEl = innerEl, _boxEl = null;
+        if (node.type === 'content' && node.props.contentType === 'image' && _sdImgInRatio(node.props) && innerEl.firstElementChild) {
+            _attrEl = innerEl.firstElementChild;
+            _boxEl  = innerEl;
+        }
+        if (node.props.id) { _attrEl.id = node.props.id; }
+        if (node.props.title) { _attrEl.title = node.props.title; }
+        // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
+        var _inlineBase = node.props.inlineStyle || '';
+        var _attrStyle  = '';
+        if (node.props.fontFamily) {
+            // Single-quote the family name + sans-serif fallback so
+            // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
+            // …) tokenise as ONE family rather than several keywords.
+            var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
+            _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
+        }
+        // Prop-backed inline styles (_sdInlineStyleProps()): included in
+        // _inlineBase so they survive when _attrStyle is non-empty
+        // (setAttribute('style', _attrStyle) would wipe out el.style.* set
+        // by the render fn). A copy an older tree kept in _attrs.style
+        // still wins until the node is selected and
+        // migrateNodeStyleProps() folds it back into the prop.
+        if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
+            if (!getAttrStyleProp(node, 'font-size')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
+            }
+        }
+        if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
+            if (!getAttrStyleProp(node, 'object-position')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
+            }
+        }
+        // Custom _attrs: data-*, aria-*, etc.
+        if (node.props._attrs && node.props._attrs.length) {
+            node.props._attrs.forEach(function(a) {
+                if (a.name === 'style') { _attrStyle = a.value || ''; }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+            });
+        }
+        // Sizing props extra style (before _attrStyle so Attrs panel can override)
+        var _extraStyleStr = getNodeExtraStyle(node);
+        var _extraClsStr   = getNodeExtraClasses(node);
+        if (_boxEl) {
+            if (_extraStyleStr) _boxEl.setAttribute('style', _extraStyleStr);
+        } else if (_extraStyleStr) {
+            _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
+        }
+        // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
+        var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
+        if (_combined) _attrEl.setAttribute('style', _combined);
+        // Extra classes (visually-hidden, ratio, etc.)
+        if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
+        // Tooltip attrs on canvas element
+        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
+            _attrEl.setAttribute('data-bs-toggle', 'tooltip');
+            _attrEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
+            _attrEl.title = node.props.tooltipTitle;
+        } else if (node.props.title) {
+            _attrEl.title = node.props.title;
+        }
+    }
+
+    // Whether an image's canvas wrapper is a block (buildNodeEl()): a
+    // percentage width, min-width or max-width resolves against the column
+    // only then, as on the page; in the wrapper's inline-block it resolves
+    // against the shrunk wrapper.
+    function _sdImgWrapperIsBlock(node) {
+        if (!node || node.type !== 'content' || !node.props || node.props.contentType !== 'image') return false;
+        var _imgPW = [node.props.width, node.props.minWidth, node.props.maxWidth].map(function (v) { return v ? String(v) : ''; }).join(' ');
+        return _imgPW.indexOf('%') !== -1;
+    }
+
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -10536,72 +10619,7 @@ const StyleDesigner = (function () {
         var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
             if (_sdTextInnerHost(node)) innerEl.setAttribute('data-sd-inner-host', '');
-            // The element that takes the node's id, classes, attributes and
-            // style. An image in its own ratio box keeps them on the <img>
-            // (the element the operator selected), and the box takes the
-            // sizing style - as on the page and in the editor's HTML
-            // (addGlobalAttrs()).
-            var _attrEl = innerEl, _boxEl = null;
-            if (node.type === 'content' && node.props.contentType === 'image' && _sdImgInRatio(node.props) && innerEl.firstElementChild) {
-                _attrEl = innerEl.firstElementChild;
-                _boxEl  = innerEl;
-            }
-            if (node.props.id) { _attrEl.id = node.props.id; }
-            if (node.props.title) { _attrEl.title = node.props.title; }
-            // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
-            var _inlineBase = node.props.inlineStyle || '';
-            var _attrStyle  = '';
-            if (node.props.fontFamily) {
-                // Single-quote the family name + sans-serif fallback so
-                // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
-                // …) tokenise as ONE family rather than several keywords.
-                var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
-                _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
-            }
-            // Prop-backed inline styles (_sdInlineStyleProps()): included in
-            // _inlineBase so they survive when _attrStyle is non-empty
-            // (setAttribute('style', _attrStyle) would wipe out el.style.* set
-            // by the render fn). A copy an older tree kept in _attrs.style
-            // still wins until the node is selected and
-            // migrateNodeStyleProps() folds it back into the prop.
-            if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
-                if (!getAttrStyleProp(node, 'font-size')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
-                }
-            }
-            if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
-                if (!getAttrStyleProp(node, 'object-position')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
-                }
-            }
-            // Custom _attrs: data-*, aria-*, etc.
-            if (node.props._attrs && node.props._attrs.length) {
-                node.props._attrs.forEach(function(a) {
-                    if (a.name === 'style') { _attrStyle = a.value || ''; }
-                    else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
-                });
-            }
-            // Sizing props extra style (before _attrStyle so Attrs panel can override)
-            var _extraStyleStr = getNodeExtraStyle(node);
-            var _extraClsStr   = getNodeExtraClasses(node);
-            if (_boxEl) {
-                if (_extraStyleStr) _boxEl.setAttribute('style', _extraStyleStr);
-            } else if (_extraStyleStr) {
-                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
-            }
-            // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
-            var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-            if (_combined) _attrEl.setAttribute('style', _combined);
-            // Extra classes (visually-hidden, ratio, etc.)
-            if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
-            // Tooltip attrs on canvas element
-            if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-                _attrEl.setAttribute('data-bs-toggle', 'tooltip');
-                _attrEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
-                _attrEl.title = node.props.tooltipTitle;
-            } else if (node.props.title) {
-                _attrEl.title = node.props.title;
-            }
+            _sdApplyNodeAttrs(innerEl, node);
             // A column's inner holder: see-through when it carries nothing of
             // its own (its children are then laid out by the column, and an
             // h-100 card fills it); otherwise it fills the column's height.
@@ -10623,11 +10641,8 @@ const StyleDesigner = (function () {
             // the image took that percentage of it (50% drew a quarter of the column).
             // (A see-through wrapper has no box to size; the image sizes itself.)
             // The same holds for a percentage minimum or maximum width.
-            if (node.type === 'content' && node.props.contentType === 'image' && !wrapper.classList.contains('sd-fx-flat')) {
-                var _imgPW = [node.props.width, node.props.minWidth, node.props.maxWidth].map(function (v) { return v ? String(v) : ''; }).join(' ');
-                if (_imgPW.indexOf('%') !== -1) {
-                    wrapper.style.setProperty('display', 'block', 'important');
-                }
+            if (!wrapper.classList.contains('sd-fx-flat') && _sdImgWrapperIsBlock(node)) {
+                wrapper.style.setProperty('display', 'block', 'important');
             }
         }
 
