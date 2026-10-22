@@ -1354,6 +1354,116 @@ function pg_write_permission_repair()
     );
 }
 
+// The PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619, published
+// 2026-10-21) are in PHP itself: anyone who can reach a PHP page can run code
+// on the server, under FPM, mod_php, CGI and LiteSpeed alike. Only the host
+// can cure that; System Status says whether the PHP it runs on has the fixes.
+//
+// The php.net releases with the fixes, by line. The 8.1 and older lines got
+// no release, so the lowest one here is what such a line has to move to.
+function pg_php2shell_fixed_releases()
+{
+    return array(
+        '8.2' => '8.2.35',
+        '8.3' => '8.3.36',
+        '8.4' => '8.4.27',
+        '8.5' => '8.5.12',
+    );
+}
+
+/**
+ * Whether a PHP build has the PHP2Shell fixes.
+ *
+ * The version alone cannot tell: Linux distributions add security fixes to
+ * their own packages and keep the number (Ubuntu 24.04's patched PHP still
+ * says 8.3.6). The build date settles what the number cannot. A build from
+ * before October 2026 cannot carry fixes that did not exist yet; the weeks
+ * before 2026-10-21 are left open because distributions may have had them
+ * under embargo; and an older number built after they were published is what
+ * a patched distribution package looks like.
+ *
+ * @param string   $version     PHP_VERSION
+ * @param int|null $build_time  When the binary was built (pg_php_build_time()), null when unknown
+ * @return array  'state'    => 'fixed' | 'missing' | 'likely_fixed' | 'unknown'
+ *                'fixed_in' => the release to update to
+ */
+function pg_php2shell_status($version, $build_time = null)
+{
+    $releases = pg_php2shell_fixed_releases();
+    $published = gmmktime(0, 0, 0, 10, 21, 2026);
+    $embargo_start = gmmktime(0, 0, 0, 10, 1, 2026);
+
+    $version = (string) $version;
+    $known_build = is_int($build_time) && ($build_time > 0);
+    $fixed_in = $releases['8.2'];
+
+    if (!preg_match('/^(\d+)\.(\d+)\.\d+/', $version, $match)) {
+        return array('state' => 'unknown', 'fixed_in' => $fixed_in);
+    }
+
+    $line = $match[1] . '.' . $match[2];
+
+    if (isset($releases[$line])) {
+        $fixed_in = $releases[$line];
+
+        // version_compare() puts "8.3.36-dev" before 8.3.36 and a
+        // distribution's "8.5.13-1+ubuntu24.04.1" after 8.5.12.
+        if (version_compare($version, $fixed_in, '>=')) {
+            return array('state' => 'fixed', 'fixed_in' => $fixed_in);
+        }
+    } elseif (version_compare($line . '.0', '8.6.0', '>=')) {
+        // A later line is released after the fixes; only a pre-release built
+        // before them can lack them.
+        if (!$known_build || ($build_time >= $published)) {
+            return array('state' => 'fixed', 'fixed_in' => $fixed_in);
+        }
+    }
+
+    if ($known_build && ($build_time < $embargo_start)) {
+        return array('state' => 'missing', 'fixed_in' => $fixed_in);
+    }
+
+    if ($known_build && ($build_time >= $published)) {
+        return array('state' => 'likely_fixed', 'fixed_in' => $fixed_in);
+    }
+
+    return array('state' => 'unknown', 'fixed_in' => $fixed_in);
+}
+
+// The build date in phpinfo() output: "Build Date => Oct  7 2026 18:06:38" on
+// the command line, a table row on a web page. It is the compiler's local
+// time; read as UTC, which is close enough for a decision taken in weeks.
+// Null when there is none to read.
+function pg_php_build_time_from_info($info)
+{
+    if (!preg_match('/Build Date\s*(?:=>|<\/td>\s*<td[^>]*>)\s*([A-Z][a-z]{2}) +(\d{1,2}) +(\d{4}) +(\d{1,2}):(\d{2}):(\d{2})/', (string) $info, $match)) {
+        return null;
+    }
+
+    $months = array('Jan' => 1, 'Feb' => 2, 'Mar' => 3, 'Apr' => 4, 'May' => 5, 'Jun' => 6, 'Jul' => 7, 'Aug' => 8, 'Sep' => 9, 'Oct' => 10, 'Nov' => 11, 'Dec' => 12);
+
+    if (!isset($months[$match[1]]) || ((int) $match[2] < 1) || ((int) $match[2] > 31)) {
+        return null;
+    }
+
+    return gmmktime((int) $match[4], (int) $match[5], (int) $match[6], $months[$match[1]], (int) $match[2], (int) $match[3]);
+}
+
+// When the PHP serving this request was built. phpinfo() is the only place
+// PHP says it; a host that disables phpinfo() (disable_functions) leaves it
+// unknown. On PHP 7 a disabled function still exists and only warns.
+function pg_php_build_time()
+{
+    if (!function_exists('phpinfo')) {
+        return null;
+    }
+
+    ob_start();
+    @phpinfo(INFO_GENERAL);
+
+    return pg_php_build_time_from_info(ob_get_clean());
+}
+
 /**
  * Function: get_system_status_checks
  * ------------------------------------------
@@ -1457,7 +1567,8 @@ function get_system_status_checks()
     //
     //   Serious    the site is open, or the way in is
     //              -- tampered files, php.ini, passwords, the rules file,
-    //                 a broken database, a firewall that is off
+    //                 a broken database, a firewall that is off, a PHP
+    //                 without its security fixes
     //   Moderate   worth fixing this week
     //              -- PHP version, SSL, CAPTCHA, bot filtering, IndexNow,
     //                 CA bundle age
@@ -1476,6 +1587,8 @@ function get_system_status_checks()
         'directives'      => 18,
         'database'        => 16,
         'waf'             => 16,
+        // A PHP without the PHP2Shell fixes lets anyone in through any page.
+        'php_security'    => 18,
         // Moderate
         'php_version'     => 12,
         'ssl'             => 12,
@@ -1521,6 +1634,7 @@ function get_system_status_checks()
         'Unknown Bot Filtering'    => $weights['bot_filter'],
         'IndexNow'                 => $weights['indexnow'],
         'PHP Version'              => $weights['php_version'],
+        'PHP Security Fixes'       => $weights['php_security'],
         'Database Health'          => $weights['database'],
         'PHP Extensions'           => $weights['extensions'],
         'PHP Directives'           => $weights['directives'],
@@ -1562,6 +1676,7 @@ function get_system_status_checks()
     //   puzzle    → PHP extensions        sliders  → php.ini directives
     //   patch     → CA certificate bundle  bell     → operations alerts
     //   cone      → maintenance mode       rss      → product feeds
+    //   bug       → PHP security fixes
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1587,6 +1702,7 @@ function get_system_status_checks()
         'Unknown Bot Filtering'    => 'Bots',
         'IndexNow'                 => 'IndexNow',
         'PHP Version'              => 'PHP',
+        'PHP Security Fixes'       => 'PHP fixes',
         'Database Health'          => 'Database',
         'PHP Extensions'           => 'Extensions',
         'PHP Directives'           => 'php.ini',
@@ -2103,6 +2219,66 @@ function get_system_status_checks()
             'text-success',
             'PHP Version',
             'Your PHP version is fully compatible.'
+        );
+    }
+
+    // 🐛 PHP security fixes: whether the PHP serving the site has the
+    // PHP2Shell fixes (pg_php2shell_status()). Read here, in the web server's
+    // own PHP, because `php -v` on the command line may be another binary.
+    $php2shell_build_time = pg_php_build_time();
+    $php2shell = pg_php2shell_status(PHP_VERSION, $php2shell_build_time);
+
+    // Until PHP is updated, the session upload progress is one of the ways in
+    // and Pinegrap does not use it; said only while it is on.
+    $php2shell_upload_note = filter_var(ini_get('session.upload_progress.enabled'), FILTER_VALIDATE_BOOLEAN)
+        ? ' ' . lang('Until then, turning off session.upload_progress.enabled in php.ini closes one of the ways in; Pinegrap does not use it.')
+        : '';
+
+    if ($php2shell['state'] === 'missing') {
+        $output .= $makeIcon(
+            'bi-bug-fill',
+            'text-danger',
+            'PHP Security Fixes',
+            lang(array(
+                'string' => 'PHP {var:1} does not have the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619): anyone who can reach the site can run code on the server. Update PHP to {var:2} or later.',
+                'vars'   => array(PHP_VERSION, $php2shell['fixed_in']),
+            )) . $php2shell_upload_note
+        );
+        $score -= $weights['php_security'];
+    } elseif ($php2shell['state'] === 'unknown') {
+        $output .= $makeIcon(
+            'bi-bug-fill',
+            'text-warning',
+            'PHP Security Fixes',
+            lang(array(
+                'string' => 'Whether PHP {var:1} has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619) cannot be told from here; without them anyone who can reach the site can run code on the server. php.net ships them from {var:2}, and Linux distributions add them to their own packages without changing the number: ask your host, and update PHP to {var:2} or later if this one does not have them.',
+                'vars'   => array(PHP_VERSION, $php2shell['fixed_in']),
+            )) . $php2shell_upload_note
+        );
+        $score -= $weights['php_security'] * 0.5;
+    } elseif ($php2shell['state'] === 'likely_fixed') {
+        // Grey and not scored: an older number built after the fixes were
+        // published is a distribution's patched package far more often than
+        // not, and a yellow chip would sit on every patched Ubuntu 24.04.
+        $output .= $makeIcon(
+            'bi-bug-fill',
+            'text-secondary',
+            'PHP Security Fixes',
+            lang(array(
+                'string' => 'PHP {var:1} is numbered before {var:2}, the release with the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619), but it was built on {var:3}, after they were published: Linux distributions add such fixes to their own packages without changing the number. Confirm with your host that this one has them.',
+                'vars'   => array(
+                    PHP_VERSION,
+                    $php2shell['fixed_in'],
+                    defined('DATE_FORMAT') ? date(get_date_format_code() . '/Y', $php2shell_build_time) : date('Y-m-d', $php2shell_build_time),
+                ),
+            ))
+        );
+    } else {
+        $output .= $makeIcon(
+            'bi-bug-fill',
+            'text-success',
+            'PHP Security Fixes',
+            'This PHP has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619).'
         );
     }
 
