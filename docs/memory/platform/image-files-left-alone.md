@@ -1,23 +1,29 @@
 ---
 name: image-files-left-alone
-description: Images the engine refuses to process and why: animated GIF/APNG/WebP (reason animated, PR #1234); how each is told from the file's bytes, and what the screens, derivatives and markup do with them
+description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) and a JPEG whose Exif orientation cannot be read (PR #NNNN); how each is told and what each path does
 ---
 
 ## Which images does pg_process_image_file() leave alone?
 - Animated images, reason `animated` (`pg_image_is_animated()` in `includes/image_engine.php`). GD and Imagick read one frame and write a still back, so a derivative, an Optimize or a product upload would end the animation for good.
+- A JPEG with an Exif block whose orientation cannot be read, reason `orientation_unreadable`, GD half only (Imagick reads the tag itself). Which way up a browser shows it is not known, and the written copy has no tag.
 - Other refusals (too large, missing, no library) are in docs/memory/platform/image-processing-engine.md.
 
 ## How is an animated file told apart?
 - By its bytes, never its name or extension (an APNG named `.jpg` still counts).
 - GIF: two or more image descriptors (`pg_image_is_animated_gif()`).
-- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only the 8-byte chunk headers are read; each chunk's data is skipped with `fseek()`, so a large text chunk costs nothing. An `acTL` after `IDAT` is a still PNG to every reader.
-- WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
+- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only chunk headers are read; data is skipped with `fseek()`. An `acTL` after `IDAT` is a still PNG to every reader.
+- WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`).
 
-## What happens to an animated file on each path?
-- Derivatives (`get_file.php ?w=&f=`): the original is sent and an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md).
-- Optimize, the file manager's buttons, `edit_file.php`: "is an animated image ... left alone" sentence, file untouched.
+## How is a JPEG's orientation read?
+- `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else Imagick (ping); else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG).
+- 0 only for a broken block (unknown byte order, IFD0 or entries outside it, cut short, odd type). A value outside 1–8 counts as 1, as browsers do.
+- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754; exif is off by default on Windows PHP and absent in the official Docker image).
+
+## What happens to such a file on each path?
+- Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it. Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
+- Optimize, rotate, WebP conversion (`optimize_image.php`, file manager, `edit_file.php`): one sentence per reason, file untouched.
 - Product and API uploads: the file is stored byte for byte.
-- Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
+- Markup: `pg_img_responsive()` returns null: no `srcset` or `<source>`.
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.

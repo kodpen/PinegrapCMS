@@ -6,7 +6,7 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 ## How is a derivative asked for?
 - On the file's own address: `/photo.jpg?w=960`, `?w=960&f=webp`, `?f=avif`. `pg_image_derivative_request()` reads only `w` (1–5 digits) and `f` (`webp`/`avif`); anything else serves the original as before. Made on the first such request, never in the upload path.
 - Widths are fixed (480, 960, 1440, 1920). A requested width rounds UP to the next step, never above the source width, so any number lands on an existing file and a crawler cannot fill the disk.
-- Width counts the displayed picture: EXIF orientation 5–8 swaps the edges (`pg_image_oriented_size()`); the engine's longest-edge ceiling comes from the width (`pg_image_derivative_long_edge()`).
+- Width counts the displayed picture: EXIF orientation 5–8 swaps the edges, an unreadable one gives none (`pg_image_oriented_size()`); the engine's longest-edge ceiling comes from the width (`pg_image_derivative_long_edge()`).
 
 ## Which formats does a server make?
 - `pg_image_derivative_formats()`: each format a library claims (`pg_image_format_writer()`: Imagick `queryFormats()`, else GD) is test-encoded once on a 16 px PNG and kept in `data/cache/img/formats.json` (key: PHP/GD/ImageMagick versions + claims; re-tested after a week). Why: Ubuntu's ImageMagick lists AVIF but cannot write it without `libheif-plugin-aomenc`; trusted, every `?f=avif` sent the full-size original.
