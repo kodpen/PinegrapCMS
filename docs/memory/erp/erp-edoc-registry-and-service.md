@@ -15,7 +15,7 @@ description: Shared e-document helpers in edoc/registry.php (settings, session, 
 ## What does `edoc/service.php` own?
 `includes/erp/bootstrap.php` loads `registry.php`, `service.php`, `ubl.php`, `inbox.php`, `account_sync.php`. The service owns the invoice row's e-document columns (`edoc_provider`, `edoc_external_id`, `edoc_status`, `edoc_kind`, `gib_number`, `gib_uuid`, `edoc_error`, `edoc_sent_at`) and the invoice send line:
 - `erp_edoc_invoice_can_send($invoice)` → `ok, reason, provider`.
-- `erp_edoc_invoice_send($id, $user_id)`: first `edoc_status='sending'`, then the driver; success → `edoc_provider`, `edoc_external_id`, `sent`, `edoc_sent_at`; failure → `error` + `edoc_error`.
+- `erp_edoc_invoice_send($id, $user_id)`: first `edoc_status='sending'`, then the driver; success → `edoc_provider`, `edoc_external_id`, `sent`, `edoc_sent_at`; failure → `error` + `edoc_error`, plus the provider and id when the driver names a record it wrote and could not take back (`external_id` in its refusal).
 - `erp_edoc_invoice_poll($id)`: `gib_number`, `gib_uuid`, status; an event on status change.
 - `erp_edoc_invoice_document($id, 'pdf'|'xml')`; `erp_edoc_status_labels()`.
 - Send gate: active provider + `send_invoice`, `direction=sales`, status not draft/cancelled, `edoc_status` ∈ none/error/rejected, and no record the provider still holds (`erp_edoc_invoice_held_refusal()`: `error` with an id is asked after, not sent again; erp-parasut-send-failures.md).

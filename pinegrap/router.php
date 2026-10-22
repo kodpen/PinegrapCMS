@@ -721,8 +721,10 @@ function router_translation_prefixes()
         $parts = explode('=', $pair, 2);
         $prefix = trim($parts[0]);
 
+        // The address is matched in lower case; a prefix an earlier save
+        // wrote with capitals (pt-BR) is served under its lower-case form.
         if ($prefix !== '') {
-            $map[$prefix] = isset($parts[1]) ? trim($parts[1]) : $prefix;
+            $map[strtolower($prefix)] = isset($parts[1]) ? trim($parts[1]) : $prefix;
         }
     }
 
@@ -907,7 +909,16 @@ function router_get_request_url()
 }
 
 function router_output_error($error_message) {
-    
+
+    // Every page printed here is a site that cannot serve the request (no
+    // configuration, no database, no config table, a failed query), so it
+    // goes out as a 500: an uptime monitor or a load balancer reading the
+    // status code sees the outage, and a crawler does not index the message.
+    // Transient overload never comes here; the database guard answers 503.
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+
     $output_error_message = $error_message;
 
     $mysql_error = '';
@@ -1046,13 +1057,16 @@ function router_output_error($error_message) {
     $output_other_help_buttons = '';
 
     
+    // The config table is looked for only on a connection that still
+    // answers: a connection lost mid-request (a server restart, wait_timeout)
+    // makes the query fail, and mysqli_num_rows(false) is a TypeError on
+    // PHP 8 that would turn this page into a blank 500.
+    $config_tables = (db::$con && (defined('DB_HOST') == true)) ? @mysqli_query(db::$con, "SHOW TABLES LIKE 'config'") : false;
+
     if (
-        defined('DB_HOST') == false 
-        || !db::$con 
-        || (
-            db::$con 
-            && !mysqli_num_rows(mysqli_query(db::$con,"SHOW TABLES LIKE 'config'")) 
-            ) 
+        defined('DB_HOST') == false
+        || !db::$con
+        || (($config_tables !== false) && !mysqli_num_rows($config_tables))
         ) {
         $output_quick_fix_buttons .='<div class="col-12"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">install_desktop</span>' . lang('Install or Reinstall Software') . '</a></div>';
         $output_other_help_buttons .='<div class="col-12"><a target="_blank" href="https://www.kodpen.com/iletisim" class="btn btn-link link-primary py-0 mb-2 "><span class="material-icons me-1">support_agent</span>' . lang('Get Support') . '</a></div>';

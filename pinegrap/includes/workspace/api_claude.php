@@ -8,7 +8,10 @@
  * The queue endpoints answer only the application chosen for Claude in the
  * Workspace Settings; any other key gets 403. That application reads only
  * the channels Claude may be asked in, through these endpoints and the
- * ordinary channel ones alike (ws_api_channel_or_404()).
+ * ordinary channel ones alike (ws_api_channel_or_404()). A channel or a
+ * discussion it was asked in that the owner of the application is not in is
+ * read (the context) and answered through the person who asked, while the
+ * request is open (ws_claude_channel_asker(), ws_assistant_writer()).
  *
  * The rest is in claude.php beside this file.
  *
@@ -73,7 +76,7 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
+            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. In a channel or a discussion the owner of the application is not in, it is posted as long as the person who asked may still write there. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true),
@@ -136,7 +139,7 @@ function ws_claude_api_routes()
             'handler'     => 'ws_api_channel_context',
             'returns'     => 'WorkspaceChannelContext',
             'summary'     => 'What a channel is about, in one call',
-            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel.',
+            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel. For a discussion, thread holds the channel it was started in and the message it talks over (message is null when that was deleted); it is null for a channel. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there (or a run on one of its tasks) is open: as the person who asked reads it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
@@ -158,7 +161,7 @@ function ws_api_claude_guard()
         api_fail(403, 'forbidden', lang('Claude is not switched on on this site.'));
     }
 
-    if (ws_api_app_id() !== (int) ws_claude_config()['app_id']) {
+    if (!ws_api_is_claude()) {
         api_fail(403, 'forbidden', lang('Only the application Claude works through may use this endpoint.'));
     }
 
@@ -166,14 +169,20 @@ function ws_api_claude_guard()
 }
 
 /**
- * Is the current application the one Claude works through?
+ * Is the call Claude's: the key of the application chosen for Claude, used
+ * as itself? A person signed in through that application - a team device or
+ * an OAuth connection reports the application it came through - is that
+ * person, not Claude: the routine signs in with the key and secret, and what
+ * Claude may read and answer (ws_claude_channel_asker(), ws_assistant_writer())
+ * must not open to every session of the application.
  *
  * @return bool
  */
 function ws_api_is_claude()
 {
     return function_exists('ws_claude_schema_ready') && ws_claude_schema_ready()
-        && (ws_claude_config()['app_id'] > 0) && (ws_api_app_id() === (int) ws_claude_config()['app_id']);
+        && (ws_claude_config()['app_id'] > 0) && (ws_api_app_id() === (int) ws_claude_config()['app_id'])
+        && (!function_exists('api_current_device') || (api_current_device() === null));
 }
 
 function ws_api_claude_request_present($viewer, $row)
@@ -656,11 +665,13 @@ function ws_api_claude_drafts_input($tasks)
 }
 
 /**
- * The channel of a request, open to Claude and to its application's owner.
+ * The channel of a request, open to Claude, and who the answer goes into it
+ * through: the owner of Claude's application, or the person who asked where
+ * the owner is not in the channel or the discussion (ws_assistant_writer()).
  *
- * @param array $viewer
+ * @param array $viewer the owner of the application
  * @param array $row
- * @return array
+ * @return array channel, writer
  */
 function ws_api_claude_channel($viewer, $row)
 {
@@ -674,11 +685,13 @@ function ws_api_claude_channel($viewer, $row)
         api_fail(403, 'forbidden', lang('Claude may not be asked in this channel.'));
     }
 
-    if (!ws_can_post_channel($viewer, $channel)) {
-        api_fail(403, 'forbidden', lang('The owner of Claude\'s application cannot post in that channel. In a private channel they must be a member.'));
+    $writer = ws_assistant_writer($viewer, ws_change_viewer_for_id((int) $row['requested_by']), $channel);
+
+    if (!$writer) {
+        api_fail(403, 'forbidden', lang('The answer cannot be posted there any more: the person who asked has left that channel or discussion, or it was archived or concluded.'));
     }
 
-    return $channel;
+    return array('channel' => $channel, 'writer' => $writer);
 }
 
 function ws_api_claude_answer($params)
@@ -755,7 +768,8 @@ function ws_api_claude_answer($params)
         api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
     }
 
-    $channel = ws_api_claude_channel($viewer, $row);
+    $place = ws_api_claude_channel($viewer, $row);
+    $channel = $place['channel'];
     $drafts = ws_api_claude_drafts_input($params['tasks'] ?? array());
 
     // Checked before anything is written: a change that cannot be made
@@ -781,7 +795,7 @@ function ws_api_claude_answer($params)
 
     // The checks ws_message_send() makes, made first so that a dry run meets
     // the same refusals.
-    $checked = ws_message_send_check($viewer, $channel, $text, $options);
+    $checked = ws_message_send_check($place['writer'], $channel, $text, $options);
 
     if (!$checked['ok']) {
         api_fail_validation($checked['error'], 'text');
@@ -795,7 +809,7 @@ function ws_api_claude_answer($params)
         'changes'    => count($changes['rows']),
     ));
 
-    $sent = ws_message_send($viewer, $channel, $text, $options);
+    $sent = ws_message_send($place['writer'], $channel, $text, $options);
 
     if (!$sent['ok']) {
         api_fail_validation($sent['error'], 'text');
@@ -848,14 +862,20 @@ function ws_api_claude_fail($params)
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $params['reason']), 0, 250));
     $reply_id = 0;
     $channel = ((int) ($row['note_id'] ?? 0) > 0) ? null : ws_channel($row['channel_id']);
-    $told = $channel && ws_claude_channel_allowed($channel) && ws_can_post_channel($viewer, $channel);
 
-    api_dry_run_stop('failed', 'workspace_claude_request', array('id' => (int) $row['id'], 'told_in_channel' => (bool) $told));
+    // Written the way an answer is (ws_api_claude_channel()): through the
+    // person who asked where the owner of the application is not in the room.
+    $writer = ($channel && ws_claude_channel_allowed($channel))
+        ? ws_assistant_writer($viewer, ws_change_viewer_for_id((int) $row['requested_by']), $channel)
+        : null;
+    $told = (bool) $writer;
+
+    api_dry_run_stop('failed', 'workspace_claude_request', array('id' => (int) $row['id'], 'told_in_channel' => $told));
 
     // The reason goes to the person who asked, where they asked. A channel
     // that closed to Claude meanwhile keeps only the state on the request.
     if ($told) {
-        $sent = ws_message_send($viewer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
+        $sent = ws_message_send($writer, $channel, '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => ws_api_app_id(),
         ));
@@ -879,8 +899,22 @@ function ws_api_claude_fail($params)
 
 function ws_api_channel_context($params)
 {
-    $viewer = ws_api_viewer();
-    $channel = ws_api_channel_or_404($viewer, $params['id']);
+    $owner = ws_api_viewer();
+    $channel = ws_channel((int) $params['id']);
+
+    // Claude reads a channel or a discussion the owner of its application is
+    // not in through the person who asked it there, as that person reads it:
+    // their tags, their tasks (ws_claude_channel_asker()). Every other
+    // channel is read the way every endpoint reads one, by the owner.
+    $viewer = ($channel && ws_api_is_claude() && ws_claude_channel_allowed($channel) && !ws_app_reads_channel($owner, $channel))
+        ? ws_claude_channel_asker($channel)
+        : null;
+
+    if (!$viewer) {
+        $viewer = $owner;
+        $channel = ws_api_channel_or_404($viewer, $params['id']);
+    }
+
     $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
 
     $rows = ws_messages_page($channel['id'], 0, $limit);
@@ -889,9 +923,17 @@ function ws_api_channel_context($params)
         ORDER BY marked_at DESC, id DESC
         LIMIT 10");
 
+    // A discussion talks over one message of a channel: that message and the
+    // channel it was written in, which whoever reads the discussion reads too
+    // (ws_can_read_channel()). Pinegrap AI is given the same (ws_ai_start()).
+    $parent = ws_channel_is_thread($channel) ? ws_thread_parent_channel($channel) : null;
+    $thread_row = $parent ? ws_thread($channel['id']) : null;
+    $about = $thread_row ? ws_message((int) $thread_row['message_id']) : null;
+    $about = ($about && ((int) $about['deleted_at'] === 0)) ? $about : null;
+
     $tokens = ws_tokens((string) $channel['summary']);
 
-    foreach (array_merge($rows, $decided) as $row) {
+    foreach (array_merge($rows, $decided, $about ? array($about) : array()) as $row) {
         $tokens = array_merge($tokens, ws_tokens($row['body']));
     }
 
@@ -904,6 +946,8 @@ function ws_api_channel_context($params)
 
         return ($row['sender_kind'] === 'app') ? (string) ws_app_sender((int) $row['sender_id'])['name'] : '';
     };
+
+    $thread = $parent ? ws_api_context_thread_present($parent, $about, $about ? $author($about) : '', $about ? ws_plain_text($viewer, $about['body'], $refs) : '') : null;
 
     $messages = array();
 
@@ -963,10 +1007,41 @@ function ws_api_channel_context($params)
             'topic'   => (string) $channel['topic'],
             'summary' => ws_plain_text($viewer, (string) $channel['summary'], $refs),
         ),
+        'thread'     => $thread,
         'decisions'  => $decisions,
         'messages'   => $messages,
         'open_tasks' => $tasks,
     ));
+}
+
+/**
+ * What a discussion is about, in its context: the channel it was started in
+ * and the message it talks over, null when that message was deleted.
+ *
+ * @param array      $parent the channel row the discussion was started in
+ * @param array|null $about  the ws_messages row it talks over
+ * @param string     $author who wrote that message, in words
+ * @param string     $text   its words as the reader reads them
+ * @return array
+ */
+function ws_api_context_thread_present($parent, $about, $author, $text)
+{
+    return array(
+        'channel' => array(
+            'id'   => (int) $parent['id'],
+            'name' => (string) $parent['name'],
+            'kind' => (string) $parent['kind'],
+        ),
+        'message' => is_array($about) ? array(
+            'id'          => (int) $about['id'],
+            'kind'        => (string) $about['kind'],
+            'sender_kind' => (string) $about['sender_kind'],
+            'author'      => (string) $author,
+            'text'        => (string) $text,
+            'task_id'     => ((int) $about['task_id'] > 0) ? (int) $about['task_id'] : null,
+            'created_at'  => api_time($about['created_at']),
+        ) : null,
+    );
 }
 
 // What ws_api_channel_context() returns.
@@ -974,8 +1049,24 @@ function ws_api_channel_context_schema()
 {
     return array(
         'channel'    => array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'topic' => 'string', 'summary' => 'string'),
+        'thread'     => 'WorkspaceContextThread?',
         'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
         'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string')),
         'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'string?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
     );
+}
+
+// What ws_api_context_thread_present() returns. The message is declared on
+// its own, as an object written inline cannot say it may be null.
+function ws_api_context_thread_schema()
+{
+    return array(
+        'channel' => array('id' => 'integer', 'name' => 'string', 'kind' => 'string'),
+        'message' => 'WorkspaceContextMessage?',
+    );
+}
+
+function ws_api_context_message_schema()
+{
+    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string');
 }

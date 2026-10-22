@@ -20,4 +20,5 @@ description: Repeating ERP expenses (4.96) and invoices (4.93): what may repeat,
 - A foreign-currency document takes the rate recorded for its day; a draft may wait for one, an issued invoice or an expense cannot be written without it.
 
 ## How is a recurrence stopped or restarted?
-- Stopping keeps what it wrote. A stopped recurrence is not started again; starting the document again writes a new row. One active recurrence per source document.
+- Stopping keeps what it wrote. A stopped recurrence row is not started again; starting the document again writes a new row. One active recurrence per source document.
+- A restarted expense repeat goes on from the stopped one's `next_date`, stepped to today, and never writes a past period again; the new row keeps the first expense's `source_expense_id`, so `erp_expense_recurrence_of()` finds the same repeat from any of its expenses (#1227, erp-expense-recurring-restart.md).

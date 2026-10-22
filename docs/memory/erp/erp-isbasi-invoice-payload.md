@@ -1,6 +1,6 @@
 ---
 name: erp-isbasi-invoice-payload
-description: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields, invoice type codes, the internet sale.
+description: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes.
 ---
 
 ## How does an invoice become official at İşbaşı?
@@ -16,12 +16,8 @@ description: What goes to İşbaşı: draft then hand-over (integrationInvoices,
 
 ## What is in the SimpleInv body? (`erp_edoc_isbasi_invoice_payload()`)
 - `customer` from the copy: `code` = the linked İşbaşı card's code; `isPerson` = person card or 11 digits (last word = surname); `postalCode`, not in the model but required. `invoiceDate` `Y-m-d 12:00:00`; `currency` TRY → "TL"; `vatIncluded=false`.
-- Line: `price` = `unit_price/100`; with a `discountRate`, `discountValue` is 0; `productDetail.itemCode` = `products.code` (SKU, 50) else `PG-<id>`; `itemType` 1 product / 2 service; `unit` Turkish name (`erp_edoc_isbasi_unit_name`); withholding `{code, rateText "4/10"}`; `vatExemptionCode`.
+- `description`: the invoice number, plus ` / Order #<orders.order_number>` (localised) when the invoice is an order's and the order has a number; `erp_edoc_isbasi_send_invoice()` reads the number when the row does not carry it. It used to print `orders.id`, a number nobody sees (PR #1233, issue #969); same rule as Paraşüt (#912).
+- Line: `price` = `unit_price/100`; the discount is a rate or an amount, never both (`erp_edoc_isbasi_line_discount()`): the typed rate alone goes as `discountRate`, a line with a campaign discount as `discountValue` = `discount_amount` (both discounts; PR #1117, issue #968: 10 % + 5 % on 1.000,00 went as 5 % and the e-document read 1.140,00 against the ERP's 1.026,00); `productDetail.itemCode` = `products.code` (SKU, 50) else `PG-<id>`; `itemType` 1 product / 2 service; `unit` Turkish name (`erp_edoc_isbasi_unit_name`); withholding `{code, rateText "4/10"}`; `vatExemptionCode`.
 - Types (`erp_edoc_isbasi_government_type()`, İşbaşı's own list, read 2026-09-23): SATIS sends none, ISTISNA `eGovernmentType` 2, TEVKIFAT 4. OZELMATRAH (needs a base per line), IADE, IHRACAT are refused with the reason; so are a return document (İşbaşı takes a sales return only on its own screen) and a proforma.
 
-## What does an internet sale add?
-- `eGovernmentInvoice {invoiceTypeForEinvoice: 3, eArchivePaymentDate, eArchivePaymentAgent, website, eArchivePaymentType}`, `sendingDate`, `shipmentAgentItem {name, surName, identifier, firmType}` (a TCKN carrier is a person: first name + surname). No carrier → refused before sending.
-- `eArchivePaymentType` (`erp_edoc_isbasi_payment_type()`): 0 card, 1 EFT/transfer, 2 cash on delivery, 3 payment intermediary, 4 other, in the order of `erp_invoices.payment_method`; `settings.payment_type_codes` overrides.
-- Open: the test environment refuses every internet-sale e-Arşiv ("Ödeme tarihi … zorunludur") in all five date formats tried; the driver sends ISO 8601 and Logo was asked.
-
-Related: docs/memory/erp/erp-isbasi-poll-documents-screens.md
+Related: docs/memory/erp/erp-isbasi-poll-documents-screens.md, docs/memory/erp/erp-isbasi-internet-sale.md

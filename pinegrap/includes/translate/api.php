@@ -670,7 +670,7 @@ function translate_api_write_one($string, $language, $text, $engine, $status, $u
         return array('ok' => false, 'reason' => 'empty', 'suspicious' => false);
     }
 
-    $check = pg_tr_result_check($string['source_text'], $clean, $string['format']);
+    $check = pg_tr_result_check($string['source_text'], $clean, $string['format'], pg_tr_keep_terms($language));
 
     if (!$check['ok']) {
         return array('ok' => false, 'reason' => (string) $check['error'], 'suspicious' => false);
@@ -1242,6 +1242,13 @@ function translate_api_jobs_items($params)
     if (in_array($job['status'], array('queued', 'sent', 'running'), true)) {
         $strings = pg_tr_job_waiting($job['id'], $limit);
         $errors = array();
+
+        // Nothing left to translate: the job is closed here, as the results
+        // endpoint closes it, rather than left running for the next run to
+        // find empty again.
+        if (!$strings) {
+            pg_tr_job_close_if_complete($job['id']);
+        }
 
         if ($strings) {
             $ids = array();

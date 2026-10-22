@@ -4,7 +4,8 @@
  *
  * Workspace - notes brought in from other note apps, in three steps:
  *
- *   1. The upload (one .zip, or Markdown and text files) is staged under
+ *   1. The upload (one .zip, Markdown and text files, or Evernote exports,
+ *      which notes_enex.php lays out as such files) is staged under
  *      data/temp and read through: what every file would become is shown to
  *      the person before anything is written (ws_note_import_plan()).
  *   2. The files they keep ticked are written a batch at a time: a new note
@@ -368,8 +369,10 @@ function ws_note_import_load($viewer, $token)
 }
 
 /**
- * Stages an upload: one .zip, or Markdown and text files, moved under
- * data/temp with the list of what they hold. Nothing is read as a note yet.
+ * Stages an upload: one .zip, Markdown and text files, or Evernote exports,
+ * moved under data/temp with the list of what they hold. An Evernote export
+ * is laid out as note and attachment files right away (notes_enex.php);
+ * nothing is written as a note yet.
  *
  * @param array $viewer
  * @param array $files the upload, one entry a file: name, tmp_name, size, error
@@ -389,9 +392,10 @@ function ws_note_import_stage($viewer, $files)
 
     $max = ws_note_import_upload_max();
     $too_large = lang(array('string' => 'The upload is larger than {var:1} MB.', 'vars' => max(1, (int) floor($max / 1048576))));
-    $choose = lang('Choose Markdown (.md) or text (.txt) files, or one .zip of them.');
+    $choose = lang('Choose Markdown (.md) or text (.txt) files, one .zip of them, or Evernote exports (.enex).');
     $total = 0;
     $zips = 0;
+    $exports = 0;
 
     if (empty($files)) {
         return $fail($choose);
@@ -410,11 +414,12 @@ function ws_note_import_stage($viewer, $files)
 
         $extension = strtolower((string) pathinfo((string) $file['name'], PATHINFO_EXTENSION));
 
-        if (!in_array($extension, array('md', 'markdown', 'txt', 'zip'), true)) {
+        if (!in_array($extension, array('md', 'markdown', 'txt', 'zip', 'enex'), true)) {
             return $fail($choose);
         }
 
         $zips += ($extension === 'zip') ? 1 : 0;
+        $exports += ($extension === 'enex') ? 1 : 0;
         $total += (int) $file['size'];
     }
 
@@ -424,6 +429,14 @@ function ws_note_import_stage($viewer, $files)
 
     if (($zips > 0) && (count($files) > 1)) {
         return $fail(lang('Upload a .zip on its own, without other files.'));
+    }
+
+    if (($exports > 0) && ($exports < count($files))) {
+        return $fail(lang('Upload Evernote exports (.enex) on their own, without other files.'));
+    }
+
+    if (($exports > 0) && !function_exists('xml_parser_create')) {
+        return $fail(lang('This server cannot read Evernote exports (the PHP xml extension is missing).'));
     }
 
     if (($zips > 0) && !class_exists('ZipArchive')) {
@@ -442,7 +455,29 @@ function ws_note_import_stage($viewer, $files)
     $entries = array();
     $files = array_values($files);
 
-    if ($zips > 0) {
+    if ($exports > 0) {
+        $sources = array();
+
+        foreach ($files as $number => $file) {
+            $source = $dir . '/source-' . (int) $number . '.enex';
+
+            if (!@move_uploaded_file($file['tmp_name'], $source)) {
+                ws_note_import_log_failure('moving an uploaded Evernote export into the stage');
+
+                return $fail(lang('The file could not be saved.'), $dir);
+            }
+
+            $sources[] = $source;
+        }
+
+        $read = ws_note_enex_stage($dir, $sources);
+
+        if (!$read['ok']) {
+            return $fail($read['error'], $dir);
+        }
+
+        $entries = $read['entries'];
+    } elseif ($zips > 0) {
         $path = $dir . '/source.zip';
 
         if (!@move_uploaded_file($files[0]['tmp_name'], $path)) {
@@ -470,7 +505,10 @@ function ws_note_import_stage($viewer, $files)
                 continue;
             }
 
-            $name = ws_note_import_entry_name($stat['name']);
+            // The name as the zip holds it, not libzip's guess: a zip from
+            // a Turkish Windows names its entries in CP857 without the
+            // UTF-8 flag, and the guess (CP437) garbles ı, ş and İ.
+            $name = ws_note_import_entry_name(ws_note_import_zip_name($archive->getNameIndex($index, ZipArchive::FL_ENC_RAW), $stat['name']));
 
             if ($name !== '') {
                 $entries[] = array($name, (int) $stat['size'], (int) $stat['mtime'], $index);
@@ -571,7 +609,9 @@ function ws_note_import_index($stage)
 
         $index['name'][mb_strtolower(basename($path))][] = $entry;
 
-        if (ws_note_import_is_note($path)) {
+        // An attachment of an Evernote note (a fifth value) is a file, even
+        // one named like a note.
+        if (ws_note_import_is_note($path) && empty($row[4])) {
             $index['notes'][] = $entry;
         }
     }
@@ -649,6 +689,11 @@ function ws_note_import_target($stage, $index, $from, $link)
 {
     if ($link['kind'] === 'link') {
         $found = ws_note_import_lookup($stage, $index, $from, $link['path']);
+
+        if (($found >= 0) && !empty($stage['entries'][$found][4])) {
+            return array('kind' => 'file', 'entry' => $found);
+        }
+
         $note = (bool) preg_match('/\.(md|markdown|txt)$/i', $link['path']);
 
         return array('kind' => $note ? 'note' : 'file', 'entry' => ($found >= 0 && ($note === ws_note_import_is_note($stage['entries'][$found][0]))) ? $found : -1);
@@ -657,7 +702,7 @@ function ws_note_import_target($stage, $index, $from, $link)
     $found = ws_note_import_lookup($stage, $index, $from, $link['name']);
 
     if ($found >= 0) {
-        return array('kind' => ws_note_import_is_note($stage['entries'][$found][0]) ? 'note' : 'file', 'entry' => $found);
+        return array('kind' => (ws_note_import_is_note($stage['entries'][$found][0]) && empty($stage['entries'][$found][4])) ? 'note' : 'file', 'entry' => $found);
     }
 
     foreach (array('.md', '.markdown', '.txt') as $extension) {

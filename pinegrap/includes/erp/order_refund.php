@@ -30,9 +30,17 @@ if (!defined('PG_ERP_ENTRY')) {
  * Shipping and the surcharge have no order_items row, so on the order's own
  * lines they carry the ids -1 and -2.
  *
+ * left_out names the order_items rows the order did not charge
+ * (erp_order_charged_items()), which no refund line stands for, so a caller
+ * matching order lines to refund lines (pg_return_erp_line_map()) can pass
+ * over them. On an invoice it is worked out from today's rows and gateway
+ * setting: an invoice issued while such lines were still put on it may carry
+ * them.
+ *
  * @param int $order_id
  * @return array|null  ['source' => 'invoice'|'order', 'invoice_id' => int,
- *                      'invoice_number' => string, 'lines' => array]
+ *                      'invoice_number' => string, 'lines' => array,
+ *                      'left_out' => int[] order_items ids]
  *                     null when the order cannot be read
  */
 function erp_order_refund_lines($order_id)
@@ -44,6 +52,19 @@ function erp_order_refund_lines($order_id)
         return null;
     }
 
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate, products.start AS product_start
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
+        ORDER BY order_items.id ASC");
+
+    // Only what the order charged can be given back: a recurring line that
+    // had not started yet took no money (erp_order_charged_items()).
+    $charged = erp_order_charged_items($order, $items);
+    $left_out = array_values(array_diff(array_map('intval', array_column($items, 'id')),
+        array_map('intval', array_column($charged, 'id'))));
+
     $invoice = ((int) ($order['erp_invoice_id'] ?? 0) > 0)
         ? db_item("SELECT id, full_number, status, doc_type FROM erp_invoices WHERE id = '" . (int) $order['erp_invoice_id'] . "' LIMIT 1")
         : null;
@@ -54,30 +75,56 @@ function erp_order_refund_lines($order_id)
             'invoice_id' => (int) $invoice['id'],
             'invoice_number' => (string) $invoice['full_number'],
             'lines' => erp_returnable_lines((int) $invoice['id']),
+            'left_out' => $left_out,
         );
     }
 
-    $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
-        FROM order_items
-        LEFT JOIN products ON order_items.product_id = products.id
-        WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
-        ORDER BY order_items.id ASC");
+    $built = erp_order_lines($order, $charged);
 
-    $built = erp_order_lines($order, $items);
+    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '',
+        'lines' => erp_order_refund_order_lines($built['lines'], $charged),
+        'left_out' => $left_out);
+}
+
+/**
+ * The order's built lines as erp_return_build() reads a parent's lines.
+ *
+ * Each line gets the id its quantity is posted under: the item lines keep the
+ * id of their order_items row, in the order the lines were built from the
+ * rows; the lines that have none (shipping, surcharge) come after them with
+ * -1, -2, ... Nothing has been given back yet, so returned_qty is 0 and so is
+ * each tax given back so far.
+ *
+ * Those three zeros are what make the refund meet the order. A line's tax is
+ * the order's figure: tied to the order's header by erp_order_lines(), or
+ * split out of a gross charge (shipping), so it can sit a kurus from its rate
+ * on its amount. With the taxes given back so far known, erp_return_build()
+ * lets a line given back whole take exactly the line's tax and caps a piece
+ * of it by that tax; without them it took every line's tax again, per rate
+ * group of the return, and "Everything" came a kurus short or over the
+ * amount collected - the card got one less, and the order, refunded a kurus
+ * below its total, was never marked cancelled.
+ *
+ * @param array $built_lines  erp_order_lines()['lines']
+ * @param array $items        The order_items rows the lines were built from, indexed from 0
+ * @return array
+ */
+function erp_order_refund_order_lines($built_lines, $items)
+{
     $lines = array();
     $extra = -1;
 
-    foreach ($built['lines'] as $index => $line) {
-        // Item lines keep the index of their order_items row; the two lines
-        // that have none come after them.
+    foreach ((array) $built_lines as $index => $line) {
         $line['id'] = isset($items[$index]) ? (int) $items[$index]['id'] : $extra--;
         $line['returned_qty'] = 0;
         $line['remaining_qty'] = (float) $line['quantity'];
+        $line['returned_tax'] = 0;
+        $line['returned_withholding'] = 0;
+        $line['returned_tax2'] = 0;
         $lines[] = $line;
     }
 
-    return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '', 'lines' => $lines);
+    return $lines;
 }
 
 /**

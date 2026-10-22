@@ -15,7 +15,7 @@ description: ERP expenses (4.95): why an expense is nobody's debt, how payment a
 
 ## Which date and till rules apply?
 - The expense date and the payment date cannot be after today; a payment cannot be dated before the expense; neither may fall in a locked period (`erp_lock_refusal()`).
-- While foreign currency is on, the paying till must be kept in the expense's currency (`erp_expense_till_refusal()`); the pay form lists only those tills.
+- The paying till must be active and, while foreign currency is on, kept in the expense's currency (`erp_expense_till_refusal()`); the pay form lists only those tills, and the repeat run and the bank statement go through the same gate (erp-till-inactive-payments.md, #1229).
 
 ## What about the categories?
 - Switched off, never deleted: a switched-off category keeps its expenses and is offered for no new one. The first read of an empty table writes the defaults in the operator's language (`erp_expense_categories()`, under a named lock so two first visits write them once).

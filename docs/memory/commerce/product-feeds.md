@@ -4,7 +4,7 @@ description: Product feed builder (includes/fn/product_feeds.php, PR #561): whic
 ---
 
 ## What exists?
-- `includes/fn/product_feeds.php` builds a feed body: `pg_product_feed_build($format, $options)` with format `openai_jsonl`, `openai_csv` or `google_tsv`. Setup, daily build and feed.php: docs/memory/commerce/product-feed-serving.md. The catalog page's `?rss=true` feed is untouched.
+- `includes/fn/product_feeds.php` builds feeds in `openai_jsonl`, `openai_csv` or `google_tsv`: `pg_product_feed_render()` from items in memory, the daily build streamed (docs/memory/commerce/product-feed-streaming.md). Setup, daily build and feed.php: docs/memory/commerce/product-feed-serving.md. The catalog page's `?rss=true` feed is untouched.
 - Pure parts tested in `tests/product_feeds_test.php`; the reader was checked on a sandbox install (Turkish template).
 
 ## Which products go in?

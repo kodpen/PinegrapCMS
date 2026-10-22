@@ -20,7 +20,7 @@ description: Rules for a new designer palette component: the full guide, no scri
 
 ## What structure must a tree keep?
 - Grid: `container`/`container-fluid` > `row` > `col`; breakpoints mobile first (`col-12 col-md-6 col-lg-4`). Utility order in a class list: display, flex/grid, spacing, sizing, typography, colour, border, shadow, the rest.
-- `canDrop()` semantics: a void tag takes no children; no `<a>` or link content inside `<a>`; `<p>`, `<button>` and `<h1>`-`<h6>` take inline content only; `<ul>`/`<ol>` take only `<li>` (a loop area excepted); `<table>` > thead/tbody/tfoot/caption/colgroup > `tr` > `td`/`th`; no form inside a form.
+- `canDrop()` semantics: a void tag takes no children; nothing interactive inside `<a>` or `<button>`, at any depth; `<p>`, `<button>` and `<h1>`-`<h6>` take inline content only (a heading and `<p>` also take a link or button); a `<label>` holds one control; a palette item is judged by the tree it builds (inline-drop-links-buttons.md); `<ul>`/`<ol>` take only `<li>` (a loop area excepted); `<table>` > thead/tbody/tfoot/caption/colgroup > `tr` > `td`/`th`; no form inside a form.
 - Accessibility minimum: `aria-label` on an icon-only button or link, `aria-expanded` + `aria-controls` on a toggle, `alt` on `<img>` (`alt=""` when decorative), `<label for>` + `id` on an input, `aria-hidden="true"` on a `bi` icon beside a label.
 - Row gutter: `gutter: '4'` plus `cssClass: 'g-lg-5'`, never plain `'5'`: the page scrolls sideways on phones. Measure a block's responsive behaviour alone, off the canvas, in a clean Bootstrap page (`designer-gutter-overflow.md`).
 

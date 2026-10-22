@@ -36,6 +36,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_outbox();             // 11.0.10
 	upgrade_2026_11_0_shipments();              // 11.0.20
 	upgrade_2026_11_0_order_returns();          // 11.0.11
+	upgrade_2026_11_0_return_reminders();       // 11.0.25
 	upgrade_2026_11_0_short_link_redirects();   // 11.0.12
 	upgrade_2026_11_0_page_revisions();         // 11.0.15
 	upgrade_2026_11_0_page_schedule();          // 11.0.17
@@ -45,6 +46,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fields();              // 11.0.23
 	upgrade_2026_11_0_erp_auto_invoice();       // 11.0.58
 	upgrade_2026_11_0_conversion_pack();        // 11.0.14
+	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
+	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
+	upgrade_2026_11_0_passkeys();               // 11.0.13
 
 }
 
@@ -552,6 +556,24 @@ function upgrade_2026_11_0_order_returns() {
 
 }
 
+// When the refund reminders of a return were given (includes/fn/returns.php,
+// pg_return_remind_refunds()): refund_due_notified_at for "due within
+// PG_RETURN_REMIND_DAYS days", refund_overdue_notified_at for "overdue", unix
+// time, 0 until that stage was rung. The daily job claims a stage with
+// UPDATE ... WHERE <column> = 0 and rings the bell only when that claimed a
+// row, so a reminder goes out once per return and stage however often staff
+// clear the bell; until now the decision read the notification rows, which
+// "Delete all notifications" removes for everyone, and the same reminder came
+// back the next day. Same pattern as erp_invoices.overdue_notified_at.
+function upgrade_2026_11_0_return_reminders() {
+
+	install_add_column('order_returns', 'refund_due_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('order_returns', 'refund_overdue_notified_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Returns: each return request now records when its refund reminders were given, so a reminder cleared from the panel bell is not sent again the next day.');
+
+}
+
 // Short links as redirects (router.php, includes/fn/short_link_redirects.php).
 //
 // redirect_code says how a link answers: 0 as before (a page, product group,
@@ -949,5 +971,119 @@ function upgrade_2026_11_0_conversion_pack() {
 	}
 
 	install_note('Product reviews: a review of a product can now be written only by a customer who bought it, signed in with the account they ordered with, and it is marked as a verified purchase. Comments written before this version stay as they are; only verified reviews count towards the star rating given to search engines.');
+
+}
+
+// The VAT rate each order line was charged at (order_items.tax_rate, NULL for
+// a line written before this step or by a path that does not set it). The
+// checkout writes it with the line's tax (update_order_item_taxes()), the till
+// with the sale (includes/local_sale.php). Until now the rate was worked back
+// out of the line total and its tax (erp_line_tax_rate()), which only holds
+// while every line's tax is its own rate x amount; the order invoice and the
+// e-document need the rate itself. DECIMAL(6,3) like the ERP's rate columns.
+// Added in place where the server can (the table grows with every order),
+// copied otherwise.
+function upgrade_2026_11_0_erp_order_item_tax_rate() {
+
+	$columns = array(
+		'tax_rate' => "DECIMAL(6,3) NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('order_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('order_items', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: each order line now keeps the VAT rate it was charged at, so the invoice drawn from an order carries the rate itself rather than one worked back from the amounts. Lines of earlier orders keep working as before.');
+
+}
+
+// The Stripe payment driver on the PaymentIntents API (2026.11.0, 11.0.24;
+// includes/payments/stripe.php).
+//
+// config.ecommerce_payment_gateway is an ENUM and the connection runs without
+// strict mode, so a gateway value outside the list is stored as '': selecting
+// the driver would quietly switch the card gateway off. 'Stripe PaymentIntents'
+// is appended to the list the column already has, as 4.48 appended
+// 'Pay With Iyzico' to orders.payment_method; the value 'Stripe' stays the
+// classic Charges code. Nullability and default are copied from the column as
+// it is. The driver keeps its keys in connect_apps, so no other column is
+// needed.
+function upgrade_2026_11_0_stripe_payment_intents() {
+
+	$column = install_column_info('config', 'ecommerce_payment_gateway');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('config.ecommerce_payment_gateway does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'Stripe PaymentIntents'") !== false) {
+
+		install_skipped(lang('config.ecommerce_payment_gateway already knows about Stripe PaymentIntents'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('config', 'ecommerce_payment_gateway',
+			"ENUM(" . $enum_match[1] . ",'Stripe PaymentIntents') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('config.ecommerce_payment_gateway is not an ENUM, skipped'));
+
+	}
+
+	install_note('Stripe can now take card payments on the PaymentIntents API, with the card, Apple Pay and Google Pay typed into Stripe\'s own fields on the checkout page and 3-D Secure. Choose "Stripe" as the Payment Gateway in the Ecommerce settings; "Stripe (classic)" keeps working as before.');
+}
+
+// Passkeys (2026.11.0, 11.0.13; includes/fn/passkeys.php, passkey.php).
+//
+// user_passkeys keeps one row per WebAuthn credential an account registered:
+// what the verifier (includes/webauthn/) needs to check a later sign-in - the
+// credential ID, its public key as PEM with its COSE algorithm, the signature
+// counter, the backup eligibility fixed at registration and the user handle
+// of the account - and what an account screen shows: a name, the AAGUID that
+// says which authenticator made it, the transports the browser reported,
+// whether it is backed up now, when it was added and last used.
+//
+// Binary values are kept as base64url text in ASCII columns, compared as
+// bytes (ascii_bin): in base64url "a" and "A" are different values. A
+// credential ID may be 1023 bytes, longer than an index of the older InnoDB
+// row formats takes (767 bytes), so the unique key is the SHA-256 of the raw
+// ID in hex.
+// The user handle is 32 random bytes drawn at the account's first passkey and
+// copied to the next ones; a handle derived from the site's keys would change
+// with them and orphan every passkey made before. Rows go with their account.
+function upgrade_2026_11_0_passkeys() {
+
+	install_create_table('user_passkeys', "CREATE TABLE user_passkeys (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id          INT UNSIGNED NOT NULL,
+		credential_hash  CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		credential_id    VARCHAR(1364) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		public_key       TEXT CHARACTER SET ascii NOT NULL,
+		alg              SMALLINT NOT NULL,
+		sign_count       INT UNSIGNED NOT NULL DEFAULT 0,
+		transports       VARCHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
+		aaguid           CHAR(36) CHARACTER SET ascii NOT NULL DEFAULT '',
+		backup_eligible  TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		backup_state     TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		user_handle      VARCHAR(86) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		name             VARCHAR(100) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_used_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_credential (credential_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
 
 }

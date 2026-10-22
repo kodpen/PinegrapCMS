@@ -25,6 +25,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-architecture-and-phases.md: waf.php structure: standalone module (no functions.php, no HTTP), what runs in the router vs init phase, signature scanning only in init, fail-open, waf_client_ip(), upgrade compatibility.
 - waf-ban-ladder.md: waf_auto_ban() escalation ladder: hit_count is the number of bans, 60-240-960-3840-10080 min, cap waf_auto_ban_max_minutes, expired rows kept for ladder memory.
 - waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, who writes it, staleness asymmetry, allow-list lines, shield_pending.log and drain.
+- waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed), why, where the return sits, and why api.php is not one of them.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
 - waf-country-restriction.md: Firewall country restriction (waf_handle_country(), 2026.4.10 step 10.2): place in waf_run(), allow/block, unknown country, exemptions, not an offence, save guard, sign-in screens kept to the panel.
@@ -42,7 +43,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-login-throttle.md: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): address and account counters in waf_rate, lockout bucket, own switch, which endpoints must count, the 429 answer and its log lines.
 - waf-no-counters-before-db.md: Why a pre-DB request counter ("siege mode") was tried and removed; the design flaws to read before reintroducing one.
 - waf-outgoing-user-agent.md: Every outgoing cURL call must set CURLOPT_USERAGENT via pinegrap_user_agent(); an empty UA made one Pinegrap install block another as bot-empty.
-- waf-path-exemption-and-robots.md: waf_is_excluded() matches the path only; /robots.txt, /.well-known/, health.php and the credential-checked endpoints skip the bot policy (api.php does not); feed readers are good bots.
+- waf-path-exemption-and-robots.md: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
 - waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, messages, early return, why disabling is unchecked.
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.

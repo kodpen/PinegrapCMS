@@ -5848,11 +5848,28 @@ function pg_pb_update_product($product_id)
             pg_ai_fields_values('product', $product));
     }
 
+    // The stock as stored, read before the row is written: a save that moved
+    // it is announced below the way a stock write through the API is.
+    $stock_was = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+
     pg_pb_update_row('products', $product, 'id', $product_id);
 
     // The price history writes a row only when the stored price differs from
     // its newest one, so a save that left the price alone adds nothing.
     pg_price_history_record($product_id, 'panel');
+
+    // The stock: inventory.changed, stock.low on the crossing, and the
+    // stamp, which this save moved already. Only when the count moved or
+    // tracking was switched on with one; the same count again says nothing.
+    $stock_delta = pg_product_stock_delta(
+        $stock_was && ((string) $stock_was['inventory'] === '1'),
+        $stock_was ? $stock_was['inventory_quantity'] : 0,
+        ($product['inventory'] === '1'),
+        $product['inventory_quantity']);
+
+    if ($stock_delta) {
+        pg_product_stock_changed($product_id, $stock_delta[0], $stock_delta[1], 'panel');
+    }
 
     // The operator may have changed the price or the stock on this screen, and
     // there is no cheap way to know which - so it is queued either way. A
@@ -5933,6 +5950,11 @@ function pg_pb_update_product($product_id)
     // has one alone, which is what stops a save from printing a second label
     // for the same box.
     pg_pb_apply_barcode($product_id, isset($_POST['pg_pb_barcode']) ? $_POST['pg_pb_barcode'] : '');
+
+    // Announced once everything above is written, with the payload the API's
+    // update and the Workspace send, so a webhook subscriber or a Workspace
+    // event rule hears about a save on this screen too.
+    pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $product['name']));
 
     return array('name' => $product['name']);
 }
@@ -6401,6 +6423,12 @@ function pg_pb_quick_update($product_id, $field, $value)
             pg_price_history_record($product_id, 'panel');
         }
 
+        // A stock cell is a stock write like any other: announced, and the
+        // marketplace queued, the way the product screen's save does it.
+        if ($field === 'inventory_quantity') {
+            pg_product_stock_changed($product_id, (int) $current['inventory_quantity'], $change['inventory_quantity'], 'panel');
+        }
+
         if ($field === 'enabled') {
             pg_pb_sync_tag_cloud_keywords($product_id, $current['keywords'], ($change['enabled'] === '1'));
         }
@@ -6411,6 +6439,10 @@ function pg_pb_quick_update($product_id, $field, $value)
         if (!in_array($field, array('short_description', 'compare_at_price'), true) && function_exists('pg_marketplace_product_changed')) {
             pg_marketplace_product_changed($product_id);
         }
+
+        // A changed cell is a product change like the product screen's save:
+        // announced with the same {id, name}; the same value again is not.
+        pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $current['name']));
 
         $shown = function ($product) use ($field) {
             switch ($field) {

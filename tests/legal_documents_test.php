@@ -224,6 +224,82 @@ function test_legal_documents_cart_order_amounts()
 	pg_assert_same(0, $unchosen['discount'], 'a stale shipping row is no discount');
 }
 
+// An order discount lowers the tax in its own proportion, as the checkout
+// and submit_order.php do, so the document's discount and tax are the
+// checkout's and not the tax difference added to the discount.
+function test_legal_documents_cart_order_discount_lowers_the_tax()
+{
+	$lines = array(array('line_total' => 10000, 'tax' => 1800));
+
+	$order = pg_legal_document_cart_order(array(), $lines, array(), array('total' => 10620, 'order_discount' => 1000));
+
+	pg_assert_same(10000, $order['subtotal'], 'subtotal');
+	pg_assert_same(1000, $order['discount'], 'the order discount');
+	pg_assert_same(1620, $order['tax'], 'tax after the discount: 1800 - round(1800 * 1000 / 10000)');
+	pg_assert_same(10620, $order['total'], 'checkout total');
+
+	$no_total = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 1000));
+
+	pg_assert_same(10620, $no_total['total'], 'without a drawn total the sums agree with the checkout');
+	pg_assert_same(1000, $no_total['discount'], 'and the discount is the order discount');
+
+	$gift_card = pg_legal_document_cart_order(array(), $lines, array(array('cost' => 500)), array('total' => 10120, 'order_discount' => 1000));
+
+	pg_assert_same(500, $gift_card['shipping'], 'shipping kept');
+	pg_assert_same(2000, $gift_card['discount'], 'what else the checkout took off (a gift card) adds to it');
+	pg_assert_same(1620, $gift_card['tax'], 'the tax is still the discounted one');
+
+	$stale = pg_legal_document_cart_order(array(), $lines, array(array('cost' => 500)), array('total' => 10620, 'order_discount' => 1000));
+
+	pg_assert_same(0, $stale['shipping'], 'discounted goods and tax only: no shipping chosen yet');
+	pg_assert_same(1000, $stale['discount'], 'a stale shipping row adds no discount');
+
+	$capped = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 99999));
+
+	pg_assert_same(10000, $capped['discount'], 'never more than the subtotal');
+	pg_assert_same(0, $capped['tax'], 'nothing left to tax');
+
+	$odd = pg_legal_document_cart_order(array(), array(array('line_total' => 2990, 'tax' => 538)), array(), array('order_discount' => 299));
+
+	pg_assert_same(484, $odd['tax'], 'rounded as submit_order.php: 538 - round(538 * 299 / 2990)');
+}
+
+// With the lines' rates kept, the tax after an order discount is taken again
+// per rate on what the discount leaves of the lines, as submit_order.php
+// takes it (pg_order_charged_tax()): 1.01 at 20% and 1.27 at 10% less 1.00.
+function test_legal_documents_cart_order_discount_taxes_per_rate()
+{
+	$lines = array(
+		array('line_total' => 101, 'tax' => 20, 'rate' => '20.000'),
+		array('line_total' => 127, 'tax' => 13, 'rate' => '10.000'),
+	);
+
+	$order = pg_legal_document_cart_order(array(), $lines, array(), array('order_discount' => 100));
+
+	pg_assert_same(18, $order['tax'], '0.11 on 0.57 at 20% and 0.07 on 0.71 at 10%');
+	pg_assert_same(228 - 100 + 18, $order['total'], 'the checkout total');
+}
+
+// Where the shipping holds tax on the order's invoice the documents show it
+// as the checkout charges it: 9.99 that would bring 39.95 with 7.99 of tax
+// to 57.93, which no amount at 20% reaches, is 9.98.
+function test_legal_documents_cart_order_settles_the_shipping()
+{
+	$lines = array(array('line_total' => 3995, 'tax' => 799, 'rate' => '20.000'));
+	$ship_tos = array(array('cost' => 999));
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('settle_rates' => true));
+	pg_assert_same(998, $order['shipping']);
+	pg_assert_same(5792, $order['total']);
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array('total' => 5792, 'settle_rates' => true));
+	pg_assert_same(998, $order['shipping'], 'the total the checkout showed');
+	pg_assert_same(0, $order['discount'], 'and no discount made up for it');
+
+	$order = pg_legal_document_cart_order(array(), $lines, $ship_tos, array());
+	pg_assert_same(999, $order['shipping'], 'without the rule');
+}
+
 // Typed billing values replace the row's; empty ones and the country code do not.
 function test_legal_documents_cart_order_billing()
 {
@@ -525,6 +601,24 @@ function test_legal_documents_script_posts_the_billing_fields()
 	pg_assert_contains('url.origin !== window.location.origin', $script, 'the token never leaves the site');
 }
 
+// With "my billing address is the same as my shipping address" ticked the
+// billing block is hidden and empty; the script posts the one recipient's
+// fields as the billing ones, the same fields express_order.php copies on
+// submit, and leaves out fields a hidden block holds.
+function test_legal_documents_script_posts_the_recipient_when_billing_is_the_same()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_legal_documents.js');
+	$submit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/express_order.php');
+
+	pg_assert_same(1, preg_match('/var SAME_AS_SHIPPING = \[(.*?)\];/s', $script, $match), 'the list is there');
+	preg_match_all("/'([a-z0-9_]+)'/", $match[1] ?? '', $names);
+	pg_assert_same(1, preg_match('/foreach \(array\(([^)]*)\) as \$pg_same_field\)/', $submit, $copied), 'the submit copies a list');
+	preg_match_all("/'([a-z0-9_]+)'/", $copied[1] ?? '', $copied_names);
+	pg_assert_same($copied_names[1], $names[1], 'the same fields as the submit copies');
+	pg_assert_contains("'billing_same_as_shipping'", $script, 'it reads the box');
+	pg_assert_contains("closest('[hidden]')", $script, 'a hidden block is not posted');
+}
+
 // The document page takes posted values only with the session's token and
 // hands them to the cart's documents; a kept copy never reads them.
 function test_legal_documents_page_reads_posted_values_with_the_token()
@@ -538,6 +632,26 @@ function test_legal_documents_page_reads_posted_values_with_the_token()
 	pg_assert_contains('pg_post_body_discarded()', $page, 'a dropped body is no values');
 	pg_assert_true(($kept !== false) && ($kept < $checked), 'the kept copy is read in the branch before');
 	pg_assert_false(strpos($page, 'validate_token_field()'), 'a wrong token falls back instead of failing');
+}
+
+// The cart's document is read in the language the checkout is served in:
+// its address carries pg_lang (the document page is a script of its own,
+// not a routed page), as a form posted from that page does.
+function test_legal_documents_cart_url()
+{
+	pg_assert_same('/p/legal_document.php', pg_legal_document_cart_url('', '', '/p/legal_document.php'), 'source language, no type');
+	pg_assert_same('/p/legal_document.php?pg_lang=en', pg_legal_document_cart_url('', 'en', '/p/legal_document.php'), 'a target language');
+	pg_assert_same('/p/legal_document.php?type=preinfo', pg_legal_document_cart_url('preinfo', '', '/p/legal_document.php'), 'a type');
+	pg_assert_same('/p/legal_document.php?type=contract&pg_lang=pt-br', pg_legal_document_cart_url('contract', 'pt-br', '/p/legal_document.php'), 'both');
+	pg_assert_same('/p/legal_document.php?type=a%26b&pg_lang=e%26n', pg_legal_document_cart_url('a&b', 'e&n', '/p/legal_document.php'), 'encoded');
+	pg_assert_contains('legal_document.php?pg_lang=en&amp;type=preinfo', pg_legal_documents_checkboxes_html(array(), pg_legal_document_cart_url('', 'en', 'legal_document.php')), 'the injected boxes keep the language');
+
+	$injector = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
+
+	pg_assert_contains('pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())', $injector, 'the injected boxes link in the page language');
+	pg_assert_contains("h(pg_legal_document_cart_url('preinfo'))", $widget, 'the designer token of the pre-information form');
+	pg_assert_contains("h(pg_legal_document_cart_url('contract'))", $widget, 'the designer token of the contract');
 }
 
 // A kept copy's address is the document page with the order's id and the type.
@@ -590,4 +704,17 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
 	pg_assert_contains("strpos((string)\$tree_json, '__legal_preinfo_url') === false", $section, 'a bound link keeps the card away');
 	pg_assert_same(2, substr_count($section, '. $legal_block;'), 'both ways out add the card');
+}
+
+// Deleting an order deletes the copies kept with it: they hold the buyer's
+// name, address, phone, e-mail, IP and browser, and a reused order id would
+// otherwise find "already stored" copies of another customer.
+function test_legal_documents_deleted_with_the_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_order.php');
+	$orders = strpos($source, 'db("DELETE FROM orders WHERE');
+	$documents = strpos($source, 'db("DELETE FROM order_documents WHERE order_id = \'" . e($order[\'id\']) . "\'")');
+
+	pg_assert_true(($orders !== false) && ($documents !== false) && ($orders < $documents), 'the copies go with the order');
+	pg_assert_contains("pg_schema_has('order_documents')", $source, 'only where the table is there');
 }

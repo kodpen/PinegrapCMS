@@ -320,7 +320,15 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 WHERE id = '" . (int) $id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
-            if (function_exists('pg_marketplace_product_changed')) {
+            // A scan is a stock write like any other: inventory.changed (and
+            // stock.low on the crossing) is announced and the marketplace
+            // queued; a product that does not track stock announces nothing.
+            // A scan that left the stock where it was (a decrease at 0)
+            // announces nothing either, but still queues the marketplace so
+            // a listing that drifted from the stock is pushed again.
+            if ((int) $inventory_quantity !== (int) $new_inventory_quantity) {
+                pg_product_stock_changed((int) $id, (int) $inventory_quantity, (int) $new_inventory_quantity, 'barcode');
+            } else {
                 pg_marketplace_product_changed((int) $id);
             }
 

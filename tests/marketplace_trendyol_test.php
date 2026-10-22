@@ -599,6 +599,17 @@ function test_marketplace_trendyol_vat_rate_rounds_down_to_theirs()
 	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 25.0)));
 }
 
+// The rate inside the price that is sent wins over the product's own: 0 for
+// a product the shop does not tax (tests/marketplace_vat_rate_test.php has
+// every tax state). Without it the product's own rate is declared.
+function test_marketplace_trendyol_vat_rate_follows_the_applied_rate()
+{
+	pg_assert_same(0, mp_trendyol_vat_rate(array('taxable' => false, 'tax_rate' => 20.0, 'vat_rate' => 0.0)));
+	pg_assert_same(10, mp_trendyol_vat_rate(array('taxable' => true, 'tax_rate' => null, 'vat_rate' => 18.0)));
+	pg_assert_same(20, mp_trendyol_vat_rate(array('taxable' => true, 'tax_rate' => 20.0, 'vat_rate' => null)));
+	pg_assert_same(20, mp_trendyol_vat_rate(array('tax_rate' => 20.0)));
+}
+
 function test_marketplace_trendyol_brand_match_prefers_the_exact_name()
 {
 	$answer = json_decode(trendyol_test_fixture('brands-by-name.json'), true);

@@ -1282,6 +1282,25 @@ const StyleDesigner = (function () {
         }, force);
     }
 
+    // Refresh a form's cached rows once a save or a move has rewritten them, so
+    // every panel and canvas token that reads the form (its own page, and the
+    // list and detail pages bound to it) shows the stored state. The old rows
+    // stay until the new ones arrive: some panels read the cache without
+    // fetching (the list view's field pickers) and would otherwise sit on
+    // their loading text. The read-only copy of another page's form is
+    // dropped; its panels load it again when they draw.
+    function _cfDropFieldCache(formPageId) {
+        formPageId = parseInt(formPageId, 10) || 0;
+        if (!formPageId) return;
+        delete _cfForeign[formPageId];
+        delete _sdLabelFieldsAsked[formPageId];
+        if (!_formFieldsCache[formPageId]) return;
+        _fetchFormFields(formPageId, function () {
+            if (typeof renderCanvas === 'function') renderCanvas();
+            _sdSchedulePropsRefresh();
+        }, true);
+    }
+
     // Fetch the form_fields rows for a given custom form page_id. Caches per page_id.
     // Calls cb(items) on completion. Idempotent unless `force` is true.
     function _fetchFormFields(formPageId, cb, force) {
@@ -1363,6 +1382,9 @@ const StyleDesigner = (function () {
      *   office_use_only     staff see and fill it, the visitor never does
      *   validation_message  what the visitor reads when `pattern` refuses
      *   upload_folder_id, quiz_question, quiz_answer
+     *   wysiwyg             a text area visitors fill in with the rich-text
+     *                       editor; absent, the field row keeps its own flag
+     *                       (one set on the classic field screen survives)
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1702,6 +1724,7 @@ const StyleDesigner = (function () {
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
                     office_use_only: !!rec.office_use_only,
+                    rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
                 };
                 order.push(byKey[key]);
@@ -1718,6 +1741,41 @@ const StyleDesigner = (function () {
         var rec = (node.props && node.props._cf) || {};
         if (!pid || !rec.ids || typeof rec.ids !== 'object') return 0;
         return parseInt(rec.ids[String(pid)], 10) || 0;
+    }
+
+    // A field row's flag: a boolean from designer/form_fields, the string
+    // '1' / '0' from shared_component/list_form_fields.
+    function _cfFlagOn(v) {
+        return v === true || String(v) === '1';
+    }
+
+    // Whether a text area is filled in with the rich-text editor. Once the
+    // switch has been used the control's _cf.wysiwyg decides; before that the
+    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
+    // the panel shows. null while the page's rows are being loaded.
+    var _cfRichRowsLoading = {};
+    function _cfRichOn(lead) {
+        if (_cfTagOf(lead) !== 'textarea') return false;
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+        var p   = _pgActivePage();
+        var pid = p ? (parseInt(p.page_id, 10) || 0) : 0;
+        if (!pid) return false;
+        var rows = _formFieldsCache[pid];
+        if (!rows) {
+            if (!_cfRichRowsLoading[pid]) {
+                _cfRichRowsLoading[pid] = true;
+                _fetchFormFields(pid, function () {
+                    delete _cfRichRowsLoading[pid];
+                    _sdSchedulePropsRefresh();
+                });
+            }
+            return null;
+        }
+        var id = _cfRowId(lead), key = String(_cfControlName(lead) || '').toLowerCase(), hit = null, i;
+        for (i = 0; id && !hit && i < rows.length; i++) if (parseInt(rows[i].id, 10) === id) hit = rows[i];
+        for (i = 0; key && !hit && i < rows.length; i++) if (String(rows[i].name || '').toLowerCase() === key) hit = rows[i];
+        return !!hit && hit.type === 'text area' && _cfFlagOn(hit.wysiwyg);
     }
 
     // The control whose record a panel edits: the first control of the group
@@ -1993,6 +2051,21 @@ const StyleDesigner = (function () {
         // Another page's form, shown here. Its fields are that page's to
         // change; this panel only says what they are.
         if (!w.owns) {
+            var fFormId = parseInt(w.cfg.form_id || w.cfg.custom_form_page_id || 0, 10) || 0;
+            var fForm = _cfForeign[fFormId];
+            // The widget panel is not the only way in: a control clicked
+            // first loads the form itself. _cfEnsureForeign() asks once and
+            // remembers a failure, so the redraw cannot loop.
+            if (!fForm && fFormId && c.tag === 'textarea') {
+                _cfEnsureForeign(fFormId, function () { _sdSchedulePropsRefresh(); });
+            }
+            var fRich = false;
+            if (c.tag === 'textarea' && fForm && Array.isArray(fForm.fields)) {
+                fForm.fields.forEach(function (f) {
+                    if (String(f.name || '').toLowerCase() === String(name).toLowerCase()
+                        && f.type === 'text area' && _cfFlagOn(f.wysiwyg)) fRich = true;
+                });
+            }
             return sect('bi-ui-checks', _sdT('Form Field'),
                 '<div class="sd-prop-row"><div class="sd-prop-control">' +
                     '<div style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45">' +
@@ -2001,7 +2074,8 @@ const StyleDesigner = (function () {
                 '</div></div>' +
                 row(_sdT('Label'),  '<span class="sd-prop-static">' + esc(src.text || name) + '</span>') +
                 row(_sdT('Field Name'), '<code class="small">' + esc(name) + '</code>') +
-                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
+                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>') +
+                (fRich ? row(_sdT('Rich-text Editor'), '<span class="sd-prop-static">✓</span>') : '')
             );
         }
 
@@ -2035,6 +2109,23 @@ const StyleDesigner = (function () {
                     ? _cfHint(_sdT('Staff who open the page in edit mode see and fill this; on a visitor\'s submission the field\'s default value is saved (Input → Value).'))
                     : '') +
                 '</div></div>';
+
+        // A text area can take the rich-text editor; the published page
+        // loads it (pg_cf_rich_text_inject()), the canvas and the Preview
+        // show the plain control.
+        if (c.tag === 'textarea') {
+            var rich = _cfRichOn(lead) === true;
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-rich', rich, _sdT('Rich-text Editor')) +
+                    (rich
+                        ? _cfHint(esc(_sdT('Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.'))) +
+                          _cfHint(esc(_sdT('Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).')))
+                        : '') +
+                    (rowId > 0
+                        ? _cfHint(esc(_sdT('Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.')))
+                        : '') +
+                    '</div></div>';
+        }
 
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
@@ -2229,6 +2320,10 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-office', 'change', function (el) {
             _cfRec(lead).office_use_only = !!el.checked;
+            commit(true);
+        });
+        on('sd-cf-rich', 'change', function (el) {
+            _cfRec(lead).wysiwyg = !!el.checked;
             commit(true);
         });
         on('sd-cf-contact', 'change', function (el) {
@@ -2531,6 +2626,7 @@ const StyleDesigner = (function () {
             rec.upload_folder_id   = parseInt(f.upload_folder, 10) || 0;
             rec.quiz_question      = !!f.quiz_question;
             rec.quiz_answer        = f.quiz_answer || '';
+            if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -2629,6 +2725,93 @@ const StyleDesigner = (function () {
         return p.formSettings;
     }
 
+    // A form that sends no e-mail at all: no notification address and no
+    // auto-reply. Allowed (some forms are meant to be quiet), but said.
+    function _cfSettingsSilent(fs) {
+        fs = fs || {};
+        return String(fs.notify_email || '').trim() === '' && !parseInt(fs.confirm_email || 0, 10);
+    }
+
+    // A custom form widget just placed or turned into a page form: when the
+    // page has no form record yet, its notification address starts as the
+    // site's own address. A page whose form already exists keeps what it
+    // has, an empty address included, and a page seeded once is not seeded
+    // again (an address the operator cleared stays cleared).
+    var _cfNotifySeeded = {};
+    var _cfSilentWarned = {};   // page_id => warned after a publish this session
+    function _cfSeedNotifyAddress(sid) {
+        var p   = _pgActivePage();
+        var cfg = _cfCfgOf(sid);
+        if (!p || !cfg || !_cfWidgetOwnsPageForm(cfg) || _cfNotifySeeded[p.key]) return;
+        var addr = (_design && _design.siteEmail) ? String(_design.siteEmail).trim() : '';
+        var fs   = _cfPageSettings(p);
+        if (!addr || fs.exists || String(fs.notify_email || '').trim() !== '') return;
+        fs.notify_email = addr;
+        _cfNotifySeeded[p.key] = true;
+    }
+
+    // The placement that opens a custom form widget's settings: the
+    // shared_ref of `sid` on the page tree, else inside another shared
+    // component (a form placed in a header).
+    function _cfRefOf(sid) {
+        var hit = null;
+        var walk = function (n) {
+            if (hit || !n) return;
+            if (n.type === 'shared_ref') {
+                if (parseInt(n.props && n.props.sharedId, 10) === sid) hit = n;
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        if (!hit) Object.keys(_sharedCache).forEach(function (k) {
+            if (!hit && parseInt(k, 10) !== sid && _sharedCache[k] && _sharedCache[k].tree) walk(_sharedCache[k].tree);
+        });
+        return hit;
+    }
+
+    // Select the widget's placement so the panel shows its form settings,
+    // and bring the Custom Form Settings section into view.
+    function _cfOpenFormSettings(sid) {
+        var ref = _cfRefOf(parseInt(sid, 10) || 0);
+        if (!ref) return;
+        selectedNode  = ref;
+        selectedNodes = [];
+        if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+        _sdSelectRender();
+        setTimeout(function () {
+            var src  = document.getElementById('sd-sw-cf-source');
+            var sect = src ? src.closest('.sd-props-section') : null;
+            if (!sect) return;
+            var hdr = sect.querySelector('.sd-sect-hdr');
+            if (hdr && !hdr.classList.contains('sd-sect-open')) hdr.click();
+            sect.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 0);
+    }
+
+    // The "Form settings" bar on top of the panel of any node inside a
+    // custom form widget: on the canvas a click lands on a control or a
+    // wrapper inside the form, never on the widget, and the form's own
+    // settings (notification, auto-reply) were reachable only from the page
+    // tree.
+    function _cfSettingsShortcut(node) {
+        if (!node || node.type === 'shared_ref') return '';
+        var w = _cfWidgetOf(node);
+        if (!w) return '';
+        var silent = w.owns && _cfSettingsSilent(_cfPageSettings());
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
+                '<i class="bi bi-ui-checks me-1"></i>' + esc(_sdT('Form settings')) +
+            '</button>' +
+            (silent
+                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                      esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                  '</div>'
+                : '') +
+        '</div>';
+    }
+
     // If `node` lives inside a cached shared component tree, returns that sid.
     // Otherwise returns 0.
     function _resolveSharedSid(node) {
@@ -2691,36 +2874,84 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // Rotating gradient palette for new carousel slides — keeps each visually distinct.
-    var CAROUSEL_GRADIENTS = [
-        'linear-gradient(135deg,#667eea,#764ba2)',
-        'linear-gradient(135deg,#f093fb,#f5576c)',
-        'linear-gradient(135deg,#4facfe,#00f2fe)',
-        'linear-gradient(135deg,#43e97b,#38f9d7)',
-        'linear-gradient(135deg,#fa709a,#fee140)',
-        'linear-gradient(135deg,#30cfd0,#330867)',
-        'linear-gradient(135deg,#a8edea,#fed6e3)',
-        'linear-gradient(135deg,#f6d365,#fda085)'
-    ];
+    // Rotating theme surfaces for new carousel slides, so neighbouring slides
+    // differ while every one follows the colour palette.
+    var CAROUSEL_SURFACES = ['bg-primary-subtle', 'bg-body-tertiary', 'bg-secondary-subtle'];
 
     /**
-     * Build a fully-structured carousel slide: gradient/image background hero with title,
+     * Build a fully-structured carousel slide: a palette surface with title,
      * description, and a primary button. Returns a semantic tree ready to push into
      * the carousel-inner children array.
+     *
+     * The slide stays light in a dark design too: Bootstrap draws the carousel
+     * controls and indicators dark under data-bs-theme="dark" (and with
+     * .carousel-dark, which the carousel ships with), so a dark slide would hide them.
      */
     function makeCarouselSlide(idx, isActive) {
-        var bg = CAROUSEL_GRADIENTS[(idx - 1) % CAROUSEL_GRADIENTS.length];
+        var bg = CAROUSEL_SURFACES[(idx - 1) % CAROUSEL_SURFACES.length];
         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (isActive ? ' active' : ''), customName: _sdT('Slide {var}', idx) }, [
-            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center text-white text-center p-5', customName: _sdT('Slide Background'),
-                _attrs: [{ name: 'style', value: 'min-height:360px;background:' + bg + ';background-size:cover;background-position:center' }] }, [
+            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center text-center p-5 ' + bg + ' text-body', customName: _sdT('Slide Background'),
+                _attrs: [{ name: 'data-bs-theme', value: 'light' }, { name: 'style', value: 'min-height:360px' }] }, [
                 createNode('semantic', { tag: 'div', cssClass: 'mx-auto', customName: _sdT('Slide Content'),
                     _attrs: [{ name: 'style', value: 'max-width:720px' }] }, [
                     createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Slide {var} Title', idx), cssClass: 'display-5 fw-bold mb-3' }),
                     createNode('content', { contentType: 'paragraph', text: _sdT('A short description that reinforces the slide’s message and guides the reader to the next step.'), cssClass: 'lead mb-4' }),
-                    createNode('component', { componentType: 'btn', text: _sdT('Learn More'), variant: 'light', size: 'lg', href: '#', target: '' })
+                    createNode('component', { componentType: 'btn', text: _sdT('Learn More'), variant: 'primary', size: 'lg', href: '#', target: '' })
                 ])
             ])
         ]);
+    }
+
+    /**
+     * Copy of a carousel node for Carousel Options > Add slide: fresh node ids,
+     * no 'active' class or aria-current on the copy itself, no element id (a
+     * copied id would be on the page twice), and every layer name carrying the
+     * copied slide's number (Slide 3, Carousel Caption 3) renumbered to newN.
+     */
+    function _sdCopyCarouselNode(src, oldN, newN) {
+        var copy = cloneTree(src);
+        var numRe = new RegExp('(^|\\D)' + oldN + '(?!\\d)');
+        (function walk(node, top) {
+            if (!node) return;
+            node._id = gid();
+            var p = node.props || (node.props = {});
+            if (top) {
+                p.cssClass = (p.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'active'; }).join(' ');
+                if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'aria-current'; });
+            }
+            delete p.id;
+            if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'id'; });
+            if (p.customName && numRe.test(p.customName)) p.customName = p.customName.replace(numRe, '$1' + newN);
+            if (node.children) node.children.forEach(function (c) { walk(c, false); });
+        })(copy, true);
+        return copy;
+    }
+
+    /**
+     * The slide Carousel Options > Add slide appends (newN is its 1-based
+     * number): a copy of the carousel's last slide, so it matches the slides
+     * the carousel's controls were drawn for. A photo slide brings its caption
+     * scrim, a quote slide its quote; a light makeCarouselSlide() surface would
+     * hide the white controls of a carousel without .carousel-dark
+     * (image-carousel). A palette surface takes the next surface colour and
+     * "Slide N Title" the new number. makeCarouselSlide() when there is no
+     * slide to copy.
+     */
+    function copyCarouselSlide(last, newN) {
+        if (!last) return makeCarouselSlide(newN, false);
+        var copy = _sdCopyCarouselNode(last, newN - 1, newN);
+        var oldTitle = _sdT('Slide {var} Title', newN - 1);
+        (function walk(node) {
+            var p = node.props || {};
+            var cls = (p.cssClass || '').split(/\s+/);
+            for (var i = 0; i < cls.length; i++) {
+                if (CAROUSEL_SURFACES.indexOf(cls[i]) !== -1) cls[i] = CAROUSEL_SURFACES[(newN - 1) % CAROUSEL_SURFACES.length];
+            }
+            p.cssClass = cls.join(' ');
+            if (p.text === oldTitle) p.text = _sdT('Slide {var} Title', newN);
+            if (node.children) node.children.forEach(walk);
+        })(copy);
+        return copy;
     }
 
     function createDefaultTree() {
@@ -3470,7 +3701,10 @@ const StyleDesigner = (function () {
         // block somebody else laid out is the same kind of edit as changing
         // the sentence beside it — and the alternative is a content operator
         // who can rewrite the caption of an image they cannot replace.
-        if (what === 'image' && typeof _sdNodeImage === 'function' && _sdNodeImage(node)) return true;
+        // A background image is not among them: it is formatting, and the
+        // save does not take it outside a marked area
+        // (_pg_dm_take_image_src()), so offering it lost the change.
+        if (what === 'image' && typeof _sdNodeContentImage === 'function' && _sdNodeContentImage(node)) return true;
         return false;
     }
 
@@ -3942,16 +4176,20 @@ const StyleDesigner = (function () {
     var _myAccountDetailPagesCache = null;
 
     // ========================= COL CLASSES =========================
+    // Twin of _build_col_classes() (includes/fn/designer.php), which writes
+    // the saved page. A column with no width is a full row (col-12), the
+    // width the Column options show for it; 'col' (Equal) at a breakpoint
+    // is Bootstrap's col-<bp>.
     function buildColClasses(p) {
         var c = [];
         if (p.xs && p.xs !== '' && p.xs !== 'none') {
             if (p.xs === 'auto') c.push('col-auto');
             else if (p.xs === 'col') c.push('col');
             else c.push('col-' + p.xs);
-        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col');
+        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col-12');
         ['sm','md','lg','xl','xxl'].forEach(function(bp) {
             if (p[bp] && p[bp] !== '' && p[bp] !== 'none')
-                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : 'col-' + bp + '-' + p[bp]);
+                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : (p[bp] === 'col' ? 'col-' + bp : 'col-' + bp + '-' + p[bp]));
         });
         if (p.offsetXs && p.offsetXs !== '' && p.offsetXs !== 'none') c.push('offset-' + p.offsetXs);
         if (p.offsetMd && p.offsetMd !== '' && p.offsetMd !== 'none') c.push('offset-md-' + p.offsetMd);
@@ -4502,16 +4740,14 @@ const StyleDesigner = (function () {
                     inner = doc.createElement('img');
                     inner.src = p.src;
                     inner.alt = p.alt || '';
-                    // HTML width/height attributes only accept integers (pixels).
-                    // Percentage or px-suffixed values must be applied via style.
-                    if (p.width) {
-                        if (/^\d+$/.test(String(p.width))) { inner.setAttribute('width',  p.width); }
-                        else { inner.style.width  = p.width; }
-                    }
-                    if (p.height) {
-                        if (/^\d+$/.test(String(p.height))) { inner.setAttribute('height', p.height); }
-                        else { inner.style.height = p.height; }
-                    }
+                    // A whole number is the width / height attribute; a value
+                    // with a unit is a style (_sdImgDim()), here and through
+                    // getNodeExtraStyle(). In a ratio box the box takes it.
+                    var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                    if (_dw.attr) inner.setAttribute('width', _dw.attr);
+                    if (_dh.attr) inner.setAttribute('height', _dh.attr);
+                    if (!_sdImgInRatio(p) && _dw.css) inner.style.width  = _dw.css;
+                    if (!_sdImgInRatio(p) && _dh.css) inner.style.height = _dh.css;
                     if (p.fluid) inner.classList.add('img-fluid');
                     if (p.rounded) inner.classList.add('rounded');
                     if (p.cssClass) inner.className += ' ' + p.cssClass;
@@ -4523,14 +4759,14 @@ const StyleDesigner = (function () {
                     inner.className = 'sd-img-placeholder' + (p.rounded ? ' rounded' : '');
                     inner.innerHTML = '<span class="bi bi-image"></span><span class="sd-img-ph-hint">' + esc(_sdT('Double-click to select image')) + '</span>';
                 }
-                if (p.aspectRatio) {
+                if (_sdImgInRatio(p)) {
                     var wrap = doc.createElement('div');
                     // Hoist overflow + rounded classes to the wrapper so
                     // clipping (object-fit:cover edges) works against the
                     // ratio'd box. Without this, an `overflow:hidden` on the
                     // img wouldn't clip anything since the img is sized by
                     // the .ratio rule on its parent.
-                    var wrapCls = 'ratio ratio-' + p.aspectRatio;
+                    var wrapCls = _sdImgRatioClass(p);
                     if (p.cssClass) {
                         var _cArr = String(p.cssClass).split(/\s+/);
                         for (var _ci = 0; _ci < _cArr.length; _ci++) {
@@ -4539,11 +4775,9 @@ const StyleDesigner = (function () {
                     }
                     if (p.rounded) wrapCls += ' rounded';
                     wrap.className = wrapCls;
-                    var wrapStyleParts = [];
-                    if (p.overflow)  wrapStyleParts.push('overflow:'   + p.overflow);
-                    if (p.overflowX) wrapStyleParts.push('overflow-x:' + p.overflowX);
-                    if (p.overflowY) wrapStyleParts.push('overflow-y:' + p.overflowY);
-                    if (wrapStyleParts.length) wrap.setAttribute('style', wrapStyleParts.join(';'));
+                    // The box takes the node's sizing style (size, overflow:
+                    // getNodeExtraStyle()); the image keeps its id, classes,
+                    // attributes and style (buildNodeEl()).
                     wrap.appendChild(inner);
                     return wrap;
                 }
@@ -4551,25 +4785,26 @@ const StyleDesigner = (function () {
             },
             toHTML: function (p, pad) {
                 var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
-                var w = p.width ? ' width="' + esc(p.width) + '"' : '';
-                var h = p.height ? ' height="' + esc(p.height) + '"' : '';
+                // A whole number is the width / height attribute (_sdImgDim());
+                // a value with a unit comes with the node's sizing style
+                // (getNodeExtraStyle()), which addGlobalAttrs() writes.
+                var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
+                var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
                 var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
-                if (p.aspectRatio) {
-                    var wrapClsExp = 'ratio ratio-' + esc(p.aspectRatio);
-                    if (p.cssClass) {
-                        var _wcArr = String(p.cssClass).split(/\s+/);
-                        for (var _wi = 0; _wi < _wcArr.length; _wi++) {
-                            if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
-                        }
+                if (_sdImgInRatio(p)) {
+                    // The box as _render_content_html() writes it: the
+                    // image's rounded classes in their order. Its size and
+                    // overflow are the node's sizing style, which
+                    // addGlobalAttrs() writes on this first tag; the image's
+                    // attributes go on the <img>.
+                    var wrapClsExp = _sdImgRatioClass(p);
+                    var _wcArr = cls.split(/\s+/);
+                    for (var _wi = 0; _wi < _wcArr.length; _wi++) {
+                        if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
                     }
-                    if (p.rounded) wrapClsExp += ' rounded';
-                    var wrapStyleExpParts = [];
-                    if (p.overflow)  wrapStyleExpParts.push('overflow:'   + esc(p.overflow));
-                    if (p.overflowX) wrapStyleExpParts.push('overflow-x:' + esc(p.overflowX));
-                    if (p.overflowY) wrapStyleExpParts.push('overflow-y:' + esc(p.overflowY));
-                    var wrapStyleExp = wrapStyleExpParts.length ? ' style="' + wrapStyleExpParts.join(';') + '"' : '';
-                    return pad + '<div class="' + wrapClsExp + '"' + wrapStyleExp + '>\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
+                    return pad + '<div class="' + wrapClsExp + '">\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
                 }
                 return pad + imgTag + '\n';
             }
@@ -4577,13 +4812,16 @@ const StyleDesigner = (function () {
         divider: {
             label: _sdT('Divider'), icon: 'bi-dash-lg',
             defaultProps: { margin: '4', cssClass: '' },
+            // The margin class first, then cssClass, each class once (a
+            // cssClass that repeats the margin class is not written twice),
+            // as the divider case of _render_content_html() does.
             render: function (doc, p) {
                 var el = doc.createElement('hr');
-                el.className = 'my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '');
+                el.className = _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || ''));
                 return el;
             },
             toHTML: function (p, pad) {
-                return pad + '<hr class="my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '') + '">\n';
+                return pad + '<hr class="' + _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || '')) + '">\n';
             }
         },
         spacer: {
@@ -4699,11 +4937,11 @@ const StyleDesigner = (function () {
                 var pos = p.thumbsPosition || 'bottom';
                 var posLabels = { bottom: _sdT('bottom'), top: _sdT('top'), left: _sdT('left'), right: _sdT('right'), none: _sdT('hidden') };
                 var bits = [];
-                if (p.lightbox)  bits.push('lightbox');
-                if (p.hoverZoom) bits.push('hover-zoom');
-                if (p.autoplay)  bits.push('autoplay');
+                if (p.lightbox)  bits.push(_sdT('Lightbox (full screen)'));
+                if (p.hoverZoom) bits.push(_sdT('Hover zoom (magnifier)'));
+                if (p.autoplay)  bits.push(_sdT('Autoplay'));
                 d.innerHTML = '<span class="bi bi-images" style="font-size:2rem;display:block;margin-bottom:6px"></span>' +
-                    '<strong>Carousel</strong>' +
+                    '<strong>' + esc(_sdT('Carousel')) + '</strong>' +
                     '<div class="text-muted small mt-1">' + esc(_sdT('The slides come from the product images at render time')) +
                     '<br>' + esc(_sdT('thumbnails')) + ': <strong>' + esc(posLabels[pos] || pos) + '</strong>' +
                     (bits.length ? '<br>' + esc(_sdT('features')) + ': ' + esc(bits.join(', ')) : '') +
@@ -4887,7 +5125,8 @@ const StyleDesigner = (function () {
                 return el;
             },
             toHTML: function(p, pad, children) {
-                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '') + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '');
+                // The page's order (_render_content_html()): href, class, target, rel.
+                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '') + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '');
                 var kids = children || '';
                 if (kids) return pad + '<a' + attrs + '>' + (p.text || '') + '\n' + kids + pad + '</a>\n';
                 return pad + '<a' + attrs + '>' + (p.text || '') + '</a>\n';
@@ -5143,8 +5382,12 @@ const StyleDesigner = (function () {
         // no margin, baseline-aligned like the <span> it stands for.
         _SD_BX + '.sd-wrap[data-content-type="span"], .sd-wrap[data-content-type="text"] { display:inline; margin:0; width:auto; min-height:unset; max-width:100%; vertical-align:baseline; }',
         '.sd-wrap[data-content-type="span"] > .sd-lbl, .sd-wrap[data-content-type="text"] > .sd-lbl { display:none; }',
-        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width
-        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width.
+        // No margin, like the span/text wrapper above: the 3px of a content
+        // wrapper grew the line box (and a block-drawn d-block wrapper) by
+        // 6px, so a caption under a strong title stood 12px taller than on
+        // the page.
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.
@@ -5720,6 +5963,13 @@ const StyleDesigner = (function () {
         // A wrapper drawn inline (span, link, button) around an element its own
         // classes make a block (span.d-block.ratio, a.btn.w-100).
         '.sd-wrap.sd-fx-block { display:block !important; width:auto !important; max-width:none !important; vertical-align:baseline; }',
+        // A wrapper between an absolutely placed element and the ancestor
+        // that places it on the page (its own wrapper is see-through,
+        // sd-fx-abs + sd-fx-flat): not positioned, so it does not place it,
+        // and no taller than its content (a holder of floating cards has no
+        // height on the page; the empty-wrapper minimum pushed the frame's
+        // bottom edge, and every bottom-0 card, below the picture).
+        '.sd-wrap.sd-fx-unpos { position:static !important; min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
         // carries an id, style or attribute keeps its box and fills the column.
@@ -8384,64 +8634,84 @@ const StyleDesigner = (function () {
     // A see-through wrapper's toolbar, note dot and issue badge are absolutely
     // positioned against whichever ancestor happens to be positioned, not
     // against the element; they are put at the element each time they show.
-    // A wrapper with a box of its own keeps the stylesheet positions.
+    // So are those of a wrapper that keeps its box but is not positioned
+    // (sd-fx-unpos), put at that box. A positioned wrapper with a box of its
+    // own keeps the stylesheet positions.
     function _sdPlaceWrapChrome(w) {
-        if (!w || !canvasDoc) return;
+        if (w) _sdPlaceChromeOf([w]);
+    }
+
+    // The same for several wrappers: every position is measured first and
+    // written after, so the canvas is laid out once, not once per wrapper.
+    function _sdPlaceChromeOf(ws) {
+        if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
-        var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
-        if (!parts.length) return;
-        if (win.getComputedStyle(w).display !== 'contents') {
+        var writes = [];
+        ws.forEach(function (w) {
+            if (!w || !w.isConnected) return;
+            var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
+            if (!parts.length) return;
+            var wcs = win.getComputedStyle(w);
+            var flat = wcs.display === 'contents';
+            if (!flat && wcs.position !== 'static') {
+                parts.forEach(function (p) { if (p._sdPlaced) writes.push({ p: p }); });
+                return;
+            }
+            var el = flat ? _sdWrapEl(w) : w;
+            if (!el) return;
+            var er = el.getBoundingClientRect();
+            if (!er.width && !er.height) return;
             parts.forEach(function (p) {
-                if (!p._sdPlaced) return;
+                if (win.getComputedStyle(p).display === 'none') return;
+                // The containing block's padding-box origin, in viewport terms.
+                var op = p.offsetParent, bx, by;
+                if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
+                    var r = op.getBoundingClientRect();
+                    bx = r.left + op.clientLeft - op.scrollLeft;
+                    by = r.top + op.clientTop - op.scrollTop;
+                } else {
+                    bx = -win.scrollX;
+                    by = -win.scrollY;
+                }
+                var top, left;
+                if (p.classList.contains('sd-tb')) {
+                    // Above the element; inside it when there is no room above.
+                    top = er.top - by + (er.top < 22 ? 2 : -20);
+                    left = er.left - bx;
+                } else if (p.classList.contains('sd-persistent-note')) {
+                    top = er.top - by + 2;
+                    left = er.right - bx - 18;
+                } else {
+                    top = er.top - by - 7;
+                    left = er.left - bx - 7;
+                }
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left) });
+            });
+        });
+        writes.forEach(function (x) {
+            var p = x.p;
+            if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
                 p._sdPlaced = false;
-            });
-            return;
-        }
-        var el = _sdWrapEl(w);
-        if (!el) return;
-        var er = el.getBoundingClientRect();
-        if (!er.width && !er.height) return;
-        parts.forEach(function (p) {
-            if (win.getComputedStyle(p).display === 'none') return;
-            // The containing block's padding-box origin, in viewport terms.
-            var op = p.offsetParent, bx, by;
-            if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
-                var r = op.getBoundingClientRect();
-                bx = r.left + op.clientLeft - op.scrollLeft;
-                by = r.top + op.clientTop - op.scrollTop;
-            } else {
-                bx = -win.scrollX;
-                by = -win.scrollY;
+                return;
             }
-            var top, left;
-            if (p.classList.contains('sd-tb')) {
-                // Above the element; inside it when there is no room above.
-                top = er.top - by + (er.top < 22 ? 2 : -20);
-                left = er.left - bx;
-            } else if (p.classList.contains('sd-persistent-note')) {
-                top = er.top - by + 2;
-                left = er.right - bx - 18;
-            } else {
-                top = er.top - by - 7;
-                left = er.left - bx - 7;
-            }
-            p.style.setProperty('top', Math.round(top) + 'px', 'important');
-            p.style.setProperty('left', Math.round(left) + 'px', 'important');
+            p.style.setProperty('top', x.top + 'px', 'important');
+            p.style.setProperty('left', x.left + 'px', 'important');
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
     }
 
     // The chrome that shows without a hover: the selection's toolbar, note
-    // dots, issue badges.
+    // dots, issue badges. Runs after every fidelity pass (adjustCanvasToolbars(),
+    // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
-        canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')
-            .forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(Array.prototype.slice.call(
+            canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')));
         // The size badge sits at the selection's corner: placed again once
         // the fidelity pass has moved things.
         if (selectedNode) _positionSizeBadge();
@@ -8467,7 +8737,7 @@ const StyleDesigner = (function () {
         if (hw && hw.isConnected && hw.tagName === 'DIV' && ws.indexOf(hw) === -1) ws.push(hw);
         var tops = ws.map(function (w) { return _sdBoxRect(w).top; });
         ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
-        ws.forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(ws);
         if (selectedNode) _positionSizeBadge();
     }
 
@@ -8539,10 +8809,63 @@ const StyleDesigner = (function () {
                 else if (!want && had) dropInline.push(w);
             });
         }
+        // An absolutely placed element (an overlay, a card floating over a
+        // picture, a badge on a button) is placed by its nearest positioned
+        // ancestor, and every boxed wrapper is position:relative: on the
+        // canvas the element was placed by its own wrapper, a 28px box in the
+        // flow, instead of by the frame that places it on the page. Its
+        // wrapper is drawn see-through, and the wrappers between it and that
+        // ancestor are not positioned, so the page's ancestor places it here
+        // too; their toolbars, note dots and issue badges are put by
+        // _sdPlaceSelectedChrome() after this pass, on hover and when the
+        // validation puts its badges on (_sdPlaceChromeOf()). The element's
+        // own position is measured (a media query can make it absolute), not
+        // its classes. An element clipped to nothing (visually hidden text,
+        // the input of a .btn-check toggle) shows nowhere either way and keeps
+        // its wrapper box, the only place to pick it on the canvas.
+        var absWraps = [], unposWraps = [];
+        if (!_sdFxFlatOn()) {
+            canvasDoc.querySelectorAll('div.sd-wrap:not([data-sd-self])').forEach(function (w) {
+                if (w.style.display) return;
+                var el = _sdWrapEl(w);
+                if (!el) return;
+                var cs = win.getComputedStyle(el);
+                if (cs.position !== 'absolute' || cs.display === 'none' || cs.clip === 'rect(0px, 0px, 0px, 0px)') return;
+                absWraps.push(w);
+                for (var p = w.parentElement; p && p !== canvasDoc.body; p = p.parentElement) {
+                    if (p.matches('div.sd-wrap:not([data-sd-self])')) {
+                        // The page root keeps its box: it is the canvas-wide drop target.
+                        if (p.getAttribute('data-sd-type') === 'root') break;
+                        // A wrapper whose own marks the canvas stylesheet
+                        // places against it (the bound-off label, a system
+                        // widget's name band, a shared component's frame)
+                        // stays positioned: script does not place those. The
+                        // element is then placed by that wrapper, inside the
+                        // widget, as before this pass.
+                        if (p.classList.contains('sd-binding-off') || p.classList.contains('sd-shared-wrap')) break;
+                        if (unposWraps.indexOf(p) === -1) unposWraps.push(p);
+                        continue;
+                    }
+                    if (win.getComputedStyle(p).position !== 'static') break;
+                }
+            });
+        }
         addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
         dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
         addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
         dropInline.forEach(function (w) { w.classList.remove('sd-fx-inline', 'sd-fx-flat'); });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-abs').forEach(function (w) {
+            if (absWraps.indexOf(w) !== -1) return;
+            w.classList.remove('sd-fx-abs');
+            if (!w.classList.contains('sd-fx-inline')) w.classList.remove('sd-fx-flat');
+        });
+        absWraps.forEach(function (w) {
+            if (!w.classList.contains('sd-fx-abs') || !w.classList.contains('sd-fx-flat')) w.classList.add('sd-fx-abs', 'sd-fx-flat');
+        });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-unpos').forEach(function (w) {
+            if (unposWraps.indexOf(w) === -1) w.classList.remove('sd-fx-unpos');
+        });
+        unposWraps.forEach(function (w) { if (!w.classList.contains('sd-fx-unpos')) w.classList.add('sd-fx-unpos'); });
         canvasDoc.querySelectorAll('.sd-loop-area').forEach(function (la) {
             _sdFxLoopArea(la, win);
             _sdFxGhostImageSizes(la);
@@ -9853,6 +10176,7 @@ const StyleDesigner = (function () {
                     address_book:         _sdT('Address Book'),
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
+                    account_email:        _sdT('Account E-mail'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -10127,6 +10451,89 @@ const StyleDesigner = (function () {
             if (fill) { c._sdFill = null; fill(); }
             return;
         }
+    }
+
+    // The canvas side of a node's own attributes (buildNodeEl()): its id,
+    // title, Attributes-panel entries, tooltip, classes and style on the
+    // element buildInnerElement() drew, as addGlobalAttrs() writes them in
+    // the editor's HTML.
+    function _sdApplyNodeAttrs(innerEl, node) {
+        // The element that takes the node's id, classes, attributes and
+        // style. An image in its own ratio box keeps them on the <img>
+        // (the element the operator selected), and the box takes the
+        // sizing style - as on the page and in the editor's HTML
+        // (addGlobalAttrs()).
+        var _attrEl = innerEl, _boxEl = null;
+        if (node.type === 'content' && node.props.contentType === 'image' && _sdImgInRatio(node.props) && innerEl.firstElementChild) {
+            _attrEl = innerEl.firstElementChild;
+            _boxEl  = innerEl;
+        }
+        if (node.props.id) { _attrEl.id = node.props.id; }
+        if (node.props.title) { _attrEl.title = node.props.title; }
+        // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
+        var _inlineBase = node.props.inlineStyle || '';
+        var _attrStyle  = '';
+        if (node.props.fontFamily) {
+            // Single-quote the family name + sans-serif fallback so
+            // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
+            // …) tokenise as ONE family rather than several keywords.
+            var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
+            _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
+        }
+        // Prop-backed inline styles (_sdInlineStyleProps()): included in
+        // _inlineBase so they survive when _attrStyle is non-empty
+        // (setAttribute('style', _attrStyle) would wipe out el.style.* set
+        // by the render fn). A copy an older tree kept in _attrs.style
+        // still wins until the node is selected and
+        // migrateNodeStyleProps() folds it back into the prop.
+        if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
+            if (!getAttrStyleProp(node, 'font-size')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
+            }
+        }
+        if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
+            if (!getAttrStyleProp(node, 'object-position')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
+            }
+        }
+        // Custom _attrs: data-*, aria-*, etc.
+        if (node.props._attrs && node.props._attrs.length) {
+            node.props._attrs.forEach(function(a) {
+                if (a.name === 'style') { _attrStyle = a.value || ''; }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+            });
+        }
+        // Sizing props extra style (before _attrStyle so Attrs panel can override)
+        var _extraStyleStr = getNodeExtraStyle(node);
+        var _extraClsStr   = getNodeExtraClasses(node);
+        if (_boxEl) {
+            if (_extraStyleStr) _boxEl.setAttribute('style', _extraStyleStr);
+        } else if (_extraStyleStr) {
+            _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
+        }
+        // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
+        var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
+        if (_combined) _attrEl.setAttribute('style', _combined);
+        // Extra classes (visually-hidden, ratio, etc.)
+        if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
+        // Tooltip attrs on canvas element
+        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
+            _attrEl.setAttribute('data-bs-toggle', 'tooltip');
+            _attrEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
+            _attrEl.title = node.props.tooltipTitle;
+        } else if (node.props.title) {
+            _attrEl.title = node.props.title;
+        }
+    }
+
+    // Whether an image's canvas wrapper is a block (buildNodeEl()): a
+    // percentage width, min-width or max-width resolves against the column
+    // only then, as on the page; in the wrapper's inline-block it resolves
+    // against the shrunk wrapper.
+    function _sdImgWrapperIsBlock(node) {
+        if (!node || node.type !== 'content' || !node.props || node.props.contentType !== 'image') return false;
+        var _imgPW = [node.props.width, node.props.minWidth, node.props.maxWidth].map(function (v) { return v ? String(v) : ''; }).join(' ');
+        return _imgPW.indexOf('%') !== -1;
     }
 
     function buildNodeEl(node) {
@@ -10465,6 +10872,18 @@ const StyleDesigner = (function () {
                     tbBtns.appendChild(bindBtn);
                 }
             }
+            // Inside a custom form widget: the form's own settings, which a
+            // click on the canvas never selects (it lands on a control).
+            var _cfTbW = (node.type !== 'root') ? _cfWidgetOf(node) : null;
+            if (_cfTbW) {
+                var cfSetBtn = doc.createElement('button');
+                cfSetBtn.type = 'button';
+                cfSetBtn.className = 'bi bi-ui-checks';
+                cfSetBtn.title = _sdT('Form settings');
+                cfSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                cfSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _cfOpenFormSettings(_cfTbW.sid); });
+                tbBtns.appendChild(cfSetBtn);
+            }
             // Notes — opens a floating notes popup anchored to this node
             if (node.type !== 'root') {
                 var noteBtn = doc.createElement('button');
@@ -10535,58 +10954,7 @@ const StyleDesigner = (function () {
         var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
             if (_sdTextInnerHost(node)) innerEl.setAttribute('data-sd-inner-host', '');
-            if (node.props.id) { innerEl.id = node.props.id; }
-            if (node.props.title) { innerEl.title = node.props.title; }
-            // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
-            var _inlineBase = node.props.inlineStyle || '';
-            var _attrStyle  = '';
-            if (node.props.fontFamily) {
-                // Single-quote the family name + sans-serif fallback so
-                // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
-                // …) tokenise as ONE family rather than several keywords.
-                var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
-                _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
-            }
-            // Prop-backed inline styles (_sdInlineStyleProps()): included in
-            // _inlineBase so they survive when _attrStyle is non-empty
-            // (setAttribute('style', _attrStyle) would wipe out el.style.* set
-            // by the render fn). A copy an older tree kept in _attrs.style
-            // still wins until the node is selected and
-            // migrateNodeStyleProps() folds it back into the prop.
-            if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
-                if (!getAttrStyleProp(node, 'font-size')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
-                }
-            }
-            if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
-                if (!getAttrStyleProp(node, 'object-position')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
-                }
-            }
-            // Custom _attrs: data-*, aria-*, etc.
-            if (node.props._attrs && node.props._attrs.length) {
-                node.props._attrs.forEach(function(a) {
-                    if (a.name === 'style') { _attrStyle = a.value || ''; }
-                    else if (a.name && a.name.trim()) { innerEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
-                });
-            }
-            // Sizing props extra style (before _attrStyle so Attrs panel can override)
-            var _extraStyleStr = getNodeExtraStyle(node);
-            var _extraClsStr   = getNodeExtraClasses(node);
-            if (_extraStyleStr) _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
-            // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
-            var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-            if (_combined) innerEl.setAttribute('style', _combined);
-            // Extra classes (visually-hidden, ratio, etc.)
-            if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) innerEl.classList.add(c); });
-            // Tooltip attrs on canvas element
-            if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-                innerEl.setAttribute('data-bs-toggle', 'tooltip');
-                innerEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
-                innerEl.title = node.props.tooltipTitle;
-            } else if (node.props.title) {
-                innerEl.title = node.props.title;
-            }
+            _sdApplyNodeAttrs(innerEl, node);
             // A column's inner holder: see-through when it carries nothing of
             // its own (its children are then laid out by the column, and an
             // h-100 card fills it); otherwise it fills the column's height.
@@ -10603,14 +10971,13 @@ const StyleDesigner = (function () {
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
-            // Force the wrapper to block so the percentage applies against the column width.
+            // Force the wrapper to block so the percentage applies against the column width,
+            // as on the page. The wrapper keeps the column's width: given the percentage too,
+            // the image took that percentage of it (50% drew a quarter of the column).
             // (A see-through wrapper has no box to size; the image sizes itself.)
-            if (node.type === 'content' && node.props.contentType === 'image' && !wrapper.classList.contains('sd-fx-flat')) {
-                var _imgPW = node.props.width ? String(node.props.width) : '';
-                if (_imgPW.indexOf('%') !== -1) {
-                    wrapper.style.setProperty('display', 'block', 'important');
-                    wrapper.style.setProperty('width', _imgPW, 'important');
-                }
+            // The same holds for a percentage minimum or maximum width.
+            if (!wrapper.classList.contains('sd-fx-flat') && _sdImgWrapperIsBlock(node)) {
+                wrapper.style.setProperty('display', 'block', 'important');
             }
         }
 
@@ -11457,6 +11824,7 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
         '__installment_per_month': _sdMoney(207.77),
@@ -11690,6 +12058,10 @@ const StyleDesigner = (function () {
     function _sdDatePlaceholder() {
         return _sdDateSample(true);
     }
+
+    // The record counters a form list can order by; the same list as
+    // pg_sw_form_order_counters() (includes/fn/widgets.php).
+    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views'];
 
     // Preview values for the system fields of a submitted form and for the
     // account fields beside them. Without these a reference code would fall
@@ -13072,6 +13444,200 @@ const StyleDesigner = (function () {
         return false;
     }
 
+    // Palette items as the tree they would add, built once per item for the
+    // drop rules (_sdDragTree()). While one is built, createFromPalette()
+    // leaves the design's User Styles alone (_sdPaletteDry).
+    var _sdPaletteShapes = {};
+    var _sdPaletteDry = false;
+
+    // The tree a drag would place: the moved node, or for a palette item the
+    // node createFromPalette() builds from it, so a ready-made block is
+    // judged by what it holds and not by its top-level type alone. Null when
+    // the payload names no palette item. The build changes nothing: the id
+    // counter is put back and the item's block styles are not written.
+    function _sdDragTree(data) {
+        if (!data) return null;
+        if (data.source === 'node') return data.node || null;
+        if (data.source !== 'palette' || !data.type) return null;
+        var key;
+        try { key = data.type + '|' + JSON.stringify(data.extra || {}); } catch (e) { return null; }
+        if (Object.prototype.hasOwnProperty.call(_sdPaletteShapes, key)) return _sdPaletteShapes[key];
+        var built = null;
+        var ids = nodeIdCounter;
+        _sdPaletteDry = true;
+        try { built = createFromPalette(data.type, data.extra || {}) || null; } catch (e) { built = null; }
+        finally { _sdPaletteDry = false; nodeIdCounter = ids; }
+        _sdPaletteShapes[key] = built;
+        return built;
+    }
+
+    // A semantic <input type="hidden">: it draws nothing, so it is neither
+    // interactive content nor a control a label labels.
+    function _sdIsHiddenInput(n) {
+        if (!n || n.type !== 'semantic' || !n.props || String(n.props.tag || '').toLowerCase() !== 'input') return false;
+        var attrs = Array.isArray(n.props._attrs) ? n.props._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'type' && String(attrs[i].value || '').toLowerCase() === 'hidden') return true;
+        }
+        return false;
+    }
+
+    // Interactive content for the rules about what may sit inside a link, a
+    // button or a label: _isInteractiveNode() without a hidden input, plus a
+    // content heading printed as <button> or <a> (the blocks' accordion and
+    // tab header buttons). Such a heading prints its text only, never child
+    // nodes, so it is left out of _isInteractiveNode(), which decides what
+    // takes inline children.
+    function _sdIsInteractiveEl(n) {
+        if (!n || _sdIsHiddenInput(n)) return false;
+        if (_isInteractiveNode(n)) return true;
+        if (n.type === 'content' && n.props && n.props.contentType === 'heading') {
+            var htag = String(n.props.tag || '').toLowerCase();
+            return htag === 'button' || htag === 'a';
+        }
+        return false;
+    }
+
+    // The markup a node prints itself instead of child nodes: a content
+    // node's text, or what an atomic component other than btn writes (the
+    // language switcher's dropdown button and links). Empty otherwise.
+    function _sdNodeMarkup(n) {
+        if (!n || !n.props) return '';
+        if (n.type === 'content') return String(n.props.text || '') + String(n.props.html || '');
+        if (n.type === 'component' && n.props.componentType !== 'btn' && typeof COMPONENTS !== 'undefined') {
+            var comp = COMPONENTS[n.props.componentType];
+            if (comp && typeof comp.toHTML === 'function') {
+                try { return String(comp.toHTML(n.props, '') || ''); } catch (e) { return ''; }
+            }
+        }
+        return '';
+    }
+
+    // An <a> or a <button> written in a node's own markup.
+    function _sdMarkupInteractive(n) {
+        return /<(a|button)[\s>\/]/i.test(_sdNodeMarkup(n));
+    }
+
+    // A link or a button as an element of its own (not an input, a select or
+    // a textarea): semantic a / button, component btn, content link / button,
+    // a content heading printed as <a> or <button>.
+    function _sdIsLinkOrButton(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') return ['a', 'button'].indexOf(String(n.props.tag || '').toLowerCase()) !== -1;
+        return _sdIsInteractiveEl(n);
+    }
+
+    // A link or a button that may go where only inline content goes (a
+    // headline link in an <h3>, a link inside a sentence, the accordion
+    // header button in its <h2>): everything inside it is inline content
+    // too, and nothing inside it is a link or a button of its own. A link
+    // card holding a <div> stays out of headings and paragraphs.
+    function _sdInlineInteractiveDrag(data) {
+        var root = _sdDragTree(data) || { type: data.type, props: data.extra || {}, children: [] };
+        if (!_sdIsLinkOrButton(root) || _sdMarkupInteractive(root)) return false;
+        return (function kidsInline(n) {
+            var kids = n.children || [];
+            for (var i = 0; i < kids.length; i++) {
+                var k = kids[i];
+                if (!k || _sdIsInteractiveEl(k) || _sdMarkupInteractive(k)) return false;
+                if (!_isInlineOnlyDrag({ source: 'node', type: k.type, node: k })) return false;
+                if (!kidsInline(k)) return false;
+            }
+            return true;
+        })(root);
+    }
+
+    // Does the drag place interactive content: the dragged element, any
+    // element below it, or an <a> / <button> written in a content node's
+    // markup. Kept on the payload: dragover asks on every mouse move and the
+    // subtree does not change during a drag.
+    function _sdDragCarriesInteractive(data) {
+        if (!data) return false;
+        if (typeof data._sdIact === 'boolean') return data._sdIact;
+        var root = _sdDragTree(data);
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_sdIsInteractiveEl(n) || _sdMarkupInteractive(n)) return true;
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : _sdIsInteractiveEl({ type: data.type, props: data.extra || {} });
+        try { data._sdIact = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a link or a button, or does it sit inside one at any
+    // depth (a span inside a link, a heading inside a card link)?
+    function _sdInInteractive(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_sdIsInteractiveEl(n)) return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return false;
+    }
+
+    // A form control a <label> labels: button, input (not a hidden one),
+    // select, textarea, a btn component printed as <button> / <input>, a
+    // content button or a heading printed as <button>. A btn printed as <a>
+    // is a link, which a label may hold.
+    function _sdIsLabelableControl(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') {
+            var tag = String(n.props.tag || '').toLowerCase();
+            if (tag === 'input') return !_sdIsHiddenInput(n);
+            return ['button', 'select', 'textarea'].indexOf(tag) !== -1;
+        }
+        if (n.type === 'component') {
+            return n.props.componentType === 'btn' && (n.props.btnElement === 'button' || n.props.btnElement === 'input');
+        }
+        if (n.type === 'content') {
+            if (n.props.contentType === 'button') return true;
+            return n.props.contentType === 'heading' && String(n.props.tag || '').toLowerCase() === 'button';
+        }
+        return false;
+    }
+
+    // Does the tree hold a labelable control, leaving out `skip` (the node
+    // being moved, which may already sit in the label)?
+    function _sdHoldsControl(n, skip) {
+        if (!n || n === skip) return false;
+        if (_sdIsLabelableControl(n)) return true;
+        if (/<(button|input|select|textarea)[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+        var kids = n.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (_sdHoldsControl(kids[i], skip)) return true;
+        }
+        return false;
+    }
+
+    // Does the drag place a labelable control, anywhere in what it carries?
+    // Kept on the payload like _sdDragCarriesInteractive().
+    function _sdDragCarriesControl(data) {
+        if (!data) return false;
+        if (typeof data._sdCtl === 'boolean') return data._sdCtl;
+        var root = _sdDragTree(data);
+        var found = root ? _sdHoldsControl(root, null) : _sdIsLabelableControl({ type: data.type, props: data.extra || {} });
+        try { data._sdCtl = found; } catch (e) {}
+        return found;
+    }
+
+    // The <label> the target is or sits in, at any depth; null outside one.
+    function _sdLabelOf(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'label') return n;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return null;
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -13153,20 +13719,31 @@ const StyleDesigner = (function () {
         var srcTag = _dragSemTag(data);
         var HEADING = ['h1','h2','h3','h4','h5','h6'];
 
-        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline content
+        // Rule 0: nothing interactive inside a link or a button, at any depth:
+        // no <a> in an <a>, no link or button in a <button>, also through a
+        // span or a heading in between, and not as part of a dragged wrapper.
+        if (_sdDragCarriesInteractive(data) && _sdInInteractive(target)) return false;
+
+        // Rule 0b: a <label> labels one control. No button, input, select or
+        // textarea goes into a label (or an element inside it) that already
+        // holds one; the moved node itself does not count.
+        if (_sdDragCarriesControl(data)) {
+            var _lbl = _sdLabelOf(target);
+            if (_lbl && _sdHoldsControl(_lbl, data.source === 'node' ? data.node : null)) return false;
+        }
+
+        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline
+        // content. A heading also takes a link or a button (<h3><a>…</a></h3>,
+        // the accordion's <h2><button>); a link or a button never does (Rule 0).
         if (tgtTag === 'button' || HEADING.indexOf(tgtTag) !== -1 || _isInteractiveNode(target)) {
-            return _isInlineOnlyDrag(data);
+            if (_isInlineOnlyDrag(data)) return true;
+            return HEADING.indexOf(tgtTag) !== -1 && _sdInlineInteractiveDrag(data);
         }
 
-        // Rule 3: <a> cannot contain another <a> or link content
-        if (tgtTag === 'a') {
-            if (srcTag === 'a') return false;
-            if (_dragContentType(data) === 'link') return false;
-        }
-
-        // Rule 4: <p> — inline content only
+        // Rule 4: <p> — inline content only, a link or a button inside the
+        // sentence too
         if (tgtTag === 'p') {
-            return _isInlineOnlyDrag(data);
+            return _isInlineOnlyDrag(data) || _sdInlineInteractiveDrag(data);
         }
 
         // Rule 5: <ul> / <ol> — only direct <li> children. A loop area is
@@ -13415,6 +13992,10 @@ const StyleDesigner = (function () {
                                      'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
                                      'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
                                      'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
@@ -13561,8 +14142,9 @@ const StyleDesigner = (function () {
             case 'recipient_loop_area': return createNode('recipient_loop_area', {}, []);
             case 'component':
                 var ctype = extra.componentType;
-                // Rules this block needs go to the Styles panel, not inline.
-                _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                // Rules this block needs go to the Styles panel, not inline;
+                // not while the drop rules only look at the block's shape.
+                if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -13582,13 +14164,16 @@ const StyleDesigner = (function () {
 
                 // Hero Explosion
                 if (ctype === 'hero') {
-                    return createNode('semantic', { tag: 'div', cssClass: 'py-5 text-center text-white bg-dark mb-4 rounded-3', customName: _sdT('Hero Section') }, [
+                    // A dark band in any mode: the theme switch makes text-body and
+                    // the palette's dark colours apply inside it.
+                    return createNode('semantic', { tag: 'div', cssClass: 'py-5 px-3 text-center bg-body text-body mb-4 rounded-3', customName: _sdT('Hero Section'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Hero title'), cssClass: 'display-5 fw-bold' }),
                         createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 mx-auto', customName: _sdT('Hero Body') }, [
                              createNode('content', { contentType: 'paragraph', text: _sdT('Quickly design and customize responsive mobile-first sites with Bootstrap.'), cssClass: 'lead mb-4' }),
                              createNode('semantic', { tag: 'div', cssClass: 'd-grid gap-2 d-sm-flex justify-content-sm-center', customName: _sdT('Hero Buttons') }, [
                                   createNode('component', { componentType: 'btn', text: _sdT('Primary button'), variant: 'primary', size: 'lg' }),
-                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-light', size: 'lg' })
+                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-secondary', size: 'lg' })
                              ])
                         ])
                     ]);
@@ -13638,21 +14223,26 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
-                // Hero: Image Background — full-width section, bg-image via _attrs, dark overlay, centered content
+                // Hero: Image Background — full-width section, bg-image via _attrs, centered content
+                // on the shared dark scrim. The scrim is the section's only child and
+                // stretches with it, so long text grows the hero instead of being cut;
+                // its data-bs-theme="dark" keeps the text light whatever the photo is.
                 if (ctype === 'hero-image-bg') {
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-white position-relative overflow-hidden pg-hero-tall', customName: _sdT('Hero (Image Background)'),
+                    return createNode('semantic', { tag: 'section', cssClass: 'd-flex overflow-hidden pg-hero-tall', customName: _sdT('Hero (Image Background)'),
                         _attrs: [{ name: 'style', value: 'background-image: url(https://picsum.photos/1600/900); background-size: cover; background-position: center;' }] }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50', customName: _sdT('Overlay') }),
-                        createNode('container', { fluid: false, cssClass: 'position-relative py-5 text-center' }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-column justify-content-end w-100 py-5 text-body pg-shade-bottom', customName: _sdT('Overlay'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                        createNode('container', { fluid: false, cssClass: 'py-5 text-center' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Hero Body') }, [
-                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('New!'), cssClass: 'badge text-bg-light text-dark rounded-pill mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('New!'), cssClass: 'badge text-bg-primary rounded-pill mb-3' }),
                                 createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Tell powerful stories with images'), cssClass: 'display-3 fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Catch your visitors\' attention from the first second with striking background images.'), cssClass: 'lead mb-4' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('Hero CTA Group') }, [
-                                    createNode('component', { componentType: 'btn', text: _sdT('Explore'),        variant: 'light',         size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Get in Touch'), variant: 'outline-light', size: 'lg', href: '#' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Explore'),        variant: 'primary',           size: 'lg', href: '#' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Get in Touch'), variant: 'secondary',         size: 'lg', href: '#' })
                                 ])
                             ])
+                        ])
                         ])
                     ]);
                 }
@@ -13666,7 +14256,8 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Thousands of teams use our tool to speed up their work. Start today.'), cssClass: 'lead mb-4 text-body-secondary' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('CTA Group') }, [
                                     createNode('component', { componentType: 'btn', text: _sdT('Try It Free'), variant: 'primary',           size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Contact Us'),      variant: 'outline-secondary', size: 'lg', href: '#' })
+                                    // Solid: an outline button's text is readable on bg-body only.
+                                    createNode('component', { componentType: 'btn', text: _sdT('Contact Us'),      variant: 'secondary', size: 'lg', href: '#' })
                                 ])
                             ])
                         ])
@@ -13690,18 +14281,20 @@ const StyleDesigner = (function () {
                     ]);
                 }
 
-                // CTA: Gradient — strong accent, gradient bg via _attrs (attributes-driven, Section 7 C)
+                // CTA: Gradient — strong accent band on the palette's primary colour.
+                // text-bg-primary writes the palette's on-primary text colour; a fixed
+                // gradient image here ignored the palette and left the text contrast
+                // unknown. An operator can still add a gradient in Background.
                 if (ctype === 'cta-gradient') {
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-white position-relative', customName: _sdT('CTA (Gradient)'),
-                        _attrs: [{ name: 'style', value: 'background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);' }] }, [
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-bg-primary', customName: _sdT('CTA (Gradient)') }, [
                         createNode('container', { fluid: false, cssClass: 'text-center' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('CTA Body') }, [
-                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Limited Time'), cssClass: 'badge bg-white bg-opacity-25 text-white rounded-pill mb-3' }),
+                                createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Limited Time'), cssClass: 'badge text-bg-secondary rounded-pill mb-3' }),
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Fifty percent off the first month'), cssClass: 'display-5 fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Take advantage of this limited-time offer to speed up your rollout.'), cssClass: 'lead mb-4' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center flex-wrap', customName: _sdT('CTA Group') }, [
-                                    createNode('component', { componentType: 'btn', text: _sdT('Claim It Now'), variant: 'light',         size: 'lg', href: '#' }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Details'),       variant: 'outline-light', size: 'lg', href: '#' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Claim It Now'), variant: 'secondary', size: 'lg', href: '#' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Details'),       variant: 'link',      size: 'lg', href: '#', cssClass: 'text-reset' })
                                 ])
                             ])
                         ])
@@ -13758,10 +14351,10 @@ const StyleDesigner = (function () {
                     var _flItem = function (n, title, body) {
                         return createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3', customName: _sdT('Feature Item {var}', n) }, [
                             createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Check Icon Wrap') }, [
-                                createNode('content', { contentType: 'icon', iconName: 'bi-check-circle-fill', cssClass: 'text-success', fontSize: '24' })
+                                createNode('content', { contentType: 'icon', iconName: 'bi-check-circle-fill', cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Feature Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-bold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-bold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary small mb-0' })
                             ])
                         ]);
@@ -13865,20 +14458,23 @@ const StyleDesigner = (function () {
                             { name: 'data-bs-slide-to', value: String(n) },
                             { name: 'aria-label',      value: _sdT('Slide {var}', (n + 1)) }
                         ];
-                        if (active) {
-                            attrs.push({ name: 'class',        value: 'active' });
-                            attrs.push({ name: 'aria-current', value: 'true' });
-                        }
+                        // The class comes from cssClass; a class in _attrs as well is
+                        // written as a second, duplicate class attribute.
+                        if (active) attrs.push({ name: 'aria-current', value: 'true' });
                         return createNode('semantic', { tag: 'button', cssClass: active ? 'active' : '', customName: _sdT('Indicator {var}', (n + 1)), _attrs: attrs });
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('Testimonial (Carousel)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Carousel Body') }, [
-                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide', customName: 'Carousel',
+                                // No autoplay: Bootstrap's carousel keeps cycling under keyboard
+                                // focus and reduced motion and has no pause button (WCAG 2.2.2),
+                                // so the indicators move it. Carousel Options > Autoplay
+                                // switches it on. pg-carousel-ink draws the indicators in the
+                                // text colour: Bootstrap's white (black in dark mode) assumes
+                                // a photo behind them.
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: _sdT('Carousel'),
                                     _attrs: [
-                                        { name: 'id',              value: carId },
-                                        { name: 'data-bs-ride',    value: 'carousel' },
-                                        { name: 'data-bs-interval', value: '6000' }
+                                        { name: 'id',              value: carId }
                                     ] }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'carousel-inner text-center', customName: _sdT('Carousel Inner') }, [
                                         _tcSlide(1, true,  _sdT('This product transformed how our team works: we halved our processes.'), _sdT('Jane Cooper'),  _sdT('Marketing Director, Vertex'), 'avatar1'),
@@ -13902,7 +14498,10 @@ const StyleDesigner = (function () {
                     var _icSlide = function (n, active, src, alt, title, caption) {
                         return createNode('semantic', { tag: 'div', cssClass: 'carousel-item' + (active ? ' active' : ''), customName: _sdT('Carousel Item {var}', n) }, [
                             createNode('content', { contentType: 'image', src: src, alt: alt, cssClass: 'd-block w-100' }),
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block', customName: _sdT('Carousel Caption {var}', n) }, [
+                            // The caption sits on the shared dark scrim, across the slide's
+                            // full width, with the theme switch keeping its text light.
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel-caption d-none d-md-block start-0 end-0 bottom-0 px-5 pt-5 pb-4 text-body pg-shade-bottom', customName: _sdT('Carousel Caption {var}', n),
+                                _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: '' }),
                                 createNode('content', { contentType: 'paragraph', text: caption, cssClass: '' })
                             ])
@@ -13927,18 +14526,19 @@ const StyleDesigner = (function () {
                             ] }, [
                             createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
                                 _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
-                            createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', customName: _sdT('SR Label') }, [
-                                createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0' })
-                            ])
+                            // Inline text: a <button> holds phrasing content only.
+                            createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'visually-hidden' })
                         ]);
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5', customName: _sdT('Image Carousel') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide', customName: 'Carousel',
+                            // No autoplay (WCAG 2.2.2): the controls and indicators move it;
+                            // Carousel Options > Autoplay switches it on. pg-carousel-photo
+                            // keeps the controls and indicators white over the photos and
+                            // the caption scrim in a dark design too.
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: _sdT('Carousel'),
                                 _attrs: [
-                                    { name: 'id',               value: imgCarId },
-                                    { name: 'data-bs-ride',     value: 'carousel' },
-                                    { name: 'data-bs-interval', value: '5000' }
+                                    { name: 'id',               value: imgCarId }
                                 ] }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Carousel Indicators') }, [
                                     _icIndicator(0, true),
@@ -14015,14 +14615,14 @@ const StyleDesigner = (function () {
                         var cardCss = highlight ? 'card h-100 border-primary shadow' : 'card h-100 border-0 shadow-sm';
                         var children = [];
                         if (highlight) {
-                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header bg-primary text-white text-center fw-semibold', customName: _sdT('Plan Badge') }, [
+                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header text-bg-primary text-center fw-semibold', customName: _sdT('Plan Badge') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Most Popular'), cssClass: 'mb-0' })
                             ]));
                         }
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-5 fw-bold' }),
                                 createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -14059,7 +14659,7 @@ const StyleDesigner = (function () {
                 // Pricing: Comparison — full feature matrix table with check/x icons per tier
                 if (ctype === 'pricing-comparison') {
                     var _pcTh = function (label, highlight, wrap) {
-                        var cls = 'text-center p-3' + (highlight ? ' bg-primary text-white' : '');
+                        var cls = 'text-center p-3' + (highlight ? ' text-bg-primary' : '');
                         return createNode('semantic', { tag: 'th', cssClass: cls, customName: (wrap || _sdT('Column Header')) }, [
                             createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0 fw-semibold' })
                         ]);
@@ -14093,7 +14693,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Compare the Plans'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('See what every plan offers in a single table.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('Compare the Plans') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded overflow-hidden shadow-sm mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -14178,14 +14781,14 @@ const StyleDesigner = (function () {
                         var cardCss = highlight ? 'card h-100 border-primary shadow' : 'card h-100 border-0 shadow-sm';
                         var children = [];
                         if (highlight) {
-                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header bg-primary text-white text-center fw-semibold', customName: _sdT('Plan Badge') }, [
+                            children.push(createNode('semantic', { tag: 'div', cssClass: 'card-header text-bg-primary text-center fw-semibold', customName: _sdT('Plan Badge') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Best Value'), cssClass: 'mb-0' })
                             ]));
                         }
                         var featureNodes = [];
                         for (var i = 0; i < features.length; i++) { featureNodes.push(_ptoFeature(features[i])); }
                         children.push(createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Plan Body') }, [
-                            createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-2' }),
                             createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Price') }, [
                                 // data-price-monthly / data-price-yearly carry both values; script swaps textContent
                                 createNode('content', { contentType: 'heading', tag: 'span', text: priceM, cssClass: 'display-5 fw-bold',
@@ -14320,7 +14923,7 @@ const StyleDesigner = (function () {
                         return createNode('col', { xs: '12', sm: '', md: '6', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Progress Stat {var}', n) }, [
                             createNode('semantic', { tag: 'div', cssClass: 'p-4 bg-body-tertiary rounded h-100', customName: _sdT('Progress Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-between align-items-end mb-2', customName: _sdT('Progress Header') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'mb-0' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 mb-0' }),
                                     createNode('content', { contentType: 'heading', tag: 'span', text: '%' + percent, cssClass: 'h4 fw-bold text-primary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-8', customName: _sdT('Progress Track')
@@ -14372,7 +14975,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/400/400', alt: name, cssClass: 'card-img-top object-fit-cover pg-ratio-1x1'
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Member Body') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: name, cssClass: 'fw-semibold mb-1' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h5 fw-semibold mb-1' }),
                                     createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-primary small mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 justify-content-center', customName: _sdT('Social Links') }, [
@@ -14405,7 +15008,7 @@ const StyleDesigner = (function () {
                     var _tmMember = function (n, seed, name, role) {
                         return createNode('semantic', { tag: 'div', cssClass: 'col text-center', customName: _sdT('Member {var}', n) }, [
                             createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/200/200', alt: name, cssClass: 'rounded-circle mb-3', width: '100', height: '100' }),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: name, cssClass: 'fw-semibold mb-0' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h6 fw-semibold mb-0' }),
                             createNode('content', { contentType: 'paragraph', text: role, cssClass: 'text-body-secondary small mb-0' })
                         ]);
                     };
@@ -14440,7 +15043,9 @@ const StyleDesigner = (function () {
                     };
                     var _tlLeader = function (n, seed, badge, name, title, bio, quote) {
                         return createNode('col', { xs: '12', sm: '', md: '', lg: '6', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Leader {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow bg-body-tertiary h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
+                            // On the body colour: the palette makes text-primary readable
+                            // against it only (on body-tertiary it fell to 3.9:1 in dark mode).
+                            createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow h-100 overflow-hidden', customName: _sdT('Leader Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'row g-0 h-100', customName: _sdT('Leader Row') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-5', customName: _sdT('Leader Image Col') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/500/600', alt: name, cssClass: 'img-fluid h-100 w-100 object-fit-cover'
@@ -14449,7 +15054,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Leader Text Col') }, [
                                         createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Leader Body') }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: badge, cssClass: 'badge text-bg-primary mb-2' }),
-                                            createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-bold mb-1' }),
+                                            createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-bold mb-1' }),
                                             createNode('content', { contentType: 'paragraph', text: title, cssClass: 'text-primary mb-3' }),
                                             createNode('content', { contentType: 'paragraph', text: bio, cssClass: 'text-body-secondary mb-3' }),
                                             createNode('semantic', { tag: 'blockquote', cssClass: 'border-start border-primary border-3 ps-3 fst-italic mb-3', customName: _sdT('Leader Quote') }, [
@@ -14622,9 +15227,9 @@ const StyleDesigner = (function () {
                 if (ctype === 'faq-twocol') {
                     var _ftBlock = function (n, q, a) {
                         return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('FAQ Block {var}', n) }, [
-                            createNode('semantic', { tag: 'h5', cssClass: 'fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
+                            createNode('semantic', { tag: 'h3', cssClass: 'h5 fw-semibold mb-2 d-flex gap-2 align-items-start', customName: _sdT('FAQ Question') }, [
                                 createNode('content', { contentType: 'icon', iconName: 'bi-question-circle-fill', cssClass: 'text-primary flex-shrink-0', fontSize: '20' }),
-                                createNode('content', { contentType: 'paragraph', text: q, cssClass: 'mb-0' })
+                                createNode('content', { contentType: 'heading', tag: 'span', text: q, cssClass: '' })
                             ]),
                             createNode('content', { contentType: 'paragraph', text: a, cssClass: 'text-body-secondary mb-0 ps-4' })
                         ]);
@@ -14660,7 +15265,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: 'bi-circle-fill', cssClass: 'text-primary', fontSize: '14' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('Content Col') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -14690,7 +15295,7 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'card border-0 shadow-sm', customName: _sdT('Timeline Card') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: date, cssClass: 'badge text-bg-primary mb-2' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                                 ])
                             ])
@@ -14717,11 +15322,11 @@ const StyleDesigner = (function () {
                 if (ctype === 'timeline-horizontal') {
                     var _thStep = function (n, num, title, body) {
                         return createNode('semantic', { tag: 'div', cssClass: 'col text-center', customName: _sdT('Step {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center rounded-circle bg-primary text-white mx-auto mb-3 pg-circle-60', customName: _sdT('Step Number Circle')
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center rounded-circle text-bg-primary mx-auto mb-3 pg-circle-60', customName: _sdT('Step Number Circle')
  }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: num, cssClass: 'h4 fw-bold mb-0' })
                             ]),
-                            createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-2' }),
+                            createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-2' }),
                             createNode('content', { contentType: 'paragraph', text: body, cssClass: 'small text-body-secondary mb-0' })
                         ]);
                     };
@@ -14750,7 +15355,7 @@ const StyleDesigner = (function () {
  }),
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body d-flex flex-column', customName: _sdT('Article Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2 align-self-start' }),
-                                    createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary mt-auto', customName: _sdT('Meta') }, [
                                         createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + authorSeed + '/48/48', alt: author, cssClass: 'rounded-circle', width: '24', height: '24' }),
@@ -14785,7 +15390,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Small Article Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-secondary small mb-1' }),
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: date, cssClass: 'small text-body-secondary mb-0' })
                             ])
                         ]);
@@ -14832,7 +15437,7 @@ const StyleDesigner = (function () {
  }),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Article Content') }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: cat, cssClass: 'badge text-bg-primary mb-2' }),
-                                createNode('content', { contentType: 'heading', tag: 'h5', text: title, cssClass: 'fw-semibold mb-2' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h5 fw-semibold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: excerpt, cssClass: 'text-body-secondary mb-3' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 small text-body-secondary', customName: _sdT('Article Meta') }, [
                                     createNode('content', { contentType: 'paragraph', text: author, cssClass: 'mb-0 fw-semibold' }),
@@ -14948,8 +15553,10 @@ const StyleDesigner = (function () {
                             itemNodes.push(_cvItem(variant === 'danger' ? 'bi-x' : 'bi-check-lg', variant, items[i]));
                         }
                         return createNode('col', { xs: '12', sm: '', md: '6', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('VS Side {var}', n) }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'card h-100 border-' + variant + ' border-opacity-25', customName: _sdT('VS Card') }, [
-                                createNode('semantic', { tag: 'div', cssClass: 'card-header bg-' + variant + ' bg-opacity-10 text-' + variant + ' fw-semibold d-flex align-items-center gap-2', customName: _sdT('VS Header') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'card h-100 border-' + variant + '-subtle', customName: _sdT('VS Card') }, [
+                                // Status text on its tint: the -emphasis shade is readable on
+                                // the -subtle surface in light and dark mode alike.
+                                createNode('semantic', { tag: 'div', cssClass: 'card-header bg-' + variant + '-subtle text-' + variant + '-emphasis fw-semibold d-flex align-items-center gap-2', customName: _sdT('VS Header') }, [
                                     createNode('content', { contentType: 'icon', iconName: headerIcon, cssClass: '', fontSize: '20' }),
                                     createNode('content', { contentType: 'paragraph', text: headerText, cssClass: 'mb-0' })
                                 ]),
@@ -15002,7 +15609,7 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     var _ctTh = function (label, highlight) {
-                        var cls = 'text-center p-3' + (highlight ? ' bg-primary text-white' : '');
+                        var cls = 'text-center p-3' + (highlight ? ' text-bg-primary' : '');
                         return createNode('semantic', { tag: 'th', cssClass: cls, customName: _sdT('Col Header') }, [
                             createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0 fw-semibold' })
                         ]);
@@ -15013,7 +15620,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('How We Compare'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('We put ourselves next to the rest of the market, feature by feature.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('How We Compare') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded shadow-sm overflow-hidden mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -15056,7 +15666,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'div', cssClass: 'card-body text-center p-4', customName: _sdT('Product Body') }, [
                                     createNode('content', { contentType: 'image', src: url, alt: brand, cssClass: 'mb-3 pg-logo-60'
  }),
-                                    createNode('content', { contentType: 'heading', tag: 'h4', text: name, cssClass: 'fw-semibold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h3', text: name, cssClass: 'h4 fw-semibold mb-2' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Price') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: price, cssClass: 'display-6 fw-bold text-primary' }),
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('/mo'), cssClass: 'text-body-secondary d-inline ms-1 mb-0' })
@@ -15136,7 +15746,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15153,7 +15763,7 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'text-primary', fontSize: '24' })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1', customName: _sdT('Info Copy') }, [
-                                createNode('content', { contentType: 'heading', tag: 'h6', text: title, cssClass: 'fw-semibold mb-1' }),
+                                createNode('content', { contentType: 'heading', tag: 'h3', text: title, cssClass: 'h6 fw-semibold mb-1' }),
                                 createNode('content', { contentType: 'paragraph', text: body, cssClass: 'text-body-secondary mb-0' })
                             ])
                         ]);
@@ -15162,7 +15772,7 @@ const StyleDesigner = (function () {
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: '', cssClass: 'g-lg-5', customName: _sdT('Contact Row') }, [
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Info Col') }, [
-                                    createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Contact Us'), cssClass: 'fw-bold mb-2' }),
+                                    createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Contact Us'), cssClass: 'h3 fw-bold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Write to us with any question, feedback or partnership idea.'), cssClass: 'lead text-body-secondary mb-4' }),
                                     _ciInfoItem('bi-geo-alt-fill',   _sdT('Address'),    _sdT('42 Main Street, New York')),
                                     _ciInfoItem('bi-telephone-fill', _sdT('Phone'),  '+90 212 555 0100'),
@@ -15207,7 +15817,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                         ])
                                     ])
                                 ])
@@ -15270,7 +15880,7 @@ const StyleDesigner = (function () {
                                             ] })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'col-12 text-center', customName: _sdT('Submit Col') }, [
-                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Send'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15288,6 +15898,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Join Our Weekly Newsletter'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('The newest posts in your inbox every Monday.'), cssClass: 'lead text-body-secondary mb-0' }),
                                 createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mt-4 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                        _attrs: [{ name: 'for', value: nlId + '_email' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                    ]),
                                     createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                         _attrs: [
                                             { name: 'type',        value: 'email' },
@@ -15296,7 +15910,7 @@ const StyleDesigner = (function () {
                                             { name: 'placeholder', value: _sdT('Your email address') },
                                             { name: 'required',    value: 'required' }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('No spam, unsubscribe any time.'), cssClass: 'small text-body-secondary mt-3 mb-0' })
                             ])
@@ -15307,15 +15921,19 @@ const StyleDesigner = (function () {
                 // Newsletter: Split — primary bg section, left text + right form
                 if (ctype === 'newsletter-split') {
                     var nsId = 'ns_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-primary text-white', customName: _sdT('Newsletter (Split)') }, [
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 text-bg-primary', customName: _sdT('Newsletter (Split)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: 'center', cssClass: '', customName: _sdT('Newsletter Row') }, [
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Text Col') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Never Miss an Update'), cssClass: 'fw-bold mb-2' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Product updates, new features and industry news straight to your inbox.'), cssClass: 'lead mb-0 opacity-75' })
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Product updates, new features and industry news straight to your inbox.'), cssClass: 'lead mb-0' })
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Form Col') }, [
                                     createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: nsId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
                                         createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                             _attrs: [
                                                 { name: 'type',        value: 'email' },
@@ -15323,7 +15941,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: nsId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'light', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'secondary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ])
@@ -15349,6 +15967,10 @@ const StyleDesigner = (function () {
                                                 createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Content Full of Ideas'), cssClass: 'fw-bold mb-2' }),
                                                 createNode('content', { contentType: 'paragraph', text: _sdT('Selected articles, product updates and notes from our team every month. Short and worthwhile, with nothing wasted.'), cssClass: 'text-body-secondary mb-4' }),
                                                 createNode('semantic', { tag: 'form', cssClass: 'd-grid gap-2', customName: _sdT('Newsletter Form') }, [
+                                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                                        _attrs: [{ name: 'for', value: ncId + '_email' }] }, [
+                                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                                    ]),
                                                     createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Email Input'),
                                                         _attrs: [
                                                             { name: 'type',        value: 'email' },
@@ -15356,7 +15978,7 @@ const StyleDesigner = (function () {
                                                             { name: 'name',        value: ncId + '_email' },
                                                             { name: 'placeholder', value: _sdT('Your email address') }
                                                         ] }),
-                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                                    createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                                 ])
                                             ])
                                         ])
@@ -15424,7 +16046,7 @@ const StyleDesigner = (function () {
                                                 ])
                                             ]),
                                             createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                                createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                             ])
                                         ]),
                                         createNode('semantic', { tag: 'hr', cssClass: 'my-4', customName: _sdT('Divider') }),
@@ -15465,10 +16087,10 @@ const StyleDesigner = (function () {
                     };
                     return createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Login (Split)') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'row g-0', customName: _sdT('Login Row') }, [
-                            createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 d-none d-lg-flex align-items-center justify-content-center bg-primary text-white py-5 px-4 px-md-5', customName: _sdT('Marketing Col') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'col-lg-6 d-none d-lg-flex align-items-center justify-content-center text-bg-primary py-5 px-4 px-md-5', customName: _sdT('Marketing Col') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Marketing Body') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Welcome Back'), cssClass: 'fw-bold mb-3' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Pick up where you left off, together with your team.'), cssClass: 'lead opacity-75 mb-4' }),
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Pick up where you left off, together with your team.'), cssClass: 'lead mb-4' }),
                                     _lsFeature(_sdT('Reach all your projects in one click')),
                                     _lsFeature(_sdT('Real-time team collaboration')),
                                     _lsFeature(_sdT('End-to-end encrypted data'))
@@ -15507,7 +16129,7 @@ const StyleDesigner = (function () {
                                                 ] })
                                         ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Submit Col') }, [
-                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', href: '#', cssClass: 'w-100' })
+                                            createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: 'w-100' })
                                         ])
                                     ])
                                 ])
@@ -15544,7 +16166,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Login Form') }, [
                                     _lmFloating(lmId + '_email', 'email',    _sdT('Email')),
                                     _lmFloating(lmId + '_pass',  'password', _sdT('Password')),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', href: '#', cssClass: 'w-100 mb-3' }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: 'w-100 mb-3' }),
                                     createNode('semantic', { tag: 'p', cssClass: 'small text-center mb-0', customName: _sdT('Signup Link') }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Don\'t have an account?'), cssClass: 'mb-0 d-inline text-body-secondary' }),
                                         createNode('semantic', { tag: 'a', cssClass: 'text-decoration-none', customName: _sdT('Signup Anchor'),
@@ -15562,14 +16184,14 @@ const StyleDesigner = (function () {
                 if (ctype === 'footer-columns') {
                     var _fcLink = function (label) {
                         return createNode('semantic', { tag: 'li', cssClass: 'mb-2', customName: _sdT('Link Item') }, [
-                            createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Link'),
+                            createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Link'),
                                 _attrs: [{ name: 'href', value: '#' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'mb-0 d-inline' })
                             ])
                         ]);
                     };
                     var _fcSocial = function (icon, label) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-white-50', customName: label,
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', customName: label,
                             _attrs: [
                                 { name: 'href',       value: '#' },
                                 { name: 'aria-label', value: label }
@@ -15585,7 +16207,10 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'ul', cssClass: 'list-unstyled', customName: _sdT('{var} Links', title) }, nodes)
                         ]);
                     };
-                    return createNode('semantic', { tag: 'footer', cssClass: 'bg-dark text-light pt-5 pb-3', customName: _sdT('Footer (Columns)') }, [
+                    // Dark band: the theme switch plus bg-body text-body, so the
+                    // palette's dark colours and readable text apply inside it.
+                    return createNode('semantic', { tag: 'footer', cssClass: 'pt-5 pb-3 bg-body text-body', customName: _sdT('Footer (Columns)'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('row', { gutter: '4', justify: '', align: '', cssClass: '', customName: _sdT('Footer Row') }, [
                                 createNode('col', { xs: '12', sm: '6', md: '', lg: '3', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Brand Col') }, [
@@ -15593,7 +16218,7 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'icon', iconName: 'bi-hexagon-fill', cssClass: 'text-primary', fontSize: '24' }),
                                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('ACME'), cssClass: 'fw-bold mb-0' })
                                     ]),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('The cloud platform that automates how teams work.'), cssClass: 'text-white-50 small mb-3' }),
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('The cloud platform that automates how teams work.'), cssClass: 'text-body-secondary small mb-3' }),
                                     createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3', customName: _sdT('Social Links') }, [
                                         _fcSocial('bi-twitter-x', 'Twitter'),
                                         _fcSocial('bi-linkedin',  'LinkedIn'),
@@ -15606,18 +16231,18 @@ const StyleDesigner = (function () {
                                 _fcCol(_sdT('Resources'), [_sdT('Documentation'), 'Blog', _sdT('Community'), _sdT('Support')])
                             ]),
                             createNode('semantic', { tag: 'hr', cssClass: 'my-4 border-secondary', customName: _sdT('Divider') }),
-                            createNode('semantic', { tag: 'div', cssClass: 'd-md-flex justify-content-between align-items-center text-center small text-white-50', customName: _sdT('Bottom Bar') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'd-md-flex justify-content-between align-items-center text-center small text-body-secondary', customName: _sdT('Bottom Bar') }, [
                                 createNode('content', { contentType: 'paragraph', text: _sdT('© 2026 ACME. All rights reserved.'), cssClass: 'mb-2 mb-md-0' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 justify-content-center', customName: _sdT('Policies') }, [
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Privacy'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Privacy'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Privacy'), cssClass: 'mb-0 d-inline' })
                                     ]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Privacy Policy'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Privacy Policy'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Privacy Policy'), cssClass: 'mb-0 d-inline' })
                                     ]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50 text-decoration-none', customName: _sdT('Cookies'),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary text-decoration-none', customName: _sdT('Cookies'),
                                         _attrs: [{ name: 'href', value: '#' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Cookies'), cssClass: 'mb-0 d-inline' })
                                     ])
@@ -15703,6 +16328,10 @@ const StyleDesigner = (function () {
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Newsletter Form Col') }, [
                                     createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: fnId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
                                         createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
                                             _attrs: [
                                                 { name: 'type',        value: 'email' },
@@ -15710,7 +16339,7 @@ const StyleDesigner = (function () {
                                                 { name: 'name',        value: fnId + '_email' },
                                                 { name: 'placeholder', value: _sdT('Your email address') }
                                             ] }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', href: '#', cssClass: '' })
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                     ])
                                 ])
                             ]),
@@ -15830,7 +16459,7 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     var _ndSocial = function (icon, label) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-white-50', customName: label,
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', customName: label,
                             _attrs: [
                                 { name: 'href',       value: '#' },
                                 { name: 'aria-label', value: label }
@@ -15847,7 +16476,8 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     return createNode('semantic', { tag: 'header', cssClass: '', customName: _sdT('Navbar (Double)') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'bg-dark text-white-50 py-2 small', customName: _sdT('Utility Bar') }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'py-2 small bg-body text-body-secondary', customName: _sdT('Utility Bar'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                             createNode('semantic', { tag: 'div', cssClass: 'container d-md-flex justify-content-between align-items-center', customName: _sdT('Utility Container') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 justify-content-center justify-content-md-start', customName: _sdT('Utility Left') }, [
                                     _ndUtilItem('bi-telephone-fill', '+90 212 555 0100'),
@@ -15995,13 +16625,18 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'mb-0 d-inline' })
                         ]);
                     };
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('404 (Search)') }, [
+                    // On bg-body: the palette makes link text readable against it only.
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5', customName: _sdT('404 (Search)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-7 mx-auto text-center', customName: _sdT('404 Body') }, [
                                 createNode('content', { contentType: 'heading', tag: 'div', text: '404', cssClass: 'display-3 fw-bold text-primary mb-2' }),
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('We could not find what you were looking for'), cssClass: 'fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Would you like to search instead? You may find what you need in our content.'), cssClass: 'lead text-body-secondary mb-4' }),
                                 createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mb-4 flex-column flex-sm-row', customName: _sdT('Search Form') }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
+                                        _attrs: [{ name: 'for', value: e4sId + '_q' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
+                                    ]),
                                     createNode('semantic', { tag: 'input', cssClass: 'form-control form-control-lg flex-grow-1', customName: _sdT('Search Input'),
                                         _attrs: [
                                             { name: 'type',        value: 'search' },
@@ -16009,7 +16644,7 @@ const StyleDesigner = (function () {
                                             { name: 'name',        value: 'q' },
                                             { name: 'placeholder', value: _sdT('What are you looking for?') }
                                         ] }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', href: '#', cssClass: '' })
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: 'lg', btnElement: 'button', btnType: 'submit', cssClass: '' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'small text-body-secondary', customName: _sdT('Quick Links') }, [
                                     createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Frequently visited:'), cssClass: 'mb-0 d-inline' }),
@@ -16071,7 +16706,8 @@ const StyleDesigner = (function () {
                             ])
                         ]);
                     };
-                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: _sdT('Breadcrumbs (Header)') }, [
+                    // On bg-body: the palette makes link text readable against it only.
+                    return createNode('semantic', { tag: 'section', cssClass: 'py-5 border-bottom', customName: _sdT('Breadcrumbs (Header)') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             createNode('semantic', { tag: 'nav', cssClass: 'mb-3', customName: _sdT('Breadcrumbs Nav'),
                                 _attrs: [{ name: 'aria-label', value: 'breadcrumb' }] }, [
@@ -16168,7 +16804,7 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 flex-shrink-0 mt-3 mt-md-0', customName: _sdT('Action Group') }, [
                             createNode('component', { componentType: 'btn', text: _sdT('View'),       variant: 'warning',           size: 'sm', href: '#', cssClass: '' }),
-                            createNode('component', { componentType: 'btn', text: _sdT('Later'),   variant: 'outline-secondary', size: 'sm', href: '#', cssClass: '' })
+                            createNode('component', { componentType: 'btn', text: _sdT('Later'),   variant: 'link',              size: 'sm', href: '#', cssClass: 'text-reset' })
                         ])
                     ]);
                 }
@@ -16250,8 +16886,9 @@ const StyleDesigner = (function () {
                 // branches, menus, events, an urgent notice, profile cards and
                 // a rating summary. Bootstrap utilities only, so a block looks
                 // the same in any design. One family, one set of helpers; the
-                // legal blocks at the end of the branch share them.
-                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                // legal blocks at the end of the branch share them, and so do
+                // the maintenance/launch, news and creative blocks after them.
+                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
                     var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
                     var _bkDiv = function (cls, name, kids, attrs) {
                         var p = { tag: 'div', cssClass: cls, customName: name };
@@ -16279,6 +16916,42 @@ const StyleDesigner = (function () {
                     var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
                     var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
                     var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+                    var _bkTime = function (datetime, text, cls, name) {
+                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+                    };
+                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+                    var _bkRegion = function (label) {
+                        return [
+                            { name: 'role',       value: 'region' },
+                            { name: 'aria-label', value: label },
+                            { name: 'tabindex',   value: '0' }
+                        ];
+                    };
+                    // An icon-only link (social, share, email), named by its aria-label.
+                    var _bkIconLink = function (icon, label, cls, href) {
+                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
+                    };
+                    // Pause control of a pg-marquee block: one wrapper (hidden
+                    // under reduced motion) around a btn-check and its label.
+                    // The label must follow the input: Bootstrap styles it
+                    // through .btn-check:checked + .btn.
+                    var _bkMarqueePause = function (idPrefix, label, labelCls, wrapCls) {
+                        var id = _bkUid(idPrefix);
+                        return _bkDiv((wrapCls ? wrapCls + ' ' : '') + 'pg-marquee-toggle', _sdT('Marquee Controls'), [
+                            _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
+                                { name: 'type',         value: 'checkbox' },
+                                { name: 'id',           value: id },
+                                { name: 'autocomplete', value: 'off' }
+                            ]),
+                            _bkTag('label', 'btn btn-sm' + (labelCls ? ' ' + labelCls : ''), _sdT('Pause Button'), [
+                                _bkIcon('bi-pause-fill'),
+                                _bkIcon('bi-play-fill'),
+                                _bkH('span', label, 'visually-hidden')
+                            ], [{ name: 'for', value: id }])
+                        ]);
+                    };
                     var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
                     var _bkIntro = function (title, lead) {
                         return _bkDiv('text-center mb-5', _sdT('Section Header'), [
@@ -16287,11 +16960,13 @@ const StyleDesigner = (function () {
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
-                    // price, then an optional description and diet tags.
-                    var _bkMenuItem = function (name, desc, price, tags) {
+                    // price, then an optional description and diet tags. The
+                    // name is an h4 under a category h3; a block without
+                    // category headings passes 'h3' so no level is skipped.
+                    var _bkMenuItem = function (name, desc, price, tags, tag) {
                         var kids = [
                             _bkDiv('d-flex align-items-baseline gap-2', _sdT('Item Head'), [
-                                _bkH('h4', name, 'h6 fw-semibold mb-0'),
+                                _bkH(tag || 'h4', name, 'h6 fw-semibold mb-0'),
                                 _bkDiv('flex-grow-1 border-bottom border-secondary-subtle', _sdT('Leader')),
                                 _bkH('span', price, 'fw-semibold text-nowrap')
                             ])
@@ -16444,7 +17119,7 @@ const StyleDesigner = (function () {
                                     _bkCol(_sdT('Booking Actions'), [
                                         _bkDiv('d-grid gap-2', _sdT('Action Group'), [
                                             _bkBtn(_sdT('Book an Appointment'), 'primary', 'lg'),
-                                            _bkLink(_sdT('Call +1 202 555 0143'), 'tel:+12025550143', 'btn btn-outline-primary btn-lg', _sdT('Phone Button'))
+                                            _bkLink(_sdT('Call +1 202 555 0143'), 'tel:+12025550143', 'btn btn-secondary btn-lg', _sdT('Phone Button'))
                                         ])
                                     ], '4')
                                 ], 'align-items-center')
@@ -16579,6 +17254,8 @@ const StyleDesigner = (function () {
                     // Menu: Tabs — pill tabs per category, two columns of priced lines in each pane
                     if (ctype === 'menu-tabs') {
                         var _mtPfx = _bkUid('mt');
+                        // The items sit right under the block's h2 (the tabs are buttons).
+                        var _mtItem = function (name, desc, price, tags) { return _bkMenuItem(name, desc, price, tags, 'h3'); };
                         var _mtTab = function (i, label, icon) {
                             return _bkTag('li', 'nav-item', label, [
                                 _bkTag('button', 'nav-link d-flex align-items-center gap-2' + (i === 0 ? ' active' : ''), _sdT('Tab Button'), [
@@ -16612,31 +17289,31 @@ const StyleDesigner = (function () {
                             ], [{ name: 'role', value: 'tablist' }]),
                             _bkDiv('tab-content', _sdT('Menu Panes'), [
                                 _mtPane(0, _sdT('Coffee'), [
-                                    _bkMenuItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
-                                    _bkMenuItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
-                                    _bkMenuItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
+                                    _mtItem(_sdT('Espresso'),   _sdT('A double shot of our house blend.'), _sdT('$2.80')),
+                                    _mtItem(_sdT('Flat White'), _sdT('Espresso with a thin layer of silky milk.'), _sdT('$3.80')),
+                                    _mtItem(_sdT('Cappuccino'), _sdT('Equal parts espresso, milk and foam.'), _sdT('$3.90'))
                                 ], [
-                                    _bkMenuItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
-                                    _bkMenuItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
-                                    _bkMenuItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
+                                    _mtItem(_sdT('Caffè Latte'),   _sdT('Oat, almond or whole milk.'), _sdT('$4.10'), [_sdT('Vegan option')]),
+                                    _mtItem(_sdT('Filter Coffee'), _sdT('A single origin that changes every week.'), _sdT('$3.20')),
+                                    _mtItem(_sdT('Cold Brew'),     _sdT('Steeped for eighteen hours, served over ice.'), _sdT('$4.20'))
                                 ]),
                                 _mtPane(1, _sdT('Breakfast'), [
-                                    _bkMenuItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
-                                    _bkMenuItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
-                                    _bkMenuItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
+                                    _mtItem(_sdT('Avocado Toast'),  _sdT('Sourdough, lime, chilli flakes and seeds.'), _sdT('$9.50'), [_sdT('Vegan')]),
+                                    _mtItem(_sdT('Eggs Benedict'),  _sdT('Poached eggs, ham and hollandaise on a muffin.'), _sdT('$11.00')),
+                                    _mtItem(_sdT('Granola Bowl'),   _sdT('Yoghurt, honey, berries and house granola.'), _sdT('$7.50'), [_sdT('Vegetarian')])
                                 ], [
-                                    _bkMenuItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
-                                    _bkMenuItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
+                                    _mtItem(_sdT('Pancake Stack'),  _sdT('Three pancakes, maple syrup and butter.'), _sdT('$8.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Shakshuka'),      _sdT('Eggs baked in a spiced tomato sauce, with bread.'), _sdT('$10.50'), [_sdT('Vegetarian'), _sdT('Spicy')]),
+                                    _mtItem(_sdT('Butter Croissant'), _sdT('Baked here every morning.'), _sdT('$3.20'))
                                 ]),
                                 _mtPane(2, _sdT('Desserts'), [
-                                    _bkMenuItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
-                                    _bkMenuItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
-                                    _bkMenuItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
+                                    _mtItem(_sdT('Baked Cheesecake'),  _sdT('With a berry compote.'), _sdT('$5.90'), [_sdT('Vegetarian')]),
+                                    _mtItem(_sdT('Chocolate Brownie'), _sdT('Dark chocolate and sea salt.'), _sdT('$4.50'), [_sdT('Gluten free')]),
+                                    _mtItem(_sdT('Carrot Cake'),       _sdT('Walnuts, cinnamon and cream cheese icing.'), _sdT('$5.20'))
                                 ], [
-                                    _bkMenuItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
-                                    _bkMenuItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
-                                    _bkMenuItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
+                                    _mtItem(_sdT('Lemon Tart'), _sdT('Sharp lemon curd in a buttery shell.'), _sdT('$4.90')),
+                                    _mtItem(_sdT('Tiramisu'),   _sdT('Espresso-soaked biscuits and mascarpone.'), _sdT('$6.20')),
+                                    _mtItem(_sdT('Fruit Tart'), _sdT('Whatever the market has that week.'), _sdT('$5.50'))
                                 ])
                             ])
                         ]);
@@ -16760,8 +17437,8 @@ const StyleDesigner = (function () {
                                         _bkH('span', _sdT('Served until 15:00'), 'small text-body-secondary')
                                     ]),
                                     _bkDiv('border-top pt-3', _sdT('More Specials'), [
-                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00')),
-                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'))
+                                        _bkMenuItem(_sdT('Soup and sandwich'),     _sdT('Half a sandwich of the day with a small soup.'), _sdT('$11.00'), null, 'h3'),
+                                        _bkMenuItem(_sdT('Afternoon tea for two'), _sdT('Scones, sandwiches, two cakes and a pot of tea.'), _sdT('$23.00'), null, 'h3')
                                     ])
                                 ], '6')
                             ], 'align-items-center g-lg-5')
@@ -16859,7 +17536,7 @@ const StyleDesigner = (function () {
                                     _bkH('span', '4.9', 'display-4 fw-bold d-block lh-1 mb-2'),
                                     _bkStars('20'),
                                     _bkP(_sdT('Average of 320 reviews'), 'text-body-secondary mb-4'),
-                                    _bkBtn(_sdT('Write a review'), 'outline-primary')
+                                    _bkBtn(_sdT('Write a review'), 'primary')
                                 ], '3', '', '', 'text-center text-lg-start'),
                                 _bkCol(_sdT('Reviews'), [
                                     _bkRow(_sdT('Reviews Row'), [
@@ -17125,6 +17802,1229 @@ const StyleDesigner = (function () {
                             ])
                         ]);
                     }
+
+                    // ── Maintenance and launch blocks ──
+                    // Pages shown while the site is closed for work or before it
+                    // opens: no links into the site, only contact and social links.
+
+                    if (/^(maintenance|coming-soon)-/.test(ctype)) {
+                        var _mnSocial = function (cls) {
+                            return _bkDiv('d-flex gap-3 ' + cls, _sdT('Social Links'), [
+                                _bkIconLink('bi-linkedin',  _sdT('ACME on LinkedIn'),  'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-instagram', _sdT('ACME on Instagram'), 'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-twitter-x', _sdT('ACME on X'),         'fs-5 text-body-secondary')
+                            ]);
+                        };
+                        // Email-only notify form: a visually hidden label, the field and a submit
+                        // button, either side by side in an input group or stacked on phones.
+                        var _mnNotify = function (cls, grouped) {
+                            var id = _bkUid('mt_email');
+                            var label = createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                _attrs: [{ name: 'for', value: id }] }, [ _bkH('span', _sdT('Email address')) ]);
+                            var input = createNode('semantic', { tag: 'input', cssClass: grouped ? 'form-control' : 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                _attrs: [
+                                    { name: 'type',         value: 'email' },
+                                    { name: 'id',           value: id },
+                                    { name: 'name',         value: 'email' },
+                                    { name: 'placeholder',  value: _sdT('Your email address') },
+                                    { name: 'autocomplete', value: 'email' },
+                                    { name: 'required',     value: 'required' }
+                                ] });
+                            var btn = createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary text-nowrap', text: _sdT('Notify me'),
+                                customName: _sdT('Submit Button'), _attrs: [{ name: 'type', value: 'submit' }] });
+                            if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ]);
+                            return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ]);
+                        };
+                    }
+
+                    // Maintenance: Centered — a full-height page: icon, when the site is back, progress, a contact address and social links
+                    if (ctype === 'maintenance-centered') {
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Maintenance (Centered)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Maintenance Body'), [
+                                    _bkDiv('mb-4', _sdT('Maintenance Icon'), [
+                                        _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', 'fs-1') ])
+                                    ]),
+                                    _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We\'ll be back soon'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('We are giving the site a scheduled upgrade to make it faster and easier to use. Thank you for your patience.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mb-4', _sdT('Return Time'), [
+                                        _bkIcon('bi-clock', 'text-primary'),
+                                        _bkH('span', _sdT('Expected back:'), 'fw-semibold'),
+                                        _bkTime('2026-11-14T09:00+03:00', _sdT('Saturday, 14 November 2026, 09:00'), '', _sdT('Return Date'))
+                                    ]),
+                                    _bkDiv('mb-4 text-start', _sdT('Upgrade Progress'), [
+                                        _bkDiv('d-flex justify-content-between mb-1 small', _sdT('Progress Label'), [
+                                            _bkH('span', _sdT('Upgrade progress'), 'text-body-secondary'),
+                                            _bkH('span', _sdT('75%'), 'fw-semibold')
+                                        ]),
+                                        _bkDiv('progress', _sdT('Progress'), [ _bkDiv('progress-bar w-75', _sdT('Progress Bar')) ], [
+                                            { name: 'role',          value: 'progressbar' },
+                                            { name: 'aria-label',    value: _sdT('Upgrade progress') },
+                                            { name: 'aria-valuenow', value: '75' },
+                                            { name: 'aria-valuemin', value: '0' },
+                                            { name: 'aria-valuemax', value: '100' }
+                                        ])
+                                    ]),
+                                    _bkDiv('mb-4 text-body-secondary', _sdT('Contact Line'), [
+                                        _bkH('span', _sdT('Need help in the meantime? Write to us at'), 'me-1'),
+                                        _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary fw-semibold', _sdT('Email Link'))
+                                    ]),
+                                    _mnSocial('justify-content-center')
+                                ], '7', '9', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Split — what the work is and where it stands (done / in progress / next), help contacts, a picture beside it
+                    if (ctype === 'maintenance-split') {
+                        var _mnStep = function (n, icon, iconCls, text, status, badgeCls) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 fs-5 ' + iconCls),
+                                _bkH('span', text, 'flex-grow-1'),
+                                _bkH('span', status, 'badge text-wrap ' + badgeCls + ' rounded-pill')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Maintenance (Split)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkH('span', _sdT('Maintenance in progress'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We are upgrading our systems'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('The site is closed for a few hours while we move to faster servers. Here is where the work stands.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm overflow-hidden', _sdT('Work Card'), [
+                                        _bkTag('ul', 'list-group list-group-flush', _sdT('Work List'), [
+                                            _mnStep(1, 'bi-check-circle-fill', 'text-success',        _sdT('Back up all data'),           _sdT('Done'),        'bg-success-subtle text-success-emphasis'),
+                                            _mnStep(2, 'bi-arrow-repeat',      'text-primary',        _sdT('Move to the new servers'),    _sdT('In progress'), 'bg-primary-subtle text-primary-emphasis'),
+                                            _mnStep(3, 'bi-hourglass-split',   'text-body-secondary', _sdT('Final checks and reopening'), _sdT('Up next'),     'bg-body-tertiary text-body-secondary border')
+                                        ])
+                                    ]),
+                                    _bkP(_sdT('Need help in the meantime?'), 'fw-semibold mb-2'),
+                                    _bkTag('ul', 'list-unstyled d-flex flex-column flex-sm-row gap-2 gap-sm-4 mb-0', _sdT('Contact List'), [
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Email Item'), [
+                                            _bkIcon('bi-envelope', 'text-primary'),
+                                            _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary', _sdT('Email Link'))
+                                        ]),
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Phone Item'), [
+                                            _bkIcon('bi-telephone', 'text-primary'),
+                                            _bkLink('+90 212 555 0100', 'tel:+902125550100', 'link-primary', _sdT('Phone Link'))
+                                        ])
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkImg('maintenance-split', 900, 1000, '', 'img-fluid w-100 h-100 rounded-4 shadow object-fit-cover')
+                                ], '6', '', '', 'd-none d-lg-block')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Maintenance: Status Board — the maintenance window, each service's state, a timed update log and a notify-me form
+                    if (ctype === 'maintenance-status') {
+                        var _mnService = function (name, up) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center justify-content-between gap-2 px-0', name, [
+                                _bkH('span', name),
+                                _bkTag('span', 'badge text-wrap ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
+                                    _bkIcon(up ? 'bi-check-circle-fill' : 'bi-tools', 'me-1'),
+                                    _bkH('span', up ? _sdT('Operational') : _sdT('Under maintenance'))
+                                ])
+                            ]);
+                        };
+                        var _mnUpdate = function (n, datetime, time, text, cls) {
+                            return _bkTag('li', 'd-flex gap-3' + (cls ? ' ' + cls : ''), _sdT('Update {var}', n), [
+                                _bkTime(datetime, time, 'small fw-semibold text-body-secondary text-nowrap', _sdT('Update Time')),
+                                _bkP(text, 'small mb-0')
+                            ]);
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Maintenance (Status Board)'), [
+                            _bkRow(_sdT('Status Row'), [
+                                _bkCol(_sdT('Status Column'), [
+                                    _bkDiv('mb-4', _sdT('Section Header'), [
+                                        _bkH('h1', _sdT('Maintenance status'), 'display-6 fw-bold mb-2'),
+                                        _bkP(_sdT('Follow the work as it happens. This page is updated every half hour.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkDiv('alert alert-warning d-flex align-items-start gap-3 mb-4', _sdT('Status Alert'), [
+                                        _bkIcon('bi-exclamation-triangle-fill', 'flex-shrink-0 fs-5'),
+                                        _bkDiv('', _sdT('Alert Body'), [
+                                            _bkH('h2', _sdT('The site is closed for maintenance'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Orders placed before the work began are safe and will ship as usual.'), 'small mb-0')
+                                        ])
+                                    ], [{ name: 'role', value: 'status' }]),
+                                    _bkRow(_sdT('Status Cards'), [
+                                        _bkCol(_sdT('Window Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Window Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Maintenance window'), 'h5 fw-bold mb-3'),
+                                                    _bkTag('dl', 'mb-0', _sdT('Window Times'), [
+                                                        _bkH('dt', _sdT('Start'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('Start Time'), [
+                                                            _bkTime('2026-11-14T09:00+03:00', _sdT('14 November 2026, 09:00'), '', _sdT('Start Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('End'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('End Time'), [
+                                                            _bkTime('2026-11-14T15:00+03:00', _sdT('14 November 2026, 15:00'), '', _sdT('End Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('Time zone'), 'small fw-normal text-body-secondary'),
+                                                        _bkH('dd', _sdT('Istanbul (UTC+3)'), 'fw-semibold mb-0')
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6'),
+                                        _bkCol(_sdT('Services Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Services Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Our services'), 'h5 fw-bold mb-2'),
+                                                    _bkTag('ul', 'list-group list-group-flush', _sdT('Service List'), [
+                                                        _mnService(_sdT('Website'), false),
+                                                        _mnService(_sdT('Mobile app'), false),
+                                                        _mnService(_sdT('Phone support'), true)
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6')
+                                    ], 'mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm', _sdT('Updates Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Latest updates'), 'h5 fw-bold mb-3'),
+                                            _bkTag('ol', 'list-unstyled mb-0', _sdT('Update Log'), [
+                                                _mnUpdate(1, '2026-11-14T11:20+03:00', '11:20', _sdT('The new servers are running; we are testing the shop and the customer accounts.'), 'mb-3'),
+                                                _mnUpdate(2, '2026-11-14T10:05+03:00', '10:05', _sdT('All data has been copied to the new servers and checked.'), 'mb-3'),
+                                                _mnUpdate(3, '2026-11-14T09:00+03:00', '09:00', _sdT('Maintenance started. The site is closed to visitors.'), '')
+                                            ])
+                                        ])
+                                    ]),
+                                    _bkDiv('card border-0 shadow-sm', _sdT('Notify Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Get an email when we are back'), 'h5 fw-bold mb-1'),
+                                            _bkP(_sdT('One email when the site reopens, nothing else.'), 'small text-body-secondary mb-3'),
+                                            _mnNotify('', true)
+                                        ])
+                                    ])
+                                ], '8', '10', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Dark — a dark full-height band: a soft pulse, the brand, a short promise, three reassurances and an email button
+                    if (ctype === 'maintenance-dark') {
+                        var _mnPill = function (icon, text) {
+                            return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal text-wrap bg-body-tertiary text-body border rounded-pill', text, [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', text)
+                            ]);
+                        };
+                        return createNode('semantic', { tag: 'section', cssClass: 'd-flex flex-column justify-content-center min-vh-100 py-5 bg-body text-body', customName: _sdT('Maintenance (Dark)'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: '' }, [
+                                _bkRow(_sdT('Maintenance Row'), [
+                                    _bkCol(_sdT('Maintenance Body'), [
+                                        _bkDiv('spinner-grow mb-4 text-primary pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                        _bkP(_sdT('ACME'), 'mb-3 fs-5 fw-bold text-uppercase pg-tracking'),
+                                        _bkH('h1', _sdT('Down for a quick tune-up'), 'display-4 fw-bold mb-3'),
+                                        _bkP(_sdT('We are making a few improvements behind the scenes and will be back online shortly.'), 'lead text-body-secondary mb-4'),
+                                        _bkDiv('d-flex flex-wrap justify-content-center gap-2 mb-5', _sdT('Assurances'), [
+                                            _mnPill('bi-shield-check',  _sdT('Your data is safe')),
+                                            _mnPill('bi-truck',         _sdT('Orders keep shipping')),
+                                            _mnPill('bi-clock-history', _sdT('Back within hours'))
+                                        ]),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
+                                    ], '7', '9', '', 'mx-auto text-center')
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Launch Date — badge, h1, the launch date as day / month / year tiles, a notify form and social links
+                    if (ctype === 'coming-soon-launch') {
+                        var _mnTile = function (value, label) {
+                            return _bkTag('span', 'd-flex flex-column align-items-center px-3 px-sm-4 py-3 bg-body-tertiary border rounded-4', label, [
+                                _bkH('span', value, 'display-6 fw-bold lh-1'),
+                                _bkH('span', label, 'mt-2 small text-uppercase text-body-secondary')
+                            ]);
+                        };
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Coming Soon (Launch Date)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Launch Body'), [
+                                    _bkH('span', _sdT('Coming soon'), 'badge mb-3 text-bg-primary rounded-pill'),
+                                    _bkH('h1', _sdT('Something new is on its way'), 'display-4 fw-bold mb-3'),
+                                    _bkP(_sdT('ACME is building a new home for everything you like about us. The doors open on launch day.'), 'lead text-body-secondary mb-4'),
+                                    _bkP(_sdT('Launch day'), 'mb-2 small fw-semibold text-uppercase text-body-secondary pg-tracking'),
+                                    _bkTag('time', 'd-flex flex-wrap justify-content-center gap-3 mb-5', _sdT('Launch Date'), [
+                                        _mnTile('01',   _sdT('Day')),
+                                        _mnTile('12',   _sdT('Month')),
+                                        _mnTile('2026', _sdT('Year'))
+                                    ], [{ name: 'datetime', value: '2026-12-01' }]),
+                                    _bkP(_sdT('Be the first to know when we open.'), 'fw-semibold mb-2'),
+                                    _mnNotify('mb-2', false),
+                                    _bkP(_sdT('We only use your email to tell you about the launch. Unsubscribe at any time.'), 'mb-4 small text-body-secondary'),
+                                    _mnSocial('justify-content-center')
+                                ], '6', '8', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Split — brand, h1, three promises and a notify form beside a picture with one offer card on it
+                    if (ctype === 'coming-soon-split') {
+                        var _mnFeature = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Coming Soon (Split)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkDiv('d-flex align-items-center gap-2 mb-4', _sdT('Brand'), [
+                                        _bkIcon('bi-rocket-takeoff', 'fs-4 text-primary'),
+                                        _bkH('span', _sdT('ACME'), 'fs-5 fw-bold')
+                                    ]),
+                                    _bkH('h1', _sdT('Our new online shop opens in December'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('A faster shop, a simpler checkout and a few surprises. Leave your email and we will tell you the moment it opens.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _mnFeature(_sdT('Free delivery on your first order')),
+                                        _mnFeature(_sdT('Checkout in three steps')),
+                                        _mnFeature(_sdT('Early access for everyone on the list'))
+                                    ]),
+                                    _mnNotify('mb-2', true),
+                                    _bkP(_sdT('One email on launch day, nothing else.'), 'small text-body-secondary mb-0')
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('coming-soon-split', 900, 700, _sdT('A first look at the new shop'), 'img-fluid w-100 rounded-4 shadow object-fit-cover'),
+                                        _bkDiv('card m-3 border-0 shadow position-absolute bottom-0 start-0', _sdT('Offer Card'), [
+                                            _bkDiv('card-body d-flex align-items-center gap-3 p-3', _sdT('Card Body'), [
+                                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Offer Icon'), [ _bkIcon('bi-gift', 'fs-5') ]),
+                                                _bkDiv('', _sdT('Offer Text'), [
+                                                    _bkP(_sdT('20% off on opening day'), 'mb-0 fw-bold'),
+                                                    _bkP(_sdT('For everyone on the list'), 'mb-0 small text-body-secondary')
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // ── News: bands and widgets ──
+                    // Thin bands and small widgets of a news site: ticker, rotating
+                    // headlines, trending topics, weather and market strips.
+                    // A full-width band: the outer box carries the colour, the
+                    // container inside lays its pieces out in one line.
+                    var _nbBand = function (cls, name, flexCls, kids) {
+                        return _bkDiv(cls, name, [createNode('container', { fluid: false, cssClass: flexCls }, kids)]);
+                    };
+                    // A column that takes its width from the row's row-cols-* classes.
+                    var _nbCol = function (name, kids, cls) {
+                        return createNode('col', { xs: 'col', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+                    };
+
+                    // News: Ticker — a Breaking badge and five headlines sliding past, paused by hover, focus or the pause button
+                    if (ctype === 'news-ticker') {
+                        var _nbTkHeads = [
+                            _sdT('London opens three new cycle lanes along the river'),
+                            _sdT('Istanbul adds late-night ferry crossings for the weekend'),
+                            _sdT('Berlin tech fair welcomes a record 80,000 visitors'),
+                            _sdT('Tokyo city fun run places sell out in under an hour'),
+                            _sdT('New York libraries extend opening hours through December')
+                        ];
+                        // The second group repeats the first so the loop is
+                        // seamless; it is hidden from screen readers and its
+                        // links are out of the tab order.
+                        var _nbTkGroup = function (copy) {
+                            var kids = [];
+                            _nbTkHeads.forEach(function (t) {
+                                var a = _bkLink(t, '#', 'small fw-semibold text-nowrap text-reset text-decoration-none', _sdT('Headline Link'));
+                                if (copy) a.props._attrs = [{ name: 'tabindex', value: '-1' }];
+                                kids.push(a);
+                                kids.push(_bkIcon('bi-dot', 'text-body-secondary'));
+                            });
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _nbBand('pg-marquee bg-body-tertiary border-bottom', _sdT('News (Ticker)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-danger', _sdT('Breaking Badge'), [
+                                _bkIcon('bi-lightning-charge-fill'),
+                                _bkH('span', _sdT('Breaking'))
+                            ]),
+                            _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [_nbTkGroup(false), _nbTkGroup(true)])
+                            ], _bkRegion(_sdT('Latest headlines'))),
+                            _bkMarqueePause('ticker_pause', _sdT('Pause the ticker'), 'btn-outline-secondary', 'flex-shrink-0')
+                        ]);
+                    }
+
+                    // News: Headline Rotator — a Latest news badge, four headlines that fade in turn with small previous/next buttons
+                    if (ctype === 'news-ticker-rotator') {
+                        var _nbRtId = _bkUid('headlines');
+                        var _nbRtSlide = function (n, active, title, datetime, clock) {
+                            return _bkDiv('carousel-item' + (active ? ' active' : ''), _sdT('Carousel Item {var}', n), [
+                                _bkDiv('d-flex flex-column flex-sm-row align-items-sm-baseline gap-1 gap-sm-3', _sdT('Headline Line'), [
+                                    _bkLink(title, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link')),
+                                    _bkTime(datetime, clock, 'small text-nowrap text-body-secondary', _sdT('Publish Time'))
+                                ])
+                            ]);
+                        };
+                        var _nbRtControl = function (dir, icon, label) {
+                            return _bkTag('button', 'btn btn-sm btn-outline-secondary', dir === 'prev' ? _sdT('Previous control') : _sdT('Next control'), [_bkIcon(icon)], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'data-bs-target', value: '#' + _nbRtId },
+                                { name: 'data-bs-slide',  value: dir },
+                                { name: 'aria-label',     value: label }
+                            ]);
+                        };
+                        // Phones: badge and buttons on the first line, the headline below
+                        // (order-last); from 576 px all three share one line. The
+                        // carousel does not play by itself, it moves with the
+                        // previous/next buttons only: autoplay would need a pause
+                        // control (WCAG 2.2.2). An operator can still switch it on
+                        // with data-bs-ride="carousel" in Attributes.
+                        return _nbBand('bg-body border-bottom', _sdT('News (Headline Rotator)'), 'd-flex flex-wrap flex-sm-nowrap align-items-center gap-2 gap-sm-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-primary', _sdT('Latest Badge'), [
+                                _bkIcon('bi-clock-history'),
+                                _bkH('span', _sdT('Latest news'))
+                            ]),
+                            _bkDiv('carousel slide carousel-fade flex-grow-1 order-last order-sm-0', _sdT('Headline Carousel'), [
+                                _bkDiv('carousel-inner', _sdT('Carousel Inner'), [
+                                    _nbRtSlide(1, true,  _sdT('Winter markets open in Berlin with 200 stalls'),                 '2026-11-27T09:40', '09:40'),
+                                    _nbRtSlide(2, false, _sdT('Istanbul\'s new coastal tram line opens next month'),          '2026-11-27T10:15', '10:15'),
+                                    _nbRtSlide(3, false, _sdT('Vertex opens a London office with 50 new jobs'),                '2026-11-27T11:05', '11:05'),
+                                    _nbRtSlide(4, false, _sdT('Tokyo robotics show draws families for a hands-on weekend'),    '2026-11-27T11:30', '11:30')
+                                ])
+                            ], [
+                                { name: 'id',         value: _nbRtId },
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('Latest headlines') }
+                            ]),
+                            _bkDiv('d-flex gap-1 flex-shrink-0 ms-auto', _sdT('Carousel Controls'), [
+                                _nbRtControl('prev', 'bi-chevron-left',  _sdT('Previous headline')),
+                                _nbRtControl('next', 'bi-chevron-right', _sdT('Next headline'))
+                            ])
+                        ]);
+                    }
+
+                    // News: Trending Topics — a Trending label and topic pills that scroll sideways when they do not fit
+                    if (ctype === 'news-trending') {
+                        var _nbTrTopic = function (text) {
+                            return _bkLink(text, '#', 'btn btn-sm btn-outline-secondary rounded-pill text-nowrap', _sdT('Topic Link'));
+                        };
+                        return _nbBand('bg-body border-bottom', _sdT('News (Trending Topics)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 small fw-bold text-primary', _sdT('Trending Label'), [
+                                _bkIcon('bi-hash'),
+                                _bkH('span', _sdT('Trending'))
+                            ]),
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1', _sdT('Topics'), [
+                                _nbTrTopic(_sdT('Autumn Festival')),
+                                _nbTrTopic(_sdT('City Marathon')),
+                                _nbTrTopic(_sdT('Tech Week')),
+                                _nbTrTopic(_sdT('Electric Buses')),
+                                _nbTrTopic(_sdT('Film Nights')),
+                                _nbTrTopic(_sdT('Startup Awards')),
+                                _nbTrTopic(_sdT('Winter Markets')),
+                                _nbTrTopic(_sdT('Book Fair'))
+                            ], _bkRegion(_sdT('Trending topics')))
+                        ]);
+                    }
+
+                    // News: Weather Card — one city: date, big temperature, condition, high/low, humidity, wind, rain and four hourly slots
+                    if (ctype === 'news-weather-card') {
+                        var _nbWcDetail = function (n, icon, value, label) {
+                            return _bkDiv('col', _sdT('Detail {var}', n), [
+                                _bkIcon(icon, 'd-block fs-5 mb-1 text-primary'),
+                                _bkH('span', value, 'd-block fw-semibold'),
+                                _bkH('span', label, 'd-block small text-body-secondary')
+                            ]);
+                        };
+                        // The icon shows the sky; the hidden text says it for screen readers.
+                        var _nbWcHour = function (n, datetime, clock, icon, sky, temp) {
+                            return _bkDiv('col', _sdT('Hour {var}', n), [
+                                _bkDiv('h-100 py-2 rounded-3 bg-body-tertiary', _sdT('Hour Tile'), [
+                                    _bkTime(datetime, clock, 'd-block small text-body-secondary', _sdT('Hour')),
+                                    _bkIcon(icon, 'd-block fs-5 my-1 text-primary'),
+                                    _bkH('span', sky, 'visually-hidden'),
+                                    _bkH('span', temp, 'd-block fw-semibold')
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weather Card)'), [
+                            _bkRow(_sdT('Weather Row'), [
+                                _bkCol(_sdT('Weather Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm', _sdT('Weather Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Weather Body'), [
+                                            _bkDiv('d-flex align-items-start justify-content-between gap-3 mb-3', _sdT('Card Head'), [
+                                                _bkDiv('', _sdT('Weather Place'), [
+                                                    _bkH('h2', _sdT('London'), 'h5 fw-bold mb-1'),
+                                                    _bkTime('2026-10-21T09:00', _sdT('Wednesday, 21 October · 09:00'), 'small text-body-secondary', _sdT('Date'))
+                                                ]),
+                                                _bkIcon('bi-cloud-sun', 'fs-1 lh-1 text-primary')
+                                            ]),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-2', _sdT('Temperature'), [
+                                                _bkH('span', '14°', 'display-3 fw-bold lh-1'),
+                                                _bkDiv('', _sdT('Weather Summary'), [
+                                                    _bkP(_sdT('Partly cloudy'), 'fw-semibold mb-0'),
+                                                    _bkP(_sdT('Feels like 12°'), 'small text-body-secondary mb-0')
+                                                ])
+                                            ]),
+                                            _bkP(_sdT('High 16° · Low 9°'), 'small text-body-secondary mb-4'),
+                                            _bkDiv('row row-cols-3 g-2 text-center', _sdT('Weather Details'), [
+                                                _nbWcDetail(1, 'bi-droplet',  _sdT('72%'),     _sdT('Humidity')),
+                                                _nbWcDetail(2, 'bi-wind',     _sdT('14 km/h'), _sdT('Wind')),
+                                                _nbWcDetail(3, 'bi-umbrella', _sdT('20%'),     _sdT('Chance of rain'))
+                                            ]),
+                                            _bkH('h3', _sdT('Next hours'), 'h6 fw-semibold mt-4 mb-2'),
+                                            _bkDiv('row row-cols-4 g-2 text-center', _sdT('Hourly Forecast'), [
+                                                _nbWcHour(1, '2026-10-21T10:00', '10:00', 'bi-cloud-sun',     _sdT('Partly cloudy'), '15°'),
+                                                _nbWcHour(2, '2026-10-21T12:00', '12:00', 'bi-sun',           _sdT('Sunny'),         '16°'),
+                                                _nbWcHour(3, '2026-10-21T14:00', '14:00', 'bi-cloud',         _sdT('Cloudy'),        '16°'),
+                                                _nbWcHour(4, '2026-10-21T16:00', '16:00', 'bi-cloud-drizzle', _sdT('Light rain'),    '13°')
+                                            ])
+                                        ])
+                                    ])
+                                ], '4', '6')
+                            ], 'justify-content-center')
+                        ]);
+                    }
+
+                    // News: Weather Strip — a thin header band: five cities with sky and temperature, the date and a forecast link
+                    if (ctype === 'news-weather-strip') {
+                        // Each city is an outlined chip on the body colour: its
+                        // corners and border width come from the look (rounded,
+                        // border), its text keeps the band's contrast.
+                        var _nbWsCity = function (n, icon, city, sky, temp) {
+                            return _bkDiv('d-flex align-items-center gap-1 px-2 py-1 lh-sm text-nowrap bg-body border rounded', _sdT('City {var}', n), [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', city),
+                                _bkH('span', sky, 'visually-hidden'),
+                                _bkH('span', temp, 'fw-semibold')
+                            ]);
+                        };
+                        return _nbBand('small bg-body border-bottom', _sdT('News (Weather Strip)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 fw-semibold', _sdT('Weather Label'), [
+                                _bkIcon('bi-thermometer-half', 'text-primary'),
+                                _bkH('span', _sdT('Weather'))
+                            ]),
+                            // position-relative: the visually hidden sky texts are
+                            // absolutely placed and must be clipped by this scroller.
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
+                                _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
+                                // Raw on purpose: the 'New York' key is the sample billing
+                                // city and reads İstanbul in Turkish, a city already listed.
+                                _nbWsCity(2, 'bi-sun',           'New York',            _sdT('Sunny'),         '15°'),
+                                _nbWsCity(3, 'bi-cloud-sun',     _sdT('Istanbul'),      _sdT('Partly cloudy'), '18°'),
+                                _nbWsCity(4, 'bi-cloud',         _sdT('Berlin'),        _sdT('Cloudy'),        '9°'),
+                                _nbWsCity(5, 'bi-sun',           _sdT('Tokyo'),         _sdT('Sunny'),         '20°')
+                            ], _bkRegion(_sdT('Weather in five cities'))),
+                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October 2026'), 'd-none d-xl-inline flex-shrink-0 text-nowrap text-body-secondary', _sdT('Date')),
+                            _bkLink(_sdT('Full forecast'), '#', 'flex-shrink-0 fw-semibold text-nowrap link-primary text-decoration-none', _sdT('Forecast Link'))
+                        ]);
+                    }
+
+                    // News: Weekly Forecast — today in a primary card beside a seven-day list with sky, low–high and a range bar
+                    if (ctype === 'news-weather-forecast') {
+                        // The bar only draws the day's high against the week; it
+                        // repeats the numbers beside it, so it is hidden from screen readers.
+                        var _nbWfDay = function (n, datetime, day, icon, sky, range, width) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Day {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 fs-3 text-primary'),
+                                _bkDiv('flex-grow-1', _sdT('Day Copy'), [
+                                    _bkTime(datetime, day, 'd-block fw-semibold', _sdT('Date')),
+                                    _bkH('span', sky, 'd-block small text-body-secondary'),
+                                    _bkDiv('progress pg-progress-8 mt-2', _sdT('Range Bar'), [
+                                        _bkDiv('progress-bar ' + width, _sdT('Range Fill'))
+                                    ], [{ name: 'aria-hidden', value: 'true' }])
+                                ]),
+                                _bkH('span', range, 'flex-shrink-0 fw-semibold text-nowrap')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weekly Forecast)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-2 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Istanbul This Week'), 'fw-bold mb-0'),
+                                _bkP(_sdT('The forecast is updated every morning at 06:00.'), 'small text-body-secondary mb-0')
+                            ]),
+                            _bkRow(_sdT('Forecast Row'), [
+                                _bkCol(_sdT('Today Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm text-bg-primary', _sdT('Today Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Today Body'), [
+                                            _bkH('span', _sdT('Today'), 'd-block small fw-semibold text-uppercase mb-1'),
+                                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October'), 'd-block mb-4', _sdT('Date')),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-3', _sdT('Temperature'), [
+                                                _bkIcon('bi-sun', 'fs-1 lh-1'),
+                                                _bkH('span', '18°', 'display-3 fw-bold lh-1')
+                                            ]),
+                                            _bkP(_sdT('Sunny spells'), 'fs-5 fw-semibold mb-1'),
+                                            _bkP(_sdT('High 19° · Low 11°'), 'mb-3'),
+                                            _bkP(_sdT('Humidity 64% · Wind 12 km/h'), 'small mb-0')
+                                        ])
+                                    ])
+                                ], '4'),
+                                _bkCol(_sdT('Week Column'), [
+                                    _bkTag('ul', 'list-group shadow-sm', _sdT('Week List'), [
+                                        _nbWfDay(1, '2026-10-22', _sdT('Thursday'),  'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 19°', 'w-75'),
+                                        _nbWfDay(2, '2026-10-23', _sdT('Friday'),    'bi-cloud-drizzle', _sdT('Light rain'),    '11° – 16°', 'w-50'),
+                                        _nbWfDay(3, '2026-10-24', _sdT('Saturday'),  'bi-cloud-rain',    _sdT('Showers'),       '10° – 14°', 'w-25'),
+                                        _nbWfDay(4, '2026-10-25', _sdT('Sunday'),    'bi-cloud',         _sdT('Cloudy'),        '10° – 15°', 'w-50'),
+                                        _nbWfDay(5, '2026-10-26', _sdT('Monday'),    'bi-sun',           _sdT('Sunny'),         '12° – 20°', 'w-75'),
+                                        _nbWfDay(6, '2026-10-27', _sdT('Tuesday'),   'bi-sun',           _sdT('Sunny'),         '13° – 21°', 'w-100'),
+                                        _nbWfDay(7, '2026-10-28', _sdT('Wednesday'), 'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 18°', 'w-75')
+                                    ])
+                                ], '8')
+                            ])
+                        ]);
+                    }
+
+                    // News: Markets Strip — six market tiles; each change has an arrow, a sign and a percent besides its colour
+                    if (ctype === 'news-markets') {
+                        var _nbMkTile = function (n, name, value, change, up) {
+                            return _nbCol(_sdT('Market {var}', n), [
+                                _bkDiv('h-100 p-3 rounded-3 bg-body-tertiary', _sdT('Market Tile'), [
+                                    _bkH('span', name, 'd-block small text-truncate text-body-secondary'),
+                                    _bkH('span', value, 'd-block fs-5 fw-bold'),
+                                    _bkDiv('d-inline-flex align-items-center gap-1 small fw-semibold ' + (up ? 'text-success-emphasis' : 'text-danger-emphasis'), _sdT('Market Change'), [
+                                        _bkIcon(up ? 'bi-caret-up-fill' : 'bi-caret-down-fill'),
+                                        _bkH('span', change)
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
+                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pt-2 mb-3 border-top border-2 border-primary', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
+                                _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Line'), [
+                                    _bkIcon('bi-clock'),
+                                    _bkH('span', _sdT('Last updated')),
+                                    _bkTime('2026-10-21T17:45', _sdT('21 October, 17:45'), '', _sdT('Update Time'))
+                                ])
+                            ]),
+                            _bkRow(_sdT('Markets Row'), [
+                                _nbMkTile(1, _sdT('USD/TRY'),     _sdT('41.85'),     _sdT('+0.42%'), true),
+                                _nbMkTile(2, _sdT('EUR/TRY'),     _sdT('48.62'),     _sdT('+0.18%'), true),
+                                _nbMkTile(3, _sdT('GBP/TRY'),     _sdT('55.30'),     _sdT('−0.11%'), false),
+                                _nbMkTile(4, _sdT('Gold (gram)'), _sdT('4,215.40'),  _sdT('+0.65%'), true),
+                                _nbMkTile(5, 'BIST 100',          _sdT('10,482.57'), _sdT('−0.37%'), false),
+                                _nbMkTile(6, 'Bitcoin',           _sdT('$108,350'),  _sdT('+1.24%'), true)
+                            ], 'row-cols-2 row-cols-md-3 row-cols-lg-6'),
+                            _bkP(_sdT('Delayed by 15 minutes. For information only.'), 'small text-body-secondary mt-3 mb-0')
+                        ]);
+                    }
+
+                    // ── News: stories and articles ──
+                    // Story layouts of a news or magazine site: lead grid, latest
+                    // lists, category columns, live coverage, article header, author box.
+
+                    // A story heading whose link covers its whole story card (the card is position-relative)
+                    var _nsHeadline = function (tag, cls, text) {
+                        return _bkTag(tag, cls, _sdT('Headline'), [
+                            _bkLink(text, '#', 'text-reset text-decoration-none stretched-link', _sdT('Headline Link'))
+                        ]);
+                    };
+
+                    // News: Lead Story Grid — a lead photo story with its text on a dark scrim, beside a 2×2 grid of small stories
+                    if (ctype === 'news-lead-grid') {
+                        var _nsSmall = function (n, seed, alt, cat, title, datetime, time) {
+                            return _bkCol(_sdT('Story {var}', n), [
+                                _bkTag('article', 'position-relative', _sdT('News Story Card'), [
+                                    _bkImg(seed, 600, 338, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _bkH('span', cat, 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
+                                ])
+                            ], '', '', '6');
+                        };
+                        return _bkSection('py-5', _sdT('News (Lead Story Grid)'), [
+                            _bkRow(_sdT('Stories Row'), [
+                                _bkCol(_sdT('Lead Story'), [
+                                    _bkTag('article', 'card border-0 rounded-4 shadow-sm overflow-hidden', _sdT('Lead Card'), [
+                                        _bkDiv('ratio pg-ratio-lead', _sdT('Story Picture'), [
+                                            _bkImg('ns-lead-lab', 1200, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'object-fit-cover')
+                                        ]),
+                                        _bkDiv('card-img-overlay d-flex flex-column justify-content-end p-4 p-lg-5 text-body pg-shade-bottom', _sdT('Story Overlay'), [
+                                            _bkH('span', _sdT('Technology'), 'badge text-bg-primary align-self-start mb-3'),
+                                            _nsHeadline('h2', 'h3 fw-bold mb-2', _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'd-none d-sm-block mb-3'),
+                                            _bkDiv('d-flex flex-wrap align-items-center gap-2 small text-body-secondary', _sdT('Byline'), [
+                                                _bkH('span', _sdT('By {var}', _sdT('Jane Cooper')), 'fw-semibold'),
+                                                _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time'))
+                                            ])
+                                        ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                    ])
+                                ], '7'),
+                                _bkCol(_sdT('More Stories'), [
+                                    _bkRow(_sdT('Small Stories Row'), [
+                                        _nsSmall(1, 'ns-small-store',  _sdT('A shop front with a green awning on a London street'), _sdT('Economy'), _sdT('Northwind opens its first London store with a rooftop café'), '2026-11-14T10:45', '10:45'),
+                                        _nsSmall(2, 'ns-small-run',    _sdT('Runners crossing a city bridge in the morning sun'),   _sdT('Sport'),   _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners'),      '2026-11-14T08:20', '08:20'),
+                                        _nsSmall(3, 'ns-small-library', _sdT('Reading tables by the tall windows of a library'),     _sdT('Culture'), _sdT('Tokyo\'s new riverside library stays open until midnight'),      '2026-11-13T19:10', '19:10'),
+                                        _nsSmall(4, 'ns-small-garden', _sdT('Volunteers carrying crates of pumpkins in a garden'),  _sdT('Local'),   _sdT('New York\'s community gardens share a record autumn harvest'),   '2026-11-13T16:30', '16:30')
+                                    ])
+                                ], '5')
+                            ])
+                        ]);
+                    }
+
+                    // News: Latest + Most Read — five latest stories with thumbnails, and a numbered most-read list beside them
+                    if (ctype === 'news-latest-mostread') {
+                        var _nsLatest = function (n, seed, cat, datetime, time, title, excerpt) {
+                            return _bkTag('article', 'd-flex gap-3 position-relative', _sdT('Story {var}', n), [
+                                _bkImg(seed, 200, 200, '', 'rounded-3 object-fit-cover flex-shrink-0 pg-thumb-100'),
+                                _bkDiv('flex-grow-1', _sdT('Story Copy'), [
+                                    _bkDiv('d-flex flex-wrap align-items-center gap-2 small mb-1', _sdT('Story Meta'), [
+                                        _bkH('span', cat, 'fw-semibold text-primary'),
+                                        _bkTime(datetime, time, 'text-body-secondary', _sdT('Publish Time'))
+                                    ]),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkP(excerpt, 'd-none d-md-block small text-body-secondary mb-0')
+                                ])
+                            ]);
+                        };
+                        var _nsRead = function (n, title, last) {
+                            return _bkTag('li', 'd-flex align-items-start gap-3 py-3 position-relative' + (last ? '' : ' border-bottom'), _sdT('Most Read Item'), [
+                                _bkH('span', String(n), 'display-6 fw-bold lh-1 text-primary flex-shrink-0'),
+                                _nsHeadline('h3', 'h6 fw-semibold mb-0', title)
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Latest + Most Read)'), [
+                            _bkRow(_sdT('News Row'), [
+                                _bkCol(_sdT('Latest Column'), [
+                                    _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-4 border-bottom', _sdT('Section Header'), [
+                                        _bkH('h2', _sdT('Latest news'), 'h4 fw-bold mb-0'),
+                                        _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                    ]),
+                                    _bkDiv('d-flex flex-column gap-4', _sdT('Story List'), [
+                                        _nsLatest(1, 'ns-latest-ferry',  _sdT('City'),       '2026-11-14T11:20', '11:20', _sdT('Electric ferries start sailing between Istanbul\'s two shores'), _sdT('The first four boats carry up to 300 passengers each and charge at the piers in ten minutes.')),
+                                        _nsLatest(2, 'ns-latest-studio', _sdT('Technology'), '2026-11-14T10:05', '10:05', _sdT('ByteWave opens a free coding studio for teenagers in Berlin'), _sdT('Weekend classes cover web pages, small games and robots; laptops are provided.')),
+                                        _nsLatest(3, 'ns-latest-market', _sdT('Economy'),    '2026-11-14T09:15', '09:15', _sdT('Winter market adds sixty stalls of local makers in London'), _sdT('Ceramics, knitwear and street food fill the square every weekend until the new year.')),
+                                        _nsLatest(4, 'ns-latest-pool',   _sdT('Sport'),      '2026-11-13T18:40', '18:40', _sdT('Tokyo swim club wins the youth relay cup for the third time'), _sdT('The team of four sixteen-year-olds finished almost two seconds ahead of the field.')),
+                                        _nsLatest(5, 'ns-latest-cinema', _sdT('Culture'),    '2026-11-13T15:00', '15:00', _sdT('Open-air cinema in New York moves indoors for the winter'), _sdT('Classic films now play in a restored warehouse, with blankets and hot cider at the door.'))
+                                    ])
+                                ], '8'),
+                                _bkCol(_sdT('Most Read Column'), [
+                                    _bkTag('aside', 'p-4 rounded-4 bg-body-tertiary', _sdT('Most Read Box'), [
+                                        _bkH('h2', _sdT('Most read'), 'h5 fw-bold mb-2'),
+                                        _bkTag('ol', 'list-unstyled mb-0', _sdT('Most Read List'), [
+                                            _nsRead(1, _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _nsRead(2, _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners')),
+                                            _nsRead(3, _sdT('Northwind opens its first London store with a rooftop café')),
+                                            _nsRead(4, _sdT('Tokyo\'s new riverside library stays open until midnight')),
+                                            _nsRead(5, _sdT('Electric ferries start sailing between Istanbul\'s two shores'), true)
+                                        ])
+                                    ])
+                                ], '4')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // News: Category Columns — Economy, Sport and Technology, each with a lead story and three headlines
+                    if (ctype === 'news-category-columns') {
+                        var _nsColumn = function (cat, seed, alt, title, datetime, time, links) {
+                            return _bkCol(_sdT('Category Column'), [
+                                _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Column Header'), [
+                                    _bkH('h2', cat, 'h5 fw-bold mb-0'),
+                                    _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                ]),
+                                _bkTag('article', 'position-relative mb-3', _sdT('Column Lead'), [
+                                    _bkImg(seed, 800, 450, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
+                                ]),
+                                _bkTag('ul', 'list-unstyled mb-0', _sdT('Headline List'), links.map(function (t) {
+                                    return _bkTag('li', 'py-2 border-top', _sdT('Headline Item'), [
+                                        _bkLink(t, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link'))
+                                    ]);
+                                }))
+                            ], '4');
+                        };
+                        return _bkSection('py-5', _sdT('News (Category Columns)'), [
+                            _bkRow(_sdT('Columns Row'), [
+                                _nsColumn(_sdT('Economy'), 'ns-col-port', _sdT('Cranes and containers at a harbour at dusk'),
+                                    _sdT('PineWorks hires 200 people for its new Istanbul workshop'), '2026-11-14T10:30', '10:30',
+                                    [_sdT('Small shops report a strong start to the holiday season'), _sdT('Vertex opens its booking app to independent hotels'), _sdT('Weekend farmers\' markets double in Berlin')]),
+                                _nsColumn(_sdT('Sport'), 'ns-col-stadium', _sdT('A football pitch under floodlights in the evening'),
+                                    _sdT('London youth league adds a girls\' division of twelve teams'), '2026-11-14T09:00', '09:00',
+                                    [_sdT('New cycle lanes link three Tokyo parks'), _sdT('Local climbing gym hosts its first open championship'), _sdT('Swim school offers free lessons for beginners in December')]),
+                                _nsColumn(_sdT('Technology'), 'ns-col-chip', _sdT('A close-up of a circuit board with glowing lights'),
+                                    _sdT('OrbitSoft releases a free app that reads bus times aloud'), '2026-11-13T17:45', '17:45',
+                                    [_sdT('StartMate launches a mentoring week for first-time founders'), _sdT('Libraries in New York lend laptops for a month'), _sdT('TechBase turns an old factory into a start-up campus')])
+                            ])
+                        ]);
+                    }
+
+                    // News: Live Coverage — a live badge, the last update time and five timestamped updates on a line, newest first
+                    if (ctype === 'news-live-blog') {
+                        var _nsUpdate = function (n, datetime, time, kids) {
+                            return _bkTag('li', 'mb-4', _sdT('Update {var}', n), [
+                                _bkTime(datetime, time, 'd-block small fw-bold text-primary mb-1', _sdT('Update Time'))
+                            ].concat(kids));
+                        };
+                        return _bkSection('py-5', _sdT('News (Live Coverage)'), [
+                            _bkRow(_sdT('Live Row'), [
+                                _bkCol(_sdT('Live Column'), [
+                                    _bkDiv('mb-4', _sdT('Live Header'), [
+                                        _bkDiv('d-flex flex-wrap align-items-center gap-2 mb-3', _sdT('Live Status'), [
+                                            _bkDiv('badge d-inline-flex align-items-center gap-2 text-bg-danger', _sdT('Live Badge'), [
+                                                _bkDiv('spinner-grow spinner-grow-sm pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                                _bkH('span', _sdT('Live'))
+                                            ]),
+                                            _bkH('span', _sdT('Last updated'), 'small text-body-secondary'),
+                                            _bkTime('2026-11-14T21:40', '21:40', 'small fw-semibold', _sdT('Update Time'))
+                                        ]),
+                                        _bkH('h2', _sdT('Riverside Lights Festival opens in London'), 'fw-bold mb-2'),
+                                        _bkP(_sdT('Lanterns, street food and music along the river all weekend. Follow the opening night here.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkTag('ol', 'list-unstyled ps-4 mb-4 border-start border-2 border-primary-subtle', _sdT('Live Updates'), [
+                                        _nsUpdate(1, '2026-11-14T21:40', '21:40', [
+                                            _bkDiv('p-3 rounded-3 bg-primary-subtle text-primary-emphasis', _sdT('Key Moment Box'), [
+                                                _bkDiv('d-flex align-items-center gap-2 small fw-semibold mb-1', _sdT('Key Moment Label'), [
+                                                    _bkIcon('bi-pin-angle-fill'),
+                                                    _bkH('span', _sdT('Key moment'))
+                                                ]),
+                                                _bkH('h3', _sdT('The lantern parade reaches the old bridge'), 'h6 fw-bold mb-1'),
+                                                _bkP(_sdT('More than 2,000 lanterns cross the river while a brass band plays from the boats.'), 'mb-0')
+                                            ])
+                                        ]),
+                                        _nsUpdate(2, '2026-11-14T21:05', '21:05', [
+                                            _bkH('h3', _sdT('The food market stays open late'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Forty stalls serve street food from five continents until midnight.'), 'mb-2'),
+                                            _bkImg('ns-live-market', 1200, 675, _sdT('Food stalls lit with string lights by the river'), 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9')
+                                        ]),
+                                        _nsUpdate(3, '2026-11-14T20:30', '20:30', [
+                                            _bkH('h3', _sdT('Organisers thank the volunteers'), 'h6 fw-bold mb-2'),
+                                            _bkTag('figure', 'mb-0', _sdT('Quote Figure'), [
+                                                _bkTag('blockquote', 'blockquote fs-6 ps-3 mb-2 border-start border-3 border-primary', _sdT('Quote'), [
+                                                    _bkP(_sdT('We started with ten volunteers three years ago. Tonight more than three hundred are helping out.'), 'fst-italic mb-0')
+                                                ]),
+                                                _bkTag('figcaption', 'blockquote-footer ps-3 mt-0 mb-0 text-body-secondary', _sdT('Quote Source'), [
+                                                    _bkH('span', _sdT('{var}, festival director', _sdT('Emily Turner')))
+                                                ])
+                                            ])
+                                        ]),
+                                        _nsUpdate(4, '2026-11-14T19:50', '19:50', [
+                                            _bkH('h3', _sdT('Extra trains run all evening'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Riverside line trains run every five minutes until the last lanterns go out.'), 'mb-0')
+                                        ]),
+                                        _nsUpdate(5, '2026-11-14T19:00', '19:00', [
+                                            _bkH('h3', _sdT('The festival opens'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Children from local schools switch on the first lights at the riverside steps.'), 'mb-0')
+                                        ])
+                                    ]),
+                                    _bkLink(_sdT('See the full timeline'), '#', 'fw-semibold link-primary text-decoration-none', _sdT('Timeline Link'))
+                                ], '8', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Article Header — breadcrumb, category, headline, standfirst, byline with share links and the lead picture
+                    if (ctype === 'news-article-header') {
+                        var _nsCrumb = function (label, active) {
+                            if (active) {
+                                return _bkTag('li', 'breadcrumb-item active', _sdT('{var} Item', label), [ _bkH('span', label) ],
+                                    [{ name: 'aria-current', value: 'page' }]);
+                            }
+                            return _bkTag('li', 'breadcrumb-item', _sdT('{var} Item', label), [
+                                _bkLink(label, '#', 'link-primary text-decoration-none', _sdT('{var} Link', label))
+                            ]);
+                        };
+                        var _nsShare = function (icon, label) {
+                            return _bkIconLink(icon, label, 'btn btn-sm btn-outline-secondary rounded-circle');
+                        };
+                        return _bkSection('pt-5 pb-4', _sdT('News (Article Header)'), [
+                            _bkRow(_sdT('Article Row'), [
+                                _bkCol(_sdT('Article Column'), [
+                                    _bkTag('nav', 'mb-4', _sdT('Breadcrumbs Nav'), [
+                                        _bkTag('ol', 'breadcrumb small mb-0', _sdT('Breadcrumb List'), [
+                                            _nsCrumb(_sdT('Homepage'), false),
+                                            _nsCrumb(_sdT('Technology'), false),
+                                            _nsCrumb(_sdT('Robotics lab'), true)
+                                        ])
+                                    ], [{ name: 'aria-label', value: _sdT('Breadcrumb trail') }]),
+                                    _bkH('span', _sdT('Technology'), 'badge bg-primary-subtle text-primary-emphasis mb-3'),
+                                    _bkH('h1', _sdT('Helios and Quanta open a shared robotics lab in Istanbul'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 mb-4 border-top border-bottom', _sdT('Article Meta'), [
+                                        _bkDiv('d-flex align-items-center gap-3', _sdT('Byline'), [
+                                            _bkImg('ns-author-jane', 96, 96, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-circle-40'),
+                                            _bkDiv('small', _sdT('Author Info'), [
+                                                _bkLink(_sdT('Jane Cooper'), '#', 'd-block fw-semibold link-primary text-decoration-none', _sdT('Author Link')),
+                                                _bkH('span', _sdT('Technology Editor'), 'd-block text-body-secondary'),
+                                                _bkDiv('d-flex flex-wrap gap-2 text-body-secondary', _sdT('Article Dates'), [
+                                                    _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time')),
+                                                    _bkH('span', _sdT('{var} min read', '6'))
+                                                ])
+                                            ])
+                                        ]),
+                                        _bkDiv('d-flex align-items-center gap-2', _sdT('Share Links'), [
+                                            _bkH('span', _sdT('Share'), 'small text-body-secondary me-1'),
+                                            _nsShare('bi-facebook',  _sdT('Share on Facebook')),
+                                            _nsShare('bi-twitter-x', _sdT('Share on X')),
+                                            _nsShare('bi-linkedin',  _sdT('Share on LinkedIn')),
+                                            _nsShare('bi-envelope',  _sdT('Share by email'))
+                                        ])
+                                    ]),
+                                    _bkTag('figure', 'mb-0', _sdT('Article Figure'), [
+                                        _bkImg('ns-article-lab', 1600, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'img-fluid w-100 rounded-4 object-fit-cover pg-ratio-16x9'),
+                                        _bkTag('figcaption', 'small text-body-secondary mt-2', _sdT('Figure Caption'), [
+                                            _bkH('span', _sdT('A delivery robot on its first test run in the new lab.')),
+                                            _bkH('span', _sdT('Photo: {var}', _sdT('Michael Brooks')), 'ms-1 fst-italic')
+                                        ])
+                                    ])
+                                ], '10', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Author Box — the writer under a story: photo, name link, role, bio, social links and more stories
+                    if (ctype === 'news-author-box') {
+                        return _bkSection('py-5', _sdT('News (Author Box)'), [
+                            _bkRow(_sdT('Author Row'), [
+                                _bkCol(_sdT('Author Column'), [
+                                    _bkTag('aside', 'card border rounded-4 bg-body', _sdT('Author Card'), [
+                                        _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4 p-lg-5', _sdT('Author Body'), [
+                                            _bkImg('ns-author-jane', 224, 224, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-thumb-100'),
+                                            _bkDiv('flex-grow-1', _sdT('Author Info'), [
+                                                _bkH('span', _sdT('About the author'), 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                                _bkTag('h2', 'h4 fw-bold mb-1', _sdT('Author Name'), [
+                                                    _bkLink(_sdT('Jane Cooper'), '#', 'text-reset text-decoration-none', _sdT('Author Link'))
+                                                ]),
+                                                _bkP(_sdT('Technology Editor'), 'small text-body-secondary mb-3'),
+                                                _bkP(_sdT('Jane writes about start-ups, robots and the apps that make city life easier. Before ACME she spent ten years reporting from London and Tokyo.'), 'mb-4'),
+                                                _bkDiv('d-flex flex-wrap align-items-center justify-content-between gap-3', _sdT('Author Actions'), [
+                                                    _bkDiv('d-flex gap-3', _sdT('Social Links'), [
+                                                        _bkIconLink('bi-twitter-x', _sdT('{var} on X', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-linkedin',  _sdT('{var} on LinkedIn', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-envelope',  _sdT('Email {var}', _sdT('Jane Cooper')), 'link-primary fs-5', 'mailto:jane@example.com')
+                                                    ]),
+                                                    createNode('component', { componentType: 'btn', text: _sdT('More from {var}', _sdT('Jane Cooper')), variant: 'outline-primary', size: 'sm', href: '#', cssClass: '' })
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // ── Creative blocks ──
+                    // Eye-catching layouts for any site: bento grids, marquees,
+                    // showcases, quotes, a polaroid gallery and a snap scroller.
+
+                    // Bento: Features — one wide primary tile and a stat tile, then an icon, a picture and a dark tile
+                    if (ctype === 'bento-features') {
+                        return _bkSection('py-5', _sdT('Bento (Features)'), [
+                            _bkIntro(_sdT('Everything Your Team Needs'), _sdT('Plans, files and conversations in one workspace that stays out of your way.')),
+                            _bkRow(_sdT('Bento Row'), [
+                                _bkCol(_sdT('Wide Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 p-4 p-lg-5 text-bg-primary rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-lightning-charge-fill', 'fs-2 mb-3'),
+                                        _bkH('h3', _sdT('Plan, share and ship in one place'), 'h4 fw-bold mb-2'),
+                                        _bkP(_sdT('Boards, documents and chat stay in sync, so nobody has to ask where the latest version is.'), 'mb-4'),
+                                        _bkLink(_sdT('See how it works'), '#', 'align-self-start mt-auto fw-semibold text-reset', _sdT('Tile Link'))
+                                    ])
+                                ], '8', '7'),
+                                _bkCol(_sdT('Stat Tile'), [
+                                    _bkDiv('d-flex flex-column justify-content-between h-100 p-4 bg-body-tertiary rounded-4', _sdT('Tile Body'), [
+                                        _bkH('span', _sdT('Teams on board'), 'mb-3 small fw-semibold text-uppercase text-body-secondary'),
+                                        _bkDiv('', _sdT('Stat'), [
+                                            _bkH('span', _sdT('12,000+'), 'd-block mb-2 display-4 fw-bold lh-1 text-primary'),
+                                            _bkP(_sdT('From two-person studios to companies with offices in five cities.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '5'),
+                                _bkCol(_sdT('Icon Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body border rounded-4', _sdT('Tile Body'), [
+                                        _bkDiv('d-inline-flex p-3 mb-3 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Tile Icon'), [ _bkIcon('bi-shield-check', 'fs-4') ]),
+                                        _bkH('h3', _sdT('Secure by default'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('Single sign-on, two-step login and daily backups on every plan.'), 'mb-0 text-body-secondary')
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Picture Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 bg-body border rounded-4 overflow-hidden', _sdT('Tile Body'), [
+                                        _bkImg('cr-bento-desk', 800, 450, _sdT('A team planning a project around a laptop'), 'd-block w-100 object-fit-cover pg-ratio-16x9'),
+                                        _bkDiv('p-4', _sdT('Tile Copy'), [
+                                            _bkH('h3', _sdT('Works where you work'), 'h5 fw-bold mb-2'),
+                                            _bkP(_sdT('On the desktop, in the browser and on your phone, always in sync.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Dark Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body text-body border rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-graph-up-arrow', 'd-block mb-3 fs-2 text-primary'),
+                                        _bkH('h3', _sdT('Reports that write themselves'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('A summary of the week lands in every inbox on Monday morning.'), 'mb-0 text-body-secondary')
+                                    ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                ], '4')
+                            ])
+                        ]);
+                    }
+
+                    // Bento: Gallery — a photo mosaic (one tall, two square, one wide picture), each with a caption chip on the photo
+                    if (ctype === 'bento-gallery') {
+                        var _crBgShot = function (seed, w, h, alt, caption, imgCls, figCls) {
+                            return _bkTag('figure', 'position-relative mb-0 rounded-4 overflow-hidden' + (figCls ? ' ' + figCls : ''), _sdT('Figure'), [
+                                _bkImg(seed, w, h, alt, 'd-block w-100 object-fit-cover ' + imgCls),
+                                _bkTag('figcaption', 'badge m-3 text-wrap text-start bg-primary-subtle text-primary-emphasis rounded-pill shadow-sm position-absolute bottom-0 start-0', _sdT('Caption'), [ _bkH('span', caption) ])
+                            ]);
+                        };
+                        var _crBgCol = function (n, kids) {
+                            return createNode('col', { xs: n === 4 ? '12' : '6', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Picture {var}', n) }, kids);
+                        };
+                        return _bkSection('py-5', _sdT('Bento (Gallery)'), [
+                            _bkIntro(_sdT('Inside the Studio'), _sdT('Where ideas turn into finished work, one coffee at a time.')),
+                            _bkRow(_sdT('Gallery Row'), [
+                                _bkCol(_sdT('Picture {var}', 1), [
+                                    _crBgShot('cr-bento-studio', 800, 960, _sdT('Morning light over the desks of a studio'), _sdT('The studio'), 'h-100', 'h-100')
+                                ], '5'),
+                                _bkCol(_sdT('Right Column'), [
+                                    _bkRow(_sdT('Pictures Row'), [
+                                        _crBgCol(2, [ _crBgShot('cr-bento-sketch', 600, 600, _sdT('Sketches pinned to a wall'), _sdT('Sketch wall'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(3, [ _crBgShot('cr-bento-print', 600, 600, _sdT('Fresh prints laid out on a table'), _sdT('Print day'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(4, [ _crBgShot('cr-bento-team', 1200, 675, _sdT('The team on a retreat in Istanbul'), _sdT('Team retreat, Istanbul'), 'pg-ratio-16x9') ])
+                                    ])
+                                ], '7')
+                            ])
+                        ]);
+                    }
+
+                    // Marquee: Big Words — a primary band of large words sliding sideways; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-words') {
+                        var _crMwGroup = function (copy) {
+                            var words = [_sdT('Branding'), _sdT('Web Design'), _sdT('Motion Design'), _sdT('Photography'), _sdT('Strategy'), _sdT('Packaging')];
+                            var kids = [];
+                            words.forEach(function (w) {
+                                kids.push(_bkH('span', w, 'display-6 fw-bold text-uppercase text-nowrap'));
+                                kids.push(_bkIcon('bi-asterisk', 'fs-3'));
+                            });
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-4 text-bg-primary', _sdT('Marquee (Big Words)'), [
+                            _bkDiv('pg-marquee-viewport', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMwGroup(false), _crMwGroup(true) ])
+                            ], _bkRegion(_sdT('What we do'))),
+                            _bkMarqueePause('mqw', _sdT('Pause the animation'), 'text-reset', 'mt-2 text-end')
+                        ]);
+                    }
+
+                    // Marquee: Logos — customer logos sliding sideways under soft faded edges; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-logos') {
+                        var _crMlGroup = function (copy) {
+                            var brands = [_sdT('Vertex'), _sdT('TechBase'), _sdT('StartMate'), _sdT('LaunchLab'), _sdT('Northwind'),
+                                          _sdT('PineWorks'), _sdT('OrbitSoft'), _sdT('Quanta'), _sdT('ByteWave'), _sdT('Helios')];
+                            return _bkDiv('gap-5 pe-5 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), brands.map(function (b) {
+                                return createNode('content', { contentType: 'image', src: 'https://placehold.co/200x80/9ca3af/ffffff?text=' + encodeURIComponent(b), alt: copy ? '' : b, cssClass: 'pg-logo-44' });
+                            }), copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-5', _sdT('Marquee (Logos)'), [
+                            _bkDiv('d-flex align-items-center justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Trusted by teams at'), 'h6 mb-0 fw-semibold text-uppercase text-body-secondary'),
+                                _bkMarqueePause('mql', _sdT('Pause the animation'), 'btn-outline-secondary')
+                            ]),
+                            _bkDiv('pg-marquee-viewport pg-marquee-fade', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMlGroup(false), _crMlGroup(true) ])
+                            ], _bkRegion(_sdT('Customer logos')))
+                        ]);
+                    }
+
+                    // Showcase: Floating Badges — copy beside a picture; from 992 px three small cards float over the picture, below that they stack under it
+                    if (ctype === 'showcase-floating') {
+                        var _crSfCard = function (n, icon, value, label, place) {
+                            // Not a .card: Bootstrap gives .card position: relative,
+                            // which would compete with the pg-float rule.
+                            return _bkDiv('d-flex align-items-center gap-3 p-3 m-lg-3 bg-body text-body rounded-4 shadow pg-float ' + place, _sdT('Floating Card {var}', n), [
+                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Card Icon'), [ _bkIcon(icon, 'fs-5') ]),
+                                _bkDiv('', _sdT('Card Copy'), [
+                                    _bkH('strong', value, 'd-block lh-sm'),
+                                    _bkH('span', label, 'small text-body-secondary')
+                                ])
+                            ]);
+                        };
+                        var _crSfPoint = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Floating Badges)'), [
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Showcase Copy'), [
+                                    _bkH('span', _sdT('All in one place'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h2', _sdT('See your whole business at a glance'), 'mb-3 display-6 fw-bold'),
+                                    _bkP(_sdT('Bookings, payments and reviews meet on one screen, so the morning goes to customers instead of spreadsheets.'), 'mb-4 lead text-body-secondary'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _crSfPoint(_sdT('Every booking and payment in one calendar')),
+                                        _crSfPoint(_sdT('Reviews collected after each visit')),
+                                        _crSfPoint(_sdT('A weekly report in your inbox'))
+                                    ]),
+                                    _bkDiv('d-flex flex-wrap gap-2', _sdT('Buttons'), [
+                                        _bkBtn(_sdT('Start free trial'), 'primary', 'lg'),
+                                        _bkBtn(_sdT('Book a demo'), 'outline-secondary', 'lg')
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Showcase Picture'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('cr-showcase-desk', 900, 800, _sdT('A shop owner checking the day on a tablet'), 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm'),
+                                        _bkDiv('d-flex flex-column gap-3 mt-3 mt-lg-0', _sdT('Floating Cards'), [
+                                            _crSfCard(1, 'bi-graph-up-arrow', _sdT('+38%'), _sdT('more bookings this quarter'), 'top-0 start-0'),
+                                            _crSfCard(2, 'bi-star-fill', _sdT('4.9 out of 5'), _sdT('from 2,400 reviews'), 'top-50 end-0'),
+                                            _crSfCard(3, 'bi-people-fill', _sdT('12,000+'), _sdT('teams use it every day'), 'bottom-0 start-0')
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Showcase: Vertical Tabs — four pill tabs down the side (icon, title, one line each) and a picture pane for each tab
+                    if (ctype === 'showcase-tabs') {
+                        var _crStPfx = _bkUid('st');
+                        var _crStTab = function (i, icon, title, desc) {
+                            return _bkTag('button', 'nav-link d-flex align-items-start gap-3 p-3 text-start' + (i === 0 ? ' active' : ''), _sdT('Tab {var}', i + 1), [
+                                _bkIcon(icon, 'fs-4 lh-1'),
+                                _bkTag('span', 'd-block', _sdT('Tab Text'), [
+                                    _bkH('span', title, 'd-block fw-semibold'),
+                                    _bkH('span', desc, 'd-block small')
+                                ])
+                            ], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'id',             value: _crStPfx + '_tab' + i },
+                                { name: 'data-bs-toggle', value: 'pill' },
+                                { name: 'data-bs-target', value: '#' + _crStPfx + '_' + i },
+                                { name: 'role',           value: 'tab' },
+                                { name: 'aria-controls',  value: _crStPfx + '_' + i },
+                                { name: 'aria-selected',  value: i === 0 ? 'true' : 'false' }
+                            ]);
+                        };
+                        var _crStPane = function (i, seed, alt, caption) {
+                            return createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade' + (i === 0 ? ' show active' : ''), id: _crStPfx + '_' + i, customName: _sdT('Tab Pane {var}', i + 1),
+                                _attrs: [{ name: 'role', value: 'tabpanel' }, { name: 'aria-labelledby', value: _crStPfx + '_tab' + i }, { name: 'tabindex', value: '0' }] }, [
+                                _bkTag('figure', 'mb-0', _sdT('Figure'), [
+                                    _bkImg(seed, 1200, 675, alt, 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm pg-ratio-16x9'),
+                                    _bkTag('figcaption', 'mt-3 small text-body-secondary', _sdT('Caption'), [ _bkH('span', caption) ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Vertical Tabs)'), [
+                            _bkIntro(_sdT('One Workspace, Four Ways to Work'), _sdT('Pick a part of the day and see how ACME handles it.')),
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Tabs Column'), [
+                                    _bkDiv('nav flex-column nav-pills gap-2', _sdT('Showcase Tabs'), [
+                                        _crStTab(0, 'bi-kanban',          _sdT('Planning'),    _sdT('Boards and timelines for every project.')),
+                                        _crStTab(1, 'bi-chat-dots',       _sdT('Teamwork'),    _sdT('Comments and files right where the work is.')),
+                                        _crStTab(2, 'bi-lightning-charge', _sdT('Automation'), _sdT('Rules that move work forward on their own.')),
+                                        _crStTab(3, 'bi-bar-chart-line',  _sdT('Reporting'),   _sdT('Progress at a glance, every Monday.'))
+                                    ], [{ name: 'role', value: 'tablist' }, { name: 'aria-orientation', value: 'vertical' }])
+                                ], '4'),
+                                _bkCol(_sdT('Panes Column'), [
+                                    _bkDiv('tab-content', _sdT('Showcase Panes'), [
+                                        _crStPane(0, 'cr-tabs-plan',   _sdT('A project board with cards in three columns'), _sdT('Drag a card to a new column and everyone sees the change at once.')),
+                                        _crStPane(1, 'cr-tabs-team',   _sdT('Two colleagues discussing a design on screen'), _sdT('Comment on the work itself, not in a separate email thread.')),
+                                        _crStPane(2, 'cr-tabs-auto',   _sdT('A list of rules that run on their own'), _sdT('When a task is done, the next one is assigned and the client is told.')),
+                                        _crStPane(3, 'cr-tabs-report', _sdT('Charts of a team\'s weekly progress'), _sdT('Every Monday at 9:00 the week\'s summary is waiting for you.'))
+                                    ])
+                                ], '8')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Quote: Pull Quote — one large centred quote under a quote mark, with the speaker and the source
+                    if (ctype === 'quote-pull') {
+                        return _bkSection('py-5', _sdT('Quote (Pull Quote)'), [
+                            _bkRow(_sdT('Quote Row'), [
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center', _sdT('Pull Quote'), [
+                                        _bkIcon('bi-quote', 'd-block mb-2 display-1 lh-1 text-primary'),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'blockquote-footer mb-0 text-body-secondary', _sdT('Attribution'), [
+                                            _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
+                                            _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
+                                            _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // Quote: Spotlight — a primary band with a round portrait, five stars, a large quote and the speaker
+                    if (ctype === 'quote-spotlight') {
+                        var _crQsStars = [];
+                        for (var _crQsI = 0; _crQsI < 5; _crQsI++) _crQsStars.push(_bkIcon('bi-star-fill'));
+                        _crQsStars.push(_bkH('span', _sdT('Rated 5 out of 5'), 'visually-hidden'));
+                        return _bkSection('py-5 text-bg-primary', _sdT('Quote (Spotlight)'), [
+                            _bkRow(_sdT('Spotlight Row'), [
+                                _bkCol(_sdT('Portrait Column'), [
+                                    _bkImg('cr-spotlight-michael', 320, 320, '', 'object-fit-cover rounded-circle shadow pg-circle-160')
+                                ], '3', '', '', 'text-center'),
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center text-lg-start', _sdT('Spotlight Quote'), [
+                                        _bkDiv('d-flex justify-content-center justify-content-lg-start gap-1 mb-3', _sdT('Star Rating'), _crQsStars),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Since we moved to ACME our launches take half the time, and the whole team knows what comes next.'), 'mb-0 fs-3 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'mb-0', _sdT('Attribution'), [
+                                            _bkH('strong', _sdT('Michael Brooks'), 'd-block'),
+                                            _bkH('span', _sdT('Head of Product, TechBase'), 'small')
+                                        ])
+                                    ])
+                                ], '9')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Gallery: Polaroid — four instant-photo cards with a caption and a date; from 768 px they lean and straighten on hover
+                    if (ctype === 'gallery-polaroid') {
+                        var _crGpCard = function (n, seed, alt, caption, datetime, date, tilt) {
+                            return _bkCol(_sdT('Photo {var}', n), [
+                                _bkTag('figure', 'mb-0 p-3 pb-4 bg-body shadow ' + tilt, _sdT('Polaroid'), [
+                                    _bkImg(seed, 600, 600, alt, 'd-block w-100 object-fit-cover pg-ratio-1x1'),
+                                    _bkTag('figcaption', 'mt-3 text-center', _sdT('Caption'), [
+                                        _bkH('span', caption, 'd-block fw-semibold'),
+                                        _bkTime(datetime, date, 'd-block small fw-semibold text-primary', _sdT('Date'))
+                                    ])
+                                ])
+                            ], '3', '', '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Gallery (Polaroid)'), [
+                            _bkIntro(_sdT('Moments From the Road'), _sdT('Snapshots from our workshops in London, Berlin, Istanbul and Tokyo.')),
+                            _bkRow(_sdT('Photos Row'), [
+                                _crGpCard(1, 'cr-polaroid-london',   _sdT('People around a table covered in sketches'), _sdT('Workshop day in London'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-left'),
+                                _crGpCard(2, 'cr-polaroid-berlin',   _sdT('A wall of notes and drawings'),              _sdT('Sketch night in Berlin'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-right'),
+                                _crGpCard(3, 'cr-polaroid-istanbul', _sdT('A sunny studio with plants by the window'),   _sdT('Studio visit in Istanbul'), '2026-11', _sdT('November 2026'), 'pg-tilt pg-tilt-left'),
+                                _crGpCard(4, 'cr-polaroid-tokyo',    _sdT('Posters hanging at a print fair'),            _sdT('Print fair in Tokyo'),     '2026-12', _sdT('December 2026'), 'pg-tilt pg-tilt-right')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Scroller: Snap Cards — a sideways row of six story cards that snaps card by card, with a scroll hint in the header
+                    if (ctype === 'scroller-cards') {
+                        var _crScCard = function (n, seed, tag, title, body) {
+                            return _bkDiv('col-10 col-sm-6 col-lg-4 pg-snap-item', _sdT('Card {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Story Card'), [
+                                    _bkImg(seed, 800, 450, '', 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Card Body'), [
+                                        _bkH('span', tag, 'badge align-self-start mb-2 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                        _bkH('h3', title, 'h5 fw-bold mb-2'),
+                                        _bkP(body, 'mb-3 small text-body-secondary'),
+                                        _bkLink(_sdT('Read the story'), '#', 'align-self-start mt-auto fw-semibold link-primary text-decoration-none stretched-link', _sdT('Card Link'))
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Scroller (Snap Cards)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkDiv('', _sdT('Header Copy'), [
+                                    _bkH('h2', _sdT('Stories From Our Customers'), 'fw-bold mb-2'),
+                                    _bkP(_sdT('How teams of every size use ACME to get more done.'), 'mb-0 lead text-body-secondary')
+                                ]),
+                                _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
+                                    _bkH('span', _sdT('Scroll sideways')),
+                                    // Two-headed: the row scrolls both ways, and a
+                                    // one-way arrow points the wrong way on RTL pages.
+                                    _bkIcon('bi-arrow-left-right')
+                                ])
+                            ]),
+                            _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
+                                _crScCard(1, 'cr-scroller-vertex',    _sdT('Design'),      _sdT('Vertex halved its review rounds'),        _sdT('Comments on the work itself replaced long email threads.')),
+                                _crScCard(2, 'cr-scroller-techbase',  _sdT('Engineering'), _sdT('TechBase ships every Friday'),            _sdT('Boards and automations keep forty engineers in step.')),
+                                _crScCard(3, 'cr-scroller-startmate', _sdT('Startup'),     _sdT('StartMate launched in six weeks'),        _sdT('From the first sketch to the first customer on one board.')),
+                                _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
+                                _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
+                                _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
+                            ], _bkRegion(_sdT('Customer stories')))
+                        ]);
+                    }
+
                 }
 
                 // Accordion Explosion
@@ -17147,9 +19047,12 @@ const StyleDesigner = (function () {
                 // Navbar Explosion
                 if (ctype === 'navbar') {
                     var navId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-dark bg-dark', customName: 'Navbar' }, [
+                    // Dark bar through the theme switch (navbar-dark is deprecated in
+                    // Bootstrap 5.3); the brand takes the palette's readable shade.
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + navId }, { name: 'aria-controls', value: navId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -17176,9 +19079,9 @@ const StyleDesigner = (function () {
                 // Navbar: Brand + links + CTA button (light theme)
                 if (ctype === 'navbar-light-cta') {
                     var _nlId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom shadow-sm', customName: 'Navbar' }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler border-0', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nlId }, { name: 'aria-controls', value: _nlId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -17201,17 +19104,31 @@ const StyleDesigner = (function () {
                 // Navbar: Brand + search input + user dropdown
                 if (ctype === 'navbar-search') {
                     var _nsId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md navbar-dark bg-dark', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand' }),
+                            createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _nsId }, { name: 'aria-controls', value: _nsId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'collapse navbar-collapse', id: _nsId, customName: _sdT('Nav Content') }, [
-                                createNode('semantic', { tag: 'form', cssClass: 'd-flex mx-auto', customName: _sdT('Search Form') }, [
-                                    createNode('component', { componentType: 'form-search', cssClass: 'me-2', placeholder: _sdT('Search...') }),
-                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'outline-light', size: '' })
+                                // A real field, its hidden label and a submit button: the form
+                                // can be sent with Enter or the button.
+                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mx-auto my-2 my-md-0', customName: _sdT('Search Form'),
+                                    _attrs: [{ name: 'role', value: 'search' }] }, [
+                                    createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
+                                        _attrs: [{ name: 'for', value: _nsId + '_q' }] }, [
+                                        createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
+                                    ]),
+                                    createNode('semantic', { tag: 'input', cssClass: 'form-control', customName: _sdT('Search Input'),
+                                        _attrs: [
+                                            { name: 'type',        value: 'search' },
+                                            { name: 'id',          value: _nsId + '_q' },
+                                            { name: 'name',        value: 'q' },
+                                            { name: 'placeholder', value: _sdT('Search...') }
+                                        ] }),
+                                    createNode('component', { componentType: 'btn', text: _sdT('Search'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                 ]),
                                 createNode('semantic', { tag: 'ul', cssClass: 'navbar-nav ms-3', customName: _sdT('User Menu') }, [
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item dropdown', customName: _sdT('User Dropdown') }, [
@@ -17233,9 +19150,10 @@ const StyleDesigner = (function () {
                 // Navbar: Dark theme, centered links
                 if (ctype === 'navbar-dark-center') {
                     var _ndId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-dark bg-dark', customName: 'Navbar' }, [
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
-                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold' }),
+                            createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
                             createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: _sdT('Toggler'),
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' }, { name: 'data-bs-target', value: '#' + _ndId }, { name: 'aria-controls', value: _ndId }, { name: 'aria-expanded', value: 'false' }, { name: 'aria-label', value: _sdT('Toggle navigation') }] }, [
                                 createNode('semantic', { tag: 'span', cssClass: 'navbar-toggler-icon', customName: _sdT('Toggler Icon') })
@@ -17247,7 +19165,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [createNode('content', { contentType: 'link', text: _sdT('Portfolio'),     href: '#', cssClass: 'nav-link' })]),
                                     createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Nav Item') }, [createNode('content', { contentType: 'link', text: _sdT('Contact us'),  href: '#', cssClass: 'nav-link' })])
                                 ]),
-                                createNode('content', { contentType: 'link', text: _sdT('Get in touch →'), href: '#', cssClass: 'nav-link text-warning fw-semibold' })
+                                createNode('content', { contentType: 'link', text: _sdT('Get in touch →'), href: '#', cssClass: 'nav-link link-primary fw-semibold' })
                             ])
                         ])
                     ]);
@@ -17258,7 +19176,7 @@ const StyleDesigner = (function () {
                 // Footer: minimal — copyright + social icons
                 if (ctype === 'footer-minimal') {
                     var _socialIcon = function(icon, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', href: href || '#',
+                        return createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary',
                             _attrs: [{ name: 'href', value: href || '#' }, { name: 'aria-label', value: icon.replace('bi-', '') }], customName: _sdT('{var} Link', icon.replace('bi-', '')) }, [
                             createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'fs-5' })
                         ]);
@@ -17312,27 +19230,41 @@ const StyleDesigner = (function () {
 
                 // Footer: newsletter subscription + copyright
                 if (ctype === 'footer-newsletter') {
-                    return createNode('semantic', { tag: 'footer', cssClass: 'py-5 bg-dark text-white', customName: _sdT('Footer') }, [
+                    var _fnlId = 'fnl_' + Math.random().toString(36).substr(2, 6);
+                    return createNode('semantic', { tag: 'footer', cssClass: 'py-5 bg-body text-body', customName: _sdT('Footer'),
+                        _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Footer Container') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'row align-items-center mb-5 pb-4 border-bottom border-secondary', customName: _sdT('Newsletter Row') }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-5 mb-3 mb-md-0', customName: _sdT('Newsletter Text') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Stay in the loop'), cssClass: 'fw-bold mb-1' }),
-                                    createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-white-50 mb-0' })
+                                    createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-body-secondary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Newsletter Form') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2', customName: _sdT('Subscribe Form') }, [
-                                        createNode('component', { componentType: 'form-email', cssClass: 'flex-grow-1', placeholder: _sdT('Enter your email') }),
-                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '' })
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Subscribe Form') }, [
+                                        createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                            _attrs: [{ name: 'for', value: _fnlId + '_email' }] }, [
+                                            createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
+                                        ]),
+                                        createNode('semantic', { tag: 'input', cssClass: 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                            _attrs: [
+                                                { name: 'type',         value: 'email' },
+                                                { name: 'id',           value: _fnlId + '_email' },
+                                                { name: 'name',         value: 'email' },
+                                                { name: 'placeholder',  value: _sdT('Enter your email') },
+                                                { name: 'autocomplete', value: 'email' },
+                                                { name: 'required',     value: 'required' }
+                                            ] }),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Subscribe'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit' })
                                     ])
                                 ])
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-between align-items-center', customName: _sdT('Footer Bar') }, [
-                                createNode('content', { contentType: 'paragraph', text: _sdT('© 2025 Company Name. All rights reserved.'), cssClass: 'mb-0 text-white-50 small' }),
+                                createNode('content', { contentType: 'paragraph', text: _sdT('© 2025 Company Name. All rights reserved.'), cssClass: 'mb-0 text-body-secondary small' }),
                                 createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-3 align-items-center', customName: _sdT('Social Links') }, [
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Twitter' }], customName: 'Twitter'   }, [createNode('content', { contentType: 'icon', iconName: 'bi-twitter-x', cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'GitHub' }], customName: 'GitHub'    }, [createNode('content', { contentType: 'icon', iconName: 'bi-github',    cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'LinkedIn' }], customName: 'LinkedIn'  }, [createNode('content', { contentType: 'icon', iconName: 'bi-linkedin',  cssClass: 'fs-5' })]),
-                                    createNode('semantic', { tag: 'a', cssClass: 'text-white-50', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Instagram' }], customName: 'Instagram' }, [createNode('content', { contentType: 'icon', iconName: 'bi-instagram', cssClass: 'fs-5' })])
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Twitter' }], customName: 'Twitter'   }, [createNode('content', { contentType: 'icon', iconName: 'bi-twitter-x', cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'GitHub' }], customName: 'GitHub'    }, [createNode('content', { contentType: 'icon', iconName: 'bi-github',    cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'LinkedIn' }], customName: 'LinkedIn'  }, [createNode('content', { contentType: 'icon', iconName: 'bi-linkedin',  cssClass: 'fs-5' })]),
+                                    createNode('semantic', { tag: 'a', cssClass: 'text-body-secondary', _attrs: [{ name: 'href', value: '#' }, { name: 'aria-label', value: 'Instagram' }], customName: 'Instagram' }, [createNode('content', { contentType: 'icon', iconName: 'bi-instagram', cssClass: 'fs-5' })])
                                 ])
                             ])
                         ])
@@ -17381,7 +19313,7 @@ const StyleDesigner = (function () {
                             ])
                         ];
                         if (featured) {
-                            children.unshift(createNode('semantic', { tag: 'span', cssClass: 'badge bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2 rounded-pill',
+                            children.unshift(createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2 rounded-pill',
                                 text: _sdT('Most Popular'), customName: _sdT('Badge') }));
                         }
                         return createNode('semantic', { tag: 'div', cssClass: 'col', customName: _sdT('{var} Column', tier) }, [
@@ -17400,17 +19332,17 @@ const StyleDesigner = (function () {
  }, [
                         // Monthly/Annual toggle — Bootstrap pill tabs
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-center mb-4', customName: _sdT('Billing Toggle') }, [
-                            createNode('semantic', { tag: 'ul', cssClass: 'nav nav-pills bg-body-tertiary rounded-pill p-1', customName: _sdT('Toggle Group'),
+                            createNode('semantic', { tag: 'ul', cssClass: 'nav nav-pills bg-body border rounded-pill p-1', customName: _sdT('Toggle Group'),
                                 _attrs: [{ name: 'role', value: 'tablist' }] }, [
                                 createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Monthly'),
                                     _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                     createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Monthly'), cssClass: 'nav-link rounded-pill px-4 active',
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_m' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_m' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: ptId + '_m' }, { name: 'aria-selected', value: 'true' }] })
                                 ]),
                                 createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Annual'),
                                     _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                     createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Annual'), cssClass: 'nav-link rounded-pill px-4',
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_a' }, { name: 'role', value: 'tab' }] }),
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'pill' }, { name: 'data-bs-target', value: '#' + ptId + '_a' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: ptId + '_a' }, { name: 'aria-selected', value: 'false' }] }),
                                     createNode('content', { contentType: 'heading', tag: 'span', text: '−20%', cssClass: 'badge bg-success-subtle text-success-emphasis ms-1' })
                                 ])
                             ])
@@ -17451,17 +19383,17 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 1),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 1), cssClass: 'nav-link active',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_0' }, { name: 'aria-selected', value: 'true' }] })
                             ]),
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 2),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 2), cssClass: 'nav-link',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_1' }, { name: 'role', value: 'tab' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_1' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_1' }, { name: 'aria-selected', value: 'false' }] })
                             ]),
                             createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Tab {var}', 3),
                                 _attrs: [{ name: 'role', value: 'presentation' }] }, [
                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Tab {var}', 3), cssClass: 'nav-link',
-                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_2' }, { name: 'role', value: 'tab' }] })
+                                    _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + tabPfx + '_2' }, { name: 'role', value: 'tab' }, { name: 'aria-controls', value: tabPfx + '_2' }, { name: 'aria-selected', value: 'false' }] })
                             ])
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'tab-content p-3 border border-top-0', customName: _sdT('Tab Content') }, [
@@ -17486,14 +19418,17 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'badge') {
-                    return createNode('semantic', { tag: 'span', cssClass: 'badge bg-primary rounded-pill', text: _sdT('New'), customName: _sdT('Badge') });
+                    return createNode('semantic', { tag: 'span', cssClass: 'badge text-bg-primary rounded-pill', text: _sdT('New'), customName: _sdT('Badge') });
                 }
 
                 if (ctype === 'progress') {
                     return createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-18', customName: _sdT('Progress')
  }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar progress-bar-striped bg-primary', customName: _sdT('Progress Bar'),
-                            _attrs: [{ name: 'role', value: 'progressbar' }, { name: 'style', value: 'width:50%' },
+                        // Plain bar: the label stays readable on it. Stripes lay 15% white
+                        // over the primary colour and drop white text to 3.97:1 (classic
+                        // palette); Striped is a switch in the Progress panel.
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar text-bg-primary', customName: _sdT('Progress Bar'),
+                            _attrs: [{ name: 'role', value: 'progressbar' }, { name: 'aria-label', value: _sdT('Progress') }, { name: 'style', value: 'width:50%' },
                                      { name: 'aria-valuenow', value: '50' }, { name: 'aria-valuemin', value: '0' }, { name: 'aria-valuemax', value: '100' }] }, [
                             createNode('content', { contentType: 'heading', tag: 'span', text: '50%', cssClass: '' })
                         ])
@@ -17504,8 +19439,10 @@ const StyleDesigner = (function () {
                     var crId = 'cr_' + Math.random().toString(36).substr(2, 6);
                     // 3 slides with distinct gradient hero backgrounds + title/desc/button — _crId lets
                     // propsCarouselOptions add more slides with stable data-bs-target references.
-                    return createNode('semantic', { tag: 'div', cssClass: 'carousel slide', id: crId, customName: 'Carousel',
-                        _attrs: [{ name: 'data-bs-ride', value: 'carousel' }] }, [
+                    // No autoplay: Bootstrap's carousel keeps cycling under keyboard
+                    // focus and reduced motion and has no pause button (WCAG 2.2.2).
+                    // Carousel Options > Autoplay switches it on.
+                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: _sdT('Carousel') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Indicators') }, [
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'active',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: '0' }, { name: 'aria-current', value: 'true' }, { name: 'aria-label', value: _sdT('Slide 1') }] }),
@@ -17543,7 +19480,7 @@ const StyleDesigner = (function () {
                                 createNode('semantic', { tag: 'div', cssClass: 'modal-header', customName: _sdT('Modal Header') }, [
                                     createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Modal Title'), cssClass: 'modal-title' }),
                                     createNode('semantic', { tag: 'button', cssClass: 'btn-close ms-auto', text: '', customName: _sdT('Close Button'),
-                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'modal' }, { name: 'aria-label', value: 'Close' }] })
+                                        _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'modal' }, { name: 'aria-label', value: _sdT('Close') }] })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'modal-body', customName: _sdT('Modal Body') }, [
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Modal body text goes here.'), cssClass: '' })
@@ -17614,9 +19551,9 @@ const StyleDesigner = (function () {
                         _attrs: [{ name: 'role', value: 'alert' }, { name: 'aria-live', value: 'assertive' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'toast-header', customName: _sdT('Toast Header') }, [
                             createNode('content', { contentType: 'heading', tag: 'strong', text: _sdT('Notification'), cssClass: 'me-auto' }),
-                            createNode('content', { contentType: 'heading', tag: 'small', text: _sdT('just now'), cssClass: 'text-muted' }),
+                            createNode('content', { contentType: 'heading', tag: 'small', text: _sdT('just now'), cssClass: 'text-body-secondary' }),
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'btn-close ms-2',
-                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'toast' }] })
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'toast' }, { name: 'aria-label', value: _sdT('Close') }] })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'toast-body', customName: _sdT('Toast Body') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Your message here.'), cssClass: '' })
@@ -17635,7 +19572,7 @@ const StyleDesigner = (function () {
                             // class keeps the look.
                             createNode('content', { contentType: 'heading', tag: 'p', text: _sdT('Menu'), cssClass: 'offcanvas-title h5' }),
                             createNode('semantic', { tag: 'button', cssClass: 'btn-close ms-auto', text: '', customName: _sdT('Close Button'),
-                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'offcanvas' }, { name: 'aria-label', value: 'Close' }] })
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-dismiss', value: 'offcanvas' }, { name: 'aria-label', value: _sdT('Close') }] })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'offcanvas-body', customName: _sdT('Offcanvas Body') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Offcanvas content here.'), cssClass: '' })
@@ -17644,14 +19581,14 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'callout') {
-                    return createNode('semantic', { tag: 'div', cssClass: 'p-3 mb-3 border-start border-4 border-primary bg-primary bg-opacity-10', customName: _sdT('Callout') }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'p-3 mb-3 border-start border-4 border-primary bg-primary-subtle', customName: _sdT('Callout') }, [
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Note'), cssClass: 'fw-bold mb-1' }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('Callout content goes here.'), cssClass: 'mb-0' })
                     ]);
                 }
 
                 if (ctype === 'divider_line') {
-                    return createNode('content', { contentType: 'divider', cssClass: 'my-4' });
+                    return createNode('content', { contentType: 'divider', margin: '4' });
                 }
 
                 if (ctype === 'table') {
@@ -17729,7 +19666,8 @@ const StyleDesigner = (function () {
                 if (ctype === 'pagination') {
                     var _pgItems = [
                         createNode('semantic', { tag: 'li', cssClass: 'page-item disabled', customName: _sdT('Prev') }, [
-                            createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '‹', customName: _sdT('Page Link') })
+                            createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '‹', customName: _sdT('Page Link'),
+                                _attrs: [{ name: 'aria-label', value: _sdT('Previous page') }] })
                         ])
                     ];
                     for (var _pi = 1; _pi <= 5; _pi++) {
@@ -17738,11 +19676,16 @@ const StyleDesigner = (function () {
                         ]));
                     }
                     _pgItems.push(createNode('semantic', { tag: 'li', cssClass: 'page-item', customName: _sdT('Next') }, [
-                        createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '›', customName: _sdT('Page Link') })
+                        createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '›', customName: _sdT('Page Link'),
+                            _attrs: [{ name: 'aria-label', value: _sdT('Next page') }] })
                     ]));
+                    // flex-wrap: seven items in a look with wide buttons (bold, …)
+                    // are wider than a 360 px phone, and every page added with
+                    // New Page widens it further; the row wraps instead of
+                    // scrolling the page sideways, as the site's own pagers do.
                     return createNode('semantic', { tag: 'nav', customName: _sdT('Pagination'),
                         _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
-                        createNode('semantic', { tag: 'ul', cssClass: 'pagination', customName: _sdT('Page List') }, _pgItems)
+                        createNode('semantic', { tag: 'ul', cssClass: 'pagination flex-wrap', customName: _sdT('Page List') }, _pgItems)
                     ]);
                 }
 
@@ -17766,7 +19709,7 @@ const StyleDesigner = (function () {
                 // ── Close Button ──
                 if (ctype === 'close-btn') {
                     return createNode('semantic', { tag: 'button', cssClass: 'btn-close', customName: _sdT('Close Button'),
-                        _attrs: [{ name: 'type', value: 'button' }, { name: 'aria-label', value: 'Close' }] });
+                        _attrs: [{ name: 'type', value: 'button' }, { name: 'aria-label', value: _sdT('Close') }] });
                 }
 
                 // ── Placeholder (loading skeleton) ──
@@ -17794,7 +19737,7 @@ const StyleDesigner = (function () {
                 // ── Ratio (aspect-ratio wrapper) ──
                 if (ctype === 'ratio') {
                     return createNode('semantic', { tag: 'div', cssClass: 'ratio ratio-16x9', customName: _sdT('Ratio {var}', '16:9') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center bg-light text-muted', customName: _sdT('Ratio Content'), text: '16:9' })
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center justify-content-center bg-body-tertiary text-body-secondary', customName: _sdT('Ratio Content'), text: '16:9' })
                     ]);
                 }
 
@@ -17816,19 +19759,19 @@ const StyleDesigner = (function () {
                 // ── Horizontal Stack ──
                 if (ctype === 'hstack') {
                     return createNode('semantic', { tag: 'div', cssClass: 'hstack gap-3', customName: _sdT('Horizontal Stack') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border ms-auto', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border ms-auto', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
                         createNode('semantic', { tag: 'div', cssClass: 'vr', customName: _sdT('Vertical Rule') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
                     ]);
                 }
 
                 // ── Vertical Stack ──
                 if (ctype === 'vstack') {
                     return createNode('semantic', { tag: 'div', cssClass: 'vstack gap-3', customName: _sdT('Vertical Stack') }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
-                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-light border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('First item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Second item') }),
+                        createNode('semantic', { tag: 'div', cssClass: 'p-2 bg-body-tertiary border', customName: _sdT('Stack Item'), text: _sdT('Third item') })
                     ]);
                 }
 
@@ -17850,7 +19793,9 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'blockquote', cssClass: 'blockquote', customName: _sdT('Quote') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('A well-known quote, contained in a blockquote element.'), cssClass: 'mb-0' })
                         ]),
-                        createNode('semantic', { tag: 'figcaption', cssClass: 'blockquote-footer', customName: _sdT('Attribution') }, [
+                        // .blockquote-footer is a literal grey in Bootstrap 5.3.8 and
+                        // does not follow dark mode; text-body-secondary does.
+                        createNode('semantic', { tag: 'figcaption', cssClass: 'blockquote-footer text-body-secondary', customName: _sdT('Attribution') }, [
                             createNode('content', { contentType: 'paragraph', text: _sdT('Someone famous in <cite>Source Title</cite>'), cssClass: 'mb-0' })
                         ])
                     ]);
@@ -19975,8 +21920,13 @@ const StyleDesigner = (function () {
             // Image attrs are editable — propKey links the input directly to n.props[propKey]
             attrs.push({ name: 'src',    value: p.src    || '', propKey: 'src'    });
             attrs.push({ name: 'alt',    value: p.alt    !== undefined ? p.alt : '', propKey: 'alt'    });
-            attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
-            attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
+            // width / height are attribute rows while they are written as
+            // attributes (empty or a whole number, _sdImgDim()). A value with
+            // a unit is a style: outside a ratio box it is shown in the
+            // merged 'style' row (_sdInlineStyleProps()), in a ratio box it
+            // is the box's, not the image's, and is not listed here.
+            if (!_sdImgDim(p.width).css)  attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
+            if (!_sdImgDim(p.height).css) attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
             // Note: objectPosition is shown in the merged, editable 'style'
             // row (_sdInlineStyleProps()) — not locked here.
         }
@@ -20638,10 +22588,29 @@ const StyleDesigner = (function () {
     //           _attrs.style and the prop is cleared, since the style wins
     function _sdInlineStyleProps(node) {
         var same = function (v) { return String(v); };
-        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: same }];
+        // A family as the page writes it (_sdFontFamilyCss(): quoted, with
+        // the sans-serif fallback) reads back as the bare family; a stack
+        // of several stays in the style (null).
+        var family = function (v) {
+            var m = /^\s*(?:'([^',]+)'|"([^",]+)"|([^'",]+?))\s*(?:,\s*sans-serif\s*)?$/i.exec(String(v));
+            return m ? (m[1] || m[2] || m[3]).trim() : null;
+        };
+        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: family }];
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
+            // A width / height with a unit is written in the image's style
+            // (outside a ratio box): listed there, not as an attribute row
+            // (getNodeBuiltinAttrs()). A whole number written in the style
+            // row goes back to the prop and so to the attribute.
+            if (!_sdImgInRatio(p)) {
+                ['width', 'height'].forEach(function (k) {
+                    if (!_sdImgDim(p[k]).css) return;
+                    out.push({ prop: k, css: k,
+                               toCss: function (v) { return _sdImgDim(v).css; },
+                               fromCss: function (v) { var t = String(v).trim(); return t === '' ? null : t; } });
+                });
+            }
         }
         if (node && node.type === 'content' && p.contentType === 'icon') {
             out.push({ prop: 'fontSize', css: 'font-size',
@@ -21047,7 +23016,7 @@ const StyleDesigner = (function () {
                 '<input type="text" class="sd-attr-val" data-prop="id" value="' + esc(n.props.id || '') + '" placeholder="element id">' +
                 '<span class="sd-attr-del-ph"></span>' +
             '</div>' +
-            // Sabit: class (chip-input)
+            // Fixed: class (chip-input)
             '<div class="sd-attr-row sd-attr-row-fixed sd-attr-row-class">' +
                 '<span class="sd-attr-name-lbl">class</span>' +
                 '<span class="sd-attr-sep">:</span>' +
@@ -21679,86 +23648,196 @@ const StyleDesigner = (function () {
     end legacy renderStylesPanel */
 
     // ========================= HTML COMPILER =========================
-    function addGlobalAttrs(htmlStr, node) {
-        var extraCls   = getNodeExtraClasses(node);
-        var extraStyle = getNodeExtraStyle(node);
-        var hasAttrs = node.props.id || node.props.title || node.props.inlineStyle || node.props.fontFamily ||
-            (node.props._attrs && node.props._attrs.length) ||
-            node.props.tooltipEnabled || node.props.srOnly || extraStyle || extraCls;
-        if (!hasAttrs) return htmlStr;
-        var firstTagEnd = htmlStr.indexOf('>');
-        if (firstTagEnd === -1) return htmlStr;
-        // 1. Inject extra classes into existing class="" or add new class attr
-        if (extraCls) {
-            var ft = htmlStr.slice(0, firstTagEnd);
-            var clsIdx = ft.indexOf(' class="');
-            if (clsIdx !== -1) {
-                var clsEnd = ft.indexOf('"', clsIdx + 8);
-                var existing = ft.slice(clsIdx + 8, clsEnd);
-                htmlStr = ft.slice(0, clsIdx) + ' class="' + (existing ? existing + ' ' : '') + extraCls + '"' +
-                    htmlStr.slice(clsEnd + 1);
-            } else {
-                htmlStr = htmlStr.slice(0, firstTagEnd) + ' class="' + extraCls + '"' + htmlStr.slice(firstTagEnd);
-            }
-            firstTagEnd = htmlStr.indexOf('>');
+    // The content types whose page markup carries the node's own attributes
+    // (_render_content_html() writes them through _compose_inline_style()
+    // and _render_extra_attrs()). The others print their markup as it is on
+    // the page (Custom HTML, a PHP block) or are drawn by the server
+    // (carousel, messages, breadcrumb, variant picker, applied offers).
+    var _SD_CONTENT_GLOBAL_ATTRS = { heading: 1, paragraph: 1, span: 1, text: 1, link: 1, icon: 1, image: 1, divider: 1, spacer: 1, svg: 1 };
+
+    // The node the Display & Sizing style of a content node is read from:
+    // a spacer's height is the element's own prop. An image's width and
+    // height are read by getNodeExtraStyle() itself (_sdImgSizeCss()), and
+    // in a ratio box addGlobalAttrs() moves the whole style to the box.
+    // Twin of _pg_content_sizing().
+    function _sdContentSizingNode(n) {
+        var p = n.props || {}, ct = p.contentType, drop = null;
+        if (ct === 'spacer') {
+            drop = ['height'];
         }
-        // 2. Build attribute string
-        var attrs = '';
-        if (node.props.id) attrs += ' id="' + esc(node.props.id) + '"';
-        var _titleVal = (node.props.tooltipEnabled && node.props.tooltipTitle) ? node.props.tooltipTitle : node.props.title;
-        if (_titleVal) attrs += ' title="' + esc(_titleVal) + '"';
-        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-            attrs += ' data-bs-toggle="tooltip"';
-            attrs += ' data-bs-placement="' + esc(node.props.tooltipPlacement || 'top') + '"';
-        }
-        // Merge inlineStyle, fontFamily, extraStyle, _attrs.style into one style attribute
-        var styleParts = [];
-        if (node.props.inlineStyle) styleParts.push(node.props.inlineStyle.replace(/;?\s*$/, ''));
-        if (node.props.fontFamily) {
-            // Quote the family name so multi-word ("Press Start 2P") faces
-            // tokenize as one identifier in the resulting `style` attribute.
-            var _ffhq = String(node.props.fontFamily).replace(/'/g, '');
-            styleParts.push("font-family:'" + _ffhq + "',sans-serif");
-        }
-        if (extraStyle) styleParts.push(extraStyle);
-        var _attrStyleVal = '';
-        if (node.props._attrs) {
-            node.props._attrs.forEach(function(attr) {
-                if (attr.name === 'style') { _attrStyleVal = attr.value || ''; }
-                // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                else if (attr.name && attr.name.trim() && attr.name !== 'id') {
-                    attrs += ' ' + attr.name.trim() + '="' + esc(attr.value || '') + '"';
-                }
-            });
-        }
-        if (_attrStyleVal) styleParts.push(_attrStyleVal);
-        if (styleParts.length) attrs += ' style="' + esc(styleParts.join(';')) + '"';
-        htmlStr = htmlStr.slice(0, firstTagEnd) + attrs + htmlStr.slice(firstTagEnd);
-        return htmlStr;
+        if (!drop) return n;
+        var copy = {};
+        Object.keys(p).forEach(function (k) { if (drop.indexOf(k) === -1) copy[k] = p[k]; });
+        return { type: n.type, props: copy };
     }
 
+    // The props a content node's toHTML() writes from: the sizing classes
+    // join cssClass once, as in _render_content_html().
+    function _sdContentProps(n, P) {
+        var extra = getNodeExtraClasses(n);
+        if (!extra || !_SD_CONTENT_GLOBAL_ATTRS[n.props.contentType]) return P;
+        var out = {};
+        Object.keys(P).forEach(function (k) { out[k] = P[k]; });
+        out.cssClass = _sdUniqueClasses((P.cssClass || '') + ' ' + extra);
+        return out;
+    }
+
+    function _sdDecodeAttr(s) {
+        return String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    }
+
+    // A content node's own attributes on the tag its toHTML() wrote (an
+    // image's <img>, inside a ratio box too), as the page writes them: one
+    // style attribute (_sdNodeStyle(): font, inline style, the type's own
+    // style, sizing, the Attributes panel's style) where the type wrote its
+    // own, or after the type's attributes; then the id, the title and
+    // tooltip and the Attributes panel's entries. An entry the type wrote
+    // from its props (a link's href, an image's src) is not written twice.
+    // `P`: the props the markup was written from (the code view's carry
+    // {{tokens}} for bound values).
+    function addGlobalAttrs(htmlStr, node, P) {
+        var p = node.props;
+        var ct = p.contentType;
+        if (!_SD_CONTENT_GLOBAL_ATTRS[ct]) return htmlStr;
+        P = P || p;
+        var list = P._attrs;
+        var sizing = getNodeExtraStyle(_sdContentSizingNode(node));
+        // An image in its own ratio box: the box (the first tag) takes the
+        // sizing style, the <img> - the element the operator selected - its
+        // own attributes and style, as on the page and the canvas
+        // (_sdApplyNodeAttrs()).
+        var boxStyle = '';
+        if (ct === 'image' && _sdImgInRatio(p)) { boxStyle = sizing; sizing = ''; }
+        var hasAttrs = p.id || p.title || p.inlineStyle || p.fontFamily || sizing || boxStyle ||
+            (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle);
+        if (!hasAttrs) return htmlStr;
+        var start = ct === 'image' ? htmlStr.indexOf('<img') : htmlStr.indexOf('<');
+        if (start === -1) return htmlStr;
+        var end = htmlStr.indexOf('>', start);
+        if (end === -1) return htmlStr;
+        var open = htmlStr.slice(start, end);
+        var close = '';
+        if (open.charAt(open.length - 1) === '/') { close = '/'; open = open.slice(0, -1); }
+        var names = [];
+        open.replace(/\s([^\s="]+)(?:="[^"]*")?/g, function (all, name) { names.push(name.toLowerCase()); return all; });
+        // The type's own style is taken out and written back, merged, in
+        // its place.
+        var own = '', styleAt = -1;
+        var sm = /\sstyle="([^"]*)"/i.exec(open);
+        if (sm) {
+            own = _sdDecodeAttr(sm[1]);
+            styleAt = sm.index;
+            open = open.slice(0, sm.index) + open.slice(sm.index + sm[0].length);
+        }
+        var style = _sdNodeStyle({ fontFamily: p.fontFamily, inlineStyle: p.inlineStyle, _attrs: list }, own, sizing);
+        var styleAttr = style ? ' style="' + esc(style) + '"' : '';
+        open = styleAt !== -1 ? open.slice(0, styleAt) + styleAttr + open.slice(styleAt) : open + styleAttr;
+        // What _render_content_html() leaves out of the Attributes panel's
+        // list: an image's own attributes, a link's href and the window and
+        // relationship its props set.
+        var skip = [];
+        if (ct === 'image') skip = ['src', 'alt', 'width', 'height', 'onerror'];
+        if (ct === 'link') skip = ['href', 'target', 'rel'].filter(function (k) { return names.indexOf(k) !== -1; });
+        open += _sdNodeExtraAttrs(p, list, skip);
+        var out = htmlStr.slice(0, start) + open + close + htmlStr.slice(end);
+        if (boxStyle) {
+            var boxEnd = out.indexOf('>');
+            out = out.slice(0, boxEnd) + ' style="' + esc(boxStyle) + '"' + out.slice(boxEnd);
+        }
+        return out;
+    }
 
     // ── Sizing / Tooltip / A11y helpers ──
+    // A Display & Sizing option as text: a string trimmed ('0' is a value),
+    // a non-zero finite number as written, anything else (the number 0,
+    // false, no value) ''.
+    function _sdSizingValue(v) {
+        if (typeof v === 'string') return v.trim();
+        return (typeof v === 'number' && isFinite(v) && v !== 0) ? String(v) : '';
+    }
+    // A length typed into the Sizing panel (width, height, their minimum and
+    // maximum, the position offsets) as CSS. The panel takes CSS values
+    // ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a unit
+    // ('48', '-8', '1.5') is taken as pixels, the unit of the panel's
+    // examples and of an image's width / height attributes: a browser drops
+    // a declaration whose length has no unit. The page's renderer writes the
+    // same (pg_designer_css_length(), includes/fn/designer.php).
+    function _sdCssLen(v) {
+        var s = (v === undefined || v === null) ? '' : String(v).trim();
+        if (/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(s)) return s + 'px';
+        return s;
+    }
+    // How an image's width or height prop is written: a whole number as the
+    // width / height attribute (pixels; it keeps the layout box before the
+    // file arrives), anything else as CSS with its own unit ('50%', '12rem',
+    // '120px', 'auto'); a bare decimal is pixels (_sdCssLen()). The page's
+    // renderer writes the same (pg_img_dimension(), includes/fn/image.php).
+    // A prop JavaScript takes as false (the number 0, '', no value) is no
+    // size; the string '0' is one, as on the page (pg_designer_prop_text()).
+    function _sdImgDim(v) {
+        var s = (!v || typeof v === 'object') ? '' : String(v).trim();
+        if (s === '') return { attr: '', css: '' };
+        if (/^\d+$/.test(s)) return { attr: s, css: '' };
+        return { attr: '', css: _sdCssLen(s) };
+    }
+    // The CSS an image's width or height ('width' | 'height') is drawn with.
+    // In its ratio box the box takes the size, a whole number in pixels, and
+    // the image fills it; otherwise only a value with a unit is CSS (a whole
+    // number is the attribute, see _sdImgDim()).
+    function _sdImgSizeCss(p, which) {
+        var d = _sdImgDim(p[which]);
+        if (_sdImgInRatio(p)) return d.attr ? d.attr + 'px' : d.css;
+        return d.css;
+    }
+    // Whether an image stands in its own .ratio box: a preset ratio ('16x9'),
+    // or the Sizing panel's custom ratio when it is switched on with a value
+    // (its --bs-aspect-ratio comes with the sizing style, on the box). The
+    // page uses the same test (the image case of _render_content_html()).
+    function _sdImgInRatio(p) {
+        var ar = String((p && p.aspectRatio) || '');
+        if (/^\d+x\d+$/.test(ar)) return true;
+        return ar === 'custom' && !!p.aspectRatioEnabled && !!p.aspectRatioCustom;
+    }
+    // The class of an image's ratio box: 'ratio ratio-16x9', or 'ratio'
+    // alone for a custom ratio.
+    function _sdImgRatioClass(p) {
+        var ar = String(p.aspectRatio || '');
+        return /^\d+x\d+$/.test(ar) ? 'ratio ratio-' + ar : 'ratio';
+    }
     // Returns extra inline style string from prop-based sizing inputs.
+    // The page writes the same declarations in the same order
+    // (_pg_node_sizing_decls(), includes/fn/designer.php): z-index first
+    // (an integer or auto only), the lengths, overflow, the offsets, then a
+    // custom ratio. A bare number is pixels; the string '0' is a value and
+    // the number 0 none.
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
-        if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
-        if (p.width)     parts.push('width:'       + p.width);
-        if (p.minWidth)  parts.push('min-width:'   + p.minWidth);
-        if (p.maxWidth)  parts.push('max-width:'   + p.maxWidth);
-        if (p.height)    parts.push('height:'      + p.height);
-        if (p.minHeight) parts.push('min-height:'  + p.minHeight);
-        if (p.maxHeight) parts.push('max-height:'  + p.maxHeight);
-        if (p.overflow)  parts.push('overflow:'    + p.overflow);
-        if (p.overflowX) parts.push('overflow-x:'  + p.overflowX);
-        if (p.overflowY) parts.push('overflow-y:'  + p.overflowY);
-        if (p.top)       parts.push('top:'         + p.top);
-        if (p.right)     parts.push('right:'       + p.right);
-        if (p.bottom)    parts.push('bottom:'      + p.bottom);
-        if (p.left)      parts.push('left:'        + p.left);
-        if (p.aspectRatioEnabled && p.aspectRatio === 'custom' && p.aspectRatioCustom) {
-            parts.push('--bs-aspect-ratio:' + p.aspectRatioCustom);
+        // An image's own width / height go through _sdImgSizeCss(); every
+        // other length through _sdCssLen() (a bare number is pixels).
+        var _isImg = n.type === 'content' && p.contentType === 'image';
+        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : _sdCssLen(_sdSizingValue(p.width));
+        var _h = _isImg ? _sdImgSizeCss(p, 'height') : _sdCssLen(_sdSizingValue(p.height));
+        var _len = function (css, v) { var c = _sdCssLen(_sdSizingValue(v)); if (c) parts.push(css + ':' + c); };
+        var _raw = function (css, v) { var c = _sdSizingValue(v); if (c) parts.push(css + ':' + c); };
+        var _zi = _sdSizingValue(p.zIndex);
+        if (_zi === 'auto' || /^-?\d+$/.test(_zi)) parts.push('z-index:' + _zi);
+        if (_w)          parts.push('width:'       + _w);
+        _len('min-width',  p.minWidth);
+        _len('max-width',  p.maxWidth);
+        if (_h)          parts.push('height:'      + _h);
+        _len('min-height', p.minHeight);
+        _len('max-height', p.maxHeight);
+        _raw('overflow',   p.overflow);
+        _raw('overflow-x', p.overflowX);
+        _raw('overflow-y', p.overflowY);
+        _len('top',    p.top);
+        _len('right',  p.right);
+        _len('bottom', p.bottom);
+        _len('left',   p.left);
+        var _arc = _sdSizingValue(p.aspectRatioCustom);
+        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && _arc) {
+            parts.push('--bs-aspect-ratio:' + _arc);
         }
         return parts.join(';');
     }
@@ -21779,33 +23858,38 @@ const StyleDesigner = (function () {
         var cls = (p.cssClass || '').split(/\s+/).filter(function (c) {
             return c && !_SD_SIZING_CLASS_RE.test(c);
         });
-        // Re-add active sizing classes (matches getNodeExtraClasses logic)
-        if (p.srOnly) cls.push('visually-hidden');
+        // Re-add active sizing classes (matches getNodeExtraClasses logic,
+        // in its order)
         if (p.aspectRatioEnabled) {
             cls.push('ratio');
             var _ar = p.aspectRatio || '16x9';
             if (_ar && _ar !== 'custom') cls.push('ratio-' + _ar);
         }
+        if (p.srOnly) cls.push('visually-hidden');
+        if (p.focusRing) cls.push('focus-ring');
         if (p.placeholderMode) {
             cls.push('placeholder');
             if (p.placeholderAnim === 'glow') cls.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') cls.push('placeholder-wave');
         }
-        if (p.focusRing) cls.push('focus-ring');
         p.cssClass = cls.join(' ').trim();
     }
 
+    // The Display & Sizing classes in the order of
+    // _build_node_sizing_attrs(), which writes the saved page: ratio,
+    // visually-hidden, focus-ring, placeholder.
     function getNodeExtraClasses(n) {
         var p = n.props;
         var classes = [];
-        if (p.srOnly) classes.push('visually-hidden');
         if (p.aspectRatioEnabled) {
             classes.push('ratio');
             // Default to 16x9 when toggle is enabled but no preset has been chosen yet —
             // matches the dropdown's UI default so the visual effect is immediate.
-            var _arVal = p.aspectRatio || '16x9';
-            if (_arVal && _arVal !== 'custom') classes.push('ratio-' + _arVal);
+            var _arVal = _sdSizingValue(p.aspectRatio) || '16x9';
+            if (_arVal !== 'custom' && /^\d+x\d+$/.test(_arVal)) classes.push('ratio-' + _arVal);
         }
+        if (p.srOnly) classes.push('visually-hidden');
+        if (p.focusRing) classes.push('focus-ring');
         // Loading-skeleton mode: puts a .placeholder class on the element itself. Bootstrap's
         // animation classes (.placeholder-glow / .placeholder-wave) are traditionally set on the
         // parent, but applying them to the element works in practice — keeps the tree clean
@@ -21815,7 +23899,6 @@ const StyleDesigner = (function () {
             if (p.placeholderAnim === 'glow') classes.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') classes.push('placeholder-wave');
         }
-        if (p.focusRing) classes.push('focus-ring');
         return classes.join(' ');
     }
 
@@ -22754,6 +24837,7 @@ const StyleDesigner = (function () {
         entries: [],        // the range map behind it (see _sdCodeDocument())
         busy: false,        // true while the editor is being written to
         fromEditor: false,  // true while a selection made in the editor is applied
+        heldBinding: null,  // what a half-typed {{token}} replaced (_sdCodeHoldBinding())
         loading: false,
         editable: null,     // what the editor was last told (null: never)
         dirty: null,        // { from, to } typed since the last apply, in editor positions
@@ -23682,6 +25766,10 @@ const StyleDesigner = (function () {
         }
         if (name === 'style') {
             if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            // The typed style is the whole attribute: the old inline style
+            // field, printed ahead of the Attributes panel's style
+            // (_sdNodeStyle()), is folded into it.
+            if (p.inlineStyle) p.inlineStyle = '';
             _sdApplyInlineStyle(node, now || '');
             return;
         }
@@ -23690,8 +25778,7 @@ const StyleDesigner = (function () {
         // literal; a literal written over a binding ends it.
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
-        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
-        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (_sdCodeSetTitleAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -23700,6 +25787,37 @@ const StyleDesigner = (function () {
         if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
         else if (idx === -1) p._attrs.push({ name: name, value: now });
         else p._attrs[idx].value = now;
+    }
+
+    // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
+    // to the props they came from: the tooltip's text, placement and switch,
+    // or the plain title. false when the attribute is the Attributes
+    // panel's (an entry of that name, or another toggle's data-bs-toggle),
+    // which the caller then writes to the list.
+    function _sdCodeSetTitleAttr(node, name, now) {
+        var p = node.props;
+        if (name !== 'title' && name !== 'data-bs-placement' && name !== 'data-bs-toggle') return false;
+        var written = {};
+        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        if (written[name]) return false;
+        var tipOn = !!p.tooltipEnabled && !written['data-bs-toggle'];
+        if (name === 'title') {
+            if (tipOn) { p.tooltipTitle = now || ''; return true; }
+            if (p.title && ['content', 'semantic', 'container', 'row', 'col'].indexOf(node.type) !== -1) { p.title = now || ''; return true; }
+            return false;
+        }
+        if (name === 'data-bs-placement') {
+            if (tipOn) { p.tooltipPlacement = now || 'top'; return true; }
+            return false;
+        }
+        // data-bs-toggle="tooltip" is the tooltip's switch; another value
+        // typed over it turns the tooltip off and goes to the list.
+        if (!tipOn || !p.tooltipTitle) return false;
+        if (now === 'tooltip') return true;
+        p.tooltipEnabled = false;
+        return now === undefined;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -23802,6 +25920,53 @@ const StyleDesigner = (function () {
 
     function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
 
+    // A token still being typed or picked from the completion list: a {{
+    // with no }} after it, or an empty {{}} (closed brackets).
+    function _sdCodeHalfToken(value) {
+        return (typeof value === 'string') && (/\{\{(?![\s\S]*\}\})/.test(value) || /\{\{\s*\}\}/.test(value));
+    }
+
+    // The code view applies what is typed after a pause, so a token being
+    // typed over a bound (or bindable) value is applied half done: the
+    // binding ends and "{{" stands as the value. What the prop held before
+    // that is kept here, once, so the finished token gets the design-time
+    // text or value and the date format back (_sdCodeBindHeld()). A literal
+    // typed over it instead lets it go. One at a time: one token is typed
+    // at once.
+    function _sdCodeHoldBinding(node, prop, typed) {
+        var held = _sdCode.heldBinding;
+        var same = !!(held && held.node === node && held.prop === prop);
+        if (!_sdCodeHalfToken(typed)) {
+            if (same) _sdCode.heldBinding = null;
+            return;
+        }
+        if (same) return;
+        var p = node.props;
+        _sdCode.heldBinding = {
+            node: node,
+            prop: prop,
+            token: (p._bindings && p._bindings[prop]) || '',
+            has: Object.prototype.hasOwnProperty.call(p, prop),
+            value: p[prop],
+            format: (p._bindFormats && p._bindFormats[prop]) || ''
+        };
+    }
+
+    // Binds `prop` to `token` (_sdNodeSetBinding()), bringing back the date
+    // format held for the same token. The record held for this node and
+    // prop ({ has, value, ... }), or null when nothing was held.
+    function _sdCodeBindHeld(node, prop, token) {
+        var held = _sdCode.heldBinding;
+        if (held && held.node === node && held.prop === prop) _sdCode.heldBinding = null;
+        else held = null;
+        _sdNodeSetBinding(node, prop, token);
+        if (held && held.format && held.token === token) {
+            if (!node.props._bindFormats) node.props._bindFormats = {};
+            node.props._bindFormats[prop] = held.format;
+        }
+        return held;
+    }
+
     // Whether `prop` of this node is a binding a widget reads: the node is
     // inside a system widget and the Bind Data panel offers the prop. The
     // panel offers a plain element's text only when it has one, so the text
@@ -23879,11 +26044,16 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings.text) || '';
         var m = _SD_CODE_BIND_RE.exec(typed);
         if (!m) {
+            _sdCodeHoldBinding(node, 'text', typed);
             if (cur) _sdNodeSetBinding(node, 'text', '');
             return typed;
         }
-        if (m[1] !== cur) _sdNodeSetBinding(node, 'text', m[1]);
-        var kept = typed.replace(m[0], _sdCodeSlotRun(node.props.text));
+        var before = node.props.text;
+        if (m[1] !== cur) {
+            var held = _sdCodeBindHeld(node, 'text', m[1]);
+            if (held) before = held.has ? held.value : '';
+        }
+        var kept = typed.replace(m[0], _sdCodeSlotRun(before));
         // Words typed beside the token are kept on the node but never
         // shown: the page prints the bound value alone unless the markup
         // wraps a single run of words (pg_binding_text_slot()). Said once,
@@ -23903,9 +26073,15 @@ const StyleDesigner = (function () {
         var cur = (node.props._bindings && node.props._bindings[prop]) || '';
         var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
         if (m) {
-            if (m[1] !== cur) _sdNodeSetBinding(node, prop, m[1]);
+            if (m[1] !== cur) {
+                var held = _sdCodeBindHeld(node, prop, m[1]);
+                // The design-time value comes back from under the "{{".
+                if (held && held.has) node.props[prop] = held.value;
+                else if (held) delete node.props[prop];
+            }
             return true;
         }
+        _sdCodeHoldBinding(node, prop, value);
         if (cur) _sdNodeSetBinding(node, prop, '');
         return false;
     }
@@ -24888,6 +27064,9 @@ const StyleDesigner = (function () {
             document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
                 x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
             });
+            // Only the position this move found legal may be used by the
+            // drop; one left from an earlier move over the row may not.
+            li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
@@ -24934,6 +27113,7 @@ const StyleDesigner = (function () {
 
         li.addEventListener('dragleave', function() {
             li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
@@ -24941,7 +27121,11 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
 
-            var pos = li._dropPos || 'inside';
+            // No position means the dragover found no legal place on this
+            // row (canDrop() refused inside and beside it): nothing moves.
+            var pos = li._dropPos;
+            li._dropPos = null;
+            if (!pos) return;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -25002,6 +27186,26 @@ const StyleDesigner = (function () {
                 ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
                 : [treeDragNode];
             if (!nodesToMove.length) return;
+
+            // Every moved node must be one canDrop() lets into where it
+            // lands, as on the canvas: the dragover asked only for the
+            // dragged row, and a multi-selection carries others.
+            var _destParent = null;
+            if (pos === 'inside' && node.type === 'shared_ref') {
+                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+            } else if (pos === 'inside') {
+                _destParent = node;
+            } else {
+                var _dInfo = _findParentAnywhere(node);
+                _destParent = _dInfo ? _dInfo.parent : null;
+            }
+            if (!_destParent) return;
+            for (var _mi = 0; _mi < nodesToMove.length; _mi++) {
+                var _mn = nodesToMove[_mi];
+                if (!canDrop({ source: 'node', node: _mn, type: _mn.type }, _destParent)) return;
+            }
 
             saveState();
 
@@ -26693,9 +28897,11 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
+        if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
         _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
@@ -27205,6 +29411,7 @@ const StyleDesigner = (function () {
             var _isCartLink        = (_regionType === 'cart_link');
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
             var _isAccountInvoices = (_regionType === 'account_invoices');
+            var _isAccountEmail    = (_regionType === 'account_email');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -27248,6 +29455,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isAccountEmail) {
+                _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
@@ -27504,10 +29713,18 @@ const StyleDesigner = (function () {
                     } else {
                         html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
                         html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
+                        // Counters of the detail page (pg_sw_counter_order_sql()).
+                        html += '<optgroup label="' + esc(_sdT('Statistics')) + '">';
+                        html += '<option value="number_of_views"'    + (selected === 'number_of_views'    ? ' selected' : '') + '>' + esc(_sdT('Number of Views')) + '</option>';
+                        html += '<option value="number_of_comments"' + (selected === 'number_of_comments' ? ' selected' : '') + '>' + esc(_sdT('Number of Comments')) + '</option>';
+                        html += '<option value="recent_views"'       + (selected === 'recent_views'       ? ' selected' : '') + '>' + esc(_sdT('Views in recent days')) + '</option>';
+                        html += '</optgroup>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                             _ff.forEach(function (ff) {
                                 var token = (ff.name && ('' + ff.name).trim()) || ('field_' + ff.id);
+                                // A counter name orders by the counter on the server.
+                                if (_SW_FORM_ORDER_COUNTERS.indexOf(token) !== -1) return;
                                 var label = ff.label || ff.name || ('#' + ff.id);
                                 html += '<option value="' + esc(token) + '"' + (token === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
                             });
@@ -27518,6 +29735,16 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                // Counter orders: the counters are kept per detail page, so
+                // without one the list keeps the date order (say so), and the
+                // recent-views window gets its Days box (1-180, 7 by default,
+                // as pg_sw_recent_views_days()).
+                var _orderCounter = !_isCatalogListing && (_SW_FORM_ORDER_COUNTERS.indexOf(_orderField) !== -1 || _SW_FORM_ORDER_COUNTERS.indexOf(_order2Field) !== -1);
+                var _orderNoDetail = _orderCounter && (_cfg.detail_page_id == null || String(_cfg.detail_page_id) === '' || String(_cfg.detail_page_id) === '0');
+                var _orderRecent = !_isCatalogListing && (_orderField === 'recent_views' || _order2Field === 'recent_views');
+                var _orderDays = parseInt(_cfg.order_recent_days, 10);
+                if (!(_orderDays >= 1)) _orderDays = 7;
+                if (_orderDays > 180) _orderDays = 180;
 
                 // Detail-page select options. The backing list differs by region:
                 //   form_list_view  → page_type='form item view' filtered to those
@@ -27592,7 +29819,8 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>'
+                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
                         '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
@@ -27608,6 +29836,10 @@ const StyleDesigner = (function () {
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
+                    ) : '') +
+                    (_orderRecent ? row(_sdT('Days counted'),
+                        '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
@@ -28124,6 +30356,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
+
+                // ── Filters (form_item_view): which records the page shows ──
+                // Same rows and handlers as the list's filters; a record
+                // outside them is not found, in its feed and sitemap too.
+                systemSection += sect('bi-funnel', _sdT('Filters'),
+                    _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _fivFields || [], _fivFields === null,
+                        _sdT('The page shows a record only when it matches every filter; any other address gets the not-found state, and the record stays out of the page\'s RSS feed and the sitemap. For example, Status is equal to Published keeps drafts off this page. The filters belong to this widget, not to the form: give every other public list and record view of the same form, on any page, the same filter, because a record\'s pretty address opens on every page that shows its form. If a filtered field is renamed or deleted, or the widget is pointed at another form, the page shows no record. E-mails still show the record they were sent for.')));
             }
 
             // ── Records in the translation (form list / detail) ───────────
@@ -28279,7 +30518,8 @@ const StyleDesigner = (function () {
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
-                    )
+                    ) +
+                    _swAccountEmailRow(sid, _cfg, 'reset')
                 );
             }
 
@@ -28308,6 +30548,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
@@ -28785,6 +31026,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
@@ -28844,6 +31086,7 @@ const StyleDesigner = (function () {
                             if (f.rss_field)       flags.push(_sdT('role: ') + (_cfMeta().rss[f.rss_field] || f.rss_field));
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
+                            if (f.rich)            flags.push(_sdT('rich text'));
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -28912,7 +31155,14 @@ const StyleDesigner = (function () {
                         ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
+                            // Shown and hidden as the address is typed
+                            // (the .sd-cf-s handler); the auto-reply switch
+                            // redraws the panel.
+                            '<div id="sd-cf-silent-warn" style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45;margin-top:4px' + (_cfSettingsSilent(_cfFS) ? '' : ';display:none') + '">' +
+                                '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                            '</div>'
                         ) +
                         row(_sdT('Notification subject'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_subject" value="' + esc(_cfFS.notify_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('New form submission')) + '">'
@@ -29022,7 +31272,8 @@ const StyleDesigner = (function () {
                                 _cfF.fields.forEach(function (f) {
                                     _cfFL += '<li><span class="bi bi-dot"></span><strong>' + esc(f.label || f.name) + '</strong> ' +
                                              '<code>' + esc(f.name) + '</code> <span style="color:#888">' + esc(_cfTypeLabel(f.type)) +
-                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') + '</span></li>';
+                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') +
+                                             (_cfFlagOn(f.wysiwyg) ? ' · ' + esc(_sdT('rich text')) : '') + '</span></li>';
                                 });
                                 _cfFL += '</ul>';
                             } else {
@@ -29437,6 +31688,7 @@ const StyleDesigner = (function () {
                         if (cached && (cached.autoNamed || _swIsAutoName(cached.name))) {
                             _swRename(sid, _swAutoName(newType, null, { sid: sid }), null);
                         }
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(sid);
                         if (!_offerStarterTree(sid, newType)) { render(); renderProperties(); }
                     }
                 });
@@ -29457,7 +31709,10 @@ const StyleDesigner = (function () {
                 ]
             }).then(function (choice) {
                 if (choice === 'fork') {
-                    _swForkForThisPage(sid, { regionType: newType }, function () { renderProperties(); });
+                    _swForkForThisPage(sid, { regionType: newType }, function (newId) {
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(newId);
+                        renderProperties();
+                    });
                 } else if (choice === 'all') {
                     applyHere();
                 } else {
@@ -29634,7 +31889,10 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = _swPageVal(this);
-                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; });
+                // Re-render: the counter-order hint depends on it.
+                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
             });
         }
 
@@ -29713,7 +31971,24 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = this.value || 'submitted_date_and_time';
-                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; });
+                // Re-render to show/hide the Days row and the detail-page hint.
+                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
+            });
+        }
+
+        // ── order_recent_days (number) — window of the recent_views order ──
+        var obdaysEl = document.getElementById('sd-sw-orderby-days');
+        if (obdaysEl) {
+            obdaysEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var n = parseInt(this.value, 10);
+                if (!(n >= 1)) n = 7;
+                if (n > 180) n = 180;
+                this.value = n;
+                _patchSysCfg(sid, function (cfg) { cfg.order_recent_days = n; });
             });
         }
 
@@ -30516,6 +32791,8 @@ const StyleDesigner = (function () {
         //   data-sw-cfg-kind      text (default) | int (clamped to min/max) |
         //                         choice (one of data-sw-cfg-choices) | page
         //   data-sw-cfg-list="key" checkboxes that together write an id list
+        //   data-sw-cfg-repaint   the panel is redrawn once saved (a hint
+        //                         under the control depends on the value)
         document.querySelectorAll('#sd-properties [data-sw-cfg]').forEach(function (el) {
             el.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
@@ -30546,7 +32823,8 @@ const StyleDesigner = (function () {
                 // type radios), so the canvas repaints after it.
                 _patchSysCfg(sid, function (cfg) { cfg[key] = v; },
                     (kind === 'choice') ? { afterSave: function () { renderProperties(); render(); } }
-                        : ((kind === 'bool') ? { afterSave: function () { render(); } } : undefined));
+                        : ((kind === 'bool') ? { afterSave: function () { render(); } }
+                            : (this.dataset.swCfgRepaint ? { afterSave: function () { renderProperties(); } } : undefined)));
             });
         });
         document.querySelectorAll('#sd-properties [data-sw-cfg-list]').forEach(function (el) {
@@ -31070,6 +33348,8 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-cf-s').forEach(function (el) {
             el.addEventListener('change', function () {
                 _cfPageSettings()[el.dataset.s] = ('' + el.value).slice(0, 255);
+                var warn = (el.dataset.s === 'notify_email') ? document.getElementById('sd-cf-silent-warn') : null;
+                if (warn) warn.style.display = _cfSettingsSilent(_cfPageSettings()) ? '' : 'none';
             });
         });
         document.querySelectorAll('.sd-cf-sn').forEach(function (el) {
@@ -31159,6 +33439,8 @@ const StyleDesigner = (function () {
                 // The rows moved page; the controls point at them under the
                 // new page's id from now on.
                 _cfAdoptIds(p, res.fields || []);
+                _cfDropFieldCache(from);
+                _cfDropFieldCache(p.page_id);
                 _patchSysCfg(sid, function (c) { c.form_source = 'page'; c.form_id = 0; c.custom_form_page_id = 0; }, {
                     silent: true,
                     afterSave: function () {
@@ -31863,6 +34145,27 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // account_email token palette — mirrors _render_system_widget_account_email()
+    // in widgets_account.php. Filled only when the page is sent as a welcome
+    // or password reset e-mail; anywhere else the values are empty and the
+    // links drop.
+    var SW_ACCOUNT_EMAIL_TOKEN_GROUPS = [
+        { label: _sdT('Member'), tokens: [
+            ['__user_name',        _sdT('Name (full name, else the user name)')],
+            ['__user_first_name',  _sdT('First name (else the user name)')],
+            ['__user_email',       _sdT('Email')],
+            ['__username',         _sdT('User name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
+            ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
+            ['__my_account_url',   _sdT('My account page address (the link drops when there is none)')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',        _sdT('Site name')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -31874,7 +34177,8 @@ const StyleDesigner = (function () {
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
-        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS
+        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -32125,7 +34429,8 @@ const StyleDesigner = (function () {
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
-            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -32634,6 +34939,9 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
+            ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -32792,6 +35100,10 @@ const StyleDesigner = (function () {
             ['has_badge',        _sdT('The member has a badge')],
             ['is_staff',         _sdT('The visitor may open the staff page')],
             ['has_panel_access', _sdT('The user has work in the control panel')]
+        ],
+        account_email: [
+            ['is_welcome',        _sdT('The e-mail welcomes a new account')],
+            ['is_password_reset', _sdT('The e-mail carries a password reset link')]
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
@@ -33020,10 +35332,7 @@ const StyleDesigner = (function () {
         // The semantic element has no font picker or style field: both go
         // into its style attribute, ahead of the one already typed there.
         var style = [];
-        if (p.fontFamily) {
-            var fam = String(p.fontFamily);
-            style.push('font-family:' + ((/\s/.test(fam) || /^[0-9]/.test(fam)) ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif');
-        }
+        if (p.fontFamily) style.push(_sdFontFamilyCss(p.fontFamily));
         if (p.inlineStyle) style.push(String(p.inlineStyle).replace(/[;\s]+$/, ''));
         var attrs = [];
         (p._attrs || []).forEach(function (at) {
@@ -34972,7 +37281,23 @@ const StyleDesigner = (function () {
         var cls = (n.props.cssClass || '').split(/\s+/);
         var isStriped  = cls.indexOf('progress-bar-striped')  !== -1;
         var isAnimated = cls.indexOf('progress-bar-animated') !== -1;
-        var bgClasses  = ['bg-primary','bg-secondary','bg-success','bg-danger','bg-warning','bg-info','bg-dark'];
+        // The bar colour is written as text-bg-*, which also sets the label
+        // colour that reads on that background. Bars saved with a plain bg-*
+        // show that colour here, and picking one takes the bg-* class off too:
+        // Bootstrap's bg-* utilities come after text-bg-* and would win.
+        var barColors = [['primary', _sdT('Primary')], ['secondary', _sdT('Secondary')], ['success', _sdT('Success')],
+            ['danger', _sdT('Danger')], ['warning', _sdT('Warning')], ['info', _sdT('Info')], ['dark', _sdT('Dark')]];
+        var barGroup = [];
+        var barCurrent = '';
+        barColors.forEach(function (c) {
+            barGroup.push('text-bg-' + c[0], 'bg-' + c[0]);
+            if (cls.indexOf('text-bg-' + c[0]) !== -1 || cls.indexOf('bg-' + c[0]) !== -1) barCurrent = c[0];
+        });
+        var colorSel = '<select class="form-select form-select-sm" data-stylegroup="' + barGroup.join(',') + '">' +
+            '<option value="">' + _sdT('Default') + '</option>' +
+            barColors.map(function (c) {
+                return '<option value="text-bg-' + c[0] + '"' + (c[0] === barCurrent ? ' selected' : '') + '>' + c[1] + '</option>';
+            }).join('') + '</select>';
 
         // Read width % from style attr
         var attrs = n.props._attrs || [];
@@ -34986,7 +37311,7 @@ const StyleDesigner = (function () {
                 '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
                 '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
                 '</div>') +
-            row(_sdT('Color'), selStyleGroup(n.props, bgClasses, 'Default')) +
+            row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
             row(_sdT('Animated'),  swAttr('data-util-toggle="progress-bar-animated"', isAnimated))
         );
@@ -37385,7 +39710,7 @@ const StyleDesigner = (function () {
         var jcValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['between',_sdT('Space Between')],['around',_sdT('Space Around')],['evenly',_sdT('Space Evenly')]];
         var aiValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['stretch',_sdT('Stretch')],['baseline',_sdT('Baseline')]];
         var acValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['between',_sdT('Space Between')],['around',_sdT('Space Around')],['stretch',_sdT('Stretch')]];
-        var wrapValues     = [['nowrap',_sdT('No Wrap')],['wrap',_sdT('Wrap')],['wrap-reverse',_sdT('Wrap Reverse')]];
+        var wrapValues     = [['nowrap',_sdT('No Wrap')],['wrap',_sdT('Wrap Lines')],['wrap-reverse',_sdT('Wrap Reverse')]];
         var asValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['stretch',_sdT('Stretch')],['baseline',_sdT('Baseline')]];
         var orderValues    = [['first',_sdT('First')],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['last',_sdT('Last')]];
         var gapValues      = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
@@ -38881,15 +41206,31 @@ const StyleDesigner = (function () {
                 });
                 if (!innerNode) return;
                 saveState();
+                // The block carousels keep their id in _attrs, the Components
+                // carousel in the id prop.
                 var crId = n.props.id || '';
+                (n.props._attrs || []).forEach(function (a) { if (!crId && a.name === 'id') crId = a.value || ''; });
                 if (action === 'add-slide') {
                     var idx = innerNode.children ? innerNode.children.length : 0;
                     if (!innerNode.children) innerNode.children = [];
-                    innerNode.children.push(makeCarouselSlide(idx + 1, false));
+                    innerNode.children.push(copyCarouselSlide(idx ? innerNode.children[idx - 1] : null, idx + 1));
                     if (indicatorsNode) {
                         if (!indicatorsNode.children) indicatorsNode.children = [];
-                        indicatorsNode.children.push(createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
-                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] }));
+                        var tailInd = indicatorsNode.children[indicatorsNode.children.length - 1];
+                        var newInd;
+                        if (tailInd) {
+                            // A copy keeps the indicator's own node kind, classes and
+                            // target; only its slide number and name change.
+                            newInd = _sdCopyCarouselNode(tailInd, idx, idx + 1);
+                            newInd.props._attrs = (newInd.props._attrs || []).filter(function (a) {
+                                return a.name !== 'data-bs-slide-to' && a.name !== 'aria-label';
+                            });
+                            newInd.props._attrs.push({ name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) });
+                        } else {
+                            newInd = createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] });
+                        }
+                        indicatorsNode.children.push(newInd);
                     }
                 } else if (action === 'remove-slide') {
                     if (innerNode.children && innerNode.children.length > 1) {
@@ -43496,17 +45837,23 @@ const StyleDesigner = (function () {
     // typed: the mirrors of pg_page_canonical_url_check() and
     // pg_page_max_snippet_check() (includes/fn/seo.php), which the save
     // applies. '' for an empty box, 'ok', or the reason.
+    // The server's pg_page_canonical_url_check() (includes/fn/seo.php), to
+    // the same answers: Unicode white space and zero-width characters
+    // trimmed at the ends, refused inside, a port above 65535 or not a
+    // number refused as parse_url() refuses it.
     function _sdCanonicalCheck(raw) {
-        var v = String(raw == null ? '' : raw).trim();
+        var v = String(raw == null ? '' : raw).replace(/^[\s\u0000\u200B-\u200D\u2060]+|[\s\u0000\u200B-\u200D\u2060]+$/g, '');
         if (!v) return '';
         var bytes = (typeof TextEncoder !== 'undefined') ? new TextEncoder().encode(v).length : v.length;
         if (bytes > 2000) return 'size';
-        if (/[\u0000-\u0020\u007F"<>\\]/.test(v)) return 'chars';
+        if (/[\u0000-\u0020\u007F"<>\\]|[\p{Z}\p{Cf}]/u.test(v)) return 'chars';
         if (v.charAt(0) === '/') return (v.charAt(1) === '/') ? 'scheme' : 'ok';
         var m = /^https?:\/\/([^\/?#]*)/i.exec(v);
         if (!m) return 'scheme';
         // The host: what is left of the authority without a user and a port.
-        return m[1].replace(/^[^@]*@/, '').replace(/:[0-9]*$/, '') ? 'ok' : 'scheme';
+        var hp = /^(\[[^\]]*\]|[^:]*)(?::([0-9]*))?$/.exec(m[1].replace(/^[^@]*@/, ''));
+        if (!hp || !hp[1]) return 'scheme';
+        return (hp[2] && parseInt(hp[2], 10) > 65535) ? 'scheme' : 'ok';
     }
 
     function _sdMaxSnippetCheck(raw, limit) {
@@ -44089,6 +46436,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
@@ -44098,7 +46446,7 @@ const StyleDesigner = (function () {
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -44182,7 +46530,8 @@ const StyleDesigner = (function () {
     function _swTypeDefaults(cfg, newType) {
         cfg.regionType = newType;
         if (newType === 'catalog_listing') {
-            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined) {
+            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined ||
+                _SW_FORM_ORDER_COUNTERS.indexOf(cfg.order_by_field) !== -1) {
                 cfg.order_by_field = 'sort_order';
             }
             // 'Kayıt bulunamadı.' is the pre-i18n default; widgets saved before the
@@ -44334,6 +46683,7 @@ const StyleDesigner = (function () {
         _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
             saveState();
             _swInsertRef(newId, newName, target, insertCtx);
+            if (type === 'custom_form') _cfSeedNotifyAddress(newId);
             render();
             // Refresh the "System" tab so the new widget appears in "In this design".
             // Do NOT refresh the "Shared" tab — system widgets are excluded from there.
@@ -44565,7 +46915,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -44595,10 +46945,17 @@ const StyleDesigner = (function () {
             // so the filter is not rewritten behind the designer's back.
             if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
 
-            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var rawOp = String(f.operator == null ? '' : f.operator);
+            var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
+            // An operator outside the list (a hand-written config) is skipped
+            // by a list and closes a record view, so on a row with a field it
+            // stays visible here instead of reading as "is equal to".
+            var opBad = !opKnown && field !== '';
+            var op = opKnown ? rawOp : 'is equal to';
             var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
-                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
+            if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -44627,7 +46984,7 @@ const StyleDesigner = (function () {
         });
         html +=
             '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
-            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
 
@@ -44738,6 +47095,56 @@ const StyleDesigner = (function () {
             if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
         }
         return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+    }
+
+    // The setting row of an account e-mail: the page sent as the welcome
+    // e-mail of a registration or membership widget (kind 'welcome') or as
+    // the reset e-mail of a forgot password widget (kind 'reset'), its
+    // subject, and a line saying what goes out - or what is missing for the
+    // page to be sent. The keys are the ones pg_account_email_keys() reads.
+    // The page is picked before its Account E-mail widget is added
+    // (otherTabs), so a page that still lacks one is named in the hint.
+    function _swAccountEmailRow(sid, cfg, kind) {
+        var reset   = (kind === 'reset');
+        var pageKey = reset ? 'reset_email_page_id' : 'welcome_email_page_id';
+        var subjKey = reset ? 'reset_email_subject' : 'welcome_email_subject';
+        var cur     = (cfg[pageKey] == null) ? '' : String(cfg[pageKey]);
+        var opts    = _swPageOptions(cur, _allPagesCache, {
+            types: ['account_email'],
+            otherTabs: _sdT('This design — no Account E-mail widget yet'),
+            none: reset ? _sdT('— Built-in text e-mail —') : _sdT('— No welcome e-mail —')
+        });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var tab = null, server = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (_swPageRef(p) === cur) tab = p; });
+        if (/^\d+$/.test(cur) && cur !== '0' && _allPagesCache) {
+            _allPagesCache.forEach(function (p) { if (String(p.page_id) === cur) server = p; });
+        }
+        var name = tab ? (tab.page_name || _sdT('New Page')) : (server ? (server.page_name || ('#' + cur)) : '');
+        // A tab not opened yet has its widgets outside the cache: the saved
+        // page's widget list (list_all_pages) answers for it too.
+        var serverHas = !!(server && Array.isArray(server.widgets) && server.widgets.indexOf('account_email') !== -1);
+        var hint;
+        if ((tab && !_swTabHasWidget(tab, ['account_email']) && !serverHas) ||
+            (!tab && server && Array.isArray(server.widgets) && !serverHas)) {
+            hint = note(_sdT('"{var}" has no Account E-mail widget yet, so the e-mail cannot show the member\'s name or links. Add one to that page.', name), true);
+        } else if (tab && _pgDraftsReady() && tab.page_draft) {
+            hint = note(_sdT('"{var}" is a draft. A draft page is not sent: publish it.', name), true);
+        } else if (reset) {
+            hint = note(_sdT('Sent to the account\'s address when the page shows a link bound to "{var}"; otherwise the built-in text e-mail goes out.', _swBindLabel('account_email', '__set_password_url')), false);
+        } else {
+            hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
+        }
+        return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
+            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
+                ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
+            hint +
+            note(_sdT('The subject is plain text: no data can be bound into it.'), false)
+        );
     }
 
     function _swPageOptions(cur, serverPages, o) {
@@ -47369,6 +49776,24 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        // Last day of the right of withdrawal: 14 days
+                                        // from the last delivery. One note says the
+                                        // date rests on planned dates, the other that
+                                        // the day has passed.
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
+                                            customName: _sdT('Right of Withdrawal'),
+                                            _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Last day of the right of withdrawal:') }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
+                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Estimated; the 14 days run from delivery.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('The right of withdrawal has ended.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),
@@ -47578,6 +50003,59 @@ const StyleDesigner = (function () {
                             _bindings: { text: '__empty_message' } }),
                         loopArea
                     ])
+                ]);
+            }
+
+            case 'account_email': {
+                // The member part of a welcome and a password reset e-mail;
+                // the server keeps the part of the e-mail being sent
+                // (is_welcome / is_password_reset). E-mail programs drop
+                // linked stylesheets, so the texts and the button also carry
+                // inline styles. A colour fallback sits inside var(): a
+                // client that reads var() but blocks the linked stylesheet
+                // would otherwise drop the button's background. The name stands in an element of its own: a
+                // translated page matches whole texts, and a sentence with
+                // the name inside it would no longer match. Mirrors
+                // _render_system_widget_account_email().
+                var aeStyle = function (css) { return [{ name: 'style', value: css }]; };
+                var aeGreeting = function () {
+                    return createNode('semantic', { tag: 'h1', cssClass: 'h4 fw-bold mb-3', customName: _sdT('Greeting'),
+                        _attrs: aeStyle('font-size:22px;font-weight:700;margin:0 0 16px;color:#111827') }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Hello,'), customName: _sdT('Label'),
+                            _attrs: aeStyle('margin-right:4px') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Jane'), customName: _sdT('First Name'),
+                            _bindings: { text: '__user_first_name' } })
+                    ]);
+                };
+                var aePara = function (text, extraCss) {
+                    return createNode('content', { contentType: 'paragraph', text: text, cssClass: 'mb-3',
+                        _attrs: aeStyle('margin:0 0 16px' + (extraCss || '')) });
+                };
+                var aeButton = function (text, token) {
+                    return createNode('semantic', { tag: 'p', cssClass: 'my-4', customName: _sdT('Button'),
+                        _attrs: aeStyle('margin:24px 0') }, [
+                        createNode('content', { contentType: 'link', text: text, href: '#', cssClass: 'btn btn-primary px-4',
+                            _attrs: aeStyle('display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;' +
+                                'background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff)'),
+                            _bindings: { href: token } })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Welcome E-mail'),
+                        _bindings: { eo_visible_if: 'is_welcome' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('Your account is ready.')),
+                        aeButton(_sdT('Go to my account'), '__my_account_url')
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Reset E-mail'),
+                        _bindings: { eo_visible_if: 'is_password_reset' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('We received a request to reset your password.')),
+                        aeButton(_sdT('Set a new password'), '__set_password_url'),
+                        aePara(_sdT('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'),
+                            ';font-size:13px;color:#6b7280')
+                    ]),
+                    createNode('loop_area', {}, [])
                 ]);
             }
 
@@ -48281,7 +50759,8 @@ const StyleDesigner = (function () {
     // step. Their layouts get no Messages block, and one an older layout still
     // carries is dropped on load (prefetchShared()): on the canvas it was a
     // "PHP Messages" box in the middle of the header that the page never shows.
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1 };
+    // An e-mail shows no alerts either (_render_system_widget_account_email()).
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -48765,35 +51244,27 @@ const StyleDesigner = (function () {
         var kidsMark = sink ? sink.ranges.length : 0;
         switch (n.type) {
             case 'container': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '');
+                h += pad + _sdGridOpenTag(n, cc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'semantic': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                // The attributes as the page writes them (the semantic case
+                // of _render_tree_node()): id, class (cssClass and the sizing
+                // classes, each once), a link's href, target and rel or an
+                // image's src and alt, the title and tooltip, the Attributes
+                // panel's entries, then the style.
                 var stg = n.props.tag || 'section';
-                var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
-                var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
-                var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
-                var sStyleParts = [];
-                if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
-                if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
-                if (_pES) sStyleParts.push(_pES);
-                var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                var shref = (stg === 'a' && P.href) ? ' href="' + esc(P.href) + '"' : '';
-                var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
-                var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
-                var sattrs = '';
-                if (P._attrs) P._attrs.forEach(function(a) {
-                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                    if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
-                });
-                if (n.props.tooltipEnabled && n.props.tooltipTitle) {
-                    sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
-                }
+                var _stgL = stg.toLowerCase();
+                var _semCls = _sdUniqueClasses((n.props.cssClass || '') + ' ' + getNodeExtraClasses(n));
+                var shead = (n.props.id ? ' id="' + esc(n.props.id) + '"' : '') + (_semCls ? ' class="' + esc(_semCls) + '"' : '');
+                var sbuilt = [];
+                if (_stgL === 'a') ['href', 'target', 'rel'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                if (_stgL === 'img') ['src', 'alt'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
+                var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
+                if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
                 var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
                 var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
                 // Whitespace is CONTENT in these two. The pretty-printer's
@@ -48805,7 +51276,7 @@ const StyleDesigner = (function () {
                 // gain is indentation the visitor reads.
                 var _semWsTags = ['pre', 'textarea', 'code'];
                 var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
-                h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
+                h += pad + '<' + stg + shead + sattrs + '>';
                 if (_semIsVoid) {
                     // Void elements: no content, no closing tag
                     h += '\n';
@@ -48834,23 +51305,17 @@ const StyleDesigner = (function () {
                 }
                 break; }
             case 'row': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
                 var rc = 'row';
                 if (n.props.gutter) rc += ' g-' + n.props.gutter;
                 if (n.props.justify) rc += ' justify-content-' + n.props.justify;
                 if (n.props.align) rc += ' align-items-' + n.props.align;
                 if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                if (_pEC) rc += ' ' + _pEC;
-                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, rc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'col': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, buildColClasses(n.props)) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
@@ -48871,8 +51336,9 @@ const StyleDesigner = (function () {
                 if (cnt && cnt.toHTML) {
                     var _pctChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
-                    var cHtml = cnt.toHTML(P, pad, _pctChildren);
-                    cHtml = addGlobalAttrs(cHtml, n);
+                    var _pcP = _sdContentProps(n, P);
+                    var cHtml = cnt.toHTML(_pcP, pad, _pctChildren);
+                    cHtml = addGlobalAttrs(cHtml, n, _pcP);
                     h += cHtml;
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
                 }
@@ -48913,6 +51379,116 @@ const StyleDesigner = (function () {
         }
         if (rec) rec.to = base + h.length;
         return h;
+    }
+
+    // The opening tag of a grid node (container, row, col), twin of
+    // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
+    // saved page: the classes once each (the Display & Sizing toggles are
+    // in cssClass as well), the style as on any other node, then the id,
+    // the title or tooltip and the panel's other attributes (class, style
+    // and id are never printed from the list). The page's search section
+    // mark (data-pg-search-section) is the Search section switch's and is
+    // left out here as on every other node: typed or removed in the code
+    // view it would change nothing.
+    function _sdGridOpenTag(n, classes) {
+        var p = n.props || {};
+        var style = _sdNodeStyle(p, '', getNodeExtraStyle(n));
+        var out = '<div class="' + esc(_sdUniqueClasses(classes + ' ' + getNodeExtraClasses(n))) + '"';
+        if (style) out += ' style="' + esc(style) + '"';
+        return out + _sdNodeExtraAttrs(p, p._attrs, []) + '>';
+    }
+
+    // A class attribute's value with each class once, in the order first
+    // written. Twin of _pg_unique_classes().
+    function _sdUniqueClasses(classes) {
+        var seen = [];
+        String(classes || '').split(/\s+/).forEach(function (c) {
+            if (c && seen.indexOf(c) === -1) seen.push(c);
+        });
+        return seen.join(' ');
+    }
+
+    // The value of a node's Attributes panel entry (the first of that name,
+    // any case), '' when there is none. Twin of _user_attr_value().
+    function _sdUserAttrValue(list, name) {
+        if (!Array.isArray(list)) return '';
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            if (a && a.name && String(a.name).toLowerCase() === name) {
+                return (a.value === undefined || a.value === null) ? '' : String(a.value);
+            }
+        }
+        return '';
+    }
+
+    // The font picker's family as a declaration: quoted when it holds a
+    // space or starts with a digit, then the sans-serif fallback. A bare
+    // name stays bare, so a generic family (serif) keeps working.
+    function _sdFontFamilyCss(family) {
+        var fam = String(family);
+        var quote = fam.indexOf(' ') !== -1 || /^[0-9]/.test(fam);
+        return 'font-family:' + (quote ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif';
+    }
+
+    // The style attribute's value of a content, semantic or grid node,
+    // unescaped: the font, the old inline style field, the type's own
+    // style, the Display & Sizing props, then the Attributes panel's style;
+    // the last wins on a property written twice. Twin of
+    // _compose_inline_style(), which writes the saved page.
+    function _sdNodeStyle(p, own, sizing) {
+        var parts = [];
+        var trim = function (s) { return String(s).replace(/^[; ]+|[; ]+$/g, ''); };
+        if (p.fontFamily) parts.push(_sdFontFamilyCss(p.fontFamily));
+        if (p.inlineStyle) parts.push(String(p.inlineStyle).replace(/[; ]+$/, ''));
+        if (own) parts.push(trim(own));
+        if (sizing) parts.push(trim(sizing));
+        var u = _sdUserAttrValue(p._attrs, 'style');
+        if (u !== '') parts.push(trim(u));
+        return parts.join(';');
+    }
+
+    // The title and the tooltip of a content, semantic or grid node: the
+    // tooltip's text while the tooltip is on, the plain title otherwise,
+    // then data-bs-toggle and data-bs-placement. An element that is another
+    // toggle's (data-bs-toggle in the Attributes panel) gets no tooltip;
+    // title and placement yield to a panel entry of the same name. Twin of
+    // _pg_node_title_attrs().
+    function _sdNodeTitleAttrs(p, list) {
+        var written = {};
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        var tip = !!(p.tooltipEnabled && p.tooltipTitle) && !written['data-bs-toggle'];
+        var title = tip ? p.tooltipTitle : p.title;
+        var out = '';
+        if (title && !written.title) out += ' title="' + esc(String(title)) + '"';
+        if (tip) {
+            out += ' data-bs-toggle="tooltip"';
+            if (!written['data-bs-placement']) out += ' data-bs-placement="' + esc(p.tooltipPlacement || 'top') + '"';
+        }
+        return out;
+    }
+
+    // The id, the title and tooltip, then the Attributes panel's entries
+    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
+    // the id out. class, style and id are never written from the list.
+    // Twin of _render_extra_attrs($props, $skip, true), less the search
+    // section mark the page adds after the id; a copy of that mark typed
+    // into the panel of a search section is left out as the page leaves it.
+    function _sdNodeExtraAttrs(p, list, skip) {
+        var out = '';
+        if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
+        out += _sdNodeTitleAttrs(p, list);
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (!a || !a.name) return;
+            var name = String(a.name), lname = name.toLowerCase();
+            if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
+            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
+            out += ' ' + esc(name) + '="' + esc(val) + '"';
+        });
+        return out;
     }
 
     // Children written into a component's output (see _sdEmitNode): their
@@ -50309,10 +52885,13 @@ const StyleDesigner = (function () {
             if (revState.loading && !revState.rows.length) {
                 return html + '<div class="sd-snap-empty"><span class="bi bi-hourglass-split me-1"></span>' + esc(_sdT('Loading…')) + '</div>';
             }
+            // No row yet: the page was published before revisions were kept
+            // (or copied from another page); the server records the stored
+            // state first when the next changing save comes.
             if (!revState.rows.length) {
-                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been published yet.')) + '</div>';
+                return html + '<div class="sd-snap-empty">' + esc(_sdT('No revision has been recorded yet; the next publish first records the page as it is now.')) + '</div>';
             }
-            var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+            var loadRefusal = _sdRevisionLoadRefusal();
             html += '<div class="sd-snap-list sd-rev-list">';
             revState.rows.forEach(function (r, i) {
                 // The size against the revision before it in the list (the
@@ -50333,7 +52912,7 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-snap-acts">' +
                         '<button type="button" class="sd-snap-load sd-rev-compare" data-no="' + r.revision_no + '" title="' + esc(_sdT('Compare with the page now')) + '"><span class="bi bi-arrow-left-right"></span></button>' +
-                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (mayEdit ? '' : ' disabled title="' + esc(_sdT('Another person is editing this page.')) + '"') + '>' + esc(_sdT('Load')) + '</button>' +
+                        '<button type="button" class="sd-snap-load sd-rev-restore" data-no="' + r.revision_no + '"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load')) + '</button>' +
                     '</div></div>';
             });
             html += '</div>';
@@ -50506,9 +53085,25 @@ const StyleDesigner = (function () {
     // Loads a revision's tree into the editor as unsaved work. The tree the
     // operator had is one Ctrl+Z away, and the page is marked so the next
     // publish records where its tree came from.
-    function _sdRevisionRestore(pageId, no, done) {
+    // Why this session may not load a revision, '' when it may. Loading puts
+    // the revision's whole tree on the canvas; at the content level the
+    // save keeps only its texts and image addresses
+    // (pg_designer_merge_restricted_tree()), so the revision never reached
+    // the site while the editor read as saved. A content operator compares.
+    function _sdRevisionLoadRefusal() {
         if (typeof _collab !== 'undefined' && _collab && _collab.mayEdit === false) {
-            sdToast(esc(_sdT('Another person is editing this page.')), 'warning');
+            return _sdT('Another person is editing this page.');
+        }
+        if (_sdIsContentLevel()) {
+            return _sdT('Only a designer can load an earlier revision.');
+        }
+        return '';
+    }
+
+    function _sdRevisionRestore(pageId, no, done) {
+        var refusal = _sdRevisionLoadRefusal();
+        if (refusal) {
+            sdToast(esc(refusal), 'warning');
             return;
         }
         _sdRevisionFetch(pageId, no).then(function (rev) {
@@ -50546,15 +53141,25 @@ const StyleDesigner = (function () {
     function _sdRevisionOpenCompare(pageId, no, done) {
         _sdRevisionFetch(pageId, no).then(function (rev) {
             if (!rev) return;
-            var nameEl = document.querySelector('[name="name"]');
-            var bcEl   = document.querySelector('[name="additional_body_classes"]');
-            var styleName = nameEl ? nameEl.value.trim() : '';
-            var addBc     = bcEl ? bcEl.value.trim() : '';
-            var nowHtml = generateHTML(styleName, addBc);
-            var revHtml = generateHTML(styleName, addBc, rev.tree);
-            var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
-            var revDoc  = _sdPreviewDocHtml(null, revHtml);
-            _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            // A shared component or system widget the page has dropped
+            // since is not in the cache, and the emitter draws nothing for
+            // a shared_ref it has no tree for: the revision's side lost the
+            // block and could even read as the same HTML. Fetch the missing
+            // ones first, as loading a tree does (_replaceTreeWithPrefetch()).
+            var sids = {};
+            collectSharedIds(rev.tree, sids);
+            var missing = Object.keys(sids).map(Number).filter(function (id) { return id > 0 && !_sharedCache[id]; });
+            prefetchShared(missing, function () {
+                var nameEl = document.querySelector('[name="name"]');
+                var bcEl   = document.querySelector('[name="additional_body_classes"]');
+                var styleName = nameEl ? nameEl.value.trim() : '';
+                var addBc     = bcEl ? bcEl.value.trim() : '';
+                var nowHtml = generateHTML(styleName, addBc);
+                var revHtml = generateHTML(styleName, addBc, rev.tree);
+                var nowDoc  = _sdPreviewDocHtml(null, nowHtml);
+                var revDoc  = _sdPreviewDocHtml(null, revHtml);
+                _sdRevisionShowCompare(rev, { nowHtml: nowHtml, revHtml: revHtml, nowDoc: nowDoc, revDoc: revDoc }, pageId, done);
+            });
         });
     }
 
@@ -50565,7 +53170,7 @@ const StyleDesigner = (function () {
         overlay.id = 'sd-rev-overlay';
         overlay.className = 'sd-fr-overlay sd-rev-overlay';
         var who = esc(rev.user_username || _sdT('Unknown')) + ' · ' + esc(_sdRevisionWhen(rev.created_at)) + ' · ' + esc(_sdRevisionSourceLabel(rev.source));
-        var mayEdit = (typeof _collab === 'undefined') || !_collab || _collab.mayEdit !== false;
+        var loadRefusal = _sdRevisionLoadRefusal();
         overlay.innerHTML =
             '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
                 '<div class="sd-fr-header">' +
@@ -50586,7 +53191,7 @@ const StyleDesigner = (function () {
                 '<div class="sd-fr-footer">' +
                     '<span class="sd-rev-summary"></span>' +
                     '<button type="button" class="sd-fr-btn" id="sd-rev-cancel">' + esc(_sdT('Close')) + '</button>' +
-                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (mayEdit ? '' : ' disabled') + '>' + esc(_sdT('Load this revision')) + '</button>' +
+                    '<button type="button" class="sd-fr-btn sd-fr-btn-primary" id="sd-rev-load"' + (loadRefusal ? ' disabled title="' + esc(loadRefusal) + '"' : '') + '>' + esc(_sdT('Load this revision')) + '</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(overlay);
@@ -51144,6 +53749,10 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-page-field[data-page-key]').forEach(function (el) {
             var k = el.dataset.pageKey;
             if (!k) return;
+            // The draft switch locked by a publish time ahead (or by the
+            // home flag) shows a state the save decides, not a choice:
+            // _pgSyncDraftBox() keeps the page's own choice apart from it.
+            if (k === 'page_draft' && el.disabled) return;
             if (el.type === 'checkbox') p[k] = el.checked ? 1 : 0;
             else if (k === 'page_folder') p[k] = parseInt(el.value, 10) || 0;
             else p[k] = el.value;
@@ -53555,6 +56164,7 @@ const StyleDesigner = (function () {
             page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
             page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
             page_draft: sp.page_draft ? 1 : 0,
+            page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
             pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
             pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
             pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -54383,8 +56993,12 @@ const StyleDesigner = (function () {
             data.pages.forEach(function (m) {
                 var p = _pgPageByKey(m.key);
                 // The state the server left the page in: a draft of the home
-                // page is refused (pg_designer_page_draft_plan()).
-                if (p && typeof m.draft !== 'undefined') p.page_draft = m.draft ? 1 : 0;
+                // page is refused (pg_designer_page_draft_plan()). The stored
+                // state is the page's choice from here on, as after a reload.
+                if (p && typeof m.draft !== 'undefined') {
+                    p.page_draft = m.draft ? 1 : 0;
+                    delete p._draftByChoice;
+                }
                 // The times as the server left them: one that had come was
                 // carried out by the save and cleared.
                 if (p && typeof m.publish_at !== 'undefined') {
@@ -54413,7 +57027,16 @@ const StyleDesigner = (function () {
                 var p = _pgPageByKey(f.key) || _pgPageByKey('p' + f.page_id);
                 if (!p || !(f.page_id > 0)) return;
                 _cfAdoptIds(p, Array.isArray(f.fields) ? f.fields : []);
+                _cfDropFieldCache(f.page_id);
                 p.formSettings = (f.settings && typeof f.settings === 'object') ? f.settings : {};
+                // A page form that e-mails nobody is published as asked; it
+                // is said once per page and editor session, not blocked.
+                if (p.formSettings.exists && _cfSettingsSilent(p.formSettings) && !_cfSilentWarned[f.page_id] &&
+                    _pgTreeOf(p) && _cfPageHasOwnForm(_pgTreeOf(p))) {
+                    _cfSilentWarned[f.page_id] = true;
+                    sdToast('<strong>' + esc(p.page_title || p.page_name || _sdT('new page')) + '</strong>: ' +
+                            esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')), 'warning', 8000);
+                }
             });
         }
         if (data && data.style_id && _design) _design.styleId = data.style_id;
@@ -54498,13 +57121,16 @@ const StyleDesigner = (function () {
             // The keys as the save sends them: a new page gets its id and a
             // new key once the server answers.
             var marked = list.map(function (p) {
-                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '' };
+                return { page: p, key: p.key, was: p.page_draft ? 1 : 0, pub: p.page_publish_at || '', unpub: p.page_unpublish_at || '',
+                         choice: p._draftByChoice };
             });
             // A page put on the site by hand no longer waits for its publish
             // time; one taken off no longer waits for its time to come off.
+            // Either is the page's own choice now, whatever a time forced.
             list.forEach(function (p) {
                 p.page_draft = on ? 1 : 0;
                 if (on) p.page_unpublish_at = ''; else p.page_publish_at = '';
+                delete p._draftByChoice;
             });
             _pgSyncDraftBox(_pgActivePage());
             _pgTabsRender();
@@ -54522,6 +57148,8 @@ const StyleDesigner = (function () {
                     r.page.page_draft = r.was;
                     r.page.page_publish_at = r.pub;
                     r.page.page_unpublish_at = r.unpub;
+                    if (typeof r.choice === 'undefined') delete r.page._draftByChoice;
+                    else r.page._draftByChoice = r.choice;
                     if (rebase) r.page.baseline = _pgBaselineOf(r.page);
                 });
                 _pgSyncDraftBox(_pgActivePage());
@@ -54573,9 +57201,18 @@ const StyleDesigner = (function () {
         var home = homeBox ? homeBox.checked : !!p.page_home;
         if (home && p.page_draft) p.page_draft = 0;
         // A publish time still ahead keeps the page a draft until then
-        // (pg_page_schedule_plan() decides the same on the server).
+        // (pg_page_schedule_plan() decides the same on the server). The
+        // page's own choice is kept apart from the state the time forces,
+        // so a time typed and cleared again leaves a live page live: the
+        // next save does not take it off the site unasked.
         var waits = !home && _pgScheduleAhead(p.page_publish_at);
-        if (waits) p.page_draft = 1;
+        if (waits) {
+            if (typeof p._draftByChoice === 'undefined') p._draftByChoice = p.page_draft ? 1 : 0;
+            p.page_draft = 1;
+        } else if (typeof p._draftByChoice !== 'undefined') {
+            p.page_draft = home ? 0 : p._draftByChoice;
+            delete p._draftByChoice;
+        }
         box.checked  = !!p.page_draft;
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')
@@ -54792,6 +57429,7 @@ const StyleDesigner = (function () {
                 page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
                 page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
                 page_draft: sp.page_draft ? 1 : 0,
+                page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
                 pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
                 pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
                 pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
@@ -54929,14 +57567,15 @@ const StyleDesigner = (function () {
         // page's first form when there is none - the account menu's, the
         // search box - and puts its hint on a button once, while the main
         // button changes its word with the page on screen. The editor's form
-        // stays out of it (disable_shortcut); the two places with a Ctrl+S of
-        // their own keep theirs: a node's note and the settings modal.
+        // stays out of it (disable_shortcut); the places with a Ctrl+S of their
+        // own keep theirs: a node's note, the settings modal and the code
+        // dialog (codemirror_modal.js, whose editor presses its own Save).
         if (!window._sdSaveShortcutBound) {
             window._sdSaveShortcutBound = true;
             window.addEventListener('keydown', function (e) {
                 if (!(e.ctrlKey || e.metaKey) || e.altKey || String(e.key || '').toLowerCase() !== 's') return;
                 var ae = document.activeElement;
-                if (ae && ae.closest && ae.closest('.sd-note-overlay, #pg_settings_modal')) return;
+                if (ae && ae.closest && ae.closest('.sd-note-overlay, #pg_settings_modal, #pgCodeEditorModal')) return;
                 e.preventDefault();
                 e.stopPropagation();
                 _sdSaveShortcut();
@@ -55484,9 +58123,12 @@ const StyleDesigner = (function () {
     function _paletteInsert(type, extra) {
         var target = selectedNode || tree;
         if (!target) return;
-        if (!canDrop({ type: type }, target)) {
+        // The same payload a palette drag carries, so the drop rules see
+        // what the item holds (_sdDragTree()), not its type alone.
+        var _pd = { source: 'palette', type: type, extra: extra || {} };
+        if (!canDrop(_pd, target)) {
             target = tree;
-            if (!canDrop({ type: type }, target)) return;
+            if (!canDrop(_pd, target)) return;
         }
         saveState();
         var n = createFromPalette(type, extra || {});
@@ -55869,6 +58511,35 @@ const StyleDesigner = (function () {
             { label: _sdT('Loyalty: Stamp Card'),         type: 'component', icon: 'bi-cup-hot',               extra: { componentType: 'loyalty-stamps' } },
             { label: _sdT('Events: Cards'),               type: 'component', icon: 'bi-calendar2-event',       extra: { componentType: 'events-cards' } },
             { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } },
+            { label: _sdT('Maintenance: Centered'),        type: 'component', icon: 'bi-tools',                  extra: { componentType: 'maintenance-centered' } },
+            { label: _sdT('Maintenance: Split'),           type: 'component', icon: 'bi-layout-split',           extra: { componentType: 'maintenance-split' } },
+            { label: _sdT('Maintenance: Status Board'),    type: 'component', icon: 'bi-activity',               extra: { componentType: 'maintenance-status' } },
+            { label: _sdT('Maintenance: Dark'),            type: 'component', icon: 'bi-moon-stars',             extra: { componentType: 'maintenance-dark' } },
+            { label: _sdT('Coming Soon: Launch Date'),     type: 'component', icon: 'bi-rocket-takeoff',         extra: { componentType: 'coming-soon-launch' } },
+            { label: _sdT('Coming Soon: Split'),           type: 'component', icon: 'bi-hourglass-split',        extra: { componentType: 'coming-soon-split' } },
+            { label: _sdT('News: Ticker'),                 type: 'component', icon: 'bi-broadcast',              extra: { componentType: 'news-ticker' } },
+            { label: _sdT('News: Headline Rotator'),       type: 'component', icon: 'bi-arrow-repeat',           extra: { componentType: 'news-ticker-rotator' } },
+            { label: _sdT('News: Trending Topics'),        type: 'component', icon: 'bi-hash',                   extra: { componentType: 'news-trending' } },
+            { label: _sdT('News: Weather Card'),           type: 'component', icon: 'bi-cloud-sun',              extra: { componentType: 'news-weather-card' } },
+            { label: _sdT('News: Weather Strip'),          type: 'component', icon: 'bi-thermometer-half',       extra: { componentType: 'news-weather-strip' } },
+            { label: _sdT('News: Weekly Forecast'),        type: 'component', icon: 'bi-calendar-week',          extra: { componentType: 'news-weather-forecast' } },
+            { label: _sdT('News: Markets Strip'),          type: 'component', icon: 'bi-graph-up-arrow',         extra: { componentType: 'news-markets' } },
+            { label: _sdT('News: Lead Story Grid'),        type: 'component', icon: 'bi-grid-1x2',               extra: { componentType: 'news-lead-grid' } },
+            { label: _sdT('News: Latest + Most Read'),     type: 'component', icon: 'bi-list-ol',                extra: { componentType: 'news-latest-mostread' } },
+            { label: _sdT('News: Category Columns'),       type: 'component', icon: 'bi-layout-three-columns',   extra: { componentType: 'news-category-columns' } },
+            { label: _sdT('News: Live Coverage'),          type: 'component', icon: 'bi-record-circle',          extra: { componentType: 'news-live-blog' } },
+            { label: _sdT('News: Article Header'),         type: 'component', icon: 'bi-file-earmark-text',      extra: { componentType: 'news-article-header' } },
+            { label: _sdT('News: Author Box'),             type: 'component', icon: 'bi-person-vcard',           extra: { componentType: 'news-author-box' } },
+            { label: _sdT('Bento: Features'),              type: 'component', icon: 'bi-grid-1x2-fill',          extra: { componentType: 'bento-features' } },
+            { label: _sdT('Bento: Gallery'),               type: 'component', icon: 'bi-images',                 extra: { componentType: 'bento-gallery' } },
+            { label: _sdT('Marquee: Big Words'),           type: 'component', icon: 'bi-type',                   extra: { componentType: 'marquee-words' } },
+            { label: _sdT('Marquee: Logos'),               type: 'component', icon: 'bi-buildings',              extra: { componentType: 'marquee-logos' } },
+            { label: _sdT('Showcase: Floating Badges'),    type: 'component', icon: 'bi-window-stack',           extra: { componentType: 'showcase-floating' } },
+            { label: _sdT('Showcase: Vertical Tabs'),      type: 'component', icon: 'bi-segmented-nav',          extra: { componentType: 'showcase-tabs' } },
+            { label: _sdT('Quote: Pull Quote'),            type: 'component', icon: 'bi-quote',                  extra: { componentType: 'quote-pull' } },
+            { label: _sdT('Quote: Spotlight'),             type: 'component', icon: 'bi-chat-quote',             extra: { componentType: 'quote-spotlight' } },
+            { label: _sdT('Gallery: Polaroid'),            type: 'component', icon: 'bi-camera',                 extra: { componentType: 'gallery-polaroid' } },
+            { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
     }
@@ -55879,14 +58550,17 @@ const StyleDesigner = (function () {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
             { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
+            { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
             { title: _sdT('Hours & Locations'), icon: 'bi-geo-alt',           match: ['hours-', 'locations-'] },
             { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-', 'catering-', 'loyalty-'] },
             { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
+            { title: _sdT('News & Magazine'),  icon: 'bi-newspaper',          match: ['news-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
             { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] },
+            { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
@@ -55939,12 +58613,75 @@ const StyleDesigner = (function () {
         'pg-logo-44':      '.pg-logo-44 { max-height: 44px; filter: grayscale(100%); opacity: .7; }',
         'pg-logo-48':      '.pg-logo-48 { max-height: 48px; filter: grayscale(100%); }',
         'pg-logo-60':      '.pg-logo-60 { max-height: 60px; }',
+        // Shared by the news ticker and the creative marquees: a track of two
+        // identical groups slides by half its width, so the loop is seamless.
+        // Hover, keyboard focus and the pause checkbox stop it; reduced motion
+        // turns it into a plain scrollable strip without the duplicate group.
+        // The groups take their flex layout from .pg-marquee-group, not from
+        // d-flex: a display utility outranks any block rule and would keep
+        // the copy visible.
+        // The pause label draws its border, focus ring and checked tint in
+        // currentColor, so it stays visible on any surface; when checked it
+        // shows its play icon instead of the pause icon.
+        'pg-marquee':      '.pg-marquee-viewport { overflow: hidden; }\n' +
+                           '.pg-marquee-track { display: flex; flex-wrap: nowrap; width: max-content; animation: pg-marquee 40s linear infinite; }\n' +
+                           '.pg-marquee-group { display: flex; align-items: center; }\n' +
+                           '.pg-marquee-reverse .pg-marquee-track { animation-direction: reverse; }\n' +
+                           '[dir="rtl"] .pg-marquee-track { animation-name: pg-marquee-rtl; }\n' +
+                           '.pg-marquee:hover .pg-marquee-track, .pg-marquee:focus-within .pg-marquee-track, .pg-marquee:has(.pg-marquee-pause:checked) .pg-marquee-track { animation-play-state: paused; }\n' +
+                           '.pg-marquee-toggle .btn { --bs-btn-border-color: currentColor; --bs-btn-hover-border-color: currentColor; --bs-btn-focus-box-shadow: 0 0 0 .2rem currentColor; --bs-btn-active-color: var(--bs-btn-color); --bs-btn-active-bg: color-mix(in srgb, currentColor 20%, transparent); --bs-btn-active-border-color: currentColor; }\n' +
+                           '.pg-marquee-toggle .bi-play-fill, .pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-pause-fill { display: none; }\n' +
+                           '.pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-play-fill { display: inline-block; }\n' +
+                           '@keyframes pg-marquee { to { transform: translateX(-50%); } }\n' +
+                           '@keyframes pg-marquee-rtl { to { transform: translateX(50%); } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-marquee-viewport { overflow-x: auto; } .pg-marquee-track, [dir="rtl"] .pg-marquee-track { animation: none; } .pg-marquee .pg-marquee-copy, .pg-marquee .pg-marquee-toggle { display: none; } }',
+        // Dark scrim under text placed on a photo; the box also carries
+        // data-bs-theme="dark", so the text colour never depends on the photo.
+        'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // A spinner-grow used as a decorative pulse (dark maintenance band,
+        // live badge): under reduced motion it stands still and stays
+        // visible (a resting .spinner-grow is transparent).
+        'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
+        // Carousel indicators in the text colour, for a carousel on a plain
+        // surface: Bootstrap paints them white (black in dark mode) for a photo.
+        'pg-carousel-ink': '.pg-carousel-ink { --bs-carousel-indicator-active-bg: var(--bs-emphasis-color); }',
+        // Carousel controls and indicators over photos keep Bootstrap's
+        // light-mode white in a dark design too: under data-bs-theme="dark"
+        // Bootstrap paints them black, which vanishes on a caption scrim and
+        // on dark photos. Carousel Options > Dark (.carousel-dark) still wins.
+        'pg-carousel-photo': '.pg-carousel-photo:not(.carousel-dark) { --bs-carousel-indicator-active-bg: var(--bs-white); --bs-carousel-control-icon-filter: none; }',
+        // News: stories and articles
+        // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
+        // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
+        'pg-ratio-lead':   '.pg-ratio-lead { --bs-aspect-ratio: 100%; }\n' +
+                           '@media (min-width: 768px) { .pg-ratio-lead { --bs-aspect-ratio: 56.25%; } }\n' +
+                           '@media (min-width: 992px) { .pg-ratio-lead { --bs-aspect-ratio: 75%; } }',
+
+        // Creative blocks
+        // Soft edges for a logo marquee: a mask only, so no colour is added.
+        'pg-marquee-fade': '.pg-marquee-fade { -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); }',
+        // A small card that floats over a picture from 992 px; below that it
+        // stays in the flow. Bootstrap top-*/start-*/end-*/bottom-* place it.
+        'pg-float':        '@media (min-width: 992px) { .pg-float { position: absolute; z-index: 1; max-width: 16rem; } }',
+        // Polaroid tilt from 768 px (a card carries pg-tilt plus
+        // pg-tilt-left or pg-tilt-right); hover straightens the card.
+        'pg-tilt':         '@media (min-width: 768px) { .pg-tilt { transition: transform .3s ease; } .pg-tilt-left { transform: rotate(-3deg); } .pg-tilt-right { transform: rotate(2deg); } .pg-tilt:hover { transform: none; } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-tilt { transition: none; } }',
+        // Large round portrait (the image's own width/height props are
+        // not a size the browser applies).
+        'pg-circle-160':   '.pg-circle-160 { width: 160px; height: 160px; }',
+        // A sideways card row that stops on a card edge after each swipe.
+        'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
+        'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
+
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
     // block is one line in each, and a block that needs nothing says nothing.
     var _SD_BLOCK_CSS_NEEDS = {
-        'hero-image-bg':        ['pg-hero-tall'],
+        'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
+        'testimonial-carousel': ['pg-carousel-ink'],
+        'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
         'team-grid':            ['pg-ratio-1x1'],
         'blog-grid':            ['pg-ratio-16x9'],
@@ -55964,6 +58701,33 @@ const StyleDesigner = (function () {
         'services-image-cards': ['pg-ratio-16x9'],
         'locations-cards':      ['pg-ratio-16x9'],
         'menu-cards':           ['pg-ratio-1x1'],
+        // Maintenance and launch blocks
+        'maintenance-dark':     ['pg-pulse-still', 'pg-tracking'],
+        'coming-soon-launch':   ['pg-tracking'],
+
+        // News: bands and widgets
+        'news-ticker':          ['pg-marquee'],
+        'news-weather-forecast': ['pg-progress-8'],
+
+        // News: stories and articles
+        'news-lead-grid':        ['pg-ratio-lead', 'pg-shade-bottom', 'pg-ratio-16x9'],
+        'news-latest-mostread':  ['pg-thumb-100'],
+        'news-category-columns': ['pg-ratio-16x9'],
+        'news-live-blog':        ['pg-ratio-16x9', 'pg-pulse-still'],
+        'news-article-header':   ['pg-ratio-16x9', 'pg-circle-40'],
+        'news-author-box':       ['pg-thumb-100'],
+
+        // Creative blocks
+        'bento-features':       ['pg-ratio-16x9'],
+        'bento-gallery':        ['pg-ratio-1x1', 'pg-ratio-16x9'],
+        'marquee-words':        ['pg-marquee'],
+        'marquee-logos':        ['pg-marquee', 'pg-marquee-fade', 'pg-logo-44'],
+        'showcase-floating':    ['pg-float'],
+        'showcase-tabs':        ['pg-ratio-16x9'],
+        'quote-spotlight':      ['pg-circle-160'],
+        'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt'],
+        'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item'],
+
         'events-cards':         ['pg-ratio-16x9']
     };
 
@@ -56103,7 +58867,7 @@ const StyleDesigner = (function () {
                                     d: _sdT('A note with a coloured edge that draws attention to a remark.') },
             'c:spinner':          { v: 'spinner', h: '<div class="spinner-border">', k: 'spinner loader loading',
                                     d: _sdT('A spinning sign that something is loading.') },
-            'c:pagination':       { v: 'pagination', h: '<ul class="pagination">', k: 'pagination pager pages paging',
+            'c:pagination':       { v: 'pagination', h: '<ul class="pagination flex-wrap">', k: 'pagination pager pages paging',
                                     d: _sdT('Page numbers for moving through a long list.') },
             'c:input-group':      { v: 'input-group', h: '<div class="input-group">', k: 'input group addon field button text',
                                     d: _sdT('A text box with a piece of text or a button attached to its side.') },
@@ -56698,14 +59462,16 @@ const StyleDesigner = (function () {
                 var hintIcon  = this.dataset.icon || '';
                 var target = selectedNode || tree;
                 if (!target) return;
-                if (!canDrop({ type: type }, target)) {
+                // The same payload a palette drag carries (see _paletteInsert()).
+                var _pd = { source: 'palette', type: type, extra: extra };
+                if (!canDrop(_pd, target)) {
                     if (target.children && target.children.length) {
                         for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop({ type: type }, target.children[i])) { target = target.children[i]; break; }
+                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
                         }
                     }
-                    if (!canDrop({ type: type }, target)) target = tree;
-                    if (!canDrop({ type: type }, target)) return;
+                    if (!canDrop(_pd, target)) target = tree;
+                    if (!canDrop(_pd, target)) return;
                 }
                 saveState();
                 var n = createFromPalette(type, extra);
@@ -56808,30 +59574,126 @@ const StyleDesigner = (function () {
     }
 
     // ========================= HTML VALIDATION =========================
+    // Whether a text prop holds words a reader hears once markup and &nbsp;
+    // are taken out.
+    function _sdAuditHasText(t) {
+        return typeof t === 'string' && t.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim() !== '';
+    }
+
+    // An attribute in the node's raw attributes with a value that is not blank.
+    function _sdAuditAttr(node, name) {
+        var v = _sdAttr(node, name);
+        return v !== null && v.trim() !== '';
+    }
+
+    // Whether a node gives the link or button it sits in a name, the way the
+    // emitter prints it: its own text prop (a semantic <a>/<button> writes
+    // props.text after its children, a content link before them), a bound
+    // text, an aria-label / aria-labelledby / title, an image's alt, or a
+    // child that does. A visually hidden span counts (it is read); an icon
+    // or anything under aria-hidden="true" does not. A shared component, a
+    // raw HTML block and content whose markup the server writes when the page
+    // is served (custom PHP, the form's messages, applied offers, the catalog
+    // breadcrumb, variant choices, the product gallery) are not read from the
+    // tree, so they are taken as named.
+    function _sdAuditHasName(node) {
+        if (!node || !node.props) return false;
+        var p = node.props;
+        if (_sdAttr(node, 'aria-hidden') === 'true') return false;
+        if (_sdAuditAttr(node, 'aria-label') || _sdAuditAttr(node, 'aria-labelledby') || _sdAuditAttr(node, 'title')) return true;
+        if (p.tooltipEnabled && String(p.tooltipTitle || '').trim() !== '') return true;
+        if (p._bindings && p._bindings.text) return true;
+        if (node.type === 'shared_ref') return true;
+        if (node.type === 'content' && ['custom_html', 'custom_php', 'messages', 'applied_offers', 'breadcrumb', 'variant_attr', 'carousel'].indexOf(p.contentType) !== -1) return true;
+        if ((node.type === 'content' && p.contentType === 'image') || (node.type === 'semantic' && p.tag === 'img')) {
+            return !!(p._bindings && p._bindings.alt) || (typeof p.alt === 'string' && p.alt.trim() !== '') || _sdAuditAttr(node, 'alt');
+        }
+        if (node.type === 'content' && p.contentType === 'icon') return false;
+        if (_sdAuditHasText(p.text)) return true;
+        return !!(node.children && node.children.some(_sdAuditHasName));
+    }
+
+    // Whether an image carries an alt decision. Any alt string is one: words
+    // describe the picture, and alt="" says it is decorative (the duplicated
+    // marquee copy, a thumbnail beside its headline, an avatar beside the
+    // name), which is also how the server's SEO check reads it. So is a bound
+    // alt, role="presentation" / "none", and aria-hidden="true" on the image
+    // or an ancestor (ctx._ariaHidden, kept by validateTree()). An image with
+    // no alt prop at all, such as an imported <img> without the attribute,
+    // has none, and neither has one that still carries the palette image's
+    // placeholder alt (CONTENT.image.defaultProps.alt, 'Image') or its
+    // translation in the editor's language: nobody wrote it.
+    function _sdAuditAltDecided(node, ctx) {
+        var p = node.props;
+        if (p._bindings && p._bindings.alt) return true;
+        var role = (_sdAttr(node, 'role') || '').trim().toLowerCase();
+        if (role === 'presentation' || role === 'none') return true;
+        if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return true;
+        if (typeof p.alt !== 'string') return false;
+        var alt = p.alt.trim().toLowerCase();
+        return alt === '' || (alt !== 'image' && alt !== _sdT('Image').trim().toLowerCase());
+    }
+
+    // Whether a printed type attribute makes a <button> or an <input> submit
+    // its form, as the browser reads it: the keyword is matched in any case
+    // but not trimmed, and a <button> whose type is missing, blank or not a
+    // keyword falls back to the Submit state. type is null when the element
+    // prints none.
+    function _sdAuditTypeSubmits(tag, type) {
+        var t = type === null ? '' : type.toLowerCase();
+        if (tag === 'button') return t !== 'button' && t !== 'reset';
+        return t === 'submit' || t === 'image';
+    }
+
+    // Whether a node is a control that submits the form it sits in, as the
+    // renderer prints it: a <button> (a semantic node, or a text node drawn
+    // with the button tag, which print only the _attrs type) or an <input>
+    // (semantic, _attrs type), and a Button component drawn as <button> or
+    // <input>, whose type is btnType ("button" when it has none; drawn as a
+    // link it does not submit). The old content button has no renderer.
+    function _sdAuditSubmits(n) {
+        var p = n.props || {};
+        if (n.type === 'semantic' || (n.type === 'content' && p.contentType === 'heading')) {
+            var tag = String(p.tag || '').toLowerCase();
+            if (tag === 'button' || (tag === 'input' && n.type === 'semantic')) return _sdAuditTypeSubmits(tag, _sdAttr(n, 'type'));
+            return false;
+        }
+        if (n.type === 'component' && p.componentType === 'btn' && (p.btnElement === 'button' || p.btnElement === 'input')) {
+            return _sdAuditTypeSubmits(p.btnElement, p.btnType == null ? 'button' : String(p.btnType));
+        }
+        return false;
+    }
+
+    // Whether a form holds a control that submits it, at any depth.
+    function _sdAuditFormHasSubmit(node) {
+        return !!(node.children && node.children.some(function (n) {
+            return _sdAuditSubmits(n) || _sdAuditFormHasSubmit(n);
+        }));
+    }
+
     var _validationRules = [
         { id: 'img_alt', label: _sdT('img alt is missing'),
-            check: function(node) {
-                return node.type === 'content' && node.props.contentType === 'image' && !node.props.alt;
+            check: function(node, ctx) {
+                return node.type === 'content' && node.props.contentType === 'image' && !_sdAuditAltDecided(node, ctx);
             }
         },
         { id: 'empty_btn', label: _sdT('Empty button/link'),
-            check: function(node) {
-                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link');
+            check: function(node, ctx) {
+                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link' ||
+                    (node.props.contentType === 'heading' && /^(a|button)$/i.test(String(node.props.tag || ''))));
                 var isSemBtn = node.type === 'semantic' && (node.props.tag === 'button' || node.props.tag === 'a');
                 if (!isContentBtn && !isSemBtn) return false;
-                // A control that carries an accessible name is not empty, even
-                // with no text of its own. A screen reader announces aria-label
-                // / aria-labelledby / title, which is the whole point of this
-                // rule; flagging such a control tells the designer to fix
-                // something that is already correct, and a dismiss button has
-                // no text to add in the first place.
-                if (_sdAttr(node, 'aria-label') || _sdAttr(node, 'aria-labelledby') || _sdAttr(node, 'title')) return false;
+                // A control hidden from assistive technology announces no
+                // name, so it cannot be an empty one.
+                if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return false;
                 // Bootstrap's dismiss button is an icon drawn by .btn-close and
                 // is emitted by the alert, modal, offcanvas and toast blocks —
                 // the designer neither writes its text nor can.
                 if (/(^|\s)btn-close(\s|$)/.test(node.props.cssClass || '')) return false;
-                if (isContentBtn) return !node.props.text;
-                return !node.children || !node.children.length;
+                // A control with an accessible name is not empty: its text
+                // prop, an aria-label / aria-labelledby / title, or a child
+                // that is read (an icon with a visually hidden label).
+                return !_sdAuditHasName(node);
             }
         },
         { id: 'dup_id', label: _sdT('Duplicate id'),
@@ -56893,13 +59755,7 @@ const StyleDesigner = (function () {
         { id: 'form_no_submit', label: _sdT('The form has no submit button'),
             check: function(node) {
                 if (node.type !== 'semantic' || node.props.tag !== 'form') return false;
-                function hasSubmit(n) {
-                    if (n.type === 'content' && n.props.contentType === 'button') return true;
-                    if (n.type === 'semantic' && n.props.tag === 'button') return true;
-                    if (n.children) return n.children.some(hasSubmit);
-                    return false;
-                }
-                return !hasSubmit(node);
+                return !_sdAuditFormHasSubmit(node);
             }
         },
         // ── SEO rules ──────────────────────────────────────────────────
@@ -56918,6 +59774,15 @@ const StyleDesigner = (function () {
         { id: 'heading_empty', label: _sdT('Empty heading'), seo: 'heading_empty',
             check: function(node) {
                 if (node.type === 'content' && node.props.contentType === 'heading') {
+                    // A text node is a heading only when it prints as one.
+                    // The renderer draws it with its tag, h2 when the tag is
+                    // missing or malformed; drawn as a button, span or div
+                    // (carousel indicators and arrows, a dismiss button, a
+                    // badge) it is a control or a label, and an empty
+                    // control is empty_btn's to report.
+                    var tag = String(node.props.tag == null ? '' : node.props.tag);
+                    if (!/^[a-z][a-z0-9]*$/i.test(tag)) tag = 'h2';
+                    if (!/^h[1-6]$/i.test(tag)) return false;
                     return !String(node.props.text || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() && !(node.props._bindings && node.props._bindings.text);
                 }
                 if (node.type === 'semantic' && /^h[1-6]$/.test(node.props.tag || '')) {
@@ -57023,27 +59888,25 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
-    // Read from the canvas, not from the tree: the colour of a text and of
-    // what it sits on come from the design's CSS, its theme and Bootstrap's
-    // classes. Every text the canvas shows is measured against the colour
-    // behind it (PgContrast, assets/js/pg_contrast.js); a text with a picture
-    // under it is left alone, since no single colour is behind it. One issue
-    // per element, for its worst text, on the nearest element a tree knows -
-    // inside shared components and widgets too, like cf_field_unnamed.
+    // ── Canvas checks (WCAG 2.2) ─────────────────────────────────────
+    // What only the browser can tell: the colours a text is drawn in, the
+    // size a control is drawn at, the fields a form ends up with. Read from
+    // the canvas, not from the tree; each finding goes on the nearest element
+    // a tree knows, inside shared components and widgets too, like
+    // cf_field_unnamed, so its badge and Go work as for every issue.
 
-    // Editor chrome that has text of its own (toolbars, badges, placeholders,
-    // bands), the sample records drawn after a loop's first, and elements a
-    // switched-off feature drops from the page.
-    var _SD_CONTRAST_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+    // Editor chrome that has text or controls of its own (toolbars, badges,
+    // placeholders, bands), the sample records drawn after a loop's first,
+    // and elements a switched-off feature drops from the page.
+    var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
         '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
 
     // An editor box around an element: its background (the selection tint,
-    // the loop area's) is the editor's, not the page's. Table parts and a
-    // summary are their own wrapper (buildTableNodeEl(), _sdSelfWrapped()),
-    // so theirs is the page's.
-    function _sdContrastEditorBox(el) {
+    // the loop area's) and its display are the editor's, not the page's.
+    // Table parts and a summary are their own wrapper (buildTableNodeEl(),
+    // _sdSelfWrapped()), so theirs are the page's.
+    function _sdCanvasEditorBox(el) {
         var cl = el.classList;
         if (!cl) return false;
         if (cl.contains('sd-wrap')) {
@@ -57054,7 +59917,7 @@ const StyleDesigner = (function () {
 
     // Every node the canvas can show, by id: the page's and those of the
     // shared components, whose own nodes carry their ids on the canvas.
-    function _sdContrastNodeIndex(root) {
+    function _sdCanvasNodeIndex(root) {
         var index = {};
         function walk(n) {
             if (!n) return;
@@ -57069,12 +59932,49 @@ const StyleDesigner = (function () {
         return index;
     }
 
-    function _sdContrastIssues(root) {
+    // The node a canvas element belongs to: the nearest wrapper a tree knows.
+    function _sdCanvasNodeOf(el, index) {
+        for (var w = el.closest('[data-sd-id]'); w; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
+            var n = index[w.getAttribute('data-sd-id')];
+            if (n) return n.type === 'root' ? null : n;
+        }
+        return null;
+    }
+
+    // A number in the panel's language: 4,4 in Turkish.
+    function _sdAuditNum(v, digits) {
+        try {
+            return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
+        } catch (e) {
+            return String(v);
+        }
+    }
+
+    function _sdCanvasAuditIssues(root) {
         if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return [];
-        var body = canvasDoc.body;
+        var ctx = { index: _sdCanvasNodeIndex(root), body: canvasDoc.body };
+        var out = [];
+        // One check that cannot read this canvas does not stop the others.
+        [_sdContrastIssues, _sdTargetSizeIssues, _sdRedundantEntryIssues].forEach(function (check) {
+            try {
+                check(ctx).forEach(function (issue) { out.push(issue); });
+            } catch (e) {
+                if (window.console) console.warn('Canvas check skipped', e);
+            }
+        });
+        return out;
+    }
+
+    // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
+    // Every text the canvas shows against the colour behind it (PgContrast,
+    // assets/js/pg_contrast.js); a text with a picture under it is left
+    // alone, since no single colour is behind it. One issue per element, for
+    // its worst text.
+    function _sdContrastIssues(ctx) {
+        var body = ctx.body;
         var opts = {
-            skip: function (el) { return el.matches(_SD_CONTRAST_SKIP); },
-            ignore: _sdContrastEditorBox,
+            skip: function (el) { return el.matches(_SD_CANVAS_AUDIT_SKIP); },
+            ignore: _sdCanvasEditorBox,
             // The canvas grid overlay is the body's background image.
             noImage: function (el) { return el === body && body.classList.contains('sd-grid-overlay'); },
             // The editor tints the cells of a repeated table row; under the
@@ -57087,44 +59987,160 @@ const StyleDesigner = (function () {
             }
         };
         var cache = (typeof WeakMap === 'function') ? new WeakMap() : null;
-        var index = _sdContrastNodeIndex(root);
         var pics = PgContrast.pictures(body, opts);
         var worst = {};
         PgContrast.textRuns(body, opts).forEach(function (run) {
-            var node = null;
-            for (var w = run.el.closest('[data-sd-id]'); w && !node; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
-                node = index[w.getAttribute('data-sd-id')] || null;
-            }
-            if (!node || node.type === 'root') return;
+            var node = _sdCanvasNodeOf(run.el, ctx.index);
+            if (!node) return;
             var res = PgContrast.check(run, pics, opts, cache);
             if (!res || res.ok) return;
             // How far below its minimum: the text that reads worst is named.
             var gap = res.ratio / res.min;
             if (!worst[node._id] || gap < worst[node._id].gap) worst[node._id] = { node: node, gap: gap, res: res, text: run.text };
         });
-        var num = function (v, digits) {
-            try {
-                return Number(v).toLocaleString(_sdLocale(), { minimumFractionDigits: digits, maximumFractionDigits: 1 });
-            } catch (e) {
-                return String(v);
-            }
-        };
         return Object.keys(worst).map(function (id) {
             var f = worst[id];
             var text = f.text.length > 40 ? f.text.slice(0, 39) + '…' : f.text;
             // Rounded down, so a 4.48:1 never reads as the 4.5:1 it misses.
-            var ratio = num(Math.floor(f.res.ratio * 10) / 10, 1);
+            var ratio = _sdAuditNum(Math.floor(f.res.ratio * 10) / 10, 1);
             return {
                 rule: 'low_contrast',
-                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, num(f.res.min, 0), text]),
+                label: _sdT('Low text contrast {var:1}:1, at least {var:2}:1 is needed: "{var:3}"', [ratio, _sdAuditNum(f.res.min, 0), text]),
                 node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
             };
         });
     }
 
+    // ── Target size (WCAG 2.5.8) ─────────────────────────────────────
+    // What the visitor clicks or taps is at least 24×24 CSS pixels, or has
+    // room around it: a 24px circle centred on it touches no other target
+    // and no other small target's circle. Exempt, as in the criterion: a
+    // link inside a sentence, the browser's own checkboxes and radio buttons,
+    // and a stretched link, whose target is its whole card. Sizes are CSS
+    // pixels, the canvas zoom divided out.
+    var _SD_AUDIT_TARGETS = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, ' +
+        '[role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"]';
+
+    // A link in running text: drawn inline, with words beside it in the
+    // nearest block of the page (editor boxes looked through).
+    function _sdTargetInSentence(el, cs, win) {
+        if (cs.display !== 'inline') return false;
+        var block = el.parentElement;
+        while (block && block !== win.document.body && (_sdCanvasEditorBox(block) || win.getComputedStyle(block).display === 'inline')) {
+            block = block.parentElement;
+        }
+        if (!block) return false;
+        var own = (el.textContent || '').replace(/\s+/g, '').length;
+        var around = 0;
+        PgContrast.textRuns(block, { skip: function (n) { return n === el || n.matches(_SD_CANVAS_AUDIT_SKIP); } }).forEach(function (run) {
+            around += run.text.replace(/\s+/g, '').length;
+        });
+        return around > 0 && own > 0;
+    }
+
+    function _sdTargetSizeIssues(ctx) {
+        var win = canvasDoc.defaultView;
+        var targets = [];
+        Array.prototype.forEach.call(ctx.body.querySelectorAll(_SD_AUDIT_TARGETS), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var cs = win.getComputedStyle(el);
+            if (cs.visibility !== 'visible' || el.closest(':disabled, [aria-disabled="true"], .disabled')) return;
+            var z = PgContrast.zoom(el);
+            var r = el.getBoundingClientRect();
+            var t = { el: el, left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z };
+            t.w = t.right - t.left;
+            t.h = t.bottom - t.top;
+            // Not drawn, or a visually hidden one-pixel box.
+            if (t.w <= 1 || t.h <= 1) return;
+            t.cx = (t.left + t.right) / 2;
+            t.cy = (t.top + t.bottom) / 2;
+            var type = (el.getAttribute('type') || '').toLowerCase();
+            var uaDrawn = (type === 'checkbox' || type === 'radio') && (cs.appearance || cs.webkitAppearance || 'auto') !== 'none';
+            t.small = (t.w < 24 || t.h < 24) && !uaDrawn && !el.classList.contains('stretched-link') && !_sdTargetInSentence(el, cs, win);
+            targets.push(t);
+        });
+        var worst = {};
+        targets.forEach(function (t) {
+            if (!t.small) return;
+            var crowded = targets.some(function (o) {
+                if (o === t || o.el.contains(t.el) || t.el.contains(o.el)) return false;
+                // The circle touches the other target's box...
+                var dx = Math.max(o.left - t.cx, 0, t.cx - o.right);
+                var dy = Math.max(o.top - t.cy, 0, t.cy - o.bottom);
+                if (dx * dx + dy * dy < 144) return true;
+                // ...or another small target's circle.
+                return o.small && ((o.cx - t.cx) * (o.cx - t.cx) + (o.cy - t.cy) * (o.cy - t.cy) < 576);
+            });
+            if (!crowded) return;
+            var node = _sdCanvasNodeOf(t.el, ctx.index);
+            if (!node) return;
+            var area = t.w * t.h;
+            if (!worst[node._id] || area < worst[node._id].area) worst[node._id] = { node: node, area: area, t: t };
+        });
+        return Object.keys(worst).map(function (id) {
+            var f = worst[id];
+            return {
+                rule: 'target_size',
+                label: _sdT('Small target {var:1}×{var:2}px with others close by: at least 24×24px, or room around it', [Math.round(f.t.w), Math.round(f.t.h)]),
+                node: f.node, nodeLabel: getNodeLabel(f.node), seo: ''
+            };
+        });
+    }
+
+    // ── Redundant entry (WCAG 3.3.7) ─────────────────────────────────
+    // A form that asks for the same thing twice - an e-mail and its "confirm
+    // e-mail", two fields with one autocomplete purpose - makes the visitor
+    // type it again. A password asked twice is exempt (asked again for
+    // safety), like choices, files and buttons.
+    var _SD_ENTRY_NOT_TYPED = ['hidden', 'password', 'submit', 'button', 'reset', 'image', 'checkbox', 'radio', 'file', 'range', 'color'];
+
+    // Asked twice by the software itself: the registration and membership
+    // forms post to pg_member_register() / pg_member_activate(), which
+    // require the address again; a design cannot drop the field.
+    var _SD_ENTRY_SOFTWARE_TWICE = ['email_verify', 'email_address_verify'];
+
+    // What a field asks for: its autocomplete purpose, or its name without a
+    // "confirm" / "repeat" / "tekrar" part. '' when it says nothing usable.
+    function _sdEntryPurpose(el) {
+        var name = String(el.getAttribute('name') || '').toLowerCase().replace(/\[\]$/, '');
+        if (_SD_ENTRY_SOFTWARE_TWICE.indexOf(name) !== -1) return '';
+        var ac = String(el.getAttribute('autocomplete') || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        if (ac && ac !== 'on' && ac !== 'off') return 'ac:' + ac;
+        name = name.replace(/(^|[_\-.])(confirm|confirmation|repeat|again|verify|retype|tekrar|dogrula|dogrulama|onay)(?=$|[_\-.])/g, '$1')
+                   .replace(/[_\-.]{2,}/g, '_').replace(/^[_\-.]+|[_\-.]+$/g, '');
+        return name ? 'name:' + name : '';
+    }
+
+    function _sdRedundantEntryIssues(ctx) {
+        var out = [], flagged = {}, scopes = [];
+        // A form on the canvas, or a widget whose form the server wraps
+        // around its fields only when the page is drawn.
+        Array.prototype.forEach.call(ctx.body.querySelectorAll('input, select, textarea'), function (el) {
+            if (el.closest(_SD_CANVAS_AUDIT_SKIP)) return;
+            var type = (el.getAttribute('type') || 'text').toLowerCase();
+            if (el.tagName === 'INPUT' && _SD_ENTRY_NOT_TYPED.indexOf(type) !== -1) return;
+            var scope = el.closest('form') || el.closest('.sd-system-wrap');
+            var purpose = scope ? _sdEntryPurpose(el) : '';
+            if (!purpose) return;
+            var seen = null;
+            for (var i = 0; i < scopes.length && !seen; i++) if (scopes[i].el === scope) seen = scopes[i].seen;
+            if (!seen) { seen = {}; scopes.push({ el: scope, seen: seen }); }
+            if (!seen[purpose]) { seen[purpose] = true; return; }
+            var node = _sdCanvasNodeOf(el, ctx.index);
+            if (!node || flagged[node._id]) return;
+            flagged[node._id] = true;
+            out.push({
+                rule: 'redundant_entry',
+                label: _sdT('This field asks again for what the form already asked: fill it in for the visitor or let them pick it'),
+                node: node, nodeLabel: getNodeLabel(node), seo: ''
+            });
+        });
+        return out;
+    }
+
     function validateTree(root) {
         var issues = [];
-        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {} };
+        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {}, _ariaHidden: 0 };
         // <label for="…"> targets, so an input labelled from elsewhere is not
         // flagged. One pass up front: the label can come after the input.
         (function collect(n) {
@@ -57155,7 +60171,12 @@ const StyleDesigner = (function () {
                     issues.push({ rule: rule.id, label: label, node: node, nodeLabel: getNodeLabel(node), seo: rule.seo || '' });
                 }
             });
+            // The rules see whether an ancestor is hidden from assistive
+            // technology (aria-hidden="true"), like the marquee's copy group.
+            var hides = _sdAttr(node, 'aria-hidden') === 'true';
+            if (hides) ctx._ariaHidden++;
             if (node.children) node.children.forEach(traverse);
+            if (hides) ctx._ariaHidden--;
             _validationRules.forEach(function(rule) { if (rule.exit) rule.exit(node, ctx); });
         }
         if (root.children) root.children.forEach(traverse);
@@ -57169,12 +60190,7 @@ const StyleDesigner = (function () {
                 seo: pi.seo
             });
         });
-        // A broken canvas must not take the rest of the audit with it.
-        try {
-            _sdContrastIssues(root).forEach(function (ci) { issues.push(ci); });
-        } catch (e) {
-            if (window.console) console.warn('Contrast check skipped', e);
-        }
+        _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
         return issues;
     }
 
@@ -57191,6 +60207,7 @@ const StyleDesigner = (function () {
         });
         canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
         canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
+        var badged = [];
         Object.keys(byId).forEach(function (id) {
             var wrap = canvasDoc.querySelector('.sd-wrap[data-sd-id="' + id + '"]');
             if (!wrap) return;
@@ -57206,7 +60223,12 @@ const StyleDesigner = (function () {
                 openValidationPanel(true);
             });
             wrap.appendChild(b);
+            badged.push(wrap);
         });
+        // New elements, put on after the fidelity pass placed the old ones
+        // (the validation runs debounced): the badges of see-through and
+        // sd-fx-unpos wrappers are placed now, not on the first hover.
+        _sdPlaceChromeOf(badged);
     }
 
     function scheduleValidation() {
@@ -57703,6 +60725,20 @@ const StyleDesigner = (function () {
             return { url: bg, set: function (u) { setAttrStyleProp(node, 'background-image', 'url(' + u + ')'); } };
         }
         return null;
+    }
+
+    /**
+     * The image a content operator may swap outside a marked area: an image
+     * content node or a bare <img>, whose address the save takes
+     * (_pg_dm_take_image_src() in includes/designer_access.php). An inline
+     * background-image is formatting; the save keeps the stored one, so it
+     * is not offered there.
+     */
+    function _sdNodeContentImage(node) {
+        if (!node || !node.props) return null;
+        var picture = (node.type === 'content' && node.props.contentType === 'image')
+            || (node.type === 'semantic' && String(node.props.tag || '').toLowerCase() === 'img');
+        return picture ? _sdNodeImage(node) : null;
     }
 
     // Right-click entry: same tool, the node supplies the address.

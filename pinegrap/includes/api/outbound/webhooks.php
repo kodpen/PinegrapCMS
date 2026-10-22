@@ -43,7 +43,15 @@ function api_webhook_events() {
 		// either way, and a receiver that only heard of outright deletions
 		// would keep selling one the shop no longer offers.
 		'product.deleted'      => 'A product was deleted, or moved to the Recycle Bin (recycled: true)',
-		'inventory.changed'    => 'A product stock level changed',
+		// Every stock writer on the site announces it: the checkout and a
+		// local sale, the product screen and its list, a barcode scan, the
+		// bulk edit of selected products (pg_product_stock_changed()), as the
+		// stock API, the Workspace and an ERP document do. What stays quiet is
+		// the bulk paths, for the reason the contact import does: the product
+		// import, a marketplace order import or cancellation and an ERP stock
+		// count. They still move products.timestamp, so GET
+		// /products?updated_since= lists the product. The description says so.
+		'inventory.changed'    => 'A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=)',
 		// Only where the site has set ECOMMERCE_LOW_STOCK_THRESHOLD by hand: it
 		// has no settings screen yet, and without a threshold there is no low to
 		// cross. The cart widget reads the same constant for its own warning.
@@ -147,11 +155,13 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	}
 
-	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.events"
+	// A failing subscription is still told: its events are kept until the
+	// operator fixes the address and retries (api_webhook_queue_hold()).
+	$hooks = db_items("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.events, api_webhooks.status"
 		. ($narrowed ? ", api_webhooks.channel_group_id" : "") . "
 		FROM api_webhooks
 		INNER JOIN api_apps ON api_apps.id = api_webhooks.app_id
-		WHERE api_webhooks.status = 'active' AND api_apps.status = 'active'");
+		WHERE api_webhooks.status IN ('active', 'failing') AND api_apps.status = 'active'");
 
 	if (!is_array($hooks) || empty($hooks)) {
 
@@ -212,7 +222,7 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 				'" . escape($event) . "',
 				'" . escape($body) . "',
 				'0',
-				UNIX_TIMESTAMP(),
+				" . (api_webhook_queue_hold($hook['status']) ? "'0'" : "UNIX_TIMESTAMP()") . ",
 				UNIX_TIMESTAMP()
 			)");
 
@@ -221,6 +231,21 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	}
 
 	return $queued;
+
+}
+
+// Whether an event for a subscription in this status is queued on hold rather
+// than for sending: attempts 0 and next_attempt_at 0, which the dispatcher
+// does not pick up. A failing subscription's address stopped answering; trying
+// every new event against it would only add six failures each, and dropping
+// them is how an integration is found broken a week later. Held rows go out
+// only when somebody retries (Send again on the Events tab, POST
+// /webhooks/{id}/retry): not on a successful delivery, a resume or PATCH
+// status=active, so events meant for an old address never reach a new one
+// unasked. Like a row that ran out of attempts, one held for a week is swept.
+function api_webhook_queue_hold($status) {
+
+	return ((string)$status === 'failing');
 
 }
 
@@ -455,7 +480,7 @@ function api_webhook_dispatch($seconds = 20) {
 
 	while (microtime(true) < $deadline) {
 
-		$row = db_item("SELECT id, webhook_id, event, payload, attempts
+		$row = db_item("SELECT id, webhook_id, event, payload, attempts, next_attempt_at
 			FROM api_webhook_queue
 			WHERE next_attempt_at > 0 AND next_attempt_at <= UNIX_TIMESTAMP()
 			  AND attempts < '" . api_webhook_max_attempts() . "'
@@ -469,9 +494,17 @@ function api_webhook_dispatch($seconds = 20) {
 		}
 
 		// Claimed before it is sent, so a second cron overlapping this one does
-		// not pick up the same row and deliver it twice.
+		// not deliver the same row twice. The claim holds only while the row
+		// still has the time this run read: a run that read it too and claimed
+		// it first has moved it on, and this one leaves it.
 		db("UPDATE api_webhook_queue SET next_attempt_at = UNIX_TIMESTAMP() + 120
-			WHERE id = '" . (int)$row['id'] . "'");
+			WHERE id = '" . (int)$row['id'] . "' AND next_attempt_at = '" . (int)$row['next_attempt_at'] . "'");
+
+		if (mysqli_affected_rows(db::$con) !== 1) {
+
+			continue;
+
+		}
 
 		if (api_webhook_deliver($row)) {
 

@@ -539,6 +539,7 @@ function get_express_order($properties) {
     if ($layout_type == 'system') {
     
         $grand_shipping = 0;
+        $grand_shipping_drawn = 0;
         
         // get all ship tos
         $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "' ORDER BY ship_to_id";
@@ -1044,6 +1045,9 @@ function get_express_order($properties) {
             // Totals of the items charged now (recurring ones are added up per payment period).
             $subtotal = 0;
             $grand_tax = 0;
+            // The lines charged today, for their tax after the order discount
+            // (pg_order_items_charged_tax()).
+            $charged_item_ids = array();
             
             // create array for storing inventory quantity for products,
             // so we can keep track of remaining inventory quantity as we loop through order items,
@@ -1679,6 +1683,7 @@ function get_express_order($properties) {
                     if ($in_nonrecurring) {
                         // update subtotal
                         $subtotal = $subtotal + $total_price;
+                        $charged_item_ids[] = $order_item['id'];
                         
                         // update tax
                         $grand_tax = $grand_tax + $total_tax;
@@ -2326,7 +2331,9 @@ function get_express_order($properties) {
             if (ECOMMERCE_TAX == true) {
                 // if there is an order discount, adjust tax
                 if (($subtotal > 0) && ($order_discount > 0)) {
-                    $grand_tax = $grand_tax - ($grand_tax * ($order_discount / $subtotal));
+                    // Taken again per rate on what the discount leaves of the lines,
+                    // as submit_order.php charges it.
+                    $grand_tax = pg_order_items_charged_tax($charged_item_ids, (int) round($order_discount * 100)) / 100;
                 }
 
                 // If the tax is negative then set it to zero.  The tax might be negative
@@ -2353,6 +2360,24 @@ function get_express_order($properties) {
             // if there was at least one shipping recipient for this order, output grand shipping total
             if ($shippable_items) {
                 
+                // A minor unit lower where it would leave a rate's total no
+                // amount reaches, as submit_order.php charges it
+                // (pg_order_charges_reachable()). The method script
+                // (frontend.js update_totals()) redraws the shipping when
+                // the picked methods' costs differ from software.shipping,
+                // so it gets the recipients' stored costs: a page with one
+                // recipient keeps the lower figure as it loads. Another pick,
+                // or a page with several recipients once their methods load,
+                // shows the methods' own costs; the order is still charged
+                // the lower figure, as submit_order.php refuses only a
+                // higher total than the one shown.
+                $grand_shipping_drawn = $grand_shipping;
+
+                if (($grand_shipping > 0) && pg_order_charges_settle_rates()) {
+                    $grand_shipping = pg_order_items_charges_reachable($charged_item_ids, (int) round($order_discount * 100),
+                        array('shipping' => (int) round($grand_shipping * 100)))['shipping'] / 100;
+                }
+
                 // update grand total
                 $grand_total = $grand_total + $grand_shipping;
                 
@@ -3189,6 +3214,15 @@ function get_express_order($properties) {
                     ) {
                         $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $grand_total, 2);
 
+                        // Like the shipping, a minor unit lower where it
+                        // would leave a rate's total no amount reaches.
+                        if (($surcharge > 0) && pg_order_charges_settle_rates()) {
+                            $surcharge = pg_order_items_charges_reachable($charged_item_ids, (int) round($order_discount * 100), array(
+                                'shipping' => $shippable_items ? (int) round($grand_shipping * 100) : 0,
+                                'surcharge' => (int) round($surcharge * 100),
+                            ))['surcharge'] / 100;
+                        }
+
                         $grand_total_with_surcharge = $grand_total + $surcharge;
 
                         $output_surcharge_unconverted_total = '';
@@ -3472,7 +3506,7 @@ function get_express_order($properties) {
             if ($shippable_items) {
                 $system .=
                     '<script>
-                        software.shipping = ' . $grand_shipping . ';
+                        software.shipping = ' . $grand_shipping_drawn . ';
                         software.gift_card_discount = ' . $gift_card_discount . ';
                         software.surcharge = ' . $surcharge . ';
                         software.total_without_shipping = ' . ($grand_total - $grand_shipping) . ';
@@ -4069,8 +4103,12 @@ function get_express_order($properties) {
         $discount = 0;
         $discount_info = '';
         $tax = 0;
+        // The lines charged today, for their tax after the order discount
+        // (pg_order_items_charged_tax()).
+        $charged_item_ids = array();
         $tax_info = '';
         $shipping = 0;
+        $shipping_drawn = 0;
         $shipping_info = '';
         $applied_gift_cards = array();
         $gift_card_discount = 0;
@@ -4492,6 +4530,7 @@ function get_express_order($properties) {
                         $item['in_nonrecurring'] = true;
 
                         $subtotal += $item['amount'];
+                        $charged_item_ids[] = $item['id'];
                         $tax += $item['tax'];
                         
                         if ($item['selection_type'] == 'donation') {
@@ -5050,7 +5089,9 @@ function get_express_order($properties) {
             if (ECOMMERCE_TAX) {
                 // if there is an order discount, adjust tax
                 if ($subtotal and $discount) {
-                    $tax -= $tax * ($discount / $subtotal);
+                    // Taken again per rate on what the discount leaves of the lines,
+                    // as submit_order.php charges it.
+                    $tax = pg_order_items_charged_tax($charged_item_ids, (int) round($discount * 100)) / 100;
                 }
 
                 // If the tax is negative then set it to zero.  The tax might be negative
@@ -5066,6 +5107,18 @@ function get_express_order($properties) {
             }
 
             if ($shippable_items) {
+                // A minor unit lower where it would leave a rate's total no
+                // amount reaches, as submit_order.php charges it
+                // (pg_order_charges_reachable()); the method script gets the
+                // recipients' stored costs (software.shipping below), as in
+                // the system layout above.
+                $shipping_drawn = $shipping;
+
+                if (($shipping > 0) && pg_order_charges_settle_rates()) {
+                    $shipping = pg_order_items_charges_reachable($charged_item_ids, (int) round($discount * 100),
+                        array('shipping' => (int) round($shipping * 100)))['shipping'] / 100;
+                }
+
                 $total += $shipping;
 
                 $shipping_info = prepare_price_for_output($shipping * 100, false, $discounted_price = '', 'html');
@@ -5757,6 +5810,15 @@ function get_express_order($properties) {
 
                         $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total, 2);
 
+                        // Like the shipping, a minor unit lower where it
+                        // would leave a rate's total no amount reaches.
+                        if (($surcharge > 0) && pg_order_charges_settle_rates()) {
+                            $surcharge = pg_order_items_charges_reachable($charged_item_ids, (int) round($discount * 100), array(
+                                'shipping' => $shippable_items ? (int) round($shipping * 100) : 0,
+                                'surcharge' => (int) round($surcharge * 100),
+                            ))['surcharge'] / 100;
+                        }
+
                         $surcharge_info = prepare_price_for_output($surcharge * 100, false, $discounted_price = '', 'html');
 
                         $total_with_surcharge = $total + $surcharge;
@@ -6126,7 +6188,7 @@ function get_express_order($properties) {
             if ($shippable_items) {
                 $system .=
                     '<script>
-                        software.shipping = ' . $shipping . ';
+                        software.shipping = ' . $shipping_drawn . ';
                         software.gift_card_discount = ' . $gift_card_discount . ';
                         software.surcharge = ' . $surcharge . ';
                         software.total_without_shipping = ' . ($total - $shipping) . ';

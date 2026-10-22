@@ -237,9 +237,10 @@ function local_sale_line_rate($item)
 }
 
 /**
- * The VAT on one cart line, on the whole line (not per unit), rounded once.
- * erp_order_lines() works it out the same way, which is what keeps the order
- * total and the invoice total equal.
+ * The VAT on one cart line taken alone, on the whole line (not per unit),
+ * rounded once. A sale's lines take their VAT per rate together instead
+ * (local_sale_lines(), pg_tax_by_rate()), as the checkout and the order's
+ * invoice do; a line's share there is within a kurus of this.
  *
  * @param array $item  keys: price, quantity, taxable, tax_rate
  * @return int  kuruş
@@ -277,21 +278,34 @@ function local_sale_lines($order_id)
     );
 
     $lines = array();
+    $taxed = array();
 
     foreach ((array) $rows as $row) {
         $rate = local_sale_line_rate($row);
         $net = (int) $row['price'] * (int) $row['quantity'];
-        $tax = (int) round($rate / 100 * $net);
 
         $row['rate'] = $rate;
         $row['net'] = $net;
-        $row['tax'] = $tax;
-        $row['gross'] = $net + $tax;
-        $row['unit_gross'] = (int) round((int) $row['price'] * (100 + $rate) / 100);
-        // What the till view shows (local_sale_prices_net()).
-        $row['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $row['unit_gross'];
-        $row['amount_till'] = local_sale_prices_net() ? $net : $row['gross'];
         $lines[] = $row;
+        $taxed[] = array('amount' => $net, 'rate' => $rate);
+    }
+
+    // The VAT per rate on the sum of the sale's lines, spread back over them,
+    // as the checkout takes it (pg_tax_by_rate()): the order's tax and its
+    // invoice's are then the e-document provider's.
+    $taxes = pg_tax_by_rate($taxed);
+
+    foreach ($lines as $index => $row) {
+        $tax = (int) $taxes[$index];
+        $rate = $row['rate'];
+        $net = $row['net'];
+
+        $lines[$index]['tax'] = $tax;
+        $lines[$index]['gross'] = $net + $tax;
+        $lines[$index]['unit_gross'] = (int) round((int) $row['price'] * (100 + $rate) / 100);
+        // What the till view shows (local_sale_prices_net()).
+        $lines[$index]['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $lines[$index]['unit_gross'];
+        $lines[$index]['amount_till'] = local_sale_prices_net() ? $net : ($net + $tax);
     }
 
     return $lines;
@@ -954,11 +968,14 @@ function local_sale_complete($user, $input)
     }
 
     // 4. The figures. tax_total is the line's VAT; tax stays 0 (see
-    // update_order_item_taxes()).
+    // update_order_item_taxes()); tax_rate the rate it was taken at (11.0.59).
     $totals = local_sale_totals($lines);
+    $with_rate = pg_schema_has('order_items', 'tax_rate');
 
     foreach ($lines as $line) {
-        db("UPDATE order_items SET tax_total = '" . (int) $line['tax'] . "', tax = '0' WHERE id = '" . (int) $line['id'] . "'");
+        db("UPDATE order_items SET tax_total = '" . (int) $line['tax'] . "', tax = '0'"
+            . ($with_rate ? ", tax_rate = '" . number_format((float) $line['rate'], 3, '.', '') . "'" : "")
+            . " WHERE id = '" . (int) $line['id'] . "'");
     }
 
     // Who the sale is for: the picked contact and account, or nobody (a
@@ -986,18 +1003,54 @@ function local_sale_complete($user, $input)
             ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR'] ?? '') . "'), 0)
         WHERE id = '" . $order_id . "'");
 
-    // 5. Stock goes down for tracked products.
+    // 5. Stock goes down for tracked products. Each one then tells the
+    //    outside the same way a web sale does: the stamp for updated_since
+    //    listings, inventory.changed (stock.low on the crossing) and the
+    //    marketplace queue. The first line of a product reads its stock
+    //    again right before the decrement, so another till's sale since the
+    //    cart was read is not counted from the old level; later lines carry
+    //    on from what the line above left ($stock_left, only set for a
+    //    product that tracks stock).
+    $stock_left = array();
+
     foreach ($lines as $line) {
-        if (((int) $line['inventory'] === 1) && ((int) $line['inventory_quantity'] > 0)) {
-            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . (int) $line['product_id'] . "'");
+        $product_id = (int) $line['product_id'];
+        $tracked = ((int) $line['inventory'] === 1);
+        $stock_before = (int) $line['inventory_quantity'];
 
-            if ((int) $line['quantity'] >= (int) $line['inventory_quantity']) {
-                db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int) $line['product_id'] . "'");
+        if (isset($stock_left[$product_id])) {
+            $tracked = true;
+            $stock_before = $stock_left[$product_id];
+        } else {
+            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+            if ($stock_now) {
+                $tracked = ((int) $stock_now['inventory'] === 1);
+                $stock_before = (int) $stock_now['inventory_quantity'];
+            }
+        }
+
+        if ($tracked && ($stock_before > 0)) {
+            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . (int) $line['quantity'] . "') WHERE id = '" . $product_id . "'");
+
+            // The flag comes from the stock left, as in the checkout: one
+            // line's quantity against the stock read before the loop missed
+            // a product on two lines (2 + 3 of 5). The column is unsigned
+            // and the session sql_mode is not strict, so selling through
+            // the stock leaves 0; the out_of_stock guard raises the bell
+            // once per product.
+            db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE id = '" . $product_id . "' AND inventory_quantity <= 0 AND out_of_stock != '1'");
+
+            if (mysqli_affected_rows(db::$con) > 0) {
+                create_notification(array(
+                    'action' => 'out_stock',
+                    'type' => 'warning',
+                    'title' => $line['name'] . ' - ' . $line['short_description'],
+                    'product_id' => $product_id));
             }
 
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed((int) $line['product_id']);
-            }
+            $stock_left[$product_id] = pg_product_stock_changed($product_id, $stock_before, null, 'local_sale');
         }
     }
 

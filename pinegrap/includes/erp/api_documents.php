@@ -941,7 +941,7 @@ function erp_api_order_invoice_check($order, $field = null)
     }
 
     $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate
+            products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE order_items.order_id = '" . (int) $order['id'] . "' AND order_items.saved_for_later = 0
@@ -949,6 +949,13 @@ function erp_api_order_invoice_check($order, $field = null)
 
     if (empty($items)) {
         api_fail_validation(lang('This order has no items.'), $field);
+    }
+
+    // The same lines the writer invoices (erp_invoice_from_order_locked()).
+    $items = erp_order_charged_items($order, $items);
+
+    if (empty($items)) {
+        api_fail_validation(lang('None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.'), $field);
     }
 
     if (((int) ($order['erp_account_id'] ?? 0) <= 0)
@@ -959,8 +966,8 @@ function erp_api_order_invoice_check($order, $field = null)
             : lang('This order is not linked to a contact, so there is no account to bill.'), $field);
     }
 
-    $built = erp_order_lines($order, $items);
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
+    $built = erp_order_lines($order, $items, null, true);
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'];
 
     if ((int) $built['totals']['grand_total'] !== $expected) {
         api_fail_validation(lang(array(

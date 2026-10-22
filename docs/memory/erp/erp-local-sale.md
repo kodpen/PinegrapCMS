@@ -1,6 +1,6 @@
 ---
 name: erp-local-sale
-description: Counter sale (add_order.php) and the ERP: customer in the session, walk-in account opened on first need, VAT per line, invoice from the order screen, waybill from an invoice and its write-back.
+description: Counter sale (add_order.php) and the ERP: customer in the session, walk-in account opened on first need, VAT per rate, invoice from the order screen, waybill from an invoice and its write-back.
 ---
 
 ## How is the customer of a counter sale kept?
@@ -9,9 +9,10 @@ description: Counter sale (add_order.php) and the ERP: customer in the session, 
 - An account opened at the till (`local_sale_quick_account()`) goes through `erp_account_quick_create()`, as on the document screens.
 
 ## How is VAT set on a counter-sale line?
-- `local_sale_line_rate()`: a `taxable` product's rate is `get_effective_tax_rate(products.tax_rate, zone rate)`, the zone rate being `erp_store_zone_rate()` with the ERP on (store state included) and `get_default_tax_rate()` without. `local_sale_line_tax()` takes the VAT on the whole line, rounded once, the way `erp_order_lines()` does, which keeps order total and invoice total equal.
-- `order_items.tax_total` = line VAT, `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `orders.total = subtotal + tax`.
+- `local_sale_line_rate()`: a `taxable` product's rate is `get_effective_tax_rate(products.tax_rate, zone rate)`, the zone rate being `erp_store_zone_rate()` with the ERP on (store state included) and `get_default_tax_rate()` without.
+- `local_sale_lines()` takes the sale's VAT per rate on the sum of its lines and spreads it back (`pg_tax_by_rate()`, #1168), as the checkout and the order's invoice do; `local_sale_line_tax()` (one line alone, rounded once) is within a kuruş of a line's share. `order_items.tax_total` is the line's share, `tax_rate` the rate, `tax = 0` (the `update_order_item_taxes()` contract); `orders.tax` is the total, `orders.total = subtotal + tax`.
 - `config.local_sale_prices = 'net'` (4.74) only changes what the till shows (prices without tax, tax added at the total); the figures are the same.
+- The bridge check "invoice total = order total" passes through this; an order closed without tax cannot be invoiced.
 
 ## How is an order's invoice made from the order screen?
 - The documents card (`erp_order_flow_card()`, erp-order-documents-flow) replaces the older bar buttons; its invoice step calls `erp_invoice_from_order()`. The fallback button posts to `add_erp_invoice.php` with `from_order_screen=1` (a refusal returns to the order screen) and is hidden from the read-only right; the card draws its steps for it too, and the gate of `erp_order_flow.php` refuses the POST.

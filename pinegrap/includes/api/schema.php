@@ -130,10 +130,10 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Leave it out to follow the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool',   'description' => 'On by default.'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
-				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0),
-				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0),
-				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0),
-				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0),
+				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -156,10 +156,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Product',
 			'summary' => 'Change a product',
-			'description' => 'Only the fields present in the body are written. group_ids, attributes and images replace what the product has; an empty list removes all of them. Group membership can also be changed from the group\'s side with POST /product-groups/{id}/products. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'Only the fields present in the body are written. name is the merchant SKU, as on create: a name another product has is refused with 409 name_taken and an empty one with 422; sending the product\'s own name again is fine. group_ids, attributes and images replace what the product has; an empty list removes all of them. Group membership can also be changed from the group\'s side with POST /product-groups/{id}/products. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The product id / SKU. Unique across the catalogue.'),
 				array('name' => 'enabled',           'in' => 'body', 'type' => 'bool'),
 				array('name' => 'price',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units. 1999 is 19.99.'),
 				array('name' => 'compare_at_price',  'in' => 'body', 'type' => 'money', 'nullable' => true, 'min' => 0, 'max' => 2147483647, 'description' => 'The merchant\'s own earlier or list price of the article (a "was" price), in minor units like price. Send null, an empty value or 0 to take it off. It is not what the article sells at, and an offer does not change it.'),
@@ -176,10 +176,10 @@ function api_schema() {
 				array('name' => 'tax_rate',          'in' => 'body', 'type' => 'decimal', 'nullable' => true, 'min' => 0, 'max' => 100, 'description' => 'The article\'s own tax rate, as a percentage. Send an empty value to clear it, which puts the product back on the rate of the tax zone; zero is a different answer and means zero-rated.'),
 				array('name' => 'shippable',         'in' => 'body', 'type' => 'bool'),
 				array('name' => 'free_shipping',     'in' => 'body', 'type' => 'bool'),
-				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal'),
-				array('name' => 'length',            'in' => 'body', 'type' => 'decimal'),
-				array('name' => 'width',             'in' => 'body', 'type' => 'decimal'),
-				array('name' => 'height',            'in' => 'body', 'type' => 'decimal'),
+				array('name' => 'weight',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'length',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'width',             'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
+				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -265,9 +265,9 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'PriceBatch',
 			'summary' => 'Set prices for many products',
-			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found or invalid - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units; a decimal is refused rather than rounded. Only the price is written.',
+			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found or invalid - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units from 0 to 2147483647, the bound the single-product routes declare; a decimal is refused rather than rounded and a figure past the bound rather than cut. Only the price is written.',
 			'params'  => array(
-				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'price' => 'integer'), 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units.')
+				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'price' => 'integer'), 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units (0 to 2147483647).')
 			)
 		),
 
@@ -400,7 +400,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
 			'summary' => 'Delete a product group',
-			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty; with permanent=true, groups of it in the Recycle Bin count too): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
@@ -571,10 +571,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Order',
 			'summary' => 'Change an order',
-			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. Moving a cancelled order to complete or exported is the order screen\'s Restore: the cancellation and an unfinished refund flag are cleared and the gift cards the cancellation expired get their date back. incomplete is the basket\'s status and is not accepted: an order is not turned back into a basket, and a basket (status incomplete) cannot be completed, exported or cancelled here - 422. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                  'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled')),
+				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('complete', 'exported', 'cancelled')),
 				array('name' => 'cancellation_reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500),
 				array('name' => 'notes',               'in' => 'body', 'type' => 'string', 'max_length' => 2000)
 			)
@@ -592,7 +592,7 @@ function api_schema() {
 			'description' => 'The tracking numbers for one of the order\'s shipping addresses, and optionally the dates. A tracking number is what makes an order count as shipped in this store - the ship date is a planned dispatch date on many configurations, so nothing is read from it. The list replaces what that address holds, which is what the order screen does with the same field: send everything you know each time and the call can be repeated without collecting duplicates. The customer is told only when notify is true.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
+				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has; left out, the numbers stay as they are, so a call that only reports a date keeps them.'),
 				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
 				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
@@ -1541,7 +1541,7 @@ function api_schema() {
 			'handler' => 'api_reports_sales',
 			'returns' => 'SalesReport',
 			'summary' => 'Sales by day or month',
-			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day, and at most 400 periods come back.',
+			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day. Only periods that hold orders come back, at most 400: a window whose orders fall on more days (or months) is refused with 422 rather than answered short, so totals always cover the whole window.',
 			'params'  => array(
 				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'Start of the window. Defaults to thirty days before to.'),
 				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),

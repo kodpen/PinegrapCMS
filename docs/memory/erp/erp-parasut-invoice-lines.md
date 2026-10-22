@@ -15,7 +15,7 @@ description: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT
 - Withholding: each group's VAT x its rate, summed, rounded once per invoice. 1.05 (601) + 1.10 (603) at 20%: 0.24 (8.4 + 15.4 kurus); 601 at 20% and 10%: 0.13 (8.4 + 4.4); 2 x 1.05 (601): 0.17; the ERP 0.23, 0.12, 0.16. Drafts PGF0020-0026.
 - At one rate Paraşüt reaches only B + round(B x rate): at 20% one total in six (3 kurus mod 6), at 10% one in eleven, is unreachable. Order #1176 (39.95 + 7.99 VAT + shipping 9.99 = 57.93) came back 57.94.
 - `erp_rate_vat()` (includes/erp/money.php, #1001) does this arithmetic. Typed documents take it since #1004 (`erp_manual_lines_build()`): 1.05 (601) + 1.10 (603) went 2.15 + 0.43 - 0.24 = 2.34 at both (PGF0027); three lines at 20%, 97.06 + 19.41 unshifted (PGF0028).
-- The checkout and `erp_order_lines()` still take it per line (VAT-inclusive prices via `erp_split_gross()`): a group's line roundings often miss its sum (one invoice in three, 2-4 lines at 20%).
+- Orders take it since #1168 (erp-discounted-order-vat.md): #1178, #1179 met Paraşüt unshifted. Their shipping, surcharge and instalment charge since #1211: erp-order-charges-vat.md.
 
 ## How does the driver keep a per-line total? (#961)
 - `erp_edoc_parasut_vat_shift()`: per rate, the amount B' whose VAT brings it to the ERP's amount + VAT (`erp_edoc_parasut_rate_amount()`); the rate's amount at Paraşüt moves by B' - B, 1-3 kurus. Paraşüt's before-VAT and VAT then differ from the ERP's by that much; the total does not.

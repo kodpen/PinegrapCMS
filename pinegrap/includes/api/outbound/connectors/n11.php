@@ -150,6 +150,21 @@ function mp_n11_call($account, $method, $path, $body = null, $max_body = 0, $tra
 
 	if (!is_array($decoded)) {
 
+		// A body as long as the limit was cut off there, and what is left is
+		// never JSON. Said as what it is: "not JSON" reads like a fault on
+		// their side, and asking again gets the same cut. Only a successful
+		// answer is treated as cut off: a failed status (5xx, 408) keeps the
+		// not-JSON error below, which names the status and keeps
+		// api_http_should_retry() so the sync queue still tries it again.
+		if ($outcome['ok'] && ($max_body > 0) && (strlen((string)$outcome['body']) >= $max_body)) {
+
+			return mp_error(lang(array(
+				'string' => 'n11 answered with more than the {var:1} bytes this call reads, so the answer was cut off.',
+				'vars'   => array($max_body)
+			)));
+
+		}
+
 		return mp_error(
 			lang(array('string' => 'n11 answered {var:1} with something that is not JSON.', 'vars' => array($outcome['status']))),
 			api_http_should_retry($outcome));
@@ -234,10 +249,12 @@ function mp_n11_error_message($decoded) {
 /* ------------------------------------------------------------ can we talk */
 
 // The category tree is the cheapest authenticated call they have, and it is a
-// GET, so a wrong key is answered without anything having been submitted.
-function mp_n11_test_credentials($account) {
+// GET, so a wrong key is answered without anything having been submitted. It is
+// also the whole tree, so it is read with the same limit as the category sync:
+// a smaller one cuts the answer and fails the test with the right key.
+function mp_n11_test_credentials($account, $transport = null) {
 
-	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, 4000);
+	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes(), $transport);
 
 	if (!$result['ok']) {
 
@@ -261,7 +278,15 @@ function mp_n11_categories($account) {
 
 	// The whole tree, and it is large - the default response cap would cut it
 	// in half and leave json_decode() with a fragment.
-	return mp_n11_call($account, 'GET', '/cdn/categories', null, 4194304);
+	return mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes());
+
+}
+
+// How much of their category tree answer is read. Every call to /cdn/categories
+// uses this one limit.
+function mp_n11_category_tree_bytes() {
+
+	return 8388608;
 
 }
 
@@ -281,7 +306,9 @@ function mp_n11_categories($account) {
 //
 //   listPrice and salePrice go together or not at all - their rule, and it is
 //   enforced here because sending one alone is accepted and then rejected per
-//   SKU on the task, hours later. The shop has one price, so both carry it.
+//   SKU on the task, hours later. The shop has one price, so both carry it,
+//   and it already includes the tax the checkout adds (mp_product_price()):
+//   n11 quotes its prices with the VAT inside.
 //
 //   Sending price at all is optional per account. A shop that sets its
 //   marketplace prices by hand over there - most do, because the commission
@@ -762,8 +789,12 @@ function mp_n11_package($entry) {
 			// tax, which is what this marketplace trades under.
 			'tax'            => 0,
 			// Per unit, like everything else the importer is handed. n11 gives
-			// the discount for the whole line.
+			// the discount for the whole line, and a line amount that does not
+			// divide by the quantity has no exact unit value (10.00 over three
+			// is 3.33 three times), so the line's own amount travels beside it
+			// and the order's discount is summed from that.
 			'discount'       => ($quantity > 0) ? (int) round($discount / $quantity) : $discount,
+			'discount_total' => $discount,
 			'status'         => isset($line['orderItemLineItemStatusName'])
 				? (string)$line['orderItemLineItemStatusName'] : ''
 		);
@@ -1050,9 +1081,9 @@ function mp_n11_approve_lines($account, $line_ids) {
 // than a fact about categories.
 //
 // Only a leaf can carry a product. A listing filed against a branch is refused.
-function mp_n11_category_tree($account) {
+function mp_n11_category_tree($account, $transport = null) {
 
-	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, 8388608);
+	$result = mp_n11_call($account, 'GET', '/cdn/categories', null, mp_n11_category_tree_bytes(), $transport);
 
 	if (!$result['ok']) {
 
@@ -1309,11 +1340,26 @@ function mp_n11_create_listings($account, $items) {
 // something from their list or the SKU is refused. The nearest of the four is
 // the honest answer, and it is rounded down rather than up - overstating the
 // rate on a marketplace listing overcharges the buyer.
+//
+// The rate is the one inside the price that is sent (vat_rate,
+// mp_applied_vat_rate()): 0 for a product the shop does not tax or a country
+// in no tax zone, because n11 works the VAT back out of the sale price and a
+// rate the price does not carry would come out of the seller's net. Without
+// one (tax off: the stored price is final, VAT inside) the product's own
+// rate, else the zone's.
 function mp_n11_vat_rate($item) {
 
-	$rate = isset($item['tax_rate']) && $item['tax_rate'] !== null
-		? (float) $item['tax_rate']
-		: (function_exists('get_default_tax_rate') ? (float) get_default_tax_rate() : 20.0);
+	if (isset($item['vat_rate']) && $item['vat_rate'] !== null) {
+
+		$rate = (float) $item['vat_rate'];
+
+	} else {
+
+		$rate = isset($item['tax_rate']) && $item['tax_rate'] !== null
+			? (float) $item['tax_rate']
+			: (function_exists('get_default_tax_rate') ? (float) get_default_tax_rate() : 20.0);
+
+	}
 
 	$allowed = array(0, 1, 10, 20);
 

@@ -27,6 +27,6 @@ description: Backup archives: install-screen upload streamed into data/temp and 
 ## What do the file explorer's archive actions refuse? (`view_folder_and_files_f.php`)
 - `explorer_backup_extract` (manager): streams every entry with `pg_restore_archive_copy()`, no `memory_limit -1`; the listed size must fit on the disk (`pg_explorer_archive_size()`, `pg_explorer_disk_has_room()`); `pg_explorer_backup_entry_blocked()` skips dotfiles and `web.config` anywhere and executable names outside `layouts/` (at the root or under one wrapper folder) - a child `.htaccess` under `data/backups/` would reset the deny and rewrite rules that keep the archives unreachable.
 - `explorer_backup_upload`: `.htaccess` is accepted only at the backup root and only while none is there (to restore a lost one), never in a sub-folder.
-- `explorer_zip_extract` (role 3 with folder edit rights, into the web root): the listing is capped at 10,000 entries and 2 GB uncompressed and must fit on the disk before anything is inflated; files are streamed.
+- `explorer_zip_extract` (role 3 with folder edit rights; files go to `data/files`, only their names join the site's address space): the listing is capped at 10,000 entries and 2 GB uncompressed and must fit on the disk before anything is inflated; files are streamed.
 
 PR: #473, #480

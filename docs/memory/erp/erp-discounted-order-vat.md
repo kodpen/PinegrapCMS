@@ -1,25 +1,29 @@
 ---
 name: erp-discounted-order-vat
-description: How an order becomes invoice lines: a discounted order's VAT at checkout vs on the invoice, the tie-back to the order's VAT, shipping/surcharge/installment lines (4.76), the total check.
+description: Order VAT at checkout and on the ERP invoice (per rate, again after a discount), which lines they carry, and why header amounts are not line items.
 ---
 
-## How does checkout treat VAT on a discounted order?
-- `submit_order.php` takes the discount off the VAT once, on the header, before the total: `$tax - round($tax * ($discount / $subtotal))`, because a discount shrinks the tax base.
-- `order_items.tax_total` still holds the undiscounted line tax (`order_items.tax` is the unit tax). Order lines copied to an invoice as they are over-invoice; a read that mixes the two gives a wrong invoice.
-- Demo data broke this rule once: `_seed_demo.php` was fixed and old rows repaired by `_seed_fix_discount_tax.php` (dev machine scripts, not in the repository; only rows with the error signature, safe to rerun).
+## How does the checkout take an order's VAT?
+- Per rate, as Paraşüt and the ERP (#1168): `update_order_item_taxes()` taxes each rate once on the charged lines' sum, spread back by largest remainder in line id order (`pg_order_line_taxes()`, `pg_tax_by_rate()`, `pg_tax_spread()` = `erp_allocate()`'s rule). Later-starting recurring and saved-for-later lines are taxed alone. A line's VAT may be a kuruş off its rate (1.02+1.02 at 20%: 0.21+0.20).
+- After an order discount VAT is retaken per rate on the rest, like `erp_order_lines()` (`pg_order_charged_tax()`): `submit_order.php`, express order widget, legal docs, legacy preview/receipt pages (`pg_order_items_charged_tax()`). Was `$tax - round($tax*$discount/$subtotal)`: 1.01 at 20% + 1.27 at 10% less 1.00 gave 0.19, invoice 0.18. A line with no stored rate (pre-11.0.59) keeps the header share.
+- Live (dev + Paraşüt demo, 2026-10-22): #1178 (14.95+499.95 at 10%, 125.95+45.00 at 20%) VAT 85.68 (per line 85.69); #1179 with a 10% code 77.11 (header share 77.12); Paraşüt equal, unshifted.
+- `order_items.tax_total` stays the undiscounted line tax; mixing the two misinvoices.
+- Demo data broke the rule: `_seed_demo.php` fixed; `_seed_fix_discount_tax.php` repaired old rows (only error-signature rows; rerunnable).
 
 ## How does `erp_order_lines()` build a discounted line?
-- The order discount is spread over the goods lines by value (`erp_allocate()`); each line's VAT is then taken again from what is left (`erp_apply_rate($line_total - $share, $rate)`), not reduced by a share: `rate × base = VAT` must hold per line, because the e-invoice is checked against it. The rate is the legal one (`erp_line_tax_rate()`, erp-return-documents).
-- The goods lines are then tied to the order's VAT (`orders.tax`): a rounding gap of about a kuruş per VAT-bearing line is spread over them, largest first; a wider gap is left alone and the total check refuses the invoice.
+- Discount spread by line value (`erp_allocate()`), then VAT retaken per rate on the rest (`erp_rate_vat()`, #1168): checkout's figure. The rate is the legal one (`erp_line_tax_rate()`, erp-return-documents).
+- Then tied to the header VAT (`orders.tax`): a gap ≤ 1 kuruş per VAT-bearing line (per-line-taxed orders before #1168) is spread over them, largest first; wider fails the gate.
+- The gate runs BEFORE `erp_next_number()`: rejections use no number.
 
 ## Why are order header amounts not line items?
-- `orders.shipping`, `discount`, `surcharge`, `installment_charges` and `gift_card_discount` live only on the header; the `order_items` sum is NOT the order total. `orders.total` includes the card's installment charge and has the gift card taken off.
-- Shipping, surcharge and installment charge become lines only through `erp_order_charge_lines()`, after the tie-back (the order's VAT is the goods' VAT alone). Checkout adds no tax to them, so the tax lies inside the amount charged and is split out with `erp_split_gross()` at the goods' rate; with goods at several rates the charge is shared by rate in proportion to the goods, one line per rate. Without the installment line every installment order was refused. It counts in `surcharge_total` (no column of its own).
-- `erp_shipping_taxed()` (step 4.76, `config.erp_shipping_tax`): `included` taxes these charges, `none` leaves one line at 0, empty lets the store's country decide (untaxed in the US, where sales tax falls on the goods only; taxed elsewhere).
-- The gift card is no sale line: `gift_card_total` says how part of the total was paid, and `erp_settle_gift_card()` settles that part in the same transaction.
+- They live only on the header; the invoice header, the charge lines, the gift card and the total check: erp-order-invoice-header.md.
 
-## When is an order's invoice refused?
-- `erp_invoice_from_order_locked()` compares the built `grand_total` with `orders.total + gift_card_discount` and refuses a mismatch, naming both figures. That check, the account lookup and the period lock run before the transaction and `erp_next_number()`: a refused attempt spends no number.
-- Header shape: `subtotal` = every line total, charge lines included; `grand_total` = subtotal − discount_total + tax_total. `shipping_total` / `surcharge_total` only say how much of the subtotal those lines are; a reader that adds them again counts shipping twice.
+## Which order lines does the invoice carry?
+- Only charged ones: `erp_order_charged_items($order, $items)` (`order_bridge.php`) drops a recurring line (`order_items.recurring_payment_period` set) starting after the **order day** (any recurring line on ClearCommerce), as `submit_order.php` totals (`pg_order_line_charged_today()`). `erp_order_lines()` spreads discount and shipping tax over the rest.
+- Why (#1072): `orders.total`, `tax`, `discount` cover charged lines only. With a subscription starting in 14 days the invoice exceeded the order and was refused ("The invoice total … does not match the order total"); the auto invoice reported it on every such order; an uninvoiced order's card refund offered that line.
+- Same filter in `erp_invoice_from_order_locked()`, API pre-check `erp_api_order_invoice_check()`, `erp_order_refund_lines()` (also returns dropped rows as `left_out` so `pg_return_erp_line_map()` still maps the return refund, #1156), profit report `erp_profit_order_lines()`; each selects `products.start AS product_start`. All lines unstarted: refused, "nothing to invoice yet"; subscription payments are not invoiced this way.
+- Profit report bug (#1157): unstarted line in sales and cost (140.00, header 90.00), subscription-only order in every period.
 
-Related: docs/memory/erp/erp-local-sale.md, docs/memory/erp/erp-document-numbering.md
+## When can the filter differ from checkout?
+- It reads today's gateway and the line snapshot (`recurring_payment_period`, `recurring_start_date`); `submit_order.php` used `products.recurring` and the submit-time gateway. They differ after an unrecorded ClearCommerce period, a later recurring/start change on the product, or a switch to non-recurring between cart update (which writes `recurring_payment_period`) and submit.
+- Still unfiltered (follow-up): old Paraşüt export `parasut_create_invoice()` (`includes/fn/parasut.php` ~1620) sends every non-saved row.

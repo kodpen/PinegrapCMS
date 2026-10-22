@@ -1482,11 +1482,9 @@ function initialize_url_constants()
         define('SOFTWARE_DIRECTORY', $path_parts[count($path_parts) - 1]);
     }
 
-    if (version_compare(PHP_VERSION, '5.0.0', '>=') == TRUE) {
-        $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-    } else {
-        $position = mb_strrpos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
-    }
+    // In any case, as init.php finds it: the address keeps the spelling it
+    // was typed with, which on Windows need not be the folder's.
+    $position = mb_strripos($_SERVER['SCRIPT_NAME'], '/' . SOFTWARE_DIRECTORY);
 
     if ($position === FALSE) {
         $url_path = '/';
@@ -1602,12 +1600,10 @@ function initialize_timezone()
 {
     // If PHP is at least v5.1.3, then update timezone in PHP.
     if (version_compare(PHP_VERSION, '5.1.3', '>=') == true) {
-        // If there is a timezone set in the site settings, then update PHP to use that.
-        if (TIMEZONE != '') {
-            date_default_timezone_set(TIMEZONE);
-
-        // Otherwise there is not a timezone set, so update PHP to use server's timezone.
-        } else {
+        // Use the timezone set in the site settings when this PHP knows it
+        // (a system time zone database without the legacy links does not
+        // know old names such as US/Eastern); otherwise the server's.
+        if ((TIMEZONE == '') || !@date_default_timezone_set(TIMEZONE)) {
             date_default_timezone_set(@date_default_timezone_get());
         }
     }

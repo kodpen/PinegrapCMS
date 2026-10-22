@@ -118,8 +118,11 @@ if ($_POST) {
 
 		if ($liveform->check_form_errors() == false) {
 
+			// pull_orders is written, not left to the column's default of 1: a
+			// marketplace whose connector cannot bring orders in would start
+			// with the switch on and the job skipping it without a word.
 			db("INSERT INTO marketplace_accounts
-				(provider, name, credentials, status, push_stock, push_price,
+				(provider, name, credentials, status, push_stock, push_price, pull_orders,
 				 created_user_id, created_timestamp, updated_timestamp)
 				VALUES (
 					'" . e($provider) . "',
@@ -128,6 +131,7 @@ if ($_POST) {
 					'paused',
 					'1',
 					'" . (empty($_POST['push_price']) ? '0' : '1') . "',
+					'" . (mp_can($provider, 'pull_orders') ? '1' : '0') . "',
 					'" . e((int)$user['id']) . "',
 					UNIX_TIMESTAMP(),
 					UNIX_TIMESTAMP())");
@@ -560,6 +564,41 @@ if ($_POST) {
 
 	}
 
+	if ($action === 'retry_orders' && $account) {
+
+		// A refused order is taken again only when the feed hands its package
+		// back, and a package nobody has touched on the marketplace since is no
+		// longer in the window. So the cursor goes back to the oldest refused
+		// one: the next run reads on from there, imports what was refused and
+		// passes over what is already here, because the importer is keyed on
+		// the package. remote_timestamp is on the same scale as the pull's own
+		// cursor (read_to is the last package's placed_at), and the pull
+		// already starts a few minutes before its cursor, so it is used as it
+		// is. Only the imported_timestamp fallback, this server's clock, goes
+		// back 3 h. Going back further would read packages from before the
+		// first pull and import them as new orders.
+		$oldest = (int) db_value("SELECT MIN(IF(remote_timestamp > 0, remote_timestamp, imported_timestamp - 10800))
+			FROM marketplace_order_map
+			WHERE (account_id = '" . e($account_id) . "') AND (status = 'failed') AND (order_id = 0)");
+
+		if ($oldest > 0) {
+
+			$from = max(1, $oldest);
+
+			db("UPDATE marketplace_accounts
+				SET last_order_pull = '" . e($from) . "', updated_timestamp = UNIX_TIMESTAMP()
+				WHERE (id = '" . e($account_id) . "') AND (last_order_pull > '" . e($from) . "')");
+
+		}
+
+		$liveform->add_notice(lang('The orders that failed will be read from the marketplace again on the next run.'));
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
 	if ($action === 'clear_queue' && $account) {
 
 		db("DELETE FROM marketplace_sync_queue
@@ -810,6 +849,8 @@ $maps = array();
 
 $orders = array();
 
+$failed_orders = 0;
+
 $articles = array();
 
 $category_count = 0;
@@ -829,10 +870,13 @@ $failures = array();
 if ($selected) {
 
 	// One query for the mapping and the product beside it. The screen shows the
-	// shop's price and quantity next to the remote code, because the question
-	// an operator opens this screen with is "what is it going to send".
+	// price and quantity next to the remote code, because the question an
+	// operator opens this screen with is "what is it going to send": the price
+	// is the one the queue sends, tax included (mp_product_price()), which is
+	// why the product's taxable flag and rate ride along.
 	$maps = (array) db_items("SELECT marketplace_product_map.*,
 			products.name AS product_name, products.title, products.price,
+			products.taxable, products.tax_rate,
 			products.inventory, products.inventory_quantity, products.out_of_stock, products.enabled
 		FROM marketplace_product_map
 		LEFT JOIN products ON products.id = marketplace_product_map.product_id
@@ -873,6 +917,9 @@ if ($selected) {
 		$open_chosen = is_array($decoded) ? $decoded : array();
 
 	}
+
+	$failed_orders = (int) db_value("SELECT COUNT(*) FROM marketplace_order_map
+		WHERE (account_id = '" . e($selected_id) . "') AND (status = 'failed') AND (order_id = 0)");
 
 	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total,
 			orders.billing_first_name, orders.billing_last_name, orders.status AS order_status
@@ -1043,6 +1090,15 @@ if ($selected) {
 	// left out, since the job would never pick that row up.
 	$can_list = mp_can($selected['provider'], 'create_listings');
 
+	// Orders come in only from a marketplace whose connector reads them, and
+	// are accepted only by one that can accept them. The job skips the rest
+	// without a word, so their switches and the orders card are not drawn: a
+	// switch shown on would promise orders that never come, while the stock
+	// they sell there is still sold here.
+	$can_orders = mp_can($selected['provider'], 'pull_orders');
+
+	$can_approve = $can_orders && mp_can($selected['provider'], 'approve_lines');
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -1155,6 +1211,10 @@ if ($selected) {
 
 			}
 
+			// The figure the marketplace gets; marked when it carries tax the
+			// product's stored price does not, so it is not read as a typo.
+			$map_price = mp_product_price($map);
+
 			echo '
 			<div class="mp-row">
 				<span>
@@ -1165,7 +1225,8 @@ if ($selected) {
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
-				<span>' . prepare_price_for_output((int)$map['price'], false, 0, 'html', false) . '</span>
+				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
+					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
 				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'
@@ -1297,7 +1358,7 @@ if ($selected) {
 
 	/* ------------------------------------------------------------- orders */
 
-	if (!empty($selected['pull_orders'])) {
+	if ($can_orders && !empty($selected['pull_orders'])) {
 
 		echo '
 	<div class="card mb-3" id="mp-orders">
@@ -1307,7 +1368,16 @@ if ($selected) {
 				. ((int)$selected['last_order_pull']
 					? h(lang(array('string' => 'Orders read up to {var:1}',
 						'vars' => array(mp_settings_ago((int)$selected['last_order_pull'])))))
-					: lang('Never pulled')) . '</span>
+					: lang('Never pulled')) . '</span>'
+			. ($failed_orders ? '
+			<form method="post" action="marketplace_settings.php" class="d-inline">
+				' . get_token_field() . '
+				<input type="hidden" name="mp_action" value="retry_orders">
+				<input type="hidden" name="account_id" value="' . $selected_id . '">
+				<button type="submit" class="btn btn-sm btn-outline-secondary"
+					title="' . h(lang('Match the products first. The next run reads the failed orders again.')) . '">
+					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
+			</form>' : '') . '
 		</div>
 		<div class="card-body px-2 py-3">';
 
@@ -1555,19 +1625,25 @@ if ($selected) {
 					. (!empty($selected['push_price']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
-			<hr>
-			<div class="form-check form-switch mb-2">
+			<hr>'
+			. ($can_orders ? '
+			<div class="form-check form-switch ' . ($can_approve ? 'mb-2' : 'mb-4') . '">
 				<input class="form-check-input" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
 					. (!empty($selected['pull_orders']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
-			</div>
+			</div>'
+			. ($can_approve ? '
 			<div class="form-check form-switch mb-4">
 				<input class="form-check-input" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
 					. (!empty($selected['auto_approve']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
-			</div>
+			</div>' : '') : '
+			<p class="small opacity-75 mb-4">' . h(lang(array(
+				'string' => 'Orders are not brought in from {var:1} yet.',
+				'vars'   => array(mp_provider_name($selected['provider']))
+			))) . '</p>') . '
 			<hr>'
 			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
 			<div class="mb-3">

@@ -1,11 +1,17 @@
 ---
 name: waf-path-exemption-and-robots
-description: waf_is_excluded() matches the path only; /robots.txt, /.well-known/, health.php and the credential-checked endpoints skip the bot policy (api.php does not); feed readers are good bots.
+description: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 ---
 
 ## What does the exemption look at?
 - `waf_is_excluded()` DISCARDS the query string and matches only the path. Matching the whole `REQUEST_URI` made the entire firewall skippable: anyone can put the pattern in a parameter. With `api2` exempt, `/hesabim?x=1&foo=api2&q=' OR 1=1--` hit the exemption and signature scan, rate limit and IP list were all skipped.
 - Consequence: you cannot exempt a feed by query parameter (`?rss=true`), that is exactly the string an attacker would add. To exempt, exempt the path.
+- The path is the script the server runs (`waf_exclusion_path()`): `SCRIPT_NAME`, already decoded, dot segments resolved, PATH_INFO split off. PATH_INFO is the caller's too: with `iyzico_callback` excluded, `/index.php/iyzico_callback` ran the sign-in screen with no firewall and let a banned address in (#953). Cutting the written address at its first `.php` segment was not enough: `/index.ph%70/iyzico_callback`, `/index%2ephp/…`, `/index.php%2F…` and `/iyzico_callback/../index.php` still ran `index.php` exempt; since #1202 the match uses `SCRIPT_NAME`.
+- Only a `router.php` request (a page address, or the IIS rewrite) is matched by its request path: query removed, decoded once, `\` as `/`, cut at the first `.php` segment; a `.`/`..` segment matches nothing (`waf_request_path_decoded()`).
+- The API exemptions use the same rule (`waf_names_script_in()`): the path is read only for `router.php`, so `/index.ph%70/integration.php/x` is not an API call (#1202). Tests: `tests/waf_exclusion_test.php`.
+
+## What happens to an exclusion written after a script name?
+- It matches nothing any more: `integration.php/products` or `oauth.php/token` named PATH_INFO, which is no longer part of the path. Exclude the script name (`integration.php`) instead; a bare script name is still matched against the running script.
 
 ## Which paths are always served?
 - `waf_path_is_always_served()`: `/robots.txt` and `/.well-known/` are exempt from bot policy.
@@ -15,13 +21,9 @@ description: waf_is_excluded() matches the path only; /robots.txt, /.well-known/
 - `health.php` (uptime monitors) gets the same bot-policy and country exemption through `waf_is_health_request()`, which asks the running script, never the path: `/x/health.php/y` handed to `router.php` must not carry it. See `docs/memory/platform/maintenance-mode-health.md`.
 
 ## Which endpoints skip the bot policy?
-- Those that admit a caller by its credential, not its user agent: `integration.php`, `mcp.php`, `oauth.php`, the Workspace calendar subscription `workspace_ical.php` and the product feed `feed.php`. `waf_handle_bot()` returns for them right after the attack-tool check, the only check that still runs.
-- Why: an AI assistant working through the MCP server sends its fetcher's name (`Claude-User`) from its operator's API egress, which is not in the crawler ranges that operator publishes; judged as a crawler it was `bot-spoof`, refused and counted towards a ban right after it had been given a token.
-- The return sits BEFORE the good-bot branch: after it, `IS_BOT` would be defined and a crawler name would buy relief from the rate limits.
-- `api.php` is not among them (`waf_is_site_api_request()`): the site's own pages call it without a credential, so the bot policy still guards it.
-- `waf_is_api_request()` asks the request, not only the file that ran: the running script, else the first path segment ending in `.php` (query string ignored). IIS hands `/integration.php/products/138` to `router.php`; `/index.php/integration.php/x` answers `index.php`, so appending a name claims nothing.
+- The credential-checked ones (integration.php, mcp.php, oauth.php, workspace_ical.php, eed.php), not pi.php: waf-bot-policy-credential-endpoints.md.
 
 ## Which feed readers are good bots?
 - Feedly, Inoreader, Feedbin, NewsBlur, Miniflux, Netvibes, The Old Reader, FeedFetcher. Each request represents a real subscribed person; blocked, the feed silently empties and nobody reports "my feed stopped".
 
-Related: docs/memory/visitors/robots-txt-disallow-rules.md, docs/memory/waf/waf-country-restriction.md, docs/memory/api/external-api-iis-environment.md
+Related: docs/memory/visitors/robots-txt-disallow-rules.md, docs/memory/waf/waf-bot-policy-credential-endpoints.md, docs/memory/waf/waf-country-restriction.md, docs/memory/api/external-api-iis-environment.md

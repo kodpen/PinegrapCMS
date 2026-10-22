@@ -356,6 +356,45 @@ function get_ship_to_id_for_offer_gift($offer_id, $allowed_ship_to_ids = array()
     }
     return 0;
 }
+// Does this recipient hold a line the shopper pays for? The checkout refuses
+// a free item that is alone in a recipient (shopping_cart.php, submit_order.php
+// look for a line with a price above 0 in the same ship_to), so a free gift
+// is only placed in, or left in, a recipient that has one. $except_item_id
+// leaves out the gift line itself when it is the one being weighed.
+function pg_ship_to_has_paid_line($ship_to_id, $except_item_id = 0)
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if (($order_id <= 0) || ((int) $ship_to_id <= 0)) {
+        return false;
+    }
+    $sql_except = ((int) $except_item_id > 0) ? " AND (id != '" . e($except_item_id) . "')" : '';
+    return (bool) db_value("SELECT id FROM order_items
+
+        WHERE
+
+            (order_id = '" . e($order_id) . "')
+
+            AND (ship_to_id = '" . e($ship_to_id) . "')
+
+            AND (price > 0)" . $sql_except . pg_order_item_active_sql() . "
+
+        LIMIT 1");
+}
+// The recipient the cart gives every shippable product when the site ships
+// to one address: the buyer's own, the one create_or_get_ship_to('', '')
+// finds or opens. Looked up here without opening it, so a caller can ask
+// what it holds before deciding to put something there; 0 when the cart has
+// not opened it yet.
+function pg_single_recipient_ship_to_id()
+{
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    if ($order_id <= 0) {
+        return 0;
+    }
+    return (int) db_value("SELECT id FROM ship_tos
+
+        WHERE (order_id = '" . e($order_id) . "') AND (ship_to_name = '" . escape(lang('myself')) . "')");
+}
 // The shopper took an offer's gift out of the cart; remember or forget that.
 //
 // The refusal is what keeps a removed gift from coming straight back on the
@@ -481,26 +520,55 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
     // The shopper is already paying for this product: discount that line
     // instead of adding the same thing twice.
-    $paid_order_item = db_item("SELECT id, quantity, price FROM order_items
+    //
+    // The line's own offer action tells whether its unit price is an average:
+    // "the cheapest item is free" and an earlier gift discount only some of
+    // the units and spread that over the line.
+    $paid_order_item = db_item("SELECT
+
+            order_items.id,
+
+            order_items.quantity,
+
+            order_items.price,
+
+            order_items.discounted_by_offer,
+
+            offer_actions.type AS line_offer_action_type,
+
+            offer_actions.discount_product_target AS line_offer_action_target
+
+        FROM order_items
+
+        LEFT JOIN offer_actions ON order_items.offer_action_id = offer_actions.id
 
         WHERE
 
-            (order_id = '" . e($order_id) . "')
+            (order_items.order_id = '" . e($order_id) . "')
 
-            AND (product_id = '" . e($action['add_product_product_id']) . "')
+            AND (order_items.product_id = '" . e($action['add_product_product_id']) . "')
 
-            AND (added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
+            AND (order_items.added_by_offer = '0')" . pg_order_item_active_sql() . $sql_ship_to . "
 
-        ORDER BY id ASC LIMIT 1");
+        ORDER BY order_items.id ASC LIMIT 1");
     if ($paid_order_item) {
         // Note this happens even when the shopper refused the free copy: they
         // are buying this one, and the offer's discount is theirs.
         //
         // The gift is the action's quantity, not the whole line: the other
-        // units keep the price the line stands at (list, member or another
-        // offer's), and a gift never raises that price.
-        $gift_price = min($discounted_price, (int) $paid_order_item['price']);
-        $line_price = pg_offer_spread_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $gift_price, $action['add_product_quantity']);
+        // units keep the price they stand at, and a gift never raises that
+        // price. That price is the line's unit price, unless the line already
+        // carries a partly discounted unit spread over it (the cheapest item,
+        // an earlier gift): then the paid units stand at the list price, or
+        // the member's agreed price, and the gift is taken off the line's
+        // total at that price (pg_offer_gift_line_unit_price()).
+        $paid_unit_price = (int) $paid_order_item['price'];
+        if (($paid_order_item['discounted_by_offer'] == 1)
+            && (($paid_order_item['line_offer_action_type'] == 'add product') || (pg_offer_action_target(array('discount_product_target' => $paid_order_item['line_offer_action_target'])) == 'cheapest'))) {
+            $member_prices = pg_erp_member_prices();
+            $paid_unit_price = isset($member_prices[(int) $action['add_product_product_id']]) ? (int) $member_prices[(int) $action['add_product_product_id']]['price'] : (int) $action['product_price'];
+        }
+        $line_price = pg_offer_gift_line_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $paid_unit_price, $discounted_price, $action['add_product_quantity']);
         db("UPDATE order_items
 
             SET
@@ -527,7 +595,17 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     // charged shipping and checked against the destination with the rest.
     // Found or created only here, once the gift is placed, so a gift that is
     // not placed leaves no empty recipient behind.
+    //
+    // A free gift has to travel with a paid line: the checkout refuses a free
+    // item alone in a recipient, and the shopper could not place the order
+    // without taking the gift out. When the recipient holds nothing paid for
+    // (only unshipped items in the cart, say) the gift is not placed; the
+    // caller keeps the offer among the pending ones and the claim button asks,
+    // as the multi-recipient branch does through get_ship_to_id_for_offer_gift().
     if (!$ship_to_id && (ECOMMERCE_SHIPPING == true) && (ECOMMERCE_RECIPIENT_MODE == 'single recipient') && ($action['product_shippable'] == 1)) {
+        if (($discounted_price <= 0) && !pg_ship_to_has_paid_line(pg_single_recipient_ship_to_id())) {
+            return false;
+        }
         $ship_to_id = create_or_get_ship_to('', '');
     }
 
@@ -1691,6 +1769,221 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
 
 
 /**
+ * The low-stock line this site runs, 0 when it runs none.
+ *
+ * ECOMMERCE_LOW_STOCK_THRESHOLD is set by hand in data/config.php and has no
+ * settings screen; the cart widget's warning reads the same constant.
+ *
+ * @return int
+ */
+function pg_product_stock_threshold()
+{
+    return (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int) ECOMMERCE_LOW_STOCK_THRESHOLD > 0))
+        ? (int) ECOMMERCE_LOW_STOCK_THRESHOLD
+        : 0;
+}
+
+
+/**
+ * What one change of a product's stock announces: the events, in order, with
+ * their payloads. Pure, so the writers and the tests read the same rule.
+ *
+ * inventory.changed goes out on every write of a tracked product, with the
+ * same keys the stock API's own writer sends, plus the writer's name as
+ * source. stock.low goes out once, on the crossing: a product sitting at two
+ * with a threshold of five would otherwise raise it on every sale, and a
+ * reorder notice that arrives four times a day stops being read. A product
+ * that did not track stock before this write ($before null) had no level to
+ * be above the line, so a count at or under it is a crossing - the stock API
+ * and the Workspace switch tracking on with a count the same way.
+ *
+ * A product that does not track stock after the write announces nothing: a
+ * gift card sold without a stock limit has no level to report and no low to
+ * cross.
+ *
+ * @param int      $product_id
+ * @param string   $name       products.name, carried by stock.low
+ * @param bool     $tracked    products.inventory after the write
+ * @param int|null $before     stock before the write; null when it was not tracked
+ * @param int      $after      stock left after the write
+ * @param int      $threshold  the low-stock line, 0 for none (pg_product_stock_threshold())
+ * @param string   $source     the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return array   list of array(event name, payload)
+ */
+function pg_product_stock_events($product_id, $name, $tracked, $before, $after, $threshold, $source)
+{
+    $product_id = (int) $product_id;
+    $after = (int) $after;
+    $threshold = (int) $threshold;
+
+    if (($product_id <= 0) || !$tracked) {
+        return array();
+    }
+
+    $events = array(
+        array('inventory.changed', array(
+            'product_id'   => $product_id,
+            'quantity'     => $after,
+            'out_of_stock' => ($after <= 0),
+            'source'       => (string) $source,
+        )),
+    );
+
+    $was_above = ($before === null) || ((int) $before > $threshold);
+
+    if (($threshold > 0) && ($after <= $threshold) && $was_above) {
+        $events[] = array('stock.low', array(
+            'product_id' => $product_id,
+            'name'       => (string) $name,
+            'quantity'   => $after,
+            'threshold'  => $threshold,
+        ));
+    }
+
+    return $events;
+}
+
+
+/**
+ * Whether a save that may have touched a product's stock moved it, and what
+ * to hand pg_product_stock_changed(): array($before, $after), or null when
+ * there is nothing to announce. For the screens that write the whole row
+ * (the product screen, the bulk edit) and cannot tell from the form alone.
+ *
+ * Tracking switched on with a count is a change from no level ($before
+ * null), as the stock API's set and the Workspace treat it. Tracking
+ * switched off is not a stock change: there is no level left to report. The
+ * same count written again is nothing.
+ *
+ * @param bool       $was_tracked  products.inventory before the write
+ * @param int|string $was_quantity products.inventory_quantity before the write
+ * @param bool       $tracked      products.inventory after the write
+ * @param int|string $quantity     products.inventory_quantity after the write
+ * @return array|null array(before or null, after), or null for no change
+ */
+function pg_product_stock_delta($was_tracked, $was_quantity, $tracked, $quantity)
+{
+    if (!$tracked) {
+        return null;
+    }
+
+    $after = (int) $quantity;
+
+    if (!$was_tracked) {
+        return array(null, $after);
+    }
+
+    if ((int) $was_quantity === $after) {
+        return null;
+    }
+
+    return array((int) $was_quantity, $after);
+}
+
+
+/**
+ * The products.out_of_stock assignment for a write that sets a stock count,
+ * for an UPDATE's SET list: tracked with nothing left is out of stock, any
+ * other row is not (the rule of pg_pb_apply_stock_flag()).
+ *
+ * out_of_stock_timestamp is the "out of stock since" column, so it is
+ * stamped only on the way in: a row that was flagged already keeps the day
+ * it ran out.
+ *
+ * @param bool       $tracked     products.inventory after the write
+ * @param int|string $quantity    products.inventory_quantity after the write
+ * @param bool|string $was_flagged products.out_of_stock before the write
+ * @return string the assignment(s), without a trailing comma
+ */
+function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
+{
+    if (!$tracked || ((int) $quantity > 0)) {
+        return "out_of_stock = '0'";
+    }
+
+    if (($was_flagged === true) || ((string) $was_flagged === '1')) {
+        return "out_of_stock = '1'";
+    }
+
+    return "out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()";
+}
+
+
+/**
+ * A product's stock was written somewhere on the site: the checkout, a local
+ * sale, the product screen and its list, a barcode scan, the bulk edit, the
+ * file manager's catalogue (quick edit and bulk edit). One
+ * call after the write does everything a stock change owes the outside:
+ *
+ *   - products.timestamp moves, so GET /products?updated_since= lists the
+ *     product; a sale that left it alone was invisible to a system that
+ *     syncs that way, which kept selling the old stock.
+ *   - inventory.changed, and stock.low on the crossing, are announced the way
+ *     the stock API's own writer announces them (pg_product_stock_events()).
+ *   - the marketplace queue is told (pg_marketplace_product_changed()).
+ *
+ * The stock API, the Workspace and the ERP keep their own writers: each
+ * stamps and announces inside its own statement already.
+ *
+ * Called once per product, after the row is written. $before is the stock as
+ * the caller read it before its write, or null when the product did not
+ * track stock until now. $after is what the write left; null reads it back
+ * from the row, which a caller whose UPDATE did the arithmetic (the checkout's
+ * decrement) cannot know otherwise. The stock left is returned, so a loop
+ * that meets the same product twice (two recipients of one order) carries it
+ * on as the next row's $before instead of the value read before the loop.
+ *
+ * Queued and recorded, never sent: a checkout must not wait on anybody's
+ * server. Silent on a product that is not there.
+ *
+ * @param int      $product_id
+ * @param int|null $before  stock before the write; null when it was not tracked
+ * @param int|null $after   stock left after the write; null reads the row
+ * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @return int|null the stock left, null when the product is not there
+ */
+function pg_product_stock_changed($product_id, $before, $after, $source)
+{
+    $product_id = (int) $product_id;
+
+    if (($product_id <= 0) || !defined('DB_CONNECTED')) {
+        return null;
+    }
+
+    db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $product_id . "' LIMIT 1");
+
+    $row = db_item("SELECT name, inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+    if (!$row) {
+        return null;
+    }
+
+    if ($after === null) {
+        $after = (int) $row['inventory_quantity'];
+    }
+
+    $events = pg_product_stock_events(
+        $product_id,
+        $row['name'],
+        ((string) $row['inventory'] === '1'),
+        ($before === null) ? null : (int) $before,
+        $after,
+        pg_product_stock_threshold(),
+        $source);
+
+    if (function_exists('pg_announce')) {
+        foreach ($events as $event) {
+            pg_announce($event[0], $event[1]);
+        }
+    }
+
+    pg_marketplace_product_changed($product_id);
+
+    return (int) $after;
+}
+
+
+/**
  * The statements that put a catalogue row in the Recycle Bin.
  *
  * The catalogue's bin is a flag, not a move: the row is switched off and marked
@@ -1988,6 +2281,46 @@ function get_effective_tax_rate($product_rate, $zone_rate)
 
 
 /**
+ * The price a buyer pays for one unit, in minor units: the stored price plus
+ * the tax the checkout adds on top of it.
+ *
+ * The shop keeps product prices without tax and update_order_item_taxes()
+ * adds round(rate / 100 x price) per line at the checkout, so this is that
+ * formula for a quantity of one. It is the figure to hand anybody who wants
+ * the final price - a marketplace quotes its sale price with the tax inside -
+ * and it is the price itself whenever the checkout would add nothing: the
+ * shop has tax switched off, the product is not taxable, or the shop's
+ * country is in no tax zone (a zone rate of false, as get_default_tax_rate()
+ * answers it).
+ *
+ * It is the no-buyer twin of local_sale_line_rate(): with the ERP on the
+ * till takes the ERP store's zone (state included), while a marketplace
+ * always takes the shop country's zone, the same source its declared VAT
+ * rate comes from (mp_applied_vat_rate()), so the price and the rate stated
+ * beside it agree.
+ *
+ * @param  int|string   $price        minor units as stored in products.price
+ * @param  int|string   $taxable      products.taxable
+ * @param  mixed        $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param  float|false  $zone_rate    the shop country's zone rate, false in no zone
+ * @param  bool         $tax_enabled  ECOMMERCE_TAX
+ * @return int
+ */
+function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $tax_enabled)
+{
+    $price = (int) $price;
+
+    if (!$tax_enabled || !((int) $taxable) || $zone_rate === false || $zone_rate === null) {
+        return $price;
+    }
+
+    $rate = get_effective_tax_rate($product_rate, $zone_rate);
+
+    return $price + (int) round($rate / 100 * $price);
+}
+
+
+/**
  * A typed tax rate as it is stored, or NULL when the field was left empty.
  *
  * Empty is not zero. Empty means the product has no rate of its own and the
@@ -2092,6 +2425,575 @@ function get_default_tax_rate()
     return $default_rate;
 }
 
+/**
+ * The tax of an order's lines, taken once on the sum of the lines at each
+ * rate and spread back over them.
+ *
+ * Lines at one rate are a group: the group's tax is the rate on the sum of
+ * their amounts, rounded half away from zero, and it is shared out over them
+ * in proportion to their amounts (pg_tax_spread()). The lines add up to their
+ * group and each stays within a minor unit of what it would carry alone. It
+ * is how an e-document provider that works the tax out from the rates comes
+ * to its figures, and how the ERP takes a document's taxes (erp_rate_vat(),
+ * which gives the same figures for lines without withholding). A line with a
+ * negative amount is taxed alone, so a group's shares never run backwards.
+ *
+ * @param array $lines  key => ['amount' => int minor units, 'rate' => float percent]; no rate, or 0, is no tax
+ * @return array  key => int tax, in the order given
+ */
+function pg_tax_by_rate($lines)
+{
+    $taxes = array();
+    $groups = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $amount = (int) ($line['amount'] ?? 0);
+        $rate = (float) ($line['rate'] ?? 0);
+        $taxes[$key] = 0;
+
+        if ($rate <= 0) {
+            continue;
+        }
+
+        if ($amount < 0) {
+            $taxes[$key] = (int) round($amount * $rate / 100);
+            continue;
+        }
+
+        // Three places, the scale the rates are kept at.
+        $group = sprintf('%.3F', $rate);
+
+        if (!isset($groups[$group])) {
+            $groups[$group] = array('rate' => $rate, 'amount' => 0, 'members' => array());
+        }
+
+        $groups[$group]['amount'] += $amount;
+        $groups[$group]['members'][$key] = $amount;
+    }
+
+    foreach ($groups as $group) {
+        $tax = (int) round($group['amount'] * $group['rate'] / 100);
+
+        foreach (pg_tax_spread($tax, $group['members']) as $key => $share) {
+            $taxes[$key] = $share;
+        }
+    }
+
+    return $taxes;
+}
+
+/**
+ * Split an amount over weights: each its floor share, the minor units left
+ * over to the largest remainders, the first of equal ones first. The shares
+ * always add up to the amount. The same rule as the ERP's erp_allocate(), so
+ * an order and its invoice share a group's tax out alike.
+ *
+ * @param int   $total
+ * @param array $weights  key => int, zero or more
+ * @return array  key => int
+ */
+function pg_tax_spread($total, $weights)
+{
+    $total = (int) $total;
+    $shares = array();
+    $sum = 0;
+
+    foreach ($weights as $key => $weight) {
+        $shares[$key] = 0;
+        $sum += (int) $weight;
+    }
+
+    if ($sum <= 0) {
+        // Nothing to go on: the whole amount on the first line rather than
+        // lost.
+        foreach (array_keys($shares) as $key) {
+            $shares[$key] = $total;
+            break;
+        }
+
+        return $shares;
+    }
+
+    $remainders = array();
+    $order = array();
+    $allocated = 0;
+
+    foreach ($weights as $key => $weight) {
+        $exact = ($total * (int) $weight) / $sum;
+        $floor = (int) floor($exact);
+        $shares[$key] = $floor;
+        $remainders[$key] = $exact - $floor;
+        $order[$key] = count($order);
+        $allocated += $floor;
+    }
+
+    $left = $total - $allocated;
+
+    if ($left !== 0) {
+        // Largest remainder first, equal ones in their own order.
+        $keys = array_keys($remainders);
+        usort($keys, function ($a, $b) use ($remainders, $order) {
+            if ($remainders[$a] == $remainders[$b]) {
+                return $order[$a] - $order[$b];
+            }
+            return ($remainders[$a] < $remainders[$b]) ? 1 : -1;
+        });
+
+        if ($left < 0) {
+            $keys = array_reverse($keys);
+        }
+
+        $step = ($left > 0) ? 1 : -1;
+
+        for ($index = 0; $left !== 0; $index++) {
+            $shares[$keys[$index % count($keys)]] += $step;
+            $left -= $step;
+        }
+    }
+
+    return $shares;
+}
+
+/**
+ * The tax an order charges on its lines once the order discount is off.
+ *
+ * The discount is shared over the lines in proportion to their amounts
+ * (pg_tax_spread(), the share the order's invoice gives each line) and the
+ * tax is taken again per rate on what is left of them (pg_tax_by_rate()), so
+ * the order's tax is the one its invoice and an e-document provider come to.
+ * Without a discount it is the lines' own tax, which update_order_item_taxes()
+ * took per rate already. A line whose rate was not kept (one placed before
+ * order_items.tax_rate, or with tax switched off) cannot be taxed again; the
+ * tax is then lowered by the discount's share of the subtotal. Never below
+ * zero; the discount counts up to the subtotal.
+ *
+ * @param array $lines     key => ['amount' => int minor units, 'rate' => float|string|null, 'tax' => int],
+ *                         the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @return int
+ */
+function pg_order_charged_tax($lines, $discount)
+{
+    $amounts = array();
+    $subtotal = 0;
+    $tax = 0;
+    $rated = true;
+
+    foreach ((array) $lines as $key => $line) {
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+        $tax += (int) ($line['tax'] ?? 0);
+
+        if (!isset($line['rate']) || ($line['rate'] === '')) {
+            $rated = false;
+        }
+    }
+
+    $tax = max(0, $tax);
+    $discount = min((int) $discount, $subtotal);
+
+    if (($discount <= 0) || ($subtotal <= 0)) {
+        return $tax;
+    }
+
+    if (!$rated) {
+        return max(0, $tax - (int) round($tax * ($discount / $subtotal)));
+    }
+
+    $shares = pg_tax_spread($discount, $amounts);
+    $taxed = array();
+
+    foreach ($lines as $key => $line) {
+        $taxed[$key] = array('amount' => $amounts[$key] - $shares[$key], 'rate' => (float) $line['rate']);
+    }
+
+    return max(0, array_sum(pg_tax_by_rate($taxed)));
+}
+
+/**
+ * pg_order_charged_tax() for order lines given by id, read from the order:
+ * for the pages that show an order's totals while drawing its lines.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  minor units
+ * @return int
+ */
+function pg_order_items_charged_tax($item_ids, $discount)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $with_rate = pg_schema_has('order_items', 'tax_rate');
+    $lines = array();
+
+    foreach ((array) db_items("SELECT id, price, quantity, tax_total" . ($with_rate ? ", tax_rate" : "") . "
+        FROM order_items
+        WHERE id IN (" . implode(', ', $ids) . ")
+        ORDER BY id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $with_rate ? $item['tax_rate'] : null,
+            'tax' => (int) $item['tax_total'],
+        );
+    }
+
+    return pg_order_charged_tax($lines, $discount);
+}
+
+/**
+ * The tax of each of an order's lines, as the checkout writes it
+ * (update_order_item_taxes()).
+ *
+ * The lines charged together, when the order is placed, take their tax per
+ * rate on their sum (pg_tax_by_rate()): the way the order's invoice and an
+ * e-document provider take it. A line charged on its own takes its own tax
+ * alone - a recurring line that starts later, whose payments are taken one by
+ * one (pg_order_line_charged_today()), and one that is not charged at all.
+ * The lines go in the order of their ids, as the order's invoice reads them,
+ * so a rate's minor unit left over by the spread lands on the same line there.
+ *
+ * @param array $lines  id => ['amount' => int minor units, 'rate' => float percent, 'alone' => bool]
+ * @return array  id => int, in the order of the ids
+ */
+function pg_order_line_taxes($lines)
+{
+    $lines = (array) $lines;
+    ksort($lines);
+    $together = array();
+    $taxes = array();
+
+    foreach ($lines as $id => $line) {
+        if (!empty($line['alone'])) {
+            $taxes[$id] = pg_tax_by_rate(array($id => $line))[$id];
+        } else {
+            $together[$id] = $line;
+        }
+    }
+
+    foreach (pg_tax_by_rate($together) as $id => $tax) {
+        $taxes[$id] = $tax;
+    }
+
+    ksort($taxes);
+
+    return $taxes;
+}
+
+/**
+ * Whether an order's shipping and surcharges hold tax: the checkout adds none
+ * to them, and on the order's invoice the tax is inside the amount charged, at
+ * the goods' rate. Where VAT applies the charge for delivering goods is part of
+ * the supply and is taxed with them; a United States store's checkout collects
+ * sales tax on the goods alone, so there the charges are left untaxed unless
+ * the settings say otherwise (config.erp_shipping_tax: 'included', 'none', or
+ * empty for the store's country to decide). The ERP asks the same
+ * (erp_shipping_taxed()). Read once per request.
+ *
+ * @return bool
+ */
+function pg_order_charges_taxed()
+{
+    static $taxed = null;
+
+    if ($taxed === null) {
+        $setting = pg_schema_has('config', 'erp_shipping_tax')
+            ? trim((string) db_value("SELECT erp_shipping_tax FROM config LIMIT 1"))
+            : '';
+
+        if (($setting === 'included') || ($setting === 'none')) {
+            $taxed = ($setting === 'included');
+        } else {
+            $country = strtoupper(trim((string) db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1")));
+            $taxed = ($country !== 'US');
+        }
+    }
+
+    return $taxed;
+}
+
+/**
+ * Whether the checkout keeps the total of every rate on its orders one that
+ * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
+ * store invoices its orders in the ERP, or sends them to Paraşüt from the
+ * order screen without it (parasut_order_buttons_on(); those invoices carry
+ * the ERP's lines, parasut_create_invoice()), charges tax, and its shipping
+ * and surcharges hold tax (pg_order_charges_taxed()).
+ *
+ * @return bool
+ */
+function pg_order_charges_settle_rates()
+{
+    $invoiced = (defined('ERP_ENABLED') && ERP_ENABLED)
+        || (function_exists('parasut_order_buttons_on') && parasut_order_buttons_on());
+
+    return $invoiced
+        && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
+        && pg_order_charges_taxed();
+}
+
+/**
+ * The amount before tax that comes to a total once the tax at the rate is
+ * taken on the whole of it, rounded half away from zero; null when no amount
+ * does. There is one at most: a minor unit more on the amount puts one or two
+ * on the total, so at 20% one total in six (57.93) is never reached. The ERP's
+ * erp_rate_amount(), here for the checkout, which runs without the ERP.
+ *
+ * @param int   $total  minor units, tax included
+ * @param float $rate   percent
+ * @return int|null
+ */
+function pg_tax_rate_amount($total, $rate)
+{
+    $total = (int) $total;
+    $near = (int) round($total * 100 / (100 + (float) $rate));
+
+    foreach (array($near, $near - 1, $near + 1) as $amount) {
+        if (($amount >= 0) && (($amount + (int) round($amount * (float) $rate / 100)) === $total)) {
+            return $amount;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * How a charge holding tax is shared between the rates of an order's goods.
+ *
+ * In proportion to what the goods of each rate come to after the order
+ * discount (pg_tax_spread()). Where a rate's share would leave its total one
+ * the tax, taken on the whole, never reaches (pg_tax_rate_amount()), a minor
+ * unit of the charge goes to the first other rate whose total stays one it
+ * reaches with it, else comes from the first that stays reachable without
+ * it: one total in six is out of reach at 20%, never two in a row, so with a
+ * second rate there is always a way. With a single rate nothing moves; the
+ * checkout then lowers the charge (pg_order_charges_reachable()). The order's
+ * invoice shares its charges this way (erp_order_charge_lines()).
+ *
+ * @param int   $gross   minor units, tax inside
+ * @param array $groups  rate key => ['rate' => float percent, 'net' => int, what the goods of the rate
+ *                       come to after the discount, above zero, 'total' => int, the rate's lines so
+ *                       far with their tax], in the order the rates first appear on the lines
+ * @return array  rate key => int minor units, adding up to $gross
+ */
+function pg_order_charge_shares($gross, $groups)
+{
+    $weights = array();
+
+    foreach ($groups as $key => $group) {
+        $weights[$key] = (int) $group['net'];
+    }
+
+    $shares = pg_tax_spread((int) $gross, $weights);
+
+    if (count($groups) < 2) {
+        return $shares;
+    }
+
+    $fits = function ($key, $share) use ($groups) {
+        $rate = (float) $groups[$key]['rate'];
+
+        return ($rate <= 0) || ($share <= 0) || (pg_tax_rate_amount((int) $groups[$key]['total'] + $share, $rate) !== null);
+    };
+
+    foreach (array_keys($groups) as $key) {
+        if ($fits($key, $shares[$key])) {
+            continue;
+        }
+
+        foreach (array_keys($groups) as $other) {
+            if (($other !== $key) && $fits($other, $shares[$other] + 1)) {
+                $shares[$key]--;
+                $shares[$other]++;
+                continue 2;
+            }
+        }
+
+        foreach (array_keys($groups) as $other) {
+            if (($other !== $key) && ($shares[$other] > 0) && $fits($other, $shares[$other] - 1)) {
+                $shares[$key]++;
+                $shares[$other]--;
+                continue 2;
+            }
+        }
+    }
+
+    return $shares;
+}
+
+/**
+ * The charges an order adds to its lines - the shipping, then the card
+ * surcharge - each lowered by the fewest minor units that leave the total of
+ * every rate one the tax, taken on the whole, can reach.
+ *
+ * A charge holding tax is shared on the order's invoice between the rates of
+ * the goods (pg_order_charge_shares()), and its tax is taken with the goods of
+ * the rate on their sum (erp_order_charge_lines()), the way an e-document provider
+ * takes it. Some totals no amount reaches: 39.95 with 7.99 of tax and
+ * shipping 9.99 come to 57.93, which no amount at 20% does. The shipping is
+ * then charged at 9.98: the customer never pays more than the page showed,
+ * and the invoice is the payment. A minor unit off is all it ever takes in
+ * practice; the first of ten that serves is taken, else the charge stays as
+ * it is. Lines without a kept rate leave the charges alone.
+ *
+ * @param array $lines     key => ['amount' => int minor units, 'rate' => float|string|null],
+ *                         the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @param array $charges   name => int minor units, tax inside, in the order they are settled
+ * @return array  name => int, as they are charged
+ */
+function pg_order_charges_reachable($lines, $discount, $charges)
+{
+    $charged = array_map('intval', (array) $charges);
+    $amounts = array();
+    $subtotal = 0;
+
+    foreach ((array) $lines as $key => $line) {
+        if (!isset($line['rate']) || ($line['rate'] === '')) {
+            return $charged;
+        }
+
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+    }
+
+    $discount = max(0, min((int) $discount, $subtotal));
+    $shares = ($discount > 0) ? pg_tax_spread($discount, $amounts) : array();
+
+    // What the lines of each rate come to after the discount with their tax
+    // as the checkout takes it (pg_tax_by_rate(): once on the sum of a rate's
+    // lines): the rates' totals the invoice starts from. The rates a charge
+    // is shared by are those whose lines come to something, in the order they
+    // first do so.
+    $nets = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $nets[$key] = array('amount' => $amounts[$key] - (int) ($shares[$key] ?? 0), 'rate' => max(0, (float) $line['rate']));
+    }
+
+    $taxes = pg_tax_by_rate($nets);
+    $totals = array();
+    $groups = array();
+
+    foreach ($nets as $key => $net) {
+        $group = number_format($net['rate'], 3, '.', '');
+        $totals[$group] = ($totals[$group] ?? 0) + $net['amount'] + (int) $taxes[$key];
+
+        if ($net['amount'] > 0) {
+            if (!isset($groups[$group])) {
+                $groups[$group] = array('rate' => $net['rate'], 'net' => 0, 'total' => 0);
+            }
+
+            $groups[$group]['net'] += $net['amount'];
+        }
+    }
+
+    if (empty($groups)) {
+        return $charged;
+    }
+
+    foreach (array_keys($groups) as $group) {
+        $groups[$group]['total'] = $totals[$group];
+    }
+
+    foreach ($charged as $name => $gross) {
+        $parts = array();
+
+        for ($less = 0; ($less <= 10) && ($less < $gross); $less++) {
+            $parts = pg_order_charge_shares($gross - $less, $groups);
+            $reached = true;
+
+            foreach ($parts as $group => $part) {
+                if (($part > 0) && ($groups[$group]['rate'] > 0)
+                    && (pg_tax_rate_amount($groups[$group]['total'] + $part, $groups[$group]['rate']) === null)) {
+                    $reached = false;
+                    break;
+                }
+            }
+
+            if ($reached) {
+                $charged[$name] = $gross - $less;
+                break;
+            }
+        }
+
+        if ($charged[$name] > 0) {
+            if (array_sum($parts) !== $charged[$name]) {
+                $parts = pg_order_charge_shares($charged[$name], $groups);
+            }
+
+            foreach ($parts as $group => $part) {
+                $groups[$group]['total'] += $part;
+            }
+        }
+    }
+
+    return $charged;
+}
+
+/**
+ * pg_order_charges_reachable() for order lines given by id, read from the
+ * order with the rate each was taxed at: for the pages that show an order's
+ * totals while drawing its lines.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  the order discount charged today, minor units
+ * @param array $charges   name => int minor units, tax inside, in the order they are settled
+ * @return array  name => int, as they are charged
+ */
+function pg_order_items_charges_reachable($item_ids, $discount, $charges)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids || !pg_schema_has('order_items', 'tax_rate')) {
+        return array_map('intval', (array) $charges);
+    }
+
+    $lines = array();
+
+    foreach ((array) db_items("SELECT id, price, quantity, tax_rate
+        FROM order_items
+        WHERE id IN (" . implode(', ', $ids) . ")
+        ORDER BY id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $item['tax_rate'],
+        );
+    }
+
+    return pg_order_charges_reachable($lines, $discount, $charges);
+}
+
+/**
+ * The instalment charge a card payment takes: the one the bank quoted,
+ * lowered by the fewest minor units that leave the total of every rate one
+ * the tax, taken on the whole, can reach (pg_order_charges_reachable(), after
+ * the shipping and the surcharge as they are charged). Like those charges it
+ * is shared between the goods' rates on the order's invoice, so with two
+ * rates or more a minor unit moves to another rate instead; with one the
+ * customer pays a minor unit less, and the invoice is still the payment.
+ *
+ * @param array $lines        the lines charged today, as pg_order_charges_reachable() takes them
+ * @param int   $discount     the order discount charged today, minor units
+ * @param array $charges      name => int minor units charged, tax inside: the shipping, the surcharge
+ * @param int   $installment  the instalment charge the bank quoted, minor units
+ * @return int  the instalment charge to take
+ */
+function pg_order_installment_charge($lines, $discount, $charges, $installment)
+{
+    $installment = (int) $installment;
+
+    if (($installment <= 0) || empty($lines)) {
+        return $installment;
+    }
+
+    $charges = array_map('intval', (array) $charges);
+    $charges['installment'] = $installment;
+
+    return (int) pg_order_charges_reachable($lines, $discount, $charges)['installment'];
+}
 
 function update_order_item_taxes()
 {
@@ -2114,16 +3016,34 @@ function update_order_item_taxes()
     $billing_state = isset($row['billing_state']) ? $row['billing_state'] : '';
     $billing_country = isset($row['billing_country']) ? $row['billing_country'] : '';
     $tax_exempt = isset($row['tax_exempt']) ? $row['tax_exempt'] : '';
+
+    // The rate each line is charged at goes with its tax (order_items.tax_rate,
+    // 11.0.59): the order's invoice prints it and takes the line's tax at it
+    // again, and a rate worked back out of two rounded amounts can be wrong.
+    $rate_sql = function ($rate) {
+        return pg_schema_has('order_items', 'tax_rate')
+            ? ", tax_rate = '" . number_format((float) $rate, 3, '.', '') . "'"
+            : '';
+    };
+
     // if order is tax-exempt, clear tax from all order items
     if ($tax_exempt) {
         $query = "UPDATE order_items
 
-                 SET tax_total = 0, tax = 0
+                 SET tax_total = 0, tax = 0" . $rate_sql(0) . "
 
                  WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         // else order is not tax-exempt, so we need to apply taxes to order items
     } else {
+        // Each line's amount and the rate it is charged at, gathered over every
+        // recipient, and whether it is charged with the order: the taxes are
+        // then taken together (pg_order_line_taxes()).
+        $lines = array();
+        $with_saved = pg_schema_has('order_items', 'saved_for_later');
+        $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+            && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+        $today = date('Y-m-d');
         // get tax rate for billing address
         $billing_address_tax_rate = get_tax_rate_for_address($billing_country, $billing_state);
         // get all ship tos
@@ -2166,9 +3086,17 @@ function update_order_item_taxes()
 
                         order_items.quantity,
 
+                        order_items.recurring_start_date," . ($with_saved ? "
+
+                        order_items.saved_for_later," : "") . "
+
                         products.taxable,
 
-                        products.tax_rate
+                        products.tax_rate,
+
+                        products.recurring,
+
+                        products.start
 
                      FROM order_items
 
@@ -2210,36 +3138,32 @@ function update_order_item_taxes()
                 } else {
                     $apply_tax = false;
                 }
-                // if taxes should be applied to this order item, apply them
-                if ($apply_tax == true) {
-                    // The zone said tax is due; the product says at what rate.
-                    // Worked out on the line and not on one unit: rounding a unit
-                    // and then multiplying gives a different answer above quantity
-                    // one, and the line is the base the cart summary, Parasut and
-                    // the e-document format all use.
-                    //
-                    // tax is left at zero. It held the unit amount and is no longer
-                    // written, so anything still reading it shows nothing rather
-                    // than quietly multiplying a line amount by the quantity again.
-                    $effective_tax_rate = get_effective_tax_rate($order_item['tax_rate'], $tax_rate);
-                    $line_quantity = max(1, (int) $order_item['quantity']);
-                    $tax_amount = round($effective_tax_rate / 100 * $order_item['price'] * $line_quantity);
-                    $query = "UPDATE order_items
-
-                             SET tax_total = '$tax_amount', tax = '0'
-
-                             WHERE id = '" . $order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-                    // else taxes should not be applied to order item, so clear taxes
-                } else {
-                    $query = "UPDATE order_items
-
-                             SET tax_total = '0', tax = '0'
-
-                             WHERE id = '" . $order_item['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-                }
+                // The zone said tax is due; the product says at what rate. The
+                // base is the whole line, not one unit: rounding a unit and then
+                // multiplying gives a different answer above quantity one.
+                $line_quantity = max(1, (int) $order_item['quantity']);
+                $lines[(int) $order_item['id']] = array(
+                    'amount' => (int) $order_item['price'] * $line_quantity,
+                    'rate' => ($apply_tax == true) ? (float) get_effective_tax_rate($order_item['tax_rate'], $tax_rate) : 0.0,
+                    // A line saved for later is no part of the sale.
+                    'alone' => !empty($order_item['saved_for_later'])
+                        || !pg_order_line_charged_today($order_item['recurring'], $order_item['recurring_start_date'], $order_item['start'], $today, $clearcommerce),
+                );
             }
+        }
+
+        // tax is left at zero. It held the unit amount and is no longer
+        // written, so anything still reading it shows nothing rather than
+        // quietly multiplying a line amount by the quantity again.
+        $taxes = pg_order_line_taxes($lines);
+
+        foreach ($lines as $id => $line) {
+            $query = "UPDATE order_items
+
+                     SET tax_total = '" . (int) $taxes[$id] . "', tax = '0'" . $rate_sql($line['rate']) . "
+
+                     WHERE id = '" . (int) $id . "'";
+            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
         }
     }
 }
@@ -2363,6 +3287,37 @@ function pg_offer_spread_unit_price($unit_price, $quantity, $discounted_unit_pri
         return $unit_price;
     }
     $line_total = ((float) $unit_price * ($quantity - $discounted_units)) + (round((float) $discounted_unit_price) * $discounted_units);
+    return (int) floor($line_total / $quantity);
+}
+
+// The unit price of a cart line after a gift (an 'add product' result) is
+// taken from it: $gift_units of the line are charged at $gift_unit_price,
+// the rest stay at $paid_unit_price, the price the paid units stand at (list,
+// member or a uniform product discount's price). Worked out from the line's
+// total, $line_unit_price times the quantity, because that unit price may
+// already be an average: "the cheapest item is free" or an earlier gift spread
+// over the line (Y x3 at 10,00 with one free -> 666). Spreading a second gift
+// from that average would count 666 as what a paid unit costs and lose part
+// of the first discount; taking the gift's units off the total at the paid
+// units' own price frees a second unit in full. The result rounds down, as
+// pg_offer_spread_unit_price() does (at most quantity - 1 minor units per
+// spread stay with the customer). A gift never raises the line's price, and
+// one as large as the line charges every unit the gift price.
+function pg_offer_gift_line_unit_price($line_unit_price, $quantity, $paid_unit_price, $gift_unit_price, $gift_units)
+{
+    $quantity = (int) $quantity;
+    $gift_units = (int) $gift_units;
+    $gift_unit_price = min((float) $gift_unit_price, (float) $paid_unit_price);
+    if ($gift_units >= $quantity) {
+        return (int) round($gift_unit_price);
+    }
+    if ($gift_units <= 0) {
+        return (int) round((float) $line_unit_price);
+    }
+    $line_total = ((float) $line_unit_price * $quantity) - ($gift_units * ((float) $paid_unit_price - round($gift_unit_price)));
+    if ($line_total < 0) {
+        $line_total = 0;
+    }
     return (int) floor($line_total / $quantity);
 }
 
@@ -3423,6 +4378,14 @@ function apply_offers_to_cart()
         // then the order item is valid, so update quantity and discount for product
         if ((($order_item['offer_require_code'] == 0) || (mb_strtolower((string) $order_item['offer_code']) == mb_strtolower((string) $offer_code))) && (validate_offer($order_item['offer_id'], $order_item['ship_to_id']) == true) && (($order_item['offer_only_apply_best_offer'] == 0) || ($order_item['offer_id'] == get_best_offer_id($order_item['offer_code']))) && ($order_item['offer_action_type'] == 'add product') && ($order_item['offer_action_add_product_product_id'] == $order_item['product_id']) && ((in_array($order_item['offer_id'] . '_' . $order_item['offer_action_id'], $offers_and_offer_actions) == false) || (ECOMMERCE_SHIPPING == false) || (ECOMMERCE_RECIPIENT_MODE == 'single recipient') || ($order_item['offer_scope'] == 'order') || ($order_item['product_shippable'] == 0) || ($order_item['offer_multiple_recipients'] == 1))) {
             $discounted_price = pg_offer_gift_price($order_item['product_price'], $order_item['offer_action_add_product_discount_amount'], $order_item['offer_action_add_product_discount_percentage']);
+            // A free gift left alone in its recipient (the last paid line
+            // there was taken out) would stop the checkout, so it goes too;
+            // the offer still applies, and the loop below puts it among the
+            // pending ones for the claim button, as when it first qualified.
+            if (($discounted_price <= 0) && ((int) $order_item['ship_to_id'] > 0) && !pg_ship_to_has_paid_line($order_item['ship_to_id'], $order_item['id'])) {
+                remove_order_item($order_item['id']);
+                continue;
+            }
             $discounted_by_offer = 0;
             // if the product that was added is also being discounted, prepare to mark order item accordingly
             if (($order_item['offer_action_add_product_discount_amount'] != 0) || ($order_item['offer_action_add_product_discount_percentage'] != 0)) {
@@ -3466,20 +4429,21 @@ function apply_offers_to_cart()
                     // if this action actually discounts the order,
                     // then prepare to apply discount
                     if (($offer_action['discount_order_amount'] != 0) || ($offer_action['discount_order_percentage'] != 0)) {
-                        // if this offer is valid,
-                        // then prepare to apply discount
-                        if (validate_offer($offer['id']) == true) {
-                            // Weighed after the loop: a gift further down this
-                            // loop can still change the subtotal a percentage
-                            // (or a ladder's rung) is taken from.
-                            $order_discount_candidates[] = array(
-                                'offer_id' => $offer['id'],
-                                'amount' => $offer_action['discount_order_amount'],
-                                'percentage' => $offer_action['discount_order_percentage'],
-                                'tiers' => pg_offer_tiers($offer['id']));
-                            // else this offer is not valid, so if an upsell has not already been added for it,
-                            // and there is an upsell, then add upsell
-                        } else if ((isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
+                        // Every order discount is a candidate. Whether the
+                        // cart qualifies for it (its required subtotal) is
+                        // settled after the loop, against the subtotal the
+                        // cart then has: a gift further down this loop taken
+                        // from a paid line lowers it, a gift line at a price
+                        // raises it, and the answer must not depend on the
+                        // order the offers are walked in.
+                        $order_discount_candidates[] = array(
+                            'offer_id' => $offer['id'],
+                            'amount' => $offer_action['discount_order_amount'],
+                            'percentage' => $offer_action['discount_order_percentage'],
+                            'tiers' => pg_offer_tiers($offer['id']));
+                        // if this offer is not valid for the cart as it stands, then if an upsell
+                        // has not already been added for it, and there is an upsell, then add upsell
+                        if ((validate_offer($offer['id']) == false) && (isset($upsell_offers[$offer['id']]) == false) && (check_upsell($offer) == true)) {
                             $upsell_offers[$offer['id']] = $offer;
                         }
                     }
@@ -3681,13 +4645,22 @@ function apply_offers_to_cart()
         }
     }
     // The loop can lower an item's price after an order discount was found - a
-    // gift taken from a paid line - so the best one is chosen against the cart
-    // as it now stands: a percentage of what is left, a ladder's rung for what
+    // gift taken from a paid line - so the candidates are judged against the
+    // cart as it now stands: each one's required subtotal with the subtotal
+    // that is left (one answer whatever the order the offers came in), then
+    // the best one, a percentage of what is left, a ladder's rung for what
     // is left, and never more than what is left.
     $best_order_discount_offer_id = 0;
     $best_order_discount = 0;
     if ($order_discount_candidates) {
-        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($order_discount_candidates, get_order_subtotal());
+        $final_subtotal = get_order_subtotal();
+        $qualified_candidates = array();
+        foreach ($order_discount_candidates as $candidate) {
+            if (validate_offer($candidate['offer_id'], 0, $final_subtotal) == true) {
+                $qualified_candidates[] = $candidate;
+            }
+        }
+        list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
     // if there is an order discount, then add order discount to order
     if ($best_order_discount_offer_id != 0) {
@@ -7615,6 +8588,7 @@ function duplicate_product($id)
     // The copy starts a price history of its own at the original's price.
     pg_price_history_record($new_product_id, 'panel');
 
+    pg_audit_record('create', 'products', (int) $new_product_id);
 
     return $new_product_id;
 }
@@ -7968,6 +8942,229 @@ function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
 }
 
 /**
+ * The key_codes column a header cell of an imported key code file names
+ * (import_key_codes.php), '' for one the import does not read. Case, white
+ * space, underscores and dashes do not count ("Key Code", "key_code",
+ * "keycode"), nor a byte order mark left on the first cell. The export's
+ * headings (view_key_codes.php) all read.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_key_code_import_column($name)
+{
+    $name = (string) $name;
+
+    if (substr($name, 0, 3) === "\xEF\xBB\xBF") {
+        $name = substr($name, 3);
+    }
+
+    $name = str_replace(array(' ', '_', '-', "\t", "\xC2\xA0"), '', mb_strtolower(trim($name)));
+
+    $columns = array(
+        'keycode'        => 'code',
+        'offercode'      => 'offer_code',
+        'enabled'        => 'enabled',
+        'expirationdate' => 'expiration_date',
+        'notes'          => 'notes',
+        'singleuse'      => 'single_use',
+        'report'         => 'report',
+    );
+
+    return isset($columns[$name]) ? $columns[$name] : '';
+}
+
+/**
+ * The separator of an imported key code file, read from its header line: of
+ * the comma, the semicolon and the tab, the one the line holds most; the
+ * comma when it holds none of them (a file of codes alone). Excel saves a
+ * CSV file with the list separator of the computer's region, a semicolon in
+ * Turkish.
+ *
+ * @param string $header
+ * @return string
+ */
+function pg_key_code_import_separator($header)
+{
+    $header = (string) $header;
+    $best = ',';
+    $most = substr_count($header, ',');
+
+    foreach (array(';', "\t") as $separator) {
+        $count = substr_count($header, $separator);
+
+        if ($count > $most) {
+            $best = $separator;
+            $most = $count;
+        }
+    }
+
+    return $best;
+}
+
+/**
+ * A yes/no cell of an imported key code file (enabled, single_use): 1 or 0,
+ * null for an empty cell, false for anything else. The export writes 1 and
+ * 0; yes/no, true/false and Excel's TRUE/FALSE (DOĞRU/YANLIŞ in Turkish)
+ * and evet/hayır read too.
+ *
+ * @param string $value
+ * @return int|null|false
+ */
+function pg_key_code_import_flag($value)
+{
+    $value = mb_strtolower(trim((string) $value));
+
+    if ($value === '') {
+        return null;
+    }
+
+    if (in_array($value, array('1', 'yes', 'true', 'evet', 'doğru', 'dogru'), true)) {
+        return 1;
+    }
+
+    if (in_array($value, array('0', 'no', 'false', 'hayır', 'hayir', 'yanlış', 'yanliş', 'yanlis'), true)) {
+        return 0;
+    }
+
+    return false;
+}
+
+/**
+ * An expiration date cell of an imported key code file as the column keeps
+ * it: Y-m-d, '0000-00-00' for an empty cell (the code does not expire, as
+ * the export writes it), false for a cell that is not a date. Besides the
+ * export's Y-m-d, a date Excel wrote back in the computer's own format
+ * reads: day.month.year with dots, and with slashes or dashes in the site's
+ * order (DATE_FORMAT), the other order when the site's is not a date
+ * (12/31/2026 on a day-first site). A two-digit year or a time after the
+ * date is not read: the row is reported instead of a code that never
+ * expires.
+ *
+ * @param string $value
+ * @param string $date_format month_day | day_month
+ * @return string|false
+ */
+function pg_key_code_import_date($value, $date_format)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || ($value === '0000-00-00')) {
+        return '0000-00-00';
+    }
+
+    if (preg_match('/^(\d{4})([-\/.])(\d{1,2})\2(\d{1,2})$/', $value, $parts)) {
+        return checkdate((int) $parts[3], (int) $parts[4], (int) $parts[1])
+            ? sprintf('%04d-%02d-%02d', $parts[1], $parts[3], $parts[4])
+            : false;
+    }
+
+    if (!preg_match('/^(\d{1,2})([-\/.])(\d{1,2})\2(\d{4})$/', $value, $parts)) {
+        return false;
+    }
+
+    $first = (int) $parts[1];
+    $second = (int) $parts[3];
+    $year = (int) $parts[4];
+
+    // month, day pairs in the order they are tried
+    if ($parts[2] === '.') {
+        $orders = array(array($second, $first));
+    } else if ($date_format === 'month_day') {
+        $orders = array(array($first, $second), array($second, $first));
+    } else {
+        $orders = array(array($second, $first), array($first, $second));
+    }
+
+    foreach ($orders as $order) {
+        if (checkdate($order[0], $order[1], $year)) {
+            return sprintf('%04d-%02d-%02d', $year, $order[0], $order[1]);
+        }
+    }
+
+    return false;
+}
+
+/**
+ * One row of an imported key code file read into the columns it writes.
+ * 'values' holds the code (also one too long to store, so that row is
+ * reported rather than taken for a blank line) and every other column of
+ * the file whose cell can be stored: an empty expiration date is "does not expire" and empty notes
+ * are none, as the export writes them; an empty offer code, flag or report
+ * is left out, so a code already there keeps its own and a new one takes
+ * the default. 'error' names the first cell that cannot be stored (the row
+ * is then skipped whole), '' when there is none.
+ *
+ * @param array  $row         the cells as fgetcsv() read them
+ * @param array  $columns     cell index => key_codes column
+ * @param string $date_format month_day | day_month
+ * @return array 'values' => column => value, 'error' => string
+ */
+function pg_key_code_import_row($row, $columns, $date_format)
+{
+    $values = array('code' => '');
+    $error = '';
+
+    foreach ($columns as $index => $column) {
+        $cell = (is_array($row) && isset($row[$index])) ? trim((string) $row[$index]) : '';
+
+        switch ($column) {
+            case 'code':
+            case 'offer_code':
+                if (mb_strlen($cell) > 50) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" is longer than 50 characters.', 'vars' => array($cell)));
+
+                    // A key code too long to store is still kept: the row is
+                    // then reported with it, not passed over as a blank line.
+                    if ($column === 'code') {
+                        $values[$column] = $cell;
+                    }
+                } else if (($cell !== '') || ($column === 'code')) {
+                    $values[$column] = $cell;
+                }
+                break;
+
+            case 'enabled':
+            case 'single_use':
+                $flag = pg_key_code_import_flag($cell);
+
+                if ($flag === false) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, $column)));
+                } else if ($flag !== null) {
+                    $values[$column] = $flag;
+                }
+                break;
+
+            case 'expiration_date':
+                $date = pg_key_code_import_date($cell, $date_format);
+
+                if ($date === false) {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" is not an expiration date.', 'vars' => array($cell)));
+                } else {
+                    $values[$column] = $date;
+                }
+                break;
+
+            case 'report':
+                $report = str_replace(array(' ', '-'), '_', mb_strtolower($cell));
+
+                if (in_array($report, array('key_code', 'offer_code'), true)) {
+                    $values[$column] = $report;
+                } else if ($cell !== '') {
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the report column is neither key_code nor offer_code.', 'vars' => array($cell)));
+                }
+                break;
+
+            case 'notes':
+                $values[$column] = $cell;
+                break;
+        }
+    }
+
+    return array('values' => $values, 'error' => $error);
+}
+
+/**
  * The gift card list's columns that change in place (pg_list_edit_table()):
  * the notes, which an operator keeps about a card without touching its
  * money. The balance and the expiration date stay on the gift card's screen.
@@ -8225,8 +9422,11 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     }
 
     // Minimal selection — enough for cancel gating + email + refund.
+    // refunded_amount: what the order screen or a return gave back already,
+    // which the cancellation must not return a second time.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
+                " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date
          FROM orders
@@ -8263,30 +9463,60 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     $reason_clean = trim(mb_substr((string) $reason, 0, 500));
 
     // ── Persist cancellation ────────────────────────────────────────────
+    // Only the request that takes the order out of its status goes on. Two
+    // cancellations at once (a double submit, the row's Cancel and the bulk
+    // one) both passed the check above: both voided the payment, mailed the
+    // customer and announced order.cancelled, and the second void's failure
+    // overwrote the first one's refund status.
+    // One clock read: restore finds the expired gift cards by the day before
+    // cancelled_at, so both must come from the same instant (a read on each
+    // side of midnight would set the cards one day off).
+    $now = time();
     db(
         "UPDATE orders SET
             status              = 'cancelled',
-            cancelled_at        = '" . time() . "',
+            cancelled_at        = '" . $now . "',
             cancelled_by        = '" . (int) $user_id . "',
             cancellation_reason = '" . escape($reason_clean) . "'
-         WHERE id = '" . e($order_id) . "'"
+         WHERE id = '" . e($order_id) . "'
+           AND status <> 'cancelled'"
     );
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
+    }
 
     // ── Expire gift cards issued by this order ──────────────────────────
     // Folded in from the removed legacy cancel_order(). A cancelled order
     // must not leave spendable gift cards behind, so we push their
     // expiration to yesterday (immediately invalid) and leave an audit note.
+    // The note names the order and the date the card had, which is what a
+    // restore of the order puts back (pg_gift_card_expiration_before_cancel()).
     // Rows that already expired earlier are left untouched.
-    $yesterday   = date('Y-m-d', strtotime('-1 day'));
-    $cancel_note = escape(lang('This gift card was automatically expired because the associated order was cancelled.'));
-    db(
-        "UPDATE gift_cards
-         SET
-            expiration_date = '" . $yesterday . "',
-            notes = CONCAT(IF(notes IS NULL OR notes = '', '', CONCAT(notes, '\n')), '" . $cancel_note . "')
+    $yesterday = date('Y-m-d', strtotime('-1 day', $now));
+    $expiring_gift_cards = db_items(
+        "SELECT id, expiration_date
+         FROM gift_cards
          WHERE order_id = '" . e($order_id) . "'
            AND (expiration_date = '0000-00-00' OR expiration_date > '" . $yesterday . "')"
     );
+    foreach ((array) $expiring_gift_cards as $expiring_gift_card) {
+        if ($expiring_gift_card['expiration_date'] === '0000-00-00') {
+            $cancel_note = lang(array(
+                'string' => 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.',
+                'vars'   => array($order['order_number'])));
+        } else {
+            $cancel_note = lang(array(
+                'string' => 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.',
+                'vars'   => array($order['order_number'], $expiring_gift_card['expiration_date'])));
+        }
+        db(
+            "UPDATE gift_cards
+             SET
+                expiration_date = '" . $yesterday . "',
+                notes = CONCAT(IF(notes IS NULL OR notes = '', '', CONCAT(notes, '\n')), '" . e($cancel_note) . "')
+             WHERE id = '" . (int) $expiring_gift_card['id'] . "'"
+        );
+    }
 
     log_activity(
         'Order #' . $order_id . ' cancelled by ' .
@@ -8313,13 +9543,21 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $has_txn     = !empty($order['transaction_id']);
-    $order_total = (int) $order['total']; // cents
-    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
-        ? pg_payment_cancel_driver((string) $order['payment_method'])
-        : '';
+    // The money left on the order decides (pg_order_cancel_payment_plan()):
+    // an order refunded in full is not voided and not flagged, and one partly
+    // refunded is not voided either (a void reverses the whole payment); its
+    // remaining amount is flagged. The cancel window asks the same.
+    $cancel_driver = pg_payment_cancel_driver((string) $order['payment_method']);
+    $payment_plan  = pg_order_cancel_payment_plan(
+        $order['total'],
+        $order['refunded_amount'],
+        $order['payment_method'],
+        !empty($order['transaction_id']),
+        $cancel_driver,
+        $auto_refund
+    );
 
-    if ($cancel_driver !== '') {
+    if ($payment_plan['action'] === 'void') {
         // The driver is given the orders row as the cancellation left it, so
         // the reason just typed goes to the service as the description.
         $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
@@ -8343,15 +9581,33 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
         $refund_status_outcome = $cancel_outcome['refund_status'];
         $refund_reference      = $cancel_outcome['refund_reference'];
-    } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
+    } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
-        log_activity(
-            'REFUND ACTION REQUIRED — order #' . $order_id . ' was cancelled. ' .
-            'Payment method: ' . $order['payment_method'] . '. ' .
-            'Amount: ' . number_format($order_total / 100, 2, '.', ',') . '. ' .
-            'Process refund in the gateway dashboard.'
-        );
+        log_activity(lang(array(
+            'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
+            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($payment_plan['remaining'] / 100, 2, '.', ',')))));
+        if ($payment_plan['refunded'] > 0) {
+            log_activity(lang(array(
+                'string' => 'Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.',
+                'vars'   => array((int) $order_id, number_format($payment_plan['refunded'] / 100, 2, '.', ',')))));
+        }
+    }
+
+    // What gift cards paid of the order does not go back to them by itself,
+    // and orders.total has it taken off already: an order paid by gift card
+    // alone raised no flag above. The operator is told what to return to
+    // which card. The refund status stays what the payment step reported (a
+    // successful void keeps 'refunded', so the customer email, the webhook
+    // and the restore keep the record of it); only an order the payment step
+    // left without an outcome is flagged here.
+    $gift_card_refund_line = pg_order_gift_card_refund_line($order_id, (array) db_items(
+        "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "'"));
+    if ($gift_card_refund_line !== '') {
+        log_activity($gift_card_refund_line);
+        if ($refund_status_outcome === '') {
+            $refund_status_outcome = 'manual_required';
+        }
     }
 
     if ($refund_columns_exist && $refund_status_outcome !== '') {
@@ -8396,6 +9652,240 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         'refund_status' => $refund_status_outcome,
         'order_id'      => $order_id,
     );
+}
+
+// What cancelling an order does to the money its payment took. The order
+// screen's cancel window and process_order_cancellation() both decide by it,
+// so the window says what the cancellation then does.
+// 'remaining' is the money still on the order (total less what was refunded
+// already, never below 0), 'refunded' what was refunded, and 'action' one of:
+//  'void'   the payment driver cancels the payment: the auto refund is on, a
+//           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
+//           the order has a transaction and nothing was refunded yet;
+//  'manual' money is left and a payment method took it, but it is not voided:
+//           the operator returns it (REFUND ACTION REQUIRED, manual_required);
+//  'none'   nothing is left (refunded in full, a free order), or no method
+//           took the money (Offline Payment, none).
+// A void takes no amount and reverses the whole payment, so a payment partly
+// refunded already (the order screen's or a return's refund) is not voided:
+// what is left goes to the operator. Amounts are minor units.
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+{
+    $total_cents    = (int) $total_cents;
+    $refunded_cents = max(0, (int) $refunded_cents);
+    $remaining      = max(0, $total_cents - $refunded_cents);
+    $payment_method = (string) $payment_method;
+
+    if ($remaining <= 0) {
+        $action = 'none';
+    } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
+        $action = 'void';
+    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+        $action = 'manual';
+    } else {
+        $action = 'none';
+    }
+
+    return array('action' => $action, 'remaining' => $remaining, 'refunded' => $refunded_cents);
+}
+
+// The site log line that tells the operator what a cancelled order took off
+// gift cards: each card with its masked code (the shop's own card also with
+// its id, a Givex card marked) and the amount, '' when no card paid anything.
+// $applied_gift_cards are the order's applied_gift_cards rows.
+function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
+{
+    $parts = array();
+    $total = 0;
+    foreach ($applied_gift_cards as $card) {
+        $amount = (int) round((float) $card['amount']);
+        if ($amount <= 0) {
+            continue;
+        }
+        $total += $amount;
+        if (!empty($card['givex'])) {
+            $name = protect_givex_gift_card_code((string) $card['code']) . ' (Givex)';
+        } else {
+            $name = protect_gift_card_code((string) $card['code']) . (!empty($card['gift_card_id']) ? ' (#' . (int) $card['gift_card_id'] . ')' : '');
+        }
+        $parts[] = $name . ' ' . number_format($amount / 100, 2, '.', ',');
+    }
+    if (!$parts) {
+        return '';
+    }
+    return lang(array(
+        'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.',
+        'vars'   => array((int) $order_id, number_format($total / 100, 2, '.', ','), implode(', ', $parts))));
+}
+
+// Taking a cancelled order back to $status ('complete' or 'exported'): the
+// cancellation's bookkeeping (cancelled_at, cancelled_by, the reason) is
+// cleared, a refund flag that did not end in a refund is dropped, and the gift
+// cards the cancellation expired get their date back. The order screen's
+// Restore and the external API's status change both come here; a plain status
+// write kept the cancellation line and the refund banner on a completed order
+// and left its gift cards expired. Only a cancelled order moves: the status
+// UPDATE carries status = 'cancelled', so of two restores at once one does the
+// work. Returns false when the order was not cancelled (or is not there).
+// The caller records the audit row and announces the status change.
+function pg_order_restore_cancelled($order_id, $status = 'complete')
+{
+    $order_id = (int) $order_id;
+    $status   = ($status === 'exported') ? 'exported' : 'complete';
+
+    // Read before the bookkeeping is cleared: the gift cards step needs the
+    // order number and the time of the cancellation.
+    $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
+    $cancelled_order = db_item(
+        "SELECT order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+         FROM orders
+         WHERE id = '" . $order_id . "' AND status = 'cancelled'
+         LIMIT 1");
+    if (!is_array($cancelled_order)) {
+        return false;
+    }
+
+    db("UPDATE orders SET status = '" . $status . "' WHERE id = '" . $order_id . "' AND status = 'cancelled'");
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    // Columns are 2026.1.26 / 2026.1.27 additions, so both groups are probed.
+    // A refund that went through stays on the record.
+    if ($has_cancel_columns) {
+        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
+            WHERE id = '" . $order_id . "'");
+    }
+    if (_orders_has_refund_columns()) {
+        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
+            WHERE id = '" . $order_id . "' AND refund_status != 'refunded'");
+    }
+
+    pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
+
+    log_activity('Restored cancelled order #' . $order_id . ' to ' . $status . '.');
+
+    return true;
+}
+
+// Restoring a cancelled order: the gift cards it issued that the cancellation
+// expired get back the date each had, which the cancellation wrote into the
+// card's note. Only a card whose expiration is still the day before the
+// cancellation is touched: one that had expired on its own, or whose date was
+// changed since, stays as it is. Setting every past date to "no expiration"
+// used to make expired and dated cards spendable for good. Returns how many
+// cards got their date back.
+function pg_order_restore_gift_cards($order_id, $order_number, $cancelled_at)
+{
+    $cancelled_at = (int) $cancelled_at;
+    if ($cancelled_at <= 0) {
+        return 0;
+    }
+
+    $expired_on = date('Y-m-d', strtotime('-1 day', $cancelled_at));
+    $restored   = 0;
+
+    $expired_gift_cards = db_items(
+        "SELECT id, notes
+         FROM gift_cards
+         WHERE order_id = '" . e($order_id) . "'
+           AND expiration_date = '" . e($expired_on) . "'"
+    );
+
+    foreach ((array) $expired_gift_cards as $expired_gift_card) {
+        $expiration_before = pg_gift_card_expiration_before_cancel($expired_gift_card['notes'], $order_number);
+        if ($expiration_before === null) {
+            continue;
+        }
+        db(
+            "UPDATE gift_cards
+             SET expiration_date = '" . e($expiration_before) . "'
+             WHERE id = '" . (int) $expired_gift_card['id'] . "'"
+        );
+        $restored++;
+    }
+
+    return $restored;
+}
+
+// The note templates a cancellation writes on the gift cards it expires
+// (process_order_cancellation()), as pairs of 'dated' ({var:1} the order
+// number, {var:2} the old date) and 'none' ({var:1} the order number): the
+// English source and its wording in the current language and in Turkish, so a
+// note written under another panel language is still recognised.
+function pg_gift_card_cancel_note_templates()
+{
+    $dated = 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.';
+    $none  = 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.';
+
+    $templates = array(array('dated' => $dated, 'none' => $none));
+
+    foreach (array_unique(array((string) lang(array('info' => true)), 'tr')) as $language) {
+        if ($language === '' || $language === 'en') {
+            continue;
+        }
+        $dated_translated = lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.', 'language' => $language, 'if_known' => true));
+        $none_translated  = lang(array('string' => 'This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.', 'language' => $language, 'if_known' => true));
+        if (is_string($dated_translated) && is_string($none_translated)) {
+            $templates[] = array('dated' => $dated_translated, 'none' => $none_translated);
+        }
+    }
+
+    return $templates;
+}
+
+// The expiration date a gift card had before the cancellation of order
+// $order_number expired it, read from the note line that cancellation added:
+// 'Y-m-d', '0000-00-00' when the card had none, null when there is no such
+// line or its date is not a real one. A line counts only when it is, after
+// trimming, one of the cancellation templates filled with the order number
+// (and, for the dated one, the ISO date in the line); any other line, an
+// operator's line naming the order included, is skipped. Notes are free
+// text, so matching the order number alone let such a line set the date or
+// make the card non-expiring. The last matching line wins: an order
+// cancelled, restored and cancelled again. $templates defaults to
+// pg_gift_card_cancel_note_templates().
+function pg_gift_card_expiration_before_cancel($notes, $order_number, $templates = null)
+{
+    $order_number = trim((string) $order_number);
+    if ($order_number === '') {
+        return null;
+    }
+
+    if ($templates === null) {
+        $templates = pg_gift_card_cancel_note_templates();
+    }
+
+    $lines = preg_split('/\r\n|\r|\n/', (string) $notes);
+
+    for ($i = count($lines) - 1; $i >= 0; $i--) {
+        $line = trim($lines[$i]);
+        if ($line === '' || strpos($line, '#' . $order_number) === false) {
+            continue;
+        }
+
+        preg_match_all('/(?<![0-9])([0-9]{4})-([0-9]{2})-([0-9]{2})(?![0-9])/', $line, $dates, PREG_SET_ORDER);
+
+        foreach ((array) $templates as $template) {
+            if (isset($template['none'])
+                && $line === trim(str_replace('{var:1}', $order_number, (string) $template['none']))) {
+                return '0000-00-00';
+            }
+
+            if (!isset($template['dated'])) {
+                continue;
+            }
+
+            foreach ($dates as $date) {
+                $filled = str_replace(array('{var:1}', '{var:2}'), array($order_number, $date[0]), (string) $template['dated']);
+                if ($line === trim($filled)) {
+                    return checkdate((int) $date[2], (int) $date[3], (int) $date[1]) ? $date[0] : null;
+                }
+            }
+        }
+    }
+
+    return null;
 }
 
 /**

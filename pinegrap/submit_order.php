@@ -43,11 +43,11 @@ function submit_order($type) {
     if (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') {
         $liveform->assign_field_value('payment_method', 'PayPal Express Checkout');
     }
-    if(($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return'){
-        $liveform->assign_field_value('payment_method', 'Credit/Debit Card');
-    }
-    if (($_GET['mode'] ?? '') == 'pay_with_iyzico_return') {
-        $liveform->assign_field_value('payment_method', 'Pay With Iyzico');
+    // A payment driver's return (the iyzico 3-D Secure and Pay With Iyzico
+    // returns among them) is for the method that driver serves.
+    $payment_return_method = pg_payment_return_method((string) ($_GET['mode'] ?? ''));
+    if ($payment_return_method !== '') {
+        $liveform->assign_field_value('payment_method', $payment_return_method);
     }
 
     check_banned_ip_addresses('complete order');
@@ -60,7 +60,7 @@ function submit_order($type) {
     // example, a customer might open an additional browser window and submit blank shipping
     // or billing info and then come back to the original window and try to complete the order.
 
-    if ((($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') or (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') or (($_GET['mode'] ?? '') == 'pay_with_iyzico_return')) {
+    if (pg_payment_is_return_mode($_GET['mode'] ?? '')) {
 
         // Check for an incomplete recipient.
         $incomplete_recipient_id = db("
@@ -404,7 +404,7 @@ function submit_order($type) {
     }
     
     // if the mode is not paypal_express_checkout_return, then add field values to session and validate data
-    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
         // An express order's fields are in the session already: express_order.php
         // added this post before its own checks and then adjusted some values
         // (the billing name and address taken from the recipient when the
@@ -744,7 +744,8 @@ function submit_order($type) {
             order_items.product_name,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total,
+            order_items.tax_total," . (pg_schema_has('order_items', 'tax_rate') ? "
+            order_items.tax_rate AS line_tax_rate," : "") . "
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -857,6 +858,10 @@ function submit_order($type) {
     $installment_charge = '';
     $commission = '';
 
+    // The lines charged today with the rate each was taxed at, for the tax
+    // after an order discount (pg_order_charged_tax()).
+    $charged_lines = array();
+
     // loop through all nonrecurring products in order to get totals for order
     foreach ($nonrecurring_products as $product) {
 
@@ -871,6 +876,12 @@ function submit_order($type) {
 
         // update tax
         $tax = $tax + $total_tax;
+
+        $charged_lines[(int) $product['order_item_id']] = array(
+            'amount' => (int) $product['price'] * max(1, (int) $product['quantity']),
+            'rate' => $product['line_tax_rate'] ?? null,
+            'tax' => (int) $product['tax_total'],
+        );
     }
 
     // If the tax is negative then set it to zero.  The tax might be negative
@@ -888,25 +899,46 @@ function submit_order($type) {
     // and we need to add a discount line item for PayPal Express Checkout
     $original_tax = $tax;
 
-    // If there is an order discount, adjust tax according to discount. A
-    // discount is only above zero when the subtotal is.
+    // If there is an order discount, the tax is taken again per rate on what
+    // the discount leaves of the lines, as the order's invoice takes it
+    // (pg_order_charged_tax(); never below zero). A discount is only above
+    // zero when the subtotal is.
     if ($discount && ($subtotal > 0)) {
-
-        $tax = $tax - round(($tax * ($discount / $subtotal)));
-
-        // If the tax is negative then set it to zero.
-        if ($tax < 0) {
-            $tax = 0;
-        }
-
+        $tax = pg_order_charged_tax($charged_lines, $discount);
     }
     
     // get shipping total for all ship tos
     $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $shipping = $row['shipping'];
-    
+    $shipping = (int) $row['shipping'];
+
+    // The shipping holds tax: on the order's invoice it is taken with the
+    // goods of each rate, on their sum, and where that leaves a rate's total
+    // no amount reaches (57.93 at 20%) the shipping is charged a minor unit
+    // lower (pg_order_charges_reachable()), as the checkout showed it. The
+    // recipient that gives up the minor units is the last one whose cost
+    // covers them; its cost is lowered when the order is placed (below), so
+    // the order's pages read what was charged.
+    $shipping_less = 0;
+    $shipping_less_ship_to_id = 0;
+
+    if (($shipping > 0) && pg_order_charges_settle_rates()) {
+        $settled = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping));
+
+        if ($settled['shipping'] < $shipping) {
+            $shipping_less_ship_to_id = (int) db_value(
+                "SELECT id FROM ship_tos
+                WHERE order_id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "' AND shipping_cost >= '" . ($shipping - $settled['shipping']) . "'
+                ORDER BY id DESC LIMIT 1");
+
+            if ($shipping_less_ship_to_id > 0) {
+                $shipping_less = $shipping - $settled['shipping'];
+                $shipping = $settled['shipping'];
+            }
+        }
+    }
+
     $total = $subtotal - $discount + $tax + $shipping;
 
     $gift_card_discount = 0;
@@ -944,6 +976,13 @@ function submit_order($type) {
             && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
         ) {
             $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total);
+
+            // Like the shipping, a minor unit lower where it would leave a
+            // rate's total no amount reaches (pg_order_charges_reachable()).
+            if (pg_order_charges_settle_rates()) {
+                $surcharge = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping, 'surcharge' => (int) $surcharge))['surcharge'];
+            }
+
             $total = $total + $surcharge;
         }
         
@@ -1012,8 +1051,13 @@ function submit_order($type) {
         $liveform->assign_field_value('payment_method', 'Offline Payment');
     }
 
-    // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
-    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+    // A card typed into the payment service's own fields (Stripe's Payment
+    // Element) never reaches this site: the form posts the service's token,
+    // which the driver checks, and there are no card inputs to validate.
+    $payment_hosted_card_driver = pg_payment_hosted_card_driver(ECOMMERCE_PAYMENT_GATEWAY);
+
+    // if the mode is not a payment service's return, then validate the rest of the fields
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
         if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
             $liveform->validate_required_field('payment_method', lang('A payment method is required.'));
@@ -1101,6 +1145,7 @@ function submit_order($type) {
             if (
                 ($liveform->check_field_error('payment_method') == FALSE)
                 && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
+                && ($payment_hosted_card_driver === '')
             ) {
                 
                 $liveform->validate_required_field('card_number', lang('Card Number is required.'));
@@ -1488,7 +1533,7 @@ function submit_order($type) {
         && $_pg_inst_method === 'Credit/Debit Card'
         && defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
 
-    if( (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return')
+    if( !pg_payment_is_return_mode($_GET['mode'] ?? '')
         and ($liveform->check_form_errors() == FALSE)
         and ($liveform->check_form_notices() == FALSE)
         and !$_pg_skip_total_check
@@ -1846,6 +1891,12 @@ function submit_order($type) {
                 'recurring'                => ($recurring_transaction === TRUE),
                 'subtotal'                 => $subtotal,
                 'discount'                 => $discount,
+                // What the instalment charge is settled against: it goes the
+                // fewest kurus lower where it would leave a rate's total out
+                // of reach, as the shipping does (pg_order_installment_charge()).
+                'settle_rates'             => pg_order_charges_settle_rates(),
+                'charged_lines'            => $charged_lines,
+                'charges'                  => array('shipping' => (int) $shipping, 'surcharge' => (int) $surcharge),
                 'lines'                    => $products,
                 'ship_to'                  => pg_payment_order_ship_to((int) ($_SESSION['ecommerce']['order_id'] ?? 0)),
                 'customer_id'              => $user_id,
@@ -1854,6 +1905,8 @@ function submit_order($type) {
                 'return_url'               => ($payment_return_mode !== '')
                     ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
                     : '',
+                // The payment service's token for a card typed into its own fields.
+                'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
             )));
         }
 
@@ -1895,6 +1948,15 @@ function submit_order($type) {
 
         if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
             $card_type = $payment_answer['card_brand'];
+
+            // The order keeps what the service says of a card the site never
+            // saw: its last four digits (masked like any card number below)
+            // and its expiry.
+            if ($payment_hosted_card_driver !== '') {
+                $card_number = ($payment_answer['card_last4'] !== '') ? str_repeat('0', 12) . $payment_answer['card_last4'] : '';
+                $expiration_month = $payment_answer['card_exp_month'];
+                $expiration_year = $payment_answer['card_exp_year'];
+            }
         }
     }
 
@@ -4426,6 +4488,13 @@ function submit_order($type) {
         unset($_SESSION['ecommerce']['offline_payment_label']);
     }
 
+    // The recipient that gave up the shipping's minor units (see the totals
+    // above) keeps the cost the order was charged.
+    if ($shipping_less > 0) {
+        db("UPDATE ship_tos SET shipping_cost = shipping_cost - " . (int) $shipping_less . "
+            WHERE id = '" . (int) $shipping_less_ship_to_id . "'");
+    }
+
     // add data to orders table
     // We update the user id again below, in case we now have new user info
     // from the auto-registration feature that ran above.
@@ -6238,7 +6307,12 @@ function submit_order($type) {
     
     // intialize variable to keep track of the total reward points that products should give for this order
     $reward_points = 0;
-    
+
+    // The stock each product was left with by the rows above, so a product
+    // that comes twice (two recipients) announces its second row from what
+    // the first one left, not from the stock read before the loop.
+    $stock_left = array();
+
     // loop through all ordered products in order to determine if things need to be done for each product
     foreach ($products as $product) {
         $product_id = $product['product_id'];
@@ -6260,29 +6334,63 @@ function submit_order($type) {
         $reservations = $product['reservations'];
         $limit_reservations = $product['limit_reservations'];
         $number_of_initial_spots = $product['number_of_initial_spots'];
-        
+
+        // $products was read before the payment call, so the first row of a
+        // product reads its stock again right before the decrement: a sale
+        // or a restock made meanwhile would otherwise be the 'before' the
+        // stock.low crossing is decided from (two parallel checkouts both
+        // announced it, a restock during payment hid it). Later rows of the
+        // same product carry on from what the row above left; $stock_left
+        // is only set for a product that tracks stock.
+        if (isset($stock_left[$product_id])) {
+            $inventory = 1;
+            $inventory_quantity = $stock_left[$product_id];
+        } else {
+            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+
+            if ($stock_now) {
+                $inventory = $stock_now['inventory'];
+                $inventory_quantity = $stock_now['inventory_quantity'];
+            }
+        }
+
         // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
         if (($inventory == 1) && ($inventory_quantity != 0)) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
             $query = "UPDATE products SET inventory_quantity = (inventory_quantity - '" . $quantity . "') WHERE id = '" . $product_id . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            //if quantity is equal to product inventory quantity than add product to out of stock. so we can find product where out of stock page and welcome page.
-            if($quantity == $inventory_quantity){
-                $query = "UPDATE products SET 
-                            out_of_stock = '1', 
-                            out_of_stock_timestamp = UNIX_TIMESTAMP() 
-                            WHERE id = '" . $product_id . "'";
-                            
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // Mark the product out of stock from the stock left after this
+            // row, not from $inventory_quantity: that value was read before
+            // the loop, so the second row of the same product (another
+            // recipient) or a row above the stock never equals it. The column
+            // is unsigned and the session sql_mode is not strict, so a sale
+            // through the stock leaves 0. The out_of_stock guard makes the
+            // flag and the warning happen once per product.
+            $result = mysqli_query(db::$con,
+                "UPDATE products SET
+                    out_of_stock = '1',
+                    out_of_stock_timestamp = UNIX_TIMESTAMP()
+                WHERE
+                    (id = '" . $product_id . "')
+                    AND (inventory_quantity <= 0)
+                    AND (out_of_stock != '1')") or output_error('Query failed.');
+
+            if (mysqli_affected_rows(db::$con) > 0) {
                 create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
             }
 
-            // Sold here, so the marketplace has to be told. Queued, not sent:
-            // a checkout must never wait on somebody else's server.
-            if (function_exists('pg_marketplace_product_changed')) {
-                pg_marketplace_product_changed($product_id);
-            }
+            // Sold here, so the outside has to be told: the product's stamp
+            // moves for updated_since listings, inventory.changed (and
+            // stock.low on the crossing) is announced and the marketplace is
+            // queued. Queued, not sent: a checkout must never wait on
+            // somebody else's server. The stock left is read back, because
+            // the decrement happened in the UPDATE.
+            $stock_left[$product_id] = pg_product_stock_changed(
+                $product_id,
+                (int) $inventory_quantity,
+                null,
+                'checkout');
         }
         
         
@@ -6318,9 +6426,11 @@ function submit_order($type) {
                             AND (recurrence_number = '" . $recurrence_number . "')";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     
-                // else a remaining spots record was not found, so create new record using number of initial spots
+                // else a remaining spots record was not found, so create new
+                // record using number of initial spots less the spots this
+                // row reserves (the UPDATE branch above takes the quantity too)
                 } else {
-                    $number_of_remaining_spots = $number_of_initial_spots - 1;
+                    $number_of_remaining_spots = $number_of_initial_spots - $quantity;
                     
                     $query =
                         "INSERT INTO remaining_reservation_spots (

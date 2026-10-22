@@ -1,6 +1,6 @@
 ---
 name: sandbox-and-environment
-description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com
+description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 ---
 
 ## What does a cloud session have?
@@ -14,4 +14,10 @@ description: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/set
 ## What is dev.pinegrap.com?
 - The owner's Windows PC: IIS 10 behind cloudflared, MySQL 8.0, no mail server, no AI key. Cloud sessions cannot reach it (or kodpen.com / pinegrap.com).
 - Only one Remote Control session at a time works there; cloud threads never start one. They list dev checks and doc notes in their final reply; the coordinator relays them.
+- `gh` is not installed there. A session linked to that machine calls the GitHub REST API with the token `git credential fill` returns for github.com (the credential git push uses) through a small PowerShell helper in its scratchpad; those requests do not pass the cloud proxy, so bodies edited that way carry no Claude Code footer.
 - DB re-run on dev: Ayarlar › İşler › Yazılımı Onar › "Veritabanı yükseltme adımlarını yeniden koş". Test records on dev only with the owner's written "yaz ve sil"; never delete visitor rows, run "şimdi temizle", Optimize or "Şimdi küçült", never send real e-mail.
+
+## How does a cloud session linked to that machine update dev's checkout?
+- Its shell (`device_bash`) is a Linux VM over the mounted folder (`$HOME/mnt/PinegrapCMS`): each call ends within 180 s and takes its background jobs with it, and deleting needs the owner's approval for the folder (`device_request_delete_permission`). git replaces a file by deleting it: without the approval a checkout updates the index and leaves the old file.
+- A `git pull` over a few hundred files does not finish in time. Fetch, then `git checkout refs/remotes/origin/development -- <40 or so files>` per call (list: `git diff --name-only HEAD refs/remotes/origin/development`), then `git reset --soft refs/remotes/origin/development`; `git diff --cached --quiet` confirms. A killed git leaves `.git/index.lock`: remove it only when no git runs.
+- Files written from Windows have CRLF; compare contents with `tr -d '\r' < file | git hash-object --stdin`.

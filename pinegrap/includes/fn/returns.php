@@ -90,6 +90,13 @@ define('PG_RETURN_PANEL_LIMIT', 1000);
 define('PG_RETURN_REMIND_DAYS', 3);
 
 /**
+ * Seconds within which the same request sent again is taken as the first one
+ * (pg_return_repeat_of()): long enough for a mail sent inside the request to
+ * keep the first answer waiting.
+ */
+define('PG_RETURN_REPEAT_SECONDS', 60);
+
+/**
  * True when both tables are in the database (2026.11.0).
  *
  * @return bool
@@ -573,8 +580,8 @@ function pg_return_returnable($quantity, $held)
  * The lines a request names, checked against the lines of the delivery.
  *
  * A line is named by its order_items id with a whole, non-negative quantity;
- * zero leaves it out. At least one line must remain, each one of the
- * delivery's, none above what is left on it.
+ * zero or an empty box leaves it out. At least one line must remain, each one
+ * of the delivery's, none above what is left on it.
  *
  * @param mixed $requested order item id => quantity
  * @param array $lines     order item id => name, returnable
@@ -598,6 +605,10 @@ function pg_return_check_lines($requested, $lines)
             $count = $quantity;
         } elseif (is_string($quantity) && (preg_match('/^\s*\d{1,9}\s*$/', $quantity) === 1)) {
             $count = (int) $quantity;
+        } elseif (is_string($quantity) && (trim($quantity) === '')) {
+            // A number box the customer cleared arrives empty: nothing asked
+            // for on that line, like 0.
+            $count = 0;
         } else {
             return $refuse(lang('Enter the number of items to return as a whole number.'));
         }
@@ -636,6 +647,80 @@ function pg_return_check_lines($requested, $lines)
     }
 
     return array('ok' => true, 'error' => '', 'lines' => $out);
+}
+
+/**
+ * The request a new one repeats, if any: one still waiting for an answer,
+ * made at most PG_RETURN_REPEAT_SECONDS before, with the same reason, note
+ * and lines. That is the same form sent twice (a double click, a reload of
+ * the answer page), not a second return.
+ *
+ * Quantities are read the way pg_return_check_lines() reads them; a value it
+ * would not take is left out of the comparison, as are zeros.
+ *
+ * @param array  $recent    requests of the same order, delivery and person:
+ *                          id, reason, customer_note, requested_at, items
+ *                          (list of order_item_id, quantity)
+ * @param string $reason    the new request's reason, as stored
+ * @param string $note      its note, as stored
+ * @param mixed  $requested order item id => quantity, as sent
+ * @param int    $now       unix time of the new request
+ * @return int the id of the request it repeats, or 0
+ */
+function pg_return_repeat_of($recent, $reason, $note, $requested, $now)
+{
+    if (!is_array($requested) || !is_array($recent)) {
+        return 0;
+    }
+
+    $wanted = array();
+
+    foreach ($requested as $id => $quantity) {
+        if (is_int($quantity)) {
+            $count = $quantity;
+        } elseif (is_string($quantity) && (preg_match('/^\s*\d{1,9}\s*$/', $quantity) === 1)) {
+            $count = (int) $quantity;
+        } else {
+            continue;
+        }
+
+        if ($count > 0) {
+            $wanted[(int) $id] = $count;
+        }
+    }
+
+    if (empty($wanted)) {
+        return 0;
+    }
+
+    ksort($wanted);
+
+    foreach ($recent as $row) {
+        $age = (int) $now - (int) $row['requested_at'];
+
+        if (($age < 0) || ($age > PG_RETURN_REPEAT_SECONDS)) {
+            continue;
+        }
+
+        if (((string) $row['reason'] !== (string) $reason) || ((string) $row['customer_note'] !== (string) $note)) {
+            continue;
+        }
+
+        $held = array();
+
+        foreach ((isset($row['items']) ? (array) $row['items'] : array()) as $item) {
+            $item_id = (int) $item['order_item_id'];
+            $held[$item_id] = (isset($held[$item_id]) ? $held[$item_id] : 0) + (int) $item['quantity'];
+        }
+
+        ksort($held);
+
+        if ($held === $wanted) {
+            return (int) $row['id'];
+        }
+    }
+
+    return 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -958,12 +1043,13 @@ function pg_return_lock_name($order_id)
  *                           request must be in time), user_id (who asked),
  *                           time (unix time, defaults to now), today (Y-m-d,
  *                           defaults to today)
- * @return array ok, error, id
+ * @return array ok, error, id, repeat (true when the request was the same
+ *               form sent again and id is the request it repeats)
  */
 function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $options = array())
 {
     $refuse = function ($error) {
-        return array('ok' => false, 'error' => $error, 'id' => 0);
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'repeat' => false);
     };
 
     if (!pg_returns_ready()) {
@@ -1029,6 +1115,39 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
         return $refuse(lang('Another return is being saved for this order. Try again in a moment.'));
     }
 
+    // The same form sent again while the first one was being saved answers
+    // with that request, before the quantity check: the first one may have
+    // taken every unit, and the page the customer ends up seeing is the
+    // answer to the second.
+    $recent = db_items(
+        "SELECT id, reason, customer_note, requested_at
+        FROM order_returns
+        WHERE
+            order_id = '" . $order_id . "'
+            AND ship_to_id = '" . $ship_to_id . "'
+            AND status = 'requested'
+            AND source = '" . e($source) . "'
+            AND requested_by = '" . $user_id . "'
+            AND requested_at >= '" . ($now - PG_RETURN_REPEAT_SECONDS) . "'
+        ORDER BY id DESC
+        LIMIT 10");
+
+    if (!empty($recent)) {
+        $items = pg_return_items_of(array_column($recent, 'id'));
+
+        foreach ($recent as $index => $row) {
+            $recent[$index]['items'] = isset($items[(int) $row['id']]) ? $items[(int) $row['id']] : array();
+        }
+
+        $repeat = pg_return_repeat_of($recent, $reason, $note, $quantities, $now);
+
+        if ($repeat > 0) {
+            db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+            return array('ok' => true, 'error' => '', 'id' => $repeat, 'repeat' => true);
+        }
+    }
+
     $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
 
     if (!$checked['ok']) {
@@ -1066,7 +1185,7 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-    return array('ok' => true, 'error' => '', 'id' => $return_id);
+    return array('ok' => true, 'error' => '', 'id' => $return_id, 'repeat' => false);
 }
 
 /**
@@ -2388,9 +2507,20 @@ function pg_return_refund_estimate($lines, $quantities, $discount)
  * pair is checked by product, and an invoice that does not line up (made or
  * changed by hand) gives no map.
  *
+ * A line the order did not charge (a recurring line starting after the order
+ * day, erp_order_charged_items()) is not among the refund lines; the source
+ * names it in left_out and it gets no entry, so the lines that were charged
+ * still map. On the order's own lines it is always skipped. On an invoice it
+ * is skipped only when the invoice line at its position is not its product:
+ * an invoice issued while such lines were still put on it carries the line
+ * and keeps mapping it. The invoice source works left_out out from today's
+ * order_items rows and gateway setting, not from what the invoice was built
+ * from.
+ *
  * @param array $items  order item id => product id, in the order's line order
  *                      (lines kept for later left out)
- * @param array $source erp_order_refund_lines(): source, lines (id, product_id)
+ * @param array $source erp_order_refund_lines(): source, lines (id, product_id),
+ *                      left_out (order item ids)
  * @return array|null order item id => refund line id
  */
 function pg_return_erp_line_map($items, $source)
@@ -2401,6 +2531,12 @@ function pg_return_erp_line_map($items, $source)
 
     $lines = array_values($source['lines']);
     $map = array();
+    $left_out = array();
+    $left_out_ids = (isset($source['left_out']) && is_array($source['left_out'])) ? $source['left_out'] : array();
+
+    foreach ($left_out_ids as $left_out_id) {
+        $left_out[(int) $left_out_id] = true;
+    }
 
     if ((isset($source['source']) ? $source['source'] : '') === 'order') {
         $ids = array();
@@ -2410,6 +2546,10 @@ function pg_return_erp_line_map($items, $source)
         }
 
         foreach ($items as $item_id => $product_id) {
+            if (isset($left_out[(int) $item_id])) {
+                continue;
+            }
+
             if (!isset($ids[(int) $item_id])) {
                 return null;
             }
@@ -2423,7 +2563,14 @@ function pg_return_erp_line_map($items, $source)
     $position = 0;
 
     foreach ($items as $item_id => $product_id) {
-        if (!isset($lines[$position]) || ((int) $lines[$position]['product_id'] !== (int) $product_id)) {
+        $matches = isset($lines[$position]) && ((int) $lines[$position]['product_id'] === (int) $product_id);
+
+        // Not on this invoice: the next line is the next charged item's.
+        if (!$matches && isset($left_out[(int) $item_id])) {
+            continue;
+        }
+
+        if (!$matches) {
             return null;
         }
 
@@ -2445,6 +2592,29 @@ function pg_return_money_text($cents)
     $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '';
 
     return html_entity_decode(strip_tags(pg_format_money((int) $cents / 100, $symbol)), ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Whether a person goes on to the ERP return invoice after a refund: the ERP
+ * must be on and they must be allowed to use it (role below 3 or manage_erp).
+ * The redirect after the refund and the note under the refund card both ask
+ * this, so the screen promises the invoice only to whoever will see it.
+ *
+ * @param array     $user   validate_user() row (role, manage_erp)
+ * @param bool|null $erp_on null reads ERP_ENABLED
+ * @return bool
+ */
+function pg_return_erp_hand_off($user, $erp_on = null)
+{
+    if ($erp_on === null) {
+        $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+    }
+
+    if (!$erp_on || !is_array($user)) {
+        return false;
+    }
+
+    return ((int) (isset($user['role']) ? $user['role'] : 99) < 3) || !empty($user['manage_erp']);
 }
 
 /**
@@ -2815,9 +2985,33 @@ function pg_return_reminder_stage($deadline, $today)
 }
 
 /**
+ * The order_returns column that records when a reminder stage was given.
+ *
+ * @param string $stage pg_return_reminder_stage(): 'due' or 'overdue'
+ * @return string column name, '' for anything else
+ */
+function pg_return_reminder_stamp_column($stage)
+{
+    if ($stage === 'due') {
+        return 'refund_due_notified_at';
+    }
+
+    if ($stage === 'overdue') {
+        return 'refund_overdue_notified_at';
+    }
+
+    return '';
+}
+
+/**
  * Rings the staff's bell for each return whose refund is due within
  * PG_RETURN_REMIND_DAYS days, and again once it is overdue: once per return
- * and stage, told apart by the notification rows already written.
+ * and stage. The stage is stamped on the return itself (step 11.0.25) before
+ * the bell rings, and only the run whose UPDATE claimed the row rings it: a
+ * notification row that staff delete from the bell ("Delete all") is gone
+ * for everyone and cannot be the memory of what was already said. A bell
+ * that could not be written gives the stamp back, so the next run tries
+ * again.
  *
  * @param string $today Y-m-d, or '' for today
  * @return array due, overdue (how many were rung)
@@ -2826,7 +3020,7 @@ function pg_return_remind_refunds($today = '')
 {
     $result = array('due' => 0, 'overdue' => 0);
 
-    if (!pg_returns_ready()) {
+    if (!pg_returns_ready() || !pg_schema_has('order_returns', 'refund_overdue_notified_at')) {
         return $result;
     }
 
@@ -2836,20 +3030,23 @@ function pg_return_remind_refunds($today = '')
 
     foreach (db_items("SELECT * FROM order_returns WHERE status IN ('shipped', 'received')") as $row) {
         $stage = pg_return_reminder_stage(pg_return_refund_due($row), $today);
+        $column = pg_return_reminder_stamp_column($stage);
 
-        if ($stage === '') {
+        if (($column === '') || ((int) $row[$column] > 0)) {
             continue;
         }
 
-        $event = 'refund_' . $stage;
+        db("UPDATE order_returns SET " . $column . " = UNIX_TIMESTAMP()
+            WHERE (id = '" . (int) $row['id'] . "') AND (" . $column . " = 0)");
 
-        $rung = (int) db_value(
-            "SELECT COUNT(*)
-            FROM notifications
-            WHERE (action = 'order_return') AND (form_id = '" . (int) $row['id'] . "') AND (order_total = '" . $event . "')");
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            continue;
+        }
 
-        if (($rung === 0) && pg_return_notify_staff($row['id'], $event)) {
+        if (pg_return_notify_staff($row['id'], 'refund_' . $stage)) {
             $result[$stage]++;
+        } else {
+            db("UPDATE order_returns SET " . $column . " = 0 WHERE id = '" . (int) $row['id'] . "'");
         }
     }
 

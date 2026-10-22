@@ -10,13 +10,20 @@
  * one after each save that changed the page (a save carried unchanged because
  * only a shared component moved writes none), the importer and the AI editor
  * name their source, and a restore is a new publish with source 'restore'.
- * Nothing is written on the editor's autosave, which is browser-local.
+ * Nothing is written on the editor's autosave, which is browser-local. A page
+ * that has no revision when its first changing save comes (published before
+ * the table arrived, or copied from another page) is first recorded as it is
+ * stored (pg_page_revision_seed()), so there is no migration backfill and
+ * the state before the first change can still be brought back.
  *
  * A row keeps the tree (page_tree_json, what the editor opens again), the
- * SHA-1 of the HTML drawn from it (the body is drawn again on restore; the
- * renderer is deterministic, so the hash is enough to tell two revisions
- * apart) and the page's settings as JSON (title, description, folder, flags,
- * meta tags, structured data), with who published and when.
+ * SHA-1 of the HTML drawn from it (the body is drawn again on restore, so
+ * the hash is a record of what went out, not a copy of it) and the page's
+ * settings as JSON (title, description, folder, flags, meta tags, structured
+ * data), with who published and when. Two revisions are told apart by the
+ * tree and the settings alone: the body is derived from the tree, and the
+ * renderer is not deterministic (a navbar or carousel gets a fresh element
+ * id on every draw), so the drawn hash differs between two draws of one tree.
  *
  * Retention is the larger of two rules, both settings on the config row: the
  * last PAGE_REVISIONS_KEEP revisions of a page are kept, and so is every
@@ -170,25 +177,182 @@ function pg_page_revision_settings($page_id)
 }
 
 /**
- * Whether the newest revision already records this state: the same tree, the
- * same drawn HTML and the same settings. Such a save (a settings save that
- * changed nothing the revision records, say) writes no row.
+ * Whether the newest revision already records this state: the same tree and
+ * the same settings. Such a save (a schedule-only save, or a settings save
+ * that changed nothing the revision records) writes no row.
  *
- * @param array|null $latest the newest row (tree_hash, tree_code_hash, settings_json)
+ * The drawn HTML is not compared: it is derived from the tree, and the
+ * renderer gives a navbar or carousel a fresh element id on every draw, so
+ * two draws of one tree hash differently and would pass for two states.
+ *
+ * @param array|null $latest the newest row (tree_hash, settings_json)
  * @param string     $tree_hash
- * @param string     $code_hash
  * @param string     $settings_json
  * @return bool
  */
-function pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)
+function pg_page_revision_identical($latest, $tree_hash, $settings_json)
 {
     if (!is_array($latest)) {
         return false;
     }
 
     return (string) $latest['tree_hash'] === (string) $tree_hash
-        && (string) $latest['tree_code_hash'] === (string) $code_hash
         && (string) $latest['settings_json'] === (string) $settings_json;
+}
+
+/**
+ * The values an initial revision takes from a stored page row: the tree and
+ * the body the page has now, its settings, and who last saved it and when.
+ * Null when the row has no tree (a classic page, or one the designer never
+ * saved): there is nothing a restore could bring back.
+ *
+ * @param array|null $row a page row, as SELECT * returns it
+ * @param int        $now the time to date the row when the page has none
+ * @return array|null style_id, tree_json, tree_hash, code_hash, settings_json, user_id, created_at
+ */
+function pg_page_revision_seed_values($row, $now)
+{
+    if (!is_array($row) || !isset($row['page_tree_json'])) {
+        return null;
+    }
+
+    $tree_json = (string) $row['page_tree_json'];
+
+    if (trim($tree_json) === '') {
+        return null;
+    }
+
+    $settings   = pg_page_revision_settings_from_row($row);
+    $created_at = isset($row['page_timestamp']) ? (int) $row['page_timestamp'] : 0;
+
+    return array(
+        'style_id'      => isset($row['page_style']) ? (int) $row['page_style'] : 0,
+        'tree_json'     => $tree_json,
+        'tree_hash'     => sha1($tree_json),
+        'code_hash'     => sha1(isset($row['page_tree_code']) ? (string) $row['page_tree_code'] : ''),
+        'settings_json' => (string) json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'user_id'       => isset($row['page_user']) ? (int) $row['page_user'] : 0,
+        'created_at'    => ($created_at > 0) ? $created_at : (int) $now,
+    );
+}
+
+/**
+ * A stored page row with the tree it is opened with: a page saved before
+ * the per-page tree has no page_tree_json, and the editor shows it with its
+ * style's tree (pg_page_tree_sql_expr()). The 2026.4.4 copy filled only the
+ * page named like its style; a page renamed since, or an orphan the editor's
+ * legacy bridge linked to its style later, still keeps its tree there. The
+ * style's tree, and its body when the page has none, take the empty places;
+ * a tree the page holds itself is left as it is.
+ *
+ * @param array|null $row        a page row, as SELECT * returns it
+ * @param string     $style_tree the style's tree (pg_page_tree_json())
+ * @param string     $style_code the HTML drawn from it (style.style_code)
+ * @return array|null the row, or null when none was given
+ */
+function pg_page_revision_seed_row($row, $style_tree, $style_code)
+{
+    if (!is_array($row)) {
+        return null;
+    }
+
+    if (trim(isset($row['page_tree_json']) ? (string) $row['page_tree_json'] : '') !== '') {
+        return $row;
+    }
+
+    $row['page_tree_json'] = (string) $style_tree;
+
+    if (trim(isset($row['page_tree_code']) ? (string) $row['page_tree_code'] : '') === '') {
+        $row['page_tree_code'] = (string) $style_code;
+    }
+
+    return $row;
+}
+
+/**
+ * Records a page that has no revision yet as it is stored, before a save
+ * writes over it: a page published before the table arrived (2026.11.0,
+ * 11.0.15), or one that duplicate_page_f.php / duplicate_style.php copied
+ * row by row, would otherwise have its first revision be the state after
+ * the first change, with no way back to the state before it. The row is
+ * revision 1 with source 'publish', dated and signed by the page's last
+ * save, so the publish that follows becomes revision 2.
+ *
+ * Returns 1 when the row was written, 0 otherwise (table not there, the
+ * page has revisions, no tree to record, or a failed statement). Two saves
+ * of one page at the same moment both find no row; the unique key refuses
+ * the second's revision 1, which is not an error. A write that fails on the
+ * other's locks is tried again (pg_page_revision_retry_delay()).
+ *
+ * @param int $page_id
+ * @return int
+ */
+function pg_page_revision_seed($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if ($page_id <= 0 || !pg_page_revisions_ready()) {
+        return 0;
+    }
+
+    if ((int) db_value("SELECT revision_id FROM page_revisions WHERE page_id = '$page_id' LIMIT 1") > 0) {
+        return 0;
+    }
+
+    $row = db_item("SELECT * FROM page WHERE page_id = '$page_id' LIMIT 1");
+
+    // A page whose tree still lives on its style is recorded with that tree,
+    // the one the editor opened and the visitor was shown.
+    if (is_array($row) && trim(isset($row['page_tree_json']) ? (string) $row['page_tree_json'] : '') === ''
+        && function_exists('pg_page_tree_json')) {
+        $style_id = isset($row['page_style']) ? (int) $row['page_style'] : 0;
+        $row = pg_page_revision_seed_row($row, pg_page_tree_json($page_id),
+            (string) db_value("SELECT style_code FROM style WHERE style_id = '$style_id' LIMIT 1"));
+    }
+
+    $values = pg_page_revision_seed_values($row, time());
+
+    if ($values === null) {
+        return 0;
+    }
+
+    $errno = 0;
+
+    for ($attempt = 1; ; $attempt++) {
+        $ok = @mysqli_query(db::$con,
+            "INSERT INTO page_revisions
+                (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
+             VALUES (
+                '$page_id',
+                '" . (int) $values['style_id'] . "',
+                1,
+                '" . e($values['tree_json']) . "',
+                '" . e($values['tree_hash']) . "',
+                '" . e($values['code_hash']) . "',
+                '" . e($values['settings_json']) . "',
+                '" . (int) $values['user_id'] . "',
+                'publish',
+                '" . (int) $values['created_at'] . "')");
+
+        if ($ok) {
+            return 1;
+        }
+
+        $errno = mysqli_errno(db::$con);
+        $delay = pg_page_revision_retry_delay($errno, $attempt, true);
+
+        if ($delay < 0) {
+            break;
+        }
+
+        usleep($delay + mt_rand(0, $delay));
+    }
+
+    if ($errno !== 1062) {
+        pg_page_revisions_log_failure('writing the initial revision of page ' . $page_id);
+    }
+
+    return 0;
 }
 
 /**
@@ -220,20 +384,21 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
     $source        = pg_page_revision_source($source);
 
     $latest = db_item(
-        "SELECT revision_no, tree_hash, tree_code_hash, settings_json
+        "SELECT revision_no, tree_hash, settings_json
          FROM page_revisions
          WHERE page_id = '$page_id'
          ORDER BY revision_no DESC
          LIMIT 1");
 
-    if (pg_page_revision_identical($latest, $tree_hash, $code_hash, $settings_json)) {
+    if (pg_page_revision_identical($latest, $tree_hash, $settings_json)) {
         return 0;
     }
 
     // The number is taken in the INSERT itself, so two saves of one page at
-    // the same moment cannot both read the same MAX(); the unique key refuses
-    // the second, which then tries once more with the next number.
-    for ($attempt = 0; $attempt < 2; $attempt++) {
+    // the same moment cannot both read the same MAX(). The second then fails
+    // on the unique key or on the first one's locks and is tried again
+    // (pg_page_revision_retry_delay()); the next try reads the next number.
+    for ($attempt = 1; ; $attempt++) {
         $ok = @mysqli_query(db::$con,
             "INSERT INTO page_revisions
                 (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
@@ -264,14 +429,63 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
             return $revision_no;
         }
 
-        if (mysqli_errno(db::$con) !== 1062) {
+        $delay = pg_page_revision_retry_delay(mysqli_errno(db::$con), $attempt);
+
+        if ($delay < 0) {
             break;
         }
+
+        // A random share on top keeps two writers that collided from
+        // meeting again on the next try.
+        usleep($delay + mt_rand(0, $delay));
     }
 
     pg_page_revisions_log_failure('writing the revision of page ' . $page_id);
 
     return 0;
+}
+
+/**
+ * Whether a revision INSERT that failed with $errno is tried again, and how
+ * long to wait first: microseconds, or -1 for no further try. Two writes of
+ * one page at the same moment meet on the unique key (1062) but more often
+ * on each other's locks, since the number is read from the same table:
+ * InnoDB answers with a deadlock (1213) or a lock wait timeout (1205),
+ * MariaDB with an auto-increment value it could not read (1467). A lock
+ * error is tried again after a short wait that grows with each try; a
+ * duplicate number at once, as the next try reads the next number, except
+ * for the first revision ($duplicate_ends), which the other write has then
+ * recorded. Four statements at most; a lock wait timeout only once more,
+ * as it has already waited innodb_lock_wait_timeout (50 seconds by default).
+ * Any other error is not tried again.
+ *
+ * @param int  $errno          mysqli_errno() of the failed statement
+ * @param int  $attempt        statements run so far, the failed one included
+ * @param bool $duplicate_ends true when a duplicate means the row is there
+ * @return int
+ */
+function pg_page_revision_retry_delay($errno, $attempt, $duplicate_ends = false)
+{
+    $errno = (int) $errno;
+    $attempt = (int) $attempt;
+
+    if ($attempt < 1 || $attempt >= 4) {
+        return -1;
+    }
+
+    if ($errno === 1062) {
+        return $duplicate_ends ? -1 : 0;
+    }
+
+    if ($errno === 1205) {
+        return ($attempt === 1) ? 20000 : -1;
+    }
+
+    if (in_array($errno, array(1213, 1467), true)) {
+        return 20000 * $attempt;
+    }
+
+    return -1;
 }
 
 /**

@@ -6,20 +6,20 @@ Open the index of the folder the task needs and follow its key rules, then open 
 
 ## Memory folders (docs/memory/)
 
-- api/README.md: External API (integration.php, includes/api/): endpoints, scopes, device and OAuth sessions, MCP server, webhooks, outbound connectors, connected accounts (22)
-- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order (63)
-- core/README.md: Code rules, file layout, translation, JavaScript twins and bundles, roles and access, security, api.php, request parameters (45)
-- data/README.md: Table structures and SQL pitfalls (12)
-- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import (108)
-- erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports (83)
-- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start (45)
-- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates (51)
-- release/README.md: Versions, migrations and upgrade steps, change log rules, release status (15)
-- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls (56)
-- visitors/README.md: Visitor statistics, page and article views, search engine index flags (19)
-- waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers (25)
-- workflow/README.md: Project overview, owner rules, decisions already made, git and branches, sandbox and dev machine (11)
-- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels (20)
+- api/README.md: External API (integration.php, includes/api/): endpoints, scopes, device and OAuth sessions, MCP server, webhooks, outbound connectors, connected accounts
+- commerce/README.md: Orders, cart, checkout, shipping, products and variants, express order
+- core/README.md: Code rules, file layout, translation, JavaScript twins and bundles, roles and access, security, api.php, request parameters
+- data/README.md: Table structures and SQL pitfalls
+- designer/README.md: Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import
+- erp/README.md: ERP (accounting) module: invoices, payments, waybills, cash, e-documents, reports
+- plans/README.md: Unfinished and shelved plans: remaining work, decisions made, open questions, where to start
+- platform/README.md: Server config, router, redirects, updates and TLS, system status, images and uploads, setup templates
+- release/README.md: Versions, migrations and upgrade steps, change log rules, release status
+- ui/README.md: Panel screens, settings modal, dashboard, panel JavaScript pitfalls
+- visitors/README.md: Visitor statistics, page and article views, search engine index flags
+- waf/README.md: Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers
+- workflow/README.md: Project overview, owner rules, decisions already made, git and branches, sandbox and dev machine
+- workspace/README.md: Workspace module: channels, tasks, plan board, rights, Claude in channels
 
 ## Other documents (docs/)
 

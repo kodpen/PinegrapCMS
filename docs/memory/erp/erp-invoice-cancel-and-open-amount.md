@@ -1,6 +1,6 @@
 ---
 name: erp-invoice-cancel-and-open-amount
-description: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, and how open amount and paid status treat returns.
+description: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, the period lock, and how open amount and paid status treat returns.
 ---
 
 ## When can an invoice be cancelled?
@@ -14,10 +14,14 @@ description: When an ERP invoice can be cancelled, what cancel does to ledger, n
 - An order that produced the invoice gets `orders.erp_invoice_id = 0` and can be invoiced again; cancelling a return gives its quantities back to the parent (`returned_qty`) and recomputes the parent's status.
 - After the commit the `erp.invoice.cancelled` event is raised.
 
+## What does the period lock do to a cancel?
+- An invoice dated on or before the lock date cannot be cancelled; it is taken back with a return dated in the open period.
+- The lock is asked before any side effect (PR #1225, #1070): `erp_edoc_invoice_provider_cancel()` refuses first, so the provider's draft is not deleted and an e-Archive document is not cancelled there; the order card's step offers the return instead of "Cancel the invoice" and its run never removes the allocations; `edit_erp_invoice.php` shows the cancel button disabled with the reason.
+- Before, the provider was taken back and the order card's allocations removed, and only `erp_invoice_cancel()` refused: the invoice stayed issued, unpaid, with nothing at the provider.
+
 ## How do open amount and paid status treat returns?
 - `erp_invoice_open_amount()` deducts both settlements and returns; a cancelled invoice or a return document has nothing open.
 - `erp_invoice_refresh_paid()` measures settlements against the same figure (total − returns), so the two cannot diverge.
-- Only money makes an invoice "paid": a fully returned invoice that never saw a collection stays `issued`.
-- Opening a return and cancelling a return both recompute the parent invoice status (`returns.php`, inside the transaction).
-
-Related: docs/memory/erp/erp-return-documents.md, docs/memory/erp/erp-order-cancel-and-refund.md
+- Only money makes an invoice "paid": a fully returned invoice that never saw a collection stays `issued`; a receipt never goes to a return (erp-receipt-not-for-return).
+- Opening a return and cancelling a return both recompute the parent invoice status (`returns.php`, inside the transaction); on a foreign-currency parent the exchange difference is posted when it reaches `paid` and reversed when it leaves it (#1071, erp-money-and-currency).
+Related: docs/memory/erp/erp-return-documents.md, docs/memory/erp/erp-order-cancel-and-refund.md, docs/memory/erp/erp-receipt-not-for-return.md

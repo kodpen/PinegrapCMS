@@ -267,10 +267,19 @@ function pg_consent_catalogue($content)
             array('software[remember_me]', true, lang('Remembers whether you chose to stay signed in.')),
             array('software[device_type]', true, lang('Remembers the desktop or mobile view you picked.')),
             array('pg_consent', true, lang('Remembers your cookie choices.')),
+            // Written on every page for a signed-in user (get_page.php,
+            // update_view_page_mode.php).
+            array('software[view_page_mode]', true, lang('For a signed-in user, remembers whether pages show their editing tools.')),
         ),
         'analytics' => array(),
         'marketing' => array(),
     );
+
+    // The language redirect remembers the language a visitor moved to
+    // (pg_lang_redirect_remember()); it writes the cookie only when it is on.
+    if (function_exists('pg_lang_redirect_enabled') && pg_lang_redirect_enabled()) {
+        $catalogue['necessary'][] = array(PG_LANGUAGE_COOKIE, true, lang('Remembers the language you chose for the site.'));
+    }
 
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
@@ -478,6 +487,8 @@ function pg_consent_ui_keys()
         'Remembers whether you chose to stay signed in.',
         'Remembers the desktop or mobile view you picked.',
         'Remembers your cookie choices.',
+        'For a signed-in user, remembers whether pages show their editing tools.',
+        'Remembers the language you chose for the site.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',

@@ -21,6 +21,9 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 - `tagin()` (`backend.src.js`) escaped nothing: a tag's text went into `innerHTML`, so a tracking number from the API or a marketplace containing markup ran in the operator's browser. `escapeTag()` now escapes it; `getTags()` reads `textContent`, so the field's value is unchanged. Menu class fields use the same helper.
 - A custom shipping field another address answered and this one did not no longer raises "Undefined array key" while drawing the second card.
 
+## What happens when only the case of a number is corrected?
+- `1z…` saved again as `1Z…` is the same parcel (the column's collation, as `uk_parcel`), and `pg_shipment_record()` now writes the new spelling too, so the link and the format warning follow what was typed; before (PR #1125) the row kept the old spelling while the warning was worked out from the new one. A marketplace poll (`source` marketplace) leaves the spelling alone, so it cannot undo a correction; `$recorded['number']` is the stored spelling and `update_order()` hands it to the event and the answer.
+
 ## What is not done here?
 - `print_order.php` builds `$output_shipping_details` but never prints it (seen, not changed).
 - Customer side, mail-merge fields and the API fields are later steps of `plans/shipping-management.md`.

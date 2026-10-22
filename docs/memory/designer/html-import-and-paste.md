@@ -30,3 +30,5 @@ description: Designer HTML import: three entry points, one converter, inline SVG
   - An unresolvable address stays as is. The `about.html` -> `/about` rewrite is right only when the archive's page list exists; on paste a guess produces a broken link indistinguishable from a working one.
 
 Related: docs/memory/designer/designer-paste-clipboard.md
+
+Lazy-loaded images (placeholder in src): docs/memory/designer/import-lazy-images.md

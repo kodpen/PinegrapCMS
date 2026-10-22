@@ -323,7 +323,11 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * shipping are the sums of its item and recipient rows (the same sums the
  * placed order stores). The total is the one the checkout page showed and
  * submit_order.php compares against, so offers, gift cards and rounding are
- * the checkout's own; the difference to the row sums is placed below.
+ * the checkout's own; the difference to the row sums is placed below. The
+ * cart's order discount ($seen['order_discount']) is taken first and the tax
+ * taken again per rate on what it leaves of the lines
+ * (pg_order_charged_tax()), so the discount and the tax read as the
+ * checkout's.
  * Billing fields the visitor has typed or the page filled in replace the
  * row's, which a cart has only after an earlier submit. A field the page drew
  * empty says nothing and keeps the row's value; a field the checkout link
@@ -331,9 +335,11 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * the visitor cleared, and clears it.
  *
  * @param array $order     orders row fields
- * @param array $lines     each with line_total and tax (minor units)
+ * @param array $lines     each with line_total and tax (minor units) and rate (the line's tax rate,
+ *                         null when not kept), in the order of their ids
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), billing (field => value), payment_method, typed (bool)
+ * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool),
+ *                         settle_rates (bool, pg_order_charges_settle_rates())
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -341,29 +347,55 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     $subtotal = 0;
     $tax = 0;
     $shipping = 0;
+    $charged = array();
 
     foreach ($lines as $line) {
         $subtotal += (int) round($line['line_total'] ?? 0);
         $tax += (int) round($line['tax'] ?? 0);
+        $charged[] = array(
+            'amount' => (int) round($line['line_total'] ?? 0),
+            'rate' => $line['rate'] ?? null,
+            'tax' => (int) round($line['tax'] ?? 0),
+        );
     }
 
     foreach ($ship_tos as $ship_to) {
         $shipping += (int) round($ship_to['cost'] ?? 0);
     }
 
-    $before = $subtotal + $tax + $shipping;
+    // The order discount the cart worked out (apply_offers_to_cart()) lowers
+    // the tax as submit_order.php and the checkout pages lower it: taken
+    // again per rate on what the discount leaves of the lines; never more
+    // than the subtotal.
+    $order_discount = (int) round((float) ($seen['order_discount'] ?? 0));
+    $order_discount = max(0, min($order_discount, max(0, $subtotal)));
+
+    if (($order_discount > 0) && ($subtotal > 0)) {
+        $tax = pg_order_charged_tax($charged, $order_discount);
+    }
+
+    // Where the shipping holds tax on the order's invoice it is a minor unit
+    // lower when it would leave a rate's total no amount reaches, as the
+    // checkout shows and submit_order.php charges it
+    // (pg_order_charges_reachable()).
+    if (!empty($seen['settle_rates']) && ($shipping > 0)) {
+        $shipping = pg_order_charges_reachable($charged, $order_discount, array('shipping' => $shipping))['shipping'];
+    }
+
+    $goods = $subtotal - $order_discount + $tax;
+    $before = $goods + $shipping;
     $total = (isset($seen['total']) && is_int($seen['total']) && ($seen['total'] >= 0)) ? $seen['total'] : $before;
-    $discount = 0;
+    $discount = $order_discount;
 
     // A recipient row keeps the cost of a shipping method the checkout no
     // longer offers or has not had chosen yet; the checkout then shows no
     // shipping, and its total is the goods with their tax. Any other shortfall
-    // is what the checkout took off (offers, gift cards); a higher total is
+    // is what else the checkout took off (gift cards); a higher total is
     // shipping the rows do not know yet.
-    if (($total !== $before) && ($total === ($subtotal + $tax))) {
+    if (($total !== $before) && ($total === $goods)) {
         $shipping = 0;
     } elseif ($total < $before) {
-        $discount = $before - $total;
+        $discount += $before - $total;
     } elseif ($total > $before) {
         $shipping += $total - $before;
     }
@@ -799,7 +831,8 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total
+            order_items.tax_total" . (pg_schema_has('order_items', 'tax_rate') ? ",
+            order_items.tax_rate" : "") . "
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE order_items.order_id = '" . $order_id . "'
@@ -812,6 +845,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             'unit_price' => (int) round($item['price']),
             'line_total' => (int) round($item['price'] * $quantity),
             'tax'        => (int) round((float) $item['tax_total']),
+            'rate'       => $item['tax_rate'] ?? null,
         );
     }
 
@@ -854,6 +888,10 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
     }
 
     if ($order['status'] === 'incomplete') {
+        if (!array_key_exists('settle_rates', $seen)) {
+            $seen['settle_rates'] = pg_order_charges_settle_rates();
+        }
+
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
         // The checkout posts a country code; the documents name the country.
@@ -978,6 +1016,46 @@ function pg_legal_document_page_url()
 }
 
 /**
+ * The address of the cart's document of $type on the checkout being drawn,
+ * in the language that checkout is served in.
+ *
+ * The document page is a script of its own, not a routed page, so it learns
+ * the language only from pg_lang (init.php), as a form posted from a page in
+ * another language does. Without it a visitor on /en/... read the document in
+ * the source language, while the copy kept with the order at submit (whose
+ * form carries pg_lang) was the target language's: two different texts.
+ *
+ * @param string      $type      a key of pg_legal_document_types(); '' for the
+ *                               address the checkboxes add their type to
+ * @param string|null $language  pg_lang value, '' for none; null for the
+ *                               language the current page is drawn in
+ * @param string|null $page_url  the document page's address; null for the site's
+ * @return string  unescaped
+ */
+function pg_legal_document_cart_url($type = '', $language = null, $page_url = null)
+{
+    if ($page_url === null) {
+        $page_url = pg_legal_document_page_url();
+    }
+
+    if ($language === null) {
+        $language = (function_exists('pg_tr_active') && pg_tr_active()) ? pg_tr_language() : '';
+    }
+
+    $query = array();
+
+    if ((string) $type !== '') {
+        $query[] = 'type=' . rawurlencode((string) $type);
+    }
+
+    if ((string) $language !== '') {
+        $query[] = 'pg_lang=' . rawurlencode((string) $language);
+    }
+
+    return $page_url . ($query ? '?' . implode('&', $query) : '');
+}
+
+/**
  * Give a rendered checkout page its acceptance checkboxes.
  *
  * Every checkout (the designer's express order, the classic express order
@@ -1007,7 +1085,7 @@ function pg_legal_documents_inject($html, array $values = array())
         return $html . pg_legal_documents_script();
     }
 
-    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_page_url())) . pg_legal_documents_script();
+    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())) . pg_legal_documents_script();
 }
 
 /**
@@ -1056,6 +1134,10 @@ function pg_legal_documents_for_cart(array $posted = array())
     if (!empty($posted)) {
         $seen = pg_legal_document_typed_snapshot($seen, $posted);
     }
+
+    // The cart's order discount as the checkout last worked it out; the
+    // documents split it from the tax the way the checkout does.
+    $seen['order_discount'] = (int) round((float) ($_SESSION['ecommerce']['order_discount'] ?? 0));
 
     return pg_legal_documents_for_order($order_id, $seen);
 }
@@ -1268,15 +1350,138 @@ function pg_legal_document_copy_urls(array $kept, $order_id, $page_url = null)
 }
 
 /**
+ * The last day of an order's right of withdrawal, from the withdrawal window
+ * of each of its deliveries (pg_return_window()).
+ *
+ * For the goods of one order delivered separately the 14 days run from the
+ * last delivery, so the latest deadline is the order's. A delivery with no
+ * known or planned date leaves the last delivery unknown: no date is given
+ * rather than one that could be too early. The date is an estimate while any
+ * delivery is estimated, since that delivery may still arrive later.
+ *
+ * @param array $windows  pg_return_window() of every delivery (null for one
+ *                        with no date)
+ * @return array|null  deadline (Y-m-d), estimated, open; null when the order
+ *                     has no delivery or one of them has no date
+ */
+function pg_legal_withdrawal_deadline(array $windows)
+{
+    $last = null;
+    $estimated = false;
+
+    foreach ($windows as $window) {
+        if (!is_array($window) || !isset($window['deadline']) || (pg_return_date((string) $window['deadline']) === '')) {
+            return null;
+        }
+
+        if (!empty($window['estimated'])) {
+            $estimated = true;
+        }
+
+        if (($last === null) || (strcmp($window['deadline'], $last['deadline']) > 0)) {
+            $last = $window;
+        }
+    }
+
+    if ($last === null) {
+        return null;
+    }
+
+    return array(
+        'deadline'  => (string) $last['deadline'],
+        'estimated' => $estimated,
+        'open'      => !empty($last['open']),
+    );
+}
+
+/**
+ * The withdrawal deadline of an order, read from its deliveries.
+ *
+ * Only recipients with goods to ship count (an order of downloads or services
+ * alone has no delivery to start the period). A cancelled order has none.
+ * Each delivery's window is the returns flow's (pg_return_delivery_state()),
+ * so the arrival dates of its parcels count: a known delivery once every
+ * parcel has arrived, and the latest arrival in the estimate while some have.
+ *
+ * @param int    $order_id
+ * @param string $today  Y-m-d in the site's time zone; '' for today
+ * @return array|null  pg_legal_withdrawal_deadline()
+ */
+function pg_legal_withdrawal_of_order($order_id, $today = '')
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return null;
+    }
+
+    if ((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'") === 'cancelled') {
+        return null;
+    }
+
+    $ship_tos = db_items(
+        "SELECT ship_tos.id
+        FROM ship_tos
+        WHERE
+            (ship_tos.order_id = '" . $order_id . "')
+            AND EXISTS (
+                SELECT 1 FROM order_items
+                WHERE (order_items.order_id = '" . $order_id . "') AND (order_items.ship_to_id = ship_tos.id))");
+
+    if (!is_array($ship_tos) || empty($ship_tos)) {
+        return null;
+    }
+
+    if (pg_return_date($today) === '') {
+        $today = date('Y-m-d');
+    }
+
+    $windows = array();
+
+    foreach ($ship_tos as $ship_to) {
+        $state = pg_return_delivery_state($order_id, (int) $ship_to['id'], $today);
+        $windows[] = is_array($state) ? $state['window'] : null;
+    }
+
+    return pg_legal_withdrawal_deadline($windows);
+}
+
+/**
+ * The line an order's legal documents card prints under the links: the last
+ * day of the right of withdrawal, and whether it is an estimate.
+ *
+ * @param array|null $withdrawal  pg_legal_withdrawal_deadline()
+ * @param string     $date_text   the deadline as the page writes dates
+ * @return string  plain text, '' when there is no deadline
+ */
+function pg_legal_withdrawal_text($withdrawal, $date_text)
+{
+    $date_text = trim((string) $date_text);
+
+    if (!is_array($withdrawal) || ($date_text === '')) {
+        return '';
+    }
+
+    if (!$withdrawal['open']) {
+        return lang(array('string' => 'The right of withdrawal ended on {var:1}.', 'vars' => array($date_text)));
+    }
+
+    return $withdrawal['estimated']
+        ? lang(array('string' => 'Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).', 'vars' => array($date_text)))
+        : lang(array('string' => 'Last day of the right of withdrawal: {var:1}', 'vars' => array($date_text)));
+}
+
+/**
  * The card an order view gets after it when its layout links neither
  * document: the kept copies, one link each, opening in a new window. A
  * layout from before the links existed shows them this way; a layout that
  * binds a link places them itself.
  *
- * @param array $urls  pg_legal_document_copy_urls()
+ * @param array  $urls        pg_legal_document_copy_urls()
+ * @param string $withdrawal  pg_legal_withdrawal_text(), printed under the links
  * @return string  '' when the order has no kept copy
  */
-function pg_legal_documents_order_view_block(array $urls)
+function pg_legal_documents_order_view_block(array $urls, $withdrawal = '')
 {
     $types = pg_legal_document_types();
     $items = '';
@@ -1295,7 +1500,9 @@ function pg_legal_documents_order_view_block(array $urls)
 
     return '<div class="container pb-4 pg-ov-legal-documents"><div class="card">'
         . '<div class="card-header"><h6 class="mb-0 fw-semibold">' . h(lang('Legal Documents')) . '</h6></div>'
-        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul></div>'
+        . '<div class="card-body"><ul class="list-unstyled mb-0">' . $items . '</ul>'
+        . (((string) $withdrawal !== '') ? '<p class="small text-muted mt-2 mb-0">' . h((string) $withdrawal) . '</p>' : '')
+        . '</div>'
         . '</div></div>';
 }
 
@@ -1330,6 +1537,24 @@ function pg_legal_documents_panel_card($order_id)
 
     if ($rows === '') {
         return '';
+    }
+
+    // The last day the customer may still withdraw: the deadline of the last
+    // delivery, marked when it rests on planned dates rather than a delivery.
+    $withdrawal = pg_legal_withdrawal_of_order($order_id);
+
+    if (is_array($withdrawal)) {
+        $note = !$withdrawal['open']
+            ? lang('Ended')
+            : ($withdrawal['estimated'] ? lang('Estimated') : '');
+
+        $rows .= '<div class="row">
+                        <span class="col text-muted">' . h(lang('Right of withdrawal until')) . ':</span>
+                        <span class="col text-end"' . ($withdrawal['estimated'] ? ' title="' . h(lang('Estimated from the ship date or the expected delivery date; the 14 days run from delivery.')) . '"' : '') . '>'
+                            . h(pg_return_day_text($withdrawal['deadline']))
+                            . (($note !== '') ? ' <span class="text-muted small">(' . h($note) . ')</span>' : '')
+                        . '</span>
+                    </div>';
     }
 
     return '<div class="card mt-3">

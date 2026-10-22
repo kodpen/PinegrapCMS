@@ -71,6 +71,13 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
             break;
     }
 
+    // Fields are not deleted from a designer form (the canvas is its record)
+    // or from a page that has no form. This also stops a page id that does
+    // not exist.
+    if ($form_type === '') {
+        pg_form_fields_refuse_page($_POST['page_id']);
+    }
+
     // Get the form type name that we will output to user
 
     $form_type_name = '';
@@ -100,14 +107,16 @@ if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
     $form_name = '';
 
     // If this is a page and form type that supports a form name, then get it
-    if ($page_type != 'express order' or $form_type != 'shipping') {
+    $form_settings_table = pg_form_settings_table($page_type, $form_type);
+
+    if (($form_settings_table !== '') && ($page_type != 'express order' or $form_type != 'shipping')) {
     
         // get form name for page
-        $query = "SELECT form_name FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
+        $query = "SELECT form_name FROM " . $form_settings_table . " WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
-        $form_name = $row['form_name'];
+
+        $form_name = $row['form_name'] ?? '';
     }
 
     // if form name is blank, use page name for form name
@@ -185,6 +194,7 @@ if ($_POST['fields']) {
     $number_of_fields = 0;
 
     $access_error_exists = false;
+    $designer_field_exists = false;
 
     // loop through all fields that were selected for deletion
     foreach ($_POST['fields'] as $field_id) {
@@ -205,8 +215,13 @@ if ($_POST['fields']) {
         $field_product_group_id = isset($row['product_group_id']) ? (int) $row['product_group_id'] : 0;
         $folder_id = $row['page_folder'];
         
+        // A field of a designer form is not deleted here, whatever page the
+        // request names: the canvas is its record.
+        if (($page_id != '0') && pg_page_has_designer_form($page_id)) {
+            $access_granted = false;
+            $designer_field_exists = true;
         // if there is a page id, folder id and the user has access to the folder, allow the user access to delete field
-        if (
+        } else if (
             ($page_id != '0')
             && ($folder_id != '')
             && (check_edit_access($folder_id) == true)
@@ -329,6 +344,10 @@ if ($_POST['fields']) {
     
     if ($access_error_exists == true) {
         $liveform->mark_error('access_error', lang('At least one field could not be deleted, because you do not have access to the field(s).'));
+    }
+
+    if ($designer_field_exists == true) {
+        $liveform->mark_error('designer_field', lang('At least one field could not be deleted, because its form is edited in the visual editor.'));
     }
     
 // else no fields were selected

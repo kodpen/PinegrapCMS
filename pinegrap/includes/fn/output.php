@@ -1578,6 +1578,24 @@ function pg_default_control_panel_stylesheet_url()
         @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 }
 
+// Cloudflare's Email Address Obfuscation rewrites every address in an HTML
+// response into "[email protected]" and a script that decodes it in the
+// browser. On the software's own screens that breaks what the script does
+// not reach (table cells drawn again by DataTables, title attributes, text
+// copied into inputs) and shows staff the placeholder instead of the
+// address. Cloudflare leaves alone what sits between these two comments, so
+// the panel chrome wraps the whole body in them. Pages built in the
+// designer do not pass through here and keep the protection.
+function pg_output_email_off_open()
+{
+    return '<!--email_off-->';
+}
+
+function pg_output_email_off_close()
+{
+    return '<!--/email_off-->';
+}
+
 function output_header_secure($properties = false)
 {
     $software_page_title = '';
@@ -1625,7 +1643,8 @@ function output_header_secure($properties = false)
     <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
     ' . output_control_panel_header_includes(false) . '
 </head>
-<body' . $output_body_class . '>';
+<body' . $output_body_class . '>
+' . pg_output_email_off_open();
 
     return $output;
 }
@@ -2120,6 +2139,7 @@ function output_header($properties = false)
         ' . (isset($properties['head']) ? $properties['head'] : '') . '
     </head>
     <body class="' . $output_body_class . '">
+    ' . pg_output_email_off_open() . '
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
     <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '">
@@ -2693,6 +2713,7 @@ function output_footer($properties = false)
         </div>
         </div>
         ' . $output_chat_launcher . '
+        ' . pg_output_email_off_close() . '
         </body>
         </html>';
 
@@ -2704,6 +2725,7 @@ function output_footer_secure($properties = false)
     $output = '
         </div>
         </div>
+        ' . pg_output_email_off_close() . '
         </body>
         </html>';
 
@@ -4121,6 +4143,18 @@ function output_menu($properties = false)
     return $output_all_menu_items;
 }
 
+// The address the account menu's Check License button opens: the screen it is
+// on, with that screen's own query (view_order.php?id=…) kept, and
+// check_license_again=1. A relative "?…" keeps the path.
+function pg_license_check_again_url($query)
+{
+    $query = is_array($query) ? $query : array();
+    unset($query['check_license_again']);
+    $query['check_license_again'] = 1;
+
+    return '?' . http_build_query($query);
+}
+
 // Whether license_check() should ask the license server now. $status is the
 // status the session holds from the last attempt ('' when that attempt got no
 // usable answer), $last_check its time (0 when this session has not asked
@@ -4176,7 +4210,9 @@ function license_check($properties = false)
     $output_counter = '';
     $output_license_status_color_class = '';
     $output_extend_license_button = '';
-    $output_check_license_button = '';
+    // Whether the license state offers Check License; drawn only for a role
+    // that may force the re-check (see $force_check below).
+    $output_check_license_button = false;
     $license_valid = false;
 
     // Use DateTime for date arithmetic, use today without time
@@ -4420,7 +4456,7 @@ function license_check($properties = false)
                 $output_notice_title = lang('Your license has expired. You cannot benefit from some features.');
                 $output_notice_title_classes .= ' rounded text-danger';
                 $output_license_status_color_class = ' text-danger';
-                $output_check_license_button = '<form method="get" action="" class="text-center disable_shortcut"><input type="hidden" name="check_license_again" value="1"/><button type="submit" value="refresh" class="dropdown-item text-truncate">' . lang('Check License') . '</button></form>';
+                $output_check_license_button = true;
                 $output_extend_license_button = '<a href="https://www.kodpen.com/iletisim" class="dropdown-item text-truncate" target="_blank">' . lang('Buy License') . '</a>';
             } else {
                 // invalid or technical error
@@ -4428,13 +4464,13 @@ function license_check($properties = false)
                     $output_notice_title = lang('Your license is not valid. You cannot benefit from some features.');
                     $output_notice_title_classes .= ' rounded text-danger';
                     $output_license_status_color_class = ' text-danger';
-                    $output_check_license_button = '<form method="get" action="" class="text-center disable_shortcut"><input type="hidden" name="check_license_again" value="1"/><button type="submit" value="refresh" class="dropdown-item text-truncate">' . lang('Check License') . '</button></form>';
+                    $output_check_license_button = true;
                     $output_extend_license_button = '<a href="https://www.kodpen.com/iletisim" class="dropdown-item text-truncate" target="_blank">' . lang('Buy License') . '</a>';
                 } else {
                     $output_notice_title = lang('License verification failed due to technical reason. You cannot benefit from some features.');
                     $output_notice_title_classes .= ' rounded text-danger';
                     $output_license_status_color_class = ' text-danger';
-                    $output_check_license_button = '<form method="get" action="" class="text-center disable_shortcut"><input type="hidden" name="check_license_again" value="1"/><button type="submit" value="refresh" class="dropdown-item text-truncate">' . lang('Check License') . '</button></form>';
+                    $output_check_license_button = true;
                 }
             }
         }
@@ -4527,14 +4563,16 @@ function license_check($properties = false)
             $bar_btn_check = '';
             $bar_btn_extend = '';
 
-            if ($output_check_license_button) {
+            // A link to the same screen with its query kept: a GET form
+            // sends only its own fields, so a record screen
+            // (view_order.php?id=…) lost its id and answered "Record not
+            // found.". Only for a role that may force the re-check: for any
+            // other the parameter is ignored and the button did nothing.
+            if ($output_check_license_button && isset($user['role']) && ((int) $user['role'] <= 2)) {
                 $bar_btn_check = '
-                <form method="get" action="" class="disable_shortcut">
-                    <input type="hidden" name="check_license_again" value="1">
-                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                        <i class="bi bi-arrow-clockwise me-1"></i>' . lang('Check License') . '
-                    </button>
-                </form>';
+                <a href="' . h(pg_license_check_again_url($_GET)) . '" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-arrow-clockwise me-1"></i>' . lang('Check License') . '
+                </a>';
             }
             if ($output_extend_license_button) {
                 $btn_label = ($status === 'success') ? lang('Extend License') : lang('Buy License');
@@ -5949,6 +5987,7 @@ function pg_js_bundles()
         'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+        'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
     );
 }
 

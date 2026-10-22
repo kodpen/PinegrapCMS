@@ -1037,15 +1037,29 @@ function mp_trendyol_barcode_problem($barcode) {
 
 // Trendyol takes the rates 0, 1, 10 and 20.
 //
-// The same answer n11 gets, for the same reason: a product with no rate of
-// its own follows the shop's tax zone and that can be any number, and the
-// nearest allowed rate below it is sent - rounding up would overstate the tax
-// the buyer pays.
+// The same answer n11 gets, for the same reason: the rate can be any number,
+// and the nearest allowed rate below it is sent - rounding up would overstate
+// the tax the buyer pays.
+//
+// The rate is the one inside the price that is sent (vat_rate,
+// mp_applied_vat_rate()): 0 for a product the shop does not tax or a country
+// in no tax zone, because Trendyol works the VAT back out of the sale price
+// and a rate the price does not carry would come out of the seller's net.
+// Without one (tax off: the stored price is final, VAT inside) the product's
+// own rate, else the zone's.
 function mp_trendyol_vat_rate($item) {
 
-	$rate = (isset($item['tax_rate']) && $item['tax_rate'] !== null)
-		? (float)$item['tax_rate']
-		: (function_exists('get_default_tax_rate') ? (float)get_default_tax_rate() : 20.0);
+	if (isset($item['vat_rate']) && $item['vat_rate'] !== null) {
+
+		$rate = (float)$item['vat_rate'];
+
+	} else {
+
+		$rate = (isset($item['tax_rate']) && $item['tax_rate'] !== null)
+			? (float)$item['tax_rate']
+			: (function_exists('get_default_tax_rate') ? (float)get_default_tax_rate() : 20.0);
+
+	}
 
 	$best = 0;
 
@@ -1274,6 +1288,9 @@ function mp_trendyol_push_stock_price($account, $rows, $transport = null) {
 //
 //   price is sent as both list and sale price, the shop having one price, and
 //   a product without a price is left out rather than offered for nothing.
+//   The row's price_major already carries the tax the checkout adds
+//   (mp_product_price()): their sale price is what the buyer pays, VAT
+//   inside.
 //
 //   a product with nothing to say (untracked, and prices not sent) is simply
 //   not in the request.

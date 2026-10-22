@@ -7,6 +7,7 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 - `pg_sms_send($to, $text, $kind)` (`includes/fn/sms.php`) returns `ok, id, code, error, retry, uncertain`. Before any account is read it refuses, in `pg_sms_check()` (shared with the queue), an unknown kind, a commercial one (`marketing`, until İYS consent records exist), an unreadable number, an empty text or one over `pg_sms_max_length()` (1000); then a demonstration site (`pg_demo()`, like `email()`).
 - `pg_sms_text()`: CRLF/CR → `\n`, tab → space, other control characters dropped, non-UTF-8 → empty.
 - `pg_sms_number()` → E.164 digits without the plus; national forms (`05xx…`, `5xx…`, `90 5xx…`) are Turkish mobiles, other countries need `+`/`00`; under 90 only `5xx` (a `0` after `+90` is dropped).
+- A stored number goes back into `pg_sms_send()` as `pg_sms_dial($digits)` (`'+' . digits`), never bare: bare ten digits starting with 5 read as a Turkish mobile. Symptom (#858): Cuba's +53 5123 4567, queued as `5351234567`, went to `905351234567` from the queue run and from the settings test message; Belize +501…, Panama +507… too.
 - It sends at once and waits: background job or an operator's button only; a request queues with `pg_sms_enqueue()` (`sms-outbox-queue.md`). `retry` true means sending again cannot deliver twice, `uncertain` that the provider may have it (`sms-netgsm-driver.md`).
 
 ## Where is the account and why there?

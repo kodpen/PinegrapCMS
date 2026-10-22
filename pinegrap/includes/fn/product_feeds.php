@@ -18,8 +18,9 @@
  *   - pg_product_feed_jsonl(), pg_product_feed_csv() and pg_product_feed_tsv()
  *     serialise the rows.
  *
- * pg_product_feed_render() joins the last two for one format and
- * pg_product_feed_build() runs everything.
+ * pg_product_feed_render() joins the last two for one format in memory;
+ * the daily build streams them to the file chunk by chunk instead
+ * (pg_product_feed_writer_open()), so a large catalog is never held whole.
  *
  * Around the builder: the setup in config.product_feeds (2026.11.0, 11.0.4),
  * one secret address per format, the daily build that writes each format
@@ -699,16 +700,10 @@ function pg_product_feed_google_row($item, &$reason = null)
 // (PHP 7.2+; 7.1 drops the row's line).
 function pg_product_feed_jsonl($rows)
 {
-    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-
-    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
-    }
-
     $lines = array();
 
     foreach ((array) $rows as $row) {
-        $line = json_encode($row, $flags);
+        $line = pg_product_feed_jsonl_line($row);
 
         if ($line !== false) {
             $lines[] = $line;
@@ -716,6 +711,19 @@ function pg_product_feed_jsonl($rows)
     }
 
     return $lines ? implode("\n", $lines) . "\n" : '';
+}
+
+// One row's JSON Lines line, without the line break; false when it cannot be
+// encoded.
+function pg_product_feed_jsonl_line($row)
+{
+    $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+    }
+
+    return json_encode($row, $flags);
 }
 
 // One field as text for CSV and TSV: true/false, a list joined with commas
@@ -766,29 +774,37 @@ function pg_product_feed_used_columns($format, $rows)
 // character would add backslash rules the readers do not know.
 function pg_product_feed_csv($rows, $columns)
 {
-    $quote = function ($text) {
-        $text = (string) $text;
-
-        if (($text !== trim($text)) || (strpbrk($text, "\",\r\n") !== false)) {
-            return '"' . str_replace('"', '""', $text) . '"';
-        }
-
-        return $text;
-    };
-
-    $lines = array(implode(',', array_map($quote, $columns)));
+    $lines = array(pg_product_feed_csv_line($columns));
 
     foreach ((array) $rows as $row) {
         $cells = array();
 
         foreach ($columns as $column) {
-            $cells[] = $quote(isset($row[$column]) ? pg_product_feed_cell($row[$column]) : '');
+            $cells[] = isset($row[$column]) ? pg_product_feed_cell($row[$column]) : '';
         }
 
-        $lines[] = implode(',', $cells);
+        $lines[] = pg_product_feed_csv_line($cells);
     }
 
     return implode("\n", $lines) . "\n";
+}
+
+// One CSV line from cell texts, without the line break.
+function pg_product_feed_csv_line($cells)
+{
+    $quoted = array();
+
+    foreach ($cells as $text) {
+        $text = (string) $text;
+
+        if (($text !== trim($text)) || (strpbrk($text, "\",\r\n") !== false)) {
+            $text = '"' . str_replace('"', '""', $text) . '"';
+        }
+
+        $quoted[] = $text;
+    }
+
+    return implode(',', $quoted);
 }
 
 // Tab-separated values as Merchant Center reads them: a header line, then one
@@ -796,23 +812,31 @@ function pg_product_feed_csv($rows, $columns)
 // format has no quoting a reader can rely on.
 function pg_product_feed_tsv($rows, $columns)
 {
-    $clean = function ($text) {
-        return str_replace(array("\r\n", "\r", "\n", "\t"), ' ', (string) $text);
-    };
-
-    $lines = array(implode("\t", array_map($clean, $columns)));
+    $lines = array(pg_product_feed_tsv_line($columns));
 
     foreach ((array) $rows as $row) {
         $cells = array();
 
         foreach ($columns as $column) {
-            $cells[] = $clean(isset($row[$column]) ? pg_product_feed_cell($row[$column]) : '');
+            $cells[] = isset($row[$column]) ? pg_product_feed_cell($row[$column]) : '';
         }
 
-        $lines[] = implode("\t", $cells);
+        $lines[] = pg_product_feed_tsv_line($cells);
     }
 
     return implode("\n", $lines) . "\n";
+}
+
+// One TSV line from cell texts, without the line break.
+function pg_product_feed_tsv_line($cells)
+{
+    $clean = array();
+
+    foreach ($cells as $text) {
+        $clean[] = str_replace(array("\r\n", "\r", "\n", "\t"), ' ', (string) $text);
+    }
+
+    return implode("\t", $clean);
 }
 
 // ---------------------------------------------------------------------------
@@ -835,33 +859,14 @@ function pg_product_feed_render($format, $items, $options = array())
         return $result;
     }
 
-    $openai = (strpos($format, 'openai_') === 0);
+    $seller = pg_product_feed_seller($options);
 
-    $seller = array(
-        'name'           => trim((string) (isset($options['seller_name']) ? $options['seller_name'] : '')),
-        'url'            => isset($options['seller_url']) ? (string) $options['seller_url'] : '',
-        'privacy_policy' => isset($options['privacy_policy_url']) ? (string) $options['privacy_policy_url'] : '',
-        'terms'          => isset($options['terms_url']) ? (string) $options['terms_url'] : '',
-    );
-
-    if ($openai && ($seller['name'] === '')) {
+    if ((strpos($format, 'openai_') === 0) && ($seller['name'] === '')) {
         $result['error'] = 'no_seller_name';
         return $result;
     }
 
-    $rows = array();
-
-    foreach ((array) $items as $item) {
-        $reason = '';
-        $row = $openai ? pg_product_feed_openai_row($item, $seller, $reason) : pg_product_feed_google_row($item, $reason);
-
-        if ($row === null) {
-            $result['skipped'][$reason] = (isset($result['skipped'][$reason]) ? $result['skipped'][$reason] : 0) + 1;
-            continue;
-        }
-
-        $rows[] = $row;
-    }
+    $rows = pg_product_feed_rows($format, $items, $seller, $result['skipped']);
 
     if ($format === 'openai_jsonl') {
         $result['body'] = pg_product_feed_jsonl($rows);
@@ -881,6 +886,39 @@ function pg_product_feed_render($format, $items, $options = array())
     $result['count'] = count($rows);
 
     return $result;
+}
+
+// The seller fields the OpenAI rows carry, from the render options.
+function pg_product_feed_seller($options)
+{
+    return array(
+        'name'           => trim((string) (isset($options['seller_name']) ? $options['seller_name'] : '')),
+        'url'            => isset($options['seller_url']) ? (string) $options['seller_url'] : '',
+        'privacy_policy' => isset($options['privacy_policy_url']) ? (string) $options['privacy_policy_url'] : '',
+        'terms'          => isset($options['terms_url']) ? (string) $options['terms_url'] : '',
+    );
+}
+
+// The rows of $format for these items; an item the format cannot carry is
+// counted in $skipped by its reason.
+function pg_product_feed_rows($format, $items, $seller, &$skipped)
+{
+    $openai = (strpos($format, 'openai_') === 0);
+    $rows = array();
+
+    foreach ((array) $items as $item) {
+        $reason = '';
+        $row = $openai ? pg_product_feed_openai_row($item, $seller, $reason) : pg_product_feed_google_row($item, $reason);
+
+        if ($row === null) {
+            $skipped[$reason] = (isset($skipped[$reason]) ? $skipped[$reason] : 0) + 1;
+            continue;
+        }
+
+        $rows[] = $row;
+    }
+
+    return $rows;
 }
 
 // The site values pg_product_feed_item() needs, from the running site.
@@ -986,10 +1024,13 @@ function pg_product_feed_catalog_roots()
 // the catalog page, whoever's request builds the feed.
 //
 // $options: 'excluded_group_ids', 'default_brand'.
+// $each: called with each chunk's items (a list) instead of collecting them
+// in 'items', so a large catalog is never in memory whole
+// (pg_product_feed_refresh()); null collects them.
 // Returns array('error' => '' | 'ecommerce_off' | 'no_catalog' | a
 // pg_product_feed_site() error, 'items' => list, 'skipped' => reason =>
 // count).
-function pg_product_feed_products($options = array())
+function pg_product_feed_products($options = array(), $each = null)
 {
     $result = array('error' => '', 'items' => array(), 'skipped' => array());
 
@@ -1084,6 +1125,8 @@ function pg_product_feed_products($options = array())
             $choices[(int) $row['product_id']][$label] = (string) $row['option_label'];
         }
 
+        $items = array();
+
         foreach ($products as $product) {
             $id = (int) $product['id'];
 
@@ -1101,7 +1144,7 @@ function pg_product_feed_products($options = array())
                 continue;
             }
 
-            $result['items'][] = pg_product_feed_item($product, array(
+            $items[] = pg_product_feed_item($product, array(
                 'category_path' => $placement['category_path'],
                 'group_id'      => $placement['group_id'],
                 'gallery'       => isset($gallery[$id]) ? $gallery[$id] : array(),
@@ -1109,40 +1152,21 @@ function pg_product_feed_products($options = array())
                 'sale_price'    => isset($sale_prices[$id]) ? $sale_prices[$id] : null,
             ), $site);
         }
+
+        if ($each !== null) {
+            call_user_func($each, $items);
+        } else {
+            foreach ($items as $item) {
+                $result['items'][] = $item;
+            }
+        }
+
+        unset($items, $groups, $gallery, $choices);
     } while (count($products) === PG_PRODUCT_FEED_CHUNK);
 
     return $result;
 }
 
-// One format's result from what pg_product_feed_products() returned: its
-// error, or pg_product_feed_render() with the reader's skip counts added.
-function pg_product_feed_render_loaded($format, $products, $options = array())
-{
-    if ($products['error'] !== '') {
-        return array('ok' => false, 'error' => $products['error'], 'body' => '', 'count' => 0, 'skipped' => $products['skipped']);
-    }
-
-    $result = pg_product_feed_render($format, $products['items'], $options);
-
-    foreach ($products['skipped'] as $reason => $count) {
-        $result['skipped'][$reason] = (isset($result['skipped'][$reason]) ? $result['skipped'][$reason] : 0) + $count;
-    }
-
-    return $result;
-}
-
-// One feed body from the running site: pg_product_feed_products() then
-// pg_product_feed_render(). 'skipped' adds both steps' reasons.
-function pg_product_feed_build($format, $options = array())
-{
-    $formats = pg_product_feed_formats();
-
-    if (!isset($formats[$format])) {
-        return array('ok' => false, 'error' => 'unknown_format', 'body' => '', 'count' => 0, 'skipped' => array());
-    }
-
-    return pg_product_feed_render_loaded($format, pg_product_feed_products($options), $options);
-}
 
 // ---------------------------------------------------------------------------
 // Setup (config.product_feeds, 2026.11.0, 11.0.4)
@@ -1305,7 +1329,7 @@ function pg_product_feed_status($entry, $result, $now)
     if ($result['ok']) {
         $entry['built_at'] = (int) $now;
         $entry['count'] = (int) $result['count'];
-        $entry['bytes'] = strlen((string) $result['body']);
+        $entry['bytes'] = isset($result['bytes']) ? (int) $result['bytes'] : strlen((string) $result['body']);
     }
 
     return $entry;
@@ -1435,34 +1459,260 @@ function pg_product_feed_path($format)
     return PG_FUNCTIONS_DIR . '/data/feeds/' . $format . '.' . $formats[$format]['extension'];
 }
 
-// Writes a feed file whole or not at all: a temporary file beside it, then a
-// rename, so feed.php never serves half a file.
-function pg_product_feed_write_file($path, $body)
+
+// ---------------------------------------------------------------------------
+// Writing a feed file chunk by chunk
+// ---------------------------------------------------------------------------
+
+// The daily build never holds a whole catalog: pg_product_feed_refresh()
+// hands each chunk of items to the writer of every format that is on, and
+// the writer appends the chunk's rows to a work file beside the feed. A
+// JSON Lines work file is the feed itself. CSV and TSV name only the columns
+// some row fills, which is known after the last row, so their work file
+// keeps every column of a row (pg_product_feed_spool_line()) and the feed is
+// written from it line by line once the catalog has been read, with the
+// header in front. The finished file replaces the old one in one rename, so
+// feed.php never serves half a file. The bytes are those of
+// pg_product_feed_render() for the same items.
+
+// A row's cell texts as one line of a work file: the cells joined with tabs,
+// a backslash, tab or line break inside a cell written as \\, \t, \n, \r.
+// Every byte comes back as it was (pg_product_feed_spool_cells()).
+function pg_product_feed_spool_line($cells)
 {
-    $directory = dirname($path);
+    $escaped = array();
+
+    foreach ($cells as $text) {
+        $escaped[] = strtr((string) $text, array('\\' => '\\\\', "\t" => '\t', "\n" => '\n', "\r" => '\r'));
+    }
+
+    return implode("\t", $escaped);
+}
+
+// The cell texts of a work file line (without its line break).
+function pg_product_feed_spool_cells($line)
+{
+    $cells = array();
+
+    foreach (explode("\t", (string) $line) as $text) {
+        $cells[] = strtr($text, array('\\\\' => '\\', '\t' => "\t", '\n' => "\n", '\r' => "\r"));
+    }
+
+    return $cells;
+}
+
+// Starts a format's file at $path. $options as pg_product_feed_render().
+// The writer is an array handed back to pg_product_feed_writer_add() and
+// pg_product_feed_writer_close(); 'error' is set when it cannot start
+// (unknown_format, no_seller_name, write_failed).
+function pg_product_feed_writer_open($format, $path, $options = array())
+{
+    $writer = array(
+        'format'  => $format,
+        'path'    => (string) $path,
+        'error'   => '',
+        'seller'  => pg_product_feed_seller($options),
+        'count'   => 0,
+        'skipped' => array(),
+        'used'    => array(),
+        'work'    => '',
+        'handle'  => null,
+    );
+
+    $formats = pg_product_feed_formats();
+
+    if (!isset($formats[$format])) {
+        $writer['error'] = 'unknown_format';
+        return $writer;
+    }
+
+    if ((strpos($format, 'openai_') === 0) && ($writer['seller']['name'] === '')) {
+        $writer['error'] = 'no_seller_name';
+        return $writer;
+    }
+
+    $directory = dirname($writer['path']);
 
     if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
-        return false;
+        $writer['error'] = 'write_failed';
+        return $writer;
     }
 
-    $temporary = $path . '.tmp-' . bin2hex(random_bytes(6));
+    $writer['work'] = $writer['path'] . '.tmp-' . bin2hex(random_bytes(6));
+    $writer['handle'] = @fopen($writer['work'], 'wb');
 
-    if (@file_put_contents($temporary, (string) $body) !== strlen((string) $body)) {
-        @unlink($temporary);
-        return false;
+    if (!$writer['handle']) {
+        $writer['error'] = 'write_failed';
+        $writer['handle'] = null;
     }
 
-    if (!@rename($temporary, $path)) {
-        // Windows will not rename over an existing file.
-        @unlink($path);
+    return $writer;
+}
 
-        if (!@rename($temporary, $path)) {
-            @unlink($temporary);
-            return false;
+// Appends the rows of a chunk of items (pg_product_feed_item()) to the work
+// file.
+function pg_product_feed_writer_add(&$writer, $items)
+{
+    if (($writer['error'] !== '') || !$writer['handle']) {
+        return;
+    }
+
+    $format = $writer['format'];
+    $columns = ($format === 'openai_jsonl') ? array() : pg_product_feed_columns($format);
+    $text = '';
+
+    foreach (pg_product_feed_rows($format, $items, $writer['seller'], $writer['skipped']) as $row) {
+        if ($format === 'openai_jsonl') {
+            $line = pg_product_feed_jsonl_line($row);
+
+            if ($line === false) {
+                continue;
+            }
+        } else {
+            $cells = array();
+
+            foreach ($row as $key => $value) {
+                $writer['used'][$key] = true;
+            }
+
+            foreach ($columns as $column) {
+                $cells[] = isset($row[$column]) ? pg_product_feed_cell($row[$column]) : '';
+            }
+
+            $line = pg_product_feed_spool_line($cells);
+        }
+
+        $text .= $line . "\n";
+        $writer['count']++;
+    }
+
+    if (($text !== '') && (@fwrite($writer['handle'], $text) !== strlen($text))) {
+        $writer['error'] = 'write_failed';
+    }
+}
+
+// Finishes the file and puts it in place, or drops the work when the build
+// failed: $error is the catalog's own error (pg_product_feed_products()),
+// which outweighs the writer's. Returns array('ok', 'error', 'count',
+// 'bytes', 'skipped'); 'skipped' counts the items this format could not
+// carry.
+function pg_product_feed_writer_close(&$writer, $error = '')
+{
+    $result = array('ok' => false, 'error' => '', 'count' => 0, 'bytes' => 0, 'skipped' => $writer['skipped']);
+
+    if ($writer['handle']) {
+        if (!@fclose($writer['handle']) && ($writer['error'] === '')) {
+            $writer['error'] = 'write_failed';
+        }
+
+        $writer['handle'] = null;
+    }
+
+    $result['error'] = ($error !== '') ? (string) $error : $writer['error'];
+
+    $file = ($result['error'] === '') ? pg_product_feed_writer_finish($writer) : '';
+
+    if (($writer['work'] !== '') && ($file !== $writer['work'])) {
+        @unlink($writer['work']);
+    }
+
+    if ($result['error'] !== '') {
+        return $result;
+    }
+
+    if ($file === '') {
+        $result['error'] = 'write_failed';
+        return $result;
+    }
+
+    $bytes = @filesize($file);
+
+    // Windows will not rename over an existing file.
+    if (!@rename($file, $writer['path'])) {
+        @unlink($writer['path']);
+
+        if (!@rename($file, $writer['path'])) {
+            @unlink($file);
+            $result['error'] = 'write_failed';
+            return $result;
         }
     }
 
-    return true;
+    $result['ok'] = true;
+    $result['count'] = $writer['count'];
+    $result['bytes'] = (int) $bytes;
+
+    return $result;
+}
+
+// The finished file of a writer, still beside the feed under a temporary
+// name: the work file itself for JSON Lines, a new file with the header and
+// the used columns for CSV and TSV. '' when it could not be written.
+function pg_product_feed_writer_finish($writer)
+{
+    $format = $writer['format'];
+
+    if ($format === 'openai_jsonl') {
+        return $writer['work'];
+    }
+
+    $all = pg_product_feed_columns($format);
+    $picked = array();
+
+    foreach ($all as $index => $column) {
+        if (isset($writer['used'][$column])) {
+            $picked[$index] = $column;
+        }
+    }
+
+    // An empty feed still names its columns, as pg_product_feed_render()
+    // does.
+    if (!$picked) {
+        $picked = array_intersect($all, pg_product_feed_required_columns($format));
+    }
+
+    $line = ($format === 'openai_csv') ? 'pg_product_feed_csv_line' : 'pg_product_feed_tsv_line';
+
+    $file = $writer['path'] . '.tmp-' . bin2hex(random_bytes(6));
+    $out = @fopen($file, 'wb');
+    $in = @fopen($writer['work'], 'rb');
+
+    if (!$out || !$in) {
+        if ($out) {
+            @fclose($out);
+        }
+
+        if ($in) {
+            @fclose($in);
+        }
+
+        @unlink($file);
+
+        return '';
+    }
+
+    $ok = (@fwrite($out, $line(array_values($picked)) . "\n") !== false);
+
+    while ($ok && (($text = fgets($in)) !== false)) {
+        $cells = pg_product_feed_spool_cells(rtrim($text, "\n"));
+        $kept = array();
+
+        foreach ($picked as $index => $column) {
+            $kept[] = isset($cells[$index]) ? $cells[$index] : '';
+        }
+
+        $text = $line($kept) . "\n";
+        $ok = (@fwrite($out, $text) === strlen($text));
+    }
+
+    @fclose($in);
+
+    if (!@fclose($out) || !$ok) {
+        @unlink($file);
+        return '';
+    }
+
+    return $file;
 }
 
 // ---------------------------------------------------------------------------
@@ -1470,8 +1720,11 @@ function pg_product_feed_write_file($path, $body)
 // ---------------------------------------------------------------------------
 
 // Builds every format that is on and writes its file; removes the file of a
-// format that is off. The catalog is read once for all formats. $only limits
-// the run to some formats (the settings screen's "Build now").
+// format that is off. The catalog is read once for all formats, a chunk at a
+// time, and each chunk goes to every format's writer before the next is read
+// (pg_product_feed_writer_open()), so the memory a build takes does not grow
+// with the catalog. $only limits the run to some formats (the settings
+// screen's "Build now").
 //
 // Returns array('error' => '' | 'not_ready', 'formats' => format =>
 // array('ok', 'error', 'count', 'skipped')).
@@ -1486,7 +1739,7 @@ function pg_product_feed_refresh($only = null)
 
     $settings = pg_product_feed_settings();
     $options = pg_product_feed_settings_options($settings);
-    $products = null;
+    $writers = array();
     $statuses = array();
 
     foreach ($settings['formats'] as $format => $entry) {
@@ -1504,15 +1757,26 @@ function pg_product_feed_refresh($only = null)
             continue;
         }
 
-        if ($products === null) {
-            $products = pg_product_feed_products($options);
-        }
+        $writers[$format] = pg_product_feed_writer_open($format, $path, $options);
+    }
 
-        $result = pg_product_feed_render_loaded($format, $products, $options);
+    $products = array('error' => '', 'items' => array(), 'skipped' => array());
 
-        if ($result['ok'] && !pg_product_feed_write_file($path, $result['body'])) {
-            $result['ok'] = false;
-            $result['error'] = 'write_failed';
+    if ($writers) {
+        $products = pg_product_feed_products($options, function ($items) use (&$writers) {
+            foreach ($writers as $format => $writer) {
+                pg_product_feed_writer_add($writers[$format], $items);
+            }
+        });
+    }
+
+    foreach ($writers as $format => $writer) {
+        $entry = $settings['formats'][$format];
+        $result = pg_product_feed_writer_close($writers[$format], $products['error']);
+
+        // The reader's skip counts belong to every format.
+        foreach ($products['skipped'] as $reason => $count) {
+            $result['skipped'][$reason] = (isset($result['skipped'][$reason]) ? $result['skipped'][$reason] : 0) + $count;
         }
 
         $statuses[$format] = pg_product_feed_status($entry, $result, time());
@@ -1805,6 +2069,29 @@ function pg_product_feed_status_text($entry)
     return implode(' ', $parts);
 }
 
+// The seller fields of a Product Feeds card save, as they are stored. The
+// name and the brand are cut at the 255 characters their boxes allow. An
+// address is never cut: a shortened address points somewhere else (a privacy
+// policy URL that lost its query string), and the setup is kept as JSON in a
+// TEXT column, so the 2000 characters pg_product_feed_valid_url() accepts
+// fit. An address that check refuses is stored empty; seo.save.php refuses
+// such a save with a message before this point.
+function pg_product_feed_seller_from_input($input)
+{
+    $seller = array();
+
+    foreach (array('seller_name', 'default_brand') as $key) {
+        $seller[$key] = mb_substr(trim(isset($input[$key]) ? (string) $input[$key] : ''), 0, 255, 'UTF-8');
+    }
+
+    foreach (array('seller_url', 'privacy_policy_url', 'terms_url') as $key) {
+        $url = trim(isset($input[$key]) ? (string) $input[$key] : '');
+        $seller[$key] = pg_product_feed_valid_url($url) ? $url : '';
+    }
+
+    return $seller;
+}
+
 // Reads a save of the Product Feeds card into the stored setup: the seller
 // fields, the excluded groups, the switches, a new address asked for, and a
 // build when one was asked for or a feed was just switched on. Called by
@@ -1824,9 +2111,7 @@ function pg_product_feed_save_from_screen($input)
     $switched_on = false;
     $renewed = '';
 
-    foreach (array('seller_name', 'seller_url', 'privacy_policy_url', 'terms_url', 'default_brand') as $key) {
-        $settings[$key] = mb_substr(trim((string) $input[$key]), 0, 255, 'UTF-8');
-    }
+    $settings = array_merge($settings, pg_product_feed_seller_from_input($input));
 
     $settings['excluded_group_ids'] = array_values(array_map('intval', (array) $input['excluded_group_ids']));
 

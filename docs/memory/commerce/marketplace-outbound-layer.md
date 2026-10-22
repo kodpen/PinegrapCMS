@@ -9,10 +9,10 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 - A new connector = `connectors/<key>.php` + its `mp_providers()` row (`file`, `fields`); every entry is optional but `test_credentials` (list in `base.php`'s header). A connector reports; it never writes the catalogue.
 - `push_stock_price` may answer `data['refused']` (product id => reason): the queue fails those rows on their own reason at once and writes it on the mapping. `task_id` '' = nothing was sent, the rest close as done. A retryable error may carry `data['retry_after']` (seconds, capped at an hour), which `mp_sync_batch_failed()` waits instead of the backoff.
 - Nothing is queued for what a connector cannot do: `mp_enqueue()` skips accounts whose provider lacks `push_stock_price`, and the screen hides "List on the marketplace" without `create_listings` (otherwise rows fail six times or wait for ever).
+- The same for orders: without `pull_orders` the account screen draws neither the "Bring orders in" switch nor the "Imported orders" card, only "Orders are not brought in from {var:1} yet."; the auto-accept switch needs `approve_lines` too. A new account writes `pull_orders` from `mp_can()` (the column defaults to 1). Before, a Trendyol account showed import on and an empty card while the job skipped it silently (#981, PR #1240).
 
 ## How are a provider's credential fields declared?
-- `mp_providers()[...]['fields']`: text box by default (`secret` → password); `'type' => 'select'` with `options` and `default` (Trendyol's live/test environment). `mp_provider_credentials()` reads a form and only ever stores one of a select's options; a select is never "required". Optional `help` is drawn under the fields; `shipment_template` shows the account's cargo template field; `key => 'barcode'` (`mp_provider_keys_by_barcode()`) makes the barcode the product's key. The new-account modal draws every provider's block and disables the hidden ones.
-- Trendyol's functions take an optional `$transport` (signature of `api_http_request()`); `mp_call()` never passes it, tests pass a fixture recorder.
+- In `mp_providers()[...]['fields']`: marketplace-provider-fields.md.
 
 ## Which tables does it use?
 - Three tables, ZERO columns added to existing tables: `marketplace_accounts` (one row per connection; a store may hold two accounts on the same provider; credentials are encrypted JSON via `encrypt_string_with_iv`, column `"<ciphertext>:<iv>"`), `marketplace_product_map` (`(account_id, product_id)` UNIQUE), `marketplace_sync_queue` (carries `remote_task_id`).
@@ -24,4 +24,4 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 - Before the network call a 300 s lease (`run_after`) is taken and status stays `waiting`: overlapping cron runs skip, and if the process dies the lease expires. Same pattern as `api_webhook_queue`.
 - `api_sync_job.php` runs in rotation (300 s), NOT inline. A webhook is a message, stock is a state; running rarely makes batches bigger and writes less against the per-minute rate limit.
 
-Related: docs/memory/commerce/marketplace-order-import.md
+Related: docs/memory/commerce/marketplace-order-import.md, docs/memory/commerce/marketplace-provider-fields.md

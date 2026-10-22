@@ -765,9 +765,11 @@ function get_sitemap_info() {
             }
         }
 
-        // The records of a list widget, under the list's own filters, on its
-        // detail page when that page shows the same form to everybody.
-        if (function_exists('pg_sw_page_widget') && function_exists('pg_sw_form_widget_form_page_id') && function_exists('pg_sw_form_list_filter_sql')) {
+        // The records of a list widget, under the list's own filters and the
+        // detail page's, on that page when it shows the same form to
+        // everybody. A viewer filtered list shows an anonymous visitor
+        // nothing and lists nothing here, as in the legacy branch above.
+        if (function_exists('pg_sw_page_widget') && function_exists('pg_sw_form_widget_form_page_id') && function_exists('pg_sw_list_record_filter_clause')) {
             foreach (pg_sw_form_list_types() as $list_type) {
                 foreach (pg_sw_widget_pages($list_type) as $host) {
                     $host_id = (int) $host['page_id'];
@@ -790,7 +792,7 @@ function get_sitemap_info() {
                         continue;
                     }
 
-                    if (isset($cfg['access_control']) && ($cfg['access_control'] !== '') && ($cfg['access_control'] !== 'public')) {
+                    if (!pg_sw_form_widget_public($cfg)) {
                         continue;
                     }
 
@@ -802,13 +804,8 @@ function get_sitemap_info() {
                         continue;
                     }
 
-                    $filter_sql = pg_sw_form_list_filter_sql($form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array());
-                    $filter_join = '';
-
-                    if (($filter_sql['where'] !== '') && $filter_sql['tokens']) {
-                        $standard = pg_sw_standard_sql($filter_sql['tokens'], $detail_page_id, array('reference_code'));
-                        $filter_join = $standard['join'];
-                    }
+                    $filter_sql = pg_sw_list_record_filter_clause($form_page_id, $cfg, $record_view['cfg'], $detail_page_id);
+                    $filter_join = $filter_sql['join'];
 
                     // A record of a form with pretty URLs on is listed under
                     // its name, the address its page names as canonical.

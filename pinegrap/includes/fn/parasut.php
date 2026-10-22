@@ -1111,6 +1111,36 @@ function _parasut_order_documents_in_erp($erp_enabled, $provider_on)
 }
 
 /**
+ * Whether the store sends its orders to Paraşüt from the order screen's own
+ * buttons (Create Invoice, E-Shipment): the integration is switched on and
+ * its company and client are set. With the ERP and an e-document provider
+ * on, the buttons give way to the ERP's card (parasut_order_documents_in_erp()).
+ *
+ * @return bool
+ */
+function parasut_order_buttons_on()
+{
+    return _parasut_order_buttons_on(
+        defined('ENABLE_PARASUT') ? ENABLE_PARASUT : 0,
+        defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '',
+        defined('PARASUT_CLIENT_ID') ? PARASUT_CLIENT_ID : ''
+    );
+}
+
+/**
+ * The rule behind parasut_order_buttons_on().
+ *
+ * @param mixed  $enabled     config.enable_parasut
+ * @param string $company_id  The Paraşüt company
+ * @param string $client_id   The Paraşüt application's client id
+ * @return bool
+ */
+function _parasut_order_buttons_on($enabled, $company_id, $client_id)
+{
+    return (bool) $enabled && ((string) $company_id !== '') && ((string) $client_id !== '');
+}
+
+/**
  * Find or create a Parasut contact for the given order row.
  * Stores the Parasut contact ID back to orders.parasut_contact_id.
  *
@@ -1420,129 +1450,119 @@ function parasut_sync_contact($order)
 }
 
 /**
- * Create a Parasut sales invoice for the given order and send it as
- * e-fatura (e_invoice) or e-arşiv (e_archive).
+ * Load what an order's Paraşüt invoice is built with: the ERP's order lines
+ * (includes/erp/order_bridge.php) and the Paraşüt driver's VAT shift,
+ * refusals and sales invoice body (includes/erp/edoc/parasut.php). They are
+ * loaded whether the ERP is switched on or not; its tables are installed
+ * either way, and the order's lines are the ones its ERP invoice carries.
  *
- * @param int    $order_id  orders.id
- * @param string $type      'e_invoice' | 'e_archive'
- * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'error' => string]
+ * @return void
  */
-/**
- * Resolve the VAT rate that was actually charged on each line of a saved order.
- *
- * Parasut computes the VAT amount itself from the rate we send, so the rate has
- * to be the one the shopper was charged at - not a rate re-derived from the
- * stored amount: tax_total / line total gives back values like 20.12 that no tax
- * authority accepts.
- *
- * The resolution below mirrors update_order_item_taxes() step for step: an
- * exempt order pays nothing, a non-taxable product pays nothing, an address
- * outside every tax zone pays nothing, and where tax is due the product rate
- * beats the zone rate unless the product has none (get_effective_tax_rate()).
- * A recipient line is resolved against the shipping address, everything else
- * against the billing address.
- *
- * Each resolved rate is checked back against the stored amount. A mismatch
- * means the zone or the product rate was edited after the order was placed, so
- * the rate on file no longer explains what was charged; the caller is told
- * rather than sending a figure that would put a different total on the invoice
- * than the shopper paid.
- *
- * Lines flagged saved_for_later are left out here and everywhere else this file
- * reads order_items: they sit on the order but were never charged, so billing
- * them would put goods on the document the customer did not buy.
- *
- * @param int   $order_id
- * @param array $order     Order row, needs tax_exempt, billing_country, billing_state
- * @return array ['success' => bool, 'rates' => array<int,float>, 'error' => string]
- */
-function _parasut_order_vat_rates($order_id, $order)
+function _parasut_order_invoice_load()
 {
-    $rates = [];
-
-    if (!empty($order['tax_exempt'])) {
-        $result = mysqli_query(db::$con, "SELECT id FROM order_items WHERE order_id = '" . escape($order_id) . "' AND saved_for_later = 0");
-        while ($row = mysqli_fetch_assoc($result)) {
-            $rates[(int) $row['id']] = 0.0;
-        }
-        return ['success' => true, 'rates' => $rates, 'error' => ''];
-    }
-
-    $billing_rate = get_tax_rate_for_address($order['billing_country'] ?? '', $order['billing_state'] ?? '');
-
-    $query = "SELECT
-                    order_items.id,
-                    order_items.ship_to_id,
-                    order_items.price,
-                    order_items.quantity,
-                    order_items.tax_total,
-                    ship_tos.state AS ship_state,
-                    ship_tos.country AS ship_country,
-                    products.taxable,
-                    products.tax_rate
-              FROM order_items
-              LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
-              LEFT JOIN products ON order_items.product_id = products.id
-              WHERE order_items.order_id = '" . escape($order_id) . "'
-                AND order_items.saved_for_later = 0";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    // One lookup per distinct recipient - get_tax_rate_for_address() is two
-    // joined queries and an order can carry the same recipient on many lines.
-    $ship_rates = [];
-
-    while ($item = mysqli_fetch_assoc($result)) {
-        $item_id = (int) $item['id'];
-        $apply_tax = false;
-        $zone_rate = false;
-
-        if (!empty($item['taxable'])) {
-            if ((int) $item['ship_to_id'] > 0) {
-                $ship_to_id = (int) $item['ship_to_id'];
-                if (!array_key_exists($ship_to_id, $ship_rates)) {
-                    $ship_rates[$ship_to_id] = get_tax_rate_for_address($item['ship_country'] ?? '', $item['ship_state'] ?? '');
-                }
-                $zone_rate = $ship_rates[$ship_to_id];
-            } else {
-                $zone_rate = $billing_rate;
-            }
-            // A zone rate of '0.000' is a real answer ("in a zone, rate zero")
-            // and is falsy, which is why this asks the same way the order did.
-            if ($zone_rate) {
-                $apply_tax = true;
-            }
-        }
-
-        $rate = $apply_tax ? (float) get_effective_tax_rate($item['tax_rate'], $zone_rate) : 0.0;
-
-        // Same base as update_order_item_taxes(): the whole line.
-        $line_quantity = max(1, (int) $item['quantity']);
-        $expected_tax = (int) round($rate / 100 * (int) $item['price'] * $line_quantity);
-        if ($expected_tax !== (int) $item['tax_total']) {
-            return [
-                'success' => false,
-                'rates' => [],
-                'error' => lang(array(
-                    'string' => 'Tax rate on file no longer matches the tax charged on order item #{var:1} (charged {var:2}, rate {var:3}% gives {var:4}). The tax zone or the product rate was changed after this order was placed.',
-                    'vars' => array($item_id, (int) $item['tax_total'], $rate, $expected_tax),
-                )),
-            ];
-        }
-
-        $rates[$item_id] = $rate;
-    }
-
-    return ['success' => true, 'rates' => $rates, 'error' => ''];
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
 }
 
+/**
+ * The lines an order's Paraşüt invoice carries, as the ERP puts them on the
+ * order's invoice (erp_order_lines()): the lines the checkout charged, the
+ * order discount spread over them and the VAT taken again per rate on what
+ * it leaves, the shipping, the surcharge and the instalment charge each with
+ * its VAT inside, at the rate of the goods. What the invoice must come to is
+ * what the customer was charged with the gift card added back: a gift card
+ * is a means of payment, not a reduction of the sale. An instalment charge
+ * that left a rate's total out of reach goes the kurus lower that reaches
+ * it, and the invoice comes to that much less (erp_order_lines()).
+ *
+ * @param array     $order          orders row
+ * @param array     $items          order_items rows joined with the product (short_description,
+ *                                  product_tax_rate, product_start), saved_for_later left out
+ * @param bool|null $charges_taxed  The charges hold VAT; null asks the store (erp_shipping_taxed())
+ * @param bool|null $clearcommerce  The gateway charges recurring lines itself; null reads the store's
+ * @return array ['lines' => array, 'totals' => array, 'expected' => int kurus, 'charged' => int
+ *                lines the checkout charged]
+ */
+function parasut_order_invoice_lines($order, $items, $charges_taxed = null, $clearcommerce = null)
+{
+    $charged = erp_order_charged_items($order, (array) $items, $clearcommerce);
+    $built = !empty($charged)
+        ? erp_order_lines($order, $charged, $charges_taxed, true)
+        : array('lines' => array(), 'totals' => array('grand_total' => 0, 'installment_left' => 0));
+
+    return array(
+        'lines' => $built['lines'],
+        'totals' => $built['totals'],
+        'expected' => (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'],
+        'charged' => count($charged),
+    );
+}
+
+/**
+ * Why an order's lines (parasut_order_invoice_lines()) cannot go to Paraşüt,
+ * or '' when they can: a rate Paraşüt does not take, a total its VAT cannot
+ * come to (erp_edoc_parasut_total_refusal()), a line with no product to go
+ * on. Asked before anything is sent, so that no buyer card is opened at
+ * Paraşüt for an invoice that cannot follow.
+ *
+ * @param array       $lines     erp_order_lines() lines
+ * @param string      $currency  The order's currency, for the amounts in the reason
+ * @param string|null $default   The default product/service id; null reads the setting
+ * @return string
+ */
+function parasut_order_invoice_refusal($lines, $currency, $default = null)
+{
+    $taken = erp_edoc_parasut_vat_rates();
+    $refused = array();
+
+    foreach ((array) $lines as $line) {
+        $rate = round((float) ($line['tax_rate'] ?? 0), 3);
+
+        if (!in_array($rate, $taken, true) && !in_array($rate, $refused, true)) {
+            $refused[] = $rate;
+        }
+    }
+
+    if (!empty($refused)) {
+        return lang(array(
+            'string' => 'Paraşüt takes VAT at {var:1} only; this order was charged {var:2}, so it cannot be invoiced there.',
+            'vars' => array(
+                implode(', ', array_map('erp_percent_text', $taken)),
+                implode(', ', array_map('erp_percent_text', $refused)),
+            ),
+        ));
+    }
+
+    $refusal = erp_edoc_parasut_total_refusal($lines, $currency);
+
+    if ($refusal !== '') {
+        return $refusal;
+    }
+
+    return erp_edoc_parasut_product_refusal($lines, $default);
+}
+
+/**
+ * Create a Paraşüt sales invoice for an order and turn it into its
+ * e-document: an e-invoice for a buyer registered with GİB, an e-archive
+ * invoice otherwise (_parasut_resolve_edoc_kind()).
+ *
+ * The lines are the ones the order's ERP invoice carries
+ * (parasut_order_invoice_lines()), written the way the ERP's Paraşüt driver
+ * writes them (erp_edoc_parasut_invoice_payload()). Paraşüt works the VAT
+ * out itself, once per rate on the whole amount of its lines; where that is
+ * not the order's VAT the rate's amount there moves by a kurus or so, so
+ * that the invoice still comes to what the customer paid
+ * (erp_edoc_parasut_vat_shift()). Whatever can be refused from the order
+ * alone is refused before anything is sent, and a sales invoice Paraşüt
+ * totals differently is deleted before it becomes a document.
+ *
+ * @param int $order_id  orders.id
+ * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
+ *                'edoc_state' => string, 'error' => string]
+ */
 function parasut_create_invoice($order_id)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
-
     // Fetch full order.
     $query = "SELECT
                 orders.*,
@@ -1558,18 +1578,69 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('Order not found.')];
     }
 
-    // An order discount is held on the header and is spread across the tax at the
-    // header too, so the item lines still carry their undiscounted tax. Sending
-    // those lines as they stand bills the customer for more than they paid, which
-    // is worse than not billing them at all. Until the discount is allocated over
-    // the lines, these orders are refused rather than invoiced wrong.
-    if ((int) ($order['discount'] ?? 0) > 0) {
+    // One sales invoice per order. The id is kept as soon as the sales invoice
+    // exists, also when its e-document failed or is still being converted; a
+    // second press would raise another sales invoice and, while the first
+    // conversion runs, a second document for the same sale at GİB. Whether
+    // that conversion finished cannot be told from here (its job id is not
+    // kept), so the rest is finished on the record in Paraşüt.
+    $existing_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+
+    if ($existing_invoice_id !== '') {
         return [
             'success' => false,
-            'parasut_invoice_id' => null,
-            'error' => lang('This order carries a discount, which cannot yet be put on the invoice lines. Invoicing it would overcharge the customer, so it was not created.'),
+            'parasut_invoice_id' => $existing_invoice_id,
+            'error' => lang(array(
+                'string' => 'This order already has a sales invoice in Paraşüt (ID: {var:1}), so a second one was not created. If its e-document did not go through, issue it from that invoice in Paraşüt.',
+                'vars' => array($existing_invoice_id),
+            )),
         ];
     }
+
+    _parasut_order_invoice_load();
+
+    // The lines, read the way the ERP reads them for the order's invoice.
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate, products.start AS product_start
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . (int) $order['id'] . "' AND order_items.saved_for_later = 0
+        ORDER BY order_items.id ASC");
+
+    if (empty($items)) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('This order has no items.')];
+    }
+
+    $built = parasut_order_invoice_lines($order, $items);
+
+    if ($built['charged'] === 0) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.')];
+    }
+
+    // The lines must come to what the customer was charged. Only rounding is
+    // absorbed on the way (erp_order_lines()); a wider gap means the order's
+    // own figures disagree, and a legal document is not the place to find out.
+    if ($built['totals']['grand_total'] !== $built['expected']) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array(
+            'string' => 'The invoice total ({var:1}) does not match the order total ({var:2}). The invoice was not created.',
+            'vars' => array(erp_money_out($built['totals']['grand_total']), erp_money_out($built['expected'])),
+        ))];
+    }
+
+    // The order's amounts are in the store's base currency; orders.currency_code
+    // is only the one the visitor was shown prices in.
+    $currency = erp_base_currency();
+    $refusal = parasut_order_invoice_refusal($built['lines'], $currency);
+
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $refusal];
+    }
+
+    $token_result = parasut_get_token();
+    if (!$token_result['success']) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $token_result['error']];
+    }
+    $token = $token_result['token'];
 
     // Sync (or retrieve) the Parasut contact.
     $contact_result = parasut_sync_contact($order);
@@ -1588,186 +1659,34 @@ function parasut_create_invoice($order_id)
     $edoc_kind = $kind_result['kind'];
     $edoc_alias = $kind_result['alias'];
 
-    $vat_result = _parasut_order_vat_rates($order_id, $order);
-    if (!$vat_result['success']) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $vat_result['error']];
-    }
-    $vat_rates = $vat_result['rates'];
-
-    // Fetch order items (join products to get display name and Parasut product ID).
-    $items_query = "SELECT
-                        order_items.id,
-                        order_items.product_id,
-                        order_items.quantity,
-                        order_items.price,
-                        order_items.product_name,
-                        products.short_description,
-                        products.parasut_product_id
-                    FROM order_items
-                    LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.order_id = '" . escape($order_id) . "'
-                      AND order_items.saved_for_later = 0";
-    $items_result = mysqli_query(db::$con, $items_query) or output_error('Query failed.');
-
-    $default_parasut_product_id = defined('PARASUT_DEFAULT_PRODUCT_ID') ? PARASUT_DEFAULT_PRODUCT_ID : '';
-
-    $details = [];
-    while ($item = mysqli_fetch_assoc($items_result)) {
-        $item_name = $item['short_description'] ?: ($item['product_name'] ?: lang('No Product Name'));
-        $unit_price = round($item['price'] / 100, 2); // Convert from cents.
-
-        // Resolve Parasut product ID: use synced ID, auto-sync if missing, fall back to default.
-        $item_parasut_product_id = $item['parasut_product_id'];
-        if (!$item_parasut_product_id && $item['product_id']) {
-            $sync = parasut_sync_product($item['product_id'], $token);
-            $item_parasut_product_id = $sync['success'] ? $sync['parasut_product_id'] : '';
-        }
-        if (!$item_parasut_product_id) {
-            $item_parasut_product_id = $default_parasut_product_id;
-        }
-
-        $detail = [
-            'type' => 'sales_invoice_details',
-            'attributes' => [
-                'quantity' => max(1, (int) $item['quantity']),
-                'unit_price' => $unit_price,
-                'vat_rate' => $vat_rates[(int) $item['id']] ?? 0,
-                'description' => $item_name,
-                'discount_type' => 'amount',
-                'discount_value' => 0,
-            ],
-        ];
-        if ($item_parasut_product_id) {
-            $detail['relationships'] = [
-                'product' => ['data' => ['type' => 'products', 'id' => $item_parasut_product_id]],
-            ];
-        }
-        $details[] = $detail;
-    }
-
-    if (empty($details)) {
-        // Fallback: single line with the order total. There is no line to read a
-        // rate from here, so an order that carries tax cannot be expressed - and
-        // billing it at 0% would hand the customer a document for less VAT than
-        // they paid.
-        if ((int) $order['tax'] > 0) {
-            return [
-                'success' => false,
-                'parasut_invoice_id' => null,
-                'error' => lang('This order has no items but does carry tax. Add the items before invoicing it.'),
-            ];
-        }
-        $detail = [
-            'type' => 'sales_invoice_details',
-            'attributes' => [
-                'quantity' => 1,
-                'unit_price' => round($order['total'] / 100, 2),
-                'vat_rate' => 0,
-                'description' => lang('Order') . ' #' . $order['order_number'],
-                'discount_type' => 'amount',
-                'discount_value' => 0,
-            ],
-        ];
-        if ($default_parasut_product_id) {
-            $detail['relationships'] = [
-                'product' => ['data' => ['type' => 'products', 'id' => $default_parasut_product_id]],
-            ];
-        }
-        $details[] = $detail;
-    }
-
-    // Shipping and the credit-card surcharge are stored on the order header, not
-    // as order_items, so without these two lines the invoice bills the goods only
-    // and lands under what was charged. Neither carries tax in Pinegrap - the
-    // order's tax comes from the item lines alone - so both go out at 0%.
-    $shipping_cents = (int) ($order['shipping'] ?? 0);
-    if ($shipping_cents > 0) {
-        $details[] = [
-            'type' => 'sales_invoice_details',
-            'attributes' => [
-                'quantity' => 1,
-                'unit_price' => round($shipping_cents / 100, 2),
-                'vat_rate' => 0,
-                'description' => lang('Shipping'),
-                'discount_type' => 'amount',
-                'discount_value' => 0,
-            ],
-        ];
-    }
-
-    $surcharge_cents = (int) ($order['surcharge'] ?? 0);
-    if ($surcharge_cents > 0) {
-        $details[] = [
-            'type' => 'sales_invoice_details',
-            'attributes' => [
-                'quantity' => 1,
-                'unit_price' => round($surcharge_cents / 100, 2),
-                'vat_rate' => 0,
-                'description' => lang('Surcharge'),
-                'discount_type' => 'amount',
-                'discount_value' => 0,
-            ],
-        ];
-    }
-
-    // What the document should come to. A gift card is a means of payment, not a
-    // reduction of the sale, so it is added back: the invoice states the whole
-    // sale and the gift card settles part of it.
-    $expected_cents = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
-
-    // What Parasut will make of the lines we are sending. It computes VAT from
-    // the line total, which is the base the order now uses too, so these should
-    // agree exactly. They are still compared: a difference means a line is
-    // missing or wrong, and a legal document is not the place to find that out.
-    $built_cents = 0;
-    foreach ($details as $detail) {
-        $line_cents = (int) round($detail['attributes']['unit_price'] * 100) * (int) $detail['attributes']['quantity'];
-        $built_cents += $line_cents + (int) round($line_cents * $detail['attributes']['vat_rate'] / 100);
-    }
-
-    $variance_cents = $built_cents - $expected_cents;
-    if (abs($variance_cents) > 100) {
-        return [
-            'success' => false,
-            'parasut_invoice_id' => null,
-            'error' => lang(array(
-                'string' => 'Invoice total does not match the order total ({var:1} against {var:2}). The invoice was not created.',
-                'vars' => array(pg_format_number($built_cents / 100, 2), pg_format_number($expected_cents / 100, 2)),
-            )),
-        ];
-    }
-
     // orders.order_date is a UNIX timestamp; fall back to today when it is missing or zero.
     $ts = (int) ($order['order_date'] ?? 0);
     if ($ts <= 0) {
         $ts = time();
     }
     $issue_date = date('Y-m-d', $ts);
+    $order_number = trim((string) ($order['order_number'] ?? ''));
 
-    // Map currency code to Parasut-accepted values.
-    // Parasut accepts: TRL, USD, EUR, GBP. TRY is the ISO code but Parasut uses TRL.
-    $currency_map = ['TRY' => 'TRL', 'TL' => 'TRL', '' => 'TRL'];
-    $raw_currency = strtoupper(trim($order['currency_code'] ?? ''));
-    $currency = $currency_map[$raw_currency] ?? $raw_currency;
+    // The body the ERP's driver writes for an invoice of the order: its lines
+    // with their products, the kurus each rate moves, the order's number and
+    // day. The description stays the one these documents always carried.
+    $invoice_body = erp_edoc_parasut_invoice_payload(array(
+        'order_id' => (int) $order['id'],
+        'order_number' => $order_number,
+        'order_date' => (((int) ($order['order_date'] ?? 0)) > 0) ? $issue_date : '',
+        'full_number' => '',
+        'issue_date' => $issue_date,
+        'due_date' => $issue_date,
+        'currency' => $currency,
+        'exchange_rate' => 0,
+        'notes' => '',
+    ), $built['lines'], $parasut_contact_id);
 
-    $invoice_body = [
-        'data' => [
-            'type' => 'sales_invoices',
-            'attributes' => [
-                'item_type' => 'invoice',
-                'description' => lang('Order') . ' #' . $order['order_number'],
-                'issue_date' => $issue_date,
-                'due_date' => $issue_date,
-                'currency' => $currency,
-            ],
-            'relationships' => [
-                'contact' => [
-                    'data' => ['type' => 'contacts', 'id' => $parasut_contact_id],
-                ],
-                'details' => ['data' => $details],
-            ],
-        ],
-    ];
+    if (isset($invoice_body['error'])) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $invoice_body['error']];
+    }
+
+    $invoice_body['data']['attributes']['description'] = lang('Order') . ' #' . $order_number;
 
     $inv_result = _parasut_request('POST', _parasut_prefix() . '/sales_invoices', $invoice_body, $token);
 
@@ -1777,6 +1696,50 @@ function parasut_create_invoice($order_id)
     }
 
     $sales_invoice_id = (string) $inv_result['body']['data']['id'];
+
+    // What Paraşüt made of the lines against what the customer was charged.
+    // A record that differs is deleted again before it becomes a document;
+    // one that cannot be deleted stays on the order, so the button does not
+    // raise a second record beside it.
+    $attributes = (array) ($inv_result['body']['data']['attributes'] ?? array());
+    $check = erp_edoc_parasut_total_check($attributes, array('grand_total' => $built['expected']));
+
+    if (!$check['ok']) {
+        $deleted = _parasut_request('DELETE', _parasut_prefix() . '/sales_invoices/' . rawurlencode($sales_invoice_id), null, $token);
+        $deleted_code = (int) $deleted['http_code'];
+        $gone = (($deleted_code >= 200) && ($deleted_code < 300)) || ($deleted_code === 404);
+
+        if ($gone) {
+            $message = lang(array(
+                'string' => 'Paraşüt computed {var:1} for the invoice where the order comes to {var:2}; the record was deleted there and nothing was issued.',
+                'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency($built['expected'], $currency)),
+            ));
+        } else {
+            db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+            $message = lang(array(
+                'string' => 'Paraşüt computed {var:1} for the invoice where the order comes to {var:2}, and the record could not be deleted there ({var:3}): it is still at Paraşüt as id {var:4}, not issued. Delete it on Paraşüt\'s screen.',
+                'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency($built['expected'], $currency), _parasut_extract_error($deleted), $sales_invoice_id),
+            ));
+        }
+
+        // How Paraşüt got there, so the gap can be traced to the VAT or to the
+        // amounts before it once the record is gone.
+        $totals = erp_edoc_parasut_totals($attributes);
+
+        if ($totals !== array()) {
+            $message .= ' ' . lang(array(
+                'string' => 'Paraşüt has it at {var:1} before VAT, {var:2} VAT, {var:3} withheld, {var:4} in all.',
+                'vars' => array(
+                    erp_money_out_currency($totals['before_taxes'], $currency),
+                    erp_money_out_currency($totals['vat'], $currency),
+                    erp_money_out_currency($totals['vat_withholding'], $currency),
+                    erp_money_out_currency($totals['net'], $currency),
+                ),
+            ));
+        }
+
+        return ['success' => false, 'parasut_invoice_id' => $gone ? null : $sales_invoice_id, 'error' => $message];
+    }
 
     // Now issue the e-invoice or e-archive document.
     if ($edoc_kind === 'einvoice') {
@@ -1846,33 +1809,8 @@ function parasut_create_invoice($order_id)
         'parasut_invoice_id' => $sales_invoice_id,
         'edoc_kind' => $edoc_kind,
         'edoc_state' => $job['state'],
-        'variance_cents' => $variance_cents,
         'error' => '',
     ];
-}
-
-/**
- * Render the rounding variance from parasut_create_invoice() for display.
- *
- * Both sides work VAT out on the line total, so this should be zero. When it is
- * not, something is off that rounding does not explain, and the operator is told:
- * the document exists at that point and its figures are Parasut's, so the only
- * useful thing left is to say the amount does not tie to what was charged.
- *
- * @param array $result  Return value of parasut_create_invoice()
- * @return string  Empty when the totals agree
- */
-function _parasut_variance_notice($result)
-{
-    $variance = (int) ($result['variance_cents'] ?? 0);
-    if ($variance === 0) {
-        return '';
-    }
-
-    return ' ' . lang([
-        'string' => 'The invoice came out {var:1} away from the order total.',
-        'vars' => prepare_price_for_output(abs($variance), false, '', 'plain_text', true, false),
-    ]);
 }
 
 /**

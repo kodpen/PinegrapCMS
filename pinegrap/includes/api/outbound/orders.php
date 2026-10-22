@@ -63,11 +63,14 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   shipping_address   the same shape, or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
-//                      price, tax, discount)
+//                      price, tax, discount, and optionally discount_total)
 //
 // price, tax and discount are minor units PER UNIT, because that is what
 // order_items stores and converting once here is better than three connectors
-// each getting it wrong differently.
+// each getting it wrong differently. discount_total, when a connector gives it,
+// is the whole line's discount and is used instead of discount x quantity: a
+// marketplace that discounts the line rather than the unit has an amount that
+// does not always divide by the quantity.
 function mp_import_order($account, $package) {
 
 	$account_id = (int) $account['id'];
@@ -93,6 +96,33 @@ function mp_import_order($account, $package) {
 		WHERE (account_id = '" . e($account_id) . "') AND (remote_package_id = '" . e($package_id) . "')");
 
 	if ($existing) {
+
+		// A package refused before any order was written - most often a line
+		// no product here matched - is taken again, so matching the product
+		// and letting the feed hand the package back is enough to bring it in.
+		// The UPDATE is the claim: only a row still 'failed' with no order, and
+		// a pass that loses the race to it changes nothing. An 'importing' row
+		// with no order is left alone; it may be a write in progress, or one
+		// that stopped half-way and left an order behind.
+		if (($existing['status'] === 'failed') && !(int)$existing['order_id']) {
+
+			db("UPDATE marketplace_order_map
+				SET status = 'importing',
+					remote_order_id = '" . e(mb_substr((string)$package['remote_order_id'], 0, 64)) . "',
+					remote_status = '" . e(mb_substr((string)$package['remote_status'], 0, 40)) . "',
+					lines_json = '" . e(json_encode($package['lines'])) . "',
+					remote_timestamp = '" . e((int)$package['placed_at']) . "',
+					last_error = '',
+					updated_timestamp = UNIX_TIMESTAMP()
+				WHERE (id = '" . e((int)$existing['id']) . "') AND (status = 'failed') AND (order_id = 0)");
+
+			if (mysqli_affected_rows(db::$con) === 1) {
+
+				return mp_import_claimed($account, $package, (int)$existing['id']);
+
+			}
+
+		}
 
 		// Already here, so the order is not written again - but what has
 		// happened to it since is. The feed is queried on the modification
@@ -147,7 +177,50 @@ function mp_import_order($account, $package) {
 
 	}
 
-	$map_id = (int) mysqli_insert_id(db::$con);
+	return mp_import_claimed($account, $package, (int) mysqli_insert_id(db::$con));
+
+}
+
+// Write the order of a package whose map row this pass holds ('importing').
+// Answers the same shape as mp_import_order().
+function mp_import_claimed($account, $package, $map_id) {
+
+	// Cancelled before an order was written for it - between two pulls, before
+	// the first one, or while a refused package waited for its product to be
+	// matched. Nothing is written: there is nothing to pick, and writing the
+	// order only to cancel it would take the stock and give it back, which is
+	// not a round trip when the stock was short (the take stops at zero, the
+	// return adds the whole quantity). The map row stays, so the package is
+	// never imported later, and says why there is no order.
+	if (mp_order_stage($account, $package) === 'cancelled') {
+
+		db("UPDATE marketplace_order_map
+			SET status = 'imported',
+				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
+				updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . e($map_id) . "'");
+
+		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+	}
+
+	// Cancelled before this shop ever saw it - between two pulls, or before the
+	// first one. Nothing is written: there is nothing to pick, and writing the
+	// order only to cancel it would take the stock and give it back, which is
+	// not a round trip when the stock was short (the take stops at zero, the
+	// return adds the whole quantity). The map row stays, so the package is
+	// never imported later, and says why there is no order.
+	if (mp_order_stage($account, $package) === 'cancelled') {
+
+		db("UPDATE marketplace_order_map
+			SET status = 'imported',
+				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
+				updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . e($map_id) . "'");
+
+		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+	}
 
 	$order_id = mp_order_write($account, $package, $map_id);
 
@@ -162,6 +235,11 @@ function mp_import_order($account, $package) {
 		SET order_id = '" . e($order_id) . "', status = 'imported', last_error = '',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
+
+	// A package can also arrive already shipped or delivered, with its tracking
+	// number. The feed is not guaranteed to hand it back, so what a known
+	// package would get on its next poll it gets now.
+	mp_order_apply_status($account, $package, array('id' => $map_id, 'order_id' => $order_id));
 
 	return array('ok' => true, 'order_id' => $order_id, 'skipped' => false, 'error' => '');
 
@@ -186,9 +264,7 @@ function mp_order_apply_status($account, $package, $map) {
 
 	$order_id = (int) $map['order_id'];
 
-	$stage = mp_can($account['provider'], 'order_stage')
-		? mp_call($account['provider'], 'order_stage', array($package['remote_status']))
-		: 'open';
+	$stage = mp_order_stage($account, $package);
 
 	mp_order_apply_tracking($order_id, $package);
 
@@ -205,6 +281,21 @@ function mp_order_apply_status($account, $package, $map) {
 		mp_order_cancel($account, $package, $map);
 
 	}
+
+}
+
+// Where the package is, in the shop's four words: open, shipped, delivered or
+// cancelled. A provider that cannot say is taken as open.
+function mp_order_stage($account, $package) {
+
+	if (!mp_can($account['provider'], 'order_stage')) {
+
+		return 'open';
+
+	}
+
+	return (string) mp_call($account['provider'], 'order_stage',
+		array(isset($package['remote_status']) ? (string)$package['remote_status'] : ''));
 
 }
 
@@ -387,8 +478,11 @@ function mp_order_return_stock($order_id) {
 
 		$product_id = (int) $item['product_id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . "
+			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		db("UPDATE products SET out_of_stock = '0'
@@ -449,27 +543,18 @@ function mp_order_write($account, $package, $map_id) {
 
 	$contact_id = mp_order_contact($customer, $billing);
 
-	$subtotal = 0;
+	$totals = mp_order_totals(array_column($matched, 'line'),
+		isset($package['shipping_cost']) ? $package['shipping_cost'] : 0);
 
-	$tax = 0;
+	$subtotal = $totals['subtotal'];
 
-	$discount = 0;
+	$tax = $totals['tax'];
 
-	foreach ($matched as $entry) {
+	$discount = $totals['discount'];
 
-		$quantity = max(1, (int)$entry['line']['quantity']);
+	$shipping = $totals['shipping'];
 
-		$subtotal += ((int)$entry['line']['price']) * $quantity;
-
-		$tax      += ((int)$entry['line']['tax']) * $quantity;
-
-		$discount += ((int)$entry['line']['discount']) * $quantity;
-
-	}
-
-	$shipping = isset($package['shipping_cost']) ? (int)$package['shipping_cost'] : 0;
-
-	$total = $subtotal - $discount + $tax + $shipping;
+	$total = $totals['total'];
 
 	$placed_at = isset($package['placed_at']) ? (int)$package['placed_at'] : time();
 
@@ -588,6 +673,43 @@ function mp_order_write($account, $package, $map_id) {
 	}
 
 	return $order_id;
+
+}
+
+// What the lines add up to, in minor units: array(subtotal, discount, tax,
+// shipping, total). The discount is each line's discount_total where the
+// connector gave one, and its unit discount times the quantity otherwise.
+function mp_order_totals($lines, $shipping = 0) {
+
+	$subtotal = 0;
+
+	$tax = 0;
+
+	$discount = 0;
+
+	foreach ((array)$lines as $line) {
+
+		$quantity = max(1, (int)$line['quantity']);
+
+		$subtotal += ((int)$line['price']) * $quantity;
+
+		$tax      += ((int)$line['tax']) * $quantity;
+
+		$discount += isset($line['discount_total'])
+			? (int)$line['discount_total']
+			: ((int)$line['discount']) * $quantity;
+
+	}
+
+	$shipping = (int) $shipping;
+
+	return array(
+		'subtotal' => $subtotal,
+		'discount' => $discount,
+		'tax'      => $tax,
+		'shipping' => $shipping,
+		'total'    => $subtotal - $discount + $tax + $shipping
+	);
 
 }
 
@@ -830,8 +952,11 @@ function mp_order_take_stock($matched) {
 
 		$product_id = (int) $product['id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . ")
+			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . "),
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");

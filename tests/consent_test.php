@@ -100,6 +100,32 @@ function test_consent_ui_keys_match_the_notice()
 	pg_assert_same($used, $listed);
 }
 
+// The cookies the software writes on visitor pages are in the notice's
+// list: the view mode a signed-in user gets on every page (get_page.php,
+// update_view_page_mode.php) and the language the redirect remembers.
+function test_consent_catalogue_lists_the_view_mode_and_language_cookies()
+{
+	$catalogue = pg_consent_catalogue('<p>page</p>');
+	$names = array();
+
+	foreach ($catalogue['necessary'] as $row) {
+		$names[] = $row[0];
+	}
+
+	pg_assert_true(in_array('software[view_page_mode]', $names, true), 'the view mode of a signed-in user');
+
+	foreach (array('get_page.php', 'update_view_page_mode.php') as $file) {
+		pg_assert_contains("setcookie('software[view_page_mode]'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' still writes it');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+	$from = strpos($source, 'function pg_consent_catalogue(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+
+	pg_assert_contains("pg_lang_redirect_enabled()", $section, 'the language cookie only where the redirect writes it');
+	pg_assert_contains("array(PG_LANGUAGE_COOKIE, true, lang('", $section, 'the language the visitor chose');
+}
+
 // On a page in a language with no language file only the cookie window is
 // read from the site's translations; the rest of the software's wording
 // never is, whatever the request.

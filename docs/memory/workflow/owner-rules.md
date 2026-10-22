@@ -17,6 +17,7 @@ description: Standing rules from the owner (Erdal) on docs, how changes are reco
 
 ## Which language?
 - Talk to the owner in Turkish. Code comments in English. Memory files in English (fewer tokens).
+- PR descriptions in English (owner rule 2026-10-21); the PR title stays the one-line Turkish summary that becomes the squash commit title. Review comments and take-over notes on PRs are English too, so every session reads them the same way.
 
 ## Is there a mobile app?
 - No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: docs/memory/plans/mobile-api-shelved.md

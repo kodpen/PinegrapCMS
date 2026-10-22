@@ -83,11 +83,28 @@
         return (editors && editors[id]) ? editors[id] : null;
     }
 
+    // The TinyMCE 3 editor of a textarea (the "previous" editor version)
+    // once it runs on it. It keeps its own copy of the text and writes it
+    // back into the textarea when the form is sent, so the textarea alone is
+    // neither read nor written while it runs. While it loads, or when it is
+    // turned off, the textarea is the field.
+    function tinyOf(id) {
+        var tiny = window.tinymce || window.tinyMCE;
+        var editor = (tiny && (typeof tiny.get === 'function')) ? tiny.get(id) : null;
+
+        return (editor && editor.initialized && !editor.isHidden()) ? editor : null;
+    }
+
     function valueOf(id) {
         var editor = editorOf(id);
+        var tiny = editor ? null : tinyOf(id);
 
         if (editor) {
             return String(editor.getData() || '');
+        }
+
+        if (tiny) {
+            return String(tiny.getContent() || '');
         }
 
         var el = document.getElementById(id);
@@ -858,6 +875,7 @@
         }
 
         var editor = editorOf(settings.field);
+        var tiny = editor ? null : tinyOf(settings.field);
         var field = document.getElementById(settings.field);
         var value = (settings.format === 'html') ? String(result.html || '') : String(result.text || '');
 
@@ -869,6 +887,18 @@
             });
             closePanel(panel, false);
             editor.focus();
+            return;
+        }
+
+        // TinyMCE takes the draft at once. Through its command the change is
+        // one undo step and raises the editor's change event; the textarea is
+        // written as well, for whatever reads it before the save.
+        if (tiny && (settings.format === 'html')) {
+            tiny.execCommand('mceSetContent', false, value);
+            tiny.save();
+            announce(settings);
+            closePanel(panel, false);
+            tiny.focus();
             return;
         }
 

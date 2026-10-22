@@ -12,8 +12,8 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 - Address: `<site>/<software dir>/feed.php?f=<token>` (`pg_product_feed_url()`).
 
 ## What does the daily job do?
-- `product_feed_job.php` (catalogue `product_feed_job`, daily, light lane; manager gate for a web run) calls `pg_product_feed_refresh()`: the catalog is read once, each format that is on is rendered and written whole (temp file + rename) to `data/feeds/<format>.<ext>`; a format that is off loses its file.
-- Files are named by format, not token, so the token is never on disk in clear; `data/` is closed to HTTP by the server rules (the PHP built-in server of the sandbox ignores them).
+- `product_feed_job.php` (catalogue `product_feed_job`, daily, light lane; manager gate for a web run) calls `pg_product_feed_refresh()`: the catalog is read once in chunks, each format that is on streamed to `data/feeds/<format>.<ext>` (work file, rename: product-feed-streaming.md); a format that is off loses its file.
+- Files are named by format, not token, so the token is never on disk in clear; `data/` is closed to HTTP by the server rules (the sandbox's built-in server ignores them).
 - Status per format: a good build sets `built_at/count/bytes`; a failed one (`no_seller_name`, `no_catalog`, `write_failed`, …) keeps them, sets `error` and keeps serving the old file. Statuses are merged into a fresh read of the setup, so a save made during the build is kept.
 - `pg_product_feed_job_switch_on()` adds the job to the dispatch list when the general job dispatches.
 
@@ -23,11 +23,11 @@ description: How product feeds are kept, built, served and watched (PR #571): co
 - `waf_is_api_request()` lists `feed.php` like `workspace_ical.php`: platform fetchers send generic or empty user agents and must not meet the bot policy.
 
 ## How is it set up on the screen?
-- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand, seller/privacy/terms URLs (absolute http(s) or empty, refused before any write), excluded groups (multi-select of the groups the catalogs show; `lists` entry in the registry), "Save and build now".
+- Settings › SEO › Product Feeds (`pgset-feeds`, `includes/settings/seo.php`): a switch, the address with "New address" (confirm; old address ends) and the last build line per format; seller name (prefilled with the organization name), default brand (both cut at 255), seller/privacy/terms URLs (absolute http(s) up to 2000 chars or empty, refused before any write, never cut: `pg_product_feed_seller_from_input()`; a 255 cut used to store a shortened privacy URL, PR #1047), excluded groups (groups the catalogs show; `lists` registry entry), "Save and build now".
 - `seo.save.php` calls `pg_product_feed_save_from_screen()` after the screen's columns: a feed switched on gets a token and is built at once; otherwise changes wait for the daily job. An address that cannot be sealed (no site key) is shown once in a notice.
 
 ## What does System Status show?
 - A "Product Feeds" tile (actions column, not scored) only while a feed is on: red when a last build failed, yellow when one was never built or not for 2 days (`PG_PRODUCT_FEED_STALE_AFTER`), green otherwise; one detail row per feed. Logic: `pg_product_feed_health()`.
 
 ## How was it verified?
-- `tests/product_feeds_test.php`; sandbox: step twice, job, feed.php (200/304/HEAD/404/405), the card over HTTP, the tile in all three states.
+- `tests/product_feeds_test.php`; sandbox: step twice, job, feed.php (200/304/HEAD/404/405), the card, the tile's three states.

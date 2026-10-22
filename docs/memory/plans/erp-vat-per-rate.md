@@ -1,28 +1,27 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decisions 2026-10-21; steps 1-3 done, #1001, #1004, #1020): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; steps 4-6 remain
+description: Plan (owner's decisions 2026-10-21 and 22; steps 1-6 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 7 (memory) remains
 ---
 
 ## Why?
-- Paraşüt takes the VAT on the sum of each group of lines with one VAT rate and one withholding rate, and the withholding on the groups' VAT, rounded once per invoice (erp-parasut-invoice-lines.md); the ERP, the checkout and the old order path take both line by line. The driver moves a kurus or so per rate (#961) to keep the total, so Paraşüt's before-VAT and VAT differ from the ERP's books by that much; a rate total no amount reaches (57.93 at 20%) cannot go at all, and a rate with withholding is not moved (2-4 withheld lines at 20%: four invoices in ten refused).
+- Paraşüt takes the VAT on the sum of each group of lines with one VAT rate and one withholding rate, and the withholding on the groups' VAT, rounded once per invoice (erp-parasut-invoice-lines.md); the ERP, the checkout and the old order path took both line by line. The driver moves a kurus or so per rate (#961) to keep the total; a rate total no amount reaches (57.93 at 20%) cannot go at all, and a rate with withholding is not moved.
 
-## What is decided? (owner, 2026-10-21)
-- The ERP takes the taxes as Paraşüt does: VAT per (VAT rate, withholding rate) group, the withholding summed over the groups and rounded once; the second tax per its own rate. Issued documents keep their figures; the driver's shift stays for them.
-- A line's VAT may be a kurus off its own rate x amount: the group's VAT is spread over its lines by largest remainder, so they add up to it.
-- Purchase invoices, typed and from the inbox, take the same rule; the inbox keeps showing a difference from the supplier's figures as a warning.
-- Checkout: a VAT-inclusive charge or price whose rate total no amount reaches takes the reachable total a kurus below (57.92 for 57.93); the customer never pays more than the sum shown and the invoice equals the payment.
+## What is decided?
+- 2026-10-21: the ERP takes the taxes as Paraşüt does: VAT per (VAT rate, withholding rate) group, the withholding summed over the groups and rounded once; the second tax per its own rate. Issued documents keep their figures; the driver's shift stays for them.
+- A line's VAT may be a kurus off its own rate x amount: the group's VAT is spread over its lines by largest remainder.
+- Purchase invoices, typed and from the inbox, take the same rule; the inbox warns of a difference from the supplier's figures.
+- Checkout: a charge whose rate total no amount reaches is taken a kurus lower (57.92 for 57.93; the shipping shows 9.98 for 9.99, no line of its own); the customer never pays more than shown and the invoice is the payment. Order lines keep their rate (`order_items.tax_rate`, 11.0.59).
+- 2026-10-22: that checkout rule also in stores without the ERP that send orders with the order screen's Paraşüt buttons. An instalment charge that leaves a rate's total out of reach: the site's card form (iyzico direct or 3-D Secure) charges it a kurus lower; with Pay with iyzico (iyzico sets the amount) the invoice takes the instalment line a kurus lower than paid.
 
 ## How does it work?
-- `erp_rate_vat()` (includes/erp/money.php, #1001): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
-- Typed documents (#1004): `erp_manual_lines_build()` takes the discounts per line, then the taxes from `erp_rate_vat()`; the editor's `rateTaxes()` / `allocate()` (assets/js/erp_invoice_editor.js) copy it to the kurus, ties to the first line as PHP 8's stable `arsort()`.
+- `erp_rate_vat()` (includes/erp/money.php, #1001); typed documents `erp_manual_lines_build()` and the editor (#1004); returns (#1020); the checkout's `pg_tax_by_rate()` / `pg_tax_spread()` copy it (#1168, erp-discounted-order-vat.md); charges with the goods on the rate's sum (#1211) and the instalment charge (#1269), erp-order-charges-vat.md; the old order buttons send the ERP's lines (#1268, erp-parasut-legacy-order-buttons.md).
 
 ## What remains?
-1. Done: `erp_rate_vat()` and its tests (#1001).
-2. Done: typed documents and the editor preview (#1004).
-3. Done: returns, the lines given back in part per group of the return, capped by what is left; the card refund dialog takes the whole from the server (#1020).
-4. Orders: the checkout (`update_order_item_taxes()` in includes/fn/ecommerce.php, the header tax in submit_order.php, the cart summary; the kurus-below rule above) and `erp_order_lines()` (discount re-tax, tie-back, charge lines from `erp_split_gross()`) (L).
-5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue at once and only report the variance: the driver's shift there too until they go (erp-edocument-leftovers.md) (M).
-6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
+1-4. Done: #1001, #1004, #1020; orders #1055, #1168, #1211 (claim #1037).
+5. Done (#1268, claim #1257): `parasut_create_invoice()` takes `erp_order_lines()` and the driver's payload and shift; the checkout rule in those stores.
+6. Done (#1269, claim #1257): the iyzico card driver takes the instalment charge the fewest kurus lower (`pg_order_installment_charge()`); the order's invoice (`erp_order_lines()` `$settle_installment`: the ERP writer, its API check, the old buttons) takes a line that leaves a rate out of reach a kurus lower, `installment_left` stays on the customer's account.
+7. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md; this file goes when done.
 
 ## Where to start?
-- Step 4: read `update_order_item_taxes()` (includes/fn/ecommerce.php), the header tax in submit_order.php and `erp_order_lines()` (includes/erp/order_bridge.php); erp-discounted-order-vat.md.
+- Step 7: move the lasting decisions above into erp-money-and-currency.md and erp-discounted-order-vat.md (the latter is at its size limit: condense), then delete this file.
+- After #1243 (exact `erp_apply_rate()`): `pg_tax_by_rate()` / `pg_tax_rate_amount()` take its rule (float `round()` of a rate like 7.7 differs on PHP 8.4+).

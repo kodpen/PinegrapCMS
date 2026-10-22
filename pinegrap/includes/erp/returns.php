@@ -65,8 +65,10 @@ function erp_invoice_returned_total($invoice_id)
 /**
  * The parent's lines with what is still returnable on each.
  *
- * Besides the quantity, each line carries the tax already credited back on it
- * (returned_tax), so a further return can take no more than what is left. A
+ * Besides the quantity, each line carries the amount, discount and taxes
+ * already credited back on it (returned_line_total, returned_discount,
+ * returned_tax...), so a further return can take no more than what is left
+ * and the piece that empties the line takes exactly the rest. A
  * return line names the parent line it was taken from (parent_line_id); lines
  * written before that link existed carry 0 and are matched on product instead,
  * which is exact as long as the parent has one line per product.
@@ -92,6 +94,8 @@ function erp_returnable_lines($invoice_id)
     };
 
     $lines = (array) db_items("SELECT i.*,
+            " . $given_back('line_total') . " AS returned_line_total,
+            " . $given_back('discount_amount') . " AS returned_discount,
             " . $given_back('tax_total') . " AS returned_tax"
             . (erp_invoice_lines_have_withholding() ? ",
             " . $given_back('withholding_amount') . " AS returned_withholding" : "")
@@ -110,14 +114,19 @@ function erp_returnable_lines($invoice_id)
 /**
  * Build the lines of a return from the quantities somebody chose.
  *
+ * Each piece takes its share of the line's amount and discount, rounded on
+ * its own and capped by what earlier returns left of them; the piece that
+ * empties a line takes exactly what is left, so the pieces of a line add up
+ * to the line however they were rounded.
+ *
  * The lines given back in part take their taxes the way a document does
  * (erp_rate_vat()): the VAT per group of one VAT rate and one withholding
  * rate of the return, on the group's sum, the withholding over the groups
  * rounded once, the second tax per its own rate - each capped by what is
  * still on its line. The piece that empties a line whose earlier returns are
  * known takes exactly what is left on it, so the returns of a line add up to
- * the line. An order's lines (erp_order_refund_lines()) carry no earlier
- * returns and take the group taxes alone.
+ * the line. An order's lines (erp_order_refund_lines()) carry nothing given
+ * back yet, so a line given back whole takes the tax the order charged on it.
  *
  * @param array $parent_lines  from erp_returnable_lines()
  * @param array $quantities    line id => quantity
@@ -158,6 +167,24 @@ function erp_return_build($parent_lines, $quantities)
 
         $line_total = (int) round((int) $parent['unit_price'] * $wanted);
         $discount = (int) round((int) $parent['discount_amount'] * $share);
+
+        // Each piece is rounded on its own: two halves of 10.01 off both
+        // round to 5.01, and two halves of a 2.5 x 3.33 line (8.33) both to
+        // 4.16. Capped by what earlier returns left, and taken whole by the
+        // piece that empties the line, the pieces sum to the line's figures.
+        $empties = ($wanted >= ($remaining - 0.00001));
+
+        if (isset($parent['returned_line_total'])) {
+            $line_left = max(0, (int) $parent['line_total'] - (int) $parent['returned_line_total']);
+            $line_total = $empties ? $line_left : min($line_total, $line_left);
+        }
+
+        if (isset($parent['returned_discount'])) {
+            $discount_left = max(0, (int) $parent['discount_amount'] - (int) $parent['returned_discount']);
+            $discount = $empties ? $discount_left : min($discount, $discount_left);
+        }
+
+        $discount = min($discount, $line_total);
         $tax2_rate = (float) ($parent['tax2_rate'] ?? 0);
         $withholding_rate = (float) ($parent['withholding_rate'] ?? 0);
 
@@ -170,7 +197,7 @@ function erp_return_build($parent_lines, $quantities)
         // second tax too; the withholding is a share of the VAT alone.
         $known = isset($parent['returned_tax']);
         $left[count($lines)] = array(
-            'empties' => $known && ($wanted >= ($remaining - 0.00001)),
+            'empties' => $known && $empties,
             'tax' => $known ? max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']) : null,
             'tax2' => (($tax2_rate > 0) && isset($parent['returned_tax2']))
                 ? max(0, (int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2']) : null,
@@ -489,6 +516,21 @@ function erp_invoice_return($data)
         return $fail($error);
     }
 
+    // A foreign invoice that this return has paid off carries the gap between
+    // what was invoiced, less the return, and what was collected in the base
+    // currency, as it does when a receipt closes it (erp_post_receipt()). No
+    // later receipt closes a paid invoice, so without this the account kept
+    // the gap for good.
+    if (($currency !== erp_base_currency()) && erp_fx_auto_diff()) {
+        $status_now = (string) db_value("SELECT status FROM erp_invoices WHERE id = '" . $parent_id . "' LIMIT 1");
+
+        if (($status_now === 'paid') && !erp_fx_post_difference($parent, $created_by)) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+            return $fail($error);
+        }
+    }
+
     // The goods go back the way the invoice line moved them, if it did.
     if (!erp_stock_post_return($return_id, $created_by)) {
         $error = erp_db_error();
@@ -642,8 +684,13 @@ function erp_invoice_cancel($invoice_id, $created_by = 0)
         }
 
         // The parent asks for its full amount again, so a status that the
-        // return had allowed to reach paid has to be worked out afresh.
-        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])) {
+        // return had allowed to reach paid has to be worked out afresh. A
+        // foreign parent that leaves paid takes back the exchange difference
+        // posted when it closed, as it does when a receipt is cancelled; the
+        // return was drawn in the parent's currency. Left in place, the
+        // difference made the next closing post nothing.
+        if (!erp_invoice_refresh_paid((int) $invoice['parent_invoice_id'])
+            || !erp_settlement_after_reopen((int) $invoice['parent_invoice_id'], (string) $invoice['currency'], (int) $created_by)) {
             $error = erp_db_error();
             erp_tx_rollback();
             return $fail($error);
