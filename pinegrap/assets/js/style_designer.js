@@ -17704,8 +17704,11 @@ const StyleDesigner = (function () {
 
                     // News: Weather Strip — a thin header band: five cities with sky and temperature, the date and a forecast link
                     if (ctype === 'news-weather-strip') {
+                        // Each city is an outlined chip on the body colour: its
+                        // corners and border width come from the look (rounded,
+                        // border), its text keeps the band's contrast.
                         var _nbWsCity = function (n, icon, city, sky, temp) {
-                            return _bkDiv('d-flex align-items-center gap-1 text-nowrap', _sdT('City {var}', n), [
+                            return _bkDiv('d-flex align-items-center gap-1 px-2 py-1 lh-sm text-nowrap bg-body border rounded', _sdT('City {var}', n), [
                                 _bkIcon(icon, 'text-primary'),
                                 _bkH('span', city),
                                 _bkH('span', sky, 'visually-hidden'),
@@ -17719,7 +17722,7 @@ const StyleDesigner = (function () {
                             ]),
                             // position-relative: the visually hidden sky texts are
                             // absolutely placed and must be clipped by this scroller.
-                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
                                 _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
                                 // Raw on purpose: the 'New York' key is the sample billing
                                 // city and reads İstanbul in Turkish, a city already listed.
