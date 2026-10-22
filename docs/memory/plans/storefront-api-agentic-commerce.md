@@ -23,4 +23,4 @@ description: Plan (approved 2026-10-19, watch list): public storefront API (cart
 - Which agent platforms matter for Turkish merchants first? Re-check each quarter; Trendyol/Hepsiburada remain the real channels.
 
 ## Where to start?
-- Not before the payment driver layer ships. Then the design note; read `includes/api/schema.php`, `includes/panel/actions.php:124-135` and the decisions skill.
+- Not before the payment driver layer ships. Then the design note; read `includes/api/schema.php`, `includes/panel/actions.php:124-135` and `workflow/decisions-made.md`.

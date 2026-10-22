@@ -16,6 +16,6 @@ description: Dashboard sales map widget 1 panel behavior: corner menu with fixed
 - `welcome.php` signal block has two fields: `map_lead` (busiest place of the week) and `map_new` (place that ordered this week, not in the previous three weeks): one query, two windows. `map_new` also **requires other orders in the previous three weeks**, otherwise every place is "new" in a store's first week. Name resolution is shared with the card (`pg_sales_map_label()`).
 - The two halves of the line pass two gates: the signal is collected with `USER_MANAGE_ECOMMERCE_REPORTS`; the suggestion half is **not produced at all** without `manage_ecommerce` (its value is the order-screen link). The reading half is wholly escaped with `h()`, so no link is placed there - the place name is plain text.
 
-## Other facts
+## Is it refreshed, and why does it have id 1?
 - The widget is NOT in the per-minute refresh list in `welcome.php` (full table scan, once on first load).
-- id 1 was a retired slot and was deliberately reused; 22 and 24 stay retired. Rationale and trade-off are in the `welcome.php` registry comment.
+- id 1 was a retired slot and was deliberately reused; the other retired ids stay retired (`dashboard-widget-files.md`). Rationale and trade-off are in the `welcome.php` registry comment.

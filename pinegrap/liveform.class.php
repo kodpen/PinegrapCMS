@@ -194,8 +194,13 @@ class liveform {
                 && isset($session_field['error_message'])
                 && $session_field['error_message'] !== ''
             ) {
+                // The message is alert HTML; this feedback is a text context,
+                // so reduce it to its text before escaping it for the div.
+                $feedback_text = function_exists('pg_liveform_message_text')
+                    ? pg_liveform_message_text($session_field['error_message'])
+                    : $session_field['error_message'];
                 $output_inline_feedback = '<div class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
-                    . htmlspecialchars($session_field['error_message'], ENT_QUOTES, 'UTF-8')
+                    . htmlspecialchars($feedback_text, ENT_QUOTES, 'UTF-8')
                     . '</div>';
             }
         }
@@ -677,6 +682,18 @@ class liveform {
         
         // loop through all data that was submitted in order to add it to the session
         foreach ($_REQUEST as $field => $value) {
+            // These keys name this form's own message buckets, not form fields:
+            // 'notices' and 'warnings' hold the lists add_notice()/add_warning()
+            // fill (through defuse_message()), '__prefill' is a flag and
+            // '_form_error_N' holds a form-level error. A posted field by one of
+            // these names would land in a message list unfiltered, so it is not
+            // taken as a field value.
+            if (($field === 'notices') || ($field === 'warnings') || ($field === '__prefill')
+                || (is_string($field) && (strpos($field, '_form_error_') === 0))
+            ) {
+                continue;
+            }
+
             // if value for field is an array (i.e. check boxes or pick list with multiple answers)
             if (is_array($value) == true) {
                 foreach ($value as $key => $value_2) {
@@ -1005,7 +1022,11 @@ class liveform {
                     if (!is_array($field_data)) continue;
                     if (!isset($field_data['error']) || $field_data['error'] !== TRUE) continue;
                     if (!isset($field_data['error_message']) || $field_data['error_message'] === '') continue;
-                    $field_errors_for_js[$field_name] = $field_data['error_message'];
+                    // The JS sets this as textContent, a text context, so hand
+                    // over the message's text rather than its alert HTML.
+                    $field_errors_for_js[$field_name] = function_exists('pg_liveform_message_text')
+                        ? pg_liveform_message_text($field_data['error_message'])
+                        : $field_data['error_message'];
                 }
                 if ($field_errors_for_js) {
                     $output .= '<script>window.__pgFieldErrors=Object.assign(window.__pgFieldErrors||{},'

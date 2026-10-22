@@ -412,6 +412,53 @@ function api_orders_has_notes() {
 
 }
 
+// What a status change asks of an order, from the status it has ($from) to the
+// one sent ($to):
+//  'none'    nothing (the same status);
+//  'set'     a plain write (complete and exported, either way);
+//  'cancel'  the store's cancellation path (process_order_cancellation());
+//  'restore' the order screen's Restore (pg_order_restore_cancelled()): out of
+//            cancelled, the cancellation's bookkeeping and refund flag are
+//            cleared and the gift cards it expired come back;
+//  'refuse'  a move the store has no path for. incomplete is the cart's
+//            status: a placed order is never turned back into a cart (which
+//            the abandoned cart mail would then pick up), and a cart becomes
+//            an order only through the checkout, which numbers it, takes the
+//            payment and moves the stock. The order screen offers neither,
+//            nor a cancel for a cart.
+function api_orders_status_move($from, $to) {
+
+	$from = (string)$from;
+	$to   = (string)$to;
+
+	if ($from === $to) {
+
+		return 'none';
+
+	}
+
+	if (($from === 'incomplete') || ($to === 'incomplete')) {
+
+		return 'refuse';
+
+	}
+
+	if ($to === 'cancelled') {
+
+		return 'cancel';
+
+	}
+
+	if ($from === 'cancelled') {
+
+		return 'restore';
+
+	}
+
+	return 'set';
+
+}
+
 function api_orders_update($params) {
 
 	$id = (int)$params['id'];
@@ -435,7 +482,21 @@ function api_orders_update($params) {
 	// refused a few lines later over a notes column this installation does not
 	// have. It is also what lets a dry run mean something on this endpoint - the
 	// checks are above the first write, so X-Dry-Run answers after all of them.
-	$cancelling = (isset($params['status']) && ($params['status'] === 'cancelled'));
+	$move = isset($params['status'])
+		? api_orders_status_move($existing['status'], $params['status'])
+		: 'none';
+
+	if ($move === 'refuse') {
+
+		api_fail_validation(lang(array(
+			'string' => 'An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.',
+			'vars'   => array($existing['status'], $params['status'])
+		)), 'status');
+
+	}
+
+	$cancelling = ($move === 'cancel');
+	$restoring  = ($move === 'restore');
 
 	if (isset($params['notes'])) {
 
@@ -455,7 +516,7 @@ function api_orders_update($params) {
 
 	}
 
-	if (isset($params['status']) && !$cancelling) {
+	if ($move === 'set') {
 
 		$set[] = "status = '" . escape($params['status']) . "'";
 
@@ -470,7 +531,8 @@ function api_orders_update($params) {
 	api_dry_run_stop('updated', 'order', array(
 		'id'        => $id,
 		'status'    => isset($params['status']) ? $params['status'] : null,
-		'cancelling' => $cancelling
+		'cancelling' => $cancelling,
+		'restoring' => $restoring
 	));
 
 	$audit_before = pg_audit_fetch('orders', $id);
@@ -488,7 +550,7 @@ function api_orders_update($params) {
 	// endpoint when its owner deliberately granted orders:write, and the
 	// pre-shipment guard exists to stop a CUSTOMER cancelling behind the
 	// operator's back - not the operator's own integration.
-	if ($cancelling && ($existing['status'] !== 'cancelled')) {
+	if ($cancelling) {
 
 		$reason = isset($params['cancellation_reason'])
 			? $params['cancellation_reason']
@@ -516,6 +578,16 @@ function api_orders_update($params) {
 
 	}
 
+	// Out of cancelled the order goes the way the order screen's Restore
+	// takes it. A plain status write left cancelled_at, the reason and a
+	// manual_required refund flag on a completed order, and its gift cards
+	// expired. False: another request moved it out of cancelled meanwhile.
+	if ($restoring && !pg_order_restore_cancelled($id, $params['status'])) {
+
+		api_fail_validation(lang('Only cancelled orders can be restored.'), 'status');
+
+	}
+
 	if (!empty($set)) {
 
 		api_exec("UPDATE orders SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
@@ -527,7 +599,7 @@ function api_orders_update($params) {
 		'vars'   => array($existing['order_number'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	pg_audit_record(($cancelling && ($existing['status'] !== 'cancelled')) ? 'cancel' : 'update', 'orders', $id, $audit_before);
+	pg_audit_record($cancelling ? 'cancel' : ($restoring ? 'restore' : 'update'), 'orders', $id, $audit_before);
 
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 

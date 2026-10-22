@@ -7,6 +7,7 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 - One recipe per intent; two buttons doing the same job look the same.
 - Go to a related screen / in-place tool: `btn-sm btn-outline-secondary`. Irreversible work: `btn-sm btn-outline-warning`. Primary: `btn-primary`.
 - Three weights in one list (filled + outline + `btn-lg`) is confusion.
+- A button keeps its label while its request runs and is never locked for a fixed time: `button-busy-state.md`.
 
 ## When does a group of buttons become a menu?
 - More than four buttons go into a menu. Side-by-side, mostly unrelated buttons become one menu.
@@ -21,9 +22,9 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 - Elsewhere there is no such limit: buttons (`btn-outline-warning`), badges, alerts keep colour as importance/status. Do not carry the rule out of menus (an in-page `alert-warning` has nothing to do with folders). The clash exists only in menus because menu rows share the visual language of folder lists.
 
 ## Where do toolbar classes live?
-- In the shared file, not in the page: `assets/css/backend.src.css`, end of file, block *Admin screen toolbar*: `.pg-toolbar`, `.pg-toolbar-grow`, `.pg-toolbar-search`, `.btn-ghost` (+ `.btn-ghost.active`) and narrow-screen rules.
+- In the shared file, not in the page: `assets/css/backend.src.css`, block *Admin screen toolbar*: `.pg-toolbar`, `.pg-toolbar-grow`, `.pg-toolbar-search`, `.btn-ghost` (+ `.btn-ghost.active`) and narrow-screen rules. `#button_bar` shares them (`page-button-bar.md`).
 - New screens use these classes; do not write new bar CSS on your own `#id`.
-- `view_folders.php` still carries its own `#explorer_toolbar` copy (works, untouched); move it to the shared classes the first time that screen is edited.
+- `view_folders.php` wears them too (`#explorer_toolbar.pg-toolbar`); it keeps only the order its own controls take when the bar wraps.
 - `btn-ghost` is defined only with Bootstrap's own button variables, so light/dark theme needs no second rule.
 
 ## What is the card header pattern?

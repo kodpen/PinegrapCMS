@@ -22,7 +22,7 @@ description: Tables every backup dumps without rows, the SEO, search and log tab
 - The rows are gone but `config.search_console` still says how far the download had come (`synced_to`). `pg_gsc_sync()` asks `pg_gsc_resume_day()`: an empty `seo_search_daily` means start over, so the next `seo_search_job.php` run (or "Download now") reads the whole 90-day window, as on first link.
 - Days older than 90 are not fetched again; the screen offers 7/28/90 days, so only the 90-day "previous period" comparison is short for a while.
 
-## Rules
+## What must a change to the list check?
 - Before adding a table here: check every reader, and whether anything (a watermark, a score column, a cache) assumes its rows exist. If unsure, keep the rows.
 - Tests: `tests/backup_test.php` (list and kept tables), `tests/search_console_test.php` (resume after restore).
 

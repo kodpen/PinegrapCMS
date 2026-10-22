@@ -433,8 +433,56 @@ function pg_office_xlsx_write_reserved($workbook_xml)
 }
 
 /**
+ * Does a number format show its numbers as text? A format has up to four
+ * sections split by ";" (positive, negative, zero, text); only the first
+ * decides what a typed number becomes. "@" there (the Text format, or
+ * "No: "@) makes the cell text. An "@" in a later section only says how
+ * text values look: the accounting formats (_-* #,##0.00 ₺_-;…;_-@_-) and
+ * Excel's locale dates (d/m/yy;@) are number and date formats. A ";" or an
+ * "@" inside quotes, inside brackets ([$-409]), escaped with "\" or taken by
+ * a padding (_x) or fill (*x) is a character, not a section or a
+ * placeholder.
+ *
+ * @param string $code a numFmt formatCode
+ * @return bool
+ */
+function pg_office_xlsx_text_format($code)
+{
+    $code = (string) $code;
+    $length = strlen($code);
+    $index = 0;
+
+    while ($index < $length) {
+        $character = $code[$index];
+
+        if ($character === ';') {
+            return false;
+        }
+
+        if ($character === '@') {
+            return true;
+        }
+
+        if ($character === '"') {
+            $close = strpos($code, '"', $index + 1);
+            $index = ($close === false) ? $length : $close + 1;
+        } elseif ($character === '[') {
+            $close = strpos($code, ']', $index + 1);
+            $index = ($close === false) ? $length : $close + 1;
+        } elseif (in_array($character, array('\\', '_', '*'), true)) {
+            $index += 2;
+        } else {
+            $index++;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The cell styles that matter to an edit, by style number: those whose
- * number format shows a date, those formatted as text (@), and those not
+ * number format shows a date, those whose numbers show as text
+ * (pg_office_xlsx_text_format()), and those not
  * locked by a sheet's protection.
  *
  * @param ZipArchive $zip
@@ -455,9 +503,7 @@ function pg_office_xlsx_style_kinds($zip, &$refused = null)
     $text_formats = array(49 => true);
 
     foreach ($styles->getElementsByTagNameNS('*', 'numFmt') as $format) {
-        $code = preg_replace('/"[^"]*"/', '', (string) pg_office_attr($format, 'formatCode'));
-
-        if (strpos((string) $code, '@') !== false) {
+        if (pg_office_xlsx_text_format(pg_office_attr($format, 'formatCode'))) {
             $text_formats[(int) pg_office_attr($format, 'numFmtId')] = true;
         }
     }
