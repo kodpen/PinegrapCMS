@@ -400,7 +400,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
 			'summary' => 'Delete a product group',
-			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty; with permanent=true, groups of it in the Recycle Bin count too): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
