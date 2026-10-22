@@ -10,7 +10,7 @@ description: One rule for a translated page's robots meta, its hreflang alternat
 
 ## What happens when no answer is kept?
 - Not offered: the address is left out of sitemap.xml and out of every page's alternates.
-- Before PR #<pr> the fallback counted the page's own texts (`pg_tr_index_stats()`, removed). The robots meta also weighs shared components, menus, list records, the catalog and data values, so the two disagreed: kodpen.com listed `/en/` while `/en/` said `noindex, follow`, and `/en/404` (a 404, never kept) is listed the same way.
+- Before PR #1176 the fallback counted the page's own texts (`pg_tr_index_stats()`, removed). The robots meta also weighs shared components, menus, list records, the catalog and data values, so the two disagreed: kodpen.com listed `/en/` while `/en/` said `noindex, follow`, and `/en/404` (a 404, never kept) is listed the same way.
 - No answer: an address below a page, one with a query string, a non-200 answer, an un-upgraded schema, and any page not drawn in the language since its answer was dropped.
 
 ## How does the home page map?
