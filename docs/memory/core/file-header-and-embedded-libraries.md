@@ -4,7 +4,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 ---
 
 ## Which header does a new file carry?
-- A file written for Pinegrap does NOT carry the LiveSite header. The "Originally developed as LiveSite..." block belongs only to inherited files.
+- A file written for Pinegrap does NOT carry the LiveSite header. The "Originally developed as LiveSite..." block belongs only to inherited files (`get_help_url.php`, `add_to_cart.src.js`...), which keep it.
 - Every newly written PHP/JS file opens with the header below. Today that covers: everything under `includes/` (third-party libraries excluded), `waf.php` / `waf_ranges_job.php` / `view_waf_log.php`, `manifest.php` / `manifest_icon.php` / `sw.js`, the file manager (`view_folders.php`, `view_folder_and_files.php`, `view_folder_and_files_f.php`), and the external API (`integration.php`, `api_settings.php`, `api_docs.php`, `api_sync_job.php`, `api_webhook_job.php`, `marketplace_settings.php`).
 ```php
 <?php
@@ -20,7 +20,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
  */
 ```
 - Copy it when creating a file; spell it `Pinegrap`, not `PineGrap`.
-- Never touch the headers of third-party libraries: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`.
+- Never touch the headers of third-party libraries: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `qrcode`.
 
 ## What PHP base must an embedded library respect?
 - Before putting a library under `includes/`, check the `php` constraint in its `composer.json` and PIN the version accordingly: the base must stay at 7.1 or below.

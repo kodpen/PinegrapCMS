@@ -1,6 +1,6 @@
 ---
 name: checkout-legal-documents
-description: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
+description: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 ---
 
 ## Why?
@@ -20,7 +20,7 @@ description: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, orde
 2. Done (PR #570): designer bindings (designer/express-order-legal-documents.md).
 3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents`; order view links (PR #736, commerce/order-view-legal-documents.md).
 4. KVKK notice link and optional consent checkbox (text setting: needs its own config column, ask first), stored as type `kvkk`.
-5. Done (PR #798): a site installed from the Turkish starter starts with the switch on; its template columns stay NULL and read the built-ins (commerce/order-legal-documents.md). Left: the withdrawal timer shown on the order, 14 days from delivery (below).
+5. Done (PR #798): a site installed from the Turkish starter starts with the switch on; its template columns stay NULL and read the built-ins (commerce/order-legal-documents.md). Done (PR #816): the last day of the right of withdrawal on the order view and the panel card, the latest delivery's deadline (commerce/order-withdrawal-deadline.md).
 6. Done (PR #648): the document link posts the typed billing fields and payment method to the document page, in its own window (commerce/checkout-legal-checkboxes.md).
 
 ## Open questions?
@@ -28,4 +28,3 @@ description: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, orde
 
 ## Where to start?
 - Step 4 (KVKK): ask about the config column for the consent text first. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.
-- Step 5, timer: `pg_return_delivery_state()` gives each delivery's deadline (`pg_return_window()`, estimated until shipments keep a delivery date). The returns form shows it only while `ECOMMERCE_ORDER_RETURNS_ALLOWED` is on; the right exists either way. Likely places: an order view token in the Legal Documents card (both starter trees, `pg_legal_documents_order_view_block()`) and the panel card. Open: one date per delivery or the latest. Returns panel work (customer-returns-flow 3) may touch `view_order.php`.

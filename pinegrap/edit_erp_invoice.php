@@ -251,7 +251,9 @@ if ($_POST) {
 
         // A document the provider has is taken back there first, the way the
         // driver says (erp_edoc_invoice_cancellable()); a refusal leaves both
-        // sides as they were.
+        // sides as they were. The period lock is asked before the provider
+        // (erp_edoc_invoice_provider_cancel()), so a document in a closed
+        // period is not taken back there only to stay issued here.
         $provider_cancel = erp_edoc_invoice_provider_cancel($invoice_id, '', (int) $user['id']);
 
         if (!$provider_cancel['success']) {
@@ -361,6 +363,13 @@ $money = function ($kurus, $show_sign = true) use ($currency) {
 // return, not a quiet withdrawal. The gift card allocation the invoice posted
 // for itself is not somebody's money and is reversed with the document.
 $can_cancel = (!$is_cancelled && (erp_invoice_receipt_count($invoice_id) === 0) && empty($returns));
+
+// A document dated inside the locked period stays as it was filed: the
+// button is shown disabled with the reason, and a return takes it back.
+$cancel_locked = ($can_cancel && (erp_lock_refusal((string) $invoice['issue_date']) !== ''))
+    ? lang(array('string' => 'The invoice is dated inside the books locked up to {var:1}, so it cannot be cancelled; a return invoice takes it back.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false)))
+    : '';
+$can_cancel = $can_cancel && ($cancel_locked === '');
 
 // What the provider allows decides the button's words and whether it is
 // there at all: an e-Invoice that has gone is answered with a return.
@@ -1478,7 +1487,7 @@ pg_page_shell([
                 </div>
             </div>
 
-            ' . (($can_return || $can_cancel)
+            ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
                 ? '<form name="form" action="edit_erp_invoice.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
@@ -1491,6 +1500,9 @@ pg_page_shell([
                                 : '') . '
                             ' . ($can_cancel
                                 ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                : '') . '
+                            ' . (($cancel_locked !== '')
+                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline-danger" disabled><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="btn-text">' . lang('Cancel the Document') . '</span></button></span>'
                                 : '') . '
                         </div>
                     </div>

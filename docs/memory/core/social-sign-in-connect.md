@@ -21,5 +21,5 @@ description: Connecting Google, Microsoft or Apple to an account that is already
 - Unchanged and already there: account page (`account_security.php`, `unlink_<provider>`) and `edit_user.php` "Manage" panel (any user below the editor's role). Refused while the provider is the only way in (no password, no other provider).
 - `array` parameters count as not given: `connect[]=` starts an ordinary sign-in.
 
-## Designer
+## What does the designer need for it?
 - Widget `account_security`: flag `signin_connectable`, raw token `^^__signin_connect_buttons^^`; the default tree has a "Connected sign-ins" block. Pages designed earlier need the block added by hand.

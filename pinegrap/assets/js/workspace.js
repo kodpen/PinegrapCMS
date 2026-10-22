@@ -19369,7 +19369,7 @@
 
                 input.type = 'file';
                 input.multiple = true;
-                input.accept = '.md,.markdown,.txt,.zip';
+                input.accept = '.md,.markdown,.txt,.zip,.enex';
                 drop.appendChild(icon('bi-cloud-arrow-up'));
                 drop.appendChild(el('span', 'fw-semibold', t('notes_import_pick')));
                 drop.appendChild(el('span', 'small text-body-secondary', t('notes_import_limit', Math.max(1, Math.floor((limits.max || 0) / 1048576)))));

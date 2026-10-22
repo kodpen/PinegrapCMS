@@ -37,7 +37,8 @@ function get_my_account_profile($properties = array()) {
     }
 
     $contact_id = $row['user_contact'];
-    $timezone = $row['timezone'];
+    // An old zone name stays selected as its current option.
+    $timezone = pg_timezone_list_value($row['timezone']);
 
     // get contact information
     $query = "SELECT
@@ -131,7 +132,7 @@ function get_my_account_profile($properties = array()) {
 
         // Check to see if the site's timezone is one of the timezones in our pick list
         // and get the label if it exists.
-        $site_timezone_label = array_search($site_timezone, $timezones);
+        $site_timezone_label = array_search(pg_timezone_list_value($site_timezone), $timezones);
 
         // If a label could not be found then just use the actual site's timezone for the label.
         if (!$site_timezone_label) {

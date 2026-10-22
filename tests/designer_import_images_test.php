@@ -7,7 +7,8 @@
  * 1×1 GIF, an empty SVG) and the picture is in a data-src style attribute,
  * in srcset, in a <source> of the <picture> or in the <noscript> copy after
  * the image; the image node has to carry that picture, not the placeholder.
- * A src that is the picture stays as it was.
+ * A src that is the picture stays as it was. The alt prop is there only when
+ * the <img> has the attribute.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -214,4 +215,23 @@ function test_designer_import_images_srcset_with_data_uris()
 	$ctx->base_dir = '';
 	$ctx->fragment = true;
 	pg_assert_same($a . ' 1x, ' . $b . ' 2x', pg_di_rewrite_srcset($a . ' 1x,' . $b . ' 2x', $ctx), 'rewriting keeps the data: URIs whole');
+}
+
+// An imported <img> without an alt attribute keeps no alt prop, so the
+// audit asks for one; alt="" stays as the decorative statement it is.
+function test_designer_import_images_alt_decision_kept()
+{
+	$images = array();
+
+	foreach (array('<img src="/a.jpg">', '<img src="/a.jpg" alt="">', '<img src="/a.jpg" alt="Logo">') as $html) {
+		$out = pg_designer_import_fragment($html, array('id' => 1));
+		$node = isset($out['children'][0]) ? $out['children'][0] : array();
+		pg_assert_same('image', isset($node['props']['contentType']) ? $node['props']['contentType'] : '', $html . ' is an image');
+		$images[] = isset($node['props']) ? $node['props'] : array();
+	}
+
+	pg_assert_false(array_key_exists('alt', $images[0]), 'no attribute, no alt prop');
+	pg_assert_same('', $images[1]['alt'], 'alt="" is kept');
+	pg_assert_same('Logo', $images[2]['alt'], 'an alt text is kept');
+	pg_assert_same('/a.jpg', $images[0]['src'], 'the rest of the image is as before');
 }
