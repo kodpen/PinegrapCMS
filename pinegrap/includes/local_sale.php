@@ -237,9 +237,10 @@ function local_sale_line_rate($item)
 }
 
 /**
- * The VAT on one cart line, on the whole line (not per unit), rounded once.
- * erp_order_lines() works it out the same way, which is what keeps the order
- * total and the invoice total equal.
+ * The VAT on one cart line taken alone, on the whole line (not per unit),
+ * rounded once. A sale's lines take their VAT per rate together instead
+ * (local_sale_lines(), pg_tax_by_rate()), as the checkout and the order's
+ * invoice do; a line's share there is within a kurus of this.
  *
  * @param array $item  keys: price, quantity, taxable, tax_rate
  * @return int  kuruş
@@ -277,21 +278,34 @@ function local_sale_lines($order_id)
     );
 
     $lines = array();
+    $taxed = array();
 
     foreach ((array) $rows as $row) {
         $rate = local_sale_line_rate($row);
         $net = (int) $row['price'] * (int) $row['quantity'];
-        $tax = (int) round($rate / 100 * $net);
 
         $row['rate'] = $rate;
         $row['net'] = $net;
-        $row['tax'] = $tax;
-        $row['gross'] = $net + $tax;
-        $row['unit_gross'] = (int) round((int) $row['price'] * (100 + $rate) / 100);
-        // What the till view shows (local_sale_prices_net()).
-        $row['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $row['unit_gross'];
-        $row['amount_till'] = local_sale_prices_net() ? $net : $row['gross'];
         $lines[] = $row;
+        $taxed[] = array('amount' => $net, 'rate' => $rate);
+    }
+
+    // The VAT per rate on the sum of the sale's lines, spread back over them,
+    // as the checkout takes it (pg_tax_by_rate()): the order's tax and its
+    // invoice's are then the e-document provider's.
+    $taxes = pg_tax_by_rate($taxed);
+
+    foreach ($lines as $index => $row) {
+        $tax = (int) $taxes[$index];
+        $rate = $row['rate'];
+        $net = $row['net'];
+
+        $lines[$index]['tax'] = $tax;
+        $lines[$index]['gross'] = $net + $tax;
+        $lines[$index]['unit_gross'] = (int) round((int) $row['price'] * (100 + $rate) / 100);
+        // What the till view shows (local_sale_prices_net()).
+        $lines[$index]['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $lines[$index]['unit_gross'];
+        $lines[$index]['amount_till'] = local_sale_prices_net() ? $net : ($net + $tax);
     }
 
     return $lines;

@@ -14,6 +14,13 @@ Do not invent sample content for a new ready-made block; pick from this set. If 
 | Plan | `Starter`, `Pro`, `Enterprise` |
 | Email / domain | `example.com` (`name@example.com`, `docs.example.com`) |
 | Image | photo `picsum.photos`, logo `placehold.co` |
+| City | London, New York, Istanbul, Berlin, Tokyo |
+| News headline | fictional, upbeat local, business, tech, sport or culture news with the canon companies and cities; no real person, real event, politics, crime or disaster |
+
+## How are names, numbers and dates written?
+- tr.json gives the canon people Turkish names (`Jane Cooper` → Ayşe Yılmaz), so a name never sits inside a longer key: `_sdT('{var}, festival director', _sdT('Emily Turner'))`.
+- A number written differently in Turkish goes through `_sdT()` like a price: decimals (`_sdT('41.85')` → `41,85`), percentages (`+%0,42`), market names (`USD/TRY` → `Dolar/TL`).
+- Dates and times sit in a `<time datetime>` node (`_bkTime()`), close to the season the block is written in.
 
 ## How are prices written?
 - **A price is sample content and goes through `_sdT()`.** The key is the English source (`_sdT('$199')`), the Turkish `₺199` lives in tr.json. A raw `'₺199'` prices an English site in lira.

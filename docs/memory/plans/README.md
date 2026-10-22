@@ -6,7 +6,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - accessibility-and-consent-tools.md: Plan (approved 2026-10-19; designer checks #628 #642, statement block #688 and consent notice #619 done): nightly WCAG 2.2 Level A report with its PDF export left
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- ai-agent-prompts.md: Plan (2026-10-21, not started, answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
+- ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
@@ -17,7 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
-- erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21; steps 1-3 and 4a done, #1001, #1004, #1020, #1055): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 4b, 4c, 5, 6 remain
+- erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21; steps 1-3, 4a, 4b done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 4c, 5, 6 remain
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
