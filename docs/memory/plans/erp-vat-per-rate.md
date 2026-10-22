@@ -1,6 +1,6 @@
 ---
 name: erp-vat-per-rate
-description: Plan (owner's decisions 2026-10-21 and 22; steps 1-5 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 6 (instalment charge) and 7 remain
+description: Plan (owner's decisions 2026-10-21 and 22; steps 1-6 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 7 (memory) remains
 ---
 
 ## Why?
@@ -14,14 +14,14 @@ description: Plan (owner's decisions 2026-10-21 and 22; steps 1-5 done): the ERP
 - 2026-10-22: that checkout rule also in stores without the ERP that send orders with the order screen's Paraşüt buttons. An instalment charge that leaves a rate's total out of reach: the site's card form (iyzico direct or 3-D Secure) charges it a kurus lower; with Pay with iyzico (iyzico sets the amount) the invoice takes the instalment line a kurus lower than paid.
 
 ## How does it work?
-- `erp_rate_vat()` (includes/erp/money.php, #1001); typed documents `erp_manual_lines_build()` and the editor (#1004); returns (#1020); the checkout's `pg_tax_by_rate()` / `pg_tax_spread()` copy it (#1168, erp-discounted-order-vat.md); charges with the goods on the rate's sum (#1211, erp-order-charges-vat.md); the old order buttons send the ERP's lines (#1268, erp-parasut-legacy-order-buttons.md).
+- `erp_rate_vat()` (includes/erp/money.php, #1001); typed documents `erp_manual_lines_build()` and the editor (#1004); returns (#1020); the checkout's `pg_tax_by_rate()` / `pg_tax_spread()` copy it (#1168, erp-discounted-order-vat.md); charges with the goods on the rate's sum (#1211) and the instalment charge (#1269), erp-order-charges-vat.md; the old order buttons send the ERP's lines (#1268, erp-parasut-legacy-order-buttons.md).
 
 ## What remains?
 1-4. Done: #1001, #1004, #1020; orders #1055, #1168, #1211 (claim #1037).
 5. Done (#1268, claim #1257): `parasut_create_invoice()` takes `erp_order_lines()` and the driver's payload and shift; the checkout rule in those stores.
-6. Instalment charge (claim #1257): the iyzico card driver lowers it by the fewest kurus that keep every rate's total reachable (`pg_order_charges_reachable()` with the shipping and surcharge as charged); the order's invoice (`erp_order_lines()`, ERP and old buttons) takes an instalment line that leaves a rate out of reach a kurus lower, the kurus left on the customer's account (M).
+6. Done (#1269, claim #1257): the iyzico card driver takes the instalment charge the fewest kurus lower (`pg_order_installment_charge()`); the order's invoice (`erp_order_lines()` `$settle_installment`: the ERP writer, its API check, the old buttons) takes a line that leaves a rate out of reach a kurus lower, `installment_left` stays on the customer's account.
 7. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md; this file goes when done.
 
 ## Where to start?
-- Step 6: `pg_payment_iyzico_authorize_with()` (includes/payments/iyzico.php) after RetrieveInstallmentInfo, with submit_order.php passing the charged lines and charges; then `erp_order_lines()` and the total checks of its callers.
+- Step 7: move the lasting decisions above into erp-money-and-currency.md and erp-discounted-order-vat.md (the latter is at its size limit: condense), then delete this file.
 - After #1243 (exact `erp_apply_rate()`): `pg_tax_by_rate()` / `pg_tax_rate_amount()` take its rule (float `round()` of a rate like 7.7 differs on PHP 8.4+).
