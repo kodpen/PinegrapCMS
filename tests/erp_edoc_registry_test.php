@@ -49,6 +49,38 @@ function test_erp_edoc_mask_hides_personal_numbers()
 	pg_assert_same('Authorization: Bearer ***', erp_edoc_mask('Authorization: Bearer abc.def.ghi'));
 }
 
+// A provider's error keeps its title, so the log says what went wrong. A
+// title outside the error list (a card's) is still masked, and so are the
+// names and the numbers inside the error itself.
+function test_erp_edoc_mask_keeps_error_titles()
+{
+	$masked = erp_edoc_mask('{"errors":[{"title":"Geçersiz vergi numarası","detail":"VKN 3130557669 kayıtlı değil","source":{"pointer":"/data/attributes/tax_number"}}]}');
+	pg_assert_contains('"title":"Geçersiz vergi numarası"', $masked, 'the error title');
+	pg_assert_contains('"pointer":"/data/attributes/tax_number"', $masked, 'the field it points at');
+	pg_assert_false(strpos($masked, '3130557669') !== false, 'no VKN in the detail');
+
+	$masked = erp_edoc_mask('{"errors":[{"title":"10000000146 bulunamadı","name":"Ayşe Kaya","email":"a@b.co"}]}');
+	pg_assert_contains('"title":"********** bulunamadı"', $masked, 'a number in the title');
+	pg_assert_contains('"name":"***"', $masked, 'a name inside the error');
+	pg_assert_contains('"email":"***"', $masked, 'an address inside the error');
+
+	$masked = erp_edoc_mask('{"data":{"attributes":{"title":"DSM Grup"}},"errors":[{"title":"Kayıt bulunamadı"}],"included":[{"attributes":{"title":"Ali Veli"}}]}');
+	pg_assert_contains('"attributes":{"title":"***"}},', $masked, 'a card title before the list');
+	pg_assert_contains('"errors":[{"title":"Kayıt bulunamadı"}]', $masked, 'the error title between them');
+	pg_assert_false(strpos($masked, 'Ali Veli') !== false, 'a card title after the list');
+
+	$masked = erp_edoc_mask('{"errors":[{"title":"Satır [2] hatalı"},{"title":"Eksik alan"}],"title":"DSM Grup"}');
+	pg_assert_contains('"title":"Satır [2] hatalı"', $masked, 'a bracket in the title');
+	pg_assert_contains('"title":"Eksik alan"', $masked, 'every error in the list');
+	pg_assert_contains('}],"title":"***"}', $masked, 'a title after the list');
+
+	// A list nested deeper than one bracket is masked like any other text.
+	$masked = erp_edoc_mask('{"errors":[{"title":"Ali Veli","meta":[[1]]}]}');
+	pg_assert_contains('"title":"***"', $masked, 'a list it cannot read');
+
+	pg_assert_same('{"title":"***","note":"' . "\x00" . '7' . "\x00" . '"}', erp_edoc_mask('{"title":"x","note":"' . "\x00" . '7' . "\x00" . '"}'), 'a stray marker is left alone');
+}
+
 // The UBL button is drawn for a provider that hands the UBL back: İşbaşı
 // does, Paraşüt's API gives the PDF alone (its driver refuses 'xml').
 function test_erp_edoc_ubl_capability()
