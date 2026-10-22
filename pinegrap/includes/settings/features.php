@@ -42,6 +42,7 @@ $pg_settings_cards[] = '
                                                 <input value="advanced" class="form-check-input" type="radio" id="search_type_advanced" name="search_type" ' . $search_type_advanced_checked . '>
                                                 <label class="form-check-label" for="search_type_advanced">'. lang('Advanced') . '</label>
                                             </div>
+                                            <div class="form-text">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-check form-switch">

@@ -1928,7 +1928,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // on; if not present, prepend to the form body as a last resort.
         $body = preg_replace(
             '/(<div[^>]*class="[^"]*pg-cart-upsell-auto[^"]*"[^>]*>.*?<\/div>)/s',
-            '$1' . str_replace('$', '\\$', $applied_offers_html),
+            '$1' . pg_regex_replacement($applied_offers_html),
             $body,
             1,
             $_replaced
@@ -2066,7 +2066,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // We exit() afterward so nothing else on the page gets rendered (the
     // handler emits its own redirect / receipt).
     $_eo_mode = isset($_GET['mode']) ? (string)($_GET['mode'] ?? '') : '';
-    if (in_array($_eo_mode, array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)) {
+    if (pg_payment_is_return_mode($_eo_mode)) {
         // The handler reads $_POST['page_id'] for express_order_pages lookup.
         // Callbacks usually arrive as GET (after gateway redirect) — synthesize
         // page_id from the current page so the lookup finds something (even
@@ -2505,8 +2505,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $billing_html = _eo_render_billing_address($_eo_lf, $totals, $cfg);
 
     // ── Section: Payment methods (conditional on settings + total > 0) ───────
+    // A card gateway whose driver takes the card in the service's own fields
+    // draws them instead of the card inputs, for the total the card pays.
+    $_eo_hosted_card_html = ($total_cents > 0) ? _eo_hosted_card_html($total_with_surcharge_cents) : '';
     $payment_html = ($total_cents > 0)
-        ? _eo_render_payment_methods($_eo_lf, $cfg)
+        ? _eo_render_payment_methods($_eo_lf, $cfg, $_eo_hosted_card_html)
         : '<div class="alert alert-info mb-3">' . h(lang('No payment is required for this order.')) . '</div>';
 
     // ── Section: Order totals sidebar ────────────────────────────────────────
@@ -2536,7 +2539,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         'billing'                => $billing_html,            // legacy full block
         'billing_country_select' => _eo_render_billing_country_select($_eo_lf),
         'payment'                => $payment_html,            // legacy full block
-        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf),
+        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf, $_eo_hosted_card_html),
         'installment'            => _eo_render_installment_box($_eo_lf),
         'terms'                  => _eo_render_terms_section($_eo_lf),
         'totals'                 => $totals_html,

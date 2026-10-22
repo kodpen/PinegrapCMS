@@ -18,6 +18,7 @@ Token = address/name; section = server-produced block.
 
 ## How do page pickers work here?
 - `redirect_page_id`, `forgot_password_page_id`, `register_page_id`, `login_page_id` use `_swPageOptions` / `_swPageVal`; `types` filters tabs carrying the relevant widget. The register link is one tri-state picker: none / `legacy` (`show_register_link: true`, `register_page_id: 0`) / a page. Renderer reads `(int)`; `tab:` resolution is in `pg_designer_resolve_tab_values`' general walk.
+- `welcome_email_page_id` (register, membership) and `reset_email_page_id` (reset; the reset form also posts `pg_widget_id`) pick an Account E-mail page: docs/memory/designer/account-email-pages.md.
 
 ## What is the `screen` state in the reset widget?
 - `screen` is the reset state machine: `''` = form; `password_hint` = hint + same form (hidden `screen=password_hint` still submits); `confirm` = controls drop, notice stays, form not wrapped.

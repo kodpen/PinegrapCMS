@@ -710,14 +710,16 @@ function pg_mfa_revoke_other_sessions($user_id)
 }
 
 /**
- * Administrator reset and account deletion. Silent when the tables do not
- * exist yet.
+ * Administrator reset and account deletion: the second factor, its recovery
+ * codes and the account's passkeys go. Silent when the tables do not exist
+ * yet.
  *
  * @param int $user_id
  */
 function pg_mfa_reset($user_id)
 {
     pg_mfa_disable($user_id);
+    pg_passkeys_forget($user_id);
 }
 
 /**

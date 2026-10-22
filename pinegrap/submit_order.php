@@ -43,11 +43,11 @@ function submit_order($type) {
     if (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') {
         $liveform->assign_field_value('payment_method', 'PayPal Express Checkout');
     }
-    if(($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return'){
-        $liveform->assign_field_value('payment_method', 'Credit/Debit Card');
-    }
-    if (($_GET['mode'] ?? '') == 'pay_with_iyzico_return') {
-        $liveform->assign_field_value('payment_method', 'Pay With Iyzico');
+    // A payment driver's return (the iyzico 3-D Secure and Pay With Iyzico
+    // returns among them) is for the method that driver serves.
+    $payment_return_method = pg_payment_return_method((string) ($_GET['mode'] ?? ''));
+    if ($payment_return_method !== '') {
+        $liveform->assign_field_value('payment_method', $payment_return_method);
     }
 
     check_banned_ip_addresses('complete order');
@@ -60,7 +60,7 @@ function submit_order($type) {
     // example, a customer might open an additional browser window and submit blank shipping
     // or billing info and then come back to the original window and try to complete the order.
 
-    if ((($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') or (($_GET['mode'] ?? '') == 'paypal_express_checkout_return') or (($_GET['mode'] ?? '') == 'pay_with_iyzico_return')) {
+    if (pg_payment_is_return_mode($_GET['mode'] ?? '')) {
 
         // Check for an incomplete recipient.
         $incomplete_recipient_id = db("
@@ -404,7 +404,7 @@ function submit_order($type) {
     }
     
     // if the mode is not paypal_express_checkout_return, then add field values to session and validate data
-    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
         // An express order's fields are in the session already: express_order.php
         // added this post before its own checks and then adjusted some values
         // (the billing name and address taken from the recipient when the
@@ -1018,8 +1018,13 @@ function submit_order($type) {
         $liveform->assign_field_value('payment_method', 'Offline Payment');
     }
 
-    // if the mode is not paypal_express_checkout_return, then validate the rest of the fields
-    if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return') {
+    // A card typed into the payment service's own fields (Stripe's Payment
+    // Element) never reaches this site: the form posts the service's token,
+    // which the driver checks, and there are no card inputs to validate.
+    $payment_hosted_card_driver = pg_payment_hosted_card_driver(ECOMMERCE_PAYMENT_GATEWAY);
+
+    // if the mode is not a payment service's return, then validate the rest of the fields
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
         // if a nonrecurring transaction or recurring transaction is required, then require a payment method
         if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
             $liveform->validate_required_field('payment_method', lang('A payment method is required.'));
@@ -1107,6 +1112,7 @@ function submit_order($type) {
             if (
                 ($liveform->check_field_error('payment_method') == FALSE)
                 && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
+                && ($payment_hosted_card_driver === '')
             ) {
                 
                 $liveform->validate_required_field('card_number', lang('Card Number is required.'));
@@ -1494,7 +1500,7 @@ function submit_order($type) {
         && $_pg_inst_method === 'Credit/Debit Card'
         && defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
 
-    if( (($_GET['mode'] ?? '') != 'paypal_express_checkout_return' and ($_GET['mode'] ?? '') != 'iyzipay_threedsecure_return' and ($_GET['mode'] ?? '') != 'pay_with_iyzico_return')
+    if( !pg_payment_is_return_mode($_GET['mode'] ?? '')
         and ($liveform->check_form_errors() == FALSE)
         and ($liveform->check_form_notices() == FALSE)
         and !$_pg_skip_total_check
@@ -1860,6 +1866,8 @@ function submit_order($type) {
                 'return_url'               => ($payment_return_mode !== '')
                     ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
                     : '',
+                // The payment service's token for a card typed into its own fields.
+                'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
             )));
         }
 
@@ -1901,6 +1909,15 @@ function submit_order($type) {
 
         if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
             $card_type = $payment_answer['card_brand'];
+
+            // The order keeps what the service says of a card the site never
+            // saw: its last four digits (masked like any card number below)
+            // and its expiry.
+            if ($payment_hosted_card_driver !== '') {
+                $card_number = ($payment_answer['card_last4'] !== '') ? str_repeat('0', 12) . $payment_answer['card_last4'] : '';
+                $expiration_month = $payment_answer['card_exp_month'];
+                $expiration_year = $payment_answer['card_exp_year'];
+            }
         }
     }
 
@@ -6271,7 +6288,26 @@ function submit_order($type) {
         $reservations = $product['reservations'];
         $limit_reservations = $product['limit_reservations'];
         $number_of_initial_spots = $product['number_of_initial_spots'];
-        
+
+        // $products was read before the payment call, so the first row of a
+        // product reads its stock again right before the decrement: a sale
+        // or a restock made meanwhile would otherwise be the 'before' the
+        // stock.low crossing is decided from (two parallel checkouts both
+        // announced it, a restock during payment hid it). Later rows of the
+        // same product carry on from what the row above left; $stock_left
+        // is only set for a product that tracks stock.
+        if (isset($stock_left[$product_id])) {
+            $inventory = 1;
+            $inventory_quantity = $stock_left[$product_id];
+        } else {
+            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+
+            if ($stock_now) {
+                $inventory = $stock_now['inventory'];
+                $inventory_quantity = $stock_now['inventory_quantity'];
+            }
+        }
+
         // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
         if (($inventory == 1) && ($inventory_quantity != 0)) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
@@ -6306,7 +6342,7 @@ function submit_order($type) {
             // the decrement happened in the UPDATE.
             $stock_left[$product_id] = pg_product_stock_changed(
                 $product_id,
-                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $inventory_quantity,
+                (int) $inventory_quantity,
                 null,
                 'checkout');
         }
