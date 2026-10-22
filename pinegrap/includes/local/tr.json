@@ -25270,5 +25270,8 @@
     "{var}, festival director": "{var}, festival direktörü",
     "USD/TRY": "Dolar/TL",
     "EUR/TRY": "Euro/TL",
-    "GBP/TRY": "Sterlin/TL"
+    "GBP/TRY": "Sterlin/TL",
+    "Only a draft waiting at the provider is handed to GİB; ask after its status first.": "GİB'e yalnız sağlayıcıda bekleyen taslak verilir; önce durumunu sorun.",
+    "The last try got no answer from Paraşüt, and the buyer has more invoices on that day than can be looked through. Nothing was sent; look for the record on Paraşüt's screen.": "Son denemede Paraşüt'ten cevap gelmedi ve alıcının o gün taranabilecek olandan çok faturası var. Hiçbir şey gönderilmedi; kaydı Paraşüt ekranında arayın.",
+    "Paraşüt holds the record of an earlier try (id {var:1}) with the date or buyer the invoice had then, and it could not be deleted there ({var:2}). Delete it on Paraşüt's screen, then send again.": "Paraşüt'te önceki bir denemenin kaydı (id {var:1}) faturanın o zamanki tarihi ya da alıcısıyla duruyor ve orada silinemedi ({var:2}). Kaydı Paraşüt ekranında silin, sonra yeniden gönderin."
 }
