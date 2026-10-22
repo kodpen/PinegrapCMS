@@ -68,7 +68,7 @@ if ($_POST) {
     $saved = ws_template_save($viewer, $data);
 
     if ($saved['ok']) {
-        $liveform->add_notice(lang(array('string' => 'The template was saved: {var:1}.', 'vars' => trim($data['name']))));
+        $liveform->add_notice(lang(array('string' => 'The template was saved: {var:1}.', 'vars' => h(trim($data['name'])))));
         go($self_url . '?id=' . (int) $saved['id']);
     }
 
