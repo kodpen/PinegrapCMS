@@ -171,37 +171,16 @@ if (!$_POST) {
 
 						// Price Update
 						$sql_new_prices ='';
-						if($edit_change_price_method != ''){
-							if($edit_change_price_method == '1'){
-								$price = $row['price'];
-								$price = $price - $price_value;
-								if($price <= '0'){
-									$price =  $row['price'];
-									$number_of_undecerease_products++;
-									$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) price cant be decerease. Product price equal or smaller than 0!','vars'=>array($number_of_undecerease_products) )) ); 
-								}
-								$sql_new_prices = "price = '" . e($price) . "',";
+						// A change that would lower a price to zero or below keeps
+						// the old price, whichever method (pg_bulk_price_change()).
+						if(in_array((string) $edit_change_price_method, array('1', '2', '3', '4'), true)){
+							$change = pg_bulk_price_change($row['price'], $edit_change_price_method, $price_value);
+							$price = $change['price'];
+							if($change['refused']){
+								$number_of_undecerease_products++;
+								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) price cant be decerease. Product price equal or smaller than 0!','vars'=>array($number_of_undecerease_products) )) );
 							}
-							else if($edit_change_price_method == '2'){
-								$price = $row['price'];
-								$price = $price + $price_value;
-								$sql_new_prices = "price = '" . e($price) . "',";
-							} 
-							else if($edit_change_price_method == '3') {
-								$price = $row['price'];
-								$price = (int) round(((100 - $price_value) / 100) * $price);
-								if($price <= '0'){
-									$price =  $row['price'];
-									$number_of_undecerease_products++;
-									$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) price cant be decerease. Product price equal or smaller than 0!','vars'=>array($number_of_undecerease_products) )) ); 
-								}
-								$sql_new_prices = "price = '" . e($price) . "',";
-							}
-							else if($edit_change_price_method == '4') {
-								$price = $row['price'];
-								$price = (int) round(((100 + $price_value) / 100) * $price);
-								$sql_new_prices = "price = '" . e($price) . "',";
-							}
+							$sql_new_prices = "price = '" . e($price) . "',";
 						}
                     
                         $sql_inventory_quantity = '';

@@ -2319,6 +2319,55 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
     return $price + (int) round($rate / 100 * $price);
 }
 
+/**
+ * The price a bulk product edit (edit_products.php) gives a product.
+ *
+ * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease
+ * by a percentage, '4' increase by a percentage. A change that lowers the
+ * price never takes it to zero or below: the price is kept and the change
+ * refused, as the two decrease methods always did. An increase by a negative
+ * value is such a change too; it was the one way left to store a negative
+ * price, which an e-document provider refuses on an invoice line. A price
+ * that a change does not lower stays as it comes out (a free product raised
+ * by a percentage stays free).
+ *
+ * @param int|string       $price   products.price, minor units
+ * @param int|string       $method  '1' to '4'; any other changes nothing
+ * @param int|float|string $value   minor units for '1' and '2', a percentage for '3' and '4'
+ * @return array  ['price' => int, the new price or the old one when refused, 'refused' => bool]
+ */
+function pg_bulk_price_change($price, $method, $value)
+{
+    $price = (int) $price;
+
+    switch ((string) $method) {
+        case '1':
+            $new = $price - (int) $value;
+            break;
+        case '2':
+            $new = $price + (int) $value;
+            break;
+        case '3':
+            $new = (int) round(((100 - (float) $value) / 100) * $price);
+            break;
+        case '4':
+            $new = (int) round(((100 + (float) $value) / 100) * $price);
+            break;
+        default:
+            return array('price' => $price, 'refused' => false);
+    }
+
+    // The decrease methods refuse any result at or below zero, as before;
+    // the increase methods only one that came from lowering the price.
+    $decrease = in_array((string) $method, array('1', '3'), true);
+
+    if (($new <= 0) && ($decrease || ($new < $price))) {
+        return array('price' => $price, 'refused' => true);
+    }
+
+    return array('price' => $new, 'refused' => false);
+}
+
 
 /**
  * A typed tax rate as it is stored, or NULL when the field was left empty.
