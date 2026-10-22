@@ -223,14 +223,16 @@ if (!$_POST) {
 
     // The money columns, by position. A row whose cell in one of them is not
     // an amount is left out whole and named in the result, rather than
-    // stored with a figure nobody wrote or stopping the file halfway.
-    $price_keys = array();
+    // stored with a figure nobody wrote or stopping the file halfway. No
+    // variable here may end in _key: the loop above keeps each column's
+    // position in ${column}_key, and $price_key is the price column's.
+    $money_positions = array();
 
-    foreach (array('price', 'extra_shipping_cost', 'compare_at_price') as $price_column) {
-        $price_key = array_search($price_column, $column_names, true);
+    foreach (array('price', 'extra_shipping_cost', 'compare_at_price') as $money_column) {
+        $money_position = array_search($money_column, $column_names, true);
 
-        if ($price_key !== false) {
-            $price_keys[$price_column] = $price_key;
+        if ($money_position !== false) {
+            $money_positions[$money_column] = $money_position;
         }
     }
 
@@ -246,28 +248,15 @@ if (!$_POST) {
             // The row's amounts in minor units. A compare-at price that
             // starts with a minus sign stays out, which leaves the stored one
             // as it is (see below).
-            $row_prices = array();
-            $row_refused = false;
+            $row_read = pg_products_import_row_prices($row, $money_positions);
+            $row_prices = $row_read['prices'];
 
-            foreach ($price_keys as $price_column => $price_key) {
-                $price_cell = trim(pg_products_import_row_value($row, $price_key));
-
-                if (($price_cell === '') || (($price_column == 'compare_at_price') && (strpos($price_cell, '-') === 0))) {
-                    continue;
-                }
-
-                $price_cents = pg_products_import_price_cents($price_cell);
-
-                if ($price_cents === null) {
-                    $row_refused = true;
-                    break;
-                }
-
-                $row_prices[$price_column] = $price_cents;
-            }
-
-            if ($row_refused) {
-                $rows_not_amounts[] = $row_number;
+            // The row is named by its number among the rows read (the header
+            // is 1; a spreadsheet's empty rows are not written to the CSV, so
+            // they are not counted) and by its name, which finds it in any
+            // file. The message is HTML, so the name is escaped.
+            if ($row_read['refused']) {
+                $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
 
@@ -330,8 +319,10 @@ if (!$_POST) {
 
                             // The "was" price: 0 takes it off, as an empty cell
                             // leaves it as it is (the rule of every column here). A
-                            // negative figure, or one the column cannot hold, leaves
-                            // the stored one alone rather than being cut to fit.
+                            // figure starting with '-' is not in $row_prices and
+                            // leaves the stored one alone. A figure that is not an
+                            // amount, or is above the column's top, refused the
+                            // whole row above.
                             if ($column_name == 'compare_at_price') {
                                 $compare_at = isset($row_prices['compare_at_price']) ? pg_compare_at_price_value($row_prices['compare_at_price']) : false;
 
@@ -587,8 +578,10 @@ if (!$_POST) {
                             }
 
                             // The "was" price, read as on the update above. None (0)
-                            // and a figure that cannot be stored leave the column
-                            // out, which keeps its default: NULL, none.
+                            // and a figure starting with '-' leave the column out,
+                            // which keeps its default: NULL, none. A figure that is
+                            // not an amount, or is above the column's top, refused
+                            // the whole row above.
                             if ($column_name == 'compare_at_price') {
                                 $compare_at = isset($row_prices['compare_at_price']) ? pg_compare_at_price_value($row_prices['compare_at_price']) : false;
 
@@ -805,8 +798,9 @@ if (!$_POST) {
     // leaving there until it does.
     if ($import_temp_path != '') { unlink($import_temp_path); }
 
-    // Rows left out because a money cell is not an amount, by their row in
-    // the file (the header is row 1).
+    // Rows left out because a money cell is not an amount, each as its number
+    // among the rows the importer reads (the header is 1; a spreadsheet's
+    // empty rows are not counted) and its name, which identifies the row.
     if ($rows_not_amounts) {
         $rows_listed = implode(', ', array_slice($rows_not_amounts, 0, 50)) . ((count($rows_not_amounts) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));

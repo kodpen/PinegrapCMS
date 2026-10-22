@@ -753,8 +753,9 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 // and a .xlsx or .ods cell comes through as exactly that: it is read as the
 // number it is and rounded to the minor unit. Anything else was typed: a
 // currency symbol or code, a decimal comma, grouping (₺15,00, 12,50,
-// 1.234,56, 1 234,56), read by the product screen's own reader,
-// pg_pb_price_to_cents(), so a figure means the same in a file as in the box.
+// 1.234,56, 1 234,56, 1.234 TL), read by the product screen's own rule,
+// pg_pb_price_figure() (the figure behind pg_pb_price_to_cents()), so a
+// figure means the same in a file as in the box.
 //
 // Words, other characters, a minus sign, more than fifteen digits (beyond
 // that a float is no longer exact) or more than the price column holds give
@@ -789,9 +790,49 @@ function pg_products_import_price_cents($value)
         return null;
     }
 
-    $amount = pg_pb_price_to_cents($figure);
+    // Bounded as a float, before the int cast: on a 32-bit build the cast
+    // would wrap an amount above the top into a wrong or negative price.
+    $amount = round(((float) pg_pb_price_figure($figure)) * 100);
 
-    return ($amount > 2147483647) ? null : $amount;
+    if (!is_finite($amount) || ($amount > 2147483647)) {
+        return null;
+    }
+
+    return (int) $amount;
+}
+
+// The money cells of one import row, read before the database is touched.
+// $price_keys maps each money column the header has (price,
+// extra_shipping_cost, compare_at_price) to its position. Returns
+// array('prices' => array(column => minor units), 'refused' => bool): an
+// empty cell (or spaces alone) is left out, as is a compare_at_price that
+// starts with a minus sign, which leaves the stored one alone; a cell that is
+// not an amount refuses the whole row.
+//
+// A function of its own because the importer keeps each header column's
+// position in a script variable named <column>_key: a loop there with a
+// variable such as $price_key overwrote the price column's position.
+function pg_products_import_row_prices($row, $price_keys)
+{
+    $prices = array();
+
+    foreach ($price_keys as $money_column => $money_position) {
+        $cell = trim(pg_products_import_row_value($row, $money_position));
+
+        if (($cell === '') || (($money_column == 'compare_at_price') && (strpos($cell, '-') === 0))) {
+            continue;
+        }
+
+        $cents = pg_products_import_price_cents($cell);
+
+        if ($cents === null) {
+            return array('prices' => array(), 'refused' => true);
+        }
+
+        $prices[$money_column] = $cents;
+    }
+
+    return array('prices' => $prices, 'refused' => false);
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

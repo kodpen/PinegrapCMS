@@ -257,14 +257,38 @@ function pg_pb_product_attribute_rows($product_id)
  */
 function pg_pb_price_to_cents($value)
 {
+    $figure = pg_pb_price_figure($value);
+
+    if ($figure === '') {
+        return 0;
+    }
+
+    // round(), not truncation: a discounted price lands on fractional cents and
+    // dropping them puts the feed and the card charge a cent apart.
+    return (int) round(((float) $figure) * 100);
+}
+
+/**
+ * A typed price as a dot-decimal figure ('1234.56'), by the rule of
+ * pg_pb_price_to_cents(), or '' when it holds no digit or separator.
+ *
+ * Kept apart so a caller that must bound the amount (the product import) can
+ * check the float before the int cast: on a 32-bit build the cast wraps an
+ * amount above 2147483647 into a wrong or negative figure.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_pb_price_figure($value)
+{
     $value = trim((string) $value);
 
     // Keep digits and separators only; a currency symbol pasted in with the
     // number should not turn the whole thing into zero.
-    $value = preg_replace('/[^0-9.,]/', '', $value);
+    $value = (string) preg_replace('/[^0-9.,]/', '', $value);
 
     if ($value === '') {
-        return 0;
+        return '';
     }
 
     // Which separator is the decimal point cannot be assumed. The old screen
@@ -289,9 +313,7 @@ function pg_pb_price_to_cents($value)
         $value = preg_replace('/[.,]/', '', $value);
     }
 
-    // round(), not truncation: a discounted price lands on fractional cents and
-    // dropping them puts the feed and the card charge a cent apart.
-    return (int) round(((float) $value) * 100);
+    return (string) $value;
 }
 
 /**

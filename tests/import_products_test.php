@@ -154,6 +154,48 @@ function test_products_import_price_cents()
 	pg_assert_same(null, pg_products_import_price_cents('₺'), 'a symbol alone');
 	pg_assert_same(null, pg_products_import_price_cents('99999999999'), 'more than the price column holds');
 	pg_assert_same(null, pg_products_import_price_cents('1234567890123456789,00'), 'too many digits to read exactly');
+	pg_assert_same(123400, pg_products_import_price_cents('1.234 TL'), 'with a currency code a dot before three digits groups');
+	pg_assert_same(2147483647, pg_products_import_price_cents('21.474.836,47'), 'the price column top, typed');
+	pg_assert_same(null, pg_products_import_price_cents('21.474.836,48'), 'one cent above the price column top, typed');
+	pg_assert_same(null, pg_products_import_price_cents('25.000.000,00'), 'a typed amount above the top is not wrapped by the int cast');
+}
+
+// The money cells of one row, read before the database is touched. The header
+// of an export: name, price, extra_shipping_cost, compare_at_price.
+function test_products_import_row_prices()
+{
+	$keys = array('price' => 1, 'extra_shipping_cost' => 2, 'compare_at_price' => 3);
+
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', ''), $keys),
+		'an empty compare-at cell leaves the price read'
+	);
+	pg_assert_same(
+		array('prices' => array(), 'refused' => true),
+		pg_products_import_row_prices(array('Kalem', 'abc', '0.00', ''), $keys),
+		'a price that is not an amount refuses the row'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', '-5'), $keys),
+		'a compare-at price starting with a minus sign is left out without refusing the row'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'compare_at_price' => 1500), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', ' ', '15'), $keys),
+		'a cell of spaces alone is none'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50'), $keys),
+		'a row shorter than the header'
+	);
+	pg_assert_same(
+		array('prices' => array(), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem'), array()),
+		'a file without money columns'
+	);
 }
 
 // A column the file does not have, or a row shorter than the header, reads empty.
