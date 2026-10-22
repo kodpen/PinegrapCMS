@@ -141,9 +141,13 @@ function test_designer_turkish_terms_shipping_and_documents()
 	pg_assert_same(array(), $misspelt);
 }
 
-// The news blocks name every part of a headline 'Haber Başlığı …'.
-// 'Haber …' alone is a story (Story List) and 'Başlık …' a table or
-// card header (Header Row), so a headline part must not read like either.
+// The news blocks name a headline and its containers 'Haber Başlığı …'.
+// 'Haber …' alone is a story (Story List) and 'Manşet' a lead story, so a
+// headline part must not read like either, and it must not share a value
+// with another short key ('Başlık Satırı' is the table Header Row). The
+// link sits directly under a node named 'Haber Başlığı …' and the carousel
+// in a row with badges, both deep or narrow in the 250 px layer tree, so
+// they drop 'Haber' to stay uncut: 'Başlık Bağlantısı', 'Başlık Karuseli'.
 function test_designer_turkish_terms_headline_layer_names()
 {
 	$language = _test_tt_language();
@@ -162,7 +166,7 @@ function test_designer_turkish_terms_headline_layer_names()
 		}
 		$headline[] = $key;
 		$value = $language[$key];
-		if (strpos($value, 'Haber Başlığı') !== 0) {
+		if (!preg_match('/^(Haber Başlığı|Başlık )/u', $value)) {
 			$found[] = $key . ' => ' . $value;
 		}
 		if (count($owners[$value]) > 1) {
@@ -171,4 +175,7 @@ function test_designer_turkish_terms_headline_layer_names()
 	}
 	pg_assert_same(6, count($headline));
 	pg_assert_same(array(), $found);
+	pg_assert_same('Haber Başlığı', $language['Headline']);
+	pg_assert_same('Başlık Bağlantısı', $language['Headline Link']);
+	pg_assert_same('Başlık Karuseli', $language['Headline Carousel']);
 }
