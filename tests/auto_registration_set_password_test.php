@@ -143,3 +143,16 @@ function test_auto_registration_no_password_in_session_or_output()
 
 	pg_assert_same(0, preg_match('/\$random_password/', file_get_contents(PG_FUNCTIONS_DIR . '/custom_form.php')), 'custom_form.php keeps no password');
 }
+
+// The account is created without a password (algo 3), so the signed-in
+// visitor's change password screen asks for no current password, and the
+// sender's copy, which may carry the link, is sent as secret so a failed
+// delivery never writes it to the activity log or the failure notice.
+function test_auto_registration_account_has_no_password_and_mail_is_secret()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/custom_form.php');
+
+	pg_assert_same(1, preg_match('/create_member_user\(array\(/', $source), 'account is created');
+	pg_assert_same(0, preg_match('/create_member_user\(array\((?:(?!\)\);).)*\'password\'/s', $source), 'no password passed');
+	pg_assert_contains("'secret' => ((\$to_email_address == \$submitter_email_address) && (pg_cf_new_account_email(\$form_id) !== ''))", $source, 'sender copy is secret');
+}
