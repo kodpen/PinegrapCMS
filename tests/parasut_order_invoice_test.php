@@ -243,6 +243,21 @@ function test_parasut_order_invoice_refusal_names_a_line_below_zero()
 	pg_assert_same('', parasut_order_invoice_refusal(array($goods), 'TRY', '9001'));
 }
 
+// Create Invoice asks for a line below zero before it compares the lines
+// with the order total: an order whose VAT the checkout held at zero would
+// otherwise be refused by its totals without the line being named.
+function test_parasut_create_invoice_names_a_line_below_zero_before_the_totals()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_create_invoice(');
+	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
+
+	$asked = strpos($source, 'erp_edoc_parasut_negative_line_refusal($built[\'lines\'])', $start);
+	$compared = strpos($source, '$built[\'totals\'][\'grand_total\'] !== $built[\'expected\']', $start);
+
+	pg_assert_true(($asked !== false) && ($compared !== false) && ($asked < $compared), 'the line is asked for before the totals are compared');
+}
+
 // On random orders as the checkout charges them - several rates, a discount,
 // shipping and a surcharge settled so that every rate's total is reachable,
 // sometimes a gift card - the lines as they go to Paraşüt come, by

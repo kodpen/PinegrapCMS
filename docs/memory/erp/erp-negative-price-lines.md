@@ -8,7 +8,8 @@ description: An order line of a product priced below zero: how the checkout, the
 
 ## How is it taxed?
 - Checkout: alone (`pg_tax_by_rate()`), so a group's shares never run backwards. `orders.tax` holds that figure.
-- ERP invoice (`erp_order_lines()`, `erp_rate_vat()`): in its rate's group. The order discount gives it a negative share (`erp_allocate()`), and the tie to `orders.tax` (at most 1 kurus a line) absorbs the difference from the checkout. A group whose sum is zero or less puts its whole VAT on its first line: 1.00 and −3.00 at 20% give −0.40 and 0.00 (the checkout −0.60 on the credit).
+- ERP invoice (`erp_order_lines()`): without an order discount it keeps the checkout's line figures. With one, the credit gets a negative share of it (`erp_allocate()`) and the VAT is taken again per rate with the credit in its rate's group (`erp_rate_vat()`); a group whose sum is zero or less puts its whole VAT on its first line (1.00 and −3.00 at 20%: −0.40 and 0.00).
+- The tie to `orders.tax` moves only lines with VAT above zero, by a kurus or so. Where the checkout held the order's VAT at zero, the gap stays and the invoice is refused as a total mismatch before a number is taken; Create Invoice names the credit line first (#1297).
 - Not grouped at the checkout as well (weighed 2026-10-23): Paraşüt takes no such line anyway, and a group share can move a line's VAT by about a kurus per credit line of its rate, which a subscription then bills every period.
 
 ## Does it go to Paraşüt?
@@ -18,5 +19,5 @@ description: An order line of a product priced below zero: how the checkout, the
 ## What is still wrong?
 - ERP returns: `erp_return_build()` takes a credit line's net and VAT down to zero, so a full return of 100.00 and −30.00 at 20% (invoiced 84.00) comes to 120.00. Not fixed.
 
-## Tests
-- `tests/erp_edoc_parasut_test.php` (`..._negative_line_refusal`, `..._send_invoice_refuses_a_line_below_zero`), `tests/parasut_order_invoice_test.php` (`..._names_a_line_below_zero`), `tests/order_tax_by_rate_test.php` (a credit taxed alone).
+## Which tests cover it?
+- `tests/erp_edoc_parasut_test.php` (`..._negative_line_refusal`, `..._send_invoice_refuses_a_line_below_zero`), `tests/parasut_order_invoice_test.php` (`..._names_a_line_below_zero`, `..._before_the_totals`), `tests/order_tax_by_rate_test.php` (a credit taxed alone).

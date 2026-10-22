@@ -95,7 +95,7 @@ function erp_edoc_parasut_info()
 }
 
 /**
- * No fields: the credentials live in the config row (Faz -1), read by
+ * No fields: the credentials live in the config row, read by
  * parasut_get_token().
  */
 function erp_edoc_parasut_fields()
@@ -536,9 +536,9 @@ function erp_edoc_parasut_vat_rate_refusal($lines)
 /**
  * Why an invoice cannot go to Paraşüt for a line below zero, or '' when every
  * line is zero or more. Paraşüt takes no negative unit price, VAT or discount
- * on a line (live: a -0.52 line was answered 422, "Birim fiyatı 0 sayısına
- * eşit veya büyük olmalı"); an order line of a product priced below zero is
- * one, and so is the share of an order discount such a line carries. The
+ * on a line (live: a -0.52 line was answered 422, "the unit price must be
+ * equal to or greater than 0"); an order line of a product priced below zero
+ * is one, and so is the share of an order discount such a line carries. The
  * first such line is named.
  *
  * @param array $lines  erp_invoice_items rows or erp_order_lines() lines
@@ -555,7 +555,7 @@ function erp_edoc_parasut_negative_line_refusal($lines)
         if (((int) ($line['unit_price'] ?? 0) < 0) || ((int) ($line['line_total'] ?? 0) < 0)
             || ((int) ($line['discount_amount'] ?? 0) < 0)) {
             return lang(array(
-                'string' => 'Line "{var:1}" is below zero, and Paraşüt takes no line below zero: its price, discount and VAT must be zero or more. Nothing was sent to Paraşüt; a credit goes there as a discount on the other lines.',
+                'string' => 'Line "{var:1}" has an amount below zero, and Paraşüt takes no such line: a line\'s price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.',
                 'vars' => (string) ($line['description'] ?? ''),
             ));
         }

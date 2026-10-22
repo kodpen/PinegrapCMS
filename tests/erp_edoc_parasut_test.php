@@ -821,7 +821,7 @@ function test_erp_edoc_parasut_vat_rate_refusal()
 }
 
 // Paraşüt takes no line below zero: a sales invoice with a -0.52 line was
-// answered 422 ("Birim fiyatı 0 sayısına eşit veya büyük olmalı", the same
+// answered 422 ("the unit price must be equal to or greater than 0", the same
 // for its VAT and discount). Such an invoice is refused before anything is
 // sent, naming the line.
 function test_erp_edoc_parasut_negative_line_refusal()

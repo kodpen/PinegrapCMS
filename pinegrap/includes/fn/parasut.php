@@ -1675,6 +1675,15 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.')];
     }
 
+    // A line below zero first: its order's VAT can be one the checkout held
+    // at zero, and the total check below would then name the totals, not
+    // the line Paraşüt refuses.
+    $refusal = erp_edoc_parasut_negative_line_refusal($built['lines']);
+
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $refusal];
+    }
+
     // The lines must come to what the customer was charged. Only rounding is
     // absorbed on the way (erp_order_lines()); a wider gap means the order's
     // own figures disagree, and a legal document is not the place to find out.
