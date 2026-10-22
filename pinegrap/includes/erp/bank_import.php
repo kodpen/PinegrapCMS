@@ -69,8 +69,8 @@ function erp_bank_line_statuses()
 
 /**
  * Read an uploaded CSV into rows of cells: the separator is guessed from the
- * first lines, and a file that is not UTF-8 is read as Windows-1254, the way
- * Turkish banks save it.
+ * first lines (see erp_bank_csv_separator()), and a file that is not UTF-8 is
+ * read as Windows-1254, the way Turkish banks save it.
  *
  * @param string $path
  * @return array ['rows' => array, 'error' => string]
@@ -93,17 +93,7 @@ function erp_bank_read_csv($path)
     }
 
     $lines = preg_split('/\r\n|\r|\n/', $text);
-    $sample = implode("\n", array_slice($lines, 0, 10));
-    $separator = ';';
-    $best = -1;
-
-    foreach (array(';', ',', "\t", '|') as $candidate) {
-        $count = substr_count($sample, $candidate);
-        if ($count > $best) {
-            $best = $count;
-            $separator = $candidate;
-        }
-    }
+    $separator = erp_bank_csv_separator($lines);
 
     $rows = array();
     foreach ($lines as $line) {
@@ -111,7 +101,7 @@ function erp_bank_read_csv($path)
             continue;
         }
 
-        $rows[] = array_map('trim', str_getcsv($line, $separator, '"'));
+        $rows[] = array_map('trim', str_getcsv($line, $separator, '"', '\\'));
 
         if (count($rows) >= ERP_BANK_IMPORT_MAX_ROWS) {
             break;
@@ -123,6 +113,59 @@ function erp_bank_read_csv($path)
     }
 
     return array('rows' => $rows, 'error' => '');
+}
+
+/**
+ * The separator of a CSV statement: the candidate that splits the most of the
+ * first lines into one and the same number of columns (more than one).
+ *
+ * Counting the character itself picks the wrong one in a Turkish bank's
+ * export: the commas in the descriptions and the decimal commas of the
+ * amounts outnumber the semicolons, and the file came apart on the commas.
+ * Lines are split as CSV (quotes respected), so a quoted cell does not count
+ * its separators. A tie goes to the earlier candidate, the semicolon first;
+ * a file with no line of two columns is read with the semicolon.
+ *
+ * @param array $lines  The file's lines
+ * @return string
+ */
+function erp_bank_csv_separator($lines)
+{
+    $sample = array();
+
+    foreach ((array) $lines as $line) {
+        if (trim((string) $line) !== '') {
+            $sample[] = (string) $line;
+        }
+
+        if (count($sample) >= 50) {
+            break;
+        }
+    }
+
+    $separator = ';';
+    $best = 0;
+
+    foreach (array(';', ',', "\t", '|') as $candidate) {
+        $widths = array();
+
+        foreach ($sample as $line) {
+            $width = count(str_getcsv($line, $candidate, '"', '\\'));
+
+            if ($width > 1) {
+                $widths[$width] = ($widths[$width] ?? 0) + 1;
+            }
+        }
+
+        $score = empty($widths) ? 0 : max($widths);
+
+        if ($score > $best) {
+            $best = $score;
+            $separator = $candidate;
+        }
+    }
+
+    return $separator;
 }
 
 /**
@@ -467,7 +510,9 @@ function erp_bank_date($text, $order = 'dmy')
 
 /**
  * An amount as a bank writes it: 1.234,56 or 1,234.56, a minus in front or a
- * trailing one, in parentheses, with a currency word around it.
+ * trailing one, in parentheses, with a currency word or sign around it. The
+ * minus may stand after the currency (TL -1.234,56, ₺-1.234,56); a decimal
+ * separator with nothing in front of it (.50) is still the decimals.
  *
  * @param string $text
  * @return int|null  kurus, signed; null when it is not a number
@@ -480,15 +525,25 @@ function erp_bank_amount($text)
         return null;
     }
 
-    $negative = (bool) preg_match('/^\(.*\)$|^-|-$|^−/u', $text);
+    // The sign is read around the number, not only at the ends of the text:
+    // a currency word or sign often stands in front of the minus.
+    $before = (string) preg_replace('/\d.*$/su', '', $text);
+    $after = (string) preg_replace('/^.*\d/su', '', $text);
+    $negative = (preg_match('/[-−]/u', $before) === 1)
+        || (preg_match('/^\s*[-−]/u', $after) === 1)
+        || ((strpos($before, '(') !== false) && (strpos($after, ')') !== false));
     $digits = preg_replace('/[^0-9.,]/', '', $text);
 
     if ($digits === '') {
         return null;
     }
 
-    $at = max(strrpos($digits, ','), strrpos($digits, '.'));
-    if (($at !== false) && ((strlen($digits) - $at - 1) <= 2) && (strlen($digits) - $at - 1 > 0)) {
+    // strrpos() gives false for a separator that is not there, and
+    // max(false, 0) is false: a separator at position 0 (.50) was lost.
+    $comma = strrpos($digits, ',');
+    $point = strrpos($digits, '.');
+    $at = max(($comma === false) ? -1 : $comma, ($point === false) ? -1 : $point);
+    if (($at >= 0) && ((strlen($digits) - $at - 1) <= 2) && (strlen($digits) - $at - 1 > 0)) {
         $whole = preg_replace('/[.,]/', '', substr($digits, 0, $at));
         $fraction = str_pad(substr($digits, $at + 1), 2, '0');
     } else {

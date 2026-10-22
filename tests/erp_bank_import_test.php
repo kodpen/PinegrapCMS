@@ -8,7 +8,8 @@
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
  * erp_bank_read_file() over a small .xlsx and .ods written here. The older
  * .xls goes through PHPExcel, which is checked on the sandbox rather than
- * here.
+ * here. A CSV statement's separator (erp_bank_read_csv()) and the amounts
+ * erp_bank_amount() reads are checked too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -239,4 +240,95 @@ function test_erp_bank_read_file_refuses_other_documents()
 		pg_assert_contains('.xlsx', $read['error'], $name . ' says what to save it as');
 		pg_assert_contains('.ods', $read['error'], $name . ' names OpenDocument too');
 	}
+}
+
+// Write a CSV statement to a temporary file and read it back as rows.
+function erp_bank_test_read_csv($text)
+{
+	$path = tempnam(sys_get_temp_dir(), 'pg_bank_csv_');
+	file_put_contents($path, $text);
+
+	try {
+		return erp_bank_read_csv($path);
+	} finally {
+		unlink($path);
+	}
+}
+
+// The separator is the one that splits the lines into the same number of
+// columns, not the character seen most often: commas in the descriptions and
+// decimal commas outnumber the semicolons of a Turkish bank's export.
+function test_erp_bank_read_csv_separator_by_columns()
+{
+	$read = erp_bank_test_read_csv("Tarih;Açıklama;Tutar\n"
+		. "01.10.2026;FAST GELEN, ABC LTD, FATURA 12, EKIM;1.250,00\n"
+		. "02.10.2026;HAVALE, XYZ, ODEME;300,00\n");
+
+	pg_assert_same('', $read['error'], 'read');
+	pg_assert_same(array(
+		array('Tarih', 'Açıklama', 'Tutar'),
+		array('01.10.2026', 'FAST GELEN, ABC LTD, FATURA 12, EKIM', '1.250,00'),
+		array('02.10.2026', 'HAVALE, XYZ, ODEME', '300,00'),
+	), $read['rows'], 'three columns split on the semicolon');
+
+	// Two decimal commas on every line split as evenly as the semicolons do;
+	// the heading has none, so the semicolon still wins.
+	$read = erp_bank_test_read_csv("Tarih;Açıklama;Tutar;Bakiye\n"
+		. "01.10.2026;KIRA;-800,00;4.200,00\n"
+		. "02.10.2026;EFT;1.250,00;5.450,00\n");
+
+	pg_assert_same(4, count($read['rows'][1]), 'decimal commas do not decide');
+	pg_assert_same('-800,00', $read['rows'][1][2], 'amount kept whole');
+}
+
+// A comma file with the amounts quoted, a tab file and a file opening on the
+// bank's title block keep their own separators.
+function test_erp_bank_read_csv_other_separators()
+{
+	$read = erp_bank_test_read_csv("Date,Description,Amount\n"
+		. "2026-10-01,\"Rent; October\",\"-1,250.00\"\n"
+		. "2026-10-02,Invoice 1042,300.00\n");
+
+	pg_assert_same(array('2026-10-01', 'Rent; October', '-1,250.00'), $read['rows'][1], 'comma file, quoted cells');
+	pg_assert_same(array('2026-10-02', 'Invoice 1042', '300.00'), $read['rows'][2], 'comma file');
+
+	$read = erp_bank_test_read_csv("Date\tDescription\tAmount\n2026-10-01\tRent, October\t-1.250,00\n");
+
+	pg_assert_same(array('2026-10-01', 'Rent, October', '-1.250,00'), $read['rows'][1], 'tab file');
+
+	$read = erp_bank_test_read_csv("Örnek Bankası, Kadıköy Şubesi\n"
+		. "Hesap özeti, 01.10.2026 - 31.10.2026, TRY\n"
+		. "Tarih;Açıklama;Tutar\n"
+		. "01.10.2026;EFT GELEN;1.250,00\n"
+		. "02.10.2026;KIRA, EKIM;-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA, EKIM', '-800,00'), $read['rows'][4], 'title block with commas');
+}
+
+// A minus after a currency sign or code still makes the amount go out.
+function test_erp_bank_amount_minus_after_the_currency()
+{
+	pg_assert_same(-123456, erp_bank_amount('TL -1.234,56'), 'TL -');
+	pg_assert_same(-123456, erp_bank_amount('₺-1.234,56'), 'lira sign');
+	pg_assert_same(-123456, erp_bank_amount('TRY − 1.234,56'), 'minus sign');
+	pg_assert_same(-123456, erp_bank_amount('-1.234,56 TL'), 'minus first');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56-'), 'trailing minus');
+	pg_assert_same(-123456, erp_bank_amount('1,234.56 - USD'), 'trailing minus before the code');
+	pg_assert_same(-123456, erp_bank_amount('(1.234,56)'), 'parentheses');
+	pg_assert_same(-123456, erp_bank_amount('TL (1.234,56)'), 'parentheses after the code');
+	pg_assert_same(123456, erp_bank_amount('₺1.234,56'), 'in');
+	pg_assert_same(123456, erp_bank_amount('1,234.56 USD'), 'in, code after');
+}
+
+// A decimal separator with no digit in front of it is still the decimals.
+function test_erp_bank_amount_leading_separator()
+{
+	pg_assert_same(50, erp_bank_amount('.50'), '.50');
+	pg_assert_same(-50, erp_bank_amount('-.50'), '-.50');
+	pg_assert_same(50, erp_bank_amount(',5'), ',5');
+	pg_assert_same(50, erp_bank_amount('0,50'), '0,50');
+	pg_assert_same(123400, erp_bank_amount('1.234'), 'thousands only');
+	pg_assert_same(123400, erp_bank_amount('1,234'), 'thousands only, comma');
+	pg_assert_same(1200, erp_bank_amount('12'), 'whole');
+	pg_assert_same(null, erp_bank_amount('TL'), 'no number');
 }

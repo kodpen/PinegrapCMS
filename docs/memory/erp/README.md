@@ -12,6 +12,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-api-seam.md: How ERP plugs into the external API only via includes/erp/api.php: load chain, schema pairs, paging, scope groups, error codes, wire-format rules.
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
+- erp-bank-statement-import.md: ERP bank statement import (includes/erp/bank_import.php): how a CSV's separator is chosen, how an amount's sign and decimals are read.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-counter-sale-completion.md: Counter sale completion chain in add_order.php (order, invoice, receipt), when invoice is mandatory, issue_invoice_seen, and the till right check.
