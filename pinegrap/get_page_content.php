@@ -594,7 +594,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         if (!is_array($_lf_field)) continue;
                         if (isset($_lf_field['error']) && $_lf_field['error'] == TRUE
                             && !empty($_lf_field['error_message'])) {
-                            $err_lines .= '<p class="error">' . $_lf_field['error_message'] . '</p>';
+                            $err_lines .= '<p class="error">' . pg_defuse_page_message($_lf_field['error_message']) . '</p>';
                             $err_count++;
                         }
                     }
@@ -610,7 +610,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     if (!empty($lf_data['notices']) && is_array($lf_data['notices'])) {
                         $ntc_lines = '';
                         foreach ($lf_data['notices'] as $ntc) {
-                            $ntc_lines .= '<p class="notice">' . $ntc . '</p>';
+                            $ntc_lines .= '<p class="notice">' . pg_defuse_page_message($ntc) . '</p>';
                         }
                         if ($ntc_lines !== '') {
                             $pg_messages_html .=
@@ -623,7 +623,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     if (!empty($lf_data['warnings']) && is_array($lf_data['warnings'])) {
                         $wrn_lines = '';
                         foreach ($lf_data['warnings'] as $wrn) {
-                            $wrn_lines .= '<p class="warning">' . $wrn . '</p>';
+                            $wrn_lines .= '<p class="warning">' . pg_defuse_page_message($wrn) . '</p>';
                         }
                         if ($wrn_lines !== '') {
                             $pg_messages_html .=

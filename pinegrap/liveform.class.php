@@ -859,7 +859,7 @@ class liveform {
         } else {
             // mark the field with an error
             $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] = true;
-            $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $error_message;
+            $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $this->defuse_message($error_message);
         }
     }
 
@@ -1020,7 +1020,7 @@ class liveform {
 
     function mark_error($field, $error_message = '') {
         $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] = TRUE;
-        $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $error_message;
+        $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $this->defuse_message($error_message);
     }
 
     function unmark_error($field) {
@@ -1062,16 +1062,28 @@ class liveform {
 
         $_SESSION['software']['liveforms'][$this->form][$this->index][$key] = array(
             'error'         => TRUE,
-            'error_message' => $error_message,
+            'error_message' => $this->defuse_message($error_message),
         );
     }
 
     function add_notice($notice) {
-        $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'][] = $notice;
+        $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'][] = $this->defuse_message($notice);
     }
 
     function add_warning($warning) {
-        $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][] = $warning;
+        $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][] = $this->defuse_message($warning);
+    }
+
+    // A message is stored as it will be printed: the pages that show it place
+    // it before the page is run through PHP and its markers are expanded
+    // (pg_defuse_page_message()). The function check keeps the class usable
+    // where the function modules are not loaded.
+    function defuse_message($message) {
+        if (!is_string($message) || !function_exists('pg_defuse_page_message')) {
+            return $message;
+        }
+
+        return pg_defuse_page_message($message);
     }
 
     /**

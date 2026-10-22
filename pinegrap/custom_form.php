@@ -334,7 +334,7 @@ foreach ($fields as $field) {
             && ($_FILES[$field['id']]['name'] != '')
             && pg_upload_name_blocked($_FILES[$field['id']]['name'])
         ) {
-            $liveform->mark_error($field['id'], pg_upload_blocked_message($_FILES[$field['id']]['name']));
+            $liveform->mark_error($field['id'], h(pg_upload_blocked_message($_FILES[$field['id']]['name'])));
         }
 
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error

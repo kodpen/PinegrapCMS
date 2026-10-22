@@ -5464,7 +5464,7 @@ function _render_content_html($props, $pad, $kids = '')
                                 && !empty($_lf_field['error_message'])
                                 && !isset($err_seen[(string)$_lf_field['error_message']])) {
                                 $err_seen[(string)$_lf_field['error_message']] = true;
-                                $err_lines .= '<p class="error">' . $_lf_field['error_message'] . '</p>';
+                                $err_lines .= '<p class="error">' . pg_defuse_page_message($_lf_field['error_message']) . '</p>';
                             }
                         }
                         if ($err_lines !== '') {
@@ -5480,7 +5480,7 @@ function _render_content_html($props, $pad, $kids = '')
                         if (!empty($lf_data['notices']) && is_array($lf_data['notices'])) {
                             $ntc_lines = '';
                             foreach ($lf_data['notices'] as $ntc) {
-                                $ntc_lines .= '<p class="notice">' . $ntc . '</p>';
+                                $ntc_lines .= '<p class="notice">' . pg_defuse_page_message($ntc) . '</p>';
                             }
                             if ($ntc_lines !== '') {
                                 $msg_parts[] =
@@ -5495,7 +5495,7 @@ function _render_content_html($props, $pad, $kids = '')
                         if (!empty($lf_data['warnings']) && is_array($lf_data['warnings'])) {
                             $wrn_lines = '';
                             foreach ($lf_data['warnings'] as $wrn) {
-                                $wrn_lines .= '<p class="warning">' . $wrn . '</p>';
+                                $wrn_lines .= '<p class="warning">' . pg_defuse_page_message($wrn) . '</p>';
                             }
                             if ($wrn_lines !== '') {
                                 $msg_parts[] =

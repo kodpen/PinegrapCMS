@@ -52,6 +52,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
+- page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php; what is not built yet
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.

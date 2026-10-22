@@ -1,0 +1,22 @@
+---
+name: page-messages-defuse
+description: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
+---
+
+## Why do messages need their own defence?
+- A liveform message is HTML (some carry a link). The visual designer's messages node (`_render_content_html()` case `messages`, `includes/fn/designer.php`; widgets add one through `_pg_inject_messages_node()`) and the messages placeholder of `get_page_content.php` print it into the page BEFORE the page eval, `_expand_custom_php()` and the region tag passes (php-regions-eval-and-content.md).
+- A message can hold text a visitor sent: `lang()` puts `{var:N}` values in as they are. Until 2026.11.0 the refused upload sentence named the file as sent and both printers took messages as they were, so a visitor's text could reach the eval.
+
+## What does pg_defuse_page_message() do?
+- `includes/fn/core.php`, beside `pg_defuse_php_tags()`: `<?` → `&lt;?`, `<!--pg-` (any case) → `<!-- pg-`, and the bracket of the region tags (`cregion`, `pregion`, `dregion`, `menu`, `menu_sequence`, `system`, `login`, `ad`, `cart`, `tcloud`, `pdf`, `mobile_switch`, `if`, `else`, `php`; the list `pg_tr_sanitize_incoming()` strips) → `&lt;`. Words stay on screen; links and other markup are untouched.
+
+## Where is it called?
+- On store: `liveform::defuse_message()` in `mark_error()`, `add_error()`, `add_notice()`, `add_warning()` and `validate_required_field()`, so `output_errors()`, `output_notices()` and `get_errors()` read defused text too. It checks `function_exists()` because the class can load without the function modules.
+- On print: each error, notice and warning line in the two printers above, so a message written into the session some other way is covered as well.
+
+## What must a new message do?
+- Text a visitor or user typed or sent goes into a message through `h()`; a message is HTML, not text. The four liveform doors that refuse an upload (`add_comment.php`, `custom_form.php`, `add_submitted_form.php`, `edit_submitted_form.php`) pass `h(pg_upload_blocked_message($name))`; the panel doors that print the sentence with `h()` themselves or send it as JSON keep the plain sentence.
+- A new place that prints session messages before the eval calls `pg_defuse_page_message()` per line.
+
+## Tests
+- `tests/page_messages_defuse_test.php`: the function, the liveform setters, the designer node, a source scan of the two printers (three defused lines each) and of the four upload doors.

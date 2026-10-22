@@ -727,6 +727,32 @@ function pg_defuse_php_tags($html)
     return str_replace('<?', '&lt;?', $html);
 }
 
+// Defuse a liveform message (error, notice, warning) for the page.
+//
+// A message is HTML (some carry a link) and the visual designer's messages
+// node and the messages placeholder of get_page_content.php print it into the
+// page before the page is run through PHP and before its <!--pg-...-->
+// markers and region tags are expanded. A message can hold a visitor's text,
+// such as a refused file name, so none of the three may stay live in it: the
+// PHP open tag becomes `&lt;?`, a marker becomes an inert `<!-- pg-` comment
+// and the bracket of a region tag becomes `&lt;`. The tag list is the one
+// pg_tr_sanitize_incoming() strips from a translation; here the words stay on
+// screen. Ordinary markup is left alone.
+function pg_defuse_page_message($html)
+{
+    if ($html === null || $html === '') {
+        return '';
+    }
+
+    $html = pg_defuse_php_tags((string) $html);
+
+    if (stripos($html, '<!--pg-') !== false) {
+        $html = str_ireplace('<!--pg-', '<!-- pg-', $html);
+    }
+
+    return preg_replace('/<(\/?(?:cregion|pregion|dregion|menu|menu_sequence|system|login|ad|cart|tcloud|pdf|mobile_switch|if|else|php)\b)/i', '&lt;$1', $html);
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
