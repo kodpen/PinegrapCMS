@@ -863,8 +863,12 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
     } catch (\TypeError $exception) {
         // The SDK's mapper takes only a decoded JSON object: a body that is
         // not iyzico's JSON (a gateway's 502 page, nothing at all) fails
-        // there, after the request went out.
-        return pg_payment_iyzico_refund_answer($amount, false, '', '', $exception->getMessage(), '');
+        // there, after the request went out. raw.exception marks raw.message
+        // as PHP's text, kept for the log and not shown as iyzico's words.
+        $answer = pg_payment_iyzico_refund_answer($amount, false, '', '', $exception->getMessage(), '');
+        $answer['raw']['exception'] = get_class($exception);
+
+        return $answer;
     }
 
     $status = (string) $result->getStatus();
@@ -880,12 +884,29 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
 }
 
 /**
+ * The cURL error numbers raised before a request leaves the server: the
+ * protocol or URL is refused, the proxy or host name does not resolve, no
+ * connection is made, or the TLS session is never set up (handshake, engine,
+ * client certificate, cipher, the peer's certificate, the CA bundle, a pinned
+ * key, the certificate status). A timeout (28), an empty reply (52) and a
+ * send or receive error (55, 56) are not in it: the request may have gone out.
+ *
+ * @return int[]
+ */
+function pg_payment_iyzico_curl_unsent_codes()
+{
+    return array(1, 2, 3, 5, 6, 7, 35, 51, 53, 54, 58, 59, 60, 64, 66, 77, 83, 90, 91);
+}
+
+/**
  * Reads iyzico's answer to a refund. A refusal is iyzico saying no: a status
- * other than success with iyzico's own error code. The rest is unclear - the
- * money may have gone back - and must not reopen the refund for a second try:
- * the body the SDK's cURL client makes of a timeout or a dropped connection
- * (errorCode curl_<n>, Iyzipay\Curl::exec()), a body with no status, a body
- * that is not iyzico's JSON ($readable false).
+ * other than success with iyzico's own error code, or the body the SDK's cURL
+ * client (Iyzipay\Curl::exec()) makes of a failure before the request left
+ * (errorCode curl_<n> with n in pg_payment_iyzico_curl_unsent_codes()). The
+ * rest is unclear - the money may have gone back - and must not reopen the
+ * refund for a second try: any other curl_<n> body (a timeout, an empty
+ * reply, a dropped connection), a body with no status, a body that is not
+ * iyzico's JSON ($readable false).
  *
  * @param int    $amount        hundredths asked back
  * @param bool   $readable      the body was iyzico's JSON
@@ -918,6 +939,15 @@ function pg_payment_iyzico_refund_answer($amount, $readable, $status, $error_cod
             'amount'           => (int) $amount,
             'refund_reference' => (string) $refund_id,
         );
+    }
+
+    $curl_errno = preg_match('/^curl_(\d{1,4})$/', $error_code, $match) ? (int) $match[1] : 0;
+
+    if (in_array($curl_errno, pg_payment_iyzico_curl_unsent_codes(), true)) {
+        // cURL stopped before the request reached iyzico (no address, no
+        // connection, no TLS session): nothing was sent, so the refund can
+        // be tried again once the server is fixed.
+        return array('success' => false, 'error' => $error_message, 'raw' => $raw);
     }
 
     if (($status === '') || (strpos($error_code, 'curl_') === 0)) {

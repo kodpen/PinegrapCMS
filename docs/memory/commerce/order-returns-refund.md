@@ -17,7 +17,7 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 - Under `GET_LOCK(pg_return_lock_name(order))`: re-read, require `received`, move to `refunded`, then call the driver; a refusal puts it back to `received` (`refunded_at = 0`), an unclear answer (timeout, unreadable) keeps it `refunded` and books the amount: commerce/payment-unclear-answers.md. A second click sees `refunded` and is refused.
 
 ## What is written?
-- Money moved (amount > 0): `orders.refunded_amount += amount`, `order_refunds` row (`refund_type` `return` or `return_manual`, `transaction_id` = driver's `refund_reference` or the typed reference, `notes` "Return request #N"). Order status and totals stay (a return is not a cancellation; the order screen's full refund still cancels).
+- Money moved (amount > 0): `orders.refunded_amount += amount`, `order_refunds` row (`refund_type` `return` or `return_manual`, `transaction_id` = the driver's `refund_reference` (never the typed one) or a manual refund's typed reference, `notes` "Return request #N"). Order status and totals stay (a return is not a cancellation; the order screen's full refund still cancels).
 - `pg_audit('update', 'order_return', …)` with refund_amount, refund_method, refund_reference; one activity line; the customer's mail `pg_return_send_refund_mail()` (amount > 0; "the money goes back the way you paid" only for a driver).
 
 ## What about the ERP return invoice?

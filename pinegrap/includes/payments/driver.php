@@ -78,10 +78,12 @@
  *   reply             string  notify(): the body the service expects back
  *   unclear           bool    a failure that does not say whether the service
  *                             did it: no answer in time, a body that is not
- *                             the service's, a driver that threw. The caller
- *                             must not offer the same operation again as if
- *                             nothing had happened (a second refund); false
- *                             on every success and on a plain refusal
+ *                             the service's, a driver that threw an
+ *                             exception (a PHP \Error is a plain failure:
+ *                             nothing was sent). The caller must not offer
+ *                             the same operation again as if nothing had
+ *                             happened (a second refund); false on every
+ *                             success and on a plain refusal
  *   log               array   sentences for the site's activity log, in order;
  *                             the caller writes them, failure or not
  *   raw               array   the service's answer, for the log only; a
@@ -485,7 +487,8 @@ function pg_payment_capabilities($key)
 /**
  * Runs one operation of a driver. Never throws: a driver that is missing,
  * does not define the operation, or throws, answers a failure, with the
- * exception's class and message under raw for the log.
+ * exception's class and message under raw for the log. A thrown exception is
+ * unclear (the request may have gone out); a thrown PHP \Error is not.
  *
  * @param string $key
  * @param string $operation pg_payment_operations() key
@@ -513,12 +516,22 @@ function pg_payment_call($key, $operation, $args = array())
     try {
         $answer = call_user_func_array($function, $args);
     } catch (\Throwable $exception) {
-        // A driver that throws has not said what the service did with the
-        // request: a dropped connection after the request went out looks the
-        // same as one that never left.
+        $raw = array('exception' => get_class($exception), 'message' => $exception->getMessage());
+
+        // A PHP \Error (an undefined function such as curl_init() on a build
+        // without the extension, a programming error in the driver) stops
+        // the driver before anything is sent: a plain failure, the operation
+        // can be tried again.
+        if ($exception instanceof \Error) {
+            return pg_payment_failure(lang('The payment service could not be reached.'), $raw);
+        }
+
+        // An exception from an SDK's network layer has not said what the
+        // service did with the request: a dropped connection after the
+        // request went out looks the same as one that never left.
         return pg_payment_unclear(
             lang('The payment service could not be reached.'),
-            array('exception' => get_class($exception), 'message' => $exception->getMessage()));
+            $raw);
     }
 
     return pg_payment_answer($operation, $answer);

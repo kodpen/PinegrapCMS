@@ -30,6 +30,7 @@ if (!class_exists('PaymentUnclearTestHttp', false)) {
 	{
 		public $body = '';
 		public $throw = '';
+		public $throw_error = false;
 		public $posts = 0;
 
 		public function get($url)
@@ -62,6 +63,10 @@ if (!class_exists('PaymentUnclearTestHttp', false)) {
 			$this->posts++;
 
 			if ($this->throw !== '') {
+				if ($this->throw_error) {
+					throw new \Error($this->throw);
+				}
+
 				throw new \RuntimeException($this->throw);
 			}
 
@@ -70,11 +75,12 @@ if (!class_exists('PaymentUnclearTestHttp', false)) {
 	}
 }
 
-function payment_unclear_test_refund($body, $throw = '')
+function payment_unclear_test_refund($body, $throw = '', $throw_error = false)
 {
 	$http = new PaymentUnclearTestHttp();
 	$http->body = $body;
 	$http->throw = $throw;
+	$http->throw_error = $throw_error;
 	\Iyzipay\ApiResource::setHttpClient($http);
 
 	$order = array('id' => '5', 'order_number' => '77000001', 'payment_method' => 'Pay With Iyzico', 'transaction_id' => 'TXN-24680', 'total' => '10000');
@@ -87,6 +93,15 @@ function payment_unclear_test_refund($body, $throw = '')
 function payment_unclear_test_curl_body()
 {
 	return json_encode(array('status' => 'failure', 'errorCode' => 'curl_28', 'errorMessage' => 'cURL: Operation timed out after 30001 milliseconds with 0 bytes received'));
+}
+
+// The screen sentence and the log line a return's refund would give for this
+// answer (the same steps as pg_return_refund()'s unclear branch).
+function payment_unclear_test_return_lines($answer)
+{
+	list($words, $detail) = pg_return_refund_service_words($answer);
+
+	return pg_return_refund_unclear_lines(5, '77000001', 5000, 'Pay With Iyzico', $words, $detail);
 }
 
 function test_payment_unclear_iyzico_refund_answer_reads_the_four_cases()
@@ -166,4 +181,80 @@ function test_payment_unclear_return_refund_lines()
 
 	$refused = pg_return_refund_refused_line(5, '77000001', 5000, 'Pay With Iyzico', 'İade tutarı fazla');
 	pg_assert_true(strpos($refused, 'İade tutarı fazla') !== false, 'a refusal is logged with the service\'s words');
+}
+
+function test_payment_unclear_iyzico_curl_errors_before_sending_are_refusals()
+{
+	foreach (array('curl_6' => 'cURL: Could not resolve host: api.iyzipay.com', 'curl_60' => 'cURL: SSL certificate problem: unable to get local issuer certificate', 'curl_7' => 'cURL: Failed to connect') as $code => $message) {
+		$direct = pg_payment_iyzico_refund_answer(5000, true, 'failure', $code, $message, '');
+		pg_assert_same(false, $direct['success'], $code . ' is not a refund');
+		pg_assert_true(empty($direct['unclear']), $code . ': the request never reached iyzico');
+		pg_assert_same($message, $direct['error'], $code . ': the client\'s words are shown');
+
+		$driven = payment_unclear_test_refund(json_encode(array('status' => 'failure', 'errorCode' => $code, 'errorMessage' => $message)));
+		pg_assert_same(false, $driven['success'], $code . ' through the driver');
+		pg_assert_same(false, $driven['unclear'], $code . ' through the driver: the return can be refunded again');
+	}
+
+	foreach (array('curl_28', 'curl_52', 'curl_55', 'curl_56', 'curl_', 'curl_x') as $code) {
+		$answer = pg_payment_iyzico_refund_answer(5000, true, 'failure', $code, 'cURL: error', '');
+		pg_assert_true($answer['unclear'] === true, $code . ' may have gone out');
+	}
+
+	pg_assert_true(in_array(60, pg_payment_iyzico_curl_unsent_codes(), true), 'a CA bundle problem is before sending');
+	pg_assert_true(!in_array(28, pg_payment_iyzico_curl_unsent_codes(), true), 'a timeout is not');
+}
+
+function test_payment_unclear_thrown_error_is_a_refusal_and_exception_is_unclear()
+{
+	$error = payment_unclear_test_refund('', 'Call to undefined function curl_init()', true);
+	pg_assert_same(false, $error['success']);
+	pg_assert_same(false, $error['unclear'], 'a PHP error stops the driver before anything is sent');
+	pg_assert_same('Error', $error['raw']['exception']);
+	pg_assert_same(lang('The payment service could not be reached.'), $error['error']);
+
+	$exception = payment_unclear_test_refund('', 'connection reset by peer');
+	pg_assert_same(false, $exception['success']);
+	pg_assert_same(true, $exception['unclear'], 'an exception from the network layer may come after the request went out');
+	pg_assert_same('RuntimeException', $exception['raw']['exception']);
+}
+
+function test_payment_unclear_return_refund_service_words()
+{
+	pg_assert_same(array('İade tutarı fazla', 'İade tutarı fazla'), pg_return_refund_service_words(array('raw' => array('message' => 'İade tutarı fazla'))), 'the service\'s own words go to the screen and the log');
+	pg_assert_same(array('', 'Argument #2 ...'), pg_return_refund_service_words(array('raw' => array('message' => 'Argument #2 ...', 'exception' => 'TypeError'))), 'exception text goes to the log only');
+	pg_assert_same(array('', ''), pg_return_refund_service_words(array('error' => 'No clear answer came from the payment service (no answer).', 'raw' => array('message' => ''))), 'no fallback to the error sentence');
+	pg_assert_same(array('', ''), pg_return_refund_service_words(array('raw' => array('message' => array('x')))), 'only a scalar message counts');
+	pg_assert_same(array('', ''), pg_return_refund_service_words(array()), 'no raw');
+	pg_assert_same(array('', ''), pg_return_refund_service_words(null), 'not an answer');
+}
+
+function test_payment_unclear_return_screen_never_shows_exception_text()
+{
+	$cases = array(
+		'502 page' => payment_unclear_test_refund('<html><body><h1>502 Bad Gateway</h1></body></html>'),
+		'empty body' => payment_unclear_test_refund(''),
+		'{}' => payment_unclear_test_refund('{}'),
+		'thrown' => payment_unclear_test_refund('', 'connection reset in C:\\sites\\shop\\includes\\iyzipay-php\\src\\Iyzipay\\Curl.php'),
+	);
+
+	foreach ($cases as $name => $answer) {
+		pg_assert_same(true, $answer['unclear'], $name . ' is unclear');
+
+		$lines = payment_unclear_test_return_lines($answer);
+
+		pg_assert_true(strpos($lines['error'], '.php') === false, $name . ': no file or class from PHP on the screen');
+		pg_assert_true(strpos($lines['error'], 'No clear answer came from the payment service') === false, $name . ': the driver\'s sentence is not nested in the screen\'s');
+		pg_assert_true(strpos($lines['error'], '(' . lang('no answer') . ')') !== false, $name . ': the screen says there was no answer');
+	}
+
+	$gateway = payment_unclear_test_return_lines($cases['502 page']);
+	pg_assert_true(strpos($gateway['log'], (string) $cases['502 page']['raw']['message']) !== false, 'the log keeps what failed to read the body');
+	pg_assert_true(strpos($gateway['log'], 'AmountBaseRefund') !== false, 'the TypeError text is in the log');
+
+	$thrown = payment_unclear_test_return_lines($cases['thrown']);
+	pg_assert_true(strpos($thrown['log'], 'connection reset') !== false, 'a thrown exception\'s text is in the log');
+
+	$timed_out = payment_unclear_test_return_lines(payment_unclear_test_refund(payment_unclear_test_curl_body()));
+	pg_assert_true(strpos($timed_out['error'], 'Operation timed out') !== false, 'the client\'s own words reach the screen');
 }
