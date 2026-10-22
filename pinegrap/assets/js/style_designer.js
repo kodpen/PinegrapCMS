@@ -52204,18 +52204,7 @@ const StyleDesigner = (function () {
             return (widgetHtml && widgetHtml[id] != null) ? String(widgetHtml[id]) : '';
         });
 
-        // Mirror the editor's current canvas theme (light/dark) into the
-        // preview window. The user expects "preview shows what I'm seeing
-        // in the editor" — without this the dark cascade rules would be
-        // emitted but ignored because <body> has no `data-bs-theme="dark"`.
-        if (canvasDarkTheme) {
-            html = html.replace(/<body([^>]*)>/i, function (m, attrs) {
-                if (/\bdata-bs-theme\s*=/.test(attrs)) {
-                    return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/, 'data-bs-theme="dark"');
-                }
-                return '<body' + attrs + ' data-bs-theme="dark">';
-            });
-        }
+        if (canvasDarkTheme) html = _sdPreviewDarkView(html);
 
         // Compute absolute site base URL. OUTPUT_PATH is Pinegrap's URL path prefix
         // ("/" or "/subfolder/") — prepend scheme+host for a blob:-safe absolute base.
@@ -52342,28 +52331,143 @@ const StyleDesigner = (function () {
             }
         });
 
-        // Inject Bootstrap JS bundle + tooltip auto-init before </body>. Tooltips need explicit
-        // construction — Bootstrap ships no auto-init; the init loop here mirrors what frontend
-        // pages are expected to do and matches the canvas iframe's _initCanvasTooltips().
         var _pvJsInject = '';
         if (_pvExtJs) _pvJsInject += _pvExtJs;
         // Same order as the front end: JSON data, classic code, modules.
         if (_pvJsonJs) _pvJsInject += _pvJsonJs;
         if (_pvInlineJs.trim()) _pvJsInject += '    <script id="pg-page-js">\n' + _pvInlineJs + '    <\/script>\n';
         if (_pvModuleJs) _pvJsInject += _pvModuleJs;
-        html = html.replace('</body>',
-            _pvJsInject +
-            (_pvFw.js
-                ? '    <script src="' + esc(_pvFw.js) + '"></script>\n' +
-                  '    <script>document.addEventListener("DOMContentLoaded",function(){' +
-                  'document.querySelectorAll(\'[data-bs-toggle="tooltip"]\').forEach(function(el){' +
-                  'try{new bootstrap.Tooltip(el);}catch(e){}});' +
-                  'document.querySelectorAll(\'[data-bs-toggle="popover"]\').forEach(function(el){' +
-                  'try{new bootstrap.Popover(el);}catch(e){}});});</script>\n'
-                : '') +
-            '</body>');
+        // The framework's script is the renderer's fallback for a design
+        // whose assets panel has no enabled Bootstrap JS row on this page
+        // (get_page_content.php, $pg_has_bs_js_sentinel); the row itself is
+        // in _pvExtJs. A second copy would bind every dropdown, collapse
+        // and tab twice, so one click opens and closes it again.
+        var _pvBsJsRow = _pvJsRows.some(function (f) { return f.meta === 'bootstrap-js'; });
+        if (_pvFw.js && !_pvBsJsRow) _pvJsInject += '    <script src="' + esc(_pvFw.js) + '"><\/script>\n';
+        // The platform scripts the page's markup asks for, as on the front
+        // end; deferred, so they run after the framework's script.
+        _sdPageScriptFiles(html).forEach(function (src) {
+            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+        });
+        html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
+
+        // The preview's own harness, ahead of the page's scripts.
+        html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
 
         return html;
+    }
+
+    // The preview document `html` in the editor's dark view. The theme goes
+    // to <html>, where a theme switcher writes. Without a switcher it goes to
+    // <body> as well, as on the canvas: a light block of the Themes panel
+    // written as `:root, [data-bs-theme="light"]` matches a dark <html> too
+    // and, loaded after bootstrap.css, wins there, while on <body>
+    // Bootstrap's dark block wins. With a switcher <body> is left alone, or
+    // it would outrank the switcher's choice for every element of the page.
+    function _sdPreviewDarkView(html) {
+        html = _sdSetDarkThemeAttr(html, 'html');
+        if (!/data-pg-theme-switcher/.test(html)) html = _sdSetDarkThemeAttr(html, 'body');
+        return html;
+    }
+
+    // `html` with data-bs-theme="dark" on its first <tag> (`tag` is "html"
+    // or "body"), replacing a theme the tag already names.
+    function _sdSetDarkThemeAttr(html, tag) {
+        return html.replace(new RegExp('<' + tag + '\\b([^>]*)>', 'i'), function (m, attrs) {
+            if (/\sdata-bs-theme\s*=/i.test(attrs)) {
+                return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/i, 'data-bs-theme="dark"');
+            }
+            return '<' + tag + attrs + ' data-bs-theme="dark">';
+        });
+    }
+
+    // `html` with `inject` written just before its last </body> (the page's
+    // own end tag; an earlier one can sit in a script or a code sample), or
+    // appended when it has none. The tag is looked for in `html` itself:
+    // an index taken from a lower-cased copy drifts, since lower-casing can
+    // change the length ("İ" becomes two code units).
+    function _sdInsertBeforeBodyEnd(html, inject) {
+        var re = /<\/body\s*>/gi, m, at = -1;
+        while ((m = re.exec(html)) !== null) at = m.index;
+        return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
+    }
+
+    // The editor's own ?v= stamp (designer_screen.php prints it on this
+    // script), added to the platform scripts the Preview loads so a copy
+    // cached before an upgrade is not used; the page uses ?v= too.
+    var _SD_ASSET_STAMP = (function () {
+        try {
+            var src = (document.currentScript && document.currentScript.src) || '';
+            var m = /[?&]v=([^&#]*)/.exec(src);
+            return m ? m[1] : '';
+        } catch (e) { return ''; }
+    })();
+
+    // Platform scripts a visitor page gets when its markup holds their
+    // marker. The server's twins add the same file to the published page:
+    // pg_theme_switcher_inject() and pg_bs_tips_inject() (its expression is
+    // pg_bs_tips_pattern()). A new row here needs its server step too.
+    var _SD_PAGE_SCRIPTS = [
+        { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
+        { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' }
+    ];
+
+    // The absolute addresses of the platform scripts `markup` asks for (the
+    // blob preview has no base of its own for them).
+    function _sdPageScriptFiles(markup) {
+        var out = [];
+        _SD_PAGE_SCRIPTS.forEach(function (row) {
+            if (!row.test.test(markup)) return;
+            try {
+                var url = new URL(row.file, document.baseURI);
+                if (_SD_ASSET_STAMP) url.searchParams.set('v', _SD_ASSET_STAMP);
+                out.push(url.href);
+            } catch (e) {}
+        });
+        return out;
+    }
+
+    // What makes the blob preview behave like the page without leaving it:
+    //   • the document's <base> is the site, so href="#id" would load the
+    //     site's home page and href="#" the site root: a link to a fragment
+    //     scrolls to its target here, a bare "#" does nothing (links to
+    //     real pages still go there). A form with no action would post to
+    //     the blob address, which no longer exists: it stays.
+    //     Both only when nothing on the page took the event first
+    //     (Bootstrap's toggles cancel their own).
+    //   • theme switchers start from the editor's view (Dark on the
+    //     toolbar: dark) and change the preview's <html> only: the choice
+    //     is not stored as the visitor's. pg_theme_switcher.js keeps an
+    //     engine that is already there.
+    function _sdPreviewHarness(markup) {
+        var js = '(function(){' +
+            'function hashOf(e){if(e.defaultPrevented||!e.target||!e.target.closest)return null;' +
+                'var a=e.target.closest("a[href]");if(!a)return null;' +
+                'var h=a.getAttribute("href");return(h.charAt(0)==="#")?h:null;}' +
+            'function go(e){var h=hashOf(e);if(h===null)return;e.preventDefault();' +
+                'if(e.type!=="click"||h.length<2)return;var id=h.slice(1);' +
+                'try{id=decodeURIComponent(id);}catch(x){}' +
+                'var el=document.getElementById(id)||document.getElementsByName(id)[0];' +
+                'if(el&&el.scrollIntoView)el.scrollIntoView();}' +
+            'window.addEventListener("click",go);window.addEventListener("auxclick",go);' +
+            'window.addEventListener("submit",function(e){var f=e.target;' +
+                'if(e.defaultPrevented||!f||!f.getAttribute)return;var act=f.getAttribute("action");' +
+                'if(!act||act.charAt(0)==="#")e.preventDefault();});' +
+            '})();';
+        if (/data-pg-theme-switcher/.test(markup)) {
+            js += '(function(){var m=' + JSON.stringify(canvasDarkTheme ? 'dark' : 'light') + ',' +
+                'r=document.documentElement,q=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;' +
+                'function res(t){return(!t||t==="auto")?((q&&q.matches)?"dark":"light"):t;}' +
+                'function ap(){r.setAttribute("data-bs-theme",res(m));}' +
+                'window.pgThemeInit=true;ap();' +
+                'window.pgSetTheme=function(t){m=t;ap();var ev;' +
+                    'try{ev=new Event("pg-theme-change");}catch(x){ev=document.createEvent("Event");ev.initEvent("pg-theme-change",false,false);}' +
+                    'document.dispatchEvent(ev);};' +
+                'window.pgGetTheme=function(){return m;};' +
+                'window.pgResolvedTheme=function(){return res(m);};' +
+                '})();';
+        }
+        return '    <script id="pg-preview-harness">' + js + '<\/script>\n';
     }
 
     // The request body of designer/preview_widgets for the system widgets

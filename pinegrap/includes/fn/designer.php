@@ -3986,6 +3986,54 @@ function pg_theme_switcher_inject($content)
 }
 
 /**
+ * The marker of a Bootstrap tooltip or popover: data-bs-toggle="tooltip"
+ * (the Tooltip option of the editor's panel, _pg_node_title_attrs()) or
+ * data-bs-toggle="popover" (Components > Popover), in any quoting. The
+ * editor's Preview tests the markup with the same expression
+ * (_SD_PAGE_SCRIPTS in assets/js/style_designer.js).
+ *
+ * @return string PCRE pattern
+ */
+function pg_bs_tips_pattern()
+{
+    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover)\b/i';
+}
+
+/**
+ * The script that starts Bootstrap tooltips and popovers, for a visual
+ * editor page whose HTML holds one (pg_bs_tips_pattern()).
+ *
+ * Bootstrap creates neither by itself, so without this a popover never opens
+ * on the published page and a tooltip shows only the browser's own title.
+ * Asked once every shared component and system widget is drawn in
+ * (get_page_content.php), like pg_theme_switcher_inject(), so the file
+ * follows the element wherever it was placed. assets/js/pg_bs_tips.js is
+ * deferred: it runs after the Bootstrap bundle whichever way the design
+ * loads it, and does nothing when the design has no Bootstrap.
+ *
+ * @param string      $content page HTML
+ * @param string|null $src     the script's address; null builds it from the
+ *                             software directory and the file's time
+ * @return string
+ */
+function pg_bs_tips_inject($content, $src = null)
+{
+    if (!preg_match(pg_bs_tips_pattern(), $content)) return $content;
+    if (strpos($content, '/assets/js/pg_bs_tips.js') !== false) return $content;
+
+    if ($src === null) {
+        $src = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_bs_tips.js?v='
+             . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_bs_tips.js');
+    }
+    $file = '<script src="' . h($src) . '" defer></script>' . "\n";
+
+    // The last </body>: an earlier one can belong to markup the page shows
+    // as text or carries in an attribute.
+    $body = strripos($content, '</body>');
+    return ($body !== false) ? substr_replace($content, $file, $body, 0) : $content . $file;
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new
