@@ -203,6 +203,19 @@ function test_page_message_text_unclosed_quote_and_comment()
 	pg_assert_same('x', pg_liveform_message_text('x<!--' . str_repeat('a', 1000100)));
 }
 
+// A tag inside a comment or inside another tag's quoted attribute is part of
+// that comment or attribute, and an empty comment ends where it opens: the
+// text after them stays, as the alert shows it.
+function test_page_message_text_tags_inside_comments_and_attributes()
+{
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- <p --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- old <br here --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved. <a title="<p class=\'x>">Open</a> the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!--> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!---> Open the expense'));
+	pg_assert_same('ab', pg_liveform_message_text('a<!---->b'));
+}
+
 // The two inline-feedback consumers (output_field and the per-field JS map)
 // take the message through pg_liveform_message_text(), not the raw stored
 // string, so an escaped file name is not escaped a second time.

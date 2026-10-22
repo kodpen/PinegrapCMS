@@ -777,11 +777,17 @@ function pg_liveform_message_text($message)
     // the possessive quantifiers keep PCRE from backtracking.
     $tag_rest = '(?:[^>"\']++|"[^"]*+(?:"|\z)|\'[^\']*+(?:\'|\z))*+(?:>|\z)';
 
-    $text = preg_replace('/<\/?(?:br|p|div|li|ul|ol|h[1-6]|hr|tr|td|th|table)\b' . $tag_rest . '/i', ' ', (string) $message);
-
-    if ($text !== null) {
-        $text = preg_replace('/<!--(?:[^-]++|-(?!->))*+(?:-->|\z)|<[!?][^>]*+(?:>|\z)|<\/?[a-z]' . $tag_rest . '/i', '', $text);
-    }
+    // One pass, so a tag inside a comment or inside another tag's quoted
+    // attribute is read as part of it, as a browser reads it. A comment ends
+    // at "-->", or at once as "<!-->" and "<!--->".
+    $text = preg_replace_callback(
+        '/<!--(?:-?>|(?:[^-]++|-(?!->))*+(?:-->|\z))|<[!?][^>]*+(?:>|\z)|<\/?([a-z][^\s\/>"\']*+)' . $tag_rest . '/i',
+        function ($match) {
+            // A line break or a block boundary reads as a space between words.
+            return (isset($match[1]) && preg_match('/^(?:br|p|div|li|ul|ol|h[1-6]|hr|tr|td|th|table)$/i', $match[1])) ? ' ' : '';
+        },
+        (string) $message
+    );
 
     if ($text !== null) {
         $text = preg_replace('/[ \t\n\r\f\x0B]+/', ' ', $text);
