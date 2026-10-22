@@ -394,7 +394,10 @@ function mp_sync_send_listings($account, &$summary) {
 
 		if (!$assembled['ok']) {
 
-			mp_sync_batch_failed($queue_ids, mp_error($assembled['error']), $summary);
+			// A momentary failure while assembling (the category's attributes
+			// could not be read) is tried again; everything else is about the
+			// article and waits for the operator.
+			mp_sync_batch_failed($queue_ids, mp_error($assembled['error'], !empty($assembled['retry'])), $summary);
 
 			db("UPDATE marketplace_category_map
 				SET last_error = '" . e(mb_substr((string)$assembled['error'], 0, 500)) . "',

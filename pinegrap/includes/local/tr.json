@@ -25435,5 +25435,7 @@
     "The payment was already refunded in full. Cancelling the order does not touch it.": "Ödeme zaten tamamen iade edildi. Siparişin iptali ödemeye dokunmaz.",
     "The invoice is dated inside the books locked up to {var:1}, so it cannot be cancelled; a return invoice takes it back.": "Defterler {var:1} dahil kilitli ve fatura bu dönemde; iptal edilemez, bir iade faturasıyla geri alınır.",
     "This product group has groups inside it in the Recycle Bin. Delete those from the Recycle Bin first.": "Bu ürün grubunun Geri Dönüşüm Kutusu'nda alt grupları var. Önce onları Geri Dönüşüm Kutusu'ndan silin.",
+    "The attributes of this category could not be read from the marketplace: {var:1}": "Bu kategorinin öznitelikleri pazaryerinden okunamadı: {var:1}",
+    "Orders are not brought in from {var:1} yet.": "{var:1} üzerinden siparişler henüz içe aktarılmıyor.",
     "An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz: sepet yalnızca ödeme adımıyla siparişe dönüşür, sipariş de sepete geri dönmez."
 }
