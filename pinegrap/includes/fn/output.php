@@ -5965,6 +5965,7 @@ function pg_js_bundles()
         'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+        'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
     );
 }
 
