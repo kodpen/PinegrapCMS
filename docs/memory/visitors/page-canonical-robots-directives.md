@@ -13,6 +13,8 @@ description: A page's own canonical address and noarchive / max-snippet (page.ca
 - It replaces `<link rel="canonical">` and `og:url` only; JSON-LD urls, share buttons and search-section anchors keep the page's own address.
 - `pg_page_canonical_href()` percent-encodes non-ASCII after the host; a stored value that no longer passes the check is ignored.
 
+- Designed list pages keep applied URL-filter params, and then `page_number` > 1, in the automatic canonical; a list without an address value keeps the bare one (`designer/form-list-url-filters.md`).
+
 ## What do the site languages see?
 - `pg_tr_render_finalize()` reads the canonical link to know the page (alternates, index verdict). When the head names another address, `get_page_content()` keeps the own one in `pg_page_own_url()` (reset on every draw that is not an e-mail) and the language pass asks there first. A same-host override gets the language prefix like any link; another host is left alone.
 

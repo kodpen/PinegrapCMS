@@ -2717,14 +2717,19 @@ function pg_order_charges_taxed()
 /**
  * Whether the checkout keeps the total of every rate on its orders one that
  * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
- * store invoices its orders in the ERP, charges tax, and its shipping and
- * surcharges hold tax (pg_order_charges_taxed()).
+ * store invoices its orders in the ERP, or sends them to Paraşüt from the
+ * order screen without it (parasut_order_buttons_on(); those invoices carry
+ * the ERP's lines, parasut_create_invoice()), charges tax, and its shipping
+ * and surcharges hold tax (pg_order_charges_taxed()).
  *
  * @return bool
  */
 function pg_order_charges_settle_rates()
 {
-    return defined('ERP_ENABLED') && ERP_ENABLED
+    $invoiced = (defined('ERP_ENABLED') && ERP_ENABLED)
+        || (function_exists('parasut_order_buttons_on') && parasut_order_buttons_on());
+
+    return $invoiced
         && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
         && pg_order_charges_taxed();
 }
@@ -2959,6 +2964,35 @@ function pg_order_items_charges_reachable($item_ids, $discount, $charges)
     }
 
     return pg_order_charges_reachable($lines, $discount, $charges);
+}
+
+/**
+ * The instalment charge a card payment takes: the one the bank quoted,
+ * lowered by the fewest minor units that leave the total of every rate one
+ * the tax, taken on the whole, can reach (pg_order_charges_reachable(), after
+ * the shipping and the surcharge as they are charged). Like those charges it
+ * is shared between the goods' rates on the order's invoice, so with two
+ * rates or more a minor unit moves to another rate instead; with one the
+ * customer pays a minor unit less, and the invoice is still the payment.
+ *
+ * @param array $lines        the lines charged today, as pg_order_charges_reachable() takes them
+ * @param int   $discount     the order discount charged today, minor units
+ * @param array $charges      name => int minor units charged, tax inside: the shipping, the surcharge
+ * @param int   $installment  the instalment charge the bank quoted, minor units
+ * @return int  the instalment charge to take
+ */
+function pg_order_installment_charge($lines, $discount, $charges, $installment)
+{
+    $installment = (int) $installment;
+
+    if (($installment <= 0) || empty($lines)) {
+        return $installment;
+    }
+
+    $charges = array_map('intval', (array) $charges);
+    $charges['installment'] = $installment;
+
+    return (int) pg_order_charges_reachable($lines, $discount, $charges)['installment'];
 }
 
 function update_order_item_taxes()

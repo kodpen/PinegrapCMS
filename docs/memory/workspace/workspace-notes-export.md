@@ -15,5 +15,8 @@ description: Notes leaving the Workspace as files (workspace_notes_export.php, n
 ## What is in the zip?
 - `ws_note_export_vault()` (ZipArchive; without the extension the screen says to export notes one by one): the person's own notes at the top, notes shared with them under `Shared/`, every note's files (its `Workspace/Notes/Note N` folder) under `attachments/<note id>/`, and the `[name](url)` links in the text pointed there (`ws_note_export_attachment_links()`; `../attachments/…` from `Shared/`). The folder opens as an Obsidian vault and imports into Joplin and Notion. The rows come from `ws_note_export_rows()`, not from `ws_notes_list()`, so the screen's 500-note cap (issue #511) does not cut an export.
 
+## What if there is nothing to export?
+- libzip writes no file for an archive without entries: `close()` deletes it. A person with no notes (none shared either) got a 0-byte `notes-<date>.zip` and `filesize()`/`readfile()` warnings (issue #777, PR #1265). Now `ws_note_export_vault()` reads the rows first and answers "There are no notes to export." without opening a zip, treats a failed `close()` or a missing file as "The file could not be saved.", and `ws_notes_export_send()` shows an error page instead of streaming a file that is not there.
+
 ## What does the print page do?
 - Its own HTML (no panel shell: nothing to hide at print time): title, a meta line (author, last changed by, date), the body from `ws_render_body()` with a stylesheet for chips, checklists, tables and code, a Print button, `window.print()` on load. Tests: `tests/workspace_notes_io_test.php`.

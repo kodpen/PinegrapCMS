@@ -14,6 +14,6 @@ description: IP columns must be VARCHAR(45) (IPv6); how a VARCHAR(15) ip_address
 
 ## How is auto-ban written now?
 - `waf_auto_ban()` is a single atomic `INSERT ... ON DUPLICATE KEY UPDATE`. The old SELECT-then-INSERT also had a race: two concurrent requests from one attacker both saw "no row" and both inserted. `uniq_entry(ip_address, list_type, source)` makes duplicates structurally impossible.
-- The manual list INSERT in `settings.php` also uses ODKU; otherwise saving the screen a second time failed with a UNIQUE violation (`Query failed`).
+- The manual list INSERT in `includes/settings/firewall.save.php` also uses ODKU; otherwise saving the screen a second time failed with a UNIQUE violation (`Query failed`).
 
 Related: docs/memory/waf/waf-ban-ladder.md

@@ -16,7 +16,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - L5 retire: remove the three files, the `page_designer_button` branch in `includes/fn/output.php` (Ctrl+G), the help-table row, the session key `software.page_designer`; `clean_up.php` lists the files; changelog `[NEW]` line. Gated by Y6.
 
 ## Which rules apply?
-- The legacy custom style layer is production (`pinegrap-verilmis-kararlar`): conversion never runs by itself; the renderers and layout templates are not touched.
+- The legacy custom style layer is production (`workflow/decisions-made-product.md`): conversion never runs by itself; the renderers and layout templates are not touched.
 - A converted page re-exported by the designer is normalised (indentation, attribute order, quoting); byte-identical output is not a goal unless the owner says so.
 
 ## What waits on this plan? (PHP region eval; owner 2026-10-19: no change now)
