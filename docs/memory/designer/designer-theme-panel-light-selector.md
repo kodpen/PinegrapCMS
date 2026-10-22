@@ -1,24 +1,31 @@
 ---
 name: designer-theme-panel-light-selector
-description: Which selector the designer's Themes panel writes light-mode variables under, why it is :root:not([data-bs-theme="dark"]), and how old designs are rewritten.
+description: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 ---
 
 ## Where do the Themes panel's values go?
-- Into the design's User Styles (`cssFiles` entry `meta: 'user-styles'`, published as `<style id="pg-user-styles">` after bootstrap.css). Light mode is one rule block, dark mode `[data-bs-theme="dark"] { … }`. Helpers in `assets/js/style_designer.js`: `_themeSelectorRe()`, `_themeCanonicalSelector()`, `_themeUpgradeLightSelector()`, `_writeThemeVar()`.
+- Into the design's User Styles (`cssFiles` entry `meta: 'user-styles'`, published as `<style id="pg-user-styles">` after bootstrap.css), in three blocks (`_themeBlockFor()`):
+  - light: `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"]` for a light value of a variable Bootstrap's `[data-bs-theme=dark]` block gives a dark value (`THEME_DARK_OWN_VARS`: body/secondary/tertiary colour and background, emphasis, subtle colours, heading, link colours, code, highlight, border colour, form valid/invalid);
+  - shared: `:root, [data-bs-theme="light"]` for a light value of any other variable (font, size, weight, line height, link decoration, border width and radii, focus ring, the eight theme colours, custom variables);
+  - dark: `[data-bs-theme="dark"]` for every dark value.
+- Helpers in `assets/js/style_designer.js`: `_themeFindBlock()`, `_themeCanonicalSelector()`, `_themeSetDecl()`, `_themeUpgradeLightSelector()`, `_themeModeDecls()`, `_writeThemeVar()`.
 
-## Why is the light block `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"]`?
-- It used to be `:root, [data-bs-theme="light"]`. `:root` also matches an `<html data-bs-theme="dark">` a theme switcher sets, and at equal specificity the later user styles beat Bootstrap's dark block: with Background `#fdf6e3` set for light mode, "Dark" kept the light page and turned the text light grey.
-- The new form covers the default page and an explicit light section, never a dark `<html>`. A dark section inside a light page still gets the dark values (its own declarations win over the inherited ones).
-- The editor canvas hid the bug: its toolbar dark view puts `data-bs-theme` on `<body>`, where Bootstrap's dark block wins over the inherited `:root` value.
+## Why two light selectors?
+- `:root` also matches an `<html data-bs-theme="dark">` a theme switcher sets, and at equal specificity the later user styles beat Bootstrap's dark block: with Background `#fdf6e3` under Light, "Dark" kept the light page with light grey text. So colours Bootstrap redefines for dark use the `:not()` form.
+- Bootstrap has one value for both modes for the rest, so a dark `<html>` with the `:not()` form fell back to Bootstrap's defaults (font system-ui, radius 6px). Those stay under `:root`.
+- The shared block is created before the dark block, so a Dark value of the same variable wins on a dark `<html>`. The light block wins over the shared one (`(0,2,0)`); a hand-written `:root` rule in a stylesheet ordered after User Styles loses to it.
+- The editor canvas hid the bug: its toolbar dark view puts `data-bs-theme` on `<body>`.
+- In Dark mode a shared variable's placeholder is the light value it inherits.
 
 ## Which light forms are read?
-- The new form, the old combined form, a bare `:root` and a bare `[data-bs-theme="light"]` (quoted, either quote style). The `:not(...)` inside the new form is never taken for the dark block: the dark regex needs `{` right after `]`.
+- The light form, the old combined form, a bare `:root` and a bare `[data-bs-theme="light"]`, either quote style, each from its first selector; the tail of a combined form is never taken for a bare block. In Light mode the panel shows the light block over the shared one. A panel write puts the value in its own block and removes it from the other light block.
 
 ## How are designs saved with the old selector fixed?
-- In the editor only, no server rewrite and no upgrade step: `_ensureBootstrapSentinels()` rewrites the old combined form when the design loads, and `_writeThemeVar()` does it before every write. The design then reads as changed and is fixed on its next save; a design nobody opens keeps the old block.
-- A bare `:root` or `[data-bs-theme="light"]` block is hand-written and may hold the operator's own variables that must stay in dark mode, so it is left as written.
-- "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the canonical selectors; theme files saved before keep theirs.
+- In the editor only, no server rewrite and no upgrade step: `_ensureBootstrapSentinels()` splits the old combined block when the design loads and `_writeThemeVar()` before every write. Colour variables move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, and the block moves before the dark block when it sat after it. A block of mode-neutral variables already before the dark block is not touched. A design nobody opens keeps the old block.
+- A bare `:root` or `[data-bs-theme="light"]` block is hand-written and is left as written.
+- "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the shared, light and dark blocks with these selectors; theme files saved before keep theirs.
 - Palette files (`pg_design_palette_css()`) keep `:root, [data-bs-theme=light]`: they set every variable they override in their dark block too.
+- Bootstrap 6 designs use the same split; its colours come from `light-dark()`.
 
 ## What keeps this from coming back?
-- `tests/designer_theme_light_selector_test.php` runs the helpers under Node (written selector, every read form, the rewrite and its call sites).
+- `tests/designer_theme_light_selector_test.php` runs the helpers under Node: the selectors, `THEME_DARK_OWN_VARS` against the shipped bootstrap 5.3.8 dark block, every read form with its offset, the split, panel writes, a small cascade check (dark page keeps font and radius, gets the dark background) and the call sites with comments stripped.
