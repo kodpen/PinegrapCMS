@@ -449,12 +449,57 @@ function test_designer_blocks_scroll_hint_is_direction_neutral()
 	pg_assert_same(array(), $one_way, 'one-way arrows in scroller-cards');
 }
 
+// The weather strip's city builder (_nbWsCity inside the news-weather-strip
+// builder): the class tokens of the element it returns (null when it does
+// not start by returning one _bkDiv) and how many times the strip calls it.
+function _test_blocks_weather_city()
+{
+	$out = array('classes' => null, 'calls' => 0);
+	$at = _test_blocks_builder_at('news-weather-strip');
+	$block = $at === false ? null : _test_blocks_block($at);
+	if (!$block) {
+		return $out;
+	}
+	$js = _test_blocks_js();
+	$def = strpos($js, 'var _nbWsCity = function', $block[0]);
+	$fn = ($def === false || $def > $block[1]) ? null : _test_blocks_block($def);
+	if (!$fn) {
+		return $out;
+	}
+	$body = substr($js, $fn[0], $fn[1] - $fn[0] + 1);
+	if (preg_match("/^\\{\\s*return _bkDiv\\('([^'\\\\]*)'/", $body, $m)) {
+		$out['classes'] = preg_split('/\s+/', trim($m[1]));
+	}
+	$out['calls'] = preg_match_all('/(?<![\w$])_nbWsCity\(/', substr($js, $fn[1], $block[1] - $fn[1]));
+	return $out;
+}
+
+// True when the class token $token overrides the look's corner radius or
+// border width with a fixed one (or removes a side's border or rounding).
+function _test_blocks_freezes_shape($token)
+{
+	return (bool) preg_match('/^(?:(?:rounded|border)(?:-(?:top|end|bottom|start))?-0|rounded-(?:pill|circle)|border-[1-5])$/', $token);
+}
+
+function test_designer_blocks_shape_override_matcher()
+{
+	foreach (array('rounded-0', 'border-0', 'border-top-0', 'rounded-end-0', 'rounded-pill', 'rounded-circle', 'border-2') as $token) {
+		pg_assert_true(_test_blocks_freezes_shape($token), $token . ' fixes the shape');
+	}
+	foreach (array('rounded', 'border', 'border-bottom', 'rounded-top', 'border-primary', 'border-opacity-50', 'bg-body') as $token) {
+		pg_assert_true(!_test_blocks_freezes_shape($token), $token . ' leaves the shape to the look');
+	}
+}
+
 // The weather strip's cities are outlined chips on the body colour, so the
-// look's radius and border width reach the band.
+// look's radius and border width reach the band: the element each city is
+// built as carries them, and nothing on it fixes either.
 function test_designer_blocks_weather_cities_follow_the_look()
 {
-	pg_assert_true(
-		_test_blocks_builder_has_classes('news-weather-strip', array('bg-body', 'border', 'rounded', 'text-nowrap')),
-		'a news-weather-strip city item carries bg-body, border and rounded'
-	);
+	$city = _test_blocks_weather_city();
+	pg_assert_true(is_array($city['classes']), 'the weather strip builds each city as one _bkDiv in _nbWsCity');
+	pg_assert_same(5, $city['calls'], 'cities the weather strip builds with _nbWsCity');
+	$classes = is_array($city['classes']) ? $city['classes'] : array();
+	pg_assert_same(array(), array_values(array_diff(array('bg-body', 'border', 'rounded', 'text-nowrap'), $classes)), 'chip classes a city lacks');
+	pg_assert_same(array(), array_values(array_filter($classes, '_test_blocks_freezes_shape')), 'classes on a city that fix its shape');
 }
