@@ -4,8 +4,9 @@
  *
  * Tests for donation lines in the offer engine (includes/fn/ecommerce.php):
  * a donation is the amount the visitor typed, not a product, so "the cheapest
- * item is free" does not pick it, no product discount takes it, and taking an
- * offer's discount off the cart does not reset its amount.
+ * item is free" does not pick it, no product discount takes it, it is not a
+ * piece toward a "cart quantity" condition, and taking an offer's discount
+ * off the cart does not reset its amount.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -67,4 +68,21 @@ function test_offer_donation_restore_keeps_the_typed_amount()
 	pg_assert_same(null, pg_offer_restored_line_price(array('product_id' => '9', 'product_price' => '0', 'product_selection_type' => 'donation'), array()), 'the donation keeps what the visitor typed');
 	pg_assert_same('1000', pg_offer_restored_line_price(array('product_id' => '7', 'product_price' => '1000', 'product_selection_type' => 'checkbox'), array()), 'a product gets its list price back');
 	pg_assert_same(800, pg_offer_restored_line_price(array('product_id' => '7', 'product_price' => '1000', 'product_selection_type' => 'checkbox'), array(7 => array('price' => 800))), 'a member gets the agreed price back');
+}
+
+function test_offer_donation_is_not_counted_toward_cart_quantity()
+{
+	// "Buy 3, cheapest free" with X 20,00, Y 10,00 and a 0,01 donation: the
+	// donation must not be the third piece that frees Y.
+	$lines = array(
+		array('quantity' => '1', 'product_selection_type' => 'checkbox'),
+		array('quantity' => '1', 'product_selection_type' => 'checkbox'),
+		array('quantity' => '1', 'product_selection_type' => 'donation'),
+	);
+	pg_assert_same(2, pg_offer_counted_quantity($lines), 'a donation line is not a piece');
+	pg_assert_same(5, pg_offer_counted_quantity(array(
+		array('quantity' => '3', 'product_selection_type' => 'checkbox'),
+		array('quantity' => '2', 'product_selection_type' => null),
+	)), 'units of a line count, and a line whose product was deleted still counts');
+	pg_assert_same(0, pg_offer_counted_quantity(array()), 'an empty cart');
 }

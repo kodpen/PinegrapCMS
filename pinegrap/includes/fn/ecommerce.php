@@ -3724,19 +3724,45 @@ function pg_offer_cart_conditions_met($offer_id, $ship_to_id = 0)
     return true;
 }
 
-// Everything in the cart, counted by the piece. A gift the offer itself put
-// there does not help the customer reach the threshold that earns it, so rows
-// an offer added are left out.
+// The pieces among $lines (quantity, product_selection_type) that count toward
+// a "cart quantity" condition. A donation line is left out: its price is the
+// amount the visitor typed, not a piece, and since a donation is never the
+// cheapest item, counting it let a donation of 1 minor unit complete "buy N,
+// cheapest free" and make a real product free. A line whose product was
+// deleted (no selection type) still counts.
+function pg_offer_counted_quantity($lines)
+{
+    $quantity = 0;
+    foreach ((array) $lines as $line) {
+        if (($line['product_selection_type'] ?? '') === 'donation') {
+            continue;
+        }
+        $quantity += (int) $line['quantity'];
+    }
+    return $quantity;
+}
+
+// Everything in the cart, counted by the piece (pg_offer_counted_quantity()).
+// A gift the offer itself put there does not help the customer reach the
+// threshold that earns it, so rows an offer added are left out, and so are
+// donations.
 function pg_offer_cart_quantity($ship_to_id = 0)
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
     if (($order_id <= 0) || pg_offer_guest_view()) {
         return 0;
     }
-    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
-    return (int) db_value("SELECT SUM(quantity) FROM order_items
+    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (order_items.ship_to_id = '" . e($ship_to_id) . "')" : '';
+    return pg_offer_counted_quantity(db_items("SELECT
 
-        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0')" . pg_order_item_active_sql() . " $sql_recipient");
+            order_items.quantity,
+            products.selection_type AS product_selection_type
+
+        FROM order_items
+
+        LEFT JOIN products ON order_items.product_id = products.id
+
+        WHERE (order_items.order_id = '" . e($order_id) . "') AND (order_items.added_by_offer = '0')" . pg_order_item_active_sql() . " $sql_recipient"));
 }
 
 function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
