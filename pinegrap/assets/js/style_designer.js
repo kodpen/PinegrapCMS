@@ -1282,6 +1282,25 @@ const StyleDesigner = (function () {
         }, force);
     }
 
+    // Refresh a form's cached rows once a save or a move has rewritten them, so
+    // every panel and canvas token that reads the form (its own page, and the
+    // list and detail pages bound to it) shows the stored state. The old rows
+    // stay until the new ones arrive: some panels read the cache without
+    // fetching (the list view's field pickers) and would otherwise sit on
+    // their loading text. The read-only copy of another page's form is
+    // dropped; its panels load it again when they draw.
+    function _cfDropFieldCache(formPageId) {
+        formPageId = parseInt(formPageId, 10) || 0;
+        if (!formPageId) return;
+        delete _cfForeign[formPageId];
+        delete _sdLabelFieldsAsked[formPageId];
+        if (!_formFieldsCache[formPageId]) return;
+        _fetchFormFields(formPageId, function () {
+            if (typeof renderCanvas === 'function') renderCanvas();
+            _sdSchedulePropsRefresh();
+        }, true);
+    }
+
     // Fetch the form_fields rows for a given custom form page_id. Caches per page_id.
     // Calls cb(items) on completion. Idempotent unless `force` is true.
     function _fetchFormFields(formPageId, cb, force) {
@@ -1363,6 +1382,9 @@ const StyleDesigner = (function () {
      *   office_use_only     staff see and fill it, the visitor never does
      *   validation_message  what the visitor reads when `pattern` refuses
      *   upload_folder_id, quiz_question, quiz_answer
+     *   wysiwyg             a text area visitors fill in with the rich-text
+     *                       editor; absent, the field row keeps its own flag
+     *                       (one set on the classic field screen survives)
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1702,6 +1724,7 @@ const StyleDesigner = (function () {
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
                     office_use_only: !!rec.office_use_only,
+                    rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
                 };
                 order.push(byKey[key]);
@@ -1718,6 +1741,41 @@ const StyleDesigner = (function () {
         var rec = (node.props && node.props._cf) || {};
         if (!pid || !rec.ids || typeof rec.ids !== 'object') return 0;
         return parseInt(rec.ids[String(pid)], 10) || 0;
+    }
+
+    // A field row's flag: a boolean from designer/form_fields, the string
+    // '1' / '0' from shared_component/list_form_fields.
+    function _cfFlagOn(v) {
+        return v === true || String(v) === '1';
+    }
+
+    // Whether a text area is filled in with the rich-text editor. Once the
+    // switch has been used the control's _cf.wysiwyg decides; before that the
+    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
+    // the panel shows. null while the page's rows are being loaded.
+    var _cfRichRowsLoading = {};
+    function _cfRichOn(lead) {
+        if (_cfTagOf(lead) !== 'textarea') return false;
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+        var p   = _pgActivePage();
+        var pid = p ? (parseInt(p.page_id, 10) || 0) : 0;
+        if (!pid) return false;
+        var rows = _formFieldsCache[pid];
+        if (!rows) {
+            if (!_cfRichRowsLoading[pid]) {
+                _cfRichRowsLoading[pid] = true;
+                _fetchFormFields(pid, function () {
+                    delete _cfRichRowsLoading[pid];
+                    _sdSchedulePropsRefresh();
+                });
+            }
+            return null;
+        }
+        var id = _cfRowId(lead), key = String(_cfControlName(lead) || '').toLowerCase(), hit = null, i;
+        for (i = 0; id && !hit && i < rows.length; i++) if (parseInt(rows[i].id, 10) === id) hit = rows[i];
+        for (i = 0; key && !hit && i < rows.length; i++) if (String(rows[i].name || '').toLowerCase() === key) hit = rows[i];
+        return !!hit && hit.type === 'text area' && _cfFlagOn(hit.wysiwyg);
     }
 
     // The control whose record a panel edits: the first control of the group
@@ -1993,6 +2051,21 @@ const StyleDesigner = (function () {
         // Another page's form, shown here. Its fields are that page's to
         // change; this panel only says what they are.
         if (!w.owns) {
+            var fFormId = parseInt(w.cfg.form_id || w.cfg.custom_form_page_id || 0, 10) || 0;
+            var fForm = _cfForeign[fFormId];
+            // The widget panel is not the only way in: a control clicked
+            // first loads the form itself. _cfEnsureForeign() asks once and
+            // remembers a failure, so the redraw cannot loop.
+            if (!fForm && fFormId && c.tag === 'textarea') {
+                _cfEnsureForeign(fFormId, function () { _sdSchedulePropsRefresh(); });
+            }
+            var fRich = false;
+            if (c.tag === 'textarea' && fForm && Array.isArray(fForm.fields)) {
+                fForm.fields.forEach(function (f) {
+                    if (String(f.name || '').toLowerCase() === String(name).toLowerCase()
+                        && f.type === 'text area' && _cfFlagOn(f.wysiwyg)) fRich = true;
+                });
+            }
             return sect('bi-ui-checks', _sdT('Form Field'),
                 '<div class="sd-prop-row"><div class="sd-prop-control">' +
                     '<div style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45">' +
@@ -2001,7 +2074,8 @@ const StyleDesigner = (function () {
                 '</div></div>' +
                 row(_sdT('Label'),  '<span class="sd-prop-static">' + esc(src.text || name) + '</span>') +
                 row(_sdT('Field Name'), '<code class="small">' + esc(name) + '</code>') +
-                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
+                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>') +
+                (fRich ? row(_sdT('Rich-text Editor'), '<span class="sd-prop-static">✓</span>') : '')
             );
         }
 
@@ -2035,6 +2109,23 @@ const StyleDesigner = (function () {
                     ? _cfHint(_sdT('Staff who open the page in edit mode see and fill this; on a visitor\'s submission the field\'s default value is saved (Input → Value).'))
                     : '') +
                 '</div></div>';
+
+        // A text area can take the rich-text editor; the published page
+        // loads it (pg_cf_rich_text_inject()), the canvas and the Preview
+        // show the plain control.
+        if (c.tag === 'textarea') {
+            var rich = _cfRichOn(lead) === true;
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-rich', rich, _sdT('Rich-text Editor')) +
+                    (rich
+                        ? _cfHint(esc(_sdT('Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.'))) +
+                          _cfHint(esc(_sdT('Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).')))
+                        : '') +
+                    (rowId > 0
+                        ? _cfHint(esc(_sdT('Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.')))
+                        : '') +
+                    '</div></div>';
+        }
 
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
@@ -2229,6 +2320,10 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-office', 'change', function (el) {
             _cfRec(lead).office_use_only = !!el.checked;
+            commit(true);
+        });
+        on('sd-cf-rich', 'change', function (el) {
+            _cfRec(lead).wysiwyg = !!el.checked;
             commit(true);
         });
         on('sd-cf-contact', 'change', function (el) {
@@ -2531,6 +2626,7 @@ const StyleDesigner = (function () {
             rec.upload_folder_id   = parseInt(f.upload_folder, 10) || 0;
             rec.quiz_question      = !!f.quiz_question;
             rec.quiz_answer        = f.quiz_answer || '';
+            if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -30180,6 +30276,7 @@ const StyleDesigner = (function () {
                             if (f.rss_field)       flags.push(_sdT('role: ') + (_cfMeta().rss[f.rss_field] || f.rss_field));
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
+                            if (f.rich)            flags.push(_sdT('rich text'));
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -30358,7 +30455,8 @@ const StyleDesigner = (function () {
                                 _cfF.fields.forEach(function (f) {
                                     _cfFL += '<li><span class="bi bi-dot"></span><strong>' + esc(f.label || f.name) + '</strong> ' +
                                              '<code>' + esc(f.name) + '</code> <span style="color:#888">' + esc(_cfTypeLabel(f.type)) +
-                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') + '</span></li>';
+                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') +
+                                             (_cfFlagOn(f.wysiwyg) ? ' · ' + esc(_sdT('rich text')) : '') + '</span></li>';
                                 });
                                 _cfFL += '</ul>';
                             } else {
@@ -32498,6 +32596,8 @@ const StyleDesigner = (function () {
                 // The rows moved page; the controls point at them under the
                 // new page's id from now on.
                 _cfAdoptIds(p, res.fields || []);
+                _cfDropFieldCache(from);
+                _cfDropFieldCache(p.page_id);
                 _patchSysCfg(sid, function (c) { c.form_source = 'page'; c.form_id = 0; c.custom_form_page_id = 0; }, {
                     silent: true,
                     afterSave: function () {
@@ -55955,6 +56055,7 @@ const StyleDesigner = (function () {
                 var p = _pgPageByKey(f.key) || _pgPageByKey('p' + f.page_id);
                 if (!p || !(f.page_id > 0)) return;
                 _cfAdoptIds(p, Array.isArray(f.fields) ? f.fields : []);
+                _cfDropFieldCache(f.page_id);
                 p.formSettings = (f.settings && typeof f.settings === 'object') ? f.settings : {};
             });
         }

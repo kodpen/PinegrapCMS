@@ -21,7 +21,7 @@ description: custom_form options belong to the element (no _choices array), page
 - **CAPTCHA is a section binding**; if it returns empty the container drops too.
 - `pg_rendered_page()` is registered **early** in `get_page.php`.
 - `pg_cf_page_form_ready()` probes three tables at once; on a non-upgraded install the feature silently disappears.
-- The legacy field screen (`edit_field.php`) still works but **the canvas is the record**: an `rss_field` changed there is overwritten on the next design save by the control's `_cf`.
+- The legacy field screen (`edit_field.php`) still works but **the canvas is the record**: an `rss_field` changed there is overwritten on the next design save by the control's `_cf`. Exception: a rich-text flag (`wysiwyg`) set there is kept while the control has no `_cf.wysiwyg` (`custom-form-rich-text.md`).
 - Old trees migrate on load (`_cfMigrateWidgetTree`: `_bindings.form_field` -> `name`, `__submit_label` binding -> button text) and are written in the new shape on first save.
 
 Related: docs/memory/designer/custom-form-model.md
