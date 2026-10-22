@@ -7,6 +7,7 @@ description: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscat
 - Behind Cloudflare with Scrape Shield › Email Address Obfuscation on, panel screens (for example `mail_queue.php`) showed recipients as `[email protected]`. Cloudflare rewrites every address in an HTML response into a placeholder plus a decoding script; what the script does not reach (cells DataTables draws again, `title` attributes, text copied into inputs or JS) stays a placeholder.
 
 ## What does the panel do now?
+- PR #1208 (2026.11.0).
 - `includes/fn/output.php`: `pg_output_email_off_open()` / `pg_output_email_off_close()` return `<!--email_off-->` / `<!--/email_off-->`, the exemption Cloudflare documents. `output_header()` and `output_header_secure()` print the opening comment right after `<body …>`; `output_footer()` and `output_footer_secure()` print the closing one right before `</body>`. So the whole panel body is exempt, the designer screen included (it uses the panel header).
 - Test: `tests/panel_email_off_test.php` (markers, secure footer output, the four functions read from source).
 
