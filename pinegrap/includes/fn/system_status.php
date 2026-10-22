@@ -1461,7 +1461,8 @@ function pg_php_build_date_text($build_time)
 
 // When the PHP serving this request was built. phpinfo() is the only place
 // PHP says it; a host that disables phpinfo() (disable_functions) leaves it
-// unknown. On PHP 7 a disabled function still exists and only warns.
+// unknown, and function_exists() is false for a disabled function on PHP 7
+// and 8 alike. The @ keeps a warning from phpinfo() itself off the page.
 function pg_php_build_time()
 {
     if (!function_exists('phpinfo')) {
@@ -2281,7 +2282,10 @@ function get_system_status_checks()
                     $php2shell['fixed_in'],
                     pg_php_build_date_text($php2shell_build_time),
                 ),
-            ))
+            )),
+            // A value of its own: grey otherwise reads "Not applicable" in
+            // the API's answer, which this check is not.
+            PHP_VERSION
         );
     } else {
         $output .= $makeIcon(
