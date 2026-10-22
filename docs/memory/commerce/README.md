@@ -6,7 +6,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
-- api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count
+- api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
@@ -21,12 +21,12 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
-- express-order-widget-totals.md: The express order widget's totals (designer pages): today's lines, the cart's order discount, its tax share, gift cards, surcharge, as submit_order() charges them (pg_express_order_charged_totals)
+- express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
 - key-code-import.md: Key code CSV import (import_key_codes.php): a code already there is updated, not re-added (a used single-use code stays used); BOM, separator, dates, yes/no cells
-- marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching, SET order, stock tracking, n11 VAT.
+- marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, unmatched lines and their retry, relay emails.
 - marketplace-order-money.md: Amounts of an imported marketplace order: per-unit price/tax/discount, the line's discount_total, mp_order_totals(), n11 line discounts that do not divide by the quantity.
 - marketplace-order-status-sync.md: mp_order_apply_status() rules for shipped/delivered/cancelled marketplace packages: first sight, fill-only dates, tracking once, no-refund cancel, stock restore, auto-accept only open.
@@ -37,6 +37,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - order-cancel-gift-cards.md: Gift cards on cancel and restore: issued cards keep their old date in the note and restore reads it from that line only; cards that paid the order raise REFUND ACTION REQUIRED, a gateway refund stays
+- order-cancel-refunded-payment.md: Cancelling an order whose payment was refunded in full or in part: no void, the rest flagged, one helper for the cancel window and the cancellation (PR #1222, #974)
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, restore cleanup.

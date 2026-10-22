@@ -82,6 +82,12 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
             break;
     }
 
+    // No field is added to a designer form (the canvas is its record) or to a
+    // page that has no form.
+    if ($form_type === '') {
+        pg_form_fields_refuse_page($_REQUEST['page_id']);
+    }
+
     // Get the form type name that we will output to user
 
     $form_type_name = '';
@@ -123,7 +129,9 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     $quiz = '';
 
     // If this is a page and form type that supports a form name, then get it
-    if ($page_type != 'express order' or $form_type != 'shipping') {
+    $form_settings_table = pg_form_settings_table($page_type, $form_type);
+
+    if (($form_settings_table !== '') && ($page_type != 'express order' or $form_type != 'shipping')) {
     
         $sql_quiz = "";
         
@@ -133,12 +141,12 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
         }
         
         // get form name and possibly quiz for page
-        $query = "SELECT form_name" . $sql_quiz . " FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($_REQUEST['page_id']) . "'";
+        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = '" . escape($_REQUEST['page_id']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
-        $form_name = $row['form_name'];
-        $quiz = $row['quiz'];
+
+        $form_name = $row['form_name'] ?? '';
+        $quiz = $row['quiz'] ?? '';
     }
     
     // if form name is blank, use page name for form name

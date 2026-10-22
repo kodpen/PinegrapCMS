@@ -281,7 +281,8 @@ function pg_page_revision_seed_row($row, $style_tree, $style_code)
  * Returns 1 when the row was written, 0 otherwise (table not there, the
  * page has revisions, no tree to record, or a failed statement). Two saves
  * of one page at the same moment both find no row; the unique key refuses
- * the second's revision 1, which is not an error.
+ * the second's revision 1, which is not an error. A write that fails on the
+ * other's locks is tried again (pg_page_revision_retry_delay()).
  *
  * @param int $page_id
  * @return int
@@ -315,26 +316,39 @@ function pg_page_revision_seed($page_id)
         return 0;
     }
 
-    $ok = @mysqli_query(db::$con,
-        "INSERT INTO page_revisions
-            (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
-         VALUES (
-            '$page_id',
-            '" . (int) $values['style_id'] . "',
-            1,
-            '" . e($values['tree_json']) . "',
-            '" . e($values['tree_hash']) . "',
-            '" . e($values['code_hash']) . "',
-            '" . e($values['settings_json']) . "',
-            '" . (int) $values['user_id'] . "',
-            'publish',
-            '" . (int) $values['created_at'] . "')");
+    $errno = 0;
 
-    if ($ok) {
-        return 1;
+    for ($attempt = 1; ; $attempt++) {
+        $ok = @mysqli_query(db::$con,
+            "INSERT INTO page_revisions
+                (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
+             VALUES (
+                '$page_id',
+                '" . (int) $values['style_id'] . "',
+                1,
+                '" . e($values['tree_json']) . "',
+                '" . e($values['tree_hash']) . "',
+                '" . e($values['code_hash']) . "',
+                '" . e($values['settings_json']) . "',
+                '" . (int) $values['user_id'] . "',
+                'publish',
+                '" . (int) $values['created_at'] . "')");
+
+        if ($ok) {
+            return 1;
+        }
+
+        $errno = mysqli_errno(db::$con);
+        $delay = pg_page_revision_retry_delay($errno, $attempt, true);
+
+        if ($delay < 0) {
+            break;
+        }
+
+        usleep($delay + mt_rand(0, $delay));
     }
 
-    if (mysqli_errno(db::$con) !== 1062) {
+    if ($errno !== 1062) {
         pg_page_revisions_log_failure('writing the initial revision of page ' . $page_id);
     }
 
@@ -381,9 +395,10 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
     }
 
     // The number is taken in the INSERT itself, so two saves of one page at
-    // the same moment cannot both read the same MAX(); the unique key refuses
-    // the second, which then tries once more with the next number.
-    for ($attempt = 0; $attempt < 2; $attempt++) {
+    // the same moment cannot both read the same MAX(). The second then fails
+    // on the unique key or on the first one's locks and is tried again
+    // (pg_page_revision_retry_delay()); the next try reads the next number.
+    for ($attempt = 1; ; $attempt++) {
         $ok = @mysqli_query(db::$con,
             "INSERT INTO page_revisions
                 (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
@@ -414,14 +429,63 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
             return $revision_no;
         }
 
-        if (mysqli_errno(db::$con) !== 1062) {
+        $delay = pg_page_revision_retry_delay(mysqli_errno(db::$con), $attempt);
+
+        if ($delay < 0) {
             break;
         }
+
+        // A random share on top keeps two writers that collided from
+        // meeting again on the next try.
+        usleep($delay + mt_rand(0, $delay));
     }
 
     pg_page_revisions_log_failure('writing the revision of page ' . $page_id);
 
     return 0;
+}
+
+/**
+ * Whether a revision INSERT that failed with $errno is tried again, and how
+ * long to wait first: microseconds, or -1 for no further try. Two writes of
+ * one page at the same moment meet on the unique key (1062) but more often
+ * on each other's locks, since the number is read from the same table:
+ * InnoDB answers with a deadlock (1213) or a lock wait timeout (1205),
+ * MariaDB with an auto-increment value it could not read (1467). A lock
+ * error is tried again after a short wait that grows with each try; a
+ * duplicate number at once, as the next try reads the next number, except
+ * for the first revision ($duplicate_ends), which the other write has then
+ * recorded. Four statements at most; a lock wait timeout only once more,
+ * as it has already waited innodb_lock_wait_timeout (50 seconds by default).
+ * Any other error is not tried again.
+ *
+ * @param int  $errno          mysqli_errno() of the failed statement
+ * @param int  $attempt        statements run so far, the failed one included
+ * @param bool $duplicate_ends true when a duplicate means the row is there
+ * @return int
+ */
+function pg_page_revision_retry_delay($errno, $attempt, $duplicate_ends = false)
+{
+    $errno = (int) $errno;
+    $attempt = (int) $attempt;
+
+    if ($attempt < 1 || $attempt >= 4) {
+        return -1;
+    }
+
+    if ($errno === 1062) {
+        return $duplicate_ends ? -1 : 0;
+    }
+
+    if ($errno === 1205) {
+        return ($attempt === 1) ? 20000 : -1;
+    }
+
+    if (in_array($errno, array(1213, 1467), true)) {
+        return 20000 * $attempt;
+    }
+
+    return -1;
 }
 
 /**

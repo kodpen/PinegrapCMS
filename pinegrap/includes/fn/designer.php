@@ -3649,57 +3649,120 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
 // of `shared_components.tree_json` at page-render time. This means style_code in the DB never
 // contains a baked-in copy of shared content, so editing a shared component instantly reflects
 // on every page that references it (no style_code rebuild required).
+/**
+ * A length typed into the designer's Sizing panel (width, height, their
+ * minimum and maximum, the position offsets) as CSS. The panel takes CSS
+ * values ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a
+ * unit ('48', '-8', '1.5') is taken as pixels, the unit the panel's examples
+ * and the image's width / height attributes use: a browser drops a
+ * declaration whose length has no unit. The editor writes the same
+ * (_sdCssLen() in style_designer.js).
+ *
+ * @param string $value the prop as stored
+ * @return string the CSS value, '' when the prop is empty
+ */
+function pg_designer_css_length($value)
+{
+    $value = trim((string) $value);
+
+    if (preg_match('/^[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/', $value)) {
+        return $value . 'px';
+    }
+
+    return $value;
+}
+
+/**
+ * A designer prop as the editor reads it, trimmed: '' for what JavaScript
+ * takes as false (no value, false, the number 0, '') and for a list. The
+ * string '0' is a value, as in the editor's `if (p.width)`, so the page and
+ * the editor write a prop in the same cases (_sdImgDim(), getNodeExtraStyle()
+ * in style_designer.js). empty() is not that test: it drops the string '0'.
+ *
+ * @param mixed $value the prop as stored
+ * @return string
+ */
+function pg_designer_prop_text($value)
+{
+    if ($value === null || $value === false || $value === 0 || $value === 0.0 || is_array($value) || is_object($value)) {
+        return '';
+    }
+
+    return trim((string) $value);
+}
+
+// The Sizing panel's declarations of a node ('width:48px', …), not escaped,
+// in the editor's order (getNodeExtraStyle()), so the page and the editor
+// write the same style. $size replaces the node's own width / height (an
+// image works them out itself, pg_img_dimension()). A prop is written when
+// the editor's test of it is true: the string '0' counts, the number 0 not.
+function _pg_node_sizing_decls($props, $size = null)
+{
+    $out = array();
+    if (!is_array($props)) return $out;
+
+    $val = function ($key) use ($props) {
+        return isset($props[$key]) ? pg_designer_prop_text($props[$key]) : '';
+    };
+    $len = function ($key, $css) use (&$out, $val, $size) {
+        $v = ($size !== null && ($key === 'width' || $key === 'height'))
+            ? (isset($size[$key]) ? (string)$size[$key] : '')
+            : pg_designer_css_length($val($key));
+        if ($v !== '') $out[] = $css . ':' . $v;
+    };
+    $raw = function ($key, $css) use (&$out, $val) {
+        if ($val($key) !== '') $out[] = $css . ':' . $val($key);
+    };
+
+    // z-index is a unitless integer: digits or 'auto' only.
+    $zi = $val('zIndex');
+    if ($zi !== '' && ($zi === 'auto' || preg_match('/^-?\d+$/', $zi))) $out[] = 'z-index:' . $zi;
+    $len('width', 'width');
+    $len('minWidth', 'min-width');
+    $len('maxWidth', 'max-width');
+    $len('height', 'height');
+    $len('minHeight', 'min-height');
+    $len('maxHeight', 'max-height');
+    $raw('overflow', 'overflow');
+    $raw('overflowX', 'overflow-x');
+    $raw('overflowY', 'overflow-y');
+    $len('top', 'top');
+    $len('right', 'right');
+    $len('bottom', 'bottom');
+    $len('left', 'left');
+    // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
+    if (!empty($props['aspectRatioEnabled']) && $val('aspectRatio') === 'custom' && $val('aspectRatioCustom') !== '') {
+        $out[] = '--bs-aspect-ratio:' . $val('aspectRatioCustom');
+    }
+
+    return $out;
+}
+
 // Build inline style + class strings from sizing/positioning/aspect-ratio props on a node.
 // Mirrors getNodeExtraStyle + getNodeExtraClasses on the JS side so the canvas preview and
 // the saved frontend HTML stay visually identical.
 //
 // Returns array('style' => 'width:100px;...', 'class' => 'ratio ratio-16x9 ...').
 // Both can be empty strings; caller appends them to its own style/class concatenations.
+// The style is not escaped here: every caller escapes the style attribute it
+// builds from it, as the editor's emitter does.
 function _build_node_sizing_attrs($props)
 {
-    $style_parts = array();
     $cls_parts   = array();
     if (!is_array($props)) return array('style' => '', 'class' => '');
 
-    // Inline-style props — pass user-entered CSS values through h() for attribute safety.
-    // (Designer/admin role is required to save trees; values are still escaped defensively.)
-    $style_props_map = array(
-        'width'      => 'width',
-        'height'     => 'height',
-        'minWidth'   => 'min-width',
-        'maxWidth'   => 'max-width',
-        'minHeight'  => 'min-height',
-        'maxHeight'  => 'max-height',
-        'overflow'   => 'overflow',
-        'overflowX'  => 'overflow-x',
-        'overflowY'  => 'overflow-y',
-        'top'        => 'top',
-        'right'      => 'right',
-        'bottom'     => 'bottom',
-        'left'       => 'left',
-    );
-    foreach ($style_props_map as $prop_key => $css_key) {
-        if (!empty($props[$prop_key])) {
-            $style_parts[] = $css_key . ':' . h($props[$prop_key]);
-        }
-    }
-    // z-index is unitless integer — sanitize to digits + 'auto'
-    if (!empty($props['zIndex'])) {
-        $zi = (string)$props['zIndex'];
-        if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
-            $style_parts[] = 'z-index:' . $zi;
-        }
-    }
-    // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
-    if (!empty($props['aspectRatioEnabled']) && (isset($props['aspectRatio']) ? $props['aspectRatio'] : '') === 'custom' && !empty($props['aspectRatioCustom'])) {
-        $style_parts[] = '--bs-aspect-ratio:' . h($props['aspectRatioCustom']);
-    }
+    // The Sizing panel's declarations (_pg_node_sizing_decls()), not
+    // escaped: the caller escapes the attribute it builds.
+    $style_parts = _pg_node_sizing_decls($props);
+    $ar = isset($props['aspectRatio']) ? pg_designer_prop_text($props['aspectRatio']) : '';
 
-    // Class-based utilities + Bootstrap .ratio
+    // Class-based utilities + Bootstrap .ratio. A ratio switched on with no
+    // preset picked is 16:9, the preset the options show for it; a bare
+    // .ratio has no --bs-aspect-ratio and collapses to no height.
     if (!empty($props['aspectRatioEnabled'])) {
         $cls_parts[] = 'ratio';
-        $ar = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-        if ($ar !== '' && $ar !== 'custom' && preg_match('/^\d+x\d+$/', $ar)) {
+        if ($ar === '') $ar = '16x9';
+        if ($ar !== 'custom' && preg_match('/^\d+x\d+$/', $ar)) {
             $cls_parts[] = 'ratio-' . $ar;
         }
     }
@@ -4204,16 +4267,8 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
         case 'container':
             $class = (!empty($props['fluid'])) ? 'container-fluid' : 'container';
-            if (!empty($props['cssClass'])) $class .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $class .= ' ' . $_sz['class'];
-            // Merge sizing inline style with any user-supplied style attr.
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $class . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            if (!empty($props['cssClass'])) $class .= ' ' . $props['cssClass'];
+            $html .= $pad . _pg_grid_open_tag($class, $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
@@ -4237,33 +4292,22 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
 
         case 'row':
             $rc = 'row';
-            if (!empty($props['gutter'])) $rc .= ' g-' . h($props['gutter']);
-            if (!empty($props['justify'])) $rc .= ' justify-content-' . h($props['justify']);
-            if (!empty($props['align'])) $rc .= ' align-items-' . h($props['align']);
-            if (!empty($props['cssClass'])) $rc .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $rc .= ' ' . $_sz['class'];
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $rc . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            // Gutter 0 is a value (g-0), as in the editor.
+            $_g = _pg_grid_class_value($props, 'gutter');
+            $_j = _pg_grid_class_value($props, 'justify');
+            $_a = _pg_grid_class_value($props, 'align');
+            if ($_g !== '') $rc .= ' g-' . $_g;
+            if ($_j !== '') $rc .= ' justify-content-' . $_j;
+            if ($_a !== '') $rc .= ' align-items-' . $_a;
+            if (!empty($props['cssClass'])) $rc .= ' ' . $props['cssClass'];
+            $html .= $pad . _pg_grid_open_tag($rc, $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
 
         case 'col':
-            $cc = _build_col_classes($props);
-            if (!empty($props['cssClass'])) $cc .= ' ' . h($props['cssClass']);
-            if ($_sz['class'] !== '') $cc .= ' ' . $_sz['class'];
-            $_styleParts = array();
-            if ($_sz['style'] !== '') $_styleParts[] = $_sz['style'];
-            $_us = _user_attr_value($props, 'style');
-            if ($_us !== '') $_styleParts[] = $_us;
-            $_szAttr = $_styleParts ? ' style="' . h(implode(';', $_styleParts)) . '"' : '';
-            $extra_attrs = _render_extra_attrs($props);
-            $html .= $pad . '<div class="' . $cc . '"' . $_szAttr . $extra_attrs . '>' . "\n";
+            // _build_col_classes() already ends with props.cssClass.
+            $html .= $pad . _pg_grid_open_tag(_build_col_classes($props), $props, $_sz) . "\n";
             foreach ($children as $child) { $html .= _render_tree_node($child, $indent + 1, $depth); }
             $html .= $pad . '</div>' . "\n";
             break;
@@ -4279,11 +4323,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             if (!empty($props['id'])) $attrs .= ' id="' . h($props['id']) . '"';
             // A search section (pg_search_sections()): see _render_extra_attrs().
             if (!empty($props['id']) && !empty($props['searchSection'])) $attrs .= ' data-pg-search-section';
-            // Combine cssClass + sizing classes into a single class attribute
-            $sem_cls_parts = array();
-            if (!empty($props['cssClass'])) $sem_cls_parts[] = $props['cssClass'];
-            if ($_sz['class'] !== '')       $sem_cls_parts[] = $_sz['class'];
-            $sem_cls_combined = trim(implode(' ', $sem_cls_parts));
+            // cssClass and the sizing classes in one class attribute, each
+            // once: the Display & Sizing panel writes its classes into
+            // cssClass as well.
+            $sem_cls_combined = _pg_unique_classes((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' ' . $_sz['class']);
             if ($sem_cls_combined !== '')   $attrs .= ' class="' . h($sem_cls_combined) . '"';
             // Tag-specific attributes — emitted directly so bindings on href/src work.
             // Track which builtin attrs we emit so the _attrs loop below can skip
@@ -4301,28 +4344,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 if (!empty($props['src'])) { $attrs .= ' src="' . h($props['src']) . '"'; $builtin_attrs_emitted['src'] = true; }
                 if (!empty($props['alt'])) { $attrs .= ' alt="' . h($props['alt']) . '"'; $builtin_attrs_emitted['alt'] = true; }
             }
-            // Sizing inline style — appended BEFORE _attrs so user-defined style attr can override
-            $sem_style_parts = array();
-            if ($_sz['style'] !== '') $sem_style_parts[] = $_sz['style'];
-            if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
-                foreach ($props['_attrs'] as $a) {
-                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                    if (!empty($a['name']) && $a['name'] !== 'id' && $a['name'] !== 'class') {
-                        if ($a['name'] === 'style') {
-                            // Merge user-defined style with sizing style; later wins on duplicate keys
-                            if (!empty($a['value'])) $sem_style_parts[] = $a['value'];
-                        } elseif (isset($builtin_attrs_emitted[$a['name']])) {
-                            // A bound/builtin value already covers this attribute — skip the
-                            // _attrs entry to avoid emitting a duplicate (which would shadow
-                            // the binding token in some browsers).
-                            continue;
-                        } else {
-                            $attrs .= ' ' . h($a['name']) . '="' . h(isset($a['value']) ? $a['value'] : '') . '"';
-                        }
-                    }
-                }
-            }
-            if (!empty($sem_style_parts)) $attrs .= ' style="' . h(implode(';', $sem_style_parts)) . '"';
+            // The title and tooltip, then the Attributes panel's entries: not
+            // the id (props.id is written above), the class, the style
+            // (merged below) or one a bound or built-in value covers.
+            $attrs .= _render_extra_attrs($props, array_merge(array('id'), array_keys($builtin_attrs_emitted)), true);
+            // The style as on any other node: font, inline style, sizing,
+            // then the Attributes panel's style, which wins on a repeat.
+            $attrs .= _compose_inline_style($props, '', $_sz['style']);
             // A bare <img> (imported or written markup) keeps its markup: it
             // gets the srcset of its file's widths in the file's own format,
             // never a <picture> around it, whose CSS may not expect one. How
@@ -4451,18 +4479,70 @@ function _pg_attr_names($props)
     return $names;
 }
 
-// Build Bootstrap column classes from column props
+// A class attribute's value with each class once, in the order first
+// written. A grid node's classes come from its props, its cssClass and its
+// sizing toggles, and the Display & Sizing panel also writes the toggles'
+// classes into cssClass (_syncSizingClassesToCssClass() in the editor).
+function _pg_unique_classes($classes)
+{
+    $out = array();
+    foreach (preg_split('/\s+/', trim((string)$classes)) as $c) {
+        if ($c !== '' && !in_array($c, $out, true)) $out[] = $c;
+    }
+    return implode(' ', $out);
+}
+
+// The Display & Sizing props of a content node, as _build_node_sizing_attrs()
+// gives them and the editor's _sdContentSizingNode() reads them. A spacer's
+// height is the element's own prop, not sizing. The image case writes its
+// style itself (_pg_node_sizing_decls() with its own width and height, on
+// the <img> or on its ratio box) and takes only the classes from here.
+function _pg_content_sizing($props, $ct)
+{
+    if ($ct === 'spacer') {
+        unset($props['height']);
+    }
+    return _build_node_sizing_attrs($props);
+}
+
+// The opening tag of a grid node (container, row, col), as the editor's
+// _sdGridOpenTag() writes it: the classes once each and escaped once, the
+// style as on any other node (_compose_inline_style(), the sizing props in
+// it), then the id, the title or tooltip and the panel's other attributes.
+// The search section mark after the id is the page's alone.
+function _pg_grid_open_tag($classes, $props, $sz)
+{
+    return '<div class="' . h(_pg_unique_classes($classes . ' ' . $sz['class'])) . '"'
+        . _compose_inline_style($props, '', $sz['style'])
+        . _render_extra_attrs($props, array(), true) . '>';
+}
+
+// A row or column option as a class suffix, '' when it is not set. The
+// options are strings and '0' is one of them (Gutter 0, Offset 0, order 0),
+// so it is tested as the editor's buildColClasses() and _sdEmitNode() test
+// it: a non-empty string or a non-zero number is set, anything else is not.
+function _pg_grid_class_value($props, $key)
+{
+    if (!is_array($props) || !isset($props[$key])) return '';
+    $v = $props[$key];
+    if (is_string($v)) return $v;
+    if ((is_int($v) || is_float($v)) && $v != 0) return (string)$v;
+    return '';
+}
+
+// Build Bootstrap column classes from column props. Twin of the editor's
+// buildColClasses().
 function _build_col_classes($props)
 {
     $classes = array();
-    $xs = isset($props['xs']) ? $props['xs'] : '';
-    $sm = isset($props['sm']) ? $props['sm'] : '';
-    $md = isset($props['md']) ? $props['md'] : '';
-    $lg = isset($props['lg']) ? $props['lg'] : '';
-    $xl = isset($props['xl']) ? $props['xl'] : '';
-    $xxl = isset($props['xxl']) ? $props['xxl'] : '';
+    $xs  = _pg_grid_class_value($props, 'xs');
+    $sm  = _pg_grid_class_value($props, 'sm');
+    $md  = _pg_grid_class_value($props, 'md');
+    $lg  = _pg_grid_class_value($props, 'lg');
+    $xl  = _pg_grid_class_value($props, 'xl');
+    $xxl = _pg_grid_class_value($props, 'xxl');
 
-    if ($xs && $xs !== '' && $xs !== 'none') {
+    if ($xs !== '' && $xs !== 'none') {
         // 'col'  → equal-width sentinel (Bootstrap class is bare `col`)
         // 'auto' → content-fit width (`col-auto`)
         // anything else → numeric span (`col-N`)
@@ -4473,18 +4553,27 @@ function _build_col_classes($props)
         if ($xs === 'auto')     $classes[] = 'col-auto';
         else if ($xs === 'col') $classes[] = 'col';
         else                    $classes[] = 'col-' . $xs;
-    } else if (!$sm && !$md && !$lg && !$xl && !$xxl) {
+    } else if ($sm === '' && $md === '' && $lg === '' && $xl === '' && $xxl === '') {
         $classes[] = 'col-12';
     }
+    // 'col' (Equal) at a breakpoint is Bootstrap's bare `col-<bp>`; there
+    // is no `col-md-col`.
     $bps = array('sm' => $sm, 'md' => $md, 'lg' => $lg, 'xl' => $xl, 'xxl' => $xxl);
     foreach ($bps as $bp => $val) {
-        if ($val && $val !== '' && $val !== 'none') {
-            $classes[] = ($val === 'auto') ? 'col-' . $bp . '-auto' : 'col-' . $bp . '-' . $val;
+        if ($val !== '' && $val !== 'none') {
+            if ($val === 'auto')    $classes[] = 'col-' . $bp . '-auto';
+            else if ($val === 'col') $classes[] = 'col-' . $bp;
+            else                    $classes[] = 'col-' . $bp . '-' . $val;
         }
     }
-    if (!empty($props['offsetXs']) && $props['offsetXs'] !== 'none') $classes[] = 'offset-' . $props['offsetXs'];
-    if (!empty($props['offsetMd']) && $props['offsetMd'] !== 'none') $classes[] = 'offset-md-' . $props['offsetMd'];
-    if (!empty($props['order']) && $props['order'] !== 'default') $classes[] = 'order-' . $props['order'];
+    // Offset 0 and order 0 are values: offset-md-0 resets an offset set
+    // for smaller screens.
+    $off_xs = _pg_grid_class_value($props, 'offsetXs');
+    $off_md = _pg_grid_class_value($props, 'offsetMd');
+    $order  = _pg_grid_class_value($props, 'order');
+    if ($off_xs !== '' && $off_xs !== 'none')  $classes[] = 'offset-' . $off_xs;
+    if ($off_md !== '' && $off_md !== 'none')  $classes[] = 'offset-md-' . $off_md;
+    if ($order !== '' && $order !== 'default') $classes[] = 'order-' . $order;
     if (!empty($props['cssClass'])) $classes[] = $props['cssClass'];
     return implode(' ', $classes);
 }
@@ -4533,7 +4622,11 @@ function _render_region_tag($props)
 // case-specific class/style and so are handled in the caller via
 // _user_attr_value(). 'id' is sourced from props.id and rendered only
 // when the caller didn't already include it in $skip_names.
-function _render_extra_attrs($props, $skip_names = array())
+//
+// $title: also write the node's title and tooltip (_pg_node_title_attrs())
+//   after the id. Content, semantic and grid nodes pass true; a component's
+//   props.title is its heading text, not an attribute.
+function _render_extra_attrs($props, $skip_names = array(), $title = false)
 {
     $skip_map = array();
     foreach ($skip_names as $n) $skip_map[strtolower((string)$n)] = true;
@@ -4544,6 +4637,7 @@ function _render_extra_attrs($props, $skip_names = array())
         // render knows to describe its parts in the structured data.
         if (!empty($props['searchSection'])) $out .= ' data-pg-search-section';
     }
+    if ($title) $out .= _pg_node_title_attrs($props);
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -4551,6 +4645,9 @@ function _render_extra_attrs($props, $skip_names = array())
             $lname = strtolower($name);
             if ($lname === 'class' || $lname === 'style' || $lname === 'id') continue;
             if (isset($skip_map[$lname])) continue;
+            // The search section mark is the Search section switch's,
+            // written once after the id (here or by the semantic case).
+            if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;
             $val = isset($a['value']) ? (string)$a['value'] : '';
             $out .= ' ' . h($name) . '="' . h($val) . '"';
         }
@@ -4575,19 +4672,48 @@ function _user_attr_value($props, $name)
     return '';
 }
 
+// The title and the tooltip of a content, semantic or grid node, as the
+// editor's _sdNodeTitleAttrs() writes them: title is the tooltip's text
+// while the tooltip is on, the plain title prop otherwise, then the
+// tooltip's data-bs-toggle and data-bs-placement. An element that is
+// another toggle's (a data-bs-toggle in the Attributes panel: a modal, a
+// popover, a collapse) gets no tooltip, whose toggle and title would take
+// its place; title and placement yield to a panel entry of the same name,
+// so no attribute is written twice.
+function _pg_node_title_attrs($props)
+{
+    $written = _pg_attr_names($props);
+    $tip = !empty($props['tooltipEnabled']) && isset($props['tooltipTitle'])
+        && is_scalar($props['tooltipTitle']) && (string)$props['tooltipTitle'] !== ''
+        && !in_array('data-bs-toggle', $written, true);
+    $title = $tip ? (string)$props['tooltipTitle']
+        : ((isset($props['title']) && is_scalar($props['title'])) ? (string)$props['title'] : '');
+    $out = '';
+    if ($title !== '' && !in_array('title', $written, true)) $out .= ' title="' . h($title) . '"';
+    if ($tip) {
+        $out .= ' data-bs-toggle="tooltip"';
+        if (!in_array('data-bs-placement', $written, true)) {
+            $out .= ' data-bs-placement="' . h(!empty($props['tooltipPlacement']) ? (string)$props['tooltipPlacement'] : 'top') . '"';
+        }
+    }
+    return $out;
+}
+
 // Compose the full inline `style="..."` value for any leaf renderer.
 // Combines (in this order, last wins on duplicate keys):
 //   • props.fontFamily       — Font picker (Body / heading / etc.).
 //   • props.inlineStyle      — Legacy direct-input field.
 //   • $extra (caller-built)  — node-specific built-in styles (e.g. icon's
 //                              font-size, image's object-position, hero's
-//                              background, spacer's height, sizing helpers).
+//                              background, spacer's height).
+//   • $sizing                — the Display & Sizing props
+//                              (_build_node_sizing_attrs()'s style).
 //   • _attrs.style           — user-typed style="..." in the Attrs panel.
 // Returns ' style="..."' (leading space, ready to splice) or '' when nothing.
-// The iframe canvas applies these same parts via JS — keeping this list in
-// sync with assets/js/style_designer.js's getNodeExtraStyle() prevents the
-// classic "looks right in editor, wrong on the rendered page" bug.
-function _compose_inline_style($props, $extra = '')
+// The parts are not escaped by the caller: the attribute is escaped here,
+// once. The editor's HTML writes the same through _sdNodeStyle() in
+// assets/js/style_designer.js; the canvas applies the parts in this order.
+function _compose_inline_style($props, $extra = '', $sizing = '')
 {
     $parts = array();
     if (!empty($props['fontFamily'])) {
@@ -4602,6 +4728,9 @@ function _compose_inline_style($props, $extra = '')
     }
     if ($extra !== '' && $extra !== null) {
         $parts[] = trim($extra, '; ');
+    }
+    if ($sizing !== '' && $sizing !== null) {
+        $parts[] = trim($sizing, '; ');
     }
     $u = _user_attr_value($props, 'style');
     if ($u !== '') $parts[] = trim($u, '; ');
@@ -4991,6 +5120,13 @@ function _render_content_html($props, $pad, $kids = '')
     $ct = isset($props['contentType']) ? $props['contentType'] : '';
     $props = _apply_bindings($props, in_array($ct, array('heading', 'link', 'paragraph', 'span', 'text'), true));
     $html = '';
+    // The Display & Sizing props (_pg_content_sizing()): the classes join
+    // cssClass once, the style is the third part of the style attribute.
+    $sz = _pg_content_sizing($props, $ct);
+    if ($sz['class'] !== '') {
+        $props['cssClass'] = _pg_unique_classes((isset($props['cssClass']) ? (string)$props['cssClass'] : '') . ' ' . $sz['class']);
+    }
+    $sz_style = $sz['style'];
 
     switch ($ct) {
         case 'heading':
@@ -5000,8 +5136,8 @@ function _render_content_html($props, $pad, $kids = '')
             $cls = '';
             if (!empty($props['align'])) $cls .= 'text-' . h($props['align']);
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<' . $tag
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</' . $tag . '>' . "\n";
@@ -5013,7 +5149,7 @@ function _render_content_html($props, $pad, $kids = '')
             $cls    = !empty($props['cssClass'])  ? ' class="' . h($props['cssClass']) . '"' : '';
             $target = !empty($props['target'])    ? ' target="' . h($props['target']) . '"' : '';
             $rel    = !empty($props['rel'])       ? ' rel="'    . h($props['rel'])    . '"' : '';
-            $style_attr  = _compose_inline_style($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
             // The window and the relationship are the Link Options' props.
             // When a prop is empty, an _attrs entry of the same name (typed
             // in the Attrs panel, or kept there by an older layout) prints,
@@ -5023,7 +5159,7 @@ function _render_content_html($props, $pad, $kids = '')
             $link_skip = array('href');
             if ($target !== '') $link_skip[] = 'target';
             if ($rel !== '')    $link_skip[] = 'rel';
-            $extra_attrs = _render_extra_attrs($props, $link_skip);
+            $extra_attrs = _render_extra_attrs($props, $link_skip, true);
             $html  .= $pad . '<a href="' . $href . '"' . $cls . $target . $rel
                 . $style_attr . $extra_attrs . '>' . $text
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</a>' . "\n";
@@ -5035,9 +5171,9 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['cssClass'])) $cls .= ' ' . h($props['cssClass']);
             // Pass icon's font-size as the case-specific extra; _compose_inline_style
             // handles fontFamily + inlineStyle + user style merge.
-            $extra_style = !empty($props['fontSize']) ? 'font-size:' . h($props['fontSize']) . 'px' : '';
-            $style_attr  = _compose_inline_style($props, $extra_style);
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_style = !empty($props['fontSize']) ? 'font-size:' . $props['fontSize'] . 'px' : '';
+            $style_attr  = _compose_inline_style($props, $extra_style, $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<i class="' . $cls . '"' . $style_attr . $extra_attrs . '></i>' . "\n";
             break;
 
@@ -5047,8 +5183,8 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['lead'])) $cls .= 'lead';
             if (!empty($props['align'])) $cls .= ($cls ? ' ' : '') . 'text-' . h($props['align']);
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<p'
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</p>' . "\n";
@@ -5062,8 +5198,8 @@ function _render_content_html($props, $pad, $kids = '')
             // <span>, drop a small "New!" badge after a heading, etc.
             $text = isset($props['text']) ? $props['text'] : '';
             $cls = !empty($props['cssClass']) ? h($props['cssClass']) : '';
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<span'
                 . ($cls ? ' class="' . $cls . '"' : '')
                 . $style_attr . $extra_attrs . '>' . $text . '</span>' . "\n";
@@ -5091,16 +5227,42 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['fluid'])) $cls .= 'img-fluid';
             if (!empty($props['rounded'])) $cls .= ($cls ? ' ' : '') . 'rounded';
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $img_w_raw = !empty($props['width'])  ? (string)$props['width']  : '';
-            $img_h_raw = !empty($props['height']) ? (string)$props['height'] : '';
-            $w_attr  = $img_w_raw !== '' ? ' width="'  . h($img_w_raw) . '"' : '';
-            $h_attr  = $img_h_raw !== '' ? ' height="' . h($img_h_raw) . '"' : '';
-            // Image's case-specific style: object-position. Everything else
-            // (fontFamily — rare on <img> but possible, inlineStyle, user style)
-            // is composed by the helper.
-            $extra_style = !empty($props['objectPosition']) ? 'object-position:' . h($props['objectPosition']) : '';
-            $obj_pos     = _compose_inline_style($props, $extra_style);
-            $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'));
+            // The editor's test of a prop (pg_designer_prop_text()): the
+            // string '0' is a size, the number 0 none, on both sides.
+            $img_w_raw = isset($props['width'])  ? pg_designer_prop_text($props['width'])  : '';
+            $img_h_raw = isset($props['height']) ? pg_designer_prop_text($props['height']) : '';
+            $_ar       = isset($props['aspectRatio']) ? (string)$props['aspectRatio'] : '';
+            // The image stands in its own .ratio box for a preset ratio
+            // ('16x9'), or for the Sizing panel's custom ratio when it is
+            // switched on with a value (its --bs-aspect-ratio comes with the
+            // sizing style, on the box). The editor and the canvas use the
+            // same test (_sdImgInRatio()).
+            $_ar_preset = (bool)preg_match('/^[0-9]+x[0-9]+$/', $_ar);
+            $_in_ratio  = $_ar_preset || ($_ar === 'custom' && !empty($props['aspectRatioEnabled']) && isset($props['aspectRatioCustom']) && pg_designer_prop_text($props['aspectRatioCustom']) !== '');
+            // A whole number is the width / height attribute, a value with a
+            // unit is CSS (pg_img_dimension()). In a ratio box the box takes
+            // the size, a whole number in pixels, and the image fills it.
+            $_dim_w  = pg_img_dimension($img_w_raw);
+            $_dim_h  = pg_img_dimension($img_h_raw);
+            $w_attr  = $_dim_w['attr'] !== '' ? ' width="'  . h($_dim_w['attr']) . '"' : '';
+            $h_attr  = $_dim_h['attr'] !== '' ? ' height="' . h($_dim_h['attr']) . '"' : '';
+            $_size   = $_in_ratio
+                ? array('width'  => $_dim_w['attr'] !== '' ? $_dim_w['attr'] . 'px' : $_dim_w['css'],
+                        'height' => $_dim_h['attr'] !== '' ? $_dim_h['attr'] . 'px' : $_dim_h['css'])
+                : array('width' => $_dim_w['css'], 'height' => $_dim_h['css']);
+            // The Sizing panel's style (lengths, z-index, overflow, offsets),
+            // as the editor's getNodeExtraStyle(): on the <img>, or in a
+            // ratio box on the box, the element that takes the layout.
+            $_sizing = _pg_node_sizing_decls($props, $_size);
+            // The <img> - the element the operator selected - keeps its own
+            // attributes and style in a ratio box too: object-position, the
+            // font, the inline style, the Attributes panel's entries, and
+            // the Sizing panel's classes (in cssClass, _pg_content_sizing()).
+            // The composing and the escaping are the helpers'.
+            $_obj_pos_v  = isset($props['objectPosition']) ? pg_designer_prop_text($props['objectPosition']) : '';
+            $extra_style = $_obj_pos_v !== '' ? 'object-position:' . $_obj_pos_v : '';
+            $obj_pos     = _compose_inline_style($props, $extra_style, $_in_ratio ? '' : implode(';', $_sizing));
+            $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'), true);
 
             // A file of this site gets its derivatives (pg_img_responsive()):
             // a srcset in its own format on the <img>, and AVIF / WebP
@@ -5109,8 +5271,6 @@ function _render_content_html($props, $pad, $kids = '')
             // Attributes panel (imported markup) is the author's and stays
             // alone. How it loads: pg_img_loading_attrs().
             $_written  = _pg_attr_names($props);
-            $_ar       = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-            $_in_ratio = ($_ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $_ar));
             $_sets     = ($raw_src !== '' && $raw_src !== '#' && !in_array('srcset', $_written, true)) ? pg_img_responsive($raw_src) : null;
             $_loading  = pg_img_loading_attrs(isset($props['loading']) ? $props['loading'] : '', $_written);
             $_resp     = '';
@@ -5144,43 +5304,26 @@ function _render_content_html($props, $pad, $kids = '')
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
             // Aspect Ratio wrapper: Bootstrap's .ratio class only works on a parent div.
-            // When width/height are set on the image, ALSO mirror them as inline-style on
-            // the wrapper so the ratio applies to a fixed size (instead of the default 100%
-            // width). Numeric inputs ("100") get a 'px' suffix; values with units pass through
-            // ("50%", "200px", "20rem", etc.).
-            //
-            // Overflow on a ratio'd image must apply to the WRAPPER, not the
-            // <img> itself — the wrapper is the box .ratio sizes, so clipping
+            // The wrapper is the box .ratio sizes, so it takes the Sizing
+            // panel's style ($_sizing): the image's width / height (a fixed
+            // size instead of the default 100% width), their minimum and
+            // maximum, the offsets, z-index, and the overflow - clipping
             // (object-fit:cover edges, scale-up, etc.) only works when the
-            // wrapper has overflow:hidden. We pull `overflow*` props out of
-            // the image's inline style and onto the wrapper when ratio is on.
-            $ar = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-            if ($ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $ar)) {
-                $wrapper_style_parts = array();
-                if ($img_w_raw !== '') {
-                    $wrapper_style_parts[] = 'width:' . (preg_match('/^\d+$/', $img_w_raw) ? ($img_w_raw . 'px') : h($img_w_raw));
-                }
-                if ($img_h_raw !== '') {
-                    $wrapper_style_parts[] = 'height:' . (preg_match('/^\d+$/', $img_h_raw) ? ($img_h_raw . 'px') : h($img_h_raw));
-                }
-                // Hoist overflow / overflow-x / overflow-y to the wrapper.
-                if (!empty($props['overflow']))  $wrapper_style_parts[] = 'overflow:'   . h($props['overflow']);
-                if (!empty($props['overflowX'])) $wrapper_style_parts[] = 'overflow-x:' . h($props['overflowX']);
-                if (!empty($props['overflowY'])) $wrapper_style_parts[] = 'overflow-y:' . h($props['overflowY']);
+            // wrapper has overflow:hidden.
+            if ($_in_ratio) {
+                $ar = $_ar;
                 // border-radius classes on the IMG would round just the img,
                 // but with overflow:hidden on the wrapper the rounded corners
                 // need to be on the wrapper too. Mirror the image's rounded
                 // utility classes to the wrapper so the clip respects them.
-                $wrapper_class = 'ratio ratio-' . h($ar);
+                $wrapper_class = $_ar_preset ? 'ratio ratio-' . h($ar) : 'ratio';
                 $img_cls_arr = preg_split('/\s+/', $cls);
                 foreach ($img_cls_arr as $_ic) {
                     if ($_ic !== '' && (strpos($_ic, 'rounded') === 0)) {
                         $wrapper_class .= ' ' . $_ic;
                     }
                 }
-                $wrapper_style_attr = $wrapper_style_parts
-                    ? ' style="' . implode(';', $wrapper_style_parts) . '"'
-                    : '';
+                $wrapper_style_attr = $_sizing ? ' style="' . h(implode(';', $_sizing)) . '"' : '';
                 $html .= $pad . '<div class="' . $wrapper_class . '"' . $wrapper_style_attr . '>' . "\n"
                       . $pad . '    ' . ($_sources ? pg_img_picture($img_tag, $_sources, $_sizes, $pad . '    ', true) : $img_tag) . "\n"
                       . $pad . '</div>' . "\n";
@@ -5190,19 +5333,20 @@ function _render_content_html($props, $pad, $kids = '')
             break;
 
         case 'divider':
+            // The margin class first, then cssClass, each class once: a
+            // cssClass that repeats the margin class is not written twice.
             $margin = isset($props['margin']) ? $props['margin'] : '4';
-            $cls = 'my-' . h($margin);
-            if (!empty($props['cssClass'])) $cls .= ' ' . h($props['cssClass']);
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $cls = h(_pg_unique_classes('my-' . $margin . ' ' . (isset($props['cssClass']) ? (string)$props['cssClass'] : '')));
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<hr class="' . $cls . '"' . $style_attr . $extra_attrs . '>' . "\n";
             break;
 
         case 'spacer':
             $height = isset($props['height']) ? $props['height'] : '40';
             $cls = !empty($props['cssClass']) ? ' class="' . h($props['cssClass']) . '"' : '';
-            $style_attr  = _compose_inline_style($props, 'height:' . h($height) . 'px');
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, 'height:' . $height . 'px', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<div' . $style_attr . $cls . $extra_attrs . '></div>' . "\n";
             break;
 
@@ -5229,8 +5373,8 @@ function _render_content_html($props, $pad, $kids = '')
                     $attrs = str_replace($sm[0], '', $attrs);
                 }
                 $cls = trim(html_entity_decode($own_class, ENT_QUOTES, 'UTF-8') . ' ' . (isset($props['cssClass']) ? (string)$props['cssClass'] : ''));
-                $style_attr = _compose_inline_style($props, html_entity_decode($own_style, ENT_QUOTES, 'UTF-8'));
-                $extra_attrs = _render_extra_attrs($props);
+                $style_attr = _compose_inline_style($props, html_entity_decode($own_style, ENT_QUOTES, 'UTF-8'), $sz_style);
+                $extra_attrs = _render_extra_attrs($props, array(), true);
                 $svg = '<svg' . ($cls !== '' ? ' class="' . h($cls) . '"' : '') . $style_attr . $attrs . $extra_attrs . $open[2] . '>'
                      . substr($svg, strlen($open[0]));
             }
@@ -5320,7 +5464,7 @@ function _render_content_html($props, $pad, $kids = '')
                                 && !empty($_lf_field['error_message'])
                                 && !isset($err_seen[(string)$_lf_field['error_message']])) {
                                 $err_seen[(string)$_lf_field['error_message']] = true;
-                                $err_lines .= '<p class="error">' . $_lf_field['error_message'] . '</p>';
+                                $err_lines .= '<p class="error">' . pg_defuse_page_message($_lf_field['error_message']) . '</p>';
                             }
                         }
                         if ($err_lines !== '') {
@@ -5336,7 +5480,7 @@ function _render_content_html($props, $pad, $kids = '')
                         if (!empty($lf_data['notices']) && is_array($lf_data['notices'])) {
                             $ntc_lines = '';
                             foreach ($lf_data['notices'] as $ntc) {
-                                $ntc_lines .= '<p class="notice">' . $ntc . '</p>';
+                                $ntc_lines .= '<p class="notice">' . pg_defuse_page_message($ntc) . '</p>';
                             }
                             if ($ntc_lines !== '') {
                                 $msg_parts[] =
@@ -5351,7 +5495,7 @@ function _render_content_html($props, $pad, $kids = '')
                         if (!empty($lf_data['warnings']) && is_array($lf_data['warnings'])) {
                             $wrn_lines = '';
                             foreach ($lf_data['warnings'] as $wrn) {
-                                $wrn_lines .= '<p class="warning">' . $wrn . '</p>';
+                                $wrn_lines .= '<p class="warning">' . pg_defuse_page_message($wrn) . '</p>';
                             }
                             if ($wrn_lines !== '') {
                                 $msg_parts[] =
@@ -5389,8 +5533,8 @@ function _render_content_html($props, $pad, $kids = '')
             // Render as a plain <span> so existing tables aren't silently empty.
             $text = isset($props['text']) ? $props['text'] : '';
             $cls  = !empty($props['cssClass']) ? ' class="' . h($props['cssClass']) . '"' : '';
-            $style_attr  = _compose_inline_style($props);
-            $extra_attrs = _render_extra_attrs($props);
+            $style_attr  = _compose_inline_style($props, '', $sz_style);
+            $extra_attrs = _render_extra_attrs($props, array(), true);
             $html .= $pad . '<span' . $cls . $style_attr . $extra_attrs . '>' . $text . '</span>' . "\n";
             break;
 
