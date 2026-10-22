@@ -1017,6 +1017,7 @@ function get_order_preview($properties) {
 
         // start grand total off with just the subtotal (we will add tax and shipping later, if necessary)
         $grand_total = $subtotal;
+        $order_discount = 0;
 
         // if there is an order discount from an offer, prepare order discount
         if (!empty($_SESSION['ecommerce']['order_discount'])) {
@@ -1062,6 +1063,14 @@ function get_order_preview($properties) {
 
         // if there was at least one shipping recipient for this order, output grand shipping total
         if ($shipping == true) {
+            // A minor unit lower where it would leave a rate's total no
+            // amount reaches, as submit_order.php charges it
+            // (pg_order_charges_reachable()).
+            if (($grand_shipping > 0) && pg_order_charges_settle_rates()) {
+                $grand_shipping = pg_order_items_charges_reachable($charged_item_ids, (int) round($order_discount * 100),
+                    array('shipping' => (int) round($grand_shipping * 100)))['shipping'] / 100;
+            }
+
             // update grand total
             $grand_total = $grand_total + $grand_shipping;
 
@@ -1523,6 +1532,15 @@ function get_order_preview($properties) {
                     && ($show_credit_debit_card_payment_method)
                 ) {
                     $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $grand_total, 2);
+
+                    // Like the shipping, a minor unit lower where it would
+                    // leave a rate's total no amount reaches.
+                    if (($surcharge > 0) && pg_order_charges_settle_rates()) {
+                        $surcharge = pg_order_items_charges_reachable($charged_item_ids, (int) round($order_discount * 100), array(
+                            'shipping' => ($shipping == true) ? (int) round($grand_shipping * 100) : 0,
+                            'surcharge' => (int) round($surcharge * 100),
+                        ))['surcharge'] / 100;
+                    }
 
                     $grand_total_with_surcharge = $grand_total + $surcharge;
 
@@ -2576,6 +2594,14 @@ function get_order_preview($properties) {
             }
 
             if ($shippable_items) {
+                // A minor unit lower where it would leave a rate's total no
+                // amount reaches, as submit_order.php charges it
+                // (pg_order_charges_reachable()).
+                if (($shipping > 0) && pg_order_charges_settle_rates()) {
+                    $shipping = pg_order_items_charges_reachable($charged_item_ids, (int) round($discount * 100),
+                        array('shipping' => (int) round($shipping * 100)))['shipping'] / 100;
+                }
+
                 $total += $shipping;
 
                 $shipping_info = prepare_price_for_output($shipping * 100, false, $discounted_price = '', 'html');
@@ -2995,6 +3021,15 @@ function get_order_preview($properties) {
                         $show_surcharge = true;
 
                         $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total, 2);
+
+                        // Like the shipping, a minor unit lower where it
+                        // would leave a rate's total no amount reaches.
+                        if (($surcharge > 0) && pg_order_charges_settle_rates()) {
+                            $surcharge = pg_order_items_charges_reachable($charged_item_ids, (int) round($discount * 100), array(
+                                'shipping' => $shippable_items ? (int) round($shipping * 100) : 0,
+                                'surcharge' => (int) round($surcharge * 100),
+                            ))['surcharge'] / 100;
+                        }
 
                         $surcharge_info = prepare_price_for_output($surcharge * 100, false, $discounted_price = '', 'html');
 

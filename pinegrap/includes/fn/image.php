@@ -640,6 +640,36 @@ function pg_img_sizes($width, $natural_width, $auto = false)
 
 
 /**
+ * How a designer image's width or height prop is written. A whole number is
+ * the width / height attribute: it is in pixels and keeps the image's layout
+ * box before the file arrives. Anything else is CSS with its own unit
+ * ('50%', '12rem', '120px', 'auto'); a bare decimal is taken as pixels
+ * (pg_designer_css_length()), so a style never carries a number without a
+ * unit (a browser drops that).
+ * A prop the editor takes as false (the number 0, false, no value) is no
+ * size; the string '0' is one (pg_designer_prop_text()).
+ * The editor writes the same (_sdImgDim() in style_designer.js).
+ *
+ * @param mixed $value the node's width or height prop
+ * @return array{attr: string, css: string} at most one of them is not ''
+ */
+function pg_img_dimension($value)
+{
+    $value = pg_designer_prop_text($value);
+
+    if ($value === '') {
+        return array('attr' => '', 'css' => '');
+    }
+
+    if (preg_match('/^[0-9]+$/', $value)) {
+        return array('attr' => $value, 'css' => '');
+    }
+
+    return array('attr' => '', 'css' => pg_designer_css_length($value));
+}
+
+
+/**
  * Whether an image's classes give it a CSS width that fills its box:
  * Bootstrap's w-100 and the card image classes (width: 100%). img-fluid is
  * only a max-width, and the image's own size still decides below it.

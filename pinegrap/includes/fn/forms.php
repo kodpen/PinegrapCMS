@@ -5014,3 +5014,128 @@ function get_theme_options()
     }
     return $theme_options;
 }
+/**
+ * The table holding a page form's settings row (form_name, quiz), or '' when
+ * the form has none.
+ *
+ * The legacy field screens built the name from the page type
+ * ("<page_type>_pages"). A form drawn in the visual designer sits on a page
+ * that keeps page_type 'standard', so that sent them to standard_pages, which
+ * does not exist. A custom form's row is always in custom_form_pages, whatever
+ * the page type; only the four tables below carry a form name.
+ */
+function pg_form_settings_table($page_type, $form_type)
+{
+    if ($form_type === 'custom') {
+        return 'custom_form_pages';
+    }
+
+    switch ($page_type) {
+        case 'express order':
+            return 'express_order_pages';
+        case 'shipping address and arrival':
+            return 'shipping_address_and_arrival_pages';
+        case 'billing information':
+            return 'billing_information_pages';
+    }
+
+    return '';
+}
+
+/**
+ * Is this page's form drawn in the visual designer?
+ *
+ * Yes for a page that pg_form_page_sql() counts as a form page and whose type
+ * is not the legacy 'custom form'. Its fields are derived from the canvas on
+ * every design save (pg_cf_reconcile_page_form()), so the legacy field screens
+ * show them without changing them: an edit made there would be overwritten.
+ */
+function pg_page_has_designer_form($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !function_exists('pg_form_page_sql') || !pg_cf_page_form_ready()) {
+        return false;
+    }
+
+    return (int) db_value(
+        "SELECT COUNT(*)
+        FROM page
+        WHERE
+            (page.page_id = '" . $page_id . "')
+            AND (page.page_type <> 'custom form')
+            AND " . pg_form_page_sql('page')) > 0;
+}
+/**
+ * Stop a field screen that would add or delete fields on a page that has no
+ * form it may change: a designer form (its fields come from the canvas, so a
+ * change made here would be undone by the next design save) or a page with no
+ * form at all. Does not return.
+ */
+function pg_form_fields_refuse_page($page_id)
+{
+    if (pg_page_has_designer_form($page_id)) {
+        output_error(
+            lang('The fields of this form are edited in the visual editor.')
+            . ' <a href="' . h(pg_page_edit_url_by_id($page_id)) . '">' . lang('Open in Visual Editor') . '</a>');
+    }
+
+    output_error(lang('This page has no form.'), 404);
+}
+
+// The name of a form field type, as the field screens show it.
+function get_field_type_name($field_type)
+{
+    switch ($field_type) {
+        case 'text box':
+            return lang('Text Box');
+            break;
+            
+        case 'text area':
+            return lang('Text Area');
+            break;
+        
+        case 'pick list':
+            return lang('Pick List');
+            break;
+        
+        case 'radio button':
+            return lang('Radio Button');
+            break;
+        
+        case 'check box':
+            return lang('Check Box');
+            break;
+            
+        case 'file upload':
+            return lang('File Upload');
+            break;
+            
+        case 'date':
+            return lang('Date');
+            break;
+            
+        case 'date and time':
+            return lang('Date & Time');
+            break;
+            
+        case 'email address':
+            return lang('E-mail Address');
+            break;
+        
+        case 'information':
+            return lang('Information');
+            break;
+            
+        case 'time':
+            return lang('Time');
+            break;
+
+        case 'signature':
+            return lang('Signature');
+            break;
+
+        default:
+            return h($field_type);
+    }
+}

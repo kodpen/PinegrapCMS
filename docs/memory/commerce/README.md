@@ -21,7 +21,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
-- express-order-widget-totals.md: The express order widget's totals (designer pages): today's lines, the cart's order discount, its tax share, gift cards, surcharge, as submit_order() charges them (pg_express_order_charged_totals)
+- express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
