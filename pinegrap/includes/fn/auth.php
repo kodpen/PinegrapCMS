@@ -3072,8 +3072,25 @@ function pg_form_captcha_check($key, $answer)
     return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $entry['answer']));
 }
 
+/**
+ * The id of the CAPTCHA answer box: captcha_submitted_answer for the first
+ * CAPTCHA a page prints, numbered from the second on (two forms on one page).
+ *
+ * @param int $number 1 for the page's first CAPTCHA
+ * @return string
+ */
+function pg_captcha_answer_id($number)
+{
+    $number = (int) $number;
+
+    return 'captcha_submitted_answer' . (($number > 1) ? '_' . $number : '');
+}
+
 function get_captcha_fields($liveform)
 {
+    // How many CAPTCHAs this request has printed (pg_captcha_answer_id()).
+    static $captcha_count = 0;
+
     if (!CAPTCHA) {
         return '';
     }
@@ -3091,8 +3108,12 @@ function get_captcha_fields($liveform)
         $liveform->assign_field_value('captcha_submitted_answer', '');
         // The body field is a honeypot field which we will use to determine if the submitter is a bot.
         // The captcha_correct_answer field actually contains a fake, incorrect answer.
+        // The answer box is labelled by its question. Its id is the one the
+        // classic themes style (input#captcha_submitted_answer); a second
+        // CAPTCHA on the same page numbers its own.
+        $answer_id = pg_captcha_answer_id(++$captcha_count);
         $captcha_label_box = '<div class="software_captcha_label" style="font-weight: bold; margin-bottom: .5em">' . lang('To prevent spam, please tell us') . ':</div>';
-        $captcha_question_box = '<span class="software_captcha_question"> ' . lang(array('string' => 'What is {var:1} + {var:2} ?', 'vars' => array($first_number, $second_number))) . '</span>';
+        $captcha_question_box = '<label class="software_captcha_question" for="' . h($answer_id) . '"> ' . lang(array('string' => 'What is {var:1} + {var:2} ?', 'vars' => array($first_number, $second_number))) . '</label>';
         $output_captcha_fields = '<div class="captcha">
 
                 <div style="display: none">' . $liveform->output_field(array(
@@ -3114,6 +3135,7 @@ function get_captcha_fields($liveform)
                     )) . $captcha_label_box . $captcha_question_box . $liveform->output_field(array(
                         'type' => 'number',
                         'name' => 'captcha_submitted_answer',
+                        'id' => $answer_id,
                         'maxlength' => '2',
                         'size' => '2',
                         'required' => 'true',
