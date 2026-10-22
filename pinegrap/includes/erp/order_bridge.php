@@ -145,13 +145,23 @@ function erp_order_charged_items($order, $items, $clearcommerce = null)
  * Returned as plain arrays rather than written, so the caller can show them
  * before anything is saved and so this can be tested without a transaction.
  *
- * @param array     $order          Order row
- * @param array     $items          order_items rows (saved_for_later already excluded)
- * @param bool|null $charges_taxed  The shipping and the surcharges hold tax; null asks the
- *                                  store (erp_shipping_taxed())
+ * The order's invoice asks for $settle_installment: an instalment charge that
+ * leaves the total of a rate one the VAT, taken on the whole, never reaches
+ * (a payment service such as Pay with iyzico sets it, and the checkout could
+ * not take it lower) goes on the invoice the fewest kurus lower that reach
+ * it (erp_order_charge_lines()). The invoice then comes to that much less
+ * than the customer paid (totals['installment_left']); the kurus stays with
+ * the payment, on the customer's account. A refund of the order's lines
+ * leaves it off and gives back what was paid.
+ *
+ * @param array     $order               Order row
+ * @param array     $items               order_items rows (saved_for_later already excluded)
+ * @param bool|null $charges_taxed       The shipping and the surcharges hold tax; null asks the
+ *                                       store (erp_shipping_taxed())
+ * @param bool      $settle_installment  Lower an instalment charge that leaves a rate out of reach
  * @return array  ['lines' => array, 'totals' => array]
  */
-function erp_order_lines($order, $items, $charges_taxed = null)
+function erp_order_lines($order, $items, $charges_taxed = null, $settle_installment = false)
 {
     $lines = array();
     $weights = array();
@@ -262,11 +272,18 @@ function erp_order_lines($order, $items, $charges_taxed = null)
     // well; without its line the invoice fell short of every installment
     // order and was refused. The document has no column of its own for it,
     // so surcharge_total counts it with the surcharge.
+    $installment = (int) ($order['installment_charges'] ?? 0);
     $charges = erp_order_charge_lines($lines, array(
         'shipping' => array(lang('Shipping'), (int) ($order['shipping'] ?? 0)),
         'surcharge' => array(lang('Surcharge'), (int) ($order['surcharge'] ?? 0)),
-        'installment' => array(lang('Installment Charge'), (int) ($order['installment_charges'] ?? 0)),
-    ), $charges_taxed);
+        'installment' => array(lang('Installment Charge'), $installment),
+    ), $charges_taxed, $settle_installment ? array('installment') : array());
+
+    // What of the instalment charge the invoice leaves to the payment.
+    $installment_left = $installment;
+    foreach ($charges['installment'] as $line) {
+        $installment_left -= (int) $line['line_total'] + (int) $line['tax_total'];
+    }
 
     $shipping_lines = $charges['shipping'];
     $surcharge_lines = array_merge($charges['surcharge'], $charges['installment']);
@@ -306,7 +323,9 @@ function erp_order_lines($order, $items, $charges_taxed = null)
     // two lines account for; they are informational and are NOT added again.
     // A reader that sums subtotal + shipping_total + tax_total counts the
     // shipping twice. gift_card_total is not part of the sale at all - it is
-    // how part of the grand total was paid.
+    // how part of the grand total was paid. installment_left is the part of
+    // the instalment charge the invoice leaves to the payment (above): the
+    // order's total and gift card come to the grand total plus it.
     $totals = array(
         'subtotal' => $subtotal,
         'discount_total' => $discount_total,
@@ -315,6 +334,7 @@ function erp_order_lines($order, $items, $charges_taxed = null)
         'gift_card_total' => (int) ($order['gift_card_discount'] ?? 0),
         'tax_total' => $tax_total,
         'grand_total' => $subtotal - $discount_total + $tax_total,
+        'installment_left' => max(0, $installment_left),
     );
 
     return array('lines' => $lines, 'totals' => $totals);
@@ -349,14 +369,18 @@ function erp_order_lines($order, $items, $charges_taxed = null)
  * order placed before the checkout settled its charges
  * (pg_order_charges_reachable()) or an installment charge the payment added.
  * So does one that would move a charge further than its lines' roundings
- * explain (a kurus a line, and one).
+ * explain (a kurus a line, and one). A charge named in $lower is taken
+ * instead the fewest kurus lower (at most ten) that leave every rate it is
+ * shared by reachable, as the checkout lowers the shipping: its lines then
+ * come to that much less than was charged.
  *
  * @param array     $item_lines  The order's goods lines, discount applied, their tax final
  * @param array     $charges     name => [label, int kurus charged], in the order they are placed
  * @param bool|null $taxed       The charges hold tax; null asks the store (erp_shipping_taxed())
+ * @param string[]  $lower       The charges that may go lower to keep the rates reachable
  * @return array  name => lines in erp_order_lines() shape
  */
-function erp_order_charge_lines($item_lines, $charges, $taxed = null)
+function erp_order_charge_lines($item_lines, $charges, $taxed = null, $lower = array())
 {
     $out = array();
     $any = false;
@@ -412,6 +436,27 @@ function erp_order_charge_lines($item_lines, $charges, $taxed = null)
         }
 
         $shares = ($taxed && !empty($shared)) ? pg_order_charge_shares($gross, $shared) : array('0.000' => $gross);
+
+        if ($taxed && !empty($shared) && in_array($name, (array) $lower, true)) {
+            for ($less = 0; ($less <= 10) && ($less < $gross); $less++) {
+                $tried = pg_order_charge_shares($gross - $less, $shared);
+                $reached = true;
+
+                foreach ($tried as $key => $share) {
+                    if (((int) $share > 0) && ($shared[$key]['rate'] > 0)
+                        && (erp_rate_amount($shared[$key]['total'] + (int) $share, $shared[$key]['rate']) === null)) {
+                        $reached = false;
+                        break;
+                    }
+                }
+
+                if ($reached) {
+                    $shares = $tried;
+                    break;
+                }
+            }
+        }
+
         $several = (count(array_filter($shares)) > 1);
 
         foreach ($shares as $key => $share) {
@@ -830,12 +875,15 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             : lang('This order is not linked to a contact, so there is no account to bill.'));
     }
 
-    $built = erp_order_lines($order, $items);
+    $built = erp_order_lines($order, $items, null, true);
 
     // What the customer was actually charged. A gift card is a means of
     // payment, so it is added back: the invoice states the whole sale, and the
-    // gift card settles its share of it once the document exists.
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
+    // gift card settles its share of it once the document exists. An
+    // instalment charge that left a rate's total out of reach is invoiced the
+    // kurus lower that reaches it (erp_order_lines()); that kurus stays with
+    // the payment.
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'];
 
     if ($built['totals']['grand_total'] !== $expected) {
         return $fail(lang(array(

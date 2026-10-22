@@ -1891,6 +1891,12 @@ function submit_order($type) {
                 'recurring'                => ($recurring_transaction === TRUE),
                 'subtotal'                 => $subtotal,
                 'discount'                 => $discount,
+                // What the instalment charge is settled against: it goes the
+                // fewest kurus lower where it would leave a rate's total out
+                // of reach, as the shipping does (pg_order_installment_charge()).
+                'settle_rates'             => pg_order_charges_settle_rates(),
+                'charged_lines'            => $charged_lines,
+                'charges'                  => array('shipping' => (int) $shipping, 'surcharge' => (int) $surcharge),
                 'lines'                    => $products,
                 'ship_to'                  => pg_payment_order_ship_to((int) ($_SESSION['ecommerce']['order_id'] ?? 0)),
                 'customer_id'              => $user_id,

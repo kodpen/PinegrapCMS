@@ -274,3 +274,18 @@ function test_parasut_order_invoice_meets_the_order_on_random_orders()
 		pg_assert_same($sale, pg_test_parasut_order_paid_total($payload), 'run ' . $run . ' Paraşüt total');
 	}
 }
+
+// Pay with iyzico sets the instalment charge itself: 57.92 and 2.05 come to
+// 59.97, which Paraşüt never reaches at 20%. The order goes with the charge a
+// kurus lower, 59.96, and the kurus stays with the payment.
+function test_parasut_order_invoice_lines_settle_an_installment_out_of_reach()
+{
+	$order = array('id' => 451, 'order_date' => mktime(12, 0, 0, 10, 22, 2026), 'discount' => 0, 'tax' => 799, 'shipping' => 998, 'surcharge' => 0, 'installment_charges' => 205, 'total' => 5997, 'gift_card_discount' => 0);
+	$built = parasut_order_invoice_lines($order, array(pg_test_parasut_order_item(3995, 1, 799, '20.000')), true, false);
+
+	pg_assert_same(5996, $built['expected']);
+	pg_assert_same(5996, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['installment_left']);
+	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
+	pg_assert_same(5996, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
+}
