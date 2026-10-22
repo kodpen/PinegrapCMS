@@ -1379,6 +1379,145 @@ function pg_time_uses_user_zone($properties)
     return pg_time_in_user_zone($properties, $signed_in, $zone);
 }
 
+/**
+ * Old time zone names (IANA "backward" links) and the current names that
+ * replaced them. Debian and Ubuntu moved these links to the tzdata-legacy
+ * package, so a PHP that reads the system's time zone database may not know
+ * the old names, and new DateTimeZone() throws for them.
+ *
+ * @return array old name => current name
+ */
+function pg_timezone_legacy_names()
+{
+    return array(
+        'US/Alaska'           => 'America/Anchorage',
+        'US/Arizona'          => 'America/Phoenix',
+        'US/Mountain'         => 'America/Denver',
+        'US/Central'          => 'America/Chicago',
+        'Canada/Saskatchewan' => 'America/Regina',
+        'US/Eastern'          => 'America/New_York',
+        'US/East-Indiana'     => 'America/Indiana/Indianapolis',
+        'Canada/Atlantic'     => 'America/Halifax',
+        'Canada/Newfoundland' => 'America/St_Johns',
+        'America/Godthab'     => 'America/Nuuk',
+        'Asia/Katmandu'       => 'Asia/Kathmandu',
+        'Asia/Rangoon'        => 'Asia/Yangon',
+        'Asia/Ulan_Bator'     => 'Asia/Ulaanbaatar',
+        'Pacific/Samoa'       => 'Pacific/Pago_Pago',
+        'Asia/Chongqing'      => 'Asia/Shanghai',
+        'Australia/Canberra'  => 'Australia/Sydney',
+    );
+}
+
+/**
+ * Whether this PHP knows a time zone name. Remembered per request: the
+ * relative and absolute time helpers ask for every time they draw.
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_timezone_known($name)
+{
+    static $known = array();
+
+    $name = (string) $name;
+
+    if (!isset($known[$name])) {
+        try {
+            new DateTimeZone($name);
+            $known[$name] = ($name !== '');
+        } catch (Throwable $exception) {
+            // An Exception for an unknown name; a ValueError (PHP 8) for one
+            // with a NUL byte.
+            $known[$name] = false;
+        }
+    }
+
+    return $known[$name];
+}
+
+/**
+ * A stored time zone name (user.timezone, config.timezone) as this PHP knows
+ * it: an old name is read as its current one; a current name falls back to
+ * its old one where an older time zone database lacks it (America/Nuuk came
+ * with tzdata 2020a, after the database PHP 7.1 embeds). '' for an empty
+ * name or one this PHP does not know in either form, which means the site's
+ * zone (or the server's) is used instead.
+ *
+ * @param string        $name
+ * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
+ * @return string
+ */
+function pg_timezone_canonical($name, $known = null)
+{
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return '';
+    }
+
+    if ($known === null) {
+        $known = 'pg_timezone_known';
+    }
+
+    $legacy = pg_timezone_legacy_names();
+    $old = array_search($name, $legacy, true);
+
+    if (isset($legacy[$name])) {
+        $candidates = array($legacy[$name], $name);
+    } elseif ($old !== false) {
+        $candidates = array($name, $old);
+    } else {
+        $candidates = array($name);
+    }
+
+    foreach ($candidates as $candidate) {
+        if (call_user_func($known, $candidate)) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * A stored time zone name as the pick lists (get_timezones()) offer it, so
+ * that an old name stays selected as its current option.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_timezone_list_value($name)
+{
+    $name = trim((string) $name);
+    $legacy = pg_timezone_legacy_names();
+
+    return isset($legacy[$name]) ? $legacy[$name] : $name;
+}
+
+/**
+ * The DateTimeZone for a stored name, never an exception: a name this PHP
+ * does not know is the default zone of the request (the site's, set by
+ * init.php), and UTC if even that cannot be built.
+ *
+ * @param string $name
+ * @return DateTimeZone
+ */
+function pg_timezone_object($name)
+{
+    $zone = pg_timezone_canonical($name);
+
+    if ($zone === '') {
+        $zone = date_default_timezone_get();
+    }
+
+    try {
+        return new DateTimeZone($zone);
+    } catch (Throwable $exception) {
+        return new DateTimeZone('UTC');
+    }
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -1473,9 +1612,9 @@ function get_relative_time($properties)
             // Otherwise we should use user's timezone, so do that.
         } else {
             $current_date = new DateTime('@' . $current_timestamp);
-            $current_date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+            $current_date->setTimezone(pg_timezone_object(USER_TIMEZONE));
             $date = new DateTime('@' . $timestamp);
-            $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+            $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
             $current_date_timestamp = strtotime($current_date->format('Y-m-d'));
             $date_timestamp = strtotime($date->format('Y-m-d'));
         }
@@ -1501,7 +1640,7 @@ function get_relative_time($properties)
             // Otherwise we should output date for user's timezone, so do that.
         } else {
             $date = new DateTime('@' . $timestamp);
-            $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+            $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
             $relative_time = $date->format($month_and_day_format . ' Y');
         }
     }
@@ -1546,7 +1685,7 @@ function get_relative_time($properties)
                 // Otherwise we should output time for user's timezone, so do that.
             } else {
                 $date = new DateTime('@' . $timestamp);
-                $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+                $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
                 $title = $date->format('D ' . $month_and_day_format . ' Y ' . $hour_system_format . ' T');
             }
         }
@@ -1647,7 +1786,7 @@ function get_absolute_time($properties)
             // Otherwise we should output time for user's timezone, so do that.
         } else {
             $date = new DateTime('@' . $timestamp);
-            $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+            $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
             $absolute_time = $date->format($hour_system_format);
         }
         // Otherwise the type is date & time, so get both of those.
@@ -1680,7 +1819,7 @@ function get_absolute_time($properties)
             } else {
 
                 $date = new DateTime('@' . $timestamp);
-                $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+                $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
 
                 $absolute_time = $date->format('l, ' . $month_and_day_format . $year_format . ' \a\t ' . $hour_system_format . ' T');
             }
@@ -1702,7 +1841,7 @@ function get_absolute_time($properties)
                 // Otherwise we should output time for user's timezone, so do that.
             } else {
                 $date = new DateTime('@' . $timestamp);
-                $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+                $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
                 $absolute_time = $date->format('D ' . $month_and_day_format . $year_format . ' ' . $hour_system_format . ' T');
             }
         }
@@ -2686,33 +2825,33 @@ function get_timezones()
 {
     return array(
         '(UTC-11:00) Midway Island' => 'Pacific/Midway',
-        '(UTC-11:00) Samoa' => 'Pacific/Samoa',
+        '(UTC-11:00) Samoa' => 'Pacific/Pago_Pago',
         '(UTC-10:00) Hawaii' => 'Pacific/Honolulu',
-        '(UTC-09:00) Alaska' => 'US/Alaska',
+        '(UTC-09:00) Alaska' => 'America/Anchorage',
         '(UTC-08:00) Pacific Time (US & Canada)' => 'America/Los_Angeles',
         '(UTC-08:00) Tijuana' => 'America/Tijuana',
-        '(UTC-07:00) Arizona' => 'US/Arizona',
+        '(UTC-07:00) Arizona' => 'America/Phoenix',
         '(UTC-07:00) Chihuahua' => 'America/Chihuahua',
         '(UTC-07:00) Mazatlan' => 'America/Mazatlan',
-        '(UTC-07:00) Mountain Time (US & Canada)' => 'US/Mountain',
+        '(UTC-07:00) Mountain Time (US & Canada)' => 'America/Denver',
         '(UTC-06:00) Central America' => 'America/Managua',
-        '(UTC-06:00) Central Time (US & Canada)' => 'US/Central',
+        '(UTC-06:00) Central Time (US & Canada)' => 'America/Chicago',
         '(UTC-06:00) Mexico City' => 'America/Mexico_City',
         '(UTC-06:00) Monterrey' => 'America/Monterrey',
-        '(UTC-06:00) Saskatchewan' => 'Canada/Saskatchewan',
+        '(UTC-06:00) Saskatchewan' => 'America/Regina',
         '(UTC-05:00) Bogota' => 'America/Bogota',
-        '(UTC-05:00) Eastern Time (US & Canada)' => 'US/Eastern',
-        '(UTC-05:00) Indiana (East)' => 'US/East-Indiana',
+        '(UTC-05:00) Eastern Time (US & Canada)' => 'America/New_York',
+        '(UTC-05:00) Indiana (East)' => 'America/Indiana/Indianapolis',
         '(UTC-05:00) Lima' => 'America/Lima',
         '(UTC-05:00) Quito' => 'America/Guayaquil',
-        '(UTC-04:00) Atlantic Time (Canada)' => 'Canada/Atlantic',
+        '(UTC-04:00) Atlantic Time (Canada)' => 'America/Halifax',
         '(UTC-04:30) Caracas' => 'America/Caracas',
         '(UTC-04:00) La Paz' => 'America/La_Paz',
         '(UTC-04:00) Santiago' => 'America/Santiago',
-        '(UTC-03:30) Newfoundland' => 'Canada/Newfoundland',
+        '(UTC-03:30) Newfoundland' => 'America/St_Johns',
         '(UTC-03:00) Brasilia' => 'America/Sao_Paulo',
         '(UTC-03:00) Buenos Aires' => 'America/Argentina/Buenos_Aires',
-        '(UTC-03:00) Greenland' => 'America/Godthab',
+        '(UTC-03:00) Greenland' => 'America/Nuuk',
         '(UTC-02:00) Mid-Atlantic' => 'America/Noronha',
         '(UTC-01:00) Azores' => 'Atlantic/Azores',
         '(UTC-01:00) Cape Verde Is.' => 'Atlantic/Cape_Verde',
@@ -2770,22 +2909,22 @@ function get_timezones()
         '(UTC+05:00) Karachi' => 'Asia/Karachi',
         '(UTC+05:00) Tashkent' => 'Asia/Tashkent',
         '(UTC+05:30) Kolkata' => 'Asia/Kolkata',
-        '(UTC+05:45) Kathmandu' => 'Asia/Katmandu',
+        '(UTC+05:45) Kathmandu' => 'Asia/Kathmandu',
         '(UTC+06:00) Almaty' => 'Asia/Almaty',
         '(UTC+06:00) Dhaka' => 'Asia/Dhaka',
         '(UTC+06:00) Ekaterinburg' => 'Asia/Yekaterinburg',
-        '(UTC+06:30) Rangoon' => 'Asia/Rangoon',
+        '(UTC+06:30) Rangoon' => 'Asia/Yangon',
         '(UTC+07:00) Bangkok' => 'Asia/Bangkok',
         '(UTC+07:00) Jakarta' => 'Asia/Jakarta',
         '(UTC+07:00) Novosibirsk' => 'Asia/Novosibirsk',
-        '(UTC+08:00) Chongqing' => 'Asia/Chongqing',
+        '(UTC+08:00) Chongqing' => 'Asia/Shanghai',
         '(UTC+08:00) Hong Kong' => 'Asia/Hong_Kong',
         '(UTC+08:00) Krasnoyarsk' => 'Asia/Krasnoyarsk',
         '(UTC+08:00) Kuala Lumpur' => 'Asia/Kuala_Lumpur',
         '(UTC+08:00) Perth' => 'Australia/Perth',
         '(UTC+08:00) Singapore' => 'Asia/Singapore',
         '(UTC+08:00) Taipei' => 'Asia/Taipei',
-        '(UTC+08:00) Ulaan Bataar' => 'Asia/Ulan_Bator',
+        '(UTC+08:00) Ulaan Bataar' => 'Asia/Ulaanbaatar',
         '(UTC+08:00) Urumqi' => 'Asia/Urumqi',
         '(UTC+09:00) Irkutsk' => 'Asia/Irkutsk',
         '(UTC+09:00) Seoul' => 'Asia/Seoul',
@@ -2793,7 +2932,7 @@ function get_timezones()
         '(UTC+09:30) Adelaide' => 'Australia/Adelaide',
         '(UTC+09:30) Darwin' => 'Australia/Darwin',
         '(UTC+10:00) Brisbane' => 'Australia/Brisbane',
-        '(UTC+10:00) Canberra' => 'Australia/Canberra',
+        '(UTC+10:00) Canberra' => 'Australia/Sydney',
         '(UTC+10:00) Guam' => 'Pacific/Guam',
         '(UTC+10:00) Hobart' => 'Australia/Hobart',
         '(UTC+10:00) Melbourne' => 'Australia/Melbourne',
