@@ -821,6 +821,43 @@ function ws_change_value($field, $value)
 }
 
 /**
+ * Why ws_change_value() refuses a value, as the sentence the writer shows;
+ * '' when it takes the value. A number of the right kind that the field
+ * cannot hold (a price over the INT column, a stock below zero) is named as
+ * out of range, so the person is not told to change the kind of a value whose
+ * kind was right.
+ *
+ * @param array  $field
+ * @param mixed  $value
+ * @param string $label The field as the sentence names it.
+ * @return string
+ */
+function ws_change_value_refusal($field, $value, $label)
+{
+    if (ws_change_value($field, $value) !== null) {
+        return '';
+    }
+
+    $number = $value;
+
+    if (($field[0] === 'decimal') && is_string($number)) {
+        $number = str_replace(',', '.', trim($number));
+    }
+
+    // Only the numeric kinds have a range; for them, a value that is a number
+    // (a whole one where the field keeps whole numbers) failed on its bounds.
+    $out_of_range = in_array($field[0], array('money', 'int', 'decimal'), true)
+        && !is_bool($number) && is_numeric($number)
+        && (($field[0] === 'decimal') || (floor((float) $number) == (float) $number));
+
+    if ($out_of_range) {
+        return lang(array('string' => '{var:1}: the value is out of range.', 'vars' => (string) $label));
+    }
+
+    return lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => (string) $label));
+}
+
+/**
  * What a record holds in a field now, in the field's shape.
  *
  * @param array $field
@@ -1670,7 +1707,7 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0)
                 $to = ws_change_value($field, $value);
 
                 if ($to === null) {
-                    return $refuse(lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => $name)));
+                    return $refuse(ws_change_value_refusal($field, $value, $name));
                 }
 
                 if (($field[0] === 'email') && ($to !== '') && function_exists('validate_email_address') && !validate_email_address($to)) {

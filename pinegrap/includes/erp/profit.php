@@ -576,7 +576,9 @@ function erp_profit_uninvoiced_orders($from, $to)
 /**
  * The lines the uninvoiced orders of a period would be invoiced with, one
  * entry per line: order, month, product, quantity and net (without tax, in
- * the base currency: an order is kept in it).
+ * the base currency: an order is kept in it). Only the lines the checkout
+ * charged count (erp_order_charged_items()): a recurring line that starts
+ * later took no money, so the sum meets erp_profit_uninvoiced_orders().
  *
  * @param string $from
  * @param string $to
@@ -600,7 +602,8 @@ function erp_profit_order_lines($from, $to)
     }
 
     foreach (array_chunk($ids, 500) as $chunk) {
-        foreach ((array) db_items("SELECT order_items.*, products.short_description, products.tax_rate AS product_tax_rate
+        foreach ((array) db_items("SELECT order_items.*, products.short_description, products.tax_rate AS product_tax_rate,
+                products.start AS product_start
             FROM order_items
             LEFT JOIN products ON order_items.product_id = products.id
             WHERE order_items.order_id IN (" . implode(',', $chunk) . ") AND order_items.saved_for_later = 0
@@ -613,6 +616,10 @@ function erp_profit_order_lines($from, $to)
 
     foreach ($orders as $order) {
         $order_items = $items[(int) $order['id']] ?? array();
+
+        // The invoice would carry the charged lines alone; an order with only
+        // unstarted subscription lines has nothing to count yet.
+        $order_items = erp_order_charged_items($order, $order_items);
 
         if (empty($order_items)) {
             continue;

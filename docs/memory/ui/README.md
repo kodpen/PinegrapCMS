@@ -21,12 +21,14 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
+- form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
 - money-field-input-mask.md: Panel money fields with the currency input mask (data-inputmask-alias currency): fill them in machine format, read them with pg_normalize_amount(), require them; the gift card balance symptom
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .dropdown-menu: Bootstrap's capture-phase keydown handler throws on it, so its keys are taken on the window; closing on scroll and a long press
+- panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-save-shortcut.md: The panel's Ctrl+S shortcut (backend.src.js) and Return in a text field: which form and button each submits, disable_shortcut, a key a dialog handled, buttons on a form of their own

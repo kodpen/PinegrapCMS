@@ -13,7 +13,7 @@ description: Maintenance, news and creative block families (2026.11.0): palette 
 
 ## Which node types drop attributes?
 - `row`, `col` and `container` nodes do not write `_attrs` (editor emitter and the PHP mirror alike). A row that needs `role`, `tabindex` or `aria-label` (a horizontal scroller) is a semantic `div` with `row …` / `col-*` classes, as `loyalty-stamps` and `scroller-cards` do. `_bkCol()` always writes `xs: '12'`.
-- An image's `width`/`height` props come out as a unitless inline style that browsers ignore: size an avatar or thumbnail with a block rule (`pg-circle-40`, `pg-thumb-100`, `pg-circle-160`).
+- An image's whole-number `width`/`height` props are its attributes, a value with a unit a style (docs/memory/designer/image-size-props.md). A round avatar or a thumbnail that must keep its shape still takes a block rule (`pg-circle-40`, `pg-thumb-100`, `pg-circle-160`).
 - `visually-hidden` text is `position: absolute`: inside an `overflow-x-auto` strip the strip needs `position-relative`, or the hidden text escapes and the page scrolls sideways on phones.
 
 ## What is special about the maintenance blocks?

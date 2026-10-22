@@ -54,8 +54,9 @@ if ($_POST['users']) {
                 // browser holding it keeps presenting it on every request.
                 pg_auth_token_revoke_user($user_id);
 
-                // The second factor and its recovery codes go with the
-                // account, for the same reason (silent before the 8.40 upgrade).
+                // The second factor, its recovery codes and the account's
+                // passkeys go with the account, for the same reason (silent
+                // before the 8.40 and 11.0.13 upgrades).
                 pg_mfa_reset($user_id);
 
                 // The Microsoft and Apple identities go with it too.

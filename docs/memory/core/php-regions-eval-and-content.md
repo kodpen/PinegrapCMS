@@ -9,7 +9,7 @@ description: get_page_content.php evaluates the assembled page when PHP_REGIONS 
 
 ## What is pg_defuse_php_tags() and where is it called?
 - `pg_defuse_php_tags($html)` (`includes/fn/core.php`, beside `h()`) rewrites `<?` to `&lt;?`: the characters stay on screen, the PHP parser sees no open tag, the rest of the markup is untouched. It is for markup printed raw; plain text goes through `h()` as before.
-- Called in: `_pg_dm_neutralise_markers()` (every string a content-level save keeps, `includes/designer_access.php`); `pg_sw_escape_token_values()` for every raw key (`pg_sw_raw_token_keys()` plus `$raw_extra`); the hand-built `__item_description` maps in `widgets_cart.php`, `widgets_express_order.php` and the order widget in `widgets.php`; `import_design.php` on fetched HTML before it becomes style code.
+- Called in: `_pg_dm_neutralise_markers()` (every string a content-level save keeps, `includes/designer_access.php`); `pg_sw_escape_token_values()` for every raw key (`pg_sw_raw_token_keys()` plus `$raw_extra`); the hand-built `__item_description` maps in `widgets_cart.php`, `widgets_express_order.php` and the order widget in `widgets.php`; the rich-text branch of `pg_sw_apply_tokens()` and the order-form values in `widgets_catalog.php`; `import_design.php` on fetched HTML before it becomes style code.
 - A new widget that prints a rich-text column raw must either build its map through `pg_sw_escape_token_values()` or wrap that value in `pg_defuse_php_tags()`. Tests: `tests/php_tags_in_content_test.php`.
 - Symptom fixed: a manager, a role-3 user with folder edit rights or `manage_ecommerce`, or a `products:write` API key could put `<?php system($_GET['c']); ?>` into page text or a product description and run it on every public view.
 
