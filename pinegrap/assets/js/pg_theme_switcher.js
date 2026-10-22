@@ -13,7 +13,10 @@
  * the file with it - and leaves nothing behind when it is removed. The same
  * server step applies the stored choice in <head>, before the page paints.
  * The editor's canvas loads this file too and binds again after every render
- * (window.pgThemeSwitcherBind).
+ * (window.pgThemeSwitcherBind). It sets window.pgThemeNoStore first: the
+ * canvas shares the site's origin, and a choice made there is the editor's
+ * view of the design, not the visitor's theme, so it is kept in memory only
+ * and starts from the view the editor put on <html>.
  *
  * window.pgSetTheme / pgGetTheme / pgResolvedTheme and the pg-theme-change
  * event are the engine the switchers' inline script used to define; pages
@@ -38,7 +41,19 @@
     // switcher then still works for the page on screen.
     var memory = null;
 
+    // The editor's canvas (window.pgThemeNoStore): nothing is read from or
+    // written to localStorage, and the choice starts as the view on <html>.
+    var noStore = !!window.pgThemeNoStore;
+
+    if (noStore) {
+        memory = (root.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light';
+    }
+
     function stored() {
+        if (noStore) {
+            return memory;
+        }
+
         try {
             return window.localStorage.getItem(KEY) || 'auto';
         } catch (e) {
@@ -87,9 +102,11 @@
 
         window.pgSetTheme = function (theme) {
             memory = theme;
-            try {
-                window.localStorage.setItem(KEY, theme);
-            } catch (e) {}
+            if (!noStore) {
+                try {
+                    window.localStorage.setItem(KEY, theme);
+                } catch (e) {}
+            }
             apply(theme);
             announce();
         };

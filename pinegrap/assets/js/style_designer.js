@@ -5747,11 +5747,11 @@ const StyleDesigner = (function () {
         // `background: #1c1e26 !important`, which `!important`-overrode
         // user classes like `bg-primary` AND wiped the grid overlay's
         // `background-image` (the shorthand resets it to `none`). The
-        // toolbar dark-theme button sets `data-bs-theme="dark"` which
+        // toolbar dark-theme button sets `data-bs-theme="dark"` on <html>, which
         // Bootstrap honours via CSS variables — that already handles the
         // dark canvas colour without nuking user styles. The class is
         // gone; the dropzone tweak below still applies for parity.
-        'body[data-bs-theme="dark"] .sd-dz { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.4); }',
+        'html[data-bs-theme="dark"] .sd-dz { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.4); }',
         // Grid overlay — toggled by sd-vb-grid button
         // Grid overlay — accent-tinted so it stays legible on both light
         // and dark backgrounds. Earlier the lines were rgba(0,0,0,.1)
@@ -6029,49 +6029,51 @@ const StyleDesigner = (function () {
     }
 
     // ========================= CANVAS THEME =========================
-    // Single point of control for the canvas iframe's color mode. Called
-    // from THREE places that all need to stay in sync:
+    // Single point of control for the canvas iframe's color mode, the
+    // editor's view of the design. Called from:
     //   1. Toolbar dark/light button (sd-vb-theme)
     //   2. Themes panel mode tabs (sd-theme-mode-tab) — they pass
     //      source='themes' to skip the redundant tab-state update.
-    //   3. saveAjax / load — to apply the persisted dark state on init
+    //   3. A theme switcher clicked on the canvas (source='canvas'), through
+    //      the pg-theme-change listener of _sdInitCanvasDoc().
     //
-    // What it does:
-    //   • Sets/removes <body data-bs-theme="dark"> on the iframe
-    //   • Sets/removes the legacy `sd-dark-theme` class (for any custom
-    //     CSS that already hooks it)
-    //   • Updates the toolbar button (icon + label + active class)
-    //   • Updates the Themes panel mode tab (active class) + re-renders
-    //     so values reflect the active mode's variable block
-    //   • Triggers any iframe-side theme switchers (Bootstrap docs pattern:
-    //     buttons with [data-bs-theme-value]). User-built switchers stay
-    //     in step. If the iframe doesn't have any switchers, this is a
-    //     silent no-op — nothing breaks.
+    // One state, on the canvas <html>, as on the published page: the view
+    // is data-bs-theme on the documentElement (dark, or no attribute for
+    // light), the attribute the switchers' engine writes too. It used to sit
+    // on <body>, where it overrode whatever a canvas switcher put on <html>,
+    // so the canvas stayed dark after the switcher chose light.
+    //
+    // The switchers are never clicked from here: the engine runs on the
+    // canvas with window.pgThemeNoStore (_sdThemeSwitchers()), and is told
+    // the view with pgSetTheme(), which redraws them and keeps the choice in
+    // memory. Clicking them stored the editor's view as the visitor's theme
+    // in the site's localStorage (the canvas shares the site's origin), and
+    // the admin's own site then opened dark.
     function applyCanvasTheme(mode, opts) {
         opts = opts || {};
         var dark = (mode === 'dark');
+        mode = dark ? 'dark' : 'light';
         canvasDarkTheme = dark;
 
-        // 1. Iframe body attribute — Bootstrap reads this and applies the
-        //    dark colour scheme via CSS variables. We deliberately DO NOT
-        //    add the legacy `sd-dark-theme` body class anymore: that class
-        //    used to set `background: #1c1e26 !important` which
-        //    !important-overrode user backgrounds (e.g. `body.bg-primary`)
-        //    AND wiped the grid overlay's background-image. With
-        //    data-bs-theme alone, the toolbar dark button now behaves
-        //    identically to a user-placed `[data-bs-theme-value="dark"]`
-        //    switcher inside the iframe.
-        if (canvasDoc && canvasDoc.body) {
-            if (dark) canvasDoc.body.setAttribute('data-bs-theme', 'dark');
-            else canvasDoc.body.removeAttribute('data-bs-theme');
-            // Defensive: scrub any stale legacy class left from earlier
-            // page loads where the previous code path added it.
-            canvasDoc.body.classList.remove('sd-dark-theme');
+        // 1. The canvas <html>. Bootstrap reads data-bs-theme and applies
+        //    the dark colour scheme through its CSS variables; the legacy
+        //    `sd-dark-theme` body class (it forced a background with
+        //    !important) and a body attribute left by an older canvas are
+        //    scrubbed. Light is no attribute, or the "light" a switcher's
+        //    engine wrote (as on the published page).
+        if (canvasDoc && canvasDoc.documentElement) {
+            var _html = canvasDoc.documentElement;
+            if (dark) _html.setAttribute('data-bs-theme', 'dark');
+            else if (_html.getAttribute('data-bs-theme') !== 'light') _html.removeAttribute('data-bs-theme');
+            if (canvasDoc.body) {
+                canvasDoc.body.removeAttribute('data-bs-theme');
+                canvasDoc.body.classList.remove('sd-dark-theme');
+            }
         }
 
-        // 2. Toolbar button — even when called from the Themes panel,
-        //    the toolbar button's UI must follow the mode (so the user
-        //    sees the same state from both surfaces).
+        // 2. Toolbar button — even when called from the Themes panel or the
+        //    canvas, the toolbar button's UI must follow the mode (so the
+        //    user sees the same state from every surface).
         var tb = document.getElementById('sd-vb-theme');
         if (tb) {
             tb.classList.toggle('active', dark);
@@ -6094,33 +6096,29 @@ const StyleDesigner = (function () {
             }
         }
 
-        // 4. Trigger user-built iframe theme switchers — Bootstrap's docs
-        //    pattern is `[data-bs-theme-value="dark|light|auto"]` buttons
-        //    that update <html data-bs-theme>. Click the matching one so
-        //    custom switcher UI updates its active state. We also flip
-        //    any `.theme-toggle`/`#themeToggle` checkbox the user might
-        //    have wired manually. Wrap in try/catch — third-party
-        //    switcher scripts can throw on click in unexpected ways.
-        if (canvasDoc) {
-            try {
-                var btns = canvasDoc.querySelectorAll('[data-bs-theme-value]');
-                btns.forEach(function (b) {
-                    if (b.getAttribute('data-bs-theme-value') === mode) {
-                        // Use synthetic click so any onClick wiring fires.
-                        try { b.click(); } catch (e) {}
-                    }
-                });
-                // Form-switch variant: a checkbox where checked = dark.
-                canvasDoc.querySelectorAll('.theme-toggle, #themeToggle').forEach(function (el) {
-                    if (el.tagName === 'INPUT' && el.type === 'checkbox') {
-                        if (el.checked !== dark) {
-                            el.checked = dark;
-                            try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
-                        }
-                    }
-                });
-            } catch (e) {}
-        }
+        // 4. The switchers on the canvas show the view. A switcher that
+        //    started the change already shows it.
+        if (opts.source !== 'canvas') _sdThemeEngineShow(mode);
+    }
+
+    // The canvas switchers' engine, when it runs there in its no-store mode
+    // (an engine a page brought along itself would store the choice: it is
+    // left alone), is told the editor's view; it puts it on <html> and
+    // redraws every switcher.
+    function _sdThemeEngineShow(mode) {
+        var win = canvasDoc ? canvasDoc.defaultView : null;
+        if (!win || !win.pgThemeNoStore || typeof win.pgSetTheme !== 'function') return;
+        try {
+            if (win.pgGetTheme() !== mode) win.pgSetTheme(mode);
+        } catch (e) {}
+    }
+
+    // The view a switcher on the canvas chose: what its engine put on
+    // <html> ("System" resolves to light or dark there).
+    function _sdCanvasThemeChanged() {
+        if (!canvasDoc || !canvasDoc.documentElement) return;
+        var mode = (canvasDoc.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light';
+        if (mode !== (canvasDarkTheme ? 'dark' : 'light')) applyCanvasTheme(mode, { source: 'canvas' });
     }
 
     // ========================= IFRAME SETUP =========================
@@ -6229,12 +6227,9 @@ const StyleDesigner = (function () {
         });
 
         // Dark theme toggle — flips the canvas iframe to a real Bootstrap
-        // dark theme (`data-bs-theme="dark"` on <body>), syncs with the
-        // Themes panel mode tabs, and triggers any theme-switcher
-        // components inside the iframe (`[data-bs-theme-value]` buttons,
-        // `.theme-toggle` checkboxes etc.) so user-built switchers stay in
-        // step. The legacy `sd-dark-theme` class is still toggled for
-        // backward compat with any custom CSS that hooks it.
+        // dark theme (`data-bs-theme="dark"` on the canvas <html>), syncs
+        // with the Themes panel mode tabs and shows the view on the theme
+        // switchers of the canvas, without storing it (applyCanvasTheme()).
         var themeBtn = document.getElementById('sd-vb-theme');
         if (themeBtn) themeBtn.addEventListener('click', function() {
             canvasDarkTheme = !canvasDarkTheme;
@@ -6379,14 +6374,15 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
-        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
+        // The editor's view of the design sits on <html>, where the theme
+        // switchers' engine writes it too (applyCanvasTheme()).
+        doc.write('<!DOCTYPE html><html' + (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
             '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="' + esc(_sdIconsUrl()) + '">' +
             '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
-            (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
-            (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
+            (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') + '></body></html>');
         doc.close();
         canvasDoc = doc;
         if (canvasZoom !== 1.0 && doc.documentElement) doc.documentElement.style.zoom = canvasZoom;
@@ -6436,6 +6432,9 @@ const StyleDesigner = (function () {
             _sdChromeRaf = requestAnimationFrame(function () { _sdChromeRaf = 0; _sdPlaceSelectedChrome(); });
         }, true);
         if (canvasDoc.defaultView) canvasDoc.defaultView.addEventListener('resize', _sdFxSoon);
+        // A theme switcher clicked on the canvas changes the editor's view:
+        // the toolbar button and the Themes panel follow it.
+        canvasDoc.addEventListener('pg-theme-change', _sdCanvasThemeChanged);
 
         // Stop the browser navigating when a drag is dropped inside the iframe (the real reason elements went missing)
         canvasDoc.addEventListener('dragover', function(e) {
@@ -9725,11 +9724,15 @@ const StyleDesigner = (function () {
     // to a visitor page that shows one). The canvas loads the same file into
     // its frame once, and binds the switchers again after every render, when
     // the elements are new; the file binds what is there when it loads.
+    // pgThemeNoStore is set first: a switcher clicked on the canvas changes
+    // the editor's view (the pg-theme-change listener of _sdInitCanvasDoc()),
+    // never the theme stored for the site's visitors.
     function _sdThemeSwitchers() {
         if (!canvasDoc || !canvasDoc.querySelector('[data-pg-theme-switcher]')) return;
         var win = canvasDoc.defaultView;
         if (win && typeof win.pgThemeSwitcherBind === 'function') { win.pgThemeSwitcherBind(canvasDoc); return; }
         if (canvasDoc.getElementById('pg-theme-switcher-js') || !canvasDoc.head) return;
+        if (win) win.pgThemeNoStore = true;
         var scr = canvasDoc.createElement('script');
         scr.id = 'pg-theme-switcher-js';
         try { scr.src = new URL('assets/js/pg_theme_switcher.js', document.baseURI).href; } catch (e) { return; }

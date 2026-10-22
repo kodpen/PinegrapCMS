@@ -242,11 +242,13 @@ Object.defineProperty(El.prototype, 'classList', { get: function () {
 	var el = this, list = function () { return el.className.split(/\s+/).filter(Boolean); };
 	return {
 		contains: function (c) { return list().indexOf(c) !== -1; },
-		toggle: function (c, on) { var l = list().filter(function (x) { return x !== c; }); if (on) l.push(c); el.className = l.join(' '); }
+		toggle: function (c, on) { var l = list().filter(function (x) { return x !== c; }); if (on) l.push(c); el.className = l.join(' '); },
+		remove: function (c) { el.className = list().filter(function (x) { return x !== c; }).join(' '); }
 	};
 } });
 El.prototype.getAttribute = function (n) { return (n in this.attrs) ? this.attrs[n] : null; };
 El.prototype.setAttribute = function (n, v) { this.attrs[n] = String(v); };
+El.prototype.removeAttribute = function (n) { delete this.attrs[n]; };
 El.prototype.addEventListener = function (t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); };
 El.prototype.fire = function (t) { var self = this; (this.listeners[t] || []).forEach(function (f) { f.call(self, { type: t, preventDefault: function () {} }); }); };
 El.prototype.is = function (simple) {
@@ -303,7 +305,7 @@ var body = h('body', {}, MARKUP.map(function (sw) {
 var root = h('html', {}, [body]);
 var changes = 0;
 var document = {
-	documentElement: root, readyState: 'complete',
+	documentElement: root, body: body, readyState: 'complete',
 	addEventListener: function (t, f) { (docListeners[t] = docListeners[t] || []).push(f); },
 	dispatchEvent: function (ev) { (docListeners[ev.type] || []).forEach(function (f) { f(ev); }); },
 	querySelectorAll: function (sel) { return root.querySelectorAll(sel); }
@@ -315,6 +317,7 @@ var window = {
 };
 window.window = window;
 window.document = document;
+document.defaultView = window;
 function view() {
 	var t = root.querySelector('[data-pg-theme-switcher="toggle"] button');
 	var s = root.querySelector('[data-pg-theme-switcher="switch"] input');
@@ -368,4 +371,118 @@ function test_designer_canvas_controls_theme_toggle_icon_beside_editor_chrome()
 	);
 	pg_assert_same('bi bi-sun-fill', $out[0]['toggleIcon'], 'the page\'s toggle shows the sun when dark');
 	pg_assert_same('true', $out[0]['pressed'], 'and is pressed');
+}
+
+// The editor's canvas theme code (applyCanvasTheme() and its two helpers),
+// cut out of assets/js/style_designer.js, set up as JavaScript on the stand-in
+// canvas document of _test_canvas_controls_engine(): `ed.apply(mode, opts)`,
+// the toolbar button `tb`, the Themes panel's mode in `panelMode`; the canvas
+// document's pg-theme-change reaches the editor as in _sdInitCanvasDoc().
+function _test_canvas_controls_editor_theme_js()
+{
+	$js = _test_canvas_controls_js();
+	$from = strpos($js, '    function applyCanvasTheme(');
+	$to = strpos($js, '    // ========================= IFRAME SETUP', (int) $from);
+	pg_assert_true(($from !== false) && ($to !== false), 'the designer has its canvas theme code');
+	return "var tbIcon = { className: 'bi bi-moon' }, tbTxt = { textContent: 'Dark' };\n"
+		. "var tb = { active: false, classList: { toggle: function (c, on) { tb.active = !!on; } }, querySelector: function (s) { return s === '.bi' ? tbIcon : tbTxt; } };\n"
+		. "var tabs = ['light', 'dark'].map(function (m) { var t = { on: m === 'light', dataset: { themeMode: m } }; t.classList = { toggle: function (c, on) { t.on = !!on; } }; return t; });\n"
+		. "var editorDoc = { getElementById: function (id) { return id === 'sd-vb-theme' ? tb : null; }, querySelectorAll: function () { return tabs; } };\n"
+		. "var panelMode = null, _assetsApi = { setThemeMode: function (m) { panelMode = m; } };\n"
+		. "var canvasDoc = document, canvasDarkTheme = (root.getAttribute('data-bs-theme') === 'dark');\n"
+		. "function _sdT(s) { return s; }\n"
+		. "var ed = {};\n"
+		. "(function (document) {\n" . substr($js, (int) $from, (int) $to - (int) $from) . "\n"
+		. "ed.apply = applyCanvasTheme; ed.changed = _sdCanvasThemeChanged;\n"
+		. "})(editorDoc);\n"
+		. "document.addEventListener('pg-theme-change', ed.changed);\n"
+		. "function editor() { var v = view(); v.dark = canvasDarkTheme; v.button = tb.active; v.label = tbTxt.textContent; v.panel = panelMode; v.tab = tabs[1].on ? 'dark' : 'light'; v.body = body.getAttribute('data-bs-theme'); return v; }\n";
+}
+
+// The editor's Dark/Light view and the theme switchers on the canvas are one
+// state, on the canvas <html>, and it never reaches the site's localStorage
+// (the canvas shares the site's origin). The view sat on <body>, so a
+// switcher choosing light left the canvas dark, and the toolbar clicked the
+// canvas switchers, which stored the editor's view as the visitor's theme.
+function test_designer_canvas_controls_theme_view_is_one_state_never_stored()
+{
+	$markup = array(array('kind' => 'toggle', 'editor' => true), array('kind' => 'switch'), array('kind' => 'dropdown'));
+	$out = _test_canvas_controls_engine(
+		$markup,
+		// The editor's view is dark when the engine arrives, and the canvas
+		// loader asks for the no-store mode.
+		"root.setAttribute('data-bs-theme', 'dark'); window.pgThemeNoStore = true;",
+		_test_canvas_controls_editor_theme_js()
+		. "out.push(editor());\n"
+		. "ed.apply('light', { source: 'toolbar' }); out.push(editor());\n"
+		. "ed.apply('dark', { source: 'toolbar' }); out.push(editor());\n"
+		. "var input = root.querySelector('[data-pg-theme-switcher=\"switch\"] input'); input.checked = false; input.fire('change'); out.push(editor());\n"
+		. "root.querySelector('[data-pg-theme-switcher=\"dropdown\"] [data-bs-theme-value=\"dark\"]').fire('click'); out.push(editor());\n"
+		. "ed.apply('light', { source: 'themes' }); out.push(editor());"
+	);
+	if ($out === null) {
+		return;
+	}
+	list($start, $light, $dark, $switched, $menu, $panel) = $out;
+
+	pg_assert_same('dark', $start['html'], 'the engine starts from the editor\'s view on <html>');
+	pg_assert_same(true, $start['switchOn'], 'the switch shows the view');
+	pg_assert_same('dark', $start['menu'], 'the menu shows the view');
+
+	pg_assert_same('light', $light['html'], 'the toolbar\'s Light puts the canvas light');
+	pg_assert_same(false, $light['switchOn'], 'the switch follows the toolbar');
+	pg_assert_same('bi bi-moon-stars-fill', $light['toggleIcon'], 'the toggle follows the toolbar');
+	pg_assert_same('light', $light['panel'], 'the Themes panel follows the toolbar');
+	pg_assert_same('dark', $dark['html'], 'the toolbar\'s Dark puts the canvas dark');
+	pg_assert_same(null, $dark['body'], 'the view is never written on <body>, where it would override <html>');
+
+	pg_assert_same('light', $switched['html'], 'the canvas switch puts the canvas light');
+	pg_assert_same(false, $switched['dark'], 'the editor\'s view follows the switch');
+	pg_assert_same(false, $switched['button'], 'the toolbar button is no longer pressed');
+	pg_assert_same('Dark', $switched['label'], 'the toolbar button offers Dark again');
+	pg_assert_same('light', $switched['tab'], 'the Themes panel mode tab follows the switch');
+	pg_assert_same('light', $switched['panel'], 'the Themes panel shows the light values');
+
+	pg_assert_same('dark', $menu['html'], 'the menu\'s Dark puts the canvas dark');
+	pg_assert_same(true, $menu['dark'], 'and the editor\'s view follows it');
+	pg_assert_same('light', $panel['html'], 'the Themes panel\'s mode tab puts the canvas light');
+
+	foreach ($out as $i => $step) {
+		pg_assert_same(null, $step['stored'], 'step ' . $i . ': nothing is written to the site\'s localStorage');
+	}
+
+	// On the published page the engine keeps the visitor's choice as before.
+	$out = _test_canvas_controls_engine(
+		array(array('kind' => 'toggle', 'editor' => false)),
+		"storage.setItem('pg-theme', 'dark');",
+		"out.push(view()); root.querySelector('[data-pg-theme-switcher=\"toggle\"] button').fire('click'); out.push(view());"
+	);
+	pg_assert_same('dark', $out[0]['html'], 'the page opens in the stored theme');
+	pg_assert_same('light', $out[1]['html'], 'the toggle switches it');
+	pg_assert_same('light', $out[1]['stored'], 'and stores the visitor\'s choice');
+}
+
+// Where the editor keeps the view and how the canvas engine is loaded.
+function test_designer_canvas_controls_theme_view_wiring()
+{
+	$js = _test_canvas_controls_js();
+	$from = strpos($js, '    function applyCanvasTheme(');
+	$to = strpos($js, '    // ========================= IFRAME SETUP', (int) $from);
+	$theme = substr($js, (int) $from, (int) $to - (int) $from);
+	pg_assert_false(strpos($theme, '.click()') !== false, 'the editor never clicks the canvas switchers');
+	pg_assert_false(strpos($theme, 'dispatchEvent') !== false, 'nor fires their change events');
+	pg_assert_false(strpos($theme, "body.setAttribute('data-bs-theme'") !== false, 'the view is not written on <body>');
+
+	$from = strpos($js, 'function _sdThemeSwitchers()');
+	$loader = substr($js, (int) $from, 1200);
+	$flag = strpos($loader, 'win.pgThemeNoStore = true');
+	pg_assert_true($flag !== false, 'the canvas loads the engine in its no-store mode');
+	pg_assert_true($flag < strpos($loader, 'canvasDoc.head.appendChild(scr)'), 'the flag is set before the file runs');
+
+	pg_assert_contains("canvasDoc.addEventListener('pg-theme-change', _sdCanvasThemeChanged);", $js, 'the editor follows a switcher clicked on the canvas');
+	pg_assert_contains("doc.write('<!DOCTYPE html><html' + (canvasDarkTheme ? ' data-bs-theme=\"dark\"' : '') + '>", $js, 'a fresh canvas document opens in the view, on <html>');
+	pg_assert_contains("'html[data-bs-theme=\"dark\"] .sd-dz {", $js, 'the dark drop zones follow the view on <html>');
+
+	$engine = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js');
+	pg_assert_contains('window.pgThemeNoStore', $engine, 'the engine knows the no-store mode');
 }
