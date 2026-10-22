@@ -4563,15 +4563,19 @@ const StyleDesigner = (function () {
                 var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
                 if (p.aspectRatio) {
+                    // The box as _render_content_html() writes it: the
+                    // image's rounded classes in their order, the image's
+                    // width and height (a bare number in px) so the ratio
+                    // applies to that size, then its overflow.
                     var wrapClsExp = 'ratio ratio-' + esc(p.aspectRatio);
-                    if (p.cssClass) {
-                        var _wcArr = String(p.cssClass).split(/\s+/);
-                        for (var _wi = 0; _wi < _wcArr.length; _wi++) {
-                            if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
-                        }
+                    var _wcArr = cls.split(/\s+/);
+                    for (var _wi = 0; _wi < _wcArr.length; _wi++) {
+                        if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
                     }
-                    if (p.rounded) wrapClsExp += ' rounded';
                     var wrapStyleExpParts = [];
+                    var _wpx = function (v) { v = String(v); return /^\d+$/.test(v) ? v + 'px' : esc(v); };
+                    if (p.width)  wrapStyleExpParts.push('width:'  + _wpx(p.width));
+                    if (p.height) wrapStyleExpParts.push('height:' + _wpx(p.height));
                     if (p.overflow)  wrapStyleExpParts.push('overflow:'   + esc(p.overflow));
                     if (p.overflowX) wrapStyleExpParts.push('overflow-x:' + esc(p.overflowX));
                     if (p.overflowY) wrapStyleExpParts.push('overflow-y:' + esc(p.overflowY));

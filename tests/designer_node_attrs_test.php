@@ -88,8 +88,8 @@ function _test_designer_attrs_cases()
 }
 
 // The opening tags the editor's emitter gives the nodes (an image's <img>
-// tag), null without Node.
-function _test_designer_attrs_js($nodes)
+// tag, the first tag with $first), null without Node.
+function _test_designer_attrs_js($nodes, $first = false)
 {
 	$out = array();
 	$code = 1;
@@ -127,7 +127,7 @@ function _test_designer_attrs_js($nodes)
 
 	$script .= 'var nodes = ' . json_encode(array_values($nodes)) . ';'
 		. 'console.log(JSON.stringify(nodes.map(function (n) { var h = _sdEmitNode(n, 0, 0, null);'
-		. ' var m = (n.props.contentType === "image" ? /<img\b[^>]*>/ : /^\s*<[^>]*>/).exec(h);'
+		. ' var m = (n.props.contentType === "image" && !' . ($first ? 'true' : 'false') . ' ? /<img\b[^>]*>/ : /^\s*<[^>]*>/).exec(h);'
 		. ' return m ? m[0].trim() : ""; })));';
 
 	$file = tempnam(sys_get_temp_dir(), 'pgattrs');
@@ -224,6 +224,37 @@ function test_designer_attrs_editor_writes_the_same()
 
 	pg_assert_same('<section id="faq" class="py-5">', $js['semantic search section']);
 	pg_assert_same('<h2 id="q1">', $js['heading search section']);
+}
+
+// An image in a ratio box: the box gets the image's width and height (a
+// bare number in px), then its overflow, and the image's rounded classes in
+// their order, on the page and in the editor's HTML.
+function test_designer_attrs_image_ratio_box()
+{
+	$nodes = array(
+		'sized' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '1x1', 'width' => '200', 'height' => '50%', 'overflow' => 'hidden')),
+		'rounded' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '4x3', 'rounded' => true, 'cssClass' => 'shadow rounded-3', 'width' => '20rem')),
+		'plain' => _test_designer_attrs_content('image', array('src' => 'https://example.com/a.png', 'alt' => 'A', 'aspectRatio' => '16x9')),
+	);
+	$php = array();
+
+	foreach ($nodes as $name => $node) {
+		$php[$name] = trim((string) strtok(_render_tree_node($node, 0, 0), "\n"));
+	}
+
+	pg_assert_same('<div class="ratio ratio-1x1" style="width:200px;height:50%;overflow:hidden">', $php['sized']);
+	pg_assert_same('<div class="ratio ratio-4x3 rounded rounded-3" style="width:20rem">', $php['rounded']);
+	pg_assert_same('<div class="ratio ratio-16x9">', $php['plain']);
+
+	$js = _test_designer_attrs_js($nodes, true);
+
+	if ($js === null) {
+		return;
+	}
+
+	foreach ($php as $name => $tag) {
+		pg_assert_same($tag, $js[$name], $name);
+	}
 }
 
 // The page marks a search section after its id, for the structured data.
