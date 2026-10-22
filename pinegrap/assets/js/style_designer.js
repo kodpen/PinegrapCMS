@@ -13075,6 +13075,71 @@ const StyleDesigner = (function () {
         return false;
     }
 
+    // A link as the dragged element: a semantic <a> or a content link.
+    function _sdIsLinkDrag(data) {
+        return _dragSemTag(data) === 'a' || _dragContentType(data) === 'link';
+    }
+
+    // A link that may go where only inline content goes (a headline link in
+    // an <h3>, a link inside a sentence): everything inside it is inline
+    // content too, and nothing inside it is a link or a button of its own.
+    // A link card holding a <div> stays out of headings and paragraphs.
+    function _sdInlineLinkDrag(data) {
+        if (!_sdIsLinkDrag(data)) return false;
+        if (data.source !== 'node' || !data.node) return true;
+        return (function kidsInline(n) {
+            var kids = n.children || [];
+            for (var i = 0; i < kids.length; i++) {
+                var k = kids[i];
+                if (!k || _isInteractiveNode(k)) return false;
+                if (!_isInlineOnlyDrag({ source: 'node', type: k.type, node: k })) return false;
+                if (!kidsInline(k)) return false;
+            }
+            return true;
+        })(data.node);
+    }
+
+    // Does the drag place interactive content: the dragged element itself, or,
+    // for a node, any element below it or an <a> / <button> written in a
+    // content node's markup. Kept on the payload: dragover asks on every
+    // mouse move and the subtree does not change during a drag.
+    function _sdDragCarriesInteractive(data) {
+        if (!data) return false;
+        if (typeof data._sdIact === 'boolean') return data._sdIact;
+        var found;
+        if (data.source === 'node' && data.node) {
+            found = (function walk(n) {
+                if (!n) return false;
+                if (_isInteractiveNode(n)) return true;
+                if (n.type === 'content' && n.props) {
+                    var markup = String(n.props.text || '') + String(n.props.html || '');
+                    if (/<(a|button)[\s>\/]/i.test(markup)) return true;
+                }
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(data.node);
+        } else {
+            found = _isInteractiveNode({ type: data.type, props: data.extra || {} });
+        }
+        try { data._sdIact = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a link or a button, or does it sit inside one at any
+    // depth (a span inside a link, a heading inside a card link)?
+    function _sdInInteractive(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_isInteractiveNode(n)) return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return false;
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -13156,20 +13221,22 @@ const StyleDesigner = (function () {
         var srcTag = _dragSemTag(data);
         var HEADING = ['h1','h2','h3','h4','h5','h6'];
 
-        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline content
+        // Rule 0: nothing interactive inside a link or a button, at any depth:
+        // no <a> in an <a>, no link or button in a <button>, also through a
+        // span or a heading in between, and not as part of a dragged wrapper.
+        if (_sdDragCarriesInteractive(data) && _sdInInteractive(target)) return false;
+
+        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline
+        // content. A heading also takes a link (<h3><a>…</a></h3>); a link or
+        // a button never does (Rule 0).
         if (tgtTag === 'button' || HEADING.indexOf(tgtTag) !== -1 || _isInteractiveNode(target)) {
-            return _isInlineOnlyDrag(data);
+            if (_isInlineOnlyDrag(data)) return true;
+            return HEADING.indexOf(tgtTag) !== -1 && _sdInlineLinkDrag(data);
         }
 
-        // Rule 3: <a> cannot contain another <a> or link content
-        if (tgtTag === 'a') {
-            if (srcTag === 'a') return false;
-            if (_dragContentType(data) === 'link') return false;
-        }
-
-        // Rule 4: <p> — inline content only
+        // Rule 4: <p> — inline content only, a link inside the sentence too
         if (tgtTag === 'p') {
-            return _isInlineOnlyDrag(data);
+            return _isInlineOnlyDrag(data) || _sdInlineLinkDrag(data);
         }
 
         // Rule 5: <ul> / <ol> — only direct <li> children. A loop area is
