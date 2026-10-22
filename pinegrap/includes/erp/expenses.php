@@ -478,10 +478,30 @@ function erp_expense_unpaid_summary()
  */
 function erp_expense_till_refusal($cash_account_id, $currency)
 {
-    $till = db_item("SELECT id, currency, is_active FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' LIMIT 1");
+    return erp_expense_till_row_refusal(
+        db_item("SELECT id, currency, is_active FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' LIMIT 1"),
+        $currency
+    );
+}
 
+/**
+ * Why a till, as read from erp_cash_accounts, cannot pay in a currency, or ''.
+ * A till taken off (is_active = 0) pays nothing: the screens no longer offer
+ * it, but a repeat set to pay from it would still take money out of a till
+ * no total counts.
+ *
+ * @param array|null $till      id, currency, is_active
+ * @param string     $currency
+ * @return string
+ */
+function erp_expense_till_row_refusal($till, $currency)
+{
     if (!is_array($till)) {
         return lang('Choose a till or bank account.');
+    }
+
+    if ((int) ($till['is_active'] ?? 0) !== 1) {
+        return lang('That till or bank account is not active.');
     }
 
     // A till holds one currency, as for a receipt; only asked while foreign

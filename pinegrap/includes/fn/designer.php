@@ -1057,6 +1057,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'address_book'      => '_render_system_widget_address_book',
                 'account_security'  => '_render_system_widget_account_security',
                 'account_invoices'  => '_render_system_widget_account_invoices',
+                'account_email'     => '_render_system_widget_account_email',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {
@@ -2104,6 +2105,179 @@ function pg_designer_i18n_keys()
     }
     @file_put_contents($cache, json_encode(array('stamp' => $stamp, 'keys' => $keys), JSON_UNESCAPED_UNICODE), LOCK_EX);
     return $keys;
+}
+
+/**
+ * The ready-made blocks' stylesheet as assets/js/style_designer.js defines
+ * it: the marker comment (_SD_BLOCK_CSS_MARK), rule name → CSS text
+ * (_SD_BLOCK_CSS) and block type → the rule names it needs
+ * (_SD_BLOCK_CSS_NEEDS). The JS file is the only copy of the rules, so a
+ * design template that ships them writes the same text a palette drop
+ * writes. Read once per request.
+ *
+ * @return array  array('mark' => string, 'rules' => array, 'needs' => array)
+ */
+function _pg_designer_block_css_source()
+{
+    static $source = null;
+    if ($source !== null) return $source;
+    $source = array('mark' => '/* Pinegrap block styles */', 'rules' => array(), 'needs' => array());
+
+    $js = (string)@file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+    if ($js === '') return $source;
+
+    // The body of each object literal: from its opening line to the first
+    // line that closes it at the declaration's indentation.
+    $bodies = array();
+    foreach (array('rules' => 'var _SD_BLOCK_CSS = {', 'needs' => 'var _SD_BLOCK_CSS_NEEDS = {') as $part => $opening) {
+        $start = strpos($js, $opening);
+        $end = ($start === false) ? false : strpos($js, "\n    };", $start);
+        $bodies[$part] = ($start === false || $end === false) ? '' : substr($js, $start, $end - $start);
+    }
+    // A single-quoted JS string literal's escapes.
+    $escapes = array('\\n' => "\n", "\\'" => "'", '\\\\' => '\\');
+
+    if (preg_match("/var _SD_BLOCK_CSS_MARK = '((?:[^'\\\\]|\\\\.)*)';/", $js, $m)) {
+        $source['mark'] = strtr($m[1], $escapes);
+    }
+
+    // Each entry is its key followed by string literals joined with +;
+    // the // comment lines between entries are dropped first, so an
+    // apostrophe in a comment is not read as a quote.
+    $body = $bodies['rules'];
+    preg_match_all("/^\\s*'(pg-[a-z0-9-]+)'\\s*:/m", $body, $keys, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+    foreach ($keys as $i => $key) {
+        $from = $key[0][1] + strlen($key[0][0]);
+        $to = isset($keys[$i + 1]) ? $keys[$i + 1][0][1] : strlen($body);
+        $segment = preg_replace('~^\s*//.*$~m', '', substr($body, $from, $to - $from));
+        preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string)$segment, $parts);
+        $source['rules'][$key[1][0]] = strtr(implode('', $parts[1]), $escapes);
+    }
+
+    preg_match_all("/^\\s*'([a-z0-9-]+)'\\s*:\\s*\\[([^\\]]*)\\]/m", $bodies['needs'], $rows, PREG_SET_ORDER);
+    foreach ($rows as $row) {
+        preg_match_all("/'([a-z0-9-]+)'/", $row[2], $names);
+        $source['needs'][$row[1]] = $names[1];
+    }
+    return $source;
+}
+
+/**
+ * The text a palette drop appends to a design's User Styles for $names,
+ * byte for byte as _sdEnsureBlockStyles() in style_designer.js builds it:
+ * the marker comment when $existing lacks it, then each missing rule
+ * followed by a newline. A later drop of the same block finds every rule by
+ * its class and adds nothing.
+ *
+ * $names: rule names ('pg-marquee') and block types ('news-lead-grid', which
+ * stand for the rules _SD_BLOCK_CSS_NEEDS lists for them), in order; unknown
+ * names are skipped. $existing: the User Styles text the rules go into; a
+ * rule whose class it already names is left out, the way the editor leaves
+ * an operator-edited rule alone.
+ *
+ * @return string  '' when nothing is missing
+ */
+function pg_designer_block_css($names, $existing = '')
+{
+    $source = _pg_designer_block_css_source();
+    $existing = (string)$existing;
+    $add = '';
+    foreach ((array)$names as $name) {
+        $name = is_scalar($name) ? (string)$name : '';
+        $wanted = isset($source['rules'][$name]) ? array($name)
+            : (isset($source['needs'][$name]) ? $source['needs'][$name] : array());
+        foreach ($wanted as $rule) {
+            if (!isset($source['rules'][$rule])) continue;
+            // `.pg-logo-4` is not `.pg-logo-48`.
+            $class = '/\.' . preg_quote($rule, '/') . '(?![\w-])/';
+            if (preg_match($class, $existing) || preg_match($class, $add)) continue;
+            $add .= $source['rules'][$rule] . "\n";
+        }
+    }
+    if ($add === '') return '';
+    if (strpos($existing, $source['mark']) === false) $add = $source['mark'] . "\n" . $add;
+    return $add;
+}
+
+/**
+ * A design template's `assets` 'css' value: one User Styles entry (the
+ * Styles panel's own, meta 'user-styles') holding the block rules $names
+ * asks for, as pg_designer_block_css() writes them, followed by the
+ * template's own rules. Shipped in that one entry, the rules are the ones a
+ * later palette drop checks for, so a drop adds only what is missing; and
+ * the entry has no file name, so no file is written to the file manager.
+ *
+ * $extra_css must not name a block rule's class: the drop would then take
+ * the rule as present (pg_designer_block_css()).
+ *
+ * @return string  JSON list, the shape the editor stores in style_custom_css
+ */
+function pg_design_template_user_styles($names, $extra_css = '')
+{
+    $content = pg_designer_block_css($names);
+    $extra_css = trim((string)$extra_css);
+    if ($extra_css !== '') $content .= $extra_css . "\n";
+    return json_encode(array(array(
+        'id'      => 'tpl-user-styles',
+        'name'    => lang('User Styles'),
+        'type'    => 'css',
+        'content' => $content,
+        'enabled' => true,
+        'locked'  => false,
+        'meta'    => 'user-styles',
+    )), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * A template's `assets` 'css' list given the framework rows the editor adds
+ * on load (_ensureBootstrapSentinels() in style_designer.js): the
+ * 'bootstrap-css' row first and the 'bootstrap-icons' row right after it.
+ * get_page_content.php prints the framework, look and palette sheets at the
+ * 'bootstrap-css' row; without one it adds them before </head> after the
+ * User Styles block, so a template's own rules would lose to Bootstrap and
+ * the look at equal specificity. A design installed straight from a template
+ * is never opened in the editor first, so its list gets the rows here.
+ *
+ * A list that already has a 'bootstrap-css' row (a template made from a
+ * design), an empty or unreadable value, and a framework without a
+ * stylesheet (nothing is added before </head> then) come back unchanged.
+ *
+ * @return string  JSON list
+ */
+function pg_design_template_asset_sentinels($css_json, $framework)
+{
+    $css_json = (string)$css_json;
+    $list = ($css_json !== '') ? json_decode($css_json, true) : null;
+    if (!is_array($list) || !$list || array_keys($list) !== range(0, count($list) - 1)) return $css_json;
+    $fw = pg_design_framework($framework);
+    if ($fw['css'] === '') return $css_json;
+    $has_icons = false;
+    foreach ($list as $entry) {
+        $meta = (is_array($entry) && isset($entry['meta'])) ? $entry['meta'] : '';
+        if ($meta === 'bootstrap-css') return $css_json;
+        if ($meta === 'bootstrap-icons') $has_icons = true;
+    }
+    $head = array(array(
+        'id'      => 'tpl-bootstrap-css',
+        'name'    => 'bootstrap.min.css',
+        'type'    => 'external-css',
+        'content' => $fw['css'],
+        'enabled' => true,
+        'locked'  => true,
+        'meta'    => 'bootstrap-css',
+    ));
+    if (!$has_icons) {
+        $head[] = array(
+            'id'      => 'tpl-bootstrap-icons',
+            'name'    => 'bootstrap-icons.min.css',
+            'type'    => 'external-css',
+            'content' => pg_design_icons_url(),
+            'enabled' => true,
+            'locked'  => true,
+            'meta'    => 'bootstrap-icons',
+        );
+    }
+    return json_encode(array_merge($head, $list), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**
@@ -7368,7 +7542,8 @@ function pg_design_template_prepare($template_id, $user)
     }
 
     // The design's own files, head code and body classes: a template made
-    // from a design carries them, a shipped one has none.
+    // from a design carries them; a shipped one may carry User Styles and
+    // fonts (pg_design_template_user_styles()).
     $assets = array();
     foreach (array('css', 'js', 'fonts', 'head', 'body_classes') as $asset_key) {
         $assets[$asset_key] = (isset($tpl['assets'][$asset_key]) && is_string($tpl['assets'][$asset_key])) ? $tpl['assets'][$asset_key] : '';
@@ -7618,8 +7793,10 @@ function pg_design_template_install($template_id, $user, $opts = array())
     }
 
     // The design's assets: a template made from a design carries its CSS,
-    // JS and fonts, head code and body classes; a shipped template carries
-    // none, and the design starts without them as before.
+    // JS and fonts, head code and body classes; a shipped template may carry
+    // User Styles and fonts (pg_design_template_user_styles()). A template
+    // without them gives the design none. A list without the framework rows
+    // gets them, so User Styles print after Bootstrap and the look.
     $style_data = array(
         'style_id'                          => 0,
         'name'                              => (string)$tp['style_name'],
@@ -7629,7 +7806,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
         'social_networking_position'        => (defined('SOCIAL_NETWORKING') && SOCIAL_NETWORKING == TRUE) ? 'bottom_left' : '',
         'style_head'                        => (string)$tp['assets']['head'],
         'style_empty_cell_width_percentage' => '',
-        'style_custom_css'                  => (string)$tp['assets']['css'],
+        'style_custom_css'                  => pg_design_template_asset_sentinels($tp['assets']['css'], $tp['template']['framework']),
         'style_custom_js'                   => (string)$tp['assets']['js'],
         'style_custom_fonts'                => (string)$tp['assets']['fonts'],
         'user_id'                           => (int)$user['id'],
@@ -7851,12 +8028,70 @@ function pg_design_template_email_pages($tpl)
 }
 
 /**
+ * The head markup for a template's own fonts and CSS (its `assets` 'fonts'
+ * and 'css', JSON as the editor stores them), printed the way a published
+ * page prints them (get_page_content.php): a Google Fonts link per enabled
+ * font, the external stylesheets in their order, the inline CSS as
+ * <style id="pg-page-css">, and User Styles last as
+ * <style id="pg-user-styles">. The framework sentinels are left out: the
+ * preview links the framework itself. An entry limited to some pages
+ * (`pages`, `key:<page key>` in a template) is printed on those only.
+ */
+function _pg_tpl_preview_assets($tpl, $page_key)
+{
+    $assets = (isset($tpl['assets']) && is_array($tpl['assets'])) ? $tpl['assets'] : array();
+    $head = '';
+
+    $fonts = isset($assets['fonts']) && is_string($assets['fonts']) ? json_decode($assets['fonts'], true) : null;
+    foreach (is_array($fonts) ? $fonts : array() as $font) {
+        if (!is_array($font) || (isset($font['enabled']) && $font['enabled'] === false) || empty($font['family']) || !is_string($font['family'])) continue;
+        $weights = (!empty($font['weights']) && is_array($font['weights'])) ? implode(';', $font['weights']) : '400';
+        $head .= '<link rel="stylesheet" href="' . h('https://fonts.googleapis.com/css2?family=' . rawurlencode($font['family']) . ':wght@' . $weights . '&display=swap') . '">';
+    }
+
+    $css = isset($assets['css']) && is_string($assets['css']) ? json_decode($assets['css'], true) : null;
+    $links = '';
+    $inline = '';
+    $user_styles = '';
+    foreach (is_array($css) ? $css : array() as $entry) {
+        if (!is_array($entry) || (isset($entry['enabled']) && $entry['enabled'] === false)) continue;
+        if (!empty($entry['pages']) && is_array($entry['pages']) && !in_array('key:' . $page_key, $entry['pages'], true)) continue;
+        $meta = isset($entry['meta']) ? (string)$entry['meta'] : '';
+        $content = (isset($entry['content']) && is_string($entry['content'])) ? $entry['content'] : '';
+        if ($meta === 'user-styles') {
+            if ($content !== '') $user_styles .= $content . "\n";
+            continue;
+        }
+        if ($meta !== '') continue;
+        if (isset($entry['type']) && $entry['type'] === 'external-css') {
+            $url = trim($content);
+            if ($url !== '' && (filter_var($url, FILTER_VALIDATE_URL) || strpos($url, '/') === 0)) {
+                $links .= '<link rel="stylesheet" href="' . h($url) . '">';
+            }
+        } elseif ($content !== '') {
+            $name = isset($entry['name']) && is_scalar($entry['name']) ? (string)$entry['name'] : 'file';
+            $inline .= '/* ' . str_replace('*/', '', $name) . " */\n" . $content . "\n";
+        }
+    }
+    // A stylesheet's text cannot close the element it is printed in.
+    $head .= $links;
+    if (trim($inline) !== '') {
+        $head .= '<style id="pg-page-css">' . "\n" . str_ireplace('</style', '<\\/style', $inline) . '</style>';
+    }
+    if ($user_styles !== '') {
+        $head .= '<style id="pg-user-styles">' . "\n" . str_ireplace('</style', '<\\/style', $user_styles) . '</style>';
+    }
+    return $head;
+}
+
+/**
  * One page of a template as a visitor would see it, drawn without a site.
  *
  * Nothing is read from or written to a database: the page's tree, the
  * shared components and the widget layouts all come from the template file
  * (_pg_tpl_preview_tree()), and the framework's and the chosen look's and
- * palette's stylesheets are linked the way a published design links them.
+ * palette's stylesheets are linked the way a published design links them,
+ * followed by the template's own fonts and CSS (_pg_tpl_preview_assets()).
  * For the installer, which offers a template before a site exists.
  *
  * $link: the address a link to another page of the template gets, with
@@ -7901,6 +8136,7 @@ function pg_design_template_preview_html($template_id, $page_key, $look = '', $p
     if ($fw['css'] !== '') $head .= '<link rel="stylesheet" href="' . h($fw['css']) . '">';
     if (!empty($fw['bootstrap'])) $head .= '<link rel="stylesheet" href="' . h(pg_design_icons_url()) . '">';
     if (function_exists('pg_design_theme_links')) $head .= pg_design_theme_links($look, $palette, $tpl['framework']);
+    $head .= _pg_tpl_preview_assets($tpl, (string)$page_key);
     // A preview is looked at, not used: nothing on it is submitted.
     $head .= '<style>form{pointer-events:none}</style>';
     $foot = ($fw['js'] !== '') ? '<script src="' . h($fw['js']) . '"></script>' : '';
@@ -8102,7 +8338,18 @@ function pg_designer_preview_widgets($page_id, $widgets)
 
             if ($type === 'form_item_view') {
                 $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-                $code = ($form_pid > 0) ? (string)db_value("SELECT reference_code FROM forms WHERE page_id = '" . $form_pid . "' ORDER BY id DESC LIMIT 1") : '';
+                // The newest record the widget's filters let through.
+                $code = '';
+                if ($form_pid > 0) {
+                    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), $page_id, true);
+                    $code = (string)db_value(
+                        "SELECT forms.reference_code FROM forms
+                         {$clause['join']}
+                         WHERE forms.page_id = '" . $form_pid . "'
+                           {$clause['where']}
+                         ORDER BY forms.id DESC
+                         LIMIT 1");
+                }
                 if ($code !== '') $_GET['r'] = $code;
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
                 $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);

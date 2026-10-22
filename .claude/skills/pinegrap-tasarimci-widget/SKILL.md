@@ -113,8 +113,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 - Grid hiyerarşisi: `container/container-fluid > row > col`. Utility sırası:
   display → flex/grid → spacing → sizing → typography → color → border → shadow.
   Breakpoint'ler mobile-first.
-- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>` içinde `<a>` yok,
-  `<p>`/`<button>`/`<h1-h6>` inline-only, `<ul>/<ol>` sadece `<li>`.
+- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>`/`<button>` içinde
+  hiçbir derinlikte etkileşimli öğe yok, `<p>`/`<button>`/`<h1-h6>` inline-only
+  (başlık ve `<p>` bağlantı/düğme de alır), `<label>` tek kontrol, `<ul>/<ol>`
+  sadece `<li>`. Palet öğesi kuracağı ağaçla yargılanır
+  (docs/memory/designer/inline-drop-links-buttons.md).
 - Erişilebilirlik minimumu: ikon-only düğmede `aria-label`, toggle'da
   `aria-expanded`+`aria-controls`, `<img>`de `alt`, input'ta `<label for>`.
 - Satır oluğunu `gutter: '4'` + `cssClass: 'g-lg-5'` yaz; düz `gutter: '5'`
@@ -277,6 +280,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   alanının adı; dinamik değer alanın tipine göre (tarih → bugün / gün önce,
   username → izleyici, e-posta → izleyicinin e-postası). Editör etiketleri
   `_sdT('…')` literal'i olmalı: çeviri haritası literal çağrılardan taranır.
+- `form_item_view` cfg `filters` (aynı biçim): kaydın görünürlüğüdür
+  (`pg_sw_record_view_filters()`, `pg_sw_record_passes_filters()`; alanı
+  kalmayan ya da operatörü listede olmayan filtrede kapalı kalır, operatör
+  her zaman İngilizce sabit, asla `lang()`). Filtre formun değil widget'ın:
+  aynı formun her herkese açık listesi ve kayıt görünümü aynı filtreyi
+  ister. Bkz. `docs/memory/designer/record-view-filters.md`.
 
 ## Ortak bileşenler (`shared_ref`)
 
@@ -519,8 +528,10 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   (`is_signed_out` / `is_signed_in`), tuvalde şerit çipleriyle geçilir.
   Yerleşim başına id tekilleştirmesi form sarmadan **önce** yapılır (CSRF
   alanının id'si korunur). Tasarlanmış form detay sayfasında yorumlar kayda
-  aittir: `pg_sw_record_comment_context()`; görünürlük widget'la aynı
-  (`pg_sw_submitted_form_visible()`).
+  aittir: `pg_sw_record_comment_context()`; görünürlük onun `visible`'ı
+  (erişim ayarı `pg_sw_submitted_form_visible()` VE kayıt filtreleri;
+  e-posta istisnası yalnız sunucunun verdiği kayıt id'siyle). Tek başına
+  `pg_sw_submitted_form_visible()` taslağı geçirir.
 - Birden çok eylemli hesap widget'ı (`account_security`): blok başına
   `semantic form` `_bindings.action='account_security_form'`, düğmeler
   eylemine bağlı (`_pg_sec_apply_action_bindings()`). Tek sarmalayıcı +

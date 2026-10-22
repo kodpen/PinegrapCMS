@@ -237,6 +237,39 @@ function pg_page_revision_seed_values($row, $now)
 }
 
 /**
+ * A stored page row with the tree it is opened with: a page saved before
+ * the per-page tree has no page_tree_json, and the editor shows it with its
+ * style's tree (pg_page_tree_sql_expr()). The 2026.4.4 copy filled only the
+ * page named like its style; a page renamed since, or an orphan the editor's
+ * legacy bridge linked to its style later, still keeps its tree there. The
+ * style's tree, and its body when the page has none, take the empty places;
+ * a tree the page holds itself is left as it is.
+ *
+ * @param array|null $row        a page row, as SELECT * returns it
+ * @param string     $style_tree the style's tree (pg_page_tree_json())
+ * @param string     $style_code the HTML drawn from it (style.style_code)
+ * @return array|null the row, or null when none was given
+ */
+function pg_page_revision_seed_row($row, $style_tree, $style_code)
+{
+    if (!is_array($row)) {
+        return null;
+    }
+
+    if (trim(isset($row['page_tree_json']) ? (string) $row['page_tree_json'] : '') !== '') {
+        return $row;
+    }
+
+    $row['page_tree_json'] = (string) $style_tree;
+
+    if (trim(isset($row['page_tree_code']) ? (string) $row['page_tree_code'] : '') === '') {
+        $row['page_tree_code'] = (string) $style_code;
+    }
+
+    return $row;
+}
+
+/**
  * Records a page that has no revision yet as it is stored, before a save
  * writes over it: a page published before the table arrived (2026.11.0,
  * 11.0.15), or one that duplicate_page_f.php / duplicate_style.php copied
@@ -265,8 +298,18 @@ function pg_page_revision_seed($page_id)
         return 0;
     }
 
-    $values = pg_page_revision_seed_values(
-        db_item("SELECT * FROM page WHERE page_id = '$page_id' LIMIT 1"), time());
+    $row = db_item("SELECT * FROM page WHERE page_id = '$page_id' LIMIT 1");
+
+    // A page whose tree still lives on its style is recorded with that tree,
+    // the one the editor opened and the visitor was shown.
+    if (is_array($row) && trim(isset($row['page_tree_json']) ? (string) $row['page_tree_json'] : '') === ''
+        && function_exists('pg_page_tree_json')) {
+        $style_id = isset($row['page_style']) ? (int) $row['page_style'] : 0;
+        $row = pg_page_revision_seed_row($row, pg_page_tree_json($page_id),
+            (string) db_value("SELECT style_code FROM style WHERE style_id = '$style_id' LIMIT 1"));
+    }
+
+    $values = pg_page_revision_seed_values($row, time());
 
     if ($values === null) {
         return 0;

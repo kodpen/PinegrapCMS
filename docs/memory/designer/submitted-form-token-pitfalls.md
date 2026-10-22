@@ -13,5 +13,6 @@ description: Pitfalls when replacing submitted-form tokens in system widgets: si
 ## Which page do `submitted_form_info` counters belong to?
 - Counters are kept **per form item view page**. In a list the widget's configured detail page is read; in detail view the page itself (`_pg_sw_current_page_id()`).
 - If no detail page is selected the counter is empty; that is the correct answer.
+- Designed detail pages write the view counters too (`record-view-counts.md`); the page prints the count before the current view.
 
 Related: docs/memory/designer/submitted-form-system-fields.md

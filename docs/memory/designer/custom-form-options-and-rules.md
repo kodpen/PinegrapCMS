@@ -1,6 +1,6 @@
 ---
 name: custom-form-options-and-rules
-description: custom_form options belong to the element (no _choices array), page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA and migration rules.
+description: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
 ---
 
 ## Where do select / radio / checkbox options live?
@@ -10,7 +10,7 @@ description: custom_form options belong to the element (no _choices array), page
 - **No duplicate key in an object literal.** Read text with `_sdTextOf()`.
 
 ## How is a page with a form recognised?
-- A visual page stays `page_type='standard'`; the `custom_form_pages` row + being a visual design says it has a form. Every query that counts/lists forms uses `pg_form_page_sql($alias)`. Sitemap / search index / legacy render branches are type semantics and are not touched. When writing a new form list, never write `page_type = 'custom form'`.
+- A visual page stays `page_type='standard'`; the `custom_form_pages` row + being a visual design says it has a form. Every query that counts/lists forms uses `pg_form_page_sql($alias)`. Sitemap / search index / legacy render branches are type semantics and are not touched; visual pages have their own designer branches in the sitemap and the search index (`designer-records-site-search.md`). When writing a new form list, never write `page_type = 'custom form'`.
 
 ## What other rules apply?
 - **Validation in two places:** `pattern` in the browser, `custom_form.php` with `/^(?:…)$/u` on the server; a broken expression is ignored. Form is `novalidate` + `needs-validation`; `pg_cf_validation_script()` once per page.
@@ -21,7 +21,12 @@ description: custom_form options belong to the element (no _choices array), page
 - **CAPTCHA is a section binding**; if it returns empty the container drops too.
 - `pg_rendered_page()` is registered **early** in `get_page.php`.
 - `pg_cf_page_form_ready()` probes three tables at once; on a non-upgraded install the feature silently disappears.
-- The legacy field screen (`edit_field.php`) still works but **the canvas is the record**: an `rss_field` changed there is overwritten on the next design save by the control's `_cf`.
 - Old trees migrate on load (`_cfMigrateWidgetTree`: `_bindings.form_field` -> `name`, `__submit_label` binding -> button text) and are written in the new shape on first save.
+
+## What do the legacy field screens do with a designer form?
+- **The canvas is the record**: `pg_cf_sync_page_form()` rewrites every column on the next design save, so `view_fields.php` / `edit_field.php` only show it (PR #1204). The list has the `^^name^^` variable under each name, no Create / Delete Selected / select column; `edit_field.php` shows one field read-only and refuses a POST. Both say so and link to the editor (`pg_page_edit_url_by_id()`).
+- Recognised by `pg_page_has_designer_form()` (`pg_form_page_sql()` and type not `custom form`), which sets `form_type = 'custom'`. The form-name table comes from `pg_form_settings_table($page_type, $form_type)` (`includes/fn/forms.php`), not from `page_type`: `standard_pages` does not exist, and both screens answered "Query failed.".
+- `add_field.php` / `delete_fields.php` still build the table from `page_type`; for a designer form they stop at that query before writing.
+- A rich-text flag (`wysiwyg`) stored on a field before is kept while the control has no `_cf.wysiwyg`; the Form Field panel switch changes it (`custom-form-rich-text.md`).
 
 Related: docs/memory/designer/custom-form-model.md

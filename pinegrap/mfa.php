@@ -149,6 +149,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+    } elseif (($mode === 'verify') && ($action === 'passkey')) {
+
+        // A passkey of the account answers the second step in place of a
+        // code (passkey.php gave the options); it counts as an attempt the
+        // same way.
+        if (pg_mfa_attempt_blocked($user_id)) {
+            $error = pg_mfa_screen_blocked($username);
+        } else {
+            $credential = (isset($_POST['credential']) && is_string($_POST['credential'])) ? $_POST['credential'] : '';
+            $result = pg_passkey_signin_check($credential, $user_id);
+
+            if (!$result['ok']) {
+                log_activity(lang(array(
+                    'string' => 'access denied (passkey not accepted: {var:1})',
+                    'vars'   => array($result['error']))), $username);
+                $error = pg_passkey_refusal($result['error'], 'signin');
+            } else {
+                pg_mfa_attempt_clear($user_id);
+
+                log_activity(lang(array(
+                    'string' => 'user signed in with a passkey ({var:1})',
+                    'vars'   => array($result['name']))), $username);
+
+                pg_mfa_screen_complete($user_id, $username, $send_to, $remember);
+            }
+        }
+
     } elseif (($mode === 'setup') && ($action === 'setup_confirm') && empty($pending['codes'])) {
 
         if (pg_mfa_attempt_blocked($user_id)) {
@@ -257,10 +284,62 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
 
     $title = lang('Two-Step Verification');
 
+    // A passkey of the account, offered above the code when the browser can
+    // use one (the script shows the block). The browser's answer is posted
+    // back here and checked like a code.
+    $passkey_block = '';
+
+    if (pg_passkeys_available() && (count(pg_passkeys_of_user($user_id)) > 0)) {
+        $passkey_block =
+            '<div id="mfa_passkey" class="d-none">
+                <form name="mfa_passkey" action="' . $form_action . '" method="post">
+                    ' . $hidden . '
+                    <input type="hidden" name="pg_mfa_action" value="passkey"/>
+                    <input type="hidden" name="credential" value=""/>
+                    <button type="button" id="mfa_passkey_button" class="btn btn-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
+                </form>
+                <div id="mfa_passkey_error" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+                <p class="text-center text-muted small my-3">' . h(lang('or enter a code')) . '</p>
+            </div>
+            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/pg_passkey.js') . '"></script>
+            <script>
+            (function () {
+                var block = document.getElementById("mfa_passkey");
+                if (!block || !window.PgPasskey || !window.PgPasskey.supported()) {
+                    return;
+                }
+                var form = document.forms.mfa_passkey;
+                var button = document.getElementById("mfa_passkey_button");
+                var notice = document.getElementById("mfa_passkey_error");
+                var texts = ' . json_encode(array(
+                    'cancelled' => lang('The passkey was not used. Please try again.'),
+                    'failed'    => lang('Your browser could not use a passkey here.'),
+                ), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+                block.classList.remove("d-none");
+                button.addEventListener("click", function () {
+                    button.disabled = true;
+                    notice.classList.add("d-none");
+                    window.PgPasskey.signIn({
+                        url: ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) . ',
+                        token: form.elements.token.value
+                    }).then(function (credential) {
+                        form.elements.credential.value = JSON.stringify(credential);
+                        form.submit();
+                    }).catch(function (error) {
+                        button.disabled = false;
+                        notice.textContent = error.message || ((error.code === "NotAllowedError" || error.code === "AbortError") ? texts.cancelled : texts.failed);
+                        notice.classList.remove("d-none");
+                    });
+                });
+            })();
+            </script>';
+    }
+
     $body =
         '<p class="text-muted mb-3">' . h(lang('Enter the 6-digit code from your authenticator app, or one of your recovery codes.')) . '</p>
         ' . (pg_mfa_available() ? '' : '<div class="alert alert-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
         ' . $messages . '
+        ' . $passkey_block . '
         <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
             ' . $hidden . '
             ' . $code_input . '

@@ -5951,6 +5951,11 @@ function pg_pb_update_product($product_id)
     // for the same box.
     pg_pb_apply_barcode($product_id, isset($_POST['pg_pb_barcode']) ? $_POST['pg_pb_barcode'] : '');
 
+    // Announced once everything above is written, with the payload the API's
+    // update and the Workspace send, so a webhook subscriber or a Workspace
+    // event rule hears about a save on this screen too.
+    pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $product['name']));
+
     return array('name' => $product['name']);
 }
 
@@ -6434,6 +6439,10 @@ function pg_pb_quick_update($product_id, $field, $value)
         if (!in_array($field, array('short_description', 'compare_at_price'), true) && function_exists('pg_marketplace_product_changed')) {
             pg_marketplace_product_changed($product_id);
         }
+
+        // A changed cell is a product change like the product screen's save:
+        // announced with the same {id, name}; the same value again is not.
+        pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $current['name']));
 
         $shown = function ($product) use ($field) {
             switch ($field) {

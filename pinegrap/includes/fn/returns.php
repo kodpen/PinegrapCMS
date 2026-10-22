@@ -2507,9 +2507,20 @@ function pg_return_refund_estimate($lines, $quantities, $discount)
  * pair is checked by product, and an invoice that does not line up (made or
  * changed by hand) gives no map.
  *
+ * A line the order did not charge (a recurring line starting after the order
+ * day, erp_order_charged_items()) is not among the refund lines; the source
+ * names it in left_out and it gets no entry, so the lines that were charged
+ * still map. On the order's own lines it is always skipped. On an invoice it
+ * is skipped only when the invoice line at its position is not its product:
+ * an invoice issued while such lines were still put on it carries the line
+ * and keeps mapping it. The invoice source works left_out out from today's
+ * order_items rows and gateway setting, not from what the invoice was built
+ * from.
+ *
  * @param array $items  order item id => product id, in the order's line order
  *                      (lines kept for later left out)
- * @param array $source erp_order_refund_lines(): source, lines (id, product_id)
+ * @param array $source erp_order_refund_lines(): source, lines (id, product_id),
+ *                      left_out (order item ids)
  * @return array|null order item id => refund line id
  */
 function pg_return_erp_line_map($items, $source)
@@ -2520,6 +2531,12 @@ function pg_return_erp_line_map($items, $source)
 
     $lines = array_values($source['lines']);
     $map = array();
+    $left_out = array();
+    $left_out_ids = (isset($source['left_out']) && is_array($source['left_out'])) ? $source['left_out'] : array();
+
+    foreach ($left_out_ids as $left_out_id) {
+        $left_out[(int) $left_out_id] = true;
+    }
 
     if ((isset($source['source']) ? $source['source'] : '') === 'order') {
         $ids = array();
@@ -2529,6 +2546,10 @@ function pg_return_erp_line_map($items, $source)
         }
 
         foreach ($items as $item_id => $product_id) {
+            if (isset($left_out[(int) $item_id])) {
+                continue;
+            }
+
             if (!isset($ids[(int) $item_id])) {
                 return null;
             }
@@ -2542,7 +2563,14 @@ function pg_return_erp_line_map($items, $source)
     $position = 0;
 
     foreach ($items as $item_id => $product_id) {
-        if (!isset($lines[$position]) || ((int) $lines[$position]['product_id'] !== (int) $product_id)) {
+        $matches = isset($lines[$position]) && ((int) $lines[$position]['product_id'] === (int) $product_id);
+
+        // Not on this invoice: the next line is the next charged item's.
+        if (!$matches && isset($left_out[(int) $item_id])) {
+            continue;
+        }
+
+        if (!$matches) {
             return null;
         }
 
