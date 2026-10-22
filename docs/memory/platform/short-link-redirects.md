@@ -27,7 +27,7 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 
 ## What is refused on save?
 - `pg_short_link_redirect_columns()` -> `pg_short_link_redirect_problem()` on every entry point: a `$n` beyond the stars (`to_references`), a `$n` in the host of a full address (`to_host`, an open redirect), an address that leads to the link itself (`to_self`), back to it through other links (`to_loop`) or on through more than 10 (`to_chain`). A page, file or the home page ends a chain.
-- A pattern is walked from a sample request and from every stored link whose address it answers (its `$n` filled with what the stars matched there); coming back counts only where the router would hand the path to the pattern (no exact name, no pattern tried before it). Before #1235 (issue #833) a pattern saved after `q/z -> /p/z` as `p/* -> /q/$1` was kept and looped.
+- A pattern is walked from a sample request (a path it answers again is a loop) and from every stored link's name (a pattern's with its stars as a sample): there a loop is a path that comes back after the pattern took part, so a chain passing the pattern twice with other captures that then ends is kept. Before #1235 (issue #833) whether a pattern loop was refused depended on save order.
 - Restore from the File Manager's bin runs the same check (#1235); a link that would loop stays in the bin and the restore names it and why.
 - Before the step nothing is written or checked and names stay at 100 characters.
 

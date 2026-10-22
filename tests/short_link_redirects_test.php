@@ -263,6 +263,63 @@ function test_short_link_redirects_pattern_saved_last_is_walked_from_the_links_t
 	$elsewhere = array(short_link_redirects_test_link(1, 'q/z', '/r/z'));
 
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'p/*', '/q/$1'), $elsewhere), 'no link reaches the pattern');
+
+	// Three-link loops whose way into a pattern goes through another pattern:
+	// refused whichever link is saved last.
+	$loops = array(
+		'q/z -> x/z -> p/z -> q/z' => array(
+			short_link_redirects_test_link(1, 'x/*', '/p/$1'),
+			short_link_redirects_test_link(2, 'q/z', '/x/z'),
+			short_link_redirects_test_link(3, 'p/*', '/q/$1'),
+		),
+		'c/k -> a/k -> b/k -> c/k' => array(
+			short_link_redirects_test_link(1, 'a/*', '/b/$1'),
+			short_link_redirects_test_link(2, 'b/*', '/c/$1'),
+			short_link_redirects_test_link(3, 'c/k', '/a/k'),
+		),
+	);
+
+	foreach ($loops as $label => $links) {
+		foreach ($links as $i => $new) {
+			$stored = $links;
+			unset($stored[$i]);
+
+			pg_assert_same('to_loop', short_link_redirects_test_problem($new, array_values($stored)), $label . ', ' . $new['name'] . ' saved last');
+		}
+	}
+}
+
+// A chain that passes a pattern twice with different captures and then ends
+// is no loop: r -> p/a -> q/a -> p/b -> q/b -> another site.
+function test_short_link_redirects_pattern_passing_twice_with_other_captures_is_no_loop()
+{
+	$links = array(
+		short_link_redirects_test_link(1, 'p/*', '/q/$1'),
+		short_link_redirects_test_link(2, 'q/a', '/p/b'),
+		short_link_redirects_test_link(3, 'q/b', 'https://other.com/'),
+		short_link_redirects_test_link(4, 'r', '/p/a'),
+	);
+
+	foreach ($links as $i => $new) {
+		$stored = $links;
+		unset($stored[$i]);
+
+		pg_assert_same('', short_link_redirects_test_problem($new, array_values($stored)), $new['name'] . ' saved last');
+	}
+}
+
+// A loop among stored links alone is not the new pattern's doing:
+// s/a -> s/b -> s/a stays as it is when p/* is saved.
+function test_short_link_redirects_pattern_is_not_blamed_for_a_stored_loop()
+{
+	$stored = array(
+		short_link_redirects_test_link(1, 'r', '/p/a'),
+		short_link_redirects_test_link(2, 'q/a', '/s/a'),
+		short_link_redirects_test_link(3, 's/a', '/s/b'),
+		short_link_redirects_test_link(4, 's/b', '/s/a'),
+	);
+
+	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'p/*', '/q/$1'), $stored), 'r -> p/a -> q/a -> s/a -> s/b -> s/a');
 }
 
 function test_short_link_redirects_wildcard_references()

@@ -778,7 +778,9 @@ function pg_short_link_match_in($name, $index, $exact_too = true)
  * for a pattern, to a name it matches itself) is refused, and so is one that
  * comes back to it through other links or goes on through more than
  * PG_SHORT_LINK_MAX_HOPS of them. A pattern is followed from a sample
- * request and from the address of every stored link it answers. A page,
+ * request, and also from every stored link's name (a pattern's with its stars
+ * as a sample): there a loop is a path that comes back after the pattern took
+ * part. A page,
  * product group, product or file always answers at its own address, and the
  * home page always answers, so a chain ends there.
  *
@@ -872,40 +874,37 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
         return ($match !== null) && ((int) $match['link']['id'] === $id) && ((string) $match['link']['name'] === $name);
     };
 
-    // Follows the links from a path on; a chain longer than the limit counts
-    // only on the walk from this link's own address.
-    $walk = function ($path, $chain_counts) use ($answers, $index, $site_host, $base_path, $problem) {
-        for ($hop = 1; $hop <= PG_SHORT_LINK_MAX_HOPS; $hop++) {
-            $next = pg_short_link_match_in($path, $index);
+    // From this link's own address (for a pattern, a sample request): any
+    // path this link answers again closes a loop, and the chain may not go on
+    // through more than the limit.
+    $chain_ends = false;
 
-            if (($next === null) || ((string) $next['link']['destination_type'] !== 'url')) {
-                return null;
-            }
+    for ($hop = 1; $hop <= PG_SHORT_LINK_MAX_HOPS; $hop++) {
+        $next = pg_short_link_match_in($path, $index);
 
-            $next_url = pg_short_link_is_pattern($next['link']['name'])
-                ? pg_short_link_fill_target($next['link']['url'], $next['captures'], false)
-                : (string) $next['link']['url'];
-
-            $path = pg_short_link_url_name($next_url, $site_host, $base_path);
-
-            if (($path === null) || ($path === '')) {
-                return null;
-            }
-
-            if ($answers($path)) {
-                return $problem('url', 'to_loop', lang(array('string' => 'This link would close a loop: its address leads back to it through the short link {var:1}.', 'vars' => array($next['link']['name']))));
-            }
+        if (($next === null) || ((string) $next['link']['destination_type'] !== 'url')) {
+            $chain_ends = true;
+            break;
         }
 
-        return $chain_counts
-            ? $problem('url', 'to_chain', lang(array('string' => 'The address goes on through more than {var:1} short links; point it at the final address instead.', 'vars' => array(PG_SHORT_LINK_MAX_HOPS))))
-            : null;
-    };
+        $next_url = pg_short_link_is_pattern($next['link']['name'])
+            ? pg_short_link_fill_target($next['link']['url'], $next['captures'], false)
+            : (string) $next['link']['url'];
 
-    $found = $walk($path, true);
+        $path = pg_short_link_url_name($next_url, $site_host, $base_path);
 
-    if ($found !== null) {
-        return $found;
+        if (($path === null) || ($path === '')) {
+            $chain_ends = true;
+            break;
+        }
+
+        if ($answers($path)) {
+            return $problem('url', 'to_loop', lang(array('string' => 'This link would close a loop: its address leads back to it through the short link {var:1}.', 'vars' => array($next['link']['name']))));
+        }
+    }
+
+    if (!$chain_ends) {
+        return $problem('url', 'to_chain', lang(array('string' => 'The address goes on through more than {var:1} short links; point it at the final address instead.', 'vars' => array(PG_SHORT_LINK_MAX_HOPS))));
     }
 
     if (!$is_pattern) {
@@ -913,40 +912,73 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
     }
 
     // The sample above stands for any request; a loop may need a particular
-    // one. A visitor reaches the pattern from wherever another link sends
-    // them, so every stored link whose address the pattern answers is a way
-    // in: the pattern's address is filled with what its stars matched there
-    // and followed on from it.
+    // one, and the way into the pattern may pass through other patterns. So
+    // the router is replayed from every stored link's name (a pattern's with
+    // its stars as a sample), through the stored links and this one. There a
+    // loop is an exact path that comes back while this pattern answered a hop
+    // in between: a walk that passes the pattern twice with other captures
+    // and then ends is no loop, and a loop among stored links alone is not
+    // this link's doing.
+    $starts = array();
+
     foreach ($prepared['by_id'] as $other_id => $other) {
-        if (((int) $other_id === $id) || ((string) $other['destination_type'] !== 'url')) {
+        if (((int) $other_id === $id) || ((string) $other['destination_type'] !== 'url') || ((string) $other['name'] === '')) {
             continue;
         }
 
-        $other_url = pg_short_link_is_pattern($other['name'])
-            ? pg_short_link_fill_target($other['url'], array_fill(0, max(1, substr_count((string) $other['name'], '*')), 'pg-sample'), false)
-            : (string) $other['url'];
+        $starts[] = str_replace('*', 'pg-sample', (string) $other['name']);
+    }
 
-        $entry = pg_short_link_url_name($other_url, $site_host, $base_path);
+    // Every start name is compared in a few queries instead of one per name.
+    $forms = array();
 
-        if (($entry === null) || ($entry === '') || !$answers($entry)) {
-            continue;
-        }
+    foreach ($starts as $start_name) {
+        $forms[] = $start_name;
+        $forms[] = pg_short_link_path_name($start_name);
+    }
 
-        $match = pg_short_link_match_in($entry, $index);
-        $target = pg_short_link_url_name(pg_short_link_fill_target($url, $match['captures'], false), $site_host, $base_path);
+    pg_short_link_keys(array_values(array_unique($forms)));
 
-        if (($target === null) || ($target === '')) {
-            continue;
-        }
+    foreach ($starts as $start_name) {
+        $at = $start_name;
+        // path => the hop at which it was reached
+        $seen = array();
+        // The last hop this link answered, -1 for none yet.
+        $last_own = -1;
+        // The link that answered the last hop.
+        $via = '';
 
-        if ($answers($target)) {
-            return $problem('url', 'to_self', lang('The address matches the name itself, so this link would send its visitors around in a loop.'));
-        }
+        for ($hop = 0; $hop <= 2 * PG_SHORT_LINK_MAX_HOPS; $hop++) {
+            if (isset($seen[$at])) {
+                if ($last_own >= $seen[$at]) {
+                    return $problem('url', 'to_loop', lang(array('string' => 'This link would close a loop: its address leads back to it through the short link {var:1}.', 'vars' => array($via))));
+                }
 
-        $found = $walk($target, false);
+                break;
+            }
 
-        if ($found !== null) {
-            return $found;
+            $seen[$at] = $hop;
+            $next = pg_short_link_match_in($at, $index);
+
+            if (($next === null) || ((string) $next['link']['destination_type'] !== 'url')) {
+                break;
+            }
+
+            if (((int) $next['link']['id'] === $id) && ((string) $next['link']['name'] === $name)) {
+                $last_own = $hop;
+            }
+
+            $via = (string) $next['link']['name'];
+
+            $next_url = pg_short_link_is_pattern($next['link']['name'])
+                ? pg_short_link_fill_target($next['link']['url'], $next['captures'], false)
+                : (string) $next['link']['url'];
+
+            $at = pg_short_link_url_name($next_url, $site_host, $base_path);
+
+            if (($at === null) || ($at === '')) {
+                break;
+            }
         }
     }
 
