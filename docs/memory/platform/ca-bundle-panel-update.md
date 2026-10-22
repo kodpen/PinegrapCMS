@@ -7,7 +7,7 @@ description: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): htt
 - The System Status card, "Maintenance and Tools" column, row "CA sertifika paketi" lists the state of `data/cacert.pem` (Mozilla header date, root count, whether `CURL_CA_BUNDLE` points to this file / another file / is undefined so the system store is used, source URL) and offers an Update button to the administrator only (role 0).
 - Endpoint `api.php` -> `ca_bundle_update` (role 0 + `validate_token()`); work in `pg_ca_bundle_update()` (`includes/fn/update.php`, next to `pg_ca_bundle_status()`, `pg_ca_bundle_inspect()`, `pg_ca_bundle_source_url()`).
 
-## Rules
+## What rules does the update follow?
 - Source is https only. Default `https://curl.se/ca/cacert.pem`; a mirror may be set with `CA_BUNDLE_SOURCE_URL` in `config.php`, a non-https value is rejected before download. Redirects are limited with `CURLPROTO_HTTPS`. No URL or path is taken from the user.
 - The download is verified with `pg_curl_tls()` (same rule and reason as the update channel: this file decides what is trusted from now on).
 - Validate before believing: size 50 KB-2 MB; header `## Certificate data from Mozilla as of:` parseable; at least 100 roots; every PEM block passes `openssl_x509_read()`; then the date comparison: a file OLDER than the installed header date is rejected (the mirror may lag), the same date returns "already current" and the file is untouched; if the installed file has no header no date condition applies. Structural checks run BEFORE the date so a corrupt file is reported as corrupt, not as "already current".

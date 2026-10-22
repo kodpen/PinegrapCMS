@@ -1567,6 +1567,7 @@ function email($properties)
         if (pg_mail_job_alive()) {
             if (pg_mail_enqueue($properties) > 0) {
                 pg_mail_last_error('');
+                pg_mail_last_error_permanent(false);
                 return true;
             }
         }
@@ -1576,6 +1577,11 @@ function email($properties)
     }
 
     pg_mail_last_error('');
+    pg_mail_last_error_permanent(false);
+
+    // Set while the message is checked against what it was given: a failure
+    // there is in the stored properties, so sending again fails the same way.
+    $permanent = false;
 
     $mail = new PHPMailer(true);
 
@@ -1636,6 +1642,21 @@ function email($properties)
             $mail->Hostname = $mail_hostname;
         }
 
+        // No recipient, or nothing to say: PHPMailer would refuse the message
+        // too, but a body of white space alone it would send.
+        $problem = pg_mail_permanent_problem($properties);
+
+        if ($problem !== '') {
+            $permanent = true;
+
+            throw new Exception(($problem === 'no_recipient')
+                ? lang('The message has no recipient.')
+                : lang('The message has no content.'));
+        }
+
+        // Addresses: PHPMailer throws on one it refuses.
+        $permanent = true;
+
         // Recipients
         if (is_array($to)) {
             foreach ($to as $addr) {
@@ -1667,6 +1688,8 @@ function email($properties)
         if (!empty($header_reply_to)) {
             $mail->addReplyTo($header_reply_to);
         }
+
+        $permanent = false;
 
         // One-click unsubscribe for commercial campaigns (RFC 8058). The
         // mailto part goes to whoever reads the replies.
@@ -1762,7 +1785,7 @@ function email($properties)
         $error = ($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage();
 
         $log = lang('The following email could not be delivered.') . "\n\n";
-        $log .= lang('Error') . ': ' . $mail->ErrorInfo . "\n\n";
+        $log .= lang('Error') . ': ' . $error . "\n\n";
         $log .= lang('Subject') . ': ' . $subject . "\n";
         $log .= lang('To') . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
 
@@ -1782,7 +1805,9 @@ function email($properties)
 
         log_activity($log);
 
-        if ($notify_sender) {
+        // 'permanent' asks for the notice only when no later attempt can
+        // succeed (the mail queue before its last attempt).
+        if (($notify_sender === 'permanent') ? $permanent : $notify_sender) {
             email([
                 'to' => $from_email_address,
                 'to_name' => $from_name,
@@ -1795,8 +1820,9 @@ function email($properties)
         }
 
         // Set last: the notice to the sender above is an email() call of its
-        // own and resets the value.
+        // own and resets the values.
         pg_mail_last_error($error);
+        pg_mail_last_error_permanent($permanent);
 
         return false;
     }

@@ -12,8 +12,8 @@ Pattern used everywhere: `header('Location: ' . URL_SCHEME . HOSTNAME . $send_to
 - Not only `header('Location:')`: also `window.parent.location = ...`, `<a href>`, the argument of `go()`.
 - `escape_javascript()` and `h()` are NOT URL validators: they escape quotes and tags, they do not check where the address goes.
 
-## Why does pg_safe_redirect_path() look only at the first two characters? (design decision)
-- A string that starts with `/` and whose second character is not `/` or `\` cannot change the authority when appended after `https://host`; the rest is path.
+## Why does pg_safe_redirect_path() look only at the first two characters?
+- A design decision. A string that starts with `/` and whose second character is not `/` or `\` cannot change the authority when appended after `https://host`; the rest is path. Besides those two characters it refuses only control characters (header splitting), an empty value and a non-scalar (an array sent as `x[]`); anything refused becomes the fallback (`PATH` by default).
 - So there is no `str_replace`, `preg_replace`, `urlencode`, or `parse_url` + reassembly in it, and there never will be. Any "fix" touching the body breaks:
   - `[` `]`: file version suffix, `name="x[]"` array params in 54 places (`/dosya [1].pdf`, `?filter[]=jpg`)
   - Turkish / UTF-8: product and page URLs (`/urun/çay_bardağı_seti`)

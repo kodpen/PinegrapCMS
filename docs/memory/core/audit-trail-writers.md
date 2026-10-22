@@ -11,13 +11,14 @@ description: Which save paths write audit_log rows, how they read the row before
 - Only the main row is compared, not linked rows (product zones, images, groups; an order's ship_tos). Offers: `_pg_offer_audit_state()` (conditions and actions included).
 
 ## Where is it written?
-- Inside shared helpers, so every caller writes once and must not add its own line (the Workspace's `pg_pb_delete_product()` call already writes): `pg_recycle_page()`, `pg_delete_page_record()`, `pg_delete_file_record()`, `pg_pb_delete_product()`, `delete_order()`, `_pg_offer_delete()`, `duplicate_page()`, `duplicate_products()`; Recycle Bin emptying, its purge job and folder deletes go through them.
+- Inside shared helpers, so every caller writes once and must not add its own line (the Workspace's `pg_pb_delete_product()` call already writes): `pg_recycle_page()`, `pg_delete_page_record()`, `pg_delete_file_record()`, `pg_pb_delete_product()`, `delete_order()`, `_pg_offer_delete()`, `duplicate_page()`, `duplicate_products()`, `duplicate_product()`, `update_product_group_status()` (one `update` per product it switches); Recycle Bin emptying, its purge job and folder deletes go through them.
 - Settings: `includes/settings/screen.php`, `fragment.php` (label = category), `smtp_settings.php`. API keys: `api_settings.php` (apps, devices, OAuth clients).
 - Products: `add_product.php`, `edit_product.php`, `edit_products.php`, API `products.php`, `pg_pb_bin_variant_set()`, the file manager's catalog (name, bin, restore, on/off, bulk and quick edit).
-- Pages: `add_page.php`, `edit_page.php`, `edit_pages.php`, API `pages.php`, file manager (rename, move, bin, restore).
+- Pages: `add_page.php`, `edit_page.php`, `edit_pages.php`, API `pages.php`, file manager (rename, move, bin, restore, bulk edit).
 - Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid, marked refunded, restore), API `orders.php`.
-- Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag). Users: `add_user.php`.
+- Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip create and extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag). Users: `add_user.php`.
 - Personal data downloads: `privacy_export.php` (`export`, type `person`; `core/personal-data-export.md`).
+- Bulk page edit, zip, product Copy and variant set on/off wrote nothing before #1237 (issue #993).
 
 ## What is not hooked yet?
 - Files other open work held: `edit_user.php`, `delete_users.php` (#672), `includes/workspace/changes.php` (#805), `view_orders.php` (export status), `pg_catalog_bin_product()` itself (`includes/fn/ecommerce.php`; its callers are hooked, the Workspace one is not).

@@ -4,9 +4,8 @@ description: waf_enabled=0 stops everything (absolute kill switch), monitor mode
 ---
 
 ## What does the kill switch (`waf_enabled = 0`) do?
-- `waf_run()` returns UNCONDITIONALLY: nothing runs, including the bot filter, and nothing is logged.
-- History: an earlier version kept `block_unknown_bots` separate ("bot filter is older than the firewall, has its own switch"). WRONG, and it caused a production outage: turning the firewall off did not stop blocking, so an operator hunting false positives had no way to stop it. A switch that turns nothing off is worse than no switch.
-- An older note said `block_unknown_bots` keeps working with the WAF off on its own switch; that is superseded by this rule.
+- `waf_run()` returns UNCONDITIONALLY: no rule runs, including the bot filter, and no rule logs. Only the facts handled before the mode check still happen: the outage recovery row (`pg_db_guard_log_recovery()`), the mirror refresh and the shield drain (below).
+- History: an earlier version kept `block_unknown_bots` working on its own switch ("the bot filter is older than the firewall"). It caused a production outage: turning the firewall off did not stop blocking, so an operator hunting false positives had no way to stop it. A switch that turns nothing off is worse than no switch.
 - The `WAF_ENABLED` constant is defined in `init.php` from the config row, in the same block as `ECOMMERCE`, `ADS`, `VISITOR_TRACKING`; `waf_mode()` reads it first.
 - `check_banned_ip_addresses()` is outside this: an older, separate feature the operator calls per form.
 - `waf_ban_shield_refresh()` is called BEFORE the mode check: when off, the mirror is written without B lines, so the pre-DB shield also goes quiet within one request instead of waiting out the 6-hour staleness. That is why refresh was taken out of `waf_sweep()` (the sweep never runs in off mode, yet the mirror must be written in exactly that request).

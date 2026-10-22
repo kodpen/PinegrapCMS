@@ -5,7 +5,7 @@
 - **GitHub işi (commit, push, PR, birleştirme) bu ajanın işi değil**; başka bir ajan çalışma ağacından alıyor. Bu ajan kodu yazar, dev'de ürün arayüzünden dener ve belgeler:
   - `docs/degisiklikler.md`: yeni bölüm, dosyanın başındaki ilk `---`'nin hemen altına (arkasından `---`).
   - `pinegrap/changelog.txt`: ERP maddeleri `  E-FATURA (PARAŞÜT)` başlığının hemen üstüne. Açık sürümde nihai-durum anlatımı: aynı sürümde eklenen bir şeyin düzeltmesi [DÜZELTME] olarak yazılmaz, ilgili [YENİ] maddesi güncellenir.
-  - Şema adımında `docs/CLAUDE-tam.md` sürüm tablosuna satır (ERP satırları `| \`2026.4.4\` (4.102)` satırının altına) ve `.claude/skills/pinegrap-sema-adimi/SKILL.md`'nin yedi maddesi.
+  - Şema adımında `docs/CLAUDE-tam.md` sürüm tablosuna satır (ERP satırları `| \`2026.4.4\` (4.102)` satırının altına) ve `docs/memory/release/`'nin yedi maddesi.
 - Commit/PR metinlerine ve hiçbir dosyaya Claude atıf satırı, oturum bağlantısı yazılmaz.
 - Bu not yalnız Erdal isteyince güncellenir; güncellenince dosya olarak da gönderilir.
 - Kalıcı silme yok (dosya, İşbaşı'da belge/taslak, sipariş/fatura dahil): gereksiz dosya `dev/_to_delete/` altına `mv -n` ile taşınır. `pinegrap/data/` depo dışı.
@@ -19,7 +19,7 @@
 - Deneme kayıtları kalır (silinmez, geri alınmaz).
 - **E-posta:** `email()` doğru çalışır; dev makinada e-posta mekanizması yok, e-postanın ulaşması denenmez (ekran, PDF eki, adres doğrulaması yeter). Canlıda gerçek e-posta izinsiz gönderilmez.
 - Kaynaklar:
-  - ERP sözleşmesi ve dosya haritası: **`.claude/skills/pinegrap-erp/SKILL.md`** (tek güncel kopya; `Claude outputs/` klasörü kaldırılıyor). Diğer konular: `.claude/skills/README.md`.
+  - ERP sözleşmesi ve dosya haritası: **`docs/memory/erp/README.md`** (tek güncel kopya; `Claude outputs/` klasörü kaldırılıyor). Diğer konular: `.claude/skills/README.md`.
   - Plan `docs/_plan_erp.md`; İşbaşı **`docs/_isbasi_api_notlari.md`** (okunmadan İşbaşı işine başlanmaz); mimari `CLAUDE.md` + `docs/CLAUDE-tam.md`.
   - Yol haritası `docs/_erp_yol_haritasi_adaylari.md` = proje dokümanı `claude/erp-yol-haritasi-adaylari.md` ("0. Durum" bölümü neyin yapıldığını söyler).
   - Bu not: proje dokümanı `claude/erp-devir-notu.md` = `docs/_erp_devir_notu.md`.
@@ -117,7 +117,7 @@ Teklifler; tekliften açılan taslak #63; tekrardan açılan taslak #64; tekrarl
 
 ## Erdal'ın yapacakları
 
-- `Claude outputs/` klasörünü kaldırmak (skill `.claude/skills/pinegrap-erp/SKILL.md`'de, not `docs/_erp_devir_notu.md` ve projede).
+- `Claude outputs/` klasörünü kaldırmak (skill `docs/memory/erp/README.md`'de, not `docs/_erp_devir_notu.md` ve projede).
 - `dev/_to_delete/` altını gözden geçirip boşaltmak: `probes-2026-09-23/` (probe ve koşturucu asılları), `skeletons-2026-09-24/` (`pinegrap/`'tan çıkarılan 28 boş iskelet), `sync-2026-09-23/`, `skill-2026-09-24/` (skill'in eski hâli).
 - Çek/senet kullanılacaksa portföy ve verilen çek kasalarını açmak.
 - İsteğe bağlı: push denemesi için ikinci bir kullanıcıyla telefondan bildirim izni.
@@ -130,7 +130,7 @@ Pinegrap CMS'in ERP (ön muhasebe) modülünde geliştirmeye devam edeceksin. Be
 
 Başlamadan önce sırayla oku:
 1. Proje dokümanı claude/erp-devir-notu.md (aynısı cihazda docs/_erp_devir_notu.md): kurallar, ortam, migration numaraları, açık işler, deneme kayıtları.
-2. .claude/skills/pinegrap-erp/SKILL.md: ERP sözleşmesi ve dosya haritası. Şema adımı yazacaksan .claude/skills/pinegrap-sema-adimi/SKILL.md; başka konular için .claude/skills/README.md.
+2. docs/memory/erp/README.md: ERP sözleşmesi ve dosya haritası. Şema adımı yazacaksan docs/memory/release/; başka konular için .claude/skills/README.md.
 3. CLAUDE.md; gerektiğinde docs/CLAUDE-tam.md, docs/_plan_erp.md ve docs/_erp_yol_haritasi_adaylari.md ("0. Durum").
 
 Klasör: C:\Users\erdal\OneDrive\PinegrapCMS (cihaz kabuğunda $HOME/mnt/OneDrive--PinegrapCMS). C:\PinegrapCMS git ajanının klonu, ona dokunma. Dev: https://dev.pinegrap.com/pinegrap/ (yerleşik tarayıcıda oturum açık). Önce get_device_info ile hangi makinada olduğuna bak; başka makinadaysan devir notundaki ortam bölümüne göre çalış.

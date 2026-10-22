@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 7a done): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4, 5, 6, 7a, 7p done): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -15,13 +15,15 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 7a
 
 ## What remains?
 1. Done (#1192): welcome and password-reset e-mails as designable pages (`account_email` widget, chosen in the member widgets' settings).
-1b. The 7 built-in templates carry a welcome and a reset e-mail page.
+1b. Done (#1250): the 7 built-in templates carry a welcome and a reset e-mail page.
 2. Done (#1194): record visibility: a record page shows only records its filters allow; its RSS feed and SEO output follow the same filters (drafts leaked).
 3. Done (#1212): rich text in designer form textareas (the designer reset the flag; designed pages never loaded the editor).
 4. Done (#1197): site search finds designer form records (verify after an index update; fix if needed).
-5. List filter value read from a URL parameter (author, tag, section archives).
-6. Lists ordered by stored view counts (most read).
+5. Done (#1272): list filter value read from a URL parameter (author, tag, section archives); 5b (link with parameter) stays open.
+6. Done (#1241): designed record pages count views; lists order by views, comments or views in recent days (most read).
 7a. Done (#1199): templates ship User Styles (block rules read from the editor); the installer preview prints template CSS.
+7p. Done (#1275): record-page privacy guards before the news template: the BlogPosting author never falls back to the login username; a list never redirects into a closed record page.
+7q. Follow-up: the 7 built-in templates print `submitter` (the login username) as the visible author of a blog post; a contact-name token and those bylines.
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
 
