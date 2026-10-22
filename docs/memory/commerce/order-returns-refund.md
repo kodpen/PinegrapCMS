@@ -11,6 +11,7 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 ## What does the card suggest?
 - ERP off: `pg_return_refund_estimate()` from order_items (unit price, the line tax's share, the order discount spread by line value with the tax taken on what is left). ERP on: `erp_order_refund_amount()` on `erp_order_refund_lines()`, the return invoice's own figure. Shipping is never included; staff add it for a whole return.
 - Invoice lines are matched to order lines by position and product (`pg_return_erp_line_map()`; `erp_order_lines()` writes goods first, in order line order). No match → ERP amount and hand-off skipped, estimate kept.
+- Lines the order did not charge (a subscription starting later, `erp_order_charged_items()`) come in the source's `left_out` and get no map entry: always skipped on the order's lines, on an invoice only when the line at that position is not their product (older invoices still carry them). Before (#1156) such an order had no map: the estimate spread the discount onto the unpaid line (11200 instead of 10800) and no hand-off was offered.
 
 ## How is a double payment prevented?
 - Under `GET_LOCK(pg_return_lock_name(order))`: re-read, require `received`, move to `refunded`, then call the driver; a refusal puts it back to `received` (`refunded_at = 0`). A second click sees `refunded` and is refused.
