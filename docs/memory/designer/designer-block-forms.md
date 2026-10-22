@@ -19,4 +19,4 @@ description: How a ready-made designer block writes a form that can be sent and 
 ## What keeps this from coming back?
 - `tests/designer_blocks_test.php`: every `createNode('component', …)` type in `createFromPalette()` has a `COMPONENTS` entry; every Button component inside a block `form` has `btnElement` `button` or `input`, and every block form has a submit.
 - The same test reads every semantic `input`/`select`/`textarea` in `createFromPalette()`: its id expression (`_attrs` `id` or the `id` prop) must be the `for` of a `label` written in the same builder or field helper (`_cfField`, `_lmFloating`, `_mnNotify`); outside a form an `aria-label` also counts. Every label `for` must name such a field. Ids are compared as source expressions (`nlId + '_email'`), so a field and its label use the same expression.
-- The theme/a11y harness also checks in the rendered HTML that every input has a label and every control a name (`docs/memory/designer/designer-block-theme-surfaces.md`).
+- The editor's audit (`input_no_label`, `form_no_submit`) reports the same on the canvas.
