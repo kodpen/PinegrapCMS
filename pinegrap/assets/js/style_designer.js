@@ -547,38 +547,140 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Strip the Bootstrap `show` class from toggleable elements (modal /
-    // offcanvas / collapse / dropdown-menu) so canvas-preview open-state
-    // never persists across designer reloads. Without this, clicking a
-    // data-bs-toggle trigger in the canvas would (a) open the modal, (b)
-    // _syncToggleableShowStateFromDom() copies `.show` into props.cssClass
-    // to survive re-renders, (c) save serializes it, (d) next designer
-    // load → modal auto-opens on canvas. Show-state is meant to be live
-    // UI only; the saved tree should match the frontend default (closed).
+    // ── Toggleable open state (modal / offcanvas / collapse / dropdown-menu) ──
     //
-    // Called:
-    //   (a) right before `JSON.stringify(tree)` on save (main + shared trees)
-    //   (b) right after load (cfg.treeData) and after each prefetched shared
-    //       tree is parsed (back-compat sweep for trees saved before this fix)
-    function _stripToggleableShowState(node) {
-        if (!node || typeof node !== 'object') return;
+    // Clicking a data-bs-toggle trigger on the canvas opens its target, and
+    // _syncToggleableShowStateFromDom() copies the live `.show` into
+    // props.cssClass so a re-render keeps it. That is canvas state, not
+    // design: saved as it is, a modal would open by itself on the next load
+    // and an accordion would publish whichever item was last clicked open.
+    //
+    // A collapse's authored state lives on its toggle instead: a toggle
+    // written open (aria-expanded="true", no `collapsed` class, which is how
+    // the accordion builders write the first item) means the panel is open,
+    // so `show` is put back or kept; a toggle written closed, or no toggle in
+    // the same tree, means closed. Modal, offcanvas and dropdown-menu have
+    // no authored open state and always lose `show`. The Expanded and
+    // Collapsed switches of the Options panel write the panel and its
+    // toggles together (_sdSetCollapseOpen()).
+
+    // Element id of a node: props.id, or a legacy `_attrs` id.
+    function _sdNodeElementId(node) {
+        var p = node && node.props;
+        if (!p) return '';
+        if (typeof p.id === 'string' && p.id.trim() !== '') return p.id.trim();
+        var attrs = Array.isArray(p._attrs) ? p._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'id') return String(attrs[i].value || '').trim();
+        }
+        return '';
+    }
+
+    // Id of the element a collapse toggle opens: data-bs-toggle="collapse"
+    // with data-bs-target (or a link's href) "#id". '' for any other node,
+    // and for a class selector target, which this rule leaves alone.
+    function _sdCollapseToggleTarget(node) {
+        var p = node && node.props;
+        if (!p) return '';
+        var attrs = Array.isArray(p._attrs) ? p._attrs : [];
+        var toggle = '', target = '', href = typeof p.href === 'string' ? p.href : '';
+        for (var i = 0; i < attrs.length; i++) {
+            var a = attrs[i];
+            if (!a) continue;
+            if (a.name === 'data-bs-toggle') toggle = String(a.value || '');
+            else if (a.name === 'data-bs-target') target = String(a.value || '');
+            else if (a.name === 'href' && !href) href = String(a.value || '');
+        }
+        if (toggle.trim() !== 'collapse') return '';
+        var m = /^#([A-Za-z][\w:.-]*)$/.exec((target || href).trim());
+        return m ? m[1] : '';
+    }
+
+    // True when a collapse toggle is written open: aria-expanded="true" and
+    // no `collapsed` class, the pair Bootstrap itself keeps in step.
+    function _sdCollapseToggleIsOpen(node) {
         var p = node.props;
-        if (p && typeof p.cssClass === 'string' && p.cssClass.length) {
-            var cls = p.cssClass.split(/\s+/).filter(Boolean);
-            var isToggleable = false;
-            for (var k = 0; k < cls.length; k++) {
-                if (cls[k] === 'modal' || cls[k] === 'offcanvas' || cls[k] === 'collapse' || cls[k] === 'dropdown-menu') {
-                    isToggleable = true; break;
+        var attrs = Array.isArray(p._attrs) ? p._attrs : [];
+        var expanded = '';
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'aria-expanded') expanded = String(attrs[i].value || '').trim();
+        }
+        var cls = typeof p.cssClass === 'string' ? p.cssClass.split(/\s+/) : [];
+        return expanded === 'true' && cls.indexOf('collapsed') === -1;
+    }
+
+    // Authored open state of every collapse toggled from inside `root`:
+    // { '#id': true|false }, true when any of its toggles is written open.
+    function _sdCollapseOpenMap(root) {
+        var open = {};
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var id = _sdCollapseToggleTarget(n);
+            if (id) open['#' + id] = open['#' + id] === true || _sdCollapseToggleIsOpen(n);
+            if (Array.isArray(n.children)) for (var i = 0; i < n.children.length; i++) walk(n.children[i]);
+        })(root);
+        return open;
+    }
+
+    // Set `show` on the toggleable elements of `root` to their authored state
+    // (see above). Mutates in place, so isDirty() still matches the snapshot
+    // taken after load. Called right before `JSON.stringify(tree)` on save
+    // (main and shared trees) and right after a tree is loaded (cfg.treeData,
+    // each prefetched shared tree, a restored revision or autosave), so the
+    // canvas, the preview and the published page start from the same state.
+    function _normalizeToggleableShowState(root) {
+        if (!root || typeof root !== 'object') return;
+        var open = _sdCollapseOpenMap(root);
+        (function walk(node) {
+            if (!node || typeof node !== 'object') return;
+            var p = node.props;
+            if (p && typeof p.cssClass === 'string' && p.cssClass.length) {
+                var cls = p.cssClass.split(/\s+/).filter(Boolean);
+                var collapse = cls.indexOf('collapse') !== -1;
+                var other = cls.indexOf('modal') !== -1 || cls.indexOf('offcanvas') !== -1 || cls.indexOf('dropdown-menu') !== -1;
+                if (collapse || other) {
+                    var id = (collapse && !other) ? _sdNodeElementId(node) : '';
+                    var keep = id !== '' && open['#' + id] === true;
+                    var has = cls.indexOf('show') !== -1;
+                    if (keep && !has) p.cssClass = cls.concat('show').join(' ');
+                    else if (!keep && has) p.cssClass = cls.filter(function (c) { return c !== 'show'; }).join(' ');
                 }
             }
-            if (isToggleable) {
-                var filtered = cls.filter(function (c) { return c !== 'show'; });
-                if (filtered.length !== cls.length) p.cssClass = filtered.join(' ');
+            if (Array.isArray(node.children)) for (var i = 0; i < node.children.length; i++) walk(node.children[i]);
+        })(root);
+    }
+
+    // Open or close the collapse `#id` inside `root` as authored state: the
+    // panel's `show`, and on each of its toggles aria-expanded and the
+    // `collapsed` class, the way Bootstrap flips them on a click.
+    function _sdSetCollapseOpen(root, id, open) {
+        if (!root || !id) return;
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var p = n.props;
+            if (p) {
+                if (_sdCollapseToggleTarget(n) === id) {
+                    if (!Array.isArray(p._attrs)) p._attrs = [];
+                    var set = false;
+                    for (var i = 0; i < p._attrs.length; i++) {
+                        if (p._attrs[i] && p._attrs[i].name === 'aria-expanded') { p._attrs[i].value = open ? 'true' : 'false'; set = true; }
+                    }
+                    if (!set) p._attrs.push({ name: 'aria-expanded', value: open ? 'true' : 'false' });
+                    p.cssClass = _sdClassToggled(p.cssClass, 'collapsed', !open);
+                } else if (_sdNodeElementId(n) === id && String(p.cssClass || '').split(/\s+/).indexOf('collapse') !== -1) {
+                    p.cssClass = _sdClassToggled(p.cssClass, 'show', open);
+                }
             }
-        }
-        if (node.children && node.children.length) {
-            for (var i = 0; i < node.children.length; i++) _stripToggleableShowState(node.children[i]);
-        }
+            if (Array.isArray(n.children)) for (var j = 0; j < n.children.length; j++) walk(n.children[j]);
+        })(root);
+    }
+
+    // `cssClass` with `cls` added (on) or removed (off), order kept.
+    function _sdClassToggled(cssClass, cls, on) {
+        var list = String(cssClass || '').split(/\s+/).filter(Boolean);
+        if (on && list.indexOf(cls) === -1) list.push(cls);
+        if (!on) list = list.filter(function (c) { return c !== cls; });
+        return list.join(' ');
     }
 
     // ========================= IDS =========================
@@ -697,10 +799,10 @@ const StyleDesigner = (function () {
                             try { parsed = JSON.parse(item.tree_json); } catch (e) {}
                             // Object slots the PHP round trip turned into arrays.
                             if (parsed) _sdTreeObjects(parsed);
-                            // Back-compat: scrub any persisted `show` class from
-                            // toggleable elements so saved canvas-preview state
-                            // doesn't auto-open on next designer load.
-                            if (parsed) _stripToggleableShowState(parsed);
+                            // Put `show` on toggleable elements back to their
+                            // authored state, so canvas state saved by an older
+                            // version doesn't auto-open on the next designer load.
+                            if (parsed) _normalizeToggleableShowState(parsed);
                             // Migrate bindings that were saved onto structural
                             // table tags into a real content element inside the
                             // cell. Trees authored before that rule existed would
@@ -740,7 +842,7 @@ const StyleDesigner = (function () {
                                 try { tcfg = JSON.parse(item.system_region_config || 'null'); } catch (e) {}
                                 if (tcfg && tcfg.template_origin && _swIsType(tcfg.regionType)) {
                                     var st = _buildStarterTree(tcfg.regionType);
-                                    _sdTreeObjects(st); _backfillIds(st); _stripToggleableShowState(st);
+                                    _sdTreeObjects(st); _backfillIds(st); _normalizeToggleableShowState(st);
                                     _sharedSnapshots[sid] = JSON.stringify(parsed);
                                     _sharedCache[sid].tree = st;
                                     _sharedDirty[sid] = true;
@@ -19029,13 +19131,21 @@ const StyleDesigner = (function () {
 
                 // Accordion Explosion
                 if (ctype === 'accordion') {
+                    // One item, written open: the button and its panel carry the
+                    // same state (aria-expanded="true", no `collapsed`, panel
+                    // `show`), the shape the composite "New Section" adds closed.
                     var accId = 'acc_' + Math.random().toString(36).substr(2, 6);
+                    var accColId = accId + '_c1', accHdId = accId + '_h1';
                     return createNode('semantic', { tag: 'div', cssClass: 'accordion', customName: _sdT('Accordion'), id: accId }, [
                         createNode('semantic', { tag: 'div', cssClass: 'accordion-item', customName: _sdT('Accordion Item') }, [
-                            createNode('semantic', { tag: 'h2', cssClass: 'accordion-header', customName: _sdT('Accordion Header') }, [
-                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Accordion Item #1'), cssClass: 'accordion-button' })
+                            createNode('semantic', { tag: 'h2', cssClass: 'accordion-header', customName: _sdT('Accordion Header'), id: accHdId }, [
+                                 createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Accordion Item #1'), cssClass: 'accordion-button',
+                                     _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'collapse' },
+                                              { name: 'data-bs-target', value: '#' + accColId }, { name: 'aria-expanded', value: 'true' },
+                                              { name: 'aria-controls', value: accColId }] })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'accordion-collapse collapse show', customName: _sdT('Accordion Body') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'accordion-collapse collapse show', customName: _sdT('Accordion Body'), id: accColId,
+                                _attrs: [{ name: 'aria-labelledby', value: accHdId }, { name: 'data-bs-parent', value: '#' + accId }] }, [
                                  createNode('semantic', { tag: 'div', cssClass: 'accordion-body', customName: _sdT('Accordion Body Inner') }, [
                                       createNode('content', { contentType: 'paragraph', text: _sdT('Placeholder text for this accordion body.'), cssClass: '' })
                                  ])
@@ -41919,6 +42029,20 @@ const StyleDesigner = (function () {
                 if (this.checked && idx === -1) arr.push(toggleCls);
                 if (!this.checked && idx !== -1) arr.splice(idx, 1);
                 tgt.props.cssClass = arr.join(' ').trim();
+                // A collapse and its toggles change together: Expanded on the
+                // panel, or Collapsed on its button, writes the panel's `show`
+                // and every toggle's aria-expanded / `collapsed`, so the state
+                // survives the save (_normalizeToggleableShowState()).
+                var _colId = '', _colOpen = false;
+                if (toggleCls === 'show' && arr.indexOf('collapse') !== -1) {
+                    _colId = _sdNodeElementId(tgt); _colOpen = this.checked;
+                } else if (toggleCls === 'collapsed') {
+                    _colId = _sdCollapseToggleTarget(tgt); _colOpen = !this.checked;
+                }
+                if (_colId) {
+                    var _colSid = _resolveSharedSid(tgt);
+                    _sdSetCollapseOpen(_colSid > 0 ? _sharedCache[_colSid].tree : tree, _colId, _colOpen);
+                }
                 // Radio: deactivate siblings of the same type in the same parent
                 if (this.checked && radioType) {
                     var par = findParent(tgt, tree);
@@ -53074,7 +53198,7 @@ const StyleDesigner = (function () {
             }
             var rev = res.revision;
             rev.tree = _sdTreeObjects(rev.tree);
-            _stripToggleableShowState(rev.tree);
+            _normalizeToggleableShowState(rev.tree);
             return rev;
         }, function () {
             sdToast(esc(_sdT('The revision could not be read.')), 'error');
@@ -53420,20 +53544,21 @@ const StyleDesigner = (function () {
         // INVARIANT: after this call, every `shared_ref` node in `tree` has `children === []`.
         _sanitizeDynamicPlaceholders(tree);
         // INVARIANT: never persist canvas-preview `show` state on toggleable
-        // elements (modal/offcanvas/collapse/dropdown-menu). Mutates in place
+        // elements (modal/offcanvas/collapse/dropdown-menu); a collapse keeps
+        // the open state its toggle is written with. Mutates in place
         // (same pattern as _sanitizeDynamicPlaceholders) so isDirty() still
         // matches _initialTreeSnapshot after save. Side effect: a modal that
         // was open in the canvas closes on the next render — acceptable
         // because save is a commit checkpoint; user can re-click the trigger.
-        _stripToggleableShowState(tree);
-        // Same scrub for each cached shared widget tree — _flushDirtyShared
+        _normalizeToggleableShowState(tree);
+        // Same pass for each cached shared widget tree — _flushDirtyShared
         // pushes the cached tree separately, and we want next-render of those
         // widgets in this session to show modals closed too (matching frontend).
         if (_sharedCache && typeof _sharedCache === 'object') {
             for (var _scSid in _sharedCache) {
                 if (!Object.prototype.hasOwnProperty.call(_sharedCache, _scSid)) continue;
                 var _scT = _sharedCache[_scSid] && _sharedCache[_scSid].tree;
-                if (_scT) _stripToggleableShowState(_scT);
+                if (_scT) _normalizeToggleableShowState(_scT);
             }
         }
 
@@ -54438,7 +54563,7 @@ const StyleDesigner = (function () {
         var tree = sp.tree || createDefaultTree();
         _sdTreeObjects(tree);
         _backfillIds(tree);
-        _stripToggleableShowState(tree);
+        _normalizeToggleableShowState(tree);
         var p = {
             key: 'new' + Date.now() + '_' + _pgNewTabSeq,
             page_id: 0, page_name: name || ((sp.page_name || _sdT('page')) + '-' + _sdT('copy')),
@@ -56178,7 +56303,7 @@ const StyleDesigner = (function () {
             // only opened from another design.
             formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
         };
-        if (p.tree) { _sdTreeObjects(p.tree); _stripToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
+        if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
         // Where it still lives. Until this design is saved the page's
         // page_style is unchanged, so on the server it is somebody else's
         // page — and every endpoint that acts on "a page of this design"
@@ -56550,7 +56675,7 @@ const StyleDesigner = (function () {
             (d.pages || []).forEach(function (sp, i) {
                 var tree = sp.tree || createDefaultTree();
                 _backfillIds(tree);
-                _stripToggleableShowState(tree);
+                _normalizeToggleableShowState(tree);
                 var p = {
                     key: tabKeys[i],
                     page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
@@ -56755,7 +56880,7 @@ const StyleDesigner = (function () {
                     _sharedSnapshots[sid] = JSON.stringify({ type: 'root', props: {}, children: [{ type: 'loop_area', props: {}, children: [] }] });
                 }
             }
-            if (wt) { _sdTreeObjects(wt); _backfillIds(wt); _stripToggleableShowState(wt); }
+            if (wt) { _sdTreeObjects(wt); _backfillIds(wt); _normalizeToggleableShowState(wt); }
             _sharedCache[sid] = {
                 name:                 w.name || '',
                 tree:                 wt,
@@ -56770,7 +56895,7 @@ const StyleDesigner = (function () {
             var sid = parseInt(sc.id, 10);
             if (!(sid > 0)) return;
             var st = sc.tree || null;
-            if (st) { _sdTreeObjects(st); _backfillIds(st); _stripToggleableShowState(st); }
+            if (st) { _sdTreeObjects(st); _backfillIds(st); _normalizeToggleableShowState(st); }
             _sharedCache[sid] = { name: sc.name || '', tree: st, system_region_config: null, autoNamed: false };
         });
         // Leaving without publishing throws these rows away again, so
@@ -56804,7 +56929,7 @@ const StyleDesigner = (function () {
             _pgNewTabSeq++;
             var pt = sp.tree || createDefaultTree();
             _backfillIds(pt);
-            _stripToggleableShowState(pt);
+            _normalizeToggleableShowState(pt);
             // The key the server chose: widget settings name the page by it
             // (`tab:<key>`) until Publish gives the page its id.
             var tabKey = (sp.tab_key && !_pgPageByKey(sp.tab_key)) ? sp.tab_key : ('new' + Date.now() + '_' + _pgNewTabSeq);
@@ -56943,7 +57068,7 @@ const StyleDesigner = (function () {
                 return null;
             }
             _sanitizeDynamicPlaceholders(t);
-            _stripToggleableShowState(t);
+            _normalizeToggleableShowState(t);
             var rec = { key: p.key, page_id: p.page_id };
             // A saved page nothing has touched since the last save goes
             // without its tree, marked unchanged: the server keeps the stored
@@ -57442,7 +57567,7 @@ const StyleDesigner = (function () {
                 // with the page. The fields are the widget's controls.
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
             };
-            if (p.tree) { _sdTreeObjects(p.tree); _stripToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
+            if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
             else p.tree = createDefaultTree();
             // The address the page is reachable at NOW — a rename in the
             // tab only takes effect on save.
@@ -61069,7 +61194,7 @@ const StyleDesigner = (function () {
                 if (cfg.treeData) {
                     tree = cfg.treeData;
                     _sdTreeObjects(tree);
-                    _stripToggleableShowState(tree);
+                    _normalizeToggleableShowState(tree);
                     nodeIdCounter = reindex(tree);
                     hadExistingTree = true;
                 }
