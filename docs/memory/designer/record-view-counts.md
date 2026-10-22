@@ -4,7 +4,7 @@ description: Views on designed record pages (form counters, people only, counted
 ---
 
 ## What counts a view?
-- `_render_system_widget_form_item_view()` registers the record it showed (`pg_sw_record_view_seen()`, first wins); `get_page.php` counts it after `echo $content;` with `pg_sfv_count_view()`: `submitted_form_info.number_of_views` and the day's `submitted_form_view_stats` row, per (record, page), as legacy `get_form_item_view.php` does.
+- `_render_system_widget_form_item_view()` registers the record it showed (`pg_sw_record_view_seen()`, first wins); `get_page.php` counts it after `echo $content;` with `pg_sfv_count_view()`: `submitted_form_info.number_of_views` and the day's `submitted_form_view_stats` row, per (record, page), as legacy `get_form_item_view.php` does (#1241; before, designed pages never counted).
 - The page prints the count before this view (legacy is the same).
 
 ## What does not count?
