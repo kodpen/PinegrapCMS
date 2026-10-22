@@ -4901,7 +4901,7 @@ else {
 
 			$liveform->mark_error('', lang(array(
 				'string' => 'The version in the database ({var:1}) is not part of this package, so the upgrade is not offered. Correct the version in the config table, or install the site again.',
-				'vars' => $database_version
+				'vars' => h($database_version)
 			)));
 
 			return_to_form();
@@ -7008,7 +7008,7 @@ function output_install_restore_discard() {
 
 		}
 
-		$liveform->add_notice(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array($state['folder']))));
+		$liveform->add_notice(lang(array('string' => 'The unfinished restore of the backup {var:1} was discarded.', 'vars' => array(h($state['folder'])))));
 
 	}
 
@@ -7667,7 +7667,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 			pg_backup_delete_tree($work_path);
 
-			$liveform->mark_error('', $copy_error);
+			$liveform->mark_error('', h($copy_error));
 
 			return;
 

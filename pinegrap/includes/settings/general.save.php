@@ -238,7 +238,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if ($ops_alert_recipients_invalid) {
             $liveform->mark_error('ops_alert_recipients', lang(array(
                 'string' => 'Not an e-mail address: {var:1}',
-                'vars'   => array(implode(', ', $ops_alert_recipients_invalid)),
+                'vars'   => array(h(implode(', ', $ops_alert_recipients_invalid))),
             )));
         }
 
@@ -296,7 +296,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if ($maintenance_allow_invalid) {
             $liveform->mark_error('maintenance_allow_ips', lang(array(
                 'string' => 'Not an address or a range: {var:1}',
-                'vars'   => array(implode(', ', $maintenance_allow_invalid)),
+                'vars'   => array(h(implode(', ', $maintenance_allow_invalid))),
             )));
         }
 
