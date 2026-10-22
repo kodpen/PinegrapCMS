@@ -5251,7 +5251,7 @@ else {
 				// if database cannot be selected
 				if (@mysqli_select_db(db::$con, $liveform->get_field_value('db_database')) == false) {
 
-					$liveform->mark_error('db_database', lang('A connection to the MySQL server was successful, however the database name that you entered could not be selected. Please correct the database name. If the database name is correct, then the user might not have correct permissions to access the database. MySQL error') . ': ' . mysqli_error(db::$con));
+					$liveform->mark_error('db_database', lang('A connection to the MySQL server was successful, however the database name that you entered could not be selected. Please correct the database name. If the database name is correct, then the user might not have correct permissions to access the database. MySQL error') . ': ' . h(mysqli_error(db::$con)));
 
 					// else the database can be selected, so check to see if there is an existing site
 					
@@ -5327,7 +5327,7 @@ else {
 			}
 			else {
 
-				$liveform->mark_error('', lang('A connection to the MySQL server failed. Please correct the hostname, username, and/or password.  MySQL error') . ': ' . mysqli_connect_error());
+				$liveform->mark_error('', lang('A connection to the MySQL server failed. Please correct the hostname, username, and/or password.  MySQL error') . ': ' . h(mysqli_connect_error()));
 
 			}
 
@@ -9028,6 +9028,7 @@ function get_tables() {
 		'user_identities',
 		'user_mfa',
 		'user_mfa_recovery',
+		'user_passkeys',
 		'users_ad_regions_xref',
 		'users_calendars_xref',
 		'users_common_regions_xref',

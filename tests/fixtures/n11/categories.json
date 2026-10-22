@@ -1,0 +1,1876 @@
+{
+ "categories": [
+  {
+   "id": 1000001,
+   "name": "Elektronik",
+   "subCategories": [
+    {
+     "id": 1000002,
+     "name": "Elektronik Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000003,
+     "name": "Elektronik Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000004,
+     "name": "Elektronik Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000005,
+     "name": "Elektronik Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000006,
+     "name": "Elektronik Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000007,
+     "name": "Elektronik Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000008,
+     "name": "Elektronik Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000009,
+     "name": "Elektronik Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000010,
+     "name": "Elektronik Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000011,
+     "name": "Elektronik Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000012,
+     "name": "Elektronik Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000013,
+     "name": "Elektronik Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000014,
+     "name": "Elektronik Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000015,
+     "name": "Elektronik Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000016,
+     "name": "Elektronik Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000017,
+     "name": "Elektronik Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000018,
+     "name": "Elektronik Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000019,
+     "name": "Elektronik Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000020,
+     "name": "Elektronik Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000021,
+     "name": "Elektronik Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000022,
+     "name": "Elektronik Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000023,
+     "name": "Elektronik Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000024,
+     "name": "Elektronik Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000025,
+     "name": "Elektronik Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000026,
+     "name": "Elektronik Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000027,
+     "name": "Elektronik Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000028,
+     "name": "Elektronik Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000029,
+     "name": "Elektronik Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000030,
+     "name": "Elektronik Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000031,
+     "name": "Elektronik Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000032,
+   "name": "Moda",
+   "subCategories": [
+    {
+     "id": 1000033,
+     "name": "Moda Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000034,
+     "name": "Moda Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000035,
+     "name": "Moda Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000036,
+     "name": "Moda Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000037,
+     "name": "Moda Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000038,
+     "name": "Moda Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000039,
+     "name": "Moda Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000040,
+     "name": "Moda Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000041,
+     "name": "Moda Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000042,
+     "name": "Moda Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000043,
+     "name": "Moda Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000044,
+     "name": "Moda Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000045,
+     "name": "Moda Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000046,
+     "name": "Moda Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000047,
+     "name": "Moda Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000048,
+     "name": "Moda Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000049,
+     "name": "Moda Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000050,
+     "name": "Moda Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000051,
+     "name": "Moda Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000052,
+     "name": "Moda Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000053,
+     "name": "Moda Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000054,
+     "name": "Moda Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000055,
+     "name": "Moda Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000056,
+     "name": "Moda Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000057,
+     "name": "Moda Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000058,
+     "name": "Moda Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000059,
+     "name": "Moda Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000060,
+     "name": "Moda Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000061,
+     "name": "Moda Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000062,
+     "name": "Moda Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000063,
+   "name": "Ev & Yaşam",
+   "subCategories": [
+    {
+     "id": 1000064,
+     "name": "Ev & Yaşam Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000065,
+     "name": "Ev & Yaşam Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000066,
+     "name": "Ev & Yaşam Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000067,
+     "name": "Ev & Yaşam Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000068,
+     "name": "Ev & Yaşam Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000069,
+     "name": "Ev & Yaşam Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000070,
+     "name": "Ev & Yaşam Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000071,
+     "name": "Ev & Yaşam Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000072,
+     "name": "Ev & Yaşam Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000073,
+     "name": "Ev & Yaşam Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000074,
+     "name": "Ev & Yaşam Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000075,
+     "name": "Ev & Yaşam Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000076,
+     "name": "Ev & Yaşam Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000077,
+     "name": "Ev & Yaşam Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000078,
+     "name": "Ev & Yaşam Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000079,
+     "name": "Ev & Yaşam Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000080,
+     "name": "Ev & Yaşam Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000081,
+     "name": "Ev & Yaşam Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000082,
+     "name": "Ev & Yaşam Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000083,
+     "name": "Ev & Yaşam Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000084,
+     "name": "Ev & Yaşam Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000085,
+     "name": "Ev & Yaşam Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000086,
+     "name": "Ev & Yaşam Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000087,
+     "name": "Ev & Yaşam Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000088,
+     "name": "Ev & Yaşam Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000089,
+     "name": "Ev & Yaşam Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000090,
+     "name": "Ev & Yaşam Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000091,
+     "name": "Ev & Yaşam Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000092,
+     "name": "Ev & Yaşam Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000093,
+     "name": "Ev & Yaşam Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000094,
+   "name": "Anne & Bebek",
+   "subCategories": [
+    {
+     "id": 1000095,
+     "name": "Anne & Bebek Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000096,
+     "name": "Anne & Bebek Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000097,
+     "name": "Anne & Bebek Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000098,
+     "name": "Anne & Bebek Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000099,
+     "name": "Anne & Bebek Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000100,
+     "name": "Anne & Bebek Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000101,
+     "name": "Anne & Bebek Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000102,
+     "name": "Anne & Bebek Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000103,
+     "name": "Anne & Bebek Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000104,
+     "name": "Anne & Bebek Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000105,
+     "name": "Anne & Bebek Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000106,
+     "name": "Anne & Bebek Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000107,
+     "name": "Anne & Bebek Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000108,
+     "name": "Anne & Bebek Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000109,
+     "name": "Anne & Bebek Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000110,
+     "name": "Anne & Bebek Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000111,
+     "name": "Anne & Bebek Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000112,
+     "name": "Anne & Bebek Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000113,
+     "name": "Anne & Bebek Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000114,
+     "name": "Anne & Bebek Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000115,
+     "name": "Anne & Bebek Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000116,
+     "name": "Anne & Bebek Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000117,
+     "name": "Anne & Bebek Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000118,
+     "name": "Anne & Bebek Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000119,
+     "name": "Anne & Bebek Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000120,
+     "name": "Anne & Bebek Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000121,
+     "name": "Anne & Bebek Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000122,
+     "name": "Anne & Bebek Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000123,
+     "name": "Anne & Bebek Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000124,
+     "name": "Anne & Bebek Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000125,
+   "name": "Kozmetik & Kişisel Bakım",
+   "subCategories": [
+    {
+     "id": 1000126,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000127,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000128,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000129,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000130,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000131,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000132,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000133,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000134,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000135,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000136,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000137,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000138,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000139,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000140,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000141,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000142,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000143,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000144,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000145,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000146,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000147,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000148,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000149,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000150,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000151,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000152,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000153,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000154,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000155,
+     "name": "Kozmetik & Kişisel Bakım Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000156,
+   "name": "Spor & Outdoor",
+   "subCategories": [
+    {
+     "id": 1000157,
+     "name": "Spor & Outdoor Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000158,
+     "name": "Spor & Outdoor Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000159,
+     "name": "Spor & Outdoor Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000160,
+     "name": "Spor & Outdoor Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000161,
+     "name": "Spor & Outdoor Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000162,
+     "name": "Spor & Outdoor Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000163,
+     "name": "Spor & Outdoor Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000164,
+     "name": "Spor & Outdoor Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000165,
+     "name": "Spor & Outdoor Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000166,
+     "name": "Spor & Outdoor Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000167,
+     "name": "Spor & Outdoor Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000168,
+     "name": "Spor & Outdoor Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000169,
+     "name": "Spor & Outdoor Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000170,
+     "name": "Spor & Outdoor Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000171,
+     "name": "Spor & Outdoor Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000172,
+     "name": "Spor & Outdoor Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000173,
+     "name": "Spor & Outdoor Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000174,
+     "name": "Spor & Outdoor Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000175,
+     "name": "Spor & Outdoor Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000176,
+     "name": "Spor & Outdoor Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000177,
+     "name": "Spor & Outdoor Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000178,
+     "name": "Spor & Outdoor Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000179,
+     "name": "Spor & Outdoor Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000180,
+     "name": "Spor & Outdoor Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000181,
+     "name": "Spor & Outdoor Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000182,
+     "name": "Spor & Outdoor Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000183,
+     "name": "Spor & Outdoor Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000184,
+     "name": "Spor & Outdoor Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000185,
+     "name": "Spor & Outdoor Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000186,
+     "name": "Spor & Outdoor Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000187,
+   "name": "Kitap, Müzik, Film, Oyun",
+   "subCategories": [
+    {
+     "id": 1000188,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000189,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000190,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000191,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000192,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000193,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000194,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000195,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000196,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000197,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000198,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000199,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000200,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000201,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000202,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000203,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000204,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000205,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000206,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000207,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000208,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000209,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000210,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000211,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000212,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000213,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000214,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000215,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000216,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000217,
+     "name": "Kitap, Müzik, Film, Oyun Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000218,
+   "name": "Otomotiv & Motosiklet",
+   "subCategories": [
+    {
+     "id": 1000219,
+     "name": "Otomotiv & Motosiklet Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000220,
+     "name": "Otomotiv & Motosiklet Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000221,
+     "name": "Otomotiv & Motosiklet Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000222,
+     "name": "Otomotiv & Motosiklet Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000223,
+     "name": "Otomotiv & Motosiklet Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000224,
+     "name": "Otomotiv & Motosiklet Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000225,
+     "name": "Otomotiv & Motosiklet Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000226,
+     "name": "Otomotiv & Motosiklet Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000227,
+     "name": "Otomotiv & Motosiklet Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000228,
+     "name": "Otomotiv & Motosiklet Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000229,
+     "name": "Otomotiv & Motosiklet Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000230,
+     "name": "Otomotiv & Motosiklet Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000231,
+     "name": "Otomotiv & Motosiklet Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000232,
+     "name": "Otomotiv & Motosiklet Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000233,
+     "name": "Otomotiv & Motosiklet Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000234,
+     "name": "Otomotiv & Motosiklet Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000235,
+     "name": "Otomotiv & Motosiklet Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000236,
+     "name": "Otomotiv & Motosiklet Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000237,
+     "name": "Otomotiv & Motosiklet Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000238,
+     "name": "Otomotiv & Motosiklet Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000239,
+     "name": "Otomotiv & Motosiklet Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000240,
+     "name": "Otomotiv & Motosiklet Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000241,
+     "name": "Otomotiv & Motosiklet Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000242,
+     "name": "Otomotiv & Motosiklet Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000243,
+     "name": "Otomotiv & Motosiklet Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000244,
+     "name": "Otomotiv & Motosiklet Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000245,
+     "name": "Otomotiv & Motosiklet Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000246,
+     "name": "Otomotiv & Motosiklet Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000247,
+     "name": "Otomotiv & Motosiklet Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000248,
+     "name": "Otomotiv & Motosiklet Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000249,
+   "name": "Yapı Market & Bahçe",
+   "subCategories": [
+    {
+     "id": 1000250,
+     "name": "Yapı Market & Bahçe Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000251,
+     "name": "Yapı Market & Bahçe Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000252,
+     "name": "Yapı Market & Bahçe Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000253,
+     "name": "Yapı Market & Bahçe Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000254,
+     "name": "Yapı Market & Bahçe Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000255,
+     "name": "Yapı Market & Bahçe Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000256,
+     "name": "Yapı Market & Bahçe Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000257,
+     "name": "Yapı Market & Bahçe Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000258,
+     "name": "Yapı Market & Bahçe Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000259,
+     "name": "Yapı Market & Bahçe Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000260,
+     "name": "Yapı Market & Bahçe Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000261,
+     "name": "Yapı Market & Bahçe Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000262,
+     "name": "Yapı Market & Bahçe Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000263,
+     "name": "Yapı Market & Bahçe Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000264,
+     "name": "Yapı Market & Bahçe Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000265,
+     "name": "Yapı Market & Bahçe Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000266,
+     "name": "Yapı Market & Bahçe Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000267,
+     "name": "Yapı Market & Bahçe Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000268,
+     "name": "Yapı Market & Bahçe Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000269,
+     "name": "Yapı Market & Bahçe Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000270,
+     "name": "Yapı Market & Bahçe Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000271,
+     "name": "Yapı Market & Bahçe Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000272,
+     "name": "Yapı Market & Bahçe Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000273,
+     "name": "Yapı Market & Bahçe Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000274,
+     "name": "Yapı Market & Bahçe Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000275,
+     "name": "Yapı Market & Bahçe Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000276,
+     "name": "Yapı Market & Bahçe Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000277,
+     "name": "Yapı Market & Bahçe Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000278,
+     "name": "Yapı Market & Bahçe Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000279,
+     "name": "Yapı Market & Bahçe Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000280,
+   "name": "Süpermarket",
+   "subCategories": [
+    {
+     "id": 1000281,
+     "name": "Süpermarket Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000282,
+     "name": "Süpermarket Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000283,
+     "name": "Süpermarket Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000284,
+     "name": "Süpermarket Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000285,
+     "name": "Süpermarket Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000286,
+     "name": "Süpermarket Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000287,
+     "name": "Süpermarket Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000288,
+     "name": "Süpermarket Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000289,
+     "name": "Süpermarket Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000290,
+     "name": "Süpermarket Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000291,
+     "name": "Süpermarket Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000292,
+     "name": "Süpermarket Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000293,
+     "name": "Süpermarket Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000294,
+     "name": "Süpermarket Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000295,
+     "name": "Süpermarket Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000296,
+     "name": "Süpermarket Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000297,
+     "name": "Süpermarket Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000298,
+     "name": "Süpermarket Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000299,
+     "name": "Süpermarket Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000300,
+     "name": "Süpermarket Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000301,
+     "name": "Süpermarket Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000302,
+     "name": "Süpermarket Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000303,
+     "name": "Süpermarket Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000304,
+     "name": "Süpermarket Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000305,
+     "name": "Süpermarket Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000306,
+     "name": "Süpermarket Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000307,
+     "name": "Süpermarket Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000308,
+     "name": "Süpermarket Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000309,
+     "name": "Süpermarket Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000310,
+     "name": "Süpermarket Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000311,
+   "name": "Saat & Aksesuar",
+   "subCategories": [
+    {
+     "id": 1000312,
+     "name": "Saat & Aksesuar Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000313,
+     "name": "Saat & Aksesuar Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000314,
+     "name": "Saat & Aksesuar Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000315,
+     "name": "Saat & Aksesuar Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000316,
+     "name": "Saat & Aksesuar Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000317,
+     "name": "Saat & Aksesuar Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000318,
+     "name": "Saat & Aksesuar Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000319,
+     "name": "Saat & Aksesuar Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000320,
+     "name": "Saat & Aksesuar Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000321,
+     "name": "Saat & Aksesuar Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000322,
+     "name": "Saat & Aksesuar Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000323,
+     "name": "Saat & Aksesuar Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000324,
+     "name": "Saat & Aksesuar Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000325,
+     "name": "Saat & Aksesuar Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000326,
+     "name": "Saat & Aksesuar Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000327,
+     "name": "Saat & Aksesuar Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000328,
+     "name": "Saat & Aksesuar Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000329,
+     "name": "Saat & Aksesuar Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000330,
+     "name": "Saat & Aksesuar Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000331,
+     "name": "Saat & Aksesuar Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000332,
+     "name": "Saat & Aksesuar Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000333,
+     "name": "Saat & Aksesuar Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000334,
+     "name": "Saat & Aksesuar Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000335,
+     "name": "Saat & Aksesuar Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000336,
+     "name": "Saat & Aksesuar Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000337,
+     "name": "Saat & Aksesuar Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000338,
+     "name": "Saat & Aksesuar Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000339,
+     "name": "Saat & Aksesuar Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000340,
+     "name": "Saat & Aksesuar Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000341,
+     "name": "Saat & Aksesuar Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  },
+  {
+   "id": 1000342,
+   "name": "Hobi & Oyuncak",
+   "subCategories": [
+    {
+     "id": 1000343,
+     "name": "Hobi & Oyuncak Alt Kategori 1",
+     "subCategories": null
+    },
+    {
+     "id": 1000344,
+     "name": "Hobi & Oyuncak Alt Kategori 2",
+     "subCategories": null
+    },
+    {
+     "id": 1000345,
+     "name": "Hobi & Oyuncak Alt Kategori 3",
+     "subCategories": null
+    },
+    {
+     "id": 1000346,
+     "name": "Hobi & Oyuncak Alt Kategori 4",
+     "subCategories": null
+    },
+    {
+     "id": 1000347,
+     "name": "Hobi & Oyuncak Alt Kategori 5",
+     "subCategories": null
+    },
+    {
+     "id": 1000348,
+     "name": "Hobi & Oyuncak Alt Kategori 6",
+     "subCategories": null
+    },
+    {
+     "id": 1000349,
+     "name": "Hobi & Oyuncak Alt Kategori 7",
+     "subCategories": null
+    },
+    {
+     "id": 1000350,
+     "name": "Hobi & Oyuncak Alt Kategori 8",
+     "subCategories": null
+    },
+    {
+     "id": 1000351,
+     "name": "Hobi & Oyuncak Alt Kategori 9",
+     "subCategories": null
+    },
+    {
+     "id": 1000352,
+     "name": "Hobi & Oyuncak Alt Kategori 10",
+     "subCategories": null
+    },
+    {
+     "id": 1000353,
+     "name": "Hobi & Oyuncak Alt Kategori 11",
+     "subCategories": null
+    },
+    {
+     "id": 1000354,
+     "name": "Hobi & Oyuncak Alt Kategori 12",
+     "subCategories": null
+    },
+    {
+     "id": 1000355,
+     "name": "Hobi & Oyuncak Alt Kategori 13",
+     "subCategories": null
+    },
+    {
+     "id": 1000356,
+     "name": "Hobi & Oyuncak Alt Kategori 14",
+     "subCategories": null
+    },
+    {
+     "id": 1000357,
+     "name": "Hobi & Oyuncak Alt Kategori 15",
+     "subCategories": null
+    },
+    {
+     "id": 1000358,
+     "name": "Hobi & Oyuncak Alt Kategori 16",
+     "subCategories": null
+    },
+    {
+     "id": 1000359,
+     "name": "Hobi & Oyuncak Alt Kategori 17",
+     "subCategories": null
+    },
+    {
+     "id": 1000360,
+     "name": "Hobi & Oyuncak Alt Kategori 18",
+     "subCategories": null
+    },
+    {
+     "id": 1000361,
+     "name": "Hobi & Oyuncak Alt Kategori 19",
+     "subCategories": null
+    },
+    {
+     "id": 1000362,
+     "name": "Hobi & Oyuncak Alt Kategori 20",
+     "subCategories": null
+    },
+    {
+     "id": 1000363,
+     "name": "Hobi & Oyuncak Alt Kategori 21",
+     "subCategories": null
+    },
+    {
+     "id": 1000364,
+     "name": "Hobi & Oyuncak Alt Kategori 22",
+     "subCategories": null
+    },
+    {
+     "id": 1000365,
+     "name": "Hobi & Oyuncak Alt Kategori 23",
+     "subCategories": null
+    },
+    {
+     "id": 1000366,
+     "name": "Hobi & Oyuncak Alt Kategori 24",
+     "subCategories": null
+    },
+    {
+     "id": 1000367,
+     "name": "Hobi & Oyuncak Alt Kategori 25",
+     "subCategories": null
+    },
+    {
+     "id": 1000368,
+     "name": "Hobi & Oyuncak Alt Kategori 26",
+     "subCategories": null
+    },
+    {
+     "id": 1000369,
+     "name": "Hobi & Oyuncak Alt Kategori 27",
+     "subCategories": null
+    },
+    {
+     "id": 1000370,
+     "name": "Hobi & Oyuncak Alt Kategori 28",
+     "subCategories": null
+    },
+    {
+     "id": 1000371,
+     "name": "Hobi & Oyuncak Alt Kategori 29",
+     "subCategories": null
+    },
+    {
+     "id": 1000372,
+     "name": "Hobi & Oyuncak Alt Kategori 30",
+     "subCategories": null
+    }
+   ]
+  }
+ ]
+}

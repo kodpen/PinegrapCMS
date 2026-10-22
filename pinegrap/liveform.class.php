@@ -194,8 +194,13 @@ class liveform {
                 && isset($session_field['error_message'])
                 && $session_field['error_message'] !== ''
             ) {
+                // The message is alert HTML; this feedback is a text context,
+                // so reduce it to its text before escaping it for the div.
+                $feedback_text = function_exists('pg_liveform_message_text')
+                    ? pg_liveform_message_text($session_field['error_message'])
+                    : $session_field['error_message'];
                 $output_inline_feedback = '<div class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
-                    . htmlspecialchars($session_field['error_message'], ENT_QUOTES, 'UTF-8')
+                    . htmlspecialchars($feedback_text, ENT_QUOTES, 'UTF-8')
                     . '</div>';
             }
         }
@@ -677,6 +682,18 @@ class liveform {
         
         // loop through all data that was submitted in order to add it to the session
         foreach ($_REQUEST as $field => $value) {
+            // These keys name this form's own message buckets, not form fields:
+            // 'notices' and 'warnings' hold the lists add_notice()/add_warning()
+            // fill (through defuse_message()), '__prefill' is a flag and
+            // '_form_error_N' holds a form-level error. A posted field by one of
+            // these names would land in a message list unfiltered, so it is not
+            // taken as a field value.
+            if (($field === 'notices') || ($field === 'warnings') || ($field === '__prefill')
+                || (is_string($field) && (strpos($field, '_form_error_') === 0))
+            ) {
+                continue;
+            }
+
             // if value for field is an array (i.e. check boxes or pick list with multiple answers)
             if (is_array($value) == true) {
                 foreach ($value as $key => $value_2) {
@@ -859,7 +876,7 @@ class liveform {
         } else {
             // mark the field with an error
             $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] = true;
-            $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $error_message;
+            $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $this->defuse_message($error_message);
         }
     }
 
@@ -1005,7 +1022,11 @@ class liveform {
                     if (!is_array($field_data)) continue;
                     if (!isset($field_data['error']) || $field_data['error'] !== TRUE) continue;
                     if (!isset($field_data['error_message']) || $field_data['error_message'] === '') continue;
-                    $field_errors_for_js[$field_name] = $field_data['error_message'];
+                    // The JS sets this as textContent, a text context, so hand
+                    // over the message's text rather than its alert HTML.
+                    $field_errors_for_js[$field_name] = function_exists('pg_liveform_message_text')
+                        ? pg_liveform_message_text($field_data['error_message'])
+                        : $field_data['error_message'];
                 }
                 if ($field_errors_for_js) {
                     $output .= '<script>window.__pgFieldErrors=Object.assign(window.__pgFieldErrors||{},'
@@ -1020,7 +1041,7 @@ class liveform {
 
     function mark_error($field, $error_message = '') {
         $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] = TRUE;
-        $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $error_message;
+        $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error_message'] = $this->defuse_message($error_message);
     }
 
     function unmark_error($field) {
@@ -1062,16 +1083,28 @@ class liveform {
 
         $_SESSION['software']['liveforms'][$this->form][$this->index][$key] = array(
             'error'         => TRUE,
-            'error_message' => $error_message,
+            'error_message' => $this->defuse_message($error_message),
         );
     }
 
     function add_notice($notice) {
-        $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'][] = $notice;
+        $_SESSION['software']['liveforms'][$this->form][$this->index]['notices'][] = $this->defuse_message($notice);
     }
 
     function add_warning($warning) {
-        $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][] = $warning;
+        $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][] = $this->defuse_message($warning);
+    }
+
+    // A message is stored as it will be printed: the pages that show it place
+    // it before the page is run through PHP and its markers are expanded
+    // (pg_defuse_page_message()). The function check keeps the class usable
+    // where the function modules are not loaded.
+    function defuse_message($message) {
+        if (!is_string($message) || !function_exists('pg_defuse_page_message')) {
+            return $message;
+        }
+
+        return pg_defuse_page_message($message);
     }
 
     /**

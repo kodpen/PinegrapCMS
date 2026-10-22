@@ -4,7 +4,7 @@ description: settings_pane.php rules: always JSON, pg_error_throws, access gate,
 ---
 
 ## What must the endpoint (`settings_pane.php`) guarantee?
-- The answer is always JSON, errors too. `pg_error_throws(true)` (`includes/fn/core.php`) makes `output_error()` throw an exception (twin of the `pg_seo_rendering()` flag); the endpoint calls card generation and save inside `try`/`catch`. The message passes through `pg_settings_pane_complaint()`, because `output_error()` writes for a screen and may carry a "go back" link.
+- Past the gate the answer is always JSON, errors too; the gate itself (`validate_user()`, `validate_area_access()`) runs before `pg_error_throws(true)` and refuses with the HTML error page (the dialog is drawn only for roles 0-2). `pg_error_throws(true)` (`includes/fn/core.php`) makes `output_error()` throw an exception (twin of the `pg_seo_rendering()` flag); the endpoint calls card generation and save inside `try`/`catch`. The message passes through `pg_settings_pane_complaint()`, because `output_error()` writes for a screen and may carry a "go back" link.
 - Gate at the endpoint: `validate_user()` + `validate_area_access($user, 'manager')`. A button that is not drawn is not an access check.
 - CSRF is compared by hand (`hash_equals`): `validate_token_field()` prints a screen. The token is renewed in every pane answer, because another tab can spend it while the dialog stays open. 403 carries `expired: true` and the browser reloads the page; the screen behind the dialog is stale at that point anyway.
 - `liveform` form is dropped in both branches (`remove_form()`). `get_warnings()` / `output_notices()` read from the session and do not delete; unless dropped after the pane is drawn, the same notice returns on every open.

@@ -188,7 +188,7 @@ if (!$_POST) {
         $other = db_item("SELECT id, title FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
 
         if (is_array($other)) {
-            $liveform->mark_error('contact_id', lang(array('string' => 'This contact is already linked to the account "{var:1}". Unlink it there first.', 'vars' => $other['title'])));
+            $liveform->mark_error('contact_id', lang(array('string' => 'This contact is already linked to the account "{var:1}". Unlink it there first.', 'vars' => h($other['title']))));
         } elseif ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact_id . "'") === 0) {
             $liveform->mark_error('contact_id', lang('The contact could not be found.'));
         }

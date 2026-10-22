@@ -146,6 +146,26 @@ function test_catalog_bin_api_deletes_to_the_bin_unless_permanent()
 	pg_assert_true(strpos($delete, 'pg_catalog_bin_statements') < strpos($delete, 'DELETE FROM product_groups WHERE'), 'groups: the bin branch comes before the permanent delete');
 }
 
+// A permanent delete through the API counts the group's subgroups in the
+// Recycle Bin too: deleted outright, the group left them under a parent that
+// no longer existed. A group restored in the Catalog Manager whose parent is
+// gone goes under the root group.
+function test_catalog_bin_binned_subgroups_are_not_left_without_a_parent()
+{
+	$groups = catalog_bin_test_source('includes/api/resources/product_groups.php');
+	$delete = catalog_bin_test_function_body($groups, 'api_product_groups_delete');
+	$binned = strpos($delete, "AND recycled = '1'\")");
+
+	pg_assert_true($binned !== false, 'permanent delete counts binned subgroups');
+	pg_assert_true(($binned !== false) && ($binned < strpos($delete, 'DELETE FROM product_groups WHERE')), 'and refuses before deleting');
+
+	$explorer = catalog_bin_test_source('view_folder_and_files_f.php');
+	$start = strpos($explorer, "case 'explorer_catalog_restore':");
+	$restore = ($start === false) ? '' : (string) substr($explorer, $start, 4000);
+
+	pg_assert_contains("SELECT id FROM product_groups WHERE parent_id = '0'", $restore, 'restore finds the root group for an orphan');
+}
+
 function test_catalog_bin_panel_screens_send_deletes_to_the_bin()
 {
 	$edit_product = catalog_bin_test_source('edit_product.php');

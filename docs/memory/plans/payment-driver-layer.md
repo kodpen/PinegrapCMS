@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873; 2b open): payment drivers beside submit_order.php; iyzico on it, Stripe, PayTR, PayPal v2 next; legacy gateways frozen
+description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
 ---
 
 ## What did the owner decide?
@@ -11,8 +11,8 @@ description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873
 
 ## What is decided?
 - Contract `includes/payments/driver.php` (step 1; `commerce/payment-drivers.md`): `pg_payment_<key>_` prepare, authorize, complete, capture, refund, cancel, notify, capabilities, fields; callers use `pg_payment_call()`. One active card driver plus optional redirect drivers, as today.
-- `submit_order.php` gains one branch (done in step 2, `commerce/payment-driver-iyzico.md`): when the gateway or method has a driver, the driver handles the payment and the rest of the file is unchanged. Legacy branches are reached exactly as before.
-- Stripe: new driver on PaymentIntents with Elements/Payment Request (Apple Pay, Google Pay, Link), webhook `payment_intent.succeeded` with signature check, refunds through the driver; the old Charges code stays for sites that do not switch (setting "Stripe (classic)" vs "Stripe").
+- `submit_order.php` has one branch (step 2, `commerce/payment-driver-iyzico.md`): a gateway or method with a driver is paid by it; legacy branches are reached exactly as before.
+- Stripe: PaymentIntents driver with the Payment Element (Apple Pay, Google Pay, Link), a signed webhook, refunds through the driver; the Charges code stays as "Stripe (classic)".
 - PayTR: iframe/redirect flow, hash verification, installment table, refund API, callback endpoint `payment_callback.php?driver=paytr`.
 - PayPal: Checkout v2 driver beside classic Express Checkout (kept).
 - Saved cards/wallets: tokens only as PSP references, never PAN; optional later.
@@ -22,13 +22,16 @@ description: Plan (approved 2026-10-19; steps 1, 2, 5 done, PRs #740, #812, #873
 1. ~~Interface + registry + settings scaffolding + tests (M).~~ Done (PR #740).
 2. ~~iyzico driver port with behaviour tests against today's results (M).~~ Done (PR #812); the inline iyzico code stays (frozen).
 2b. The iyzico 3-D Secure return (`mode=iyzipay_threedsecure_return`) still runs in submit_order.php's Iyzipay block; moving it into the card driver's `complete()` is open (S).
-3. Stripe PaymentIntents driver + Elements in the express order widget + webhook (L).
+3a. ~~Stripe PaymentIntents driver + Payment Element in the express order widget (L).~~ Done (PR #937, `commerce/payment-driver-stripe.md`).
+3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M).
 4. PayTR driver (M); PayPal v2 driver (M).
 5. ~~Refund in `view_order.php` / `order_refund.php` and the cancel refund in `process_order_cancellation()` through the driver (S).~~ Done (PR #873, `commerce/payment-refunds.md`).
-6. Memory: keep `commerce/payment-drivers.md` current; the decisions skill entry (legacy gateways frozen on purpose) is the owner's to add.
+6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
-- Sipay/Param after PayTR by demand. Bank vPOS direct integrations are per-bank work; prefer a PSP that fronts the banks.
+- Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
+- 3b: `payment_intent.succeeded` for an order still incomplete: alert only, or complete it from the webhook? Owner.
+- Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
 
 ## Where to start?
-- Step 3 (Stripe) appends its gateway value to the ENUM (decided above) and needs a generic return mode recognised at the top of `submit_order.php` and in `order_preview.php` (`pg_payment_return_mode()` knows only the two iyzico ones). Read `commerce/payment-drivers.md`, `commerce/payment-driver-iyzico.md`, the decisions skill first.
+- 3b: a generic `payment_callback.php?driver=<key>` calling `notify()`; Stripe's events signed with the webhook secret. Step 4 (PayTR, PayPal v2) appends its ENUM value as 11.0.24 did and reuses `pg_payment_return_modes()`. Read `commerce/payment-drivers.md`, `commerce/payment-driver-stripe.md` first.

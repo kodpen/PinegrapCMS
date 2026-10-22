@@ -164,7 +164,8 @@ pricing: {
 `createFromPalette` case'i monolitik component döndürmek yerine `createNode` ağacı inşa eder:
 
 ```js
-return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg navbar-dark bg-dark', customName: 'Navbar' }, [
+return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
+    _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
     createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: 'Navbar Container' }, [
         createNode('content', { contentType: 'link', text: 'Brand', href: '#', cssClass: 'navbar-brand' }),
         createNode('semantic', { tag: 'button', cssClass: 'navbar-toggler', customName: 'Toggler',
@@ -369,7 +370,9 @@ typography (text-*, fw-*, fs-*) → color (bg-*, text-*, border-*) →
 border / rounded → shadow → other (position, overflow, ...)
 ```
 
-Örnek: `d-flex align-items-center justify-content-between p-3 w-100 text-white fw-bold bg-primary border rounded-3 shadow-sm`.
+Örnek: `d-flex align-items-center justify-content-between p-3 w-100 fw-bold text-bg-primary border rounded-3 shadow-sm`.
+
+Renk sınıfları tasarımın renk paletine ve koyu kipine uyanlardan seçilir (`text-bg-primary`, `bg-body`, `text-body-secondary` …); `bg-dark`, `bg-light`, `text-white`, `btn-light` gibi sabit renkler yazılmaz: `docs/memory/designer/designer-block-theme-colours.md`.
 
 ### 6.4. `data-bs-*` native davranışları
 
@@ -384,7 +387,7 @@ border / rounded → shadow → other (position, overflow, ...)
 | Dropdown | `data-bs-toggle="dropdown"` |
 | Tooltip | `data-bs-toggle="tooltip" data-bs-title="..."` |
 | Popover | `data-bs-toggle="popover"` |
-| Carousel | `<div class="carousel slide" data-bs-ride="carousel">` |
+| Carousel | `<div class="carousel slide">` — kendiliğinden dönmez (`docs/memory/designer/designer-block-motion.md`) |
 | Scroll spy | `data-bs-spy="scroll" data-bs-target="#nav"` |
 
 Pattern:
@@ -429,7 +432,7 @@ Inline `style=""` yasağı **mutlak değil, kaynak-koşullu**. Style'ın geldiğ
 // ❌ Sabit padding — BS utility var: p-4 / py-4 / px-4
 '<div style="padding: 20px">…</div>'
 
-// ❌ Sabit renk — BS utility var: text-white, bg-primary
+// ❌ Sabit renk — BS utility var: text-bg-primary
 '<h1 style="color: white">Title</h1>'
 
 // ❌ Sabit margin — BS utility var: mt-5 / my-5
@@ -560,7 +563,7 @@ Tam bir explosion component eklemenin adım adım örneği.
 
 ```js
 if (ctype === 'cta-simple') {
-    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-light', customName: 'CTA Section' }, [
+    return createNode('semantic', { tag: 'section', cssClass: 'py-5 bg-body-tertiary', customName: 'CTA Section' }, [
         createNode('container', { fluid: false, cssClass: 'text-center' }, [
             createNode('content', {
                 contentType: 'heading', tag: 'h2',
@@ -586,7 +589,7 @@ if (ctype === 'cta-simple') {
 
 **Checklist gözetildi:**
 - Kök wrapper: `semantic tag:'section'` — anlamlı HTML.
-- Class'lar: `py-5 bg-light` — BS utility; inline style yok.
+- Class'lar: `py-5 bg-body-tertiary` — temaya uyan BS utility; inline style yok.
 - Grid: `container` içeride.
 - Düzenlenebilir metinler: `content:heading` + `content:paragraph` → otomatik editable.
 - Buton: mevcut `component:btn`; markup kopyalanmadı.
@@ -609,7 +612,7 @@ if (ctype === 'cta-simple') {
 
 ### Adım 3. Auto-wrap kararı
 
-`<section class="py-5 bg-light">` full-width bg-light istiyor → `_noWrapCtypes`'a ekle:
+`<section class="py-5 bg-body-tertiary">` full-width arka plan istiyor → `_noWrapCtypes`'a ekle:
 
 ```js
 // handleDrop ~4062
@@ -629,7 +632,7 @@ var _noWrapCtypes = [
 2. Canvas'a drop → section + container + heading + paragraph + btn doğru yerleşti.
 3. Çift-tık başlık → editable, metin değiştir.
 4. Çift-tık buton → editable.
-5. Preview (Ctrl+Alt+P) → full-width bg-light, ortalanmış içerik.
+5. Preview (Ctrl+Alt+P) → full-width arka plan, ortalanmış içerik.
 6. Responsive: 576px, 992px, 1400px — hepsinde anlamlı.
 7. HTML tree viewer → inline style yok, `<script>` yok.
 8. Kaydet → DB `style_code` temiz.

@@ -14,6 +14,7 @@ description: includes/server_config.php: why web-root web.config/.htaccess rules
 - Server-specific branch only; IIS and Apache variants written separately. Then also put it into the file skeleton in `pg_server_config_default()`.
 - **Invariant: the default must pass its own `detect`.** Otherwise a fresh install declares itself "missing" on day one. When adding a block, generate the defaults of all three servers and run every `detect` over them.
 - If the rule carries the folder name, add it to `pg_server_config_retarget()` too.
+- A header PHP sends and some pages replace (`Referrer-Policy`) never goes into a server rule, and `X-Content-Type-Options` from IIS makes PHP skip its copy: docs/memory/waf/waf-security-headers-hsts.md.
 
 ## What are the repair rules?
 - Only adds. Nothing already in the file is rewritten (single exception: the redirect path via `$fix_path`).

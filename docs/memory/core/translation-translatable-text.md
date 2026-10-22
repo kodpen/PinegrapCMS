@@ -1,6 +1,6 @@
 ---
 name: translation-translatable-text
-description: Which values the front-end translation counts as text to translate (pg_tr_translatable()) and which it leaves out as data: tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code; lone addresses stay translatable
+description: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
 ---
 
 ## Where is the rule, and who uses it?

@@ -1,7 +1,10 @@
 ---
 name: erp-dev-environment-traps
-description: Traps when developing ERP code on the dev setup: device_commit_files overwrite, long lint runs, strict sql_mode on migrations, PHP via Python heredoc.
+description: Traps when developing ERP code on the dev setup: orders writes a test rollback misses, device_commit_files overwrite, long lint runs, strict sql_mode on migrations, PHP via Python heredoc.
 ---
+
+## Why must a test script restore orders by hand?
+- An ERP rollback cannot be trusted to undo a write to `orders` (MyISAM until 2026.4.8; a large table stays MyISAM until converted). A test that calls a function writing `orders`, such as `erp_invoice_cancel()` (sets `orders.erp_invoice_id = 0`) or `erp_invoice_from_order()`, puts the order's link back by hand afterwards, or the order stays unlinked from its invoice.
 
 ## What goes wrong committing files to the device?
 - `device_commit_files`: committing the same target file a second time from the same staged path can lose the old content (the outputs binding does not update mtime). Stage the second version under a NEW file name (`*.v2.php`), commit it, then verify on the device with `grep`.
@@ -17,6 +20,6 @@ description: Traps when developing ERP code on the dev setup: device_commit_file
 - A JS comment embedded in a PHP single-quoted string that contains `'s` cuts the string.
 
 ## Where are the other dev-only rules?
-- Credentials and keys are entered by Erdal; the agent never creates API keys or fills password/key boxes: see erp-api-events-and-testing and erp-isbasi-driver.
+- Credentials and keys are entered by the owner (Erdal); nobody else creates API keys or fills password/key boxes on dev: see erp-api-events-and-testing and erp-isbasi-driver. E-mail on dev: erp-invoice-mail.
 
-Related: docs/memory/erp/erp-api-events-and-testing.md
+Related: docs/memory/erp/erp-api-events-and-testing.md, docs/memory/erp/erp-order-cancel-and-refund.md

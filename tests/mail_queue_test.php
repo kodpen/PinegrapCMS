@@ -4,8 +4,9 @@
  *
  * Tests for the pure helpers of the outgoing mail queue in
  * includes/fn/mail_queue.php: the retry schedule, the stored form of an
- * email() call, the "is the general job alive" decision and the
- * List-Unsubscribe headers.
+ * email() call, the "is the general job alive" decision, the List-Unsubscribe
+ * headers, and what makes the queue give a message up at once and tell the
+ * panel about it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -154,4 +155,120 @@ function test_mail_queue_list_unsubscribe_without_mailto()
 
 	pg_assert_same('<https://example.test/u>', $headers['List-Unsubscribe']);
 	pg_assert_same('List-Unsubscribe=One-Click', $headers['List-Unsubscribe-Post']);
+}
+
+// A message with no address in 'to' can never be sent.
+function test_mail_queue_permanent_problem_no_recipient()
+{
+	pg_assert_same('no_recipient', pg_mail_permanent_problem(array('body' => 'Hi')));
+	pg_assert_same('no_recipient', pg_mail_permanent_problem(array('to' => '  ', 'body' => 'Hi')));
+	pg_assert_same('no_recipient', pg_mail_permanent_problem(array('to' => array('', ' '), 'body' => 'Hi')));
+}
+
+// A body that is empty or only white space, plain or HTML, is nothing to send.
+function test_mail_queue_permanent_problem_empty_body()
+{
+	pg_assert_same('empty_body', pg_mail_permanent_problem(array('to' => 'a@example.test')));
+	pg_assert_same('empty_body', pg_mail_permanent_problem(array('to' => 'a@example.test', 'body' => " \r\n\t")));
+	pg_assert_same('empty_body', pg_mail_permanent_problem(array('to' => 'a@example.test', 'body' => '', 'format' => 'html')));
+	pg_assert_same('empty_body', pg_mail_permanent_problem(array('to' => 'a@example.test', 'body' => array('x'))));
+}
+
+// The recipient is named before the body: a message to nobody is wrong
+// whatever it says.
+function test_mail_queue_permanent_problem_recipient_first()
+{
+	pg_assert_same('no_recipient', pg_mail_permanent_problem(array('to' => '', 'body' => '')));
+}
+
+// A message with a recipient and a body is left to the sender; whether the
+// address is well formed is PHPMailer's question.
+function test_mail_queue_permanent_problem_none()
+{
+	pg_assert_same('', pg_mail_permanent_problem(array('to' => 'a@example.test', 'body' => 'Hi')));
+	pg_assert_same('', pg_mail_permanent_problem(array('to' => array('', 'b@example.test'), 'body' => '<p>Hi</p>', 'format' => 'html')));
+	pg_assert_same('', pg_mail_permanent_problem(array('to' => 'not-an-address', 'body' => '0')));
+}
+
+// The flag beside pg_mail_last_error() keeps its value until it is set again.
+function test_mail_queue_last_error_permanent_flag()
+{
+	pg_assert_true(pg_mail_last_error_permanent(true));
+	pg_assert_true(pg_mail_last_error_permanent());
+	pg_assert_false(pg_mail_last_error_permanent(false));
+	pg_assert_false(pg_mail_last_error_permanent());
+}
+
+// A permanent failure ends the message on its first attempt; any other
+// failure is retried until the sixth.
+function test_mail_queue_gives_up_permanent_at_once()
+{
+	pg_assert_true(pg_mail_queue_gives_up(1, 6, true));
+	pg_assert_false(pg_mail_queue_gives_up(1, 6, false));
+	pg_assert_false(pg_mail_queue_gives_up(5, 6, false));
+	pg_assert_true(pg_mail_queue_gives_up(6, 6, false));
+	pg_assert_true(pg_mail_queue_gives_up(7, 6, false));
+}
+
+// A failed row that did not use up its attempts was given up as permanent.
+function test_mail_queue_failed_permanently()
+{
+	pg_assert_true(pg_mail_failed_permanently('failed', 1));
+	pg_assert_true(pg_mail_failed_permanently('failed', '5'));
+	pg_assert_false(pg_mail_failed_permanently('failed', 6));
+	pg_assert_false(pg_mail_failed_permanently('queued', 1));
+	pg_assert_false(pg_mail_failed_permanently('sent', 1));
+}
+
+// Up to the limit, one notification per message: the reason in title, the
+// recipient in order_total, the queue row in form_id.
+function test_mail_queue_given_up_notices_each()
+{
+	pg_assert_same(array(), pg_mail_given_up_notices(array()));
+
+	$notices = pg_mail_given_up_notices(array(
+		array('id' => 7, 'recipient' => 'a@example.test', 'reason' => 'Message body empty'),
+		array('id' => 9, 'recipient' => 'b@example.test', 'reason' => ''),
+	));
+
+	pg_assert_same(2, count($notices));
+	pg_assert_same('mail_failed', $notices[0]['action']);
+	pg_assert_same('error', $notices[0]['type']);
+	pg_assert_same('Message body empty', $notices[0]['title']);
+	pg_assert_same('a@example.test', $notices[0]['order_total']);
+	pg_assert_same(7, $notices[0]['form_id']);
+	pg_assert_same('system', $notices[0]['user']);
+	pg_assert_same('-', $notices[1]['title']);
+	pg_assert_same(9, $notices[1]['form_id']);
+}
+
+// Past the limit the run is told in one row carrying the count, without a
+// queue row.
+function test_mail_queue_given_up_notices_summary()
+{
+	$given_up = array();
+
+	for ($i = 1; $i <= 4; $i++) {
+		$given_up[] = array('id' => $i, 'recipient' => 'r' . $i . '@example.test', 'reason' => 'x');
+	}
+
+	$notices = pg_mail_given_up_notices($given_up);
+
+	pg_assert_same(1, count($notices));
+	pg_assert_same('mail_failed', $notices[0]['action']);
+	pg_assert_same('4', $notices[0]['title']);
+	pg_assert_false(isset($notices[0]['form_id']));
+
+	pg_assert_same(3, count(pg_mail_given_up_notices(array_slice($given_up, 0, 3))));
+}
+
+// The stored reason fits notifications.title and the recipient order_total.
+function test_mail_queue_given_up_notices_clip()
+{
+	$notices = pg_mail_given_up_notices(array(
+		array('id' => 1, 'recipient' => str_repeat('a', 150), 'reason' => str_repeat('ş', 400)),
+	));
+
+	pg_assert_same(255, mb_strlen($notices[0]['title'], 'UTF-8'));
+	pg_assert_same(100, strlen($notices[0]['order_total']));
 }

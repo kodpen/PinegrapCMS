@@ -448,6 +448,11 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
         || !in_array((string) ($invoice['edoc_status'] ?? 'none'), array('none', 'error', 'rejected'), true);
     $cancellable = $has_edoc ? erp_edoc_invoice_cancellable($invoice) : array('ok' => true, 'manual' => false, 'reason' => '', 'url' => '');
 
+    // A document dated inside the locked period cannot be cancelled: the
+    // step offers the return instead, before the provider or the
+    // allocations are touched.
+    $locked = ((string) $invoice['status'] !== 'cancelled') && (erp_lock_refusal((string) $invoice['issue_date']) !== '');
+
     if ((string) $invoice['status'] === 'cancelled') {
         $step['state'] = 'done';
         $step['title'] = lang('The invoice was cancelled');
@@ -456,7 +461,7 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
     } elseif ($returned >= $grand) {
         $step['state'] = 'done';
         $step['title'] = lang('Returned in full');
-    } elseif ($cancelled_order && !empty($cancellable['ok']) && empty(erp_invoice_returns($invoice_id))) {
+    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty(erp_invoice_returns($invoice_id))) {
         $step['action'] = 'invoice_cancel';
         if (!$has_edoc && ($provider_label === '')) {
             // Without an e-document provider the invoice is paper: whether
@@ -482,9 +487,13 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
         }
     } elseif ($cancelled_order) {
         $step['goto'] = array('label' => lang('Issue the return invoice'), 'url' => $return_url, 'icon' => 'bi-arrow-counterclockwise');
-        $step['reason'] = ($returned > 0)
-            ? lang(array('string' => 'Part of the invoice has been returned ({var:1} of {var:2}); the return form comes up with what is left.', 'vars' => array(erp_money_out_currency($returned, $currency), erp_money_out_currency($grand, $currency))))
-            : trim((($has_edoc && ((string) $cancellable['reason'] !== '')) ? (string) $cancellable['reason'] . ' ' : '') . lang('The form comes up with every line.'));
+        if ($returned > 0) {
+            $step['reason'] = lang(array('string' => 'Part of the invoice has been returned ({var:1} of {var:2}); the return form comes up with what is left.', 'vars' => array(erp_money_out_currency($returned, $currency), erp_money_out_currency($grand, $currency))));
+        } elseif ($locked) {
+            $step['reason'] = lang(array('string' => 'The invoice is dated inside the books locked up to {var:1}, so it cannot be cancelled; a return invoice takes it back.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false))) . ' ' . lang('The form comes up with every line.');
+        } else {
+            $step['reason'] = trim((($has_edoc && ((string) $cancellable['reason'] !== '')) ? (string) $cancellable['reason'] . ' ' : '') . lang('The form comes up with every line.'));
+        }
     } elseif ($refunded > $returned) {
         $step['goto'] = array('label' => lang('Issue the return invoice'), 'url' => $return_url, 'icon' => 'bi-arrow-counterclockwise');
         $step['reason'] = lang(array('string' => '{var:1} was refunded to the card, and return invoices cover {var:2}. Choose the lines that came back.', 'vars' => array(erp_money_out($refunded), erp_money_out($returned))));
@@ -726,6 +735,8 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
 
             // The provider first: a draft there is deleted, a document there
             // must have been let go. If it will not, nothing changes here.
+            // It refuses a document in the locked period before asking the
+            // provider, so the allocations below stay as they are too.
             $provider_cancel = erp_edoc_invoice_provider_cancel($cancel_id, lang('The order was cancelled.'), (int) $user_id);
             if (!$provider_cancel['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => (string) $provider_cancel['error']);

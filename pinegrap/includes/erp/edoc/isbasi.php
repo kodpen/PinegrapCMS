@@ -735,6 +735,12 @@ function erp_edoc_isbasi_send_invoice($invoice, $lines, $options = array())
         return $fail(lang('The invoice has no lines.'));
     }
 
+    // The order's number, the one its buyer and the panel know; the
+    // erp_invoices row carries only the order's row id.
+    if (((int) ($invoice['order_id'] ?? 0) > 0) && !isset($invoice['order_number'])) {
+        $invoice['order_number'] = trim((string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $invoice['order_id'] . "' LIMIT 1"));
+    }
+
     $payload = erp_edoc_isbasi_invoice_payload($invoice, $lines, $options);
 
     if (isset($payload['error'])) {
@@ -989,7 +995,8 @@ function erp_edoc_isbasi_line_discount($line)
 /**
  * The SimpleInv body for an invoice, field for field from the documentation.
  *
- * @param array $invoice
+ * @param array $invoice  An erp_invoices row; an order's invoice also carries
+ *                        order_number (orders.order_number)
  * @param array $lines
  * @param array $options
  * @return array  The payload, or ['error' => string]
@@ -1102,13 +1109,16 @@ function erp_edoc_isbasi_invoice_payload($invoice, $lines, $options = array())
     // Shipping, surcharges and gift cards are lines of their own on the
     // Pinegrap invoice (the bridge writes them so); nothing to add here.
     $currency = strtoupper(trim((string) $invoice['currency']));
+    // The order is named by its number, never by its row id; an order
+    // without a number is not named at all.
+    $order_number = ((int) ($invoice['order_id'] ?? 0) > 0) ? trim((string) ($invoice['order_number'] ?? '')) : '';
     $payload = array(
         'invoiceId' => 0,
         'customer' => $customer,
         'invoiceDate' => date('Y-m-d H:i:s', strtotime((string) $invoice['issue_date'] . ' 12:00:00')),
         'currency' => ($currency === 'TRY') ? 'TL' : $currency,
         'exchangeRate' => ($currency === 'TRY') ? 1 : (float) $invoice['exchange_rate'],
-        'description' => trim((string) $invoice['full_number'] . (((int) ($invoice['order_id'] ?? 0) > 0) ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => (int) $invoice['order_id'])) : '')),
+        'description' => trim((string) $invoice['full_number'] . (($order_number !== '') ? ' / ' . lang(array('string' => 'Order #{var:1}', 'vars' => $order_number)) : '')),
         'vatIncluded' => false,
         'salesInvoiceDetails' => $details,
     );

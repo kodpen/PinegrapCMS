@@ -118,8 +118,11 @@ if ($_POST) {
 
 		if ($liveform->check_form_errors() == false) {
 
+			// pull_orders is written, not left to the column's default of 1: a
+			// marketplace whose connector cannot bring orders in would start
+			// with the switch on and the job skipping it without a word.
 			db("INSERT INTO marketplace_accounts
-				(provider, name, credentials, status, push_stock, push_price,
+				(provider, name, credentials, status, push_stock, push_price, pull_orders,
 				 created_user_id, created_timestamp, updated_timestamp)
 				VALUES (
 					'" . e($provider) . "',
@@ -128,6 +131,7 @@ if ($_POST) {
 					'paused',
 					'1',
 					'" . (empty($_POST['push_price']) ? '0' : '1') . "',
+					'" . (mp_can($provider, 'pull_orders') ? '1' : '0') . "',
 					'" . e((int)$user['id']) . "',
 					UNIX_TIMESTAMP(),
 					UNIX_TIMESTAMP())");
@@ -1086,6 +1090,15 @@ if ($selected) {
 	// left out, since the job would never pick that row up.
 	$can_list = mp_can($selected['provider'], 'create_listings');
 
+	// Orders come in only from a marketplace whose connector reads them, and
+	// are accepted only by one that can accept them. The job skips the rest
+	// without a word, so their switches and the orders card are not drawn: a
+	// switch shown on would promise orders that never come, while the stock
+	// they sell there is still sold here.
+	$can_orders = mp_can($selected['provider'], 'pull_orders');
+
+	$can_approve = $can_orders && mp_can($selected['provider'], 'approve_lines');
+
 	$provider_fields = isset($providers[$selected['provider']]['fields'])
 		? $providers[$selected['provider']]['fields']
 		: array();
@@ -1198,6 +1211,10 @@ if ($selected) {
 
 			}
 
+			// The figure the marketplace gets; marked when it carries tax the
+			// product's stored price does not, so it is not read as a typo.
+			$map_price = mp_product_price($map);
+
 			echo '
 			<div class="mp-row">
 				<span>
@@ -1208,7 +1225,8 @@ if ($selected) {
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
-				<span>' . prepare_price_for_output(mp_product_price($map), false, 0, 'html', false) . '</span>
+				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
+					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
 				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'
@@ -1340,7 +1358,7 @@ if ($selected) {
 
 	/* ------------------------------------------------------------- orders */
 
-	if (!empty($selected['pull_orders'])) {
+	if ($can_orders && !empty($selected['pull_orders'])) {
 
 		echo '
 	<div class="card mb-3" id="mp-orders">
@@ -1607,19 +1625,25 @@ if ($selected) {
 					. (!empty($selected['push_price']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
-			<hr>
-			<div class="form-check form-switch mb-2">
+			<hr>'
+			. ($can_orders ? '
+			<div class="form-check form-switch ' . ($can_approve ? 'mb-2' : 'mb-4') . '">
 				<input class="form-check-input" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
 					. (!empty($selected['pull_orders']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
-			</div>
+			</div>'
+			. ($can_approve ? '
 			<div class="form-check form-switch mb-4">
 				<input class="form-check-input" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
 					. (!empty($selected['auto_approve']) ? ' checked' : '') . '>
 				<label class="form-check-label" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
-			</div>
+			</div>' : '') : '
+			<p class="small opacity-75 mb-4">' . h(lang(array(
+				'string' => 'Orders are not brought in from {var:1} yet.',
+				'vars'   => array(mp_provider_name($selected['provider']))
+			))) . '</p>') . '
 			<hr>'
 			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
 			<div class="mb-3">
