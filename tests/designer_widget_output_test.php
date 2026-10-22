@@ -5,7 +5,9 @@
  * Tests for system widget HTML that leaves the renderer outside a page's own
  * output: the editor's Preview and the canvas's ghost records resolve the
  * address placeholders the page resolves last
- * (pg_designer_resolve_output_placeholders()).
+ * (pg_designer_resolve_output_placeholders()), and rich text written for the
+ * classic theme keeps its pictures in their column on a Bootstrap 5 page
+ * (pg_img_fluid_alias()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,4 +49,45 @@ function test_designer_widget_output_preview_resolves()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains('$out[(int)$sid] = pg_designer_resolve_output_placeholders((string)$html);', $source);
+}
+
+// -- img-responsive on a Bootstrap 5 page -------------------------------------
+
+function test_designer_widget_output_fluid_alias()
+{
+	pg_assert_same(
+		'<p><img src="{path}cover26.jpg" class="img-responsive img-fluid" alt=""></p>',
+		pg_img_fluid_alias('<p><img src="{path}cover26.jpg" class="img-responsive" alt=""></p>'), 'the only class');
+	pg_assert_same(
+		"<img class='rounded img-responsive img-fluid shadow' src='/a.jpg'>",
+		pg_img_fluid_alias("<img class='rounded img-responsive shadow' src='/a.jpg'>"), 'between others, single quotes');
+	pg_assert_same(
+		'<IMG SRC="/a.jpg" CLASS="img-responsive img-fluid" />',
+		pg_img_fluid_alias('<IMG SRC="/a.jpg" CLASS="img-responsive" />'), 'upper-case markup');
+}
+
+function test_designer_widget_output_fluid_alias_leaves_the_rest()
+{
+	$kept = array(
+		'<img class="img-responsive img-fluid" src="/a.jpg">'  => 'already fluid',
+		'<img class="img-fluid img-responsive" src="/a.jpg">'  => 'fluid first',
+		'<img class="img-responsive-lg" src="/a.jpg">'         => 'a longer class name',
+		'<div class="img-responsive"><img src="/a.jpg"></div>' => 'not an image',
+		'<p>img-responsive</p>'                                => 'a word in the text',
+		'<img src="/a.jpg">'                                   => 'no class',
+	);
+	foreach ($kept as $html => $why) {
+		pg_assert_same($html, pg_img_fluid_alias($html), $why);
+	}
+	pg_assert_same(
+		'<img class="img-responsive img-fluid" src="/a.jpg"><img src="/b.jpg" class="x img-responsive img-fluid">',
+		pg_img_fluid_alias('<img class="img-responsive" src="/a.jpg"><img src="/b.jpg" class="x img-responsive">'), 'every image');
+}
+
+// Every widget's finished output goes through the alias before its srcset
+// pass, outside an e-mail.
+function test_designer_widget_output_fluid_alias_on_widgets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	pg_assert_contains('return $email ? $out : pg_img_responsive_html(pg_img_fluid_alias($out));', $source);
 }

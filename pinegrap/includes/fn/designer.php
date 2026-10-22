@@ -858,7 +858,9 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
 
     // A widget's records show their pictures through bound ^^tokens^^, so
     // their srcset is written on each widget's finished output
-    // (pg_img_responsive_html()). Not in an e-mail, which takes none.
+    // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
+    // text written for the classic theme keeps its pictures in their column
+    // on a Bootstrap 5 page through the same pass (pg_img_fluid_alias()).
     $render = function ($m) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
@@ -1088,7 +1090,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         '/<!--pg-system-widget:(\d+)-->/',
         function ($m) use ($render, $email) {
             $out = $render($m);
-            return $email ? $out : pg_img_responsive_html($out);
+            return $email ? $out : pg_img_responsive_html(pg_img_fluid_alias($out));
         },
         $html
     );
