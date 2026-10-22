@@ -344,12 +344,27 @@ function pg_tr_worded_attrs()
 }
 
 /**
+ * Whether an input of this type shows its value as its label (a submit,
+ * button or reset input). Any other input's value is what the form posts
+ * and stays as it is.
+ *
+ * @param string $type the input's type attribute
+ * @return bool
+ */
+function pg_tr_input_value_is_label($type)
+{
+    return in_array(strtolower(trim((string) $type)), array('submit', 'button', 'reset'), true);
+}
+
+/**
  * Goes over the worded attributes (pg_tr_worded_attrs()) of the tags in a
  * piece of HTML and lets a callback replace each value. The content of a
  * script, style, text area, pre or code element and comments are passed
  * over (a text area's own tag is not: its placeholder is a hint); so is a
- * tag marked translate="no" or notranslate. Values are read whole, so the
- * words of one attribute are never taken for another attribute.
+ * tag marked translate="no" or notranslate. The value of a submit, button
+ * or reset input is its label and is gone over as well
+ * (pg_tr_input_value_is_label()). Values are read whole, so the words of
+ * one attribute are never taken for another attribute.
  *
  * Extraction and drawing both go through here, so the value a page looks up
  * is the value extraction stored.
@@ -372,10 +387,21 @@ function pg_tr_html_attrs_map($html, $callback)
             return $source;
         }
 
-        $attrs = preg_replace_callback('~(\s+)([^\s"\'>/=]+)(?:(\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s"\'>]+))?~', function ($m) use ($worded, $callback) {
+        $attr_pattern = '~(\s+)([^\s"\'>/=]+)(?:(\s*=\s*)("[^"]*"|\'[^\']*\'|[^\s"\'>]+))?~';
+        $value_is_label = false;
+
+        if ((strtolower($parts[1]) === 'input') && preg_match_all($attr_pattern, $parts[2], $found, PREG_SET_ORDER)) {
+            foreach ($found as $attr) {
+                if ((strtolower($attr[2]) === 'type') && isset($attr[4])) {
+                    $value_is_label = pg_tr_input_value_is_label(trim($attr[4], '"\''));
+                }
+            }
+        }
+
+        $attrs = preg_replace_callback($attr_pattern, function ($m) use ($worded, $callback, $value_is_label) {
             $name = strtolower($m[2]);
 
-            if (!isset($worded[$name]) || !isset($m[4])) {
+            if ((!isset($worded[$name]) && (($name !== 'value') || !$value_is_label)) || !isset($m[4])) {
                 return $m[0];
             }
 

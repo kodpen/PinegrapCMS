@@ -122,7 +122,7 @@ function pg_tr_node_fields($type, $props)
         }
 
         $worded = array_flip(pg_tr_worded_attrs());
-        $value_is_label = ($tag === 'button') || (($tag === 'input') && in_array($input_type, array('submit', 'button', 'reset'), true));
+        $value_is_label = ($tag === 'button') || (($tag === 'input') && pg_tr_input_value_is_label($input_type));
 
         foreach ($props['_attrs'] as $attr) {
             if (!is_array($attr) || empty($attr['name']) || !isset($attr['value']) || !is_string($attr['value'])) {

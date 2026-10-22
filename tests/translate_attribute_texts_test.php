@@ -231,3 +231,72 @@ function test_translate_attribute_texts_symmetry()
 	pg_assert_same($stored, $looked_up, 'hashes');
 	pg_assert_same(6, count($looked_up), 'count');
 }
+
+// A submit, button or reset input shows its value as its label: in stored
+// HTML that value is a text too, under the same rule as a node's attributes.
+// Any other input's value is what the form posts, and a <button>'s label is
+// its content, so neither value is a text.
+function test_translate_attribute_texts_button_input_values()
+{
+	$html = '<form><input type="submit" value="Gönder"><input type=\'reset\' value="Temizle"><input type=button value=\'Vazgeç\'>'
+		. '<input type="text" name="ad" value="Ahmet Yılmaz"><input value="Kaydet"><input type="hidden" name="islem" value="Kayıt formu">'
+		. '<button type="submit" name="islem" value="Siparişi sil">Sil</button></form>';
+
+	pg_assert_same(array(
+		array('Sil', 'text'),
+		array('Gönder', 'text', 'value'),
+		array('Temizle', 'text', 'value'),
+		array('Vazgeç', 'text', 'value'),
+	), pg_tr_html_segments($html), 'segments');
+
+	$position = 0;
+
+	pg_assert_same(array(
+		array('Sil', 'text', 'html'),
+		array('Gönder', 'text', 'html@value#0'),
+		array('Temizle', 'text', 'html@value#1'),
+		array('Vazgeç', 'text', 'html@value#2'),
+	), translate_attribute_texts_rows(pg_tr_field_segments('html', $html, $position)), 'field names');
+
+	// The node path keeps its rule: a button-type input's value is a field.
+	pg_assert_same(array(array('_attrs:value', 'text')),
+		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'value', 'value' => 'Gönder')))), 'node input');
+	pg_assert_same(array(),
+		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'value', 'value' => 'Ahmet Yılmaz')))), 'node text input');
+}
+
+// Drawn: a button-type input's label is swapped; a posted value is not.
+function test_translate_attribute_texts_button_input_values_render()
+{
+	$lookup = function ($value, $formats) {
+		$table = array('Gönder' => 'Send', 'Temizle' => 'Clear', 'Ahmet Yılmaz' => 'X', 'Siparişi sil' => 'X', 'Kaydet' => 'X');
+		$normalized = pg_tr_normalize($value, 'text');
+
+		return isset($table[$normalized]) ? array($table[$normalized], 'text') : null;
+	};
+
+	pg_assert_same('<input type="submit" class="btn" value="Send"><input type=\'reset\' value="Clear">',
+		pg_tr_render_attrs('<input type="submit" class="btn" value="Gönder"><input type=\'reset\' value=\'Temizle\'>', $lookup), 'labels');
+
+	$kept = '<input type="text" value="Ahmet Yılmaz"><input value="Kaydet"><button type="submit" value="Siparişi sil">Sil</button><input type="submit" translate="no" value="Gönder">';
+
+	pg_assert_same($kept, pg_tr_render_attrs($kept, $lookup), 'posted values and translate="no"');
+
+	// What the page looks up is what extraction stored.
+	$html = '<input type="submit" value="Gönder"><input type="RESET" value="Temizle"><input type="text" value="Ahmet Yılmaz">';
+	$stored = array();
+	$looked_up = array();
+
+	foreach (pg_tr_html_attr_texts($html) as $attr) {
+		$stored[] = pg_tr_hash($attr[0], 'text');
+	}
+
+	pg_tr_render_attrs($html, function ($value, $formats) use (&$looked_up) {
+		$looked_up[] = pg_tr_hash(pg_tr_normalize($value, 'text'), 'text');
+
+		return null;
+	});
+
+	pg_assert_same($stored, $looked_up, 'hashes');
+	pg_assert_same(2, count($stored), 'count');
+}
