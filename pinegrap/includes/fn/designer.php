@@ -8623,7 +8623,7 @@ function pg_designer_preview_widgets($page_id, $widgets)
                 $html = '';
             }
             ob_end_clean();
-            $out[(int)$sid] = (string)$html;
+            $out[(int)$sid] = pg_designer_resolve_output_placeholders((string)$html);
         }
     } finally {
         $_GET = $saved_get;
@@ -8632,6 +8632,28 @@ function pg_designer_preview_widgets($page_id, $widgets)
         pg_sw_preview_overrides(array());
     }
     return $out;
+}
+
+/**
+ * The address placeholders a page's output resolves last
+ * (get_page_content.php): rich text keeps its images and links as
+ * "{path}name.jpg". The Preview and the canvas's ghost records take widget
+ * HTML straight from the renderer, so they resolve the same placeholders
+ * here, or every image in a record is a request for "/%7Bpath%7Dname.jpg".
+ *
+ * @param string      $html
+ * @param string|null $path               OUTPUT_PATH when null
+ * @param string|null $software_directory OUTPUT_SOFTWARE_DIRECTORY when null
+ * @return string
+ */
+function pg_designer_resolve_output_placeholders($html, $path = null, $software_directory = null)
+{
+    $html = (string)$html;
+    if ($html === '' || strpos($html, '{') === false) return $html;
+    if ($path === null) $path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    if ($software_directory === null) $software_directory = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '';
+    $html = preg_replace('/{path}/i', pg_regex_replacement((string)$path), $html);
+    return preg_replace('/{software_directory}/i', pg_regex_replacement((string)$software_directory), $html);
 }
 
 /**

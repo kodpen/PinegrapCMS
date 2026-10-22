@@ -93,3 +93,13 @@ function test_error_page_title_is_asked_by_the_page_renderer()
 	pg_assert_true(($asked !== false) && ($written !== false) && ($asked < $written), 'before the title tag is written');
 	pg_assert_true(preg_match('/\(\(\$pg_error_screen = pg_sw_error_context\(\)\) !== null\)\)\s*\{\s*\$page_title = pg_sw_error_title\(\$pg_error_screen\[\'code\'\], \$page_title\);/', $source) === 1, 'only on an error screen');
 }
+
+// The requested address: the visitor's own on the site, the page's address in
+// a background render (the editor's Preview runs inside an api.php call).
+function test_error_page_requested_url()
+{
+	pg_assert_same('/missing?x=1', pg_sw_error_requested_url(false, 'sw-w-28', '/missing?x=1', '/'), 'a visitor request');
+	pg_assert_same('/sw-w-28', pg_sw_error_requested_url(true, 'sw-w-28', '/pinegrap/api.php', '/'), 'the preview');
+	pg_assert_same('/site/hata%20sayfas%C4%B1', pg_sw_error_requested_url(true, 'hata sayfası', '/pinegrap/api.php', '/site/'), 'encoded under a sub-folder');
+	pg_assert_same('/', pg_sw_error_requested_url(true, '', '/pinegrap/api.php', '/'), 'a page not saved yet');
+}
