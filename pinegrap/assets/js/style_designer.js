@@ -13177,6 +13177,200 @@ const StyleDesigner = (function () {
         return false;
     }
 
+    // Palette items as the tree they would add, built once per item for the
+    // drop rules (_sdDragTree()). While one is built, createFromPalette()
+    // leaves the design's User Styles alone (_sdPaletteDry).
+    var _sdPaletteShapes = {};
+    var _sdPaletteDry = false;
+
+    // The tree a drag would place: the moved node, or for a palette item the
+    // node createFromPalette() builds from it, so a ready-made block is
+    // judged by what it holds and not by its top-level type alone. Null when
+    // the payload names no palette item. The build changes nothing: the id
+    // counter is put back and the item's block styles are not written.
+    function _sdDragTree(data) {
+        if (!data) return null;
+        if (data.source === 'node') return data.node || null;
+        if (data.source !== 'palette' || !data.type) return null;
+        var key;
+        try { key = data.type + '|' + JSON.stringify(data.extra || {}); } catch (e) { return null; }
+        if (Object.prototype.hasOwnProperty.call(_sdPaletteShapes, key)) return _sdPaletteShapes[key];
+        var built = null;
+        var ids = nodeIdCounter;
+        _sdPaletteDry = true;
+        try { built = createFromPalette(data.type, data.extra || {}) || null; } catch (e) { built = null; }
+        finally { _sdPaletteDry = false; nodeIdCounter = ids; }
+        _sdPaletteShapes[key] = built;
+        return built;
+    }
+
+    // A semantic <input type="hidden">: it draws nothing, so it is neither
+    // interactive content nor a control a label labels.
+    function _sdIsHiddenInput(n) {
+        if (!n || n.type !== 'semantic' || !n.props || String(n.props.tag || '').toLowerCase() !== 'input') return false;
+        var attrs = Array.isArray(n.props._attrs) ? n.props._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'type' && String(attrs[i].value || '').toLowerCase() === 'hidden') return true;
+        }
+        return false;
+    }
+
+    // Interactive content for the rules about what may sit inside a link, a
+    // button or a label: _isInteractiveNode() without a hidden input, plus a
+    // content heading printed as <button> or <a> (the blocks' accordion and
+    // tab header buttons). Such a heading prints its text only, never child
+    // nodes, so it is left out of _isInteractiveNode(), which decides what
+    // takes inline children.
+    function _sdIsInteractiveEl(n) {
+        if (!n || _sdIsHiddenInput(n)) return false;
+        if (_isInteractiveNode(n)) return true;
+        if (n.type === 'content' && n.props && n.props.contentType === 'heading') {
+            var htag = String(n.props.tag || '').toLowerCase();
+            return htag === 'button' || htag === 'a';
+        }
+        return false;
+    }
+
+    // The markup a node prints itself instead of child nodes: a content
+    // node's text, or what an atomic component other than btn writes (the
+    // language switcher's dropdown button and links). Empty otherwise.
+    function _sdNodeMarkup(n) {
+        if (!n || !n.props) return '';
+        if (n.type === 'content') return String(n.props.text || '') + String(n.props.html || '');
+        if (n.type === 'component' && n.props.componentType !== 'btn' && typeof COMPONENTS !== 'undefined') {
+            var comp = COMPONENTS[n.props.componentType];
+            if (comp && typeof comp.toHTML === 'function') {
+                try { return String(comp.toHTML(n.props, '') || ''); } catch (e) { return ''; }
+            }
+        }
+        return '';
+    }
+
+    // An <a> or a <button> written in a node's own markup.
+    function _sdMarkupInteractive(n) {
+        return /<(a|button)[\s>\/]/i.test(_sdNodeMarkup(n));
+    }
+
+    // A link or a button as an element of its own (not an input, a select or
+    // a textarea): semantic a / button, component btn, content link / button,
+    // a content heading printed as <a> or <button>.
+    function _sdIsLinkOrButton(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') return ['a', 'button'].indexOf(String(n.props.tag || '').toLowerCase()) !== -1;
+        return _sdIsInteractiveEl(n);
+    }
+
+    // A link or a button that may go where only inline content goes (a
+    // headline link in an <h3>, a link inside a sentence, the accordion
+    // header button in its <h2>): everything inside it is inline content
+    // too, and nothing inside it is a link or a button of its own. A link
+    // card holding a <div> stays out of headings and paragraphs.
+    function _sdInlineInteractiveDrag(data) {
+        var root = _sdDragTree(data) || { type: data.type, props: data.extra || {}, children: [] };
+        if (!_sdIsLinkOrButton(root) || _sdMarkupInteractive(root)) return false;
+        return (function kidsInline(n) {
+            var kids = n.children || [];
+            for (var i = 0; i < kids.length; i++) {
+                var k = kids[i];
+                if (!k || _sdIsInteractiveEl(k) || _sdMarkupInteractive(k)) return false;
+                if (!_isInlineOnlyDrag({ source: 'node', type: k.type, node: k })) return false;
+                if (!kidsInline(k)) return false;
+            }
+            return true;
+        })(root);
+    }
+
+    // Does the drag place interactive content: the dragged element, any
+    // element below it, or an <a> / <button> written in a content node's
+    // markup. Kept on the payload: dragover asks on every mouse move and the
+    // subtree does not change during a drag.
+    function _sdDragCarriesInteractive(data) {
+        if (!data) return false;
+        if (typeof data._sdIact === 'boolean') return data._sdIact;
+        var root = _sdDragTree(data);
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_sdIsInteractiveEl(n) || _sdMarkupInteractive(n)) return true;
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : _sdIsInteractiveEl({ type: data.type, props: data.extra || {} });
+        try { data._sdIact = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a link or a button, or does it sit inside one at any
+    // depth (a span inside a link, a heading inside a card link)?
+    function _sdInInteractive(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_sdIsInteractiveEl(n)) return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return false;
+    }
+
+    // A form control a <label> labels: button, input (not a hidden one),
+    // select, textarea, a btn component printed as <button> / <input>, a
+    // content button or a heading printed as <button>. A btn printed as <a>
+    // is a link, which a label may hold.
+    function _sdIsLabelableControl(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') {
+            var tag = String(n.props.tag || '').toLowerCase();
+            if (tag === 'input') return !_sdIsHiddenInput(n);
+            return ['button', 'select', 'textarea'].indexOf(tag) !== -1;
+        }
+        if (n.type === 'component') {
+            return n.props.componentType === 'btn' && (n.props.btnElement === 'button' || n.props.btnElement === 'input');
+        }
+        if (n.type === 'content') {
+            if (n.props.contentType === 'button') return true;
+            return n.props.contentType === 'heading' && String(n.props.tag || '').toLowerCase() === 'button';
+        }
+        return false;
+    }
+
+    // Does the tree hold a labelable control, leaving out `skip` (the node
+    // being moved, which may already sit in the label)?
+    function _sdHoldsControl(n, skip) {
+        if (!n || n === skip) return false;
+        if (_sdIsLabelableControl(n)) return true;
+        if (/<(button|input|select|textarea)[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+        var kids = n.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (_sdHoldsControl(kids[i], skip)) return true;
+        }
+        return false;
+    }
+
+    // Does the drag place a labelable control, anywhere in what it carries?
+    // Kept on the payload like _sdDragCarriesInteractive().
+    function _sdDragCarriesControl(data) {
+        if (!data) return false;
+        if (typeof data._sdCtl === 'boolean') return data._sdCtl;
+        var root = _sdDragTree(data);
+        var found = root ? _sdHoldsControl(root, null) : _sdIsLabelableControl({ type: data.type, props: data.extra || {} });
+        try { data._sdCtl = found; } catch (e) {}
+        return found;
+    }
+
+    // The <label> the target is or sits in, at any depth; null outside one.
+    function _sdLabelOf(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'label') return n;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return null;
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -13258,20 +13452,31 @@ const StyleDesigner = (function () {
         var srcTag = _dragSemTag(data);
         var HEADING = ['h1','h2','h3','h4','h5','h6'];
 
-        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline content
+        // Rule 0: nothing interactive inside a link or a button, at any depth:
+        // no <a> in an <a>, no link or button in a <button>, also through a
+        // span or a heading in between, and not as part of a dragged wrapper.
+        if (_sdDragCarriesInteractive(data) && _sdInInteractive(target)) return false;
+
+        // Rule 0b: a <label> labels one control. No button, input, select or
+        // textarea goes into a label (or an element inside it) that already
+        // holds one; the moved node itself does not count.
+        if (_sdDragCarriesControl(data)) {
+            var _lbl = _sdLabelOf(target);
+            if (_lbl && _sdHoldsControl(_lbl, data.source === 'node' ? data.node : null)) return false;
+        }
+
+        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline
+        // content. A heading also takes a link or a button (<h3><a>…</a></h3>,
+        // the accordion's <h2><button>); a link or a button never does (Rule 0).
         if (tgtTag === 'button' || HEADING.indexOf(tgtTag) !== -1 || _isInteractiveNode(target)) {
-            return _isInlineOnlyDrag(data);
+            if (_isInlineOnlyDrag(data)) return true;
+            return HEADING.indexOf(tgtTag) !== -1 && _sdInlineInteractiveDrag(data);
         }
 
-        // Rule 3: <a> cannot contain another <a> or link content
-        if (tgtTag === 'a') {
-            if (srcTag === 'a') return false;
-            if (_dragContentType(data) === 'link') return false;
-        }
-
-        // Rule 4: <p> — inline content only
+        // Rule 4: <p> — inline content only, a link or a button inside the
+        // sentence too
         if (tgtTag === 'p') {
-            return _isInlineOnlyDrag(data);
+            return _isInlineOnlyDrag(data) || _sdInlineInteractiveDrag(data);
         }
 
         // Rule 5: <ul> / <ol> — only direct <li> children. A loop area is
@@ -13670,8 +13875,9 @@ const StyleDesigner = (function () {
             case 'recipient_loop_area': return createNode('recipient_loop_area', {}, []);
             case 'component':
                 var ctype = extra.componentType;
-                // Rules this block needs go to the Styles panel, not inline.
-                _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                // Rules this block needs go to the Styles panel, not inline;
+                // not while the drop rules only look at the block's shape.
+                if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -26311,6 +26517,9 @@ const StyleDesigner = (function () {
             document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
                 x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
             });
+            // Only the position this move found legal may be used by the
+            // drop; one left from an earlier move over the row may not.
+            li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
@@ -26357,6 +26566,7 @@ const StyleDesigner = (function () {
 
         li.addEventListener('dragleave', function() {
             li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
@@ -26364,7 +26574,11 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
 
-            var pos = li._dropPos || 'inside';
+            // No position means the dragover found no legal place on this
+            // row (canDrop() refused inside and beside it): nothing moves.
+            var pos = li._dropPos;
+            li._dropPos = null;
+            if (!pos) return;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -26425,6 +26639,26 @@ const StyleDesigner = (function () {
                 ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
                 : [treeDragNode];
             if (!nodesToMove.length) return;
+
+            // Every moved node must be one canDrop() lets into where it
+            // lands, as on the canvas: the dragover asked only for the
+            // dragged row, and a multi-selection carries others.
+            var _destParent = null;
+            if (pos === 'inside' && node.type === 'shared_ref') {
+                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+            } else if (pos === 'inside') {
+                _destParent = node;
+            } else {
+                var _dInfo = _findParentAnywhere(node);
+                _destParent = _dInfo ? _dInfo.parent : null;
+            }
+            if (!_destParent) return;
+            for (var _mi = 0; _mi < nodesToMove.length; _mi++) {
+                var _mn = nodesToMove[_mi];
+                if (!canDrop({ source: 'node', node: _mn, type: _mn.type }, _destParent)) return;
+            }
 
             saveState();
 
@@ -57189,9 +57423,12 @@ const StyleDesigner = (function () {
     function _paletteInsert(type, extra) {
         var target = selectedNode || tree;
         if (!target) return;
-        if (!canDrop({ type: type }, target)) {
+        // The same payload a palette drag carries, so the drop rules see
+        // what the item holds (_sdDragTree()), not its type alone.
+        var _pd = { source: 'palette', type: type, extra: extra || {} };
+        if (!canDrop(_pd, target)) {
             target = tree;
-            if (!canDrop({ type: type }, target)) return;
+            if (!canDrop(_pd, target)) return;
         }
         saveState();
         var n = createFromPalette(type, extra || {});
@@ -58515,14 +58752,16 @@ const StyleDesigner = (function () {
                 var hintIcon  = this.dataset.icon || '';
                 var target = selectedNode || tree;
                 if (!target) return;
-                if (!canDrop({ type: type }, target)) {
+                // The same payload a palette drag carries (see _paletteInsert()).
+                var _pd = { source: 'palette', type: type, extra: extra };
+                if (!canDrop(_pd, target)) {
                     if (target.children && target.children.length) {
                         for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop({ type: type }, target.children[i])) { target = target.children[i]; break; }
+                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
                         }
                     }
-                    if (!canDrop({ type: type }, target)) target = tree;
-                    if (!canDrop({ type: type }, target)) return;
+                    if (!canDrop(_pd, target)) target = tree;
+                    if (!canDrop(_pd, target)) return;
                 }
                 saveState();
                 var n = createFromPalette(type, extra);

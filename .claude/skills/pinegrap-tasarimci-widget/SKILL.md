@@ -113,8 +113,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 - Grid hiyerarşisi: `container/container-fluid > row > col`. Utility sırası:
   display → flex/grid → spacing → sizing → typography → color → border → shadow.
   Breakpoint'ler mobile-first.
-- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>` içinde `<a>` yok,
-  `<p>`/`<button>`/`<h1-h6>` inline-only, `<ul>/<ol>` sadece `<li>`.
+- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>`/`<button>` içinde
+  hiçbir derinlikte etkileşimli öğe yok, `<p>`/`<button>`/`<h1-h6>` inline-only
+  (başlık ve `<p>` bağlantı/düğme de alır), `<label>` tek kontrol, `<ul>/<ol>`
+  sadece `<li>`. Palet öğesi kuracağı ağaçla yargılanır
+  (docs/memory/designer/inline-drop-links-buttons.md).
 - Erişilebilirlik minimumu: ikon-only düğmede `aria-label`, toggle'da
   `aria-expanded`+`aria-controls`, `<img>`de `alt`, input'ta `<label for>`.
 - Satır oluğunu `gutter: '4'` + `cssClass: 'g-lg-5'` yaz; düz `gutter: '5'`
