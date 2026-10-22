@@ -128,14 +128,23 @@ function test_parasut_order_invoice_lines_carry_the_shipping_at_the_goods_rate()
 }
 
 // Dev order #1176, placed before the checkout settled its shipping: 57.93 at
-// 20%, a total no amount reaches. It is refused before anything is sent.
-function test_parasut_order_invoice_refuses_an_unreachable_total()
+// 20%, a total no amount reaches. The invoice takes the shipping a kurus
+// lower, 9.98 (57.92, Paraşüt's 48.27 + 9.65), and the kurus stays with the
+// payment; the lines as charged would be refused before anything is sent.
+function test_parasut_order_invoice_lines_settle_an_unreachable_shipping()
 {
 	$order = array('id' => 442, 'order_date' => mktime(12, 0, 0, 10, 21, 2026), 'discount' => 0, 'tax' => 799, 'shipping' => 999, 'surcharge' => 0, 'installment_charges' => 0, 'total' => 5793, 'gift_card_discount' => 0);
-	$built = parasut_order_invoice_lines($order, array(pg_test_parasut_order_item(3995, 1, 799, '20.000')), true, false);
+	$item = pg_test_parasut_order_item(3995, 1, 799, '20.000');
+	$built = parasut_order_invoice_lines($order, array($item), true, false);
 
-	pg_assert_same(5793, $built['totals']['grand_total']);
-	$refusal = erp_edoc_parasut_vat_shift($built['lines'])['refusal'];
+	pg_assert_same(5792, $built['expected']);
+	pg_assert_same(5792, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['charges_left']);
+	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
+	pg_assert_same(5792, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
+
+	$charged = erp_order_lines($order, array($item), true);
+	$refusal = erp_edoc_parasut_vat_shift($charged['lines'])['refusal'];
 	pg_assert_same(5793, $refusal['total']);
 	pg_assert_same(5792, $refusal['below']);
 	pg_assert_same(5794, $refusal['above']);
@@ -285,7 +294,7 @@ function test_parasut_order_invoice_lines_settle_an_installment_out_of_reach()
 
 	pg_assert_same(5996, $built['expected']);
 	pg_assert_same(5996, $built['totals']['grand_total']);
-	pg_assert_same(1, $built['totals']['installment_left']);
+	pg_assert_same(1, $built['totals']['charges_left']);
 	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
 	pg_assert_same(5996, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
 }

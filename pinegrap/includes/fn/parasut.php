@@ -1471,9 +1471,10 @@ function _parasut_order_invoice_load()
  * it leaves, the shipping, the surcharge and the instalment charge each with
  * its VAT inside, at the rate of the goods. What the invoice must come to is
  * what the customer was charged with the gift card added back: a gift card
- * is a means of payment, not a reduction of the sale. An instalment charge
- * that left a rate's total out of reach goes the kurus lower that reaches
- * it, and the invoice comes to that much less (erp_order_lines()).
+ * is a means of payment, not a reduction of the sale. A charge that left a
+ * rate's total out of reach (an order placed before the checkout settled
+ * its charges, Pay with iyzico's instalment charge) goes the kurus lower
+ * that reaches it, and the invoice comes to that much less (erp_order_lines()).
  *
  * @param array     $order          orders row
  * @param array     $items          order_items rows joined with the product (short_description,
@@ -1488,12 +1489,12 @@ function parasut_order_invoice_lines($order, $items, $charges_taxed = null, $cle
     $charged = erp_order_charged_items($order, (array) $items, $clearcommerce);
     $built = !empty($charged)
         ? erp_order_lines($order, $charged, $charges_taxed, true)
-        : array('lines' => array(), 'totals' => array('grand_total' => 0, 'installment_left' => 0));
+        : array('lines' => array(), 'totals' => array('grand_total' => 0, 'charges_left' => 0));
 
     return array(
         'lines' => $built['lines'],
         'totals' => $built['totals'],
-        'expected' => (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'],
+        'expected' => (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'],
         'charged' => count($charged),
     );
 }
