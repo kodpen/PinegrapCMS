@@ -303,6 +303,48 @@ function test_erp_bank_read_csv_other_separators()
 		. "02.10.2026;KIRA, EKIM;-800,00\n");
 
 	pg_assert_same(array('02.10.2026', 'KIRA, EKIM', '-800,00'), $read['rows'][4], 'title block with commas');
+
+	// A title block of comma lines splits as evenly on the decimal comma as
+	// the transactions below it do; the lines that read as dated amounts
+	// decide. No description here carries a comma of its own.
+	$title = "Örnek Bankası, Kadıköy Şubesi\nHesap özeti, Ekim 2026\n";
+
+	$read = erp_bank_test_read_csv($title . "Tarih;Açıklama;Tutar\n01.10.2026;EFT GELEN;1.250,00\n02.10.2026;KIRA;-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,00'), $read['rows'][4], 'semicolon file under a comma title block');
+
+	$read = erp_bank_test_read_csv($title . "Tarih\tAçıklama\tTutar\n01.10.2026\tEFT GELEN\t1.250,00\n02.10.2026\tKIRA\t-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,00'), $read['rows'][4], 'tab file under a comma title block');
+
+	// Kurus after the decimal comma read as an amount of their own on the
+	// comma split; the date cell holding the semicolons gives it away.
+	$read = erp_bank_test_read_csv($title . "Tarih;Açıklama;Tutar\n01.10.2026;EFT GELEN;1.250,50\n02.10.2026;KIRA;-800,25\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,25'), $read['rows'][4], 'semicolon file under a title block, kurus');
+
+	$read = erp_bank_test_read_csv("01.10.2026\tKIRA\t-800,00\n02.10.2026\tEFT\t1.250,00\n");
+
+	pg_assert_same(array('02.10.2026', 'EFT', '1.250,00'), $read['rows'][1], 'tab file with no heading row');
+
+	$read = erp_bank_test_read_csv("01.10.2026\tKIRA\t-800,40\n02.10.2026\tEFT\t1.250,75\n");
+
+	pg_assert_same(array('02.10.2026', 'EFT', '1.250,75'), $read['rows'][1], 'tab file with no heading row, kurus');
+}
+
+// A row is a transaction when a date and a non-zero amount stand in cells of
+// their own; a date cell holding a whole line split on the wrong separator
+// is not one.
+function test_erp_bank_cells_are_movement()
+{
+	pg_assert_same(true, erp_bank_cells_are_movement(array('02.10.2026', 'KIRA', '-800,00')), 'date and amount');
+	pg_assert_same(true, erp_bank_cells_are_movement(array(' 2026-10-02 ', 'TL 1.250,00')), 'trimmed, code around the amount');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('02.10.2026', 'KIRA', '0,00')), 'zero amount');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('Tarih', 'Açıklama', 'Tutar')), 'heading');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('01.10.2026', '31.10.2026')), 'a period of two dates');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('02.10.2026;KIRA;-800', '25')), 'semicolon line split on its decimal comma');
+	pg_assert_same(false, erp_bank_cells_are_movement(array("02.10.2026\tEFT\t1.250", '75')), 'tab line split on its decimal comma');
+	pg_assert_same(true, erp_bank_cells_are_movement(array('02.10.2026', '42.949.672,96')), 'an amount of 2^32 kurus, zero after an int cast on 32-bit PHP');
 }
 
 // A minus after a currency sign or code still makes the amount go out.
@@ -314,6 +356,9 @@ function test_erp_bank_amount_minus_after_the_currency()
 	pg_assert_same(-123456, erp_bank_amount('-1.234,56 TL'), 'minus first');
 	pg_assert_same(-123456, erp_bank_amount('1.234,56-'), 'trailing minus');
 	pg_assert_same(-123456, erp_bank_amount('1,234.56 - USD'), 'trailing minus before the code');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56 TL-'), 'trailing minus after the code');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56 TL -'), 'trailing minus after the code, spaced');
+	pg_assert_same(-123456, erp_bank_amount('1,234.56 USD-'), 'trailing minus after USD');
 	pg_assert_same(-123456, erp_bank_amount('(1.234,56)'), 'parentheses');
 	pg_assert_same(-123456, erp_bank_amount('TL (1.234,56)'), 'parentheses after the code');
 	pg_assert_same(123456, erp_bank_amount('₺1.234,56'), 'in');

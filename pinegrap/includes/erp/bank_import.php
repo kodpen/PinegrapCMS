@@ -116,15 +116,20 @@ function erp_bank_read_csv($path)
 }
 
 /**
- * The separator of a CSV statement: the candidate that splits the most of the
- * first lines into one and the same number of columns (more than one).
+ * The separator of a CSV statement: the candidate that reads the most of the
+ * first lines as transactions (erp_bank_cells_are_movement(), a date and a
+ * non-zero amount in cells of their own).
  *
  * Counting the character itself picks the wrong one in a Turkish bank's
  * export: the commas in the descriptions and the decimal commas of the
  * amounts outnumber the semicolons, and the file came apart on the commas.
- * Lines are split as CSV (quotes respected), so a quoted cell does not count
- * its separators. A tie goes to the earlier candidate, the semicolon first;
- * a file with no line of two columns is read with the semicolon.
+ * Counting columns alone is not enough either: a title block of lines with
+ * one comma each, or a tab file with no heading row, splits as evenly on the
+ * decimal comma. Movements decide; when they tie, the candidate whose most
+ * common column width (above one) covers more lines wins, and the earlier
+ * candidate after that. Lines are split as CSV (quotes respected), so a
+ * quoted cell does not count its separators. A file where no candidate
+ * finds anything is read with the semicolon.
  *
  * @param array $lines  The file's lines
  * @return string
@@ -144,22 +149,30 @@ function erp_bank_csv_separator($lines)
     }
 
     $separator = ';';
+    $bestMovements = 0;
     $best = 0;
 
     foreach (array(';', ',', "\t", '|') as $candidate) {
         $widths = array();
+        $movements = 0;
 
         foreach ($sample as $line) {
-            $width = count(str_getcsv($line, $candidate, '"', '\\'));
+            $cells = str_getcsv($line, $candidate, '"', '\\');
+            $width = count($cells);
 
             if ($width > 1) {
                 $widths[$width] = ($widths[$width] ?? 0) + 1;
+
+                if (erp_bank_cells_are_movement($cells)) {
+                    $movements++;
+                }
             }
         }
 
         $score = empty($widths) ? 0 : max($widths);
 
-        if ($score > $best) {
+        if (($movements > $bestMovements) || (($movements === $bestMovements) && ($score > $best))) {
+            $bestMovements = $movements;
             $best = $score;
             $separator = $candidate;
         }
@@ -446,7 +459,8 @@ function erp_bank_sheet_value($value, $kind = 'n')
  *
  * A transaction row has a date in one cell and an amount in another: digits
  * with no more than a currency code around them, and not a date itself, so
- * a period written as two dates is not one. Looked for in the first rows
+ * a period written as two dates is not one (erp_bank_cells_are_movement(),
+ * the same test the CSV separator is chosen by). Looked for in the first rows
  * only; a file where none is found is left as it is, and the lines that are
  * not dated amounts are skipped when the statement is built anyway.
  *
@@ -458,25 +472,50 @@ function erp_bank_rows_from_heading($rows)
     $rows = array_values((array) $rows);
 
     foreach (array_slice($rows, 0, 60) as $index => $cells) {
-        $dated = false;
-        $amount = false;
-
-        foreach ((array) $cells as $cell) {
-            $cell = (string) $cell;
-
-            if ((erp_bank_date($cell) !== '') || (erp_bank_date($cell, 'mdy') !== '')) {
-                $dated = true;
-            } elseif ((preg_match('/\d/', $cell) === 1) && (preg_match_all('/\pL/u', $cell) <= 3) && ((int) erp_bank_amount($cell) !== 0)) {
-                $amount = true;
-            }
-        }
-
-        if ($dated && $amount) {
+        if (erp_bank_cells_are_movement($cells)) {
             return array_slice($rows, max(0, $index - 1));
         }
     }
 
     return $rows;
+}
+
+/**
+ * Whether a row's cells read as a transaction: a date in one cell and a
+ * non-zero amount in another, digits with no more than a currency code
+ * around them and not a date itself.
+ *
+ * A date cell that holds a semicolon, a tab or a pipe is not taken as one:
+ * it is a whole line split on the wrong separator (02.10.2026;KIRA;-800 out
+ * of a semicolon file split on its decimal comma). The amount is compared
+ * without an (int) cast, which on 32-bit PHP wraps a large float and can
+ * make it zero.
+ *
+ * @param array $cells
+ * @return bool
+ */
+function erp_bank_cells_are_movement($cells)
+{
+    $dated = false;
+    $amount = false;
+
+    foreach ((array) $cells as $cell) {
+        $cell = trim((string) $cell);
+
+        if ((erp_bank_date($cell) !== '') || (erp_bank_date($cell, 'mdy') !== '')) {
+            if (strpbrk($cell, ";\t|") === false) {
+                $dated = true;
+            }
+        } elseif ((preg_match('/\d/', $cell) === 1) && (preg_match_all('/\pL/u', $cell) <= 3)) {
+            $value = erp_bank_amount($cell);
+
+            if (($value !== null) && ($value != 0)) {
+                $amount = true;
+            }
+        }
+    }
+
+    return $dated && $amount;
 }
 
 /**
@@ -511,8 +550,9 @@ function erp_bank_date($text, $order = 'dmy')
 /**
  * An amount as a bank writes it: 1.234,56 or 1,234.56, a minus in front or a
  * trailing one, in parentheses, with a currency word or sign around it. The
- * minus may stand after the currency (TL -1.234,56, ₺-1.234,56); a decimal
- * separator with nothing in front of it (.50) is still the decimals.
+ * minus may stand after the currency (TL -1.234,56, ₺-1.234,56) or end the
+ * text behind it (1.234,56 TL-); a decimal separator with nothing in front
+ * of it (.50) is still the decimals.
  *
  * @param string $text
  * @return int|null  kurus, signed; null when it is not a number
@@ -526,11 +566,13 @@ function erp_bank_amount($text)
     }
 
     // The sign is read around the number, not only at the ends of the text:
-    // a currency word or sign often stands in front of the minus.
+    // a currency word or sign often stands in front of the minus. After the
+    // number a minus counts right after the last digit (1.234,56- USD) and
+    // at the very end of the text (1.234,56 TL-).
     $before = (string) preg_replace('/\d.*$/su', '', $text);
     $after = (string) preg_replace('/^.*\d/su', '', $text);
     $negative = (preg_match('/[-−]/u', $before) === 1)
-        || (preg_match('/^\s*[-−]/u', $after) === 1)
+        || (preg_match('/^\s*[-−]|[-−]\s*$/u', $after) === 1)
         || ((strpos($before, '(') !== false) && (strpos($after, ')') !== false));
     $digits = preg_replace('/[^0-9.,]/', '', $text);
 
