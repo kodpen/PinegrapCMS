@@ -36,7 +36,8 @@ function test_order_view_screen_defaults_before_layouts()
 	pg_assert_same(0, preg_match("/\\\$_SESSION\['ecommerce'\]\['(billing_information_page_id|shipping_address_and_arrival_page_id)'\]\)/", $source), 'checkout page read without a default');
 	pg_assert_same(2, substr_count($source, "\$custom_field_1_label = \$row['custom_field_1_label'] ?? '';"), 'custom field 1 label');
 	pg_assert_contains("\$recipient['shipping_tracking_numbers'] = array();", $source, 'tracking numbers list');
-	pg_assert_contains("\$auto_registration_email_address = '';", $source, 'auto registration e-mail address');
+	// The account an order opened: always set, from the session or empty.
+	pg_assert_contains("\$auto_registration_email_address = pg_order_new_account_email();", $source, 'auto registration e-mail address');
 }
 
 // The layout shows the tracking line only when the ship to has a number.
