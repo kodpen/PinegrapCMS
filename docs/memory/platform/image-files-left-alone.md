@@ -1,6 +1,6 @@
 ---
 name: image-files-left-alone
-description: Images the engine leaves alone: animated (PR #1234), unreadable Exif orientation (PR #1242), non-sRGB ICC profile under GD (PR #NNNN); how each is told, what each path does
+description: Images the engine leaves alone: animated (PR #1234), unreadable Exif orientation (PR #1242), non-sRGB ICC profile under GD (PR #1267); how each is told, what each path does
 ---
 
 ## Which images does pg_process_image_file() leave alone?
@@ -32,5 +32,5 @@ description: Images the engine leaves alone: animated (PR #1234), unreadable Exi
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
-- Until PR #NNNN derivatives and Optimize dropped every ICC profile (#755): an iPhone P3 photo's JPEG and WebP derivatives were pale beside the original.
+- Until PR #1267 derivatives and Optimize dropped every ICC profile (#755): an iPhone P3 photo's JPEG and WebP derivatives were pale beside the original.
 - Not covered: the image editor's Replace still checks only GIFs (`image_editor_save.php`).
