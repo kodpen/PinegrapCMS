@@ -184,6 +184,11 @@ function pg_cron_jobs()
             'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'heavy',
+            // One page render per record of the visual editor's lists can
+            // keep a large site's run past the default hour. An expired lock
+            // starts a second run, and whichever finishes first deletes the
+            // items the other has written in its closing sweep.
+            'lock'        => 14400,
         ),
         'seo_score_job' => array(
             'label'       => lang('SEO scores'),

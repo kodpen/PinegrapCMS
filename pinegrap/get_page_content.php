@@ -3862,14 +3862,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $form_editor = true;
                 }
                 
+                // The search index stores what an anonymous visitor reads of
+                // a record on a visual page, even when an editor's click on
+                // the panel button runs it.
+                $comments_for_search_index = ($comments_record !== null)
+                    && defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
+
                 // If the visitor does not have edit access to this page,
                 // and the visitor is not the form editor,
                 // then prepare sql to restrict which comments should appear
-                if (!$edit_access && !$form_editor) {
+                if ((!$edit_access && !$form_editor) || $comments_for_search_index) {
                     $sql_added_comments = "";
                     
                     // if session array is set then loop through comments and add them to sql statement
-                    if (isset($_SESSION['software']['added_comments']) == TRUE) {
+                    if (!$comments_for_search_index && (isset($_SESSION['software']['added_comments']) == TRUE)) {
                         // loop through added comments and add each comment id to the sql statement
                         foreach ($_SESSION['software']['added_comments'] as $added_comment) {
                             if ($sql_added_comments != '') {
