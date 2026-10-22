@@ -4,7 +4,7 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 ---
 
 ## Where may pixels be touched, and what are the two jobs?
-- `pg_process_image_file()` (`includes/image_engine.php`, loaded by functions.php and by get_file.php for derivatives) is the ONLY place that touches pixels. Never open a second compression path: the same file would get different results on two screens. That file may call only its own functions and PHP (get_file.php has no functions.php).
+- `pg_process_image_file()` (`includes/image_engine.php`, loaded by functions.php and by get_file.php for derivatives) is the ONLY place that touches pixels. Never open a second compression path: one file would get different results on two screens. That file may call only its own functions and PHP (get_file.php has no functions.php).
 - `format` converts to `webp` or `avif` (`pg_image_format_writer()` picks Imagick, else GD; reason `no_webp`/`no_avif` when neither can).
 - optimize: strips metadata, recompresses at the SAME pixel size. Default; every call without `max_dimension`.
 - resize: long edge reduced to a ceiling, then compressed. Only when explicitly requested.
@@ -14,7 +14,7 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 1. Write nothing if the result is larger than the original, even when shrinking (scaling a palette PNG creates edges that no longer fit the palette: smaller image, heavier file). Both buttons promise a lighter file.
 2. Write to a temp file + `rename()`. Direct overwrite leaves a half image if the disk fills, and `files.name` is that file's public address.
 3. Resolve EXIF orientation in pixels, not by tag. Rewriting the tag after strip only works if every reader obeys it (GD never wrote it). Symptom: "optimized, phone photo turned sideways". Both halves recompute the resize target from the upright picture; until PR #589 the Imagick half used getimagesize()'s sideways edges and squeezed a rotated phone photo (3000x4000 into 2400x1800).
-4. Convert color space only when it is CMYK. Unconditional `setColorspace(RGB)` labels instead of converting; sRGB labelled linear is washed out.
+4. Convert color space only when CMYK; `setColorspace(RGB)` labels, not converts (sRGB labelled linear is washed out). ICC: platform/image-files-left-alone.md.
 5. Never touch animated images (`pg_image_is_animated()`): one frame would be kept. See platform/image-files-left-alone.md.
 6. Compute memory first (`pg_image_ensure_memory()`). GD holds two copies at 4 bytes/pixel while resizing (24 MP photo ≈ 200 MB); at a 128 MB limit that is a fatal error mid-request, a blank page on the upload path. Raise the limit for this request only, up to a 1 GB ceiling; `-1` would take down the whole box.
 7. The resize criterion is pixels, not bytes (`pg_image_can_be_resized()`): a low-quality 6000 px photo can be under 1 MB yet 6x too wide; a heavy 1200 px screenshot gains nothing from fewer pixels.

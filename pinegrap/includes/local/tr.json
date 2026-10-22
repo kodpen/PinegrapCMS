@@ -25435,5 +25435,6 @@
     "The payment was already refunded in full. Cancelling the order does not touch it.": "Ödeme zaten tamamen iade edildi. Siparişin iptali ödemeye dokunmaz.",
     "The invoice is dated inside the books locked up to {var:1}, so it cannot be cancelled; a return invoice takes it back.": "Defterler {var:1} dahil kilitli ve fatura bu dönemde; iptal edilemez, bir iade faturasıyla geri alınır.",
     "This product group has groups inside it in the Recycle Bin. Delete those from the Recycle Bin first.": "Bu ürün grubunun Geri Dönüşüm Kutusu'nda alt grupları var. Önce onları Geri Dönüşüm Kutusu'ndan silin.",
-    "Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.": "Üzgünüz, {var:1} dosyasında bu sunucunun okuyamadığı bir döndürme etiketi var. Burada değiştirmek resmi yan yatırabileceği için dosyaya dokunulmadı."
+    "Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.": "Üzgünüz, {var:1} dosyasında bu sunucunun okuyamadığı bir döndürme etiketi var. Burada değiştirmek resmi yan yatırabileceği için dosyaya dokunulmadı.",
+    "Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.": "Üzgünüz, {var:1} dosyasında bu sunucunun aktaramadığı bir renk profili var. Burada değiştirmek renklerini soldurabileceği için dosyaya dokunulmadı."
 }

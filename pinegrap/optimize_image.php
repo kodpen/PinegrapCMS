@@ -115,6 +115,11 @@ function optimize_image($file_id, $mode = 'optimize') {
                 'string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.',
                 'vars'   => $file['name']));
 
+        } elseif ($report['reason'] === 'color_profile') {
+            $message = lang(array(
+                'string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.',
+                'vars'   => $file['name']));
+
         } elseif ($report['reason'] === 'too_large_to_process') {
             $message = lang(array(
                 'string' => 'Sorry, {var:1} needs more memory than this server allows. Please resize it on your computer and upload it again.',

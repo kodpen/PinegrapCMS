@@ -845,6 +845,13 @@ function pg_img_responsive($src)
         return null;
     }
 
+    // A colour profile other than sRGB on a server without Imagick: GD writes
+    // no profile, so the engine makes no derivatives of it and every
+    // candidate would be the full-size original.
+    if (!class_exists('Imagick') && pg_image_has_foreign_color_profile(FILE_DIRECTORY_PATH . '/' . $name)) {
+        return null;
+    }
+
     list($width, $height) = pg_image_oriented_size(FILE_DIRECTORY_PATH . '/' . $name);
 
     if (($width < 1) || ($height < 1)) {
