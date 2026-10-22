@@ -13999,16 +13999,17 @@ const StyleDesigner = (function () {
                             ] }, [
                             createNode('semantic', { tag: 'span', cssClass: 'carousel-control-' + dir + '-icon', customName: _sdT('Icon'),
                                 _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
-                            createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', customName: _sdT('SR Label') }, [
-                                createNode('content', { contentType: 'paragraph', text: label, cssClass: 'mb-0' })
-                            ])
+                            // Inline text: a <button> holds phrasing content only.
+                            createNode('content', { contentType: 'heading', tag: 'span', text: label, cssClass: 'visually-hidden' })
                         ]);
                     };
                     return createNode('semantic', { tag: 'section', cssClass: 'py-5', customName: _sdT('Image Carousel') }, [
                         createNode('container', { fluid: false, cssClass: '' }, [
                             // No autoplay (WCAG 2.2.2): the controls and indicators move it;
-                            // Carousel Options > Autoplay switches it on.
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide', customName: 'Carousel',
+                            // Carousel Options > Autoplay switches it on. pg-carousel-photo
+                            // keeps the controls and indicators white over the photos and
+                            // the caption scrim in a dark design too.
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: 'Carousel',
                                 _attrs: [
                                     { name: 'id',               value: imgCarId }
                                 ] }, [
@@ -57559,6 +57560,11 @@ const StyleDesigner = (function () {
         // Carousel indicators in the text colour, for a carousel on a plain
         // surface: Bootstrap paints them white (black in dark mode) for a photo.
         'pg-carousel-ink': '.pg-carousel-ink { --bs-carousel-indicator-active-bg: var(--bs-emphasis-color); }',
+        // Carousel controls and indicators over photos keep Bootstrap's
+        // light-mode white in a dark design too: under data-bs-theme="dark"
+        // Bootstrap paints them black, which vanishes on a caption scrim and
+        // on dark photos. Carousel Options > Dark (.carousel-dark) still wins.
+        'pg-carousel-photo': '.pg-carousel-photo:not(.carousel-dark) { --bs-carousel-indicator-active-bg: var(--bs-white); --bs-carousel-control-icon-filter: none; }',
         // News: stories and articles
         // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
         // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
@@ -57590,7 +57596,7 @@ const StyleDesigner = (function () {
     var _SD_BLOCK_CSS_NEEDS = {
         'hero-image-bg':        ['pg-hero-tall', 'pg-shade-bottom'],
         'testimonial-carousel': ['pg-carousel-ink'],
-        'image-carousel':       ['pg-shade-bottom'],
+        'image-carousel':       ['pg-shade-bottom', 'pg-carousel-photo'],
         'image-grid':           ['pg-ratio-1x1'],
         'team-grid':            ['pg-ratio-1x1'],
         'blog-grid':            ['pg-ratio-16x9'],
