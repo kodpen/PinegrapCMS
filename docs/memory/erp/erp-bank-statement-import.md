@@ -1,6 +1,6 @@
 ---
 name: erp-bank-statement-import
-description: ERP bank statement import (includes/erp/bank_import.php): how a CSV's separator is chosen, how an amount's sign and decimals are read.
+description: ERP bank statement import (bank_import.php): CSV separator guess, an amount's sign and decimals, a line taken in twice versus two real lines that read alike.
 ---
 
 ## How is a CSV statement's separator chosen?
@@ -17,5 +17,12 @@ description: ERP bank statement import (includes/erp/bank_import.php): how a CSV
 ## How are the decimals found?
 - The last `,` or `.` is the decimal separator when one or two digits follow it; otherwise every separator is a thousands one (`1.234` is 1234,00).
 - A separator with nothing in front of it is still the decimals: `.50` is 0,50. Before (#1076) `max(strrpos(','), strrpos('.'))` returned `false` when the only separator stood at position 0, and `.50` read as 50,00.
+
+## How is a line taken in twice told from two real lines that read alike?
+- A line is stored once per bank account: `UNIQUE (cash_account_id, line_hash)` + `INSERT IGNORE`. The hash is `erp_bank_line_hash()`: account, day, amount, lower-cased words, and the line's occurrence of those in the file (`erp_bank_line_occurrence()`, counted while the file is built).
+- The first occurrence has no suffix and hashes exactly as lines always did, so lines stored before keep turning a re-upload away; the second gets `|2`, the third `|3`. The same file, or an overlapping one that holds every repeat, gives the same hashes again and adds nothing.
+- Before (#1075, PR #PRNO) the occurrence was not in the hash: two transfer fees of -8,50 on one day were one line, the second was skipped as "taken in before", and the till stayed 8,50 off the bank.
+- Known limit: an overlapping file that starts between two such lines holds only the later one, counts it as the first and skips it. Taking in whole days avoids it.
+- `mb_strtolower()` turns `İ` into `i` + U+0307, so `EFT ÜCRETİ` and `Eft Ücreti` hash differently; kept so stored hashes still match.
 
 Tests: `tests/erp_bank_import_test.php`.
