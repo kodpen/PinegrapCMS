@@ -84,6 +84,11 @@ function pg_payment_legacy_gateways()
  *       'settings' => 'config',                // shipped drivers only: keeps the
  *                                              // config columns and switch the card
  *                                              // already draws (default 'connect')
+ *       'csp'     => array(                    // what the checkout page loads from
+ *           'script-src'  => array('https://js.example.com'),   // the service while the
+ *           'frame-src'   => array('https://js.example.com'),   // driver takes payments
+ *           'connect-src' => array('https://api.example.com'),  // (waf_csp_policy())
+ *       ),
  *   ),
  *
  * @return array
@@ -107,6 +112,21 @@ function pg_payment_builtin_drivers()
             'file'     => 'iyzico.php',
             'settings' => 'config',
         ),
+        'stripe' => array(
+            'label'   => 'Stripe',
+            'kind'    => 'card',
+            'gateway' => 'Stripe PaymentIntents',
+            'file'    => 'stripe.php',
+            'portal'  => 'https://dashboard.stripe.com/apikeys',
+            // Stripe.js opens frames on *.js.stripe.com, and Link (the
+            // driver's switch) on link.com; the list is static, so the Link
+            // hosts are always there.
+            'csp'     => array(
+                'script-src'  => array('https://js.stripe.com', 'https://*.js.stripe.com'),
+                'frame-src'   => array('https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://link.com', 'https://*.link.com'),
+                'connect-src' => array('https://api.stripe.com', 'https://link.com', 'https://*.link.com'),
+            ),
+        ),
     );
 }
 
@@ -118,7 +138,7 @@ function pg_payment_builtin_drivers()
  * @param string $directory where a relative file name is looked for; '' to
  *                          take absolute paths only (an add-on names its own)
  * @return array|null key, label, log_name, kind, gateway, method, file, portal,
- *                    settings
+ *                    settings, csp (directive => hosts)
  */
 function pg_payment_driver_definition_normalize($key, $definition, $directory)
 {
@@ -181,6 +201,22 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
     // no config column of its own.
     $settings = (($text('settings') === 'config') && ($directory !== '')) ? 'config' : 'connect';
 
+    // Only the directives a payment form needs, and only plain https origins:
+    // a value here goes into the site's security header as it is.
+    $csp = array();
+
+    if (isset($definition['csp']) && is_array($definition['csp'])) {
+        foreach (array('script-src', 'frame-src', 'connect-src') as $directive) {
+            $hosts = (isset($definition['csp'][$directive]) && is_array($definition['csp'][$directive])) ? $definition['csp'][$directive] : array();
+
+            foreach ($hosts as $host) {
+                if (is_string($host) && (preg_match('#^https://(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$#', $host) === 1)) {
+                    $csp[$directive][] = $host;
+                }
+            }
+        }
+    }
+
     return array(
         'key'      => $key,
         'label'    => $label,
@@ -191,6 +227,7 @@ function pg_payment_driver_definition_normalize($key, $definition, $directory)
         'file'     => $file,
         'portal'   => $portal,
         'settings' => $settings,
+        'csp'      => $csp,
     );
 }
 
@@ -975,12 +1012,99 @@ function pg_payment_settings_redirect_rows()
  */
 function pg_payment_return_mode($key)
 {
+    $modes = pg_payment_return_modes();
+
+    return (is_string($key) && isset($modes[$key])) ? $modes[$key] : '';
+}
+
+/**
+ * Every driver's return mode, key => mode. A shipped driver keeps the
+ * address it has always come back to; one added later comes back to
+ * '<key>_return', but only when it defines complete(): a return mode skips
+ * the form token and the field checks, and a driver that cannot finish the
+ * return would leave the order to the legacy gateway code.
+ *
+ * @return array
+ */
+function pg_payment_return_modes()
+{
     $modes = array(
         'iyzico'          => 'iyzipay_threedsecure_return',
         'pay_with_iyzico' => 'pay_with_iyzico_return',
     );
 
-    return (is_string($key) && isset($modes[$key])) ? $modes[$key] : '';
+    foreach (pg_payment_drivers() as $key => $definition) {
+        if (!isset($modes[$key]) && pg_payment_can($key, 'complete')) {
+            $modes[$key] = $key . '_return';
+        }
+    }
+
+    return $modes;
+}
+
+/**
+ * Whether a request's mode parameter brings the visitor back from a payment
+ * service: PayPal Express Checkout (the legacy code) or a driver. The
+ * checkout screens treat these alike: the request is the service's, so it
+ * carries no form token and no form fields, and it finishes the order the
+ * visitor already submitted.
+ *
+ * @param string $mode
+ * @return bool
+ */
+function pg_payment_is_return_mode($mode)
+{
+    $mode = (string) $mode;
+
+    return ($mode !== '') && (($mode === 'paypal_express_checkout_return') || in_array($mode, pg_payment_return_modes(), true));
+}
+
+/**
+ * The payment method a return mode belongs to: the card method for a card
+ * driver, the driver's own method for a redirect driver.
+ *
+ * @param string $mode
+ * @return string '' for a mode no driver returns to
+ */
+function pg_payment_return_method($mode)
+{
+    $key = array_search((string) $mode, pg_payment_return_modes(), true);
+    $definition = ($key === false) ? null : pg_payment_driver($key);
+
+    return ($definition === null) ? '' : $definition['method'];
+}
+
+/**
+ * The card driver of the Payment Gateway value when the card is typed into
+ * the service's own fields (the 'hosted_fields' capability): the checkout
+ * then draws no card inputs and posts the service's token instead.
+ *
+ * @param string|null $gateway null for the store's own
+ * @return string driver key, '' when the card inputs are the site's
+ */
+function pg_payment_hosted_card_driver($gateway = null)
+{
+    $key = pg_payment_order_driver('Credit/Debit Card', $gateway);
+
+    return (($key !== '') && pg_payment_can($key, 'hosted_fields') && pg_payment_can($key, 'prepare')) ? $key : '';
+}
+
+/**
+ * The sources the site's built-in Content-Security-Policy adds for the
+ * payment driver that takes cards: the card gateway's driver while the store
+ * takes cards. Asked with the config row's values, because the policy header
+ * is sent before the config constants are defined.
+ *
+ * @param string $gateway config.ecommerce_payment_gateway
+ * @param bool   $card_on the store is on and takes the Credit/Debit Card method
+ * @return array directive => hosts
+ */
+function pg_payment_csp_sources($gateway, $card_on)
+{
+    $key = $card_on ? pg_payment_driver_for_gateway((string) $gateway) : '';
+    $definition = ($key !== '') ? pg_payment_driver($key) : null;
+
+    return ($definition !== null) ? $definition['csp'] : array();
 }
 
 /**

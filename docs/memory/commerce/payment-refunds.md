@@ -14,8 +14,8 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
 - The ERP line dialog (includes/erp/order_refund.php, `payment_refund_*` ids) only works out the amount.
 
 ## Which driver voids a cancelled order's payment?
-- `pg_payment_cancel_driver($order['payment_method'])`: the order's driver when it defines `cancel`; none (legacy gateway, PayPal, Offline) → `REFUND ACTION REQUIRED`. The cancel dialog's "void the payment via {var:1}" note asks the same.
-- process_order_cancellation() asks only when the auto-refund is on (or forced), the order has a `transaction_id` and `total > 0`. The driver gets the orders row re-read after the UPDATE, `cancellation_reason` = the new reason (iyzico's description).
+- `pg_payment_cancel_driver($order['payment_method'])`: the order's driver when it defines `cancel`; none (legacy gateway, PayPal, Offline) → `REFUND ACTION REQUIRED`.
+- Whether it is asked, for the cancellation and the cancel dialog alike: `pg_order_cancel_payment_plan()`, commerce/order-cancel-refunded-payment.md. The driver gets the orders row re-read after the UPDATE, `cancellation_reason` = the new reason (iyzico's description).
 
 ## What does the cancellation record and log?
 - `pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service)` (pure): the driver's `log` lines first, then one of

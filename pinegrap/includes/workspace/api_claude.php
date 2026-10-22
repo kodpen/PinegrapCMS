@@ -139,7 +139,7 @@ function ws_claude_api_routes()
             'handler'     => 'ws_api_channel_context',
             'returns'     => 'WorkspaceChannelContext',
             'summary'     => 'What a channel is about, in one call',
-            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there (or a run on one of its tasks) is open: as the person who asked reads it.',
+            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel. For a discussion, thread holds the channel it was started in and the message it talks over (message is null when that was deleted); it is null for a channel. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there (or a run on one of its tasks) is open: as the person who asked reads it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
@@ -923,9 +923,17 @@ function ws_api_channel_context($params)
         ORDER BY marked_at DESC, id DESC
         LIMIT 10");
 
+    // A discussion talks over one message of a channel: that message and the
+    // channel it was written in, which whoever reads the discussion reads too
+    // (ws_can_read_channel()). Pinegrap AI is given the same (ws_ai_start()).
+    $parent = ws_channel_is_thread($channel) ? ws_thread_parent_channel($channel) : null;
+    $thread_row = $parent ? ws_thread($channel['id']) : null;
+    $about = $thread_row ? ws_message((int) $thread_row['message_id']) : null;
+    $about = ($about && ((int) $about['deleted_at'] === 0)) ? $about : null;
+
     $tokens = ws_tokens((string) $channel['summary']);
 
-    foreach (array_merge($rows, $decided) as $row) {
+    foreach (array_merge($rows, $decided, $about ? array($about) : array()) as $row) {
         $tokens = array_merge($tokens, ws_tokens($row['body']));
     }
 
@@ -938,6 +946,8 @@ function ws_api_channel_context($params)
 
         return ($row['sender_kind'] === 'app') ? (string) ws_app_sender((int) $row['sender_id'])['name'] : '';
     };
+
+    $thread = $parent ? ws_api_context_thread_present($parent, $about, $about ? $author($about) : '', $about ? ws_plain_text($viewer, $about['body'], $refs) : '') : null;
 
     $messages = array();
 
@@ -997,10 +1007,41 @@ function ws_api_channel_context($params)
             'topic'   => (string) $channel['topic'],
             'summary' => ws_plain_text($viewer, (string) $channel['summary'], $refs),
         ),
+        'thread'     => $thread,
         'decisions'  => $decisions,
         'messages'   => $messages,
         'open_tasks' => $tasks,
     ));
+}
+
+/**
+ * What a discussion is about, in its context: the channel it was started in
+ * and the message it talks over, null when that message was deleted.
+ *
+ * @param array      $parent the channel row the discussion was started in
+ * @param array|null $about  the ws_messages row it talks over
+ * @param string     $author who wrote that message, in words
+ * @param string     $text   its words as the reader reads them
+ * @return array
+ */
+function ws_api_context_thread_present($parent, $about, $author, $text)
+{
+    return array(
+        'channel' => array(
+            'id'   => (int) $parent['id'],
+            'name' => (string) $parent['name'],
+            'kind' => (string) $parent['kind'],
+        ),
+        'message' => is_array($about) ? array(
+            'id'          => (int) $about['id'],
+            'kind'        => (string) $about['kind'],
+            'sender_kind' => (string) $about['sender_kind'],
+            'author'      => (string) $author,
+            'text'        => (string) $text,
+            'task_id'     => ((int) $about['task_id'] > 0) ? (int) $about['task_id'] : null,
+            'created_at'  => api_time($about['created_at']),
+        ) : null,
+    );
 }
 
 // What ws_api_channel_context() returns.
@@ -1008,8 +1049,24 @@ function ws_api_channel_context_schema()
 {
     return array(
         'channel'    => array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'topic' => 'string', 'summary' => 'string'),
+        'thread'     => 'WorkspaceContextThread?',
         'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
         'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string')),
         'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'string?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
     );
+}
+
+// What ws_api_context_thread_present() returns. The message is declared on
+// its own, as an object written inline cannot say it may be null.
+function ws_api_context_thread_schema()
+{
+    return array(
+        'channel' => array('id' => 'integer', 'name' => 'string', 'kind' => 'string'),
+        'message' => 'WorkspaceContextMessage?',
+    );
+}
+
+function ws_api_context_message_schema()
+{
+    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string');
 }

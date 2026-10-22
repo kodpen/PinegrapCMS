@@ -400,7 +400,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean'),
 			'summary' => 'Delete a product group',
-			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
+			'description' => 'Moves the group to the catalogue\'s Recycle Bin, where an operator can put it back. Send permanent=true to delete it outright, which cannot be undone. Its products are never deleted with it; they stay wherever else they are filed. The root group is refused (409 root_group_protected), and so is a group that still has groups inside it (409 group_not_empty; with permanent=true, groups of it in the Recycle Bin count too): a branch of the navigation is not removed from outside in one call. POST /product-groups/{id}/delete does the same for servers that refuse DELETE.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the Recycle Bin.')
@@ -571,10 +571,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Order',
 			'summary' => 'Change an order',
-			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. Moving a cancelled order to complete or exported is the order screen\'s Restore: the cancellation and an unfinished refund flag are cleared and the gift cards the cancellation expired get their date back. incomplete is the basket\'s status and is not accepted: an order is not turned back into a basket, and a basket (status incomplete) cannot be completed, exported or cancelled here - 422. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                  'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled')),
+				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('complete', 'exported', 'cancelled')),
 				array('name' => 'cancellation_reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500),
 				array('name' => 'notes',               'in' => 'body', 'type' => 'string', 'max_length' => 2000)
 			)
@@ -592,7 +592,7 @@ function api_schema() {
 			'description' => 'The tracking numbers for one of the order\'s shipping addresses, and optionally the dates. A tracking number is what makes an order count as shipped in this store - the ship date is a planned dispatch date on many configurations, so nothing is read from it. The list replaces what that address holds, which is what the order screen does with the same field: send everything you know each time and the call can be repeated without collecting duplicates. The customer is told only when notify is true.',
 			'params'  => array(
 				array('name' => 'id',               'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has.'),
+				array('name' => 'tracking_numbers', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 20, 'description' => 'The complete list for this address, as a JSON array. An empty list removes the numbers it has; left out, the numbers stay as they are, so a call that only reports a date keeps them.'),
 				array('name' => 'ship_to_id',       'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
 				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),

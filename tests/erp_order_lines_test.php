@@ -168,3 +168,173 @@ function test_erp_order_lines_take_a_discounted_rate_once()
 	pg_assert_same(array(21, 40), array($built['lines'][0]['tax_total'], $built['lines'][1]['tax_total']));
 	pg_assert_same(306 - 3 + 61, $built['totals']['grand_total']);
 }
+
+// A charge's tax is taken with the goods of its rate, on their sum: 1.03 at
+// 20% with 0.21 of tax and shipping 1.00. Split alone the shipping is
+// 0.83 + 0.17, 0.38 of tax on 1.86, where the tax on 1.86 is 0.37; taken
+// together it is 0.84 + 0.16, 0.37 on 1.87, and the total stays 2.24.
+function test_erp_order_lines_take_a_charge_tax_with_its_rate()
+{
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 21, 'shipping' => 100), array(pg_test_erp_order_item(103, 1, 21, '20.000')), true);
+
+	pg_assert_same(2, count($built['lines']));
+	pg_assert_same(84, $built['lines'][1]['line_total'], 'the shipping net');
+	pg_assert_same(16, $built['lines'][1]['tax_total'], 'the shipping tax');
+	pg_assert_same(37, $built['totals']['tax_total'], 'the tax on 1.87');
+	pg_assert_same(84, $built['totals']['shipping_total']);
+	pg_assert_same(224, $built['totals']['grand_total']);
+}
+
+// 39.95 with 7.99 of tax and shipping 9.99 come to 57.93, which no amount at
+// 20% reaches: the shipping keeps the split, 8.33 + 1.66, and the total the
+// order's. Charged at 9.98, the rate's tax is the tax on its whole.
+function test_erp_order_lines_keep_the_split_of_an_unreachable_total()
+{
+	$item = pg_test_erp_order_item(3995, 1, 799, '20.000');
+
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 799, 'shipping' => 999), array($item), true);
+	pg_assert_same(array(833, 166), array($built['lines'][1]['line_total'], $built['lines'][1]['tax_total']));
+	pg_assert_same(5793, $built['totals']['grand_total']);
+
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 799, 'shipping' => 998), array($item), true);
+	pg_assert_same(5792, $built['totals']['grand_total']);
+	pg_assert_same(erp_apply_rate(3995 + $built['lines'][1]['line_total'], 20), $built['totals']['tax_total'], '9.65 on 48.27');
+}
+
+// Over two rates a charge whose share would leave a rate's total out of reach
+// gives a minor unit to the other rate (pg_order_charge_shares()): 10.00 at
+// 20% and 10.00 at 10%, shipping 1.01. In proportion 0.51 would bring the 20%
+// lines to 12.51, which no amount reaches; 0.50 and 0.51 bring them to 12.50
+// and 11.51, and each rate's tax is the tax on its whole.
+function test_erp_order_lines_share_a_charge_between_rates_reachably()
+{
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 300, 'shipping' => 101), array(
+		pg_test_erp_order_item(1000, 1, 200, '20.000'),
+		pg_test_erp_order_item(1000, 1, 100, '10.000'),
+	), true);
+
+	pg_assert_same(4, count($built['lines']));
+	pg_assert_same(50, $built['lines'][2]['line_total'] + $built['lines'][2]['tax_total'], 'the 20% share');
+	pg_assert_same(51, $built['lines'][3]['line_total'] + $built['lines'][3]['tax_total'], 'the 10% share');
+	pg_assert_same(208, 200 + $built['lines'][2]['tax_total'], 'the tax on 10.42 at 20%');
+	pg_assert_same(105, 100 + $built['lines'][3]['tax_total'], 'the tax on 10.46 at 10%');
+	pg_assert_same(2401, $built['totals']['grand_total']);
+}
+
+// Untaxed charges are one line at 0, whatever the goods.
+function test_erp_order_lines_put_untaxed_charges_at_zero()
+{
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 799, 'shipping' => 999, 'surcharge' => 50), array(pg_test_erp_order_item(3995, 1, 799, '20.000')), false);
+
+	pg_assert_same(3, count($built['lines']));
+	pg_assert_same(array(0.0, 999, 0), array($built['lines'][1]['tax_rate'], $built['lines'][1]['line_total'], $built['lines'][1]['tax_total']));
+	pg_assert_same(50, $built['totals']['surcharge_total']);
+	pg_assert_same(5843, $built['totals']['grand_total']);
+}
+
+// An instalment charge the payment service set can leave the rate's total out
+// of reach: 57.92 and 2.05 come to 59.97 at 20%. The order's invoice takes it
+// at 2.04 when asked to (59.96, the tax on the whole), leaving a kurus to
+// the payment; a refund of the lines asks nothing and keeps all of it.
+function test_erp_order_lines_settle_an_installment_charge_out_of_reach()
+{
+	$order = array('discount' => 0, 'tax' => 799, 'shipping' => 998, 'installment_charges' => 205);
+	$items = array(pg_test_erp_order_item(3995, 1, 799, '20.000'));
+
+	$built = erp_order_lines($order, $items, true, true);
+	$charge = end($built['lines']);
+	pg_assert_same(204, $charge['line_total'] + $charge['tax_total'], 'the instalment a kurus lower');
+	pg_assert_same(5996, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['charges_left']);
+	pg_assert_same(erp_apply_rate(5996 - $built['totals']['tax_total'], 20), $built['totals']['tax_total'], 'the tax on the whole');
+
+	$kept = erp_order_lines($order, $items, true);
+	pg_assert_same(5997, $kept['totals']['grand_total'], 'left as charged without asking');
+	pg_assert_same(0, $kept['totals']['charges_left']);
+
+	// Reachable as charged, or untaxed: nothing moves.
+	$reached = erp_order_lines(array_merge($order, array('installment_charges' => 206)), $items, true, true);
+	pg_assert_same(5998, $reached['totals']['grand_total']);
+	pg_assert_same(0, $reached['totals']['charges_left']);
+
+	$untaxed = erp_order_lines($order, $items, false, true);
+	pg_assert_same(0, $untaxed['totals']['charges_left']);
+}
+
+// An order placed before the checkout settled its shipping: 39.95 with 7.99
+// of VAT and shipping 9.99 come to 57.93, out of reach at 20%. Asked to, the
+// order's invoice takes the shipping at 9.98 (57.92); the surcharge, set
+// after the shipping, goes lower in turn when it alone leaves the rate out
+// of reach (57.92 + 0.07 = 57.99: 0.06).
+function test_erp_order_lines_settle_an_unreachable_shipping_and_surcharge()
+{
+	$items = array(pg_test_erp_order_item(3995, 1, 799, '20.000'));
+
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 799, 'shipping' => 999), $items, true, true);
+	pg_assert_same(998, $built['lines'][1]['line_total'] + $built['lines'][1]['tax_total'], 'the shipping a kurus lower');
+	pg_assert_same(5792, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['charges_left']);
+
+	$built = erp_order_lines(array('discount' => 0, 'tax' => 799, 'shipping' => 998, 'surcharge' => 7), $items, true, true);
+	pg_assert_same(5798, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['charges_left']);
+}
+
+// On random orders with an instalment charge on top of what the checkout
+// settled, the order's invoice reaches every rate's total by Paraşüt's
+// arithmetic and leaves at most a few kurus of the charge to the payment.
+function test_erp_order_lines_settled_installment_reaches_every_rate()
+{
+	mt_srand(20261024);
+	$rates = array('1.000', '10.000', '20.000', '20.000', '20.000');
+	$left_runs = 0;
+
+	for ($run = 0; $run < 1500; $run++) {
+		$lines = array();
+
+		for ($i = 0, $count = mt_rand(1, 4); $i < $count; $i++) {
+			$lines[800 + $i] = array('amount' => mt_rand(100, (mt_rand(0, 1) ? 5000 : 90000)), 'rate' => $rates[mt_rand(0, count($rates) - 1)]);
+		}
+
+		$taxes = pg_order_line_taxes($lines);
+		$charged = array();
+		$items = array();
+
+		foreach ($lines as $id => $line) {
+			$charged[$id] = array('amount' => $line['amount'], 'rate' => $line['rate'], 'tax' => $taxes[$id]);
+			$items[] = pg_test_erp_order_item($line['amount'], 1, $taxes[$id], $line['rate']);
+		}
+
+		$subtotal = array_sum(array_column($lines, 'amount'));
+		$discount = mt_rand(0, 3) ? 0 : mt_rand(1, (int) ($subtotal / 2));
+		$tax = ($discount > 0) ? pg_order_charged_tax($charged, $discount) : array_sum($taxes);
+		$settled = pg_order_charges_reachable($charged, $discount, array('shipping' => mt_rand(0, 1) ? mt_rand(1, 3000) : 0, 'surcharge' => 0));
+		$installment = mt_rand(1, 4000);
+		$order = array('discount' => $discount, 'tax' => $tax, 'shipping' => $settled['shipping'], 'surcharge' => 0, 'installment_charges' => $installment);
+		$paid = $subtotal - $discount + $tax + $settled['shipping'] + $installment;
+
+		$built = erp_order_lines($order, $items, true, true);
+		$left = $built['totals']['charges_left'];
+
+		pg_assert_true(($left >= 0) && ($left <= 10), 'run ' . $run . ' left ' . $left);
+		pg_assert_same($paid, $built['totals']['grand_total'] + $left, 'run ' . $run . ' the payment');
+		$left_runs += ($left > 0) ? 1 : 0;
+
+		$nets = array();
+		$vats = array();
+
+		foreach ($built['lines'] as $line) {
+			$key = number_format((float) $line['tax_rate'], 3, '.', '');
+			$nets[$key] = ($nets[$key] ?? 0) + $line['line_total'] - $line['discount_amount'];
+			$vats[$key] = ($vats[$key] ?? 0) + $line['tax_total'];
+		}
+
+		foreach ($nets as $key => $net) {
+			if ((float) $key > 0) {
+				pg_assert_same(erp_apply_rate($net, (float) $key), $vats[$key], 'run ' . $run . ' at ' . $key);
+			}
+		}
+	}
+
+	pg_assert_true($left_runs > 0, 'some instalment charges were lowered');
+}

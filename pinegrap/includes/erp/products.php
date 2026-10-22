@@ -271,47 +271,19 @@ function erp_line_tax_label($which, $has_tax2)
 }
 
 /**
- * How the store has the ERP tax an order's shipping and surcharge
- * (config.erp_shipping_tax, 4.76): 'included', 'none', or '' for the
- * store's country to decide (erp_shipping_taxed()). Read once per request.
- *
- * @return string
- */
-function erp_shipping_tax_setting()
-{
-    static $value = null;
-
-    if ($value === null) {
-        $value = (function_exists('waf_table_has_column') && waf_table_has_column('config', 'erp_shipping_tax'))
-            ? trim((string) db_value("SELECT erp_shipping_tax FROM config LIMIT 1"))
-            : '';
-
-        if (!in_array($value, array('', 'included', 'none'), true)) {
-            $value = '';
-        }
-    }
-
-    return $value;
-}
-
-/**
- * Whether an order's shipping and surcharge carry tax on its invoice. Where
- * VAT applies the charge for delivering goods is part of the supply and is
- * taxed with them; a United States store's checkout collects sales tax on the
- * goods alone, so there the charges are left untaxed unless the settings say
- * otherwise.
+ * Whether an order's shipping and surcharge carry tax on its invoice
+ * (config.erp_shipping_tax, 4.76). Where VAT applies the charge for
+ * delivering goods is part of the supply and is taxed with them; a United
+ * States store's checkout collects sales tax on the goods alone, so there the
+ * charges are left untaxed unless the settings say otherwise. The checkout
+ * asks the same to keep an order's totals reachable, so the rule lives with
+ * it (pg_order_charges_taxed()).
  *
  * @return bool
  */
 function erp_shipping_taxed()
 {
-    $setting = erp_shipping_tax_setting();
-
-    if ($setting !== '') {
-        return ($setting === 'included');
-    }
-
-    return (erp_default_country_code() !== 'US');
+    return pg_order_charges_taxed();
 }
 
 /**

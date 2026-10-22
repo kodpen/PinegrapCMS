@@ -26,7 +26,7 @@ Core `includes/designer_access.php`.
 - `_notes` is carried even outside marked areas: a note is a comment, not page content; collaboration deliberately lets even a view-mode session leave notes.
 
 ## What about body classes and locked/hidden pages?
-- Root node `cssClass` / `id` / `_attrs` are printed on `<body>` by `generate_style_code_from_tree()` and the Attr panel edits them with `<body>` selected. The design-level "Ek gövde sınıfları" setting was REMOVED (it described one page's body but was design-wide, so no page could have its own class). Old value moves to each page's root `cssClass` on first save and the column is cleared (dropping it would strip a live site's styling).
+- Root node `cssClass` / `id` / `_attrs` are printed on `<body>` by `generate_style_code_from_tree()` and the Attr panel edits them with `<body>` selected. The design-level additional body classes setting (`style.additional_body_classes`) was REMOVED (it described one page's body but was design-wide, so no page could have its own class). Old value moves to each page's root `cssClass` on first save and the column is cleared (dropping it would strip a live site's styling).
 - `pg_designer_page_access()`: a non-editable page in an open folder is LISTED but not opened (operator knows it exists); a page in a private/membership folder is NOT listed at all (the name itself is information).
 
-Related: docs/memory/designer/designer-content-roles-ui-guards.md
+Related: docs/memory/designer/designer-content-roles-ui-guards.md, docs/memory/designer/designer-content-roles-translations.md

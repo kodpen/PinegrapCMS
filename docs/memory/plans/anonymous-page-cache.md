@@ -10,7 +10,7 @@ description: Proposal (2026-10-21, awaiting owner decision): short full-page cac
 - The header is PHP's `nocache` session limiter: `init.php` ~996 starts a session on every request (only `PG_NO_SESSION` skips), so a cookieless response also sets `PHPSESSID`; `initialize_token()` (~1025) fills it.
 - Every visitor has `PHPSESSID` after one page: bypassing on it caches only first hits, and a cached `Set-Cookie` would give everyone one session.
 - Per-visitor HTML: CSRF token (`get_token_field()`: custom forms, catalog, cart, account widgets), CAPTCHA, cart and member widgets, liveform notices, first-page language redirect (`pg_lang_redirect_page()`: Accept-Language, country, `pg_language`), `pg_consent` (held-back scripts), mobile theme (`software[device_type]`), private and membership pages.
-- Skipped on a hit: `init_tracking()` (`get_page.php` ~3289), the perf log; with Cloudflare also the WAF (bans, country rule).
+- Skipped on a hit: `init_tracking()` (`get_page.php` ~53, defined ~3299), the designed record view counters (`pg_sfv_count_view()` after the echo, `designer/record-view-counts.md`: pretty record URLs have no query string, `?r=` ones would still count), the perf log; with Cloudflare also the WAF (bans, country rule).
 - `get_page.php` echoes the built `$content` at ~3256: headers can still be set there.
 
 ## Step 1 (needed by A and B): cacheability gate
@@ -34,5 +34,5 @@ description: Proposal (2026-10-21, awaiting owner decision): short full-page cac
 ## What must the owner decide?
 1. A, B or both; TTL; off by default elsewhere?
 2. Pages with forms: stay dynamic, or token by a small fetch?
-3. Visitor stats on hits: accept the loss, or a beacon?
+3. Visitor stats and record view counts (most read) on hits: accept the loss, or a beacon?
 4. Mobile and consent variants: bypass or cache key?
