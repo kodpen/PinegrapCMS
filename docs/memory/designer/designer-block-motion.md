@@ -15,6 +15,7 @@ description: Motion in designer blocks without JS: the shared pg-marquee contrac
 
 ## Why does no block carousel autoplay?
 - Bootstrap 5.3.8's carousel pauses only on mouse hover: it keeps cycling with keyboard focus inside (focus falls to `body` when the slide hides) and under reduced motion, and the data API has no pause button. That fails WCAG 2.2.2, so no block or Components-tab carousel plays by itself (`news-ticker-rotator`, `image-carousel`, `testimonial-carousel`, the Components-tab `carousel`): the previous/next buttons and the indicators move it. An operator who wants autoplay sets Carousel Options > Autoplay (it writes `data-bs-ride`). `tests/designer_blocks_test.php` fails when a builder writes `data-bs-ride` or `data-bs-interval`. Measured in a browser: no block slide changes in 6 s, with or without reduced motion.
+- Carousel Options > Add slide copies the last slide (`copyCarouselSlide()`: new ids, no element id, layer names and a `Slide N Title` renumbered, the next palette surface) and the last indicator. A fresh `makeCarouselSlide()` surface is light, made for `.carousel-dark`: in `image-carousel` it hid the white controls.
 - Slide and control colours: `docs/memory/designer/designer-block-theme-surfaces.md`.
 
 ## Why is there no countdown or live value?

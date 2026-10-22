@@ -408,14 +408,16 @@ function _test_blocks_builder_strings()
 // A block follows the design's colour palette and dark mode only through
 // classes that read the theme variables. These ones are fixed colours:
 // bg-dark stays dark in a light design, bg-white stays white in a dark one,
-// text-white is unreadable on an amber primary. A dark band is written
+// text-white is unreadable on an amber primary, text-bg-light is a light
+// patch with dark text in a dark design. A dark band is written
 // data-bs-theme="dark" + bg-body text-body, a primary surface text-bg-primary
 // (docs/memory/designer/designer-block-theme-colours.md).
 function test_designer_blocks_use_theme_driven_colours()
 {
 	$fixed = array('bg-white', 'bg-light', 'bg-dark', 'bg-black', 'text-white', 'text-white-50', 'text-dark',
 		'text-black', 'text-black-50', 'text-muted', 'btn-light', 'btn-dark', 'btn-outline-light', 'btn-outline-dark',
-		'link-light', 'link-dark', 'navbar-dark', 'navbar-light', 'bg-primary', 'bg-secondary');
+		'link-light', 'link-dark', 'navbar-dark', 'navbar-light', 'bg-primary', 'bg-secondary',
+		'text-light', 'text-bg-light', 'text-bg-dark');
 	$strings = _test_blocks_builder_strings();
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
 	$found = array();
@@ -426,12 +428,24 @@ function test_designer_blocks_use_theme_driven_colours()
 			}
 		}
 	}
-	pg_assert_same(array(), array_keys($found), 'fixed colour classes written by createFromPalette()');
+	pg_assert_same(array(), array_keys($found), 'fixed colour classes written by createFromPalette() or makeCarouselSlide()');
 
-	$range = _test_blocks_cfp_range();
-	$body = $range ? substr(_test_blocks_js(), $range[0], $range[1] - $range[0]) : '';
-	preg_match_all("/variant:\\s*'((?:outline-)?(?:light|dark))'/", $body, $m);
-	pg_assert_same(array(), array_values(array_unique($m[1])), 'light/dark button variants written by createFromPalette()');
+	$js = _test_blocks_js();
+	$at = strpos($js, 'function makeCarouselSlide(');
+	$read = 0;
+	$bodies = array(
+		'createFromPalette()' => _test_blocks_cfp_range(),
+		'makeCarouselSlide()' => $at === false ? null : _test_blocks_block($at),
+	);
+	foreach ($bodies as $name => $block) {
+		if (!$block) {
+			continue;
+		}
+		$read++;
+		preg_match_all("/variant:\\s*'((?:outline-)?(?:light|dark))'/", substr($js, $block[0], $block[1] - $block[0]), $m);
+		pg_assert_same(array(), array_values(array_unique($m[1])), 'light/dark button variants written by ' . $name);
+	}
+	pg_assert_same(2, $read, 'createFromPalette() and makeCarouselSlide() are read');
 }
 
 // Bootstrap's carousel keeps cycling under keyboard focus and reduced motion
@@ -443,6 +457,21 @@ function test_designer_blocks_carousels_do_not_autoplay()
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
 	pg_assert_false(in_array('data-bs-ride', $strings, true), 'no builder writes data-bs-ride');
 	pg_assert_false(in_array('data-bs-interval', $strings, true), 'no builder writes data-bs-interval');
+}
+
+// Carousel Options > Add slide copies the carousel's last slide. A
+// makeCarouselSlide() surface is light, drawn for the dark controls of
+// .carousel-dark: added to image-carousel (white controls over photos) it hid
+// the controls, and in testimonial-carousel it was a hero among quotes.
+function test_designer_blocks_added_slide_copies_the_last_slide()
+{
+	$js = _test_blocks_js();
+	$at = strpos($js, "if (action === 'add-slide') {");
+	$block = $at === false ? null : _test_blocks_block($at);
+	pg_assert_true($block !== null, 'the Add slide branch is found');
+	$body = $block ? substr($js, $block[0], $block[1] - $block[0]) : '';
+	pg_assert_contains('copyCarouselSlide(', $body, 'Add slide builds the slide with copyCarouselSlide()');
+	pg_assert_false(strpos($body, 'makeCarouselSlide(') !== false, 'Add slide does not draw a fresh light surface');
 }
 
 // Keys of the COMPONENTS registry: the component types the emitter can draw.
@@ -661,4 +690,15 @@ function test_designer_blocks_fields_have_labels()
 		}
 	}
 	pg_assert_same(array(), $dangling, 'labels of createFromPalette() whose for names no field');
+
+	// A label without text names its field with nothing: some node of the
+	// label (the label itself or a span inside it, written as a text prop or
+	// with the _bkH(tag, text) helper) carries a non-empty text.
+	$empty = array();
+	foreach ($labels as $label) {
+		if (!preg_match("/\\btext:\\s*(?!''|\"\")[^\\s,}]|_bkH\\('[a-z0-9]+',\\s*(?!''|\"\")[^\\s,)]/", $label['src'])) {
+			$empty[] = 'line ' . $label['line'];
+		}
+	}
+	pg_assert_same(array(), $empty, 'labels of createFromPalette() without text');
 }

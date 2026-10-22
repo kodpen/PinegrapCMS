@@ -2719,6 +2719,58 @@ const StyleDesigner = (function () {
         ]);
     }
 
+    /**
+     * Copy of a carousel node for Carousel Options > Add slide: fresh node ids,
+     * no 'active' class or aria-current on the copy itself, no element id (a
+     * copied id would be on the page twice), and every layer name carrying the
+     * copied slide's number (Slide 3, Carousel Caption 3) renumbered to newN.
+     */
+    function _sdCopyCarouselNode(src, oldN, newN) {
+        var copy = cloneTree(src);
+        var numRe = new RegExp('(^|\\D)' + oldN + '(?!\\d)');
+        (function walk(node, top) {
+            if (!node) return;
+            node._id = gid();
+            var p = node.props || (node.props = {});
+            if (top) {
+                p.cssClass = (p.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'active'; }).join(' ');
+                if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'aria-current'; });
+            }
+            delete p.id;
+            if (p._attrs) p._attrs = p._attrs.filter(function (a) { return a.name !== 'id'; });
+            if (p.customName && numRe.test(p.customName)) p.customName = p.customName.replace(numRe, '$1' + newN);
+            if (node.children) node.children.forEach(function (c) { walk(c, false); });
+        })(copy, true);
+        return copy;
+    }
+
+    /**
+     * The slide Carousel Options > Add slide appends (newN is its 1-based
+     * number): a copy of the carousel's last slide, so it matches the slides
+     * the carousel's controls were drawn for. A photo slide brings its caption
+     * scrim, a quote slide its quote; a light makeCarouselSlide() surface would
+     * hide the white controls of a carousel without .carousel-dark
+     * (image-carousel). A palette surface takes the next surface colour and
+     * "Slide N Title" the new number. makeCarouselSlide() when there is no
+     * slide to copy.
+     */
+    function copyCarouselSlide(last, newN) {
+        if (!last) return makeCarouselSlide(newN, false);
+        var copy = _sdCopyCarouselNode(last, newN - 1, newN);
+        var oldTitle = _sdT('Slide {var} Title', newN - 1);
+        (function walk(node) {
+            var p = node.props || {};
+            var cls = (p.cssClass || '').split(/\s+/);
+            for (var i = 0; i < cls.length; i++) {
+                if (CAROUSEL_SURFACES.indexOf(cls[i]) !== -1) cls[i] = CAROUSEL_SURFACES[(newN - 1) % CAROUSEL_SURFACES.length];
+            }
+            p.cssClass = cls.join(' ');
+            if (p.text === oldTitle) p.text = _sdT('Slide {var} Title', newN);
+            if (node.children) node.children.forEach(walk);
+        })(copy);
+        return copy;
+    }
+
     function createDefaultTree() {
         return { _id: 'root', type: 'root', props: {}, children: [] };
     }
@@ -19090,9 +19142,13 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'a', cssClass: 'page-link', href: '#', text: '›', customName: _sdT('Page Link'),
                             _attrs: [{ name: 'aria-label', value: _sdT('Next page') }] })
                     ]));
+                    // flex-wrap: seven items in a look with wide buttons (bold, …)
+                    // are wider than a 360 px phone, and every page added with
+                    // New Page widens it further; the row wraps instead of
+                    // scrolling the page sideways, as the site's own pagers do.
                     return createNode('semantic', { tag: 'nav', customName: _sdT('Pagination'),
                         _attrs: [{ name: 'aria-label', value: _sdT('Page navigation') }] }, [
-                        createNode('semantic', { tag: 'ul', cssClass: 'pagination', customName: _sdT('Page List') }, _pgItems)
+                        createNode('semantic', { tag: 'ul', cssClass: 'pagination flex-wrap', customName: _sdT('Page List') }, _pgItems)
                     ]);
                 }
 
@@ -40308,15 +40364,31 @@ const StyleDesigner = (function () {
                 });
                 if (!innerNode) return;
                 saveState();
+                // The block carousels keep their id in _attrs, the Components
+                // carousel in the id prop.
                 var crId = n.props.id || '';
+                (n.props._attrs || []).forEach(function (a) { if (!crId && a.name === 'id') crId = a.value || ''; });
                 if (action === 'add-slide') {
                     var idx = innerNode.children ? innerNode.children.length : 0;
                     if (!innerNode.children) innerNode.children = [];
-                    innerNode.children.push(makeCarouselSlide(idx + 1, false));
+                    innerNode.children.push(copyCarouselSlide(idx ? innerNode.children[idx - 1] : null, idx + 1));
                     if (indicatorsNode) {
                         if (!indicatorsNode.children) indicatorsNode.children = [];
-                        indicatorsNode.children.push(createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
-                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] }));
+                        var tailInd = indicatorsNode.children[indicatorsNode.children.length - 1];
+                        var newInd;
+                        if (tailInd) {
+                            // A copy keeps the indicator's own node kind, classes and
+                            // target; only its slide number and name change.
+                            newInd = _sdCopyCarouselNode(tailInd, idx, idx + 1);
+                            newInd.props._attrs = (newInd.props._attrs || []).filter(function (a) {
+                                return a.name !== 'data-bs-slide-to' && a.name !== 'aria-label';
+                            });
+                            newInd.props._attrs.push({ name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) });
+                        } else {
+                            newInd = createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: '',
+                                _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: String(idx) }, { name: 'aria-label', value: _sdT('Slide {var}', (idx + 1)) }] });
+                        }
+                        indicatorsNode.children.push(newInd);
                     }
                 } else if (action === 'remove-slide') {
                     if (innerNode.children && innerNode.children.length > 1) {
@@ -57704,7 +57776,7 @@ const StyleDesigner = (function () {
                                     d: _sdT('A note with a coloured edge that draws attention to a remark.') },
             'c:spinner':          { v: 'spinner', h: '<div class="spinner-border">', k: 'spinner loader loading',
                                     d: _sdT('A spinning sign that something is loading.') },
-            'c:pagination':       { v: 'pagination', h: '<ul class="pagination">', k: 'pagination pager pages paging',
+            'c:pagination':       { v: 'pagination', h: '<ul class="pagination flex-wrap">', k: 'pagination pager pages paging',
                                     d: _sdT('Page numbers for moving through a long list.') },
             'c:input-group':      { v: 'input-group', h: '<div class="input-group">', k: 'input group addon field button text',
                                     d: _sdT('A text box with a piece of text or a button attached to its side.') },
