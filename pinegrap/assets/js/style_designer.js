@@ -36383,7 +36383,23 @@ const StyleDesigner = (function () {
         var cls = (n.props.cssClass || '').split(/\s+/);
         var isStriped  = cls.indexOf('progress-bar-striped')  !== -1;
         var isAnimated = cls.indexOf('progress-bar-animated') !== -1;
-        var bgClasses  = ['bg-primary','bg-secondary','bg-success','bg-danger','bg-warning','bg-info','bg-dark'];
+        // The bar colour is written as text-bg-*, which also sets the label
+        // colour that reads on that background. Bars saved with a plain bg-*
+        // show that colour here, and picking one takes the bg-* class off too:
+        // Bootstrap's bg-* utilities come after text-bg-* and would win.
+        var barColors = [['primary', _sdT('Primary')], ['secondary', _sdT('Secondary')], ['success', _sdT('Success')],
+            ['danger', _sdT('Danger')], ['warning', _sdT('Warning')], ['info', _sdT('Info')], ['dark', _sdT('Dark')]];
+        var barGroup = [];
+        var barCurrent = '';
+        barColors.forEach(function (c) {
+            barGroup.push('text-bg-' + c[0], 'bg-' + c[0]);
+            if (cls.indexOf('text-bg-' + c[0]) !== -1 || cls.indexOf('bg-' + c[0]) !== -1) barCurrent = c[0];
+        });
+        var colorSel = '<select class="form-select form-select-sm" data-stylegroup="' + barGroup.join(',') + '">' +
+            '<option value="">' + _sdT('Default') + '</option>' +
+            barColors.map(function (c) {
+                return '<option value="text-bg-' + c[0] + '"' + (c[0] === barCurrent ? ' selected' : '') + '>' + c[1] + '</option>';
+            }).join('') + '</select>';
 
         // Read width % from style attr
         var attrs = n.props._attrs || [];
@@ -36397,7 +36413,7 @@ const StyleDesigner = (function () {
                 '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
                 '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
                 '</div>') +
-            row(_sdT('Color'), selStyleGroup(n.props, bgClasses, 'Default')) +
+            row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
             row(_sdT('Animated'),  swAttr('data-util-toggle="progress-bar-animated"', isAnimated))
         );
