@@ -25380,6 +25380,8 @@
     "{var:1} sign-in refused: {var:2} differs from the address of an existing account only in accents or similar letters, so it was not tied to that account": "{var:1} girişi reddedildi: {var:2} adresi mevcut bir hesabın adresinden yalnızca aksanlı ya da benzer harflerle ayrılıyor, bu yüzden o hesaba bağlanmadı",
     "You signed in to {var:1} as {var:2}, but an account on this site already uses an e-mail address written almost the same way, so this {var:1} account cannot sign in to it or open a new one. If that account is yours, sign in with your password and connect {var:1} from your account page.": "{var:1} hesabınıza {var:2} adresiyle girdiniz, ancak bu sitede neredeyse aynı yazılan bir e-posta adresini kullanan bir hesap zaten var; bu yüzden bu {var:1} hesabıyla ona giriş yapılamaz ve yeni bir hesap açılamaz. O hesap sizinse şifrenizle giriş yapın ve {var:1} bağlantısını hesap sayfanızdan kurun.",
     "Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.": "Gelişmiş arama, arama dizini işinin günde bir kez yeniden kurduğu dizinde arar: sayfalar, bağlantı verilen dosyalar ve herkese açık form listelerinin kayıtları. Basit arama sayfaların o anki metninde arar ve form kayıtlarını bulmaz.",
+    "Form settings": "Form ayarları",
+    "This form notifies nobody: no notification address and no auto-reply.": "Bu form kimseye bildirim göndermiyor: bildirim adresi yok, otomatik yanıt kapalı.",
     "The message has no recipient.": "Mesajın alıcısı yok.",
     "The message has no content.": "Mesajın içeriği yok.",
     "Permanent": "Kalıcı",

@@ -2725,6 +2725,93 @@ const StyleDesigner = (function () {
         return p.formSettings;
     }
 
+    // A form that sends no e-mail at all: no notification address and no
+    // auto-reply. Allowed (some forms are meant to be quiet), but said.
+    function _cfSettingsSilent(fs) {
+        fs = fs || {};
+        return String(fs.notify_email || '').trim() === '' && !parseInt(fs.confirm_email || 0, 10);
+    }
+
+    // A custom form widget just placed or turned into a page form: when the
+    // page has no form record yet, its notification address starts as the
+    // site's own address. A page whose form already exists keeps what it
+    // has, an empty address included, and a page seeded once is not seeded
+    // again (an address the operator cleared stays cleared).
+    var _cfNotifySeeded = {};
+    var _cfSilentWarned = {};   // page_id => warned after a publish this session
+    function _cfSeedNotifyAddress(sid) {
+        var p   = _pgActivePage();
+        var cfg = _cfCfgOf(sid);
+        if (!p || !cfg || !_cfWidgetOwnsPageForm(cfg) || _cfNotifySeeded[p.key]) return;
+        var addr = (_design && _design.siteEmail) ? String(_design.siteEmail).trim() : '';
+        var fs   = _cfPageSettings(p);
+        if (!addr || fs.exists || String(fs.notify_email || '').trim() !== '') return;
+        fs.notify_email = addr;
+        _cfNotifySeeded[p.key] = true;
+    }
+
+    // The placement that opens a custom form widget's settings: the
+    // shared_ref of `sid` on the page tree, else inside another shared
+    // component (a form placed in a header).
+    function _cfRefOf(sid) {
+        var hit = null;
+        var walk = function (n) {
+            if (hit || !n) return;
+            if (n.type === 'shared_ref') {
+                if (parseInt(n.props && n.props.sharedId, 10) === sid) hit = n;
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        if (!hit) Object.keys(_sharedCache).forEach(function (k) {
+            if (!hit && parseInt(k, 10) !== sid && _sharedCache[k] && _sharedCache[k].tree) walk(_sharedCache[k].tree);
+        });
+        return hit;
+    }
+
+    // Select the widget's placement so the panel shows its form settings,
+    // and bring the Custom Form Settings section into view.
+    function _cfOpenFormSettings(sid) {
+        var ref = _cfRefOf(parseInt(sid, 10) || 0);
+        if (!ref) return;
+        selectedNode  = ref;
+        selectedNodes = [];
+        if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+        _sdSelectRender();
+        setTimeout(function () {
+            var src  = document.getElementById('sd-sw-cf-source');
+            var sect = src ? src.closest('.sd-props-section') : null;
+            if (!sect) return;
+            var hdr = sect.querySelector('.sd-sect-hdr');
+            if (hdr && !hdr.classList.contains('sd-sect-open')) hdr.click();
+            sect.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 0);
+    }
+
+    // The "Form settings" bar on top of the panel of any node inside a
+    // custom form widget: on the canvas a click lands on a control or a
+    // wrapper inside the form, never on the widget, and the form's own
+    // settings (notification, auto-reply) were reachable only from the page
+    // tree.
+    function _cfSettingsShortcut(node) {
+        if (!node || node.type === 'shared_ref') return '';
+        var w = _cfWidgetOf(node);
+        if (!w) return '';
+        var silent = w.owns && _cfSettingsSilent(_cfPageSettings());
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
+                '<i class="bi bi-ui-checks me-1"></i>' + esc(_sdT('Form settings')) +
+            '</button>' +
+            (silent
+                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                      esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                  '</div>'
+                : '') +
+        '</div>';
+    }
+
     // If `node` lives inside a cached shared component tree, returns that sid.
     // Otherwise returns 0.
     function _resolveSharedSid(node) {
@@ -10564,6 +10651,18 @@ const StyleDesigner = (function () {
                     });
                     tbBtns.appendChild(bindBtn);
                 }
+            }
+            // Inside a custom form widget: the form's own settings, which a
+            // click on the canvas never selects (it lands on a control).
+            var _cfTbW = (node.type !== 'root') ? _cfWidgetOf(node) : null;
+            if (_cfTbW) {
+                var cfSetBtn = doc.createElement('button');
+                cfSetBtn.type = 'button';
+                cfSetBtn.className = 'bi bi-ui-checks';
+                cfSetBtn.title = _sdT('Form settings');
+                cfSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                cfSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _cfOpenFormSettings(_cfTbW.sid); });
+                tbBtns.appendChild(cfSetBtn);
             }
             // Notes — opens a floating notes popup anchored to this node
             if (node.type !== 'root') {
@@ -28350,9 +28449,11 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
+        if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
         _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
@@ -30606,7 +30707,14 @@ const StyleDesigner = (function () {
                         ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
+                            // Shown and hidden as the address is typed
+                            // (the .sd-cf-s handler); the auto-reply switch
+                            // redraws the panel.
+                            '<div id="sd-cf-silent-warn" style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45;margin-top:4px' + (_cfSettingsSilent(_cfFS) ? '' : ';display:none') + '">' +
+                                '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                            '</div>'
                         ) +
                         row(_sdT('Notification subject'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_subject" value="' + esc(_cfFS.notify_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('New form submission')) + '">'
@@ -31132,6 +31240,7 @@ const StyleDesigner = (function () {
                         if (cached && (cached.autoNamed || _swIsAutoName(cached.name))) {
                             _swRename(sid, _swAutoName(newType, null, { sid: sid }), null);
                         }
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(sid);
                         if (!_offerStarterTree(sid, newType)) { render(); renderProperties(); }
                     }
                 });
@@ -31152,7 +31261,10 @@ const StyleDesigner = (function () {
                 ]
             }).then(function (choice) {
                 if (choice === 'fork') {
-                    _swForkForThisPage(sid, { regionType: newType }, function () { renderProperties(); });
+                    _swForkForThisPage(sid, { regionType: newType }, function (newId) {
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(newId);
+                        renderProperties();
+                    });
                 } else if (choice === 'all') {
                     applyHere();
                 } else {
@@ -32788,6 +32900,8 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-cf-s').forEach(function (el) {
             el.addEventListener('change', function () {
                 _cfPageSettings()[el.dataset.s] = ('' + el.value).slice(0, 255);
+                var warn = (el.dataset.s === 'notify_email') ? document.getElementById('sd-cf-silent-warn') : null;
+                if (warn) warn.style.display = _cfSettingsSilent(_cfPageSettings()) ? '' : 'none';
             });
         });
         document.querySelectorAll('.sd-cf-sn').forEach(function (el) {
@@ -46092,6 +46206,7 @@ const StyleDesigner = (function () {
         _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
             saveState();
             _swInsertRef(newId, newName, target, insertCtx);
+            if (type === 'custom_form') _cfSeedNotifyAddress(newId);
             render();
             // Refresh the "System" tab so the new widget appears in "In this design".
             // Do NOT refresh the "Shared" tab — system widgets are excluded from there.
@@ -56339,6 +56454,14 @@ const StyleDesigner = (function () {
                 _cfAdoptIds(p, Array.isArray(f.fields) ? f.fields : []);
                 _cfDropFieldCache(f.page_id);
                 p.formSettings = (f.settings && typeof f.settings === 'object') ? f.settings : {};
+                // A page form that e-mails nobody is published as asked; it
+                // is said once per page and editor session, not blocked.
+                if (p.formSettings.exists && _cfSettingsSilent(p.formSettings) && !_cfSilentWarned[f.page_id] &&
+                    _pgTreeOf(p) && _cfPageHasOwnForm(_pgTreeOf(p))) {
+                    _cfSilentWarned[f.page_id] = true;
+                    sdToast('<strong>' + esc(p.page_title || p.page_name || _sdT('new page')) + '</strong>: ' +
+                            esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')), 'warning', 8000);
+                }
             });
         }
         if (data && data.style_id && _design) _design.styleId = data.style_id;
