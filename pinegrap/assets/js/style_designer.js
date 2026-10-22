@@ -6442,12 +6442,13 @@ const StyleDesigner = (function () {
 
     // Controls that run on the canvas as on the page: Bootstrap's data-api
     // hooks and the platform scripts' own controls (the theme toggle's
-    // button; the theme switch is an input and the theme menu's items carry
-    // data-bs-theme-value). A click inside one, on an icon or a label too,
-    // is let through to it: the wrappers select without stopping the click.
+    // button, a scroller's previous / next buttons; the theme switch is an
+    // input and the theme menu's items carry data-bs-theme-value). A click
+    // inside one, on an icon or a label too, is let through to it: the
+    // wrappers select without stopping the click.
     var _SD_CANVAS_CONTROLS = '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
         '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value], ' +
-        '[data-pg-theme-switcher] button';
+        '[data-pg-theme-switcher] button, [data-pg-scroll]';
 
     // The canvas document: written into the iframe, its listeners, the
     // framework bundle and the assets. Runs once when the canvas is built and

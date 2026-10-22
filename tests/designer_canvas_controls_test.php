@@ -197,7 +197,7 @@ function test_designer_canvas_controls_inner_clicks_reach_the_control()
 	pg_assert_true(preg_match("/var _SD_CANVAS_CONTROLS = ((?:'[^']*'\\s*\\+?\\s*)+);/", $js, $m) === 1, 'the designer names the controls the canvas runs');
 	preg_match_all("/'([^']*)'/", $m[1], $parts);
 	$controls = array_map('trim', explode(',', implode('', $parts[1])));
-	foreach (array('[data-bs-toggle]', '[data-bs-target]', '[data-bs-dismiss]', '[data-bs-slide]', '[data-bs-slide-to]', '[data-bs-theme-value]', '[data-pg-theme-switcher] button') as $control) {
+	foreach (array('[data-bs-toggle]', '[data-bs-target]', '[data-bs-dismiss]', '[data-bs-slide]', '[data-bs-slide-to]', '[data-bs-theme-value]', '[data-pg-theme-switcher] button', '[data-pg-scroll]') as $control) {
 		pg_assert_true(in_array($control, $controls, true), $control . ' is a control the canvas runs');
 	}
 

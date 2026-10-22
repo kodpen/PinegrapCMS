@@ -4,7 +4,7 @@ description: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and 
 ---
 
 ## Which controls run on the canvas as on the page?
-- `_SD_CANVAS_CONTROLS` in `assets/js/style_designer.js`: Bootstrap's data-api hooks (`[data-bs-toggle]`, `[data-bs-target]`, `[data-bs-dismiss]`, `[data-bs-slide]`, `[data-bs-slide-to]`, `[data-bs-theme-value]`) and the platform's own controls (`[data-pg-theme-switcher] button`, the theme toggle). The theme switch is an `<input>`, already left alone as a form control.
+- `_SD_CANVAS_CONTROLS` in `assets/js/style_designer.js`: Bootstrap's data-api hooks (`[data-bs-toggle]`, `[data-bs-target]`, `[data-bs-dismiss]`, `[data-bs-slide]`, `[data-bs-slide-to]`, `[data-bs-theme-value]`) and the platform's own controls (`[data-pg-theme-switcher] button`, the theme toggle; `[data-pg-scroll]`, a scroller's previous / next buttons). The theme switch is an `<input>`, already left alone as a form control.
 - A new platform control bound by a script of its own (not by a data-api attribute) is added to this list, or a click on its icon or label never reaches it.
 
 ## Why does a click on a control's icon or label reach it?
