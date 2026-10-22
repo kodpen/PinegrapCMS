@@ -46,7 +46,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // proxy is involved at all.
     if (($url_scheme === 'https://') && (URL_SCHEME !== 'https://') && !check_if_request_is_secure()) {
 
-        $secure_mode_test_link = '<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('Secure Mode test page') . '</a>';
+        $secure_mode_test_link = '<a class="alert-link" href="https://' . h(HOSTNAME_SETTING) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('Secure Mode test page') . '</a>';
 
         if (check_proxy_ssl_headers()) {
             $liveform->add_error(lang(array(
@@ -101,7 +101,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if ($waf_country_post_wrong) {
             $liveform->mark_error('waf_country_list', lang(array(
                 'string' => 'Nothing was saved: these are not country codes: {var:1}.',
-                'vars'   => array(implode(', ', $waf_country_post_wrong)))));
+                'vars'   => array(h(implode(', ', $waf_country_post_wrong))))));
 
             return;
         }
@@ -448,7 +448,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                     if ($waf_ranges_result['status'] === 'failed' && !empty($waf_ranges_result['reason'])) {
                         $liveform->add_notice(lang(array(
                             'string' => 'Bot IP list fetch error: {var:1}',
-                            'vars'   => $waf_ranges_provider . ' — ' . $waf_ranges_result['reason'],
+                            'vars'   => h($waf_ranges_provider . ' — ' . $waf_ranges_result['reason']),
                         )));
                         break;
                     }

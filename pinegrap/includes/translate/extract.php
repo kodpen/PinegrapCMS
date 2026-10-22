@@ -121,7 +121,7 @@ function pg_tr_node_fields($type, $props)
             }
         }
 
-        $worded = array('title' => 1, 'placeholder' => 1, 'aria-label' => 1, 'data-bs-title' => 1, 'data-bs-content' => 1, 'aria-description' => 1);
+        $worded = array_flip(pg_tr_worded_attrs());
         $value_is_label = ($tag === 'button') || (($tag === 'input') && in_array($input_type, array('submit', 'button', 'reset'), true));
 
         foreach ($props['_attrs'] as $attr) {
@@ -138,6 +138,42 @@ function pg_tr_node_fields($type, $props)
     }
 
     return $fields;
+}
+
+/**
+ * The texts of one node as extraction stores them, normalised and worth
+ * translating: its fields (pg_tr_node_fields()), and after an inline text
+ * the worded attributes its own tags carry (a link's aria-label inside a
+ * paragraph). The tree renderer draws the inline text whole, attributes
+ * and all; the finished-page pass draws those attributes
+ * (pg_tr_render_attrs()), so each one is a plain text of its own, named
+ * "<field>@<attribute>#n".
+ *
+ * @param string $type
+ * @param array  $props
+ * @return array of array(field, text, format)
+ */
+function pg_tr_node_texts($type, $props)
+{
+    $out = array();
+
+    foreach (pg_tr_node_fields($type, $props) as $spec) {
+        list($field, $format) = $spec;
+        $raw = pg_tr_field_get($props, $field);
+        $normalized = pg_tr_normalize($raw, $format);
+
+        if (($normalized !== '') && pg_tr_translatable($normalized)) {
+            $out[] = array($field, $normalized, $format);
+        }
+
+        if ($format === 'inline') {
+            foreach (pg_tr_html_attr_texts($raw) as $i => $attr) {
+                $out[] = array($field . '@' . $attr[2] . '#' . $i, $attr[0], 'text');
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -221,14 +257,8 @@ function pg_tr_walk_tree($node, &$segments, &$refs, &$position, $path = '0')
         // pass (includes/translate/content.php).
         $segments = array_merge($segments, pg_tr_custom_html_segments($props['html'], $node_id, $position));
     } else {
-        foreach (pg_tr_node_fields($type, $props) as $spec) {
-            list($field, $format) = $spec;
-            $raw = pg_tr_field_get($props, $field);
-            $normalized = pg_tr_normalize($raw, $format);
-
-            if (($normalized === '') || !pg_tr_translatable($normalized)) {
-                continue;
-            }
+        foreach (pg_tr_node_texts($type, $props) as $text) {
+            list($field, $normalized, $format) = $text;
 
             $segments[] = array(
                 'hash'     => pg_tr_hash($normalized, $format),
@@ -272,13 +302,8 @@ function pg_tr_node_segments($node)
 
     $segments = array();
 
-    foreach (pg_tr_node_fields($type, $props) as $spec) {
-        list($field, $format) = $spec;
-        $normalized = pg_tr_normalize(pg_tr_field_get($props, $field), $format);
-
-        if (($normalized === '') || !pg_tr_translatable($normalized)) {
-            continue;
-        }
+    foreach (pg_tr_node_texts($type, $props) as $text) {
+        list($field, $normalized, $format) = $text;
 
         $segments[] = array(
             'hash'   => pg_tr_hash($normalized, $format),

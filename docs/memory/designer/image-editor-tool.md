@@ -24,7 +24,7 @@ description: Bindable image editor (Pintura): save endpoint contract, write rule
 - New file: the input's `change` handler writes the node; the toast says the design must be saved too.
 - The image does not wait for the design to be saved: a file is an on-disk object, and tying a photo edit to an unrelated Save button is a way to lose the edit.
 
-## Test note
+## How is the editor tested in a browser?
 - Pintura does not see a synthetic `button.click()`: `doka:process` never fires. A real pointer click is needed.
 
 Related: docs/memory/core/json-endpoint-rules.md

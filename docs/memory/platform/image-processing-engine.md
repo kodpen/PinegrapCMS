@@ -15,7 +15,7 @@ description: Single image engine pg_process_image_file(): optimize vs resize job
 2. Write to a temp file + `rename()`. Direct overwrite leaves a half image if the disk fills, and `files.name` is that file's public address.
 3. Resolve EXIF orientation in pixels, not by tag. Rewriting the tag after strip only works if every reader obeys it (GD never wrote it). Symptom: "optimized, phone photo turned sideways". Both halves recompute the resize target from the upright picture; until PR #589 the Imagick half used getimagesize()'s sideways edges and squeezed a rotated phone photo (3000x4000 into 2400x1800).
 4. Convert color space only when it is CMYK. Unconditional `setColorspace(RGB)` labels instead of converting; sRGB labelled linear is washed out.
-5. Never touch animated GIFs (`pg_image_is_animated_gif()`): both libraries read frame 1 and write a still, unexplained on screen.
+5. Never touch animated images (`pg_image_is_animated()`): one frame would be kept. See platform/image-files-left-alone.md.
 6. Compute memory first (`pg_image_ensure_memory()`). GD holds two copies at 4 bytes/pixel while resizing (24 MP photo ≈ 200 MB); at a 128 MB limit that is a fatal error mid-request, a blank page on the upload path. Raise the limit for this request only, up to a 1 GB ceiling; `-1` would take down the whole box.
 7. The resize criterion is pixels, not bytes (`pg_image_can_be_resized()`): a low-quality 6000 px photo can be under 1 MB yet 6x too wide; a heavy 1200 px screenshot gains nothing from fewer pixels.
 8. The threshold cannot go below the target: `pg_image_settings()` clamps it, otherwise the button is offered for images that resizing would never change.

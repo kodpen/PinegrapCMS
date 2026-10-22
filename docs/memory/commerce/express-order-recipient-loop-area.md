@@ -13,7 +13,7 @@ description: Express Order recipient_loop_area node for multi-recipient carts: d
 3. A teal-band `Alıcı Listesi` node appears at the widget root; drag it anywhere, add input/heading/text inside.
 4. Form inputs use the standard eo_field bindings: `shipping_first_name`, `shipping_last_name`, `shipping_address_1`, `shipping_city`, `shipping_state`, `shipping_zip_code`, `shipping_country`, `shipping_phone_number`, `shipping_company`, `shipping_salutation`. The server renames them per recipient to `shipping_<rid>_*`.
 
-## Which functions.php helpers implement it?
+## Which helpers implement it? (`includes/fn/widgets_express_order.php`)
 - `_eo_tree_has_recipient_loop_area($tree)` detects it.
 - `_eo_split_recipient_loop_area($tree)` separates the template and leaves a `<!--pg-recipient-loop-slot-->` marker.
 - `_eo_compute_recipient_tokens($recipient, $index, $count, $lf)` builds the per-recipient token map.
@@ -32,13 +32,13 @@ description: Express Order recipient_loop_area node for multi-recipient carts: d
 - `has_shipping`: cart has at least one shippable item.
 - Wrap multi-recipient-only blocks with `_bindings.eo_visible_if = 'is_multi_recipient'`.
 
-## Backward compatibility rules
+## What keeps older pages working?
 - Pages without `recipient_loop_area` keep the old server-rendered `_eo_render_shipping_section` unchanged.
 - Default trees are unchanged: "Varsayılan Düzeni Yükle" still loads the single-recipient-oriented template.
 - Single recipient + `recipient_loop_area`: template renders once (loop count = 1).
 - `recipient_loop_area` together with a static `shipping_*` row: condition one with `eo_visible_if='is_multi_recipient'`, the other with `has_single_recipient`.
 
-## Structural rules
+## Which structural rules apply?
 - At most 1 `recipient_loop_area` per widget.
 - Droppable only into a `regionType='express_order'` system widget (canDrop guard).
 - Cannot nest another `recipient_loop_area` or a `loop_area` inside it.

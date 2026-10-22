@@ -229,9 +229,9 @@ if ($backup_settings_ready) {
         $backup_connect_flash = pg_connect_flash_take();
 
         if ($backup_connect_flash && ($backup_connect_flash['kind'] === 'error')) {
-            $liveform->add_error($backup_connect_flash['text']);
+            $liveform->add_error(h($backup_connect_flash['text']));
         } elseif ($backup_connect_flash) {
-            $liveform->add_notice($backup_connect_flash['text'] . ' ' . lang('Save the settings to start sending the backups there.'));
+            $liveform->add_notice(h($backup_connect_flash['text']) . ' ' . lang('Save the settings to start sending the backups there.'));
             $backup_remote_type_shown = $backup_connect_type;
         }
     }

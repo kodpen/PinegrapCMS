@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
+require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
 
 // A day count names a calendar day, so the site's time zone must not move it.
 function test_products_import_xlsx_date_ignores_the_time_zone()
@@ -124,4 +125,84 @@ function test_products_import_ods_to_csv()
 		unlink($path);
 		rmdir($dir);
 	}
+}
+
+// A price cell becomes minor units one way whatever wrote it: a number a
+// spreadsheet stored (a dot, any number of decimals) is read as a number, and
+// a typed figure with a comma, a symbol or grouping is read as the product
+// screen reads it. Anything else is not an amount.
+function test_products_import_price_cents()
+{
+	pg_assert_same(1250, pg_products_import_price_cents('12,50'), 'a Turkish decimal comma');
+	pg_assert_same(1500, pg_products_import_price_cents('₺15,00'), 'a currency symbol in front');
+	pg_assert_same(1500, pg_products_import_price_cents('15,00 TL'), 'a currency code after it');
+	pg_assert_same(123456, pg_products_import_price_cents('1.234,56'), 'Turkish grouping');
+	pg_assert_same(123456, pg_products_import_price_cents('1,234.56'), 'English grouping');
+	pg_assert_same(123456, pg_products_import_price_cents('1 234,56'), 'a space groups thousands');
+	pg_assert_same(123400, pg_products_import_price_cents('1,234'), 'a comma before three digits groups');
+	pg_assert_same(149999, pg_products_import_price_cents('1499.99'), 'a stored number');
+	pg_assert_same(179999, pg_products_import_price_cents('1799.988'), 'a stored number with three decimals is rounded, not grouped');
+	pg_assert_same(179999, pg_products_import_price_cents('1799.9879999999998'), 'a formula result with seventeen digits');
+	pg_assert_same(1500, pg_products_import_price_cents('15'), 'a whole number');
+	pg_assert_same(100000, pg_products_import_price_cents('1E+3'), 'a stored number in exponent form');
+	pg_assert_same(0, pg_products_import_price_cents('0'), 'zero');
+	pg_assert_same(1005, pg_products_import_price_cents(' 10.05 '), 'spaces around');
+	pg_assert_same(null, pg_products_import_price_cents('abc'), 'words');
+	pg_assert_same(null, pg_products_import_price_cents('12/50'), 'a slash');
+	pg_assert_same(null, pg_products_import_price_cents('-5'), 'a negative amount');
+	pg_assert_same(null, pg_products_import_price_cents(''), 'nothing');
+	pg_assert_same(null, pg_products_import_price_cents('₺'), 'a symbol alone');
+	pg_assert_same(null, pg_products_import_price_cents('99999999999'), 'more than the price column holds');
+	pg_assert_same(null, pg_products_import_price_cents('1234567890123456789,00'), 'too many digits to read exactly');
+	pg_assert_same(123400, pg_products_import_price_cents('1.234 TL'), 'with a currency code a dot before three digits groups');
+	pg_assert_same(2147483647, pg_products_import_price_cents('21.474.836,47'), 'the price column top, typed');
+	pg_assert_same(null, pg_products_import_price_cents('21.474.836,48'), 'one cent above the price column top, typed');
+	pg_assert_same(null, pg_products_import_price_cents('25.000.000,00'), 'a typed amount above the top is not wrapped by the int cast');
+}
+
+// The money cells of one row, read before the database is touched. The header
+// of an export: name, price, extra_shipping_cost, compare_at_price.
+function test_products_import_row_prices()
+{
+	$keys = array('price' => 1, 'extra_shipping_cost' => 2, 'compare_at_price' => 3);
+
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', ''), $keys),
+		'an empty compare-at cell leaves the price read'
+	);
+	pg_assert_same(
+		array('prices' => array(), 'refused' => true),
+		pg_products_import_row_prices(array('Kalem', 'abc', '0.00', ''), $keys),
+		'a price that is not an amount refuses the row'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', '-5'), $keys),
+		'a compare-at price starting with a minus sign is left out without refusing the row'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'compare_at_price' => 1500), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50', ' ', '15'), $keys),
+		'a cell of spaces alone is none'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem', '12,50'), $keys),
+		'a row shorter than the header'
+	);
+	pg_assert_same(
+		array('prices' => array(), 'refused' => false),
+		pg_products_import_row_prices(array('Kalem'), array()),
+		'a file without money columns'
+	);
+}
+
+// A column the file does not have, or a row shorter than the header, reads empty.
+function test_products_import_row_value()
+{
+	pg_assert_same('a', pg_products_import_row_value(array('a', 'b'), 0), 'a cell');
+	pg_assert_same('', pg_products_import_row_value(array('a'), 3), 'past the end of the row');
+	pg_assert_same('', pg_products_import_row_value(array('a'), null), 'no such column');
+	pg_assert_same('', pg_products_import_row_value(array('a'), false), 'array_search() found none');
 }
