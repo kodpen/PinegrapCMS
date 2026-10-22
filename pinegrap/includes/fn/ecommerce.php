@@ -2717,14 +2717,19 @@ function pg_order_charges_taxed()
 /**
  * Whether the checkout keeps the total of every rate on its orders one that
  * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
- * store invoices its orders in the ERP, charges tax, and its shipping and
- * surcharges hold tax (pg_order_charges_taxed()).
+ * store invoices its orders in the ERP, or sends them to Paraşüt from the
+ * order screen without it (parasut_order_buttons_on(); those invoices carry
+ * the ERP's lines, parasut_create_invoice()), charges tax, and its shipping
+ * and surcharges hold tax (pg_order_charges_taxed()).
  *
  * @return bool
  */
 function pg_order_charges_settle_rates()
 {
-    return defined('ERP_ENABLED') && ERP_ENABLED
+    $invoiced = (defined('ERP_ENABLED') && ERP_ENABLED)
+        || (function_exists('parasut_order_buttons_on') && parasut_order_buttons_on());
+
+    return $invoiced
         && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
         && pg_order_charges_taxed();
 }
@@ -9682,6 +9687,56 @@ function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
     return lang(array(
         'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.',
         'vars'   => array((int) $order_id, number_format($total / 100, 2, '.', ','), implode(', ', $parts))));
+}
+
+// Taking a cancelled order back to $status ('complete' or 'exported'): the
+// cancellation's bookkeeping (cancelled_at, cancelled_by, the reason) is
+// cleared, a refund flag that did not end in a refund is dropped, and the gift
+// cards the cancellation expired get their date back. The order screen's
+// Restore and the external API's status change both come here; a plain status
+// write kept the cancellation line and the refund banner on a completed order
+// and left its gift cards expired. Only a cancelled order moves: the status
+// UPDATE carries status = 'cancelled', so of two restores at once one does the
+// work. Returns false when the order was not cancelled (or is not there).
+// The caller records the audit row and announces the status change.
+function pg_order_restore_cancelled($order_id, $status = 'complete')
+{
+    $order_id = (int) $order_id;
+    $status   = ($status === 'exported') ? 'exported' : 'complete';
+
+    // Read before the bookkeeping is cleared: the gift cards step needs the
+    // order number and the time of the cancellation.
+    $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
+    $cancelled_order = db_item(
+        "SELECT order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+         FROM orders
+         WHERE id = '" . $order_id . "' AND status = 'cancelled'
+         LIMIT 1");
+    if (!is_array($cancelled_order)) {
+        return false;
+    }
+
+    db("UPDATE orders SET status = '" . $status . "' WHERE id = '" . $order_id . "' AND status = 'cancelled'");
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    // Columns are 2026.1.26 / 2026.1.27 additions, so both groups are probed.
+    // A refund that went through stays on the record.
+    if ($has_cancel_columns) {
+        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
+            WHERE id = '" . $order_id . "'");
+    }
+    if (_orders_has_refund_columns()) {
+        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
+            WHERE id = '" . $order_id . "' AND refund_status != 'refunded'");
+    }
+
+    pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
+
+    log_activity('Restored cancelled order #' . $order_id . ' to ' . $status . '.');
+
+    return true;
 }
 
 // Restoring a cancelled order: the gift cards it issued that the cancellation
