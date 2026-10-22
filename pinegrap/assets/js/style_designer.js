@@ -5723,6 +5723,13 @@ const StyleDesigner = (function () {
         // A wrapper drawn inline (span, link, button) around an element its own
         // classes make a block (span.d-block.ratio, a.btn.w-100).
         '.sd-wrap.sd-fx-block { display:block !important; width:auto !important; max-width:none !important; vertical-align:baseline; }',
+        // A wrapper between an absolutely placed element and the ancestor
+        // that places it on the page (its own wrapper is see-through,
+        // sd-fx-abs + sd-fx-flat): not positioned, so it does not place it,
+        // and no taller than its content (a holder of floating cards has no
+        // height on the page; the empty-wrapper minimum pushed the frame's
+        // bottom edge, and every bottom-0 card, below the picture).
+        '.sd-wrap.sd-fx-unpos { position:static !important; min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
         // carries an id, style or attribute keeps its box and fills the column.
@@ -8387,14 +8394,18 @@ const StyleDesigner = (function () {
     // A see-through wrapper's toolbar, note dot and issue badge are absolutely
     // positioned against whichever ancestor happens to be positioned, not
     // against the element; they are put at the element each time they show.
-    // A wrapper with a box of its own keeps the stylesheet positions.
+    // So are those of a wrapper that keeps its box but is not positioned
+    // (sd-fx-unpos), put at that box. A positioned wrapper with a box of its
+    // own keeps the stylesheet positions.
     function _sdPlaceWrapChrome(w) {
         if (!w || !canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
         var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
         if (!parts.length) return;
-        if (win.getComputedStyle(w).display !== 'contents') {
+        var wcs = win.getComputedStyle(w);
+        var flat = wcs.display === 'contents';
+        if (!flat && wcs.position !== 'static') {
             parts.forEach(function (p) {
                 if (!p._sdPlaced) return;
                 p.style.removeProperty('top');
@@ -8404,7 +8415,7 @@ const StyleDesigner = (function () {
             });
             return;
         }
-        var el = _sdWrapEl(w);
+        var el = flat ? _sdWrapEl(w) : w;
         if (!el) return;
         var er = el.getBoundingClientRect();
         if (!er.width && !er.height) return;
@@ -8542,10 +8553,54 @@ const StyleDesigner = (function () {
                 else if (!want && had) dropInline.push(w);
             });
         }
+        // An absolutely placed element (an overlay, a card floating over a
+        // picture, a badge on a button) is placed by its nearest positioned
+        // ancestor, and every boxed wrapper is position:relative: on the
+        // canvas the element was placed by its own wrapper, a 28px box in the
+        // flow, instead of by the frame that places it on the page. Its
+        // wrapper is drawn see-through, and the wrappers between it and that
+        // ancestor are not positioned, so the page's ancestor places it here
+        // too; their toolbars are put by _sdPlaceWrapChrome(). The element's
+        // own position is measured (a media query can make it absolute), not
+        // its classes. An element clipped to nothing (visually hidden text,
+        // the input of a .btn-check toggle) shows nowhere either way and keeps
+        // its wrapper box, the only place to pick it on the canvas.
+        var absWraps = [], unposWraps = [];
+        if (!_sdFxFlatOn()) {
+            canvasDoc.querySelectorAll('div.sd-wrap:not([data-sd-self])').forEach(function (w) {
+                if (w.style.display) return;
+                var el = _sdWrapEl(w);
+                if (!el) return;
+                var cs = win.getComputedStyle(el);
+                if (cs.position !== 'absolute' || cs.display === 'none' || cs.clip === 'rect(0px, 0px, 0px, 0px)') return;
+                absWraps.push(w);
+                for (var p = w.parentElement; p && p !== canvasDoc.body; p = p.parentElement) {
+                    if (p.matches('div.sd-wrap:not([data-sd-self])')) {
+                        // The page root keeps its box: it is the canvas-wide drop target.
+                        if (p.getAttribute('data-sd-type') === 'root') break;
+                        if (unposWraps.indexOf(p) === -1) unposWraps.push(p);
+                        continue;
+                    }
+                    if (win.getComputedStyle(p).position !== 'static') break;
+                }
+            });
+        }
         addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
         dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
         addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
         dropInline.forEach(function (w) { w.classList.remove('sd-fx-inline', 'sd-fx-flat'); });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-abs').forEach(function (w) {
+            if (absWraps.indexOf(w) !== -1) return;
+            w.classList.remove('sd-fx-abs');
+            if (!w.classList.contains('sd-fx-inline')) w.classList.remove('sd-fx-flat');
+        });
+        absWraps.forEach(function (w) {
+            if (!w.classList.contains('sd-fx-abs') || !w.classList.contains('sd-fx-flat')) w.classList.add('sd-fx-abs', 'sd-fx-flat');
+        });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-unpos').forEach(function (w) {
+            if (unposWraps.indexOf(w) === -1) w.classList.remove('sd-fx-unpos');
+        });
+        unposWraps.forEach(function (w) { if (!w.classList.contains('sd-fx-unpos')) w.classList.add('sd-fx-unpos'); });
         canvasDoc.querySelectorAll('.sd-loop-area').forEach(function (la) {
             _sdFxLoopArea(la, win);
             _sdFxGhostImageSizes(la);
