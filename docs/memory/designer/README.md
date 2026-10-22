@@ -52,6 +52,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: modal-xl from 992px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 992px.
 - designer-sticky-panel-layout.md: Designer left/right panel docking: docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, clamp width, one layer at a time, three-strip bottom panel, rail icons.
+- designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared tr.json key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
 - frontend-conventions-layers.md: Palette component vs system widget layers, what is production (legacy) vs development (system widget), and the five invariant principles for system widget work.
