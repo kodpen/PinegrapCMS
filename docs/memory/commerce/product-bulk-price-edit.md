@@ -10,7 +10,7 @@ description: The bulk product edit's price change (edit_products.php, pg_bulk_pr
 - Percentages round as before (`round((100 ± v) / 100 x price)`), so every change that was allowed gives the same price.
 
 ## Why must no writer store a negative price?
-- A negative product becomes a negative order line. Paraşüt refuses such a line outright (live, 2026-10-23): unit price, VAT and discount must be zero or more (erp-parasut-invoice-lines.md). The checkout also taxes it alone while the ERP groups it (erp-order-charges-vat.md).
+- A negative product becomes a negative order line. Paraşüt refuses such a line outright (live, 2026-10-23): unit price, VAT and discount must be zero or more. The checkout taxes it alone while the ERP groups it, and an ERP return of it refunds too much (erp/erp-negative-price-lines.md).
 - The other writers refuse or strip a minus sign: the product form (`pg_pb_price_to_cents()`), the API ("price cannot be negative"), variant price rules (floor at 0), the CSV import (since #1262, product-import-prices.md). Until #1296 the increase methods here were the one way left; prices stored before stay as they are.
 
 ## Tests
