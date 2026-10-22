@@ -1504,10 +1504,11 @@ function parasut_order_invoice_lines($order, $items, $charges_taxed = null, $cle
 
 /**
  * Why an order's lines (parasut_order_invoice_lines()) cannot go to Paraşüt,
- * or '' when they can: a rate Paraşüt does not take, a total its VAT cannot
- * come to (erp_edoc_parasut_total_refusal()), a line with no product to go
- * on. Asked before anything is sent, so that no buyer card is opened at
- * Paraşüt for an invoice that cannot follow.
+ * or '' when they can: a rate Paraşüt does not take, a line below zero
+ * (erp_edoc_parasut_negative_line_refusal()), a total its VAT cannot come to
+ * (erp_edoc_parasut_total_refusal()), a line with no product to go on. Asked
+ * before anything is sent, so that no buyer card is opened at Paraşüt for an
+ * invoice that cannot follow.
  *
  * @param array       $lines     erp_order_lines() lines
  * @param string      $currency  The order's currency, for the amounts in the reason
@@ -1535,6 +1536,12 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
                 implode(', ', array_map('erp_percent_text', $refused)),
             ),
         ));
+    }
+
+    $refusal = erp_edoc_parasut_negative_line_refusal($lines);
+
+    if ($refusal !== '') {
+        return $refusal;
     }
 
     $refusal = erp_edoc_parasut_total_refusal($lines, $currency);

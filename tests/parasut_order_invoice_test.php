@@ -228,6 +228,21 @@ function test_parasut_order_invoice_refusal_names_a_rate_parasut_does_not_take()
 	pg_assert_same('', parasut_order_invoice_refusal(array(array('tax_rate' => '1.000', 'line_total' => 1250, 'discount_amount' => 0, 'tax_total' => 13, 'product_id' => 0)), 'TRY', '9001'));
 }
 
+// An order line of a product priced below zero cannot go to Paraşüt (it
+// answers 422 for a negative unit price); the order is refused before
+// anything is sent, as the ERP's driver refuses its invoice.
+function test_parasut_order_invoice_refusal_names_a_line_below_zero()
+{
+	$goods = array('description' => 'Deri Kalem Kılıfı', 'tax_rate' => '20.000', 'unit_price' => 3995, 'line_total' => 3995, 'discount_amount' => 0, 'tax_total' => 799, 'product_id' => 0);
+	$credit = array('description' => 'Sadakat indirimi', 'tax_rate' => '20.000', 'unit_price' => -500, 'line_total' => -500, 'discount_amount' => 0, 'tax_total' => -100, 'product_id' => 0);
+
+	$refusal = parasut_order_invoice_refusal(array($goods, $credit), 'TRY', '9001');
+	pg_assert_same(erp_edoc_parasut_negative_line_refusal(array($goods, $credit)), $refusal);
+	pg_assert_contains('"Sadakat indirimi"', $refusal);
+
+	pg_assert_same('', parasut_order_invoice_refusal(array($goods), 'TRY', '9001'));
+}
+
 // On random orders as the checkout charges them - several rates, a discount,
 // shipping and a surcharge settled so that every rate's total is reachable,
 // sometimes a gift card - the lines as they go to Paraşüt come, by

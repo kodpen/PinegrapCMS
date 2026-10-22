@@ -534,6 +534,37 @@ function erp_edoc_parasut_vat_rate_refusal($lines)
 }
 
 /**
+ * Why an invoice cannot go to Paraşüt for a line below zero, or '' when every
+ * line is zero or more. Paraşüt takes no negative unit price, VAT or discount
+ * on a line (live: a -0.52 line was answered 422, "Birim fiyatı 0 sayısına
+ * eşit veya büyük olmalı"); an order line of a product priced below zero is
+ * one, and so is the share of an order discount such a line carries. The
+ * first such line is named.
+ *
+ * @param array $lines  erp_invoice_items rows or erp_order_lines() lines
+ *                      (description, unit_price, line_total, discount_amount)
+ * @return string
+ */
+function erp_edoc_parasut_negative_line_refusal($lines)
+{
+    foreach ((array) $lines as $line) {
+        if (!is_array($line)) {
+            continue;
+        }
+
+        if (((int) ($line['unit_price'] ?? 0) < 0) || ((int) ($line['line_total'] ?? 0) < 0)
+            || ((int) ($line['discount_amount'] ?? 0) < 0)) {
+            return lang(array(
+                'string' => 'Line "{var:1}" is below zero, and Paraşüt takes no line below zero: its price, discount and VAT must be zero or more. Nothing was sent to Paraşüt; a credit goes there as a discount on the other lines.',
+                'vars' => (string) ($line['description'] ?? ''),
+            ));
+        }
+    }
+
+    return '';
+}
+
+/**
  * The attributes a Paraşüt contact (its customer card) is written with.
  *
  * Paraşüt keeps one identity field, tax_number, for the VKN of a company
@@ -1428,12 +1459,18 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     // Refused before anything reaches Paraşüt, so that the buyer's card is
     // not opened there for an invoice that cannot follow: a rate it does
-    // not take, a total its VAT cannot come to, a line with no product to
-    // go on.
+    // not take, a line below zero, a total its VAT cannot come to, a line
+    // with no product to go on.
     $rate_refusal = erp_edoc_parasut_vat_rate_refusal($lines);
 
     if ($rate_refusal !== '') {
         return $fail($rate_refusal);
+    }
+
+    $negative_refusal = erp_edoc_parasut_negative_line_refusal($lines);
+
+    if ($negative_refusal !== '') {
+        return $fail($negative_refusal);
     }
 
     $total_refusal = erp_edoc_parasut_total_refusal($lines, (string) ($invoice['currency'] ?? ''));
