@@ -2029,7 +2029,7 @@ function _eo_payment_method_label_html($method)
 // — kept as separate small functions so the designer can place each piece
 // independently (radios in one section, card fields as real <input>s in
 // another, installment selector in a third).
-function _eo_render_payment_methods_only($lf)
+function _eo_render_payment_methods_only($lf, $hosted_card_html = '')
 {
     $methods = array();
     $cc_on   = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
@@ -2049,9 +2049,13 @@ function _eo_render_payment_methods_only($lf)
     }
     $sel = $lf ? (string)$lf->get_field_value('payment_method') : '';
     if (!in_array($sel, $methods, true)) $sel = $methods[0];
+    // The payment service's own card fields, moved into the tree's card
+    // section by their script (the tree's card inputs are then not used).
+    $hosted = in_array('Credit/Debit Card', $methods, true) ? (string) $hosted_card_html : '';
     if (count($methods) === 1) {
         return '<input type="hidden" name="payment_method" value="' . h($methods[0]) . '">'
-             . '<div class="text-muted small">' . _eo_payment_method_label_html($methods[0]) . '</div>';
+             . '<div class="text-muted small">' . _eo_payment_method_label_html($methods[0]) . '</div>'
+             . $hosted;
     }
     $html = '';
     foreach ($methods as $m) {
@@ -2121,7 +2125,58 @@ function _eo_render_payment_methods_only($lf)
           . '}else{syncAll();}'
           . 'window.addEventListener("pageshow",syncAll);'
           . '})();</script>';
-    return $html;
+    return $html . $hosted;
+}
+
+/**
+ * The card section when the card gateway's driver takes the card in the
+ * payment service's own fields (Stripe's Payment Element): the box the fields
+ * are drawn in, the hidden input the service's token is posted in, the
+ * service's script and the site's script that draws the fields
+ * (assets/js/payment_hosted.js). '' when the card inputs are the site's own.
+ *
+ * @param int $amount_cents what the card would be charged (surcharge included)
+ * @return string
+ */
+function _eo_hosted_card_html($amount_cents)
+{
+    $key = function_exists('pg_payment_hosted_card_driver') ? pg_payment_hosted_card_driver() : '';
+
+    if (($key === '') || ((int) $amount_cents <= 0)) {
+        return '';
+    }
+
+    $order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
+    $answer = pg_payment_call($key, 'prepare', array(is_array($order) ? $order : array(), (int) $amount_cents));
+    $client = $answer['client'];
+
+    // The service's script is loaded only from a host the driver lists for
+    // the site's security policy.
+    $definition = pg_payment_driver($key);
+    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
+    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
+    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, $definition['csp']['script-src'], true);
+
+    if (!$answer['success'] || !$script_allowed) {
+        return '<div class="alert alert-warning small mb-3" role="alert">' . h(lang('Card payments are not available right now. Please choose another payment method.')) . '</div>';
+    }
+
+    $config = array(
+        'driver'   => $key,
+        'client'   => $client,
+        'messages' => array(
+            'unavailable' => lang('Card payments are not available right now. Please choose another payment method.'),
+            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
+        ),
+    );
+
+    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
+         .   '<div class="pg-eo-hosted-card-element"></div>'
+         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
+         . '</div>'
+         . '<input type="hidden" name="payment_token" value="">'
+         . '<script src="' . h($script) . '"></script>'
+         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
 }
 
 function _eo_render_billing_country_select($lf)
@@ -2762,7 +2817,7 @@ function _eo_render_installment_box($lf)
     return $html;
 }
 
-function _eo_render_payment_methods($lf, $cfg)
+function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
 {
     $methods = array();
 
@@ -2860,6 +2915,15 @@ function _eo_render_payment_methods($lf, $cfg)
             $brand_pills_html .= '</div>';
         }
 
+        // Iyzipay's instalment selector, below the card inputs and in the
+        // script after them.
+        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
+        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
+
+        // The payment service's own fields take the card's place.
+        if ((string) $hosted_card_html !== '') {
+            $html .= $hosted_card_html . '</div>';
+        } else {
         $html .=
             $brand_pills_html
           . '<div class="row">'
@@ -2889,8 +2953,6 @@ function _eo_render_payment_methods($lf, $cfg)
         // posts alongside the form. submit_order.php's existing Iyzipay
         // pipeline reads `installment` via $liveform->get_field_value() —
         // no server-side wiring needed beyond this.
-        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
-        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
         if ($is_iyzipay_gateway && $max_installments >= 2) {
             $saved_inst = $lf ? (int)$lf->get_field_value('installment') : 0;
             if ($saved_inst < 1) $saved_inst = 1;
@@ -2906,6 +2968,7 @@ function _eo_render_payment_methods($lf, $cfg)
         }
 
         $html .= '</div>';
+        }
 
         // Tiny radio→cc-fields toggle JS. Idempotent global init so multiple
         // express order widgets on a page register only once. Same script

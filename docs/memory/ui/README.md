@@ -28,6 +28,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - money-field-input-mask.md: Panel money fields with the currency input mask (data-inputmask-alias currency): fill them in machine format, read them with pg_normalize_amount(), require them; the gift card balance symptom
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .dropdown-menu: Bootstrap's capture-phase keydown handler throws on it, so its keys are taken on the window; closing on scroll and a long press
+- panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-save-shortcut.md: The panel's Ctrl+S shortcut (backend.src.js) and Return in a text field: which form and button each submits, disable_shortcut, a key a dialog handled, buttons on a form of their own
