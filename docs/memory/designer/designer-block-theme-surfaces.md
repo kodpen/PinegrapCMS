@@ -27,4 +27,4 @@ description: How a ready-made designer block writes a dark navbar, a hero on a p
 - Over photos (`image-carousel`) the caption sits on `pg-shade-bottom` with `data-bs-theme="dark"` and `text-body` across the slide (Bootstrap's dark caption is black). `pg-carousel-photo` keeps the controls and indicators at Bootstrap's light-mode white in a dark design: black indicators on the scrim measured 1.2:1. Its `:not(.carousel-dark)` lets Carousel Options > Dark still switch them.
 
 ## What keeps this from coming back?
-- `tests/designer_blocks_test.php` fails on a fixed colour class (list in `designer-block-theme-colours.md`) or a `light`/`dark` button variant in `createFromPalette()` or `makeCarouselSlide()`.
+- `tests/designer_blocks_test.php` fails on a fixed colour class (list in `designer-block-theme-colours.md`, also spelt across a `+`), a `light`/`dark` button variant in `createFromPalette()` or `makeCarouselSlide()`, or an `image-carousel` without `pg-carousel-photo`.

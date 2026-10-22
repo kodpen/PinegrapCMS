@@ -14,8 +14,10 @@
  * The markup of every block and Components-tab item follows the design: no
  * builder writes a fixed colour class that ignores the colour palette and
  * dark mode; no builder carousel plays by itself; every component type a
- * builder writes exists; every block form can be submitted; and every field
- * a builder writes is named by a label (or, outside a form, an aria-label).
+ * builder writes exists; every block form can be submitted; every field a
+ * builder writes is named by a label (or, outside a form, an aria-label); and
+ * no button, label, span or heading a builder writes holds a paragraph or a
+ * block.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -377,6 +379,66 @@ function _test_blocks_all_builder_strings()
 	return $out;
 }
 
+// Class names a builder spells across a '+': a literal ending in a partial
+// class ('py-5 bg-') joined to the operand right after the '+', a literal
+// ('dark') or a parenthesised expression whose literals each complete it
+// ((cond ? 'dark' : 'light')), gives 'bg-dark'. A variable operand
+// ('bg-' + tone) gives nothing. $src is JavaScript; strings and comments are
+// skipped as _test_blocks_scan() skips them.
+function _test_blocks_concat_classes($src)
+{
+	$items = array();
+	$len = strlen($src);
+	for ($i = 0; $i < $len; $i++) {
+		$c = $src[$i];
+		if ($c === "'" || $c === '"' || $c === '`') {
+			$start = $i + 1;
+			for ($i++; $i < $len && $src[$i] !== $c; $i++) {
+				if ($src[$i] === '\\') {
+					$i++;
+				}
+			}
+			$items[] = array('s', substr($src, $start, $i - $start));
+		} elseif ($c === '/' && $i + 1 < $len && $src[$i + 1] === '/') {
+			$nl = strpos($src, "\n", $i);
+			$i = $nl === false ? $len : $nl;
+		} elseif ($c === '/' && $i + 1 < $len && $src[$i + 1] === '*') {
+			$close = strpos($src, '*/', $i + 2);
+			$i = $close === false ? $len : $close + 1;
+		} elseif (!ctype_space($c)) {
+			$items[] = array('c', $c);
+		}
+	}
+	$out = array();
+	$count = count($items);
+	foreach ($items as $k => $item) {
+		if ($item[0] !== 's' || !preg_match('/(?:^|\s)([a-z0-9-]*-)$/', $item[1], $head)
+			|| !isset($items[$k + 2]) || $items[$k + 1] !== array('c', '+')) {
+			continue;
+		}
+		$operand = array();
+		if ($items[$k + 2][0] === 's') {
+			$operand[] = $items[$k + 2][1];
+		} elseif ($items[$k + 2] === array('c', '(')) {
+			for ($j = $k + 3, $depth = 1; $j < $count && $depth > 0; $j++) {
+				if ($items[$j] === array('c', '(')) {
+					$depth++;
+				} elseif ($items[$j] === array('c', ')')) {
+					$depth--;
+				} elseif ($items[$j][0] === 's') {
+					$operand[] = $items[$j][1];
+				}
+			}
+		}
+		foreach ($operand as $str) {
+			if (preg_match('/^[a-z0-9-]+/', $str, $tail)) {
+				$out[] = $head[1] . $tail[0];
+			}
+		}
+	}
+	return $out;
+}
+
 // A block follows the design's colour palette and dark mode only through
 // classes that read the theme variables. These ones are fixed colours:
 // bg-dark stays dark in a light design, bg-white stays white in a dark one,
@@ -392,8 +454,25 @@ function test_designer_blocks_use_theme_driven_colours()
 		'text-light', 'text-bg-light', 'text-bg-dark');
 	$strings = _test_blocks_all_builder_strings();
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
+
+	$js = _test_blocks_js();
+	$at = strpos($js, 'function makeCarouselSlide(');
+	$bodies = array(
+		'createFromPalette()' => _test_blocks_cfp_range(),
+		'makeCarouselSlide()' => $at === false ? null : _test_blocks_block($at),
+	);
+	pg_assert_same(array('bg-dark', 'text-white', 'text-body'),
+		_test_blocks_concat_classes("a: 'py-5 bg-' + 'dark', b: 'text-' + (c ? 'white' : \"body\"), d: 'bg-' + tone + '-subtle' // 'bg-' + 'light'"),
+		"classes spelt across a '+' are read");
+	$joined = array();
+	foreach ($bodies as $block) {
+		if ($block) {
+			$joined = array_merge($joined, _test_blocks_concat_classes(substr($js, $block[0], $block[1] - $block[0])));
+		}
+	}
+
 	$found = array();
-	foreach ($strings as $str) {
+	foreach (array_merge($strings, $joined) as $str) {
 		foreach (preg_split('/\s+/', $str) as $token) {
 			if (in_array($token, $fixed, true)) {
 				$found[$token] = true;
@@ -402,13 +481,7 @@ function test_designer_blocks_use_theme_driven_colours()
 	}
 	pg_assert_same(array(), array_keys($found), 'fixed colour classes written by createFromPalette() or makeCarouselSlide()');
 
-	$js = _test_blocks_js();
-	$at = strpos($js, 'function makeCarouselSlide(');
 	$read = 0;
-	$bodies = array(
-		'createFromPalette()' => _test_blocks_cfp_range(),
-		'makeCarouselSlide()' => $at === false ? null : _test_blocks_block($at),
-	);
 	foreach ($bodies as $name => $block) {
 		if (!$block) {
 			continue;
@@ -444,6 +517,17 @@ function test_designer_blocks_added_slide_copies_the_last_slide()
 	$body = $block ? substr($js, $block[0], $block[1] - $block[0]) : '';
 	pg_assert_contains('copyCarouselSlide(', $body, 'Add slide builds the slide with copyCarouselSlide()');
 	pg_assert_false(strpos($body, 'makeCarouselSlide(') !== false, 'Add slide does not draw a fresh light surface');
+
+	// The copy must not repeat an element id on the page, and only the
+	// first slide and indicator are the current ones.
+	$at = strpos($js, 'function _sdCopyCarouselNode(');
+	$block = $at === false ? null : _test_blocks_block($at);
+	pg_assert_true($block !== null, '_sdCopyCarouselNode() is found');
+	$copy = $block ? preg_replace('/\\s+/', ' ', substr($js, $block[0], $block[1] - $block[0])) : '';
+	pg_assert_contains('delete p.id;', $copy, 'the copy drops every id prop');
+	pg_assert_contains("return a.name !== 'id';", $copy, 'the copy drops every id attribute');
+	pg_assert_contains("return c && c !== 'active';", $copy, 'the copied slide and indicator are not active');
+	pg_assert_contains("return a.name !== 'aria-current';", $copy, 'the copied indicator carries no aria-current');
 }
 
 // Keys of the COMPONENTS registry: the component types the emitter can draw.
@@ -533,17 +617,6 @@ function _test_blocks_semantic_calls($tags)
 	return $out;
 }
 
-// Source of every createNode('semantic', { tag: 'form', … }) call written by
-// createFromPalette(), keyed by its line number.
-function _test_blocks_form_calls()
-{
-	$out = array();
-	foreach (_test_blocks_semantic_calls(array('form')) as $call) {
-		$out[$call['line']] = $call['src'];
-	}
-	return $out;
-}
-
 // The JavaScript expression a node gives as its id: an 'id' entry of its
 // _attrs, or its id prop. Whitespace is removed so that the same expression
 // written twice compares equal; '' when the node has no id.
@@ -577,26 +650,99 @@ function _test_blocks_scope_of($offset)
 
 // A Button component is an <a href="#"> unless it says otherwise, and a form
 // whose only button is a link cannot be sent: every Button component inside a
-// block form is a <button>, and every block form has a submit button.
+// block form is a <button>, and every block form has a submit button. The
+// submit is a Button component whose own btnType is 'submit' (an _attrs type
+// beside btnType 'button' is printed second and ignored), or a semantic
+// <button>/<input> whose _attrs type is submit.
 function test_designer_blocks_forms_can_be_submitted()
 {
-	$forms = _test_blocks_form_calls();
+	$forms = _test_blocks_semantic_calls(array('form'));
+	$controls = _test_blocks_semantic_calls(array('button', 'input'));
 	pg_assert_true(count($forms) > 10, 'the forms of createFromPalette() are read');
 	$links = array();
 	$no_submit = array();
-	foreach ($forms as $line => $src) {
+	foreach ($forms as $form) {
+		$src = $form['src'];
+		$line = $form['line'];
+		$submits = 0;
 		preg_match_all("/componentType:\\s*'btn'[^}]*\\}/", $src, $btns);
 		foreach ($btns[0] as $btn) {
 			if (!preg_match("/btnElement:\\s*'(button|input)'/", $btn)) {
 				$links[] = 'line ' . $line;
+			} elseif (preg_match("/btnType:\\s*'submit'/", $btn)) {
+				$submits++;
 			}
 		}
-		if (!preg_match("/btnType:\\s*'submit'|name:\\s*'type',\\s*value:\\s*'submit'/", $src)) {
+		foreach ($controls as $control) {
+			if ($control['start'] > $form['start'] && $control['start'] < $form['end']
+				&& preg_match("/^[^\\[]*_attrs:\\s*\\[[^\\]]*name:\\s*'type',\\s*value:\\s*'submit'/", $control['src'])) {
+				$submits++;
+			}
+		}
+		if ($submits === 0) {
 			$no_submit[] = 'line ' . $line;
 		}
 	}
 	pg_assert_same(array(), array_values(array_unique($links)), 'block forms holding a Button component drawn as a link');
 	pg_assert_same(array(), $no_submit, 'block forms without a submit button');
+}
+
+// A <button>, <label>, <span> or heading holds phrasing content only: a
+// paragraph or a <div> inside one is invalid HTML (image-carousel's control
+// labels were a <p> in a visually-hidden <span> in the <button>). Checked on
+// the nodes a builder writes with createNode('semantic', …) itself.
+function test_designer_blocks_phrasing_holds_no_blocks()
+{
+	$calls = _test_blocks_semantic_calls(array('button', 'label', 'span', 'small', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'));
+	pg_assert_true(count($calls) > 50, 'the inline nodes of createFromPalette() are read');
+	$flow = "/contentType:\\s*'paragraph'|createNode\\('(?:semantic',\\s*\\{\\s*tag:\\s*'(?:div|p|ul|ol|section|form|table|blockquote|figure|nav)'|container'|row'|col')|_bk(?:P|Div|Row|Col)\\(/";
+	$found = array();
+	foreach ($calls as $call) {
+		// Children start at the first '[' after the props object; the
+		// node's own _attrs list is skipped.
+		$props_end = _test_blocks_props_end($call['src']);
+		$kids = $props_end < 0 ? '' : substr($call['src'], $props_end);
+		if (preg_match($flow, $kids)) {
+			$found[] = $call['tag'] . ' at line ' . $call['line'];
+		}
+	}
+	pg_assert_same(array(), $found, 'inline nodes of createFromPalette() holding a paragraph or a block');
+
+	// image-carousel's controls and indicators stay white over its photos and
+	// caption scrim in a dark design (Bootstrap paints them black there),
+	// unless Carousel Options > Dark asks for .carousel-dark.
+	$rules = _test_blocks_css_rules();
+	$needs = _test_blocks_css_needs();
+	pg_assert_true(in_array('pg-carousel-photo', _test_blocks_builder_classes('image-carousel'), true), 'image-carousel writes pg-carousel-photo');
+	pg_assert_true(isset($needs['image-carousel']) && in_array('pg-carousel-photo', $needs['image-carousel'], true), 'image-carousel needs the pg-carousel-photo rule');
+	pg_assert_contains('.pg-carousel-photo:not(.carousel-dark)', isset($rules['pg-carousel-photo']) ? $rules['pg-carousel-photo'] : '', 'pg-carousel-photo yields to Carousel Options > Dark');
+}
+
+// Offset in a createNode(…) call's source just after its props object (the
+// '}' closing the first '{'), or -1.
+function _test_blocks_props_end($src)
+{
+	$open = strpos($src, '{');
+	if ($open === false) {
+		return -1;
+	}
+	$depth = 0;
+	$len = strlen($src);
+	for ($i = $open; $i < $len; $i++) {
+		$c = $src[$i];
+		if ($c === "'" || $c === '"' || $c === '`') {
+			for ($i++; $i < $len && $src[$i] !== $c; $i++) {
+				if ($src[$i] === '\\') {
+					$i++;
+				}
+			}
+		} elseif ($c === '{') {
+			$depth++;
+		} elseif ($c === '}' && --$depth === 0) {
+			return $i + 1;
+		}
+	}
+	return -1;
 }
 
 // A field without a name is read aloud as "edit text" (WCAG 1.3.1, 4.1.2) and
@@ -665,10 +811,12 @@ function test_designer_blocks_fields_have_labels()
 
 	// A label without text names its field with nothing: some node of the
 	// label (the label itself or a span inside it, written as a text prop or
-	// with the _bkH(tag, text) helper) carries a non-empty text.
+	// with the _bkH(tag, text) helper) carries a non-empty text; '' and
+	// _sdT('') are empty.
 	$empty = array();
+	$none = "(?!''|\"\"|_sdT\\(\\s*(?:''|\"\")\\s*\\))";
 	foreach ($labels as $label) {
-		if (!preg_match("/\\btext:\\s*(?!''|\"\")[^\\s,}]|_bkH\\('[a-z0-9]+',\\s*(?!''|\"\")[^\\s,)]/", $label['src'])) {
+		if (!preg_match("/\\btext:\\s*" . $none . "[^\\s,}]|_bkH\\('[a-z0-9]+',\\s*" . $none . "[^\\s,)]/", $label['src'])) {
 			$empty[] = 'line ' . $label['line'];
 		}
 	}
