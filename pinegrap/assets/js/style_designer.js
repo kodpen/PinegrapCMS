@@ -9609,6 +9609,7 @@ const StyleDesigner = (function () {
         // re-renders since renderCanvas() tears down and rebuilds the body on every change.
         _reExecuteCanvasScripts(canvasDoc.body);
         _sdThemeSwitchers();
+        _sdScrollers();
         _initCanvasTooltips();
         // Restore tab activation captured before the DOM wipe — keeps the
         // designer on the tab they were editing, not always tab 1.
@@ -9669,6 +9670,23 @@ const StyleDesigner = (function () {
         var scr = canvasDoc.createElement('script');
         scr.id = 'pg-theme-switcher-js';
         try { scr.src = new URL('assets/js/pg_theme_switcher.js', document.baseURI).href; } catch (e) { return; }
+        canvasDoc.head.appendChild(scr);
+    }
+
+    // Previous / next buttons of a sideways row (data-pg-scroller) work on
+    // the canvas as on the page: the same file, loaded into the frame once
+    // and bound again after every render. pgScrollerEditing tells it to mark
+    // a button at the row's end with aria-disabled only: a disabled button
+    // takes no click, and the operator still selects it to edit it.
+    function _sdScrollers() {
+        if (!canvasDoc || !canvasDoc.querySelector('[data-pg-scroller]')) return;
+        var win = canvasDoc.defaultView;
+        if (win && typeof win.pgScrollerBind === 'function') { win.pgScrollerBind(canvasDoc); return; }
+        if (canvasDoc.getElementById('pg-scroller-js') || !canvasDoc.head) return;
+        if (win) win.pgScrollerEditing = true;
+        var scr = canvasDoc.createElement('script');
+        scr.id = 'pg-scroller-js';
+        try { scr.src = new URL('assets/js/pg_scroller.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
     }
 
@@ -18986,8 +19004,27 @@ const StyleDesigner = (function () {
                         ]);
                     }
 
-                    // Scroller: Snap Cards — a sideways row of six story cards that snaps card by card, with a scroll hint in the header
+                    // Scroller: Snap Cards — a sideways row of six story cards that snaps card by card, with previous / next buttons in the header
                     if (ctype === 'scroller-cards') {
+                        // The buttons carry no script: the row's data-pg-scroller
+                        // marker brings assets/js/pg_scroller.js to the page
+                        // (pg_scroller_inject()), the preview and the canvas
+                        // (_sdScrollers()). A button finds its row through
+                        // aria-controls, or as the nearest marked row around it.
+                        var _crScRowId = _bkUid('scroller');
+                        // The chevrons point the reading direction: on an RTL
+                        // page pg-flip-rtl mirrors them, as the buttons swap sides.
+                        var _crScBtn = function (step, icon, label, name) {
+                            return _bkTag('button', 'btn btn-outline-secondary rounded-circle', name, [
+                                createNode('content', { contentType: 'icon', iconName: icon, cssClass: 'pg-flip-rtl', fontSize: '',
+                                    _attrs: [{ name: 'aria-hidden', value: 'true' }] })
+                            ], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'data-pg-scroll', value: step },
+                                { name: 'aria-controls',  value: _crScRowId },
+                                { name: 'aria-label',     value: label }
+                            ]);
+                        };
                         var _crScCard = function (n, seed, tag, title, body) {
                             return _bkDiv('col-10 col-sm-6 col-lg-4 pg-snap-item', _sdT('Card {var}', n), [
                                 _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Story Card'), [
@@ -19001,27 +19038,27 @@ const StyleDesigner = (function () {
                                 ])
                             ]);
                         };
+                        var _crScRow = _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
+                            _crScCard(1, 'cr-scroller-vertex',    _sdT('Design'),      _sdT('Vertex halved its review rounds'),        _sdT('Comments on the work itself replaced long email threads.')),
+                            _crScCard(2, 'cr-scroller-techbase',  _sdT('Engineering'), _sdT('TechBase ships every Friday'),            _sdT('Boards and automations keep forty engineers in step.')),
+                            _crScCard(3, 'cr-scroller-startmate', _sdT('Startup'),     _sdT('StartMate launched in six weeks'),        _sdT('From the first sketch to the first customer on one board.')),
+                            _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
+                            _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
+                            _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
+                        ], _bkRegion(_sdT('Customer stories')).concat([{ name: 'data-pg-scroller', value: 'item' }]));
+                        _crScRow.props.id = _crScRowId;
                         return _bkSection('py-5', _sdT('Scroller (Snap Cards)'), [
                             _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', _sdT('Section Header'), [
                                 _bkDiv('', _sdT('Header Copy'), [
                                     _bkH('h2', _sdT('Stories From Our Customers'), 'fw-bold mb-2'),
                                     _bkP(_sdT('How teams of every size use ACME to get more done.'), 'mb-0 lead text-body-secondary')
                                 ]),
-                                _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
-                                    _bkH('span', _sdT('Scroll sideways')),
-                                    // Two-headed: the row scrolls both ways, and a
-                                    // one-way arrow points the wrong way on RTL pages.
-                                    _bkIcon('bi-arrow-left-right')
+                                _bkDiv('d-flex gap-2', _sdT('Scroller Controls'), [
+                                    _crScBtn('prev', 'bi-chevron-left',  _sdT('Previous'), _sdT('Prev')),
+                                    _crScBtn('next', 'bi-chevron-right', _sdT('Next'),     _sdT('Next'))
                                 ])
                             ]),
-                            _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
-                                _crScCard(1, 'cr-scroller-vertex',    _sdT('Design'),      _sdT('Vertex halved its review rounds'),        _sdT('Comments on the work itself replaced long email threads.')),
-                                _crScCard(2, 'cr-scroller-techbase',  _sdT('Engineering'), _sdT('TechBase ships every Friday'),            _sdT('Boards and automations keep forty engineers in step.')),
-                                _crScCard(3, 'cr-scroller-startmate', _sdT('Startup'),     _sdT('StartMate launched in six weeks'),        _sdT('From the first sketch to the first customer on one board.')),
-                                _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
-                                _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
-                                _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
-                            ], _bkRegion(_sdT('Customer stories')))
+                            _crScRow
                         ]);
                     }
 
@@ -52309,6 +52346,11 @@ const StyleDesigner = (function () {
         if (_pvJsonJs) _pvJsInject += _pvJsonJs;
         if (_pvInlineJs.trim()) _pvJsInject += '    <script id="pg-page-js">\n' + _pvInlineJs + '    <\/script>\n';
         if (_pvModuleJs) _pvJsInject += _pvModuleJs;
+        // The platform scripts the page's markup asks for, as on the front
+        // end; deferred, so they run after the framework's script.
+        _sdPageScriptFiles(html).forEach(function (src) {
+            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+        });
         html = html.replace('</body>',
             _pvJsInject +
             (_pvFw.js
@@ -52322,6 +52364,25 @@ const StyleDesigner = (function () {
             '</body>');
 
         return html;
+    }
+
+    // Platform scripts a visitor page gets when its markup holds their
+    // marker. The server's twin adds the same file to the published page:
+    // pg_scroller_inject() (its expression is pg_scroller_pattern()). A new row
+    // here needs its server step too.
+    var _SD_PAGE_SCRIPTS = [
+        { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' }
+    ];
+
+    // The absolute addresses of the platform scripts `markup` asks for (the
+    // blob preview has no base of its own for them).
+    function _sdPageScriptFiles(markup) {
+        var out = [];
+        _SD_PAGE_SCRIPTS.forEach(function (row) {
+            if (!row.test.test(markup)) return;
+            try { out.push(new URL(row.file, document.baseURI).href); } catch (e) {}
+        });
+        return out;
     }
 
     // The request body of designer/preview_widgets for the system widgets
@@ -58764,6 +58825,10 @@ const StyleDesigner = (function () {
         // A sideways card row that stops on a card edge after each swipe.
         'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
         'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
+        // A chevron that points the reading direction: mirrored on an RTL
+        // page, where previous / next controls swap sides. An <i> is inline,
+        // which a transform skips.
+        'pg-flip-rtl':     '[dir="rtl"] .pg-flip-rtl { display: inline-block; transform: scaleX(-1); }',
 
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
@@ -58817,7 +58882,7 @@ const StyleDesigner = (function () {
         'showcase-tabs':        ['pg-ratio-16x9'],
         'quote-spotlight':      ['pg-circle-160'],
         'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt'],
-        'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item'],
+        'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item', 'pg-flip-rtl'],
 
         'events-cards':         ['pg-ratio-16x9']
     };

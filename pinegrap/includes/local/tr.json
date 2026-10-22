@@ -25452,5 +25452,6 @@
     "Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.": "Adresten gelen bir değer eşittir ile karşılaştırılıp kayıt bulduğunda kullanılır. {value} değerin yerine geçer, ör. {value} yazıları. Boşsa yalnız değer.",
     "Value from the page address (when is equal to finds records)": "Sayfa adresindeki değer (eşittir kayıt bulduğunda)",
     "A value from the page address, compared with is equal to, finds records": "Sayfa adresindeki değer eşittir ile karşılaştırıldı ve kayıt buldu",
-    "No value from the page address is applied": "Sayfa adresinden bir değer uygulanmadı"
+    "No value from the page address is applied": "Sayfa adresinden bir değer uygulanmadı",
+    "Scroller Controls": "Kaydırıcı Kontrolleri"
 }
