@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: steps 1-2 done, #1192, #1194): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 4 done, #1192, #1194, #1197): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -18,7 +18,7 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1-2 done, #119
 1b. The 7 built-in templates carry a welcome and a reset e-mail page.
 2. Done (#1194): record visibility: a record page shows only records its filters allow; its RSS feed and SEO output follow the same filters (drafts leaked).
 3. Rich text in designer form textareas (verify; fix if broken).
-4. Site search finds designer form records (verify after an index update; fix if needed).
+4. Done (#1197): site search finds designer form records (verify after an index update; fix if needed).
 5. List filter value read from a URL parameter (author, tag, section archives).
 6. Lists ordered by stored view counts (most read).
 7. News template (`pinegrap-news`), thumbnail, User Styles, installer preview prints template CSS.

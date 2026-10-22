@@ -3647,11 +3647,23 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
         return null;
     }
 
-    if (array_key_exists($page_id, $cache)) {
-        return $cache[$page_id];
+    // Keyed by the request's item address as well: the search index draws
+    // one record after another on the same page in one process.
+    $cache_key = $page_id;
+
+    foreach (array('page', 'r', 'cat', 'pid') as $cache_name) {
+        $cache_key .= '|' . ((isset($_GET[$cache_name]) && is_scalar($_GET[$cache_name])) ? (string) $_GET[$cache_name] : '');
     }
 
-    $cache[$page_id] = null;
+    if (array_key_exists($cache_key, $cache)) {
+        return $cache[$cache_key];
+    }
+
+    if (count($cache) >= 256) {
+        $cache = array();
+    }
+
+    $cache[$cache_key] = null;
 
     // The segment after the page name, decoded the way the widgets decode it.
     $full = isset($_GET['page']) ? (string) $_GET['page'] : '';
@@ -3723,7 +3735,7 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
             return null;
         }
 
-        return $cache[$page_id] = $home
+        return $cache[$cache_key] = $home
             ? $group_item($group, PATH, '?cat=' . rawurlencode((string) $group['address_name']))
             : $group_item($group, $base . '/' . encode_url_path((string) $group['address_name']), '');
     }
@@ -3749,7 +3761,7 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
             $group = db_item("SELECT $group_columns FROM product_groups
                               WHERE address_name = '" . e($segment) . "' AND enabled = 1 AND display_type = 'select' LIMIT 1");
 
-            return $cache[$page_id] = is_array($group)
+            return $cache[$cache_key] = is_array($group)
                 ? $group_item($group, $base . '/' . encode_url_path((string) $group['address_name']), '')
                 : null;
         }
@@ -3769,7 +3781,7 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
         // A product without an address is reached by its id alone.
         $address = (string) $product['address_name'];
 
-        return $cache[$page_id] = array(
+        return $cache[$cache_key] = array(
             'type'        => 'product',
             'path'        => ($address !== '') ? $base . '/' . encode_url_path($address) : $base,
             'query'       => ($address !== '') ? '' : '?pid=' . (int) $product['id'],
@@ -3788,7 +3800,7 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
             $address = (function_exists('pg_sw_form_pretty_urls') && pg_sw_form_pretty_urls($context['custom_form_page_id']))
                 ? trim((string) $context['form']['address_name']) : '';
 
-            return $cache[$page_id] = array(
+            return $cache[$cache_key] = array(
                 'type'        => 'record',
                 'path'        => ($address !== '') ? $base . '/' . encode_url_path($address) : $base,
                 'query'       => ($address !== '') ? '' : '?r=' . rawurlencode((string) $context['form']['reference_code']),

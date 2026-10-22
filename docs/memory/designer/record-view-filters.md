@@ -12,7 +12,7 @@ description: form_item_view filters (opt-in record visibility, e.g. Status = Pub
 - Renderer: an outside `?r=` takes the not-found path (404 + noindex).
 - `pg_sw_record_comment_context()['visible']`: title, description, OG, canonical, JSON-LD, comments, watchers, `seo.php` breadcrumbs.
 - `pg_sw_route_record_address()`: a filtered-out name leaves `?r=` empty; no 301 from a list page to it.
-- Feeds: the record page applies its own; a list's feed and the sitemap use `pg_sw_list_record_filter_clause()` (detail page's filters, then the list's).
+- Feeds: the record page applies its own; a list's feed, the sitemap and the search index (`designer-records-site-search.md`) use `pg_sw_list_record_filter_clause()` (detail page's filters, then the list's).
 - Canvas preview and the SEO pass (`pg_seo_widget_record_query()`): the newest record that passes; none → preview shows not-found, SEO skips the page.
 - Editor: Filters section in the record-view panel (`_swFormListFiltersHtml()` with a note, same `.sd-sw-filter` handlers). An unknown field or operator shows "(incompatible — choose again)".
 

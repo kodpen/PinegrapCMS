@@ -1474,6 +1474,14 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 function pg_sw_submitted_form_visible($form, $access_control, $detail_page_id = 0)
 {
     if (!is_array($form) || empty($form['id'])) return false;
+    // The search index stores what an anonymous visitor reads, even when an
+    // editor's click on the panel button runs it with their session's
+    // sign-in and role: another record view on the page that only signed-in
+    // visitors or the submitter may see then counts the record as missing,
+    // as it does in a command line run.
+    if (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true) {
+        return $access_control !== 'logged_in' && $access_control !== 'submitter_only';
+    }
     $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN === true;
     if ($access_control === 'logged_in') return $signed_in;
     if ($access_control !== 'submitter_only') return true;
@@ -1625,6 +1633,8 @@ function pg_sw_record_passes_filters($custom_form_page_id, $filters, $form_id, $
                {$clause['where']}"
         ) > 0;
     }
+    // The search index asks once per record of the site in one process.
+    if (count($cache) >= 256) $cache = array();
     return $cache[$key] = $passes;
 }
 
@@ -1657,7 +1667,12 @@ function pg_sw_record_comment_context($page_id, $form_id = 0, $email = false)
     $email   = pg_sw_record_filter_bypass($email, $form_id);
     if ($page_id <= 0) return null;
     $key = $page_id . ':' . $form_id . ($email ? ':email' : '');
+    // Without an id the record is the one ?r= names; the search index draws
+    // one record after another on the same page in one process.
+    if ($form_id <= 0) $key .= ':' . ((isset($_GET['r']) && is_scalar($_GET['r'])) ? (string)$_GET['r'] : '');
     if (array_key_exists($key, $cache)) return $cache[$key];
+    // The search index asks once per record of the site in one process.
+    if (count($cache) >= 256) $cache = array();
     $cache[$key] = null;
 
     $widget = pg_sw_page_widget($page_id, 'form_item_view');
@@ -4483,6 +4498,119 @@ function _pg_sw_search_merge_pages($first, $rest)
         $out[] = $row;
     }
     return $out;
+}
+
+// ============================================================================
+// Search index items for the records of the visual editor's lists
+// ============================================================================
+// update_search_index.php writes one item per record a public list reaches,
+// at the record's address on the list's detail page. These helpers decide
+// which lists qualify and what each item holds.
+
+// Whether a list's records may be indexed through its detail page's record
+// view: both widgets show the same records to every visitor
+// (pg_sw_form_widget_public()), and no filter of either compares a field
+// with the viewer. The index run has no visitor, so such a filter reads ''
+// and would match every anonymous record instead of the viewer's own.
+function pg_sw_search_index_eligible($list_cfg, $view_cfg)
+{
+    if (!pg_sw_form_widget_public($list_cfg) || !pg_sw_form_widget_public($view_cfg)) return false;
+    foreach (pg_sw_merge_record_filters($list_cfg, $view_cfg) as $filter) {
+        $field   = isset($filter['field']) ? trim((string)$filter['field']) : '';
+        $value   = isset($filter['value']) ? (string)$filter['value'] : '';
+        $dynamic = isset($filter['dynamic_value']) ? (string)$filter['dynamic_value'] : '';
+        if ($field === '' || $value !== '') continue;
+        if ($dynamic === 'viewer' || $dynamic === 'viewers email address') return false;
+    }
+    return true;
+}
+
+// The address a record's search item is stored under: relative to PATH, as
+// page items are (search_items.url, varchar 255, cut silently when longer).
+// A pretty address too long for the column falls back to ?r=; '' when even
+// that does not fit or the record has no reference code.
+function pg_sw_search_index_record_url($page_name, $reference_code, $address_name, $pretty)
+{
+    $reference_code = trim((string)$reference_code);
+    if ($reference_code === '') return '';
+    $url = pg_sw_record_url($page_name, $reference_code, $address_name, $pretty, '');
+    if (strlen($url) > 255) $url = pg_sw_record_url($page_name, $reference_code, '', false, '');
+    return (strlen($url) > 255) ? '' : $url;
+}
+
+// The title and description of a record's search item. $rows: the record's
+// values in form field order, each with the field's name and rss_field and
+// the value's data and type. The title is the one the record page names it
+// by (pg_sw_record_title(): the record view's title field, else the form's
+// RSS title fields) without the page's title suffix; the description is the
+// first RSS description value as text. Both fit the columns' 255.
+function pg_sw_search_index_record_texts($view_cfg, $rows, $reference_code)
+{
+    $values      = array('reference_code' => (string)$reference_code);
+    $titles      = array();
+    $description = null;
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        if (!is_array($row)) continue;
+        $text = isset($row['data']) ? (string)$row['data'] : '';
+        if ($text !== '' && isset($row['type']) && $row['type'] === 'html') $text = convert_html_to_text($text);
+        $text = trim($text);
+        if ($text === '') continue;
+        $rss = isset($row['rss_field']) ? (string)$row['rss_field'] : '';
+        if ($rss === 'title') $titles[] = $text;
+        if ($rss === 'description' && $description === null) $description = $text;
+        $name = isset($row['name']) ? strtolower(trim((string)$row['name'])) : '';
+        if ($name === '') continue;
+        $values[$name] = isset($values[$name]) ? $values[$name] . ', ' . $text : $text;
+    }
+
+    $cfg = is_array($view_cfg) ? $view_cfg : array();
+    unset($cfg['title_suffix']);
+    $title = mb_substr(pg_sw_record_title($cfg, $values, implode(' ', $titles)), 0, 255);
+
+    $description = ($description === null) ? '' : $description;
+    if (mb_strlen($description) > 255) $description = mb_substr($description, 0, 255) . '...';
+
+    return array('title' => $title, 'description' => $description);
+}
+
+// Whether site search shows an anonymous visitor the items of a folder with
+// this access control type. Site search narrows a visitor with
+// check_view_access($folder, true), which lets registration and guest
+// folders through as well as public ones.
+function pg_sw_search_index_folder_open($access_control_type)
+{
+    return in_array((string)$access_control_type, array('public', 'registration', 'guest'), true);
+}
+
+// The folder a record's search item is filed under; site search shows a
+// visitor only the items of folders they may view. The detail page's when
+// the list sits on a page site search opens to everyone
+// (pg_sw_search_index_folder_open()); otherwise the list's page decides, so
+// a staff or draft page listing records puts them in the search of that
+// page's audience only, never of the record page's (everyone, or every
+// member or holder of its folder's access).
+function pg_sw_search_index_folder($host_folder_id, $host_open, $detail_folder_id, $detail_open)
+{
+    return $host_open ? (int)$detail_folder_id : (int)$host_folder_id;
+}
+
+// Write one search item ($item: url, content, title, description, keywords,
+// page_id, folder_id), replacing the one stored under the same address.
+function pg_sw_search_index_save_item($item, $timestamp)
+{
+    $url = (string)$item['url'];
+    $set = "content = '" . e($item['content']) . "',
+            title = '" . e($item['title']) . "',
+            description = '" . e($item['description']) . "',
+            keywords = '" . e($item['keywords']) . "',
+            page_id = '" . (int)$item['page_id'] . "',
+            folder_id = '" . (int)$item['folder_id'] . "',
+            timestamp = '" . (int)$timestamp . "'";
+    if ((int)db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . e($url) . "'") > 0) {
+        db("UPDATE search_items SET " . $set . " WHERE url = '" . e($url) . "'");
+    } else {
+        db("INSERT INTO search_items SET url = '" . e($url) . "', " . $set);
+    }
 }
 
 // Render a 'search_results' system widget: the site search for ?query=,
