@@ -31,6 +31,7 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/trendyol.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/listings.php');
 
 function trendyol_test_account($credentials = array())
 {
@@ -385,7 +386,9 @@ function test_marketplace_trendyol_category_attributes_with_paged_values()
 
 	pg_assert_same('47', $rows[1]['attribute_id']);
 	pg_assert_same(1, $rows[1]['mandatory']);
-	pg_assert_same(0, $rows[1]['is_variant']);
+	// Renk is their "slicer": it differs between the products of one article,
+	// so it is answered per product like the "varianter".
+	pg_assert_same(1, $rows[1]['is_variant']);
 	pg_assert_same(array(array('id' => '686230', 'value' => 'Siyah'), array('id' => '686234', 'value' => 'Kırmızı')), $rows[1]['values']);
 
 	pg_assert_same('180', $rows[2]['attribute_id']);
@@ -396,6 +399,68 @@ function test_marketplace_trendyol_category_attributes_with_paged_values()
 	// One list call, two pages for Beden, one each for the other two.
 	pg_assert_same(5, count($calls));
 	pg_assert_same(trendyol_test_values_url(14609, 293, 1), $calls[2]['url']);
+}
+
+// The fixture category's definitions, values included, as the cache keeps them.
+function trendyol_test_category_definitions()
+{
+	$calls = array();
+
+	$result = mp_trendyol_category_attributes(trendyol_test_account(), '14609',
+		trendyol_test_transport(trendyol_test_attribute_routes(), $calls));
+
+	return $result['ok'] ? $result['data']['attributes'] : array();
+}
+
+// An article whose products are its colours: each product sends its own
+// colour, not the one value chosen for the article.
+function test_marketplace_trendyol_slicer_colour_is_read_from_each_product()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	pg_assert_same(3, count($definitions));
+
+	// Answers given on the mapping screen: a material, and a colour for the
+	// article as a whole.
+	$chosen = array('180' => 'Pamuk', '47' => '686234');
+
+	$black = mp_listing_attributes_of($definitions, $chosen, array(
+		array('name' => 'Beden', 'value' => 'M'),
+		array('name' => 'Renk', 'value' => 'Siyah'),
+	));
+
+	$red = mp_listing_attributes_of($definitions, $chosen, array(
+		array('name' => 'Beden', 'value' => 'M'),
+		array('name' => 'Koltuk Rengi', 'value' => 'Kırmızı'),
+	));
+
+	pg_assert_same(array(
+		array('id' => '293', 'value_id' => '4874', 'custom_value' => ''),
+		array('id' => '47', 'value_id' => '686230', 'custom_value' => ''),
+		array('id' => '180', 'value_id' => '', 'custom_value' => 'Pamuk'),
+	), $black, 'the own colour wins over the one chosen for the article');
+
+	pg_assert_same(array('id' => '47', 'value_id' => '686234', 'custom_value' => ''), $red[1],
+		'an option under another name is matched on its value');
+}
+
+// A product with no colour option of its own takes the colour chosen for the
+// article, so a single-colour article lists as before; with neither, the
+// mandatory colour refuses the product.
+function test_marketplace_trendyol_slicer_falls_back_to_the_articles_value()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	$own = array(array('name' => 'Beden', 'value' => 'S'));
+
+	$attributes = mp_listing_attributes_of($definitions, array('47' => '686230'), $own);
+
+	pg_assert_same(array(
+		array('id' => '293', 'value_id' => '4873', 'custom_value' => ''),
+		array('id' => '47', 'value_id' => '686230', 'custom_value' => ''),
+	), $attributes);
+
+	pg_assert_same(null, mp_listing_attributes_of($definitions, array(), $own));
 }
 
 function test_marketplace_trendyol_attribute_value_budget_ends_with_an_error()

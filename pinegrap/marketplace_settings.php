@@ -674,28 +674,21 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 		$value = isset($chosen[$id]) ? (string)$chosen[$id] : '';
 
 		// A variant attribute is answered by the products themselves - it is
-		// what tells them apart - so it is shown and not asked for.
-		if (!empty($attribute['is_variant'])) {
+		// what tells them apart - so it is never required here. A value chosen
+		// for the article is used only by a product without an option of its
+		// own: an article in one colour, in a category that splits its pages
+		// by colour.
+		$variant = !empty($attribute['is_variant']);
 
-			$out .= '
-						<div class="col-12 col-md-6 col-xl-4">
-							<label class="form-label small mb-1">' . h((string)$attribute['name'])
-								. ' <span class="mp-pill off">' . lang('from the variants') . '</span></label>
-							<div class="form-text mt-0">'
-								. lang('Taken from each product\'s own option.') . '</div>
-						</div>';
-
-			continue;
-
-		}
-
-		$required = !empty($attribute['mandatory']);
+		$required = !empty($attribute['mandatory']) && !$variant;
 
 		$out .= '
 						<div class="col-12 col-md-6 col-xl-4">
 							<label class="form-label small mb-1" for="attr_' . $group_id . '_' . h($id) . '">'
 								. h((string)$attribute['name'])
-								. ($required ? ' <span class="text-danger">*</span>' : '') . '</label>';
+								. ($required ? ' <span class="text-danger">*</span>' : '')
+								. ($variant ? ' <span class="mp-pill off">' . lang('from the variants') . '</span>' : '')
+								. '</label>';
 
 		if (!empty($attribute['values'])) {
 
@@ -721,6 +714,14 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 							<input type="text" class="form-control form-control-sm"
 								id="attr_' . $group_id . '_' . h($id) . '"
 								name="attribute[' . h($id) . ']" value="' . h($value) . '" autocomplete="off">';
+
+		}
+
+		if ($variant) {
+
+			$out .= '
+							<div class="form-text">'
+								. lang('Taken from each product\'s own option. This value is used only for a product without one.') . '</div>';
 
 		}
 

@@ -32,6 +32,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-order-status-sync.md: mp_order_apply_status() rules for shipped/delivered/cancelled marketplace packages: first sight, fill-only dates, tracking once, no-refund cancel, stock restore, auto-accept only open.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
+- marketplace-variant-attributes.md: Where a listed product's variant attributes come from (Trendyol varianter and slicer, n11 isVariant): the product's own option first, the article's value as fallback, and the mapping screen field.
 - n11-api-facts.md: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 - offer-discounted-units.md: How many units of a cart line an offer discounts (cheapest item: one, gift from a paid line: the action's quantity, product or group: all) and the spread unit price that charges it
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0

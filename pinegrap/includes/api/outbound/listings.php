@@ -522,6 +522,20 @@ function mp_listing_attributes($definitions, $chosen, $product_id) {
 
 	}
 
+	return mp_listing_attributes_of($definitions, $chosen, $own);
+
+}
+
+// The same, from the product's own options already read: array(name, value)
+// pairs, the shop's attribute name and the option's label.
+//
+// A variant attribute takes the product's own option first. A product that has
+// no such option takes the value chosen for the article, if one was: an article
+// in a single colour still lists when the category splits its pages by colour,
+// and an article whose products are its colours sends each one's own colour
+// rather than the article's.
+function mp_listing_attributes_of($definitions, $chosen, $own) {
+
 	$attributes = array();
 
 	foreach ((array)$definitions as $definition) {
@@ -531,6 +545,12 @@ function mp_listing_attributes($definitions, $chosen, $product_id) {
 		if (!empty($definition['is_variant'])) {
 
 			$value = mp_listing_variant_value($definition, $own);
+
+			if (($value === null) && isset($chosen[$id]) && (trim((string)$chosen[$id]) !== '')) {
+
+				$value = mp_listing_value($definition, (string)$chosen[$id]);
+
+			}
 
 			if ($value === null) {
 
