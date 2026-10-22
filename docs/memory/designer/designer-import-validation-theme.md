@@ -9,6 +9,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - A ZIP is measured before it is read (`pg_zip_import_open()`); every entry is read by its own index through `pg_zip_entry_contents()`, a page at most 8 MB: docs/memory/platform/zip-entry-declared-size.md.
 - Inline `<svg>` is taken raw BEFORE parsing (libxml nests `<path/>`): `bi-*` class -> icon node, otherwise `.svg` file + image node. NEVER produce custom_html.
 - `srcset`/`sizes` are not carried to the image (it would override src).
+- An `<img>` without an alt attribute gets no `alt` prop (the audit asks for one); `alt=""` is kept as the decorative statement.
 - Page names are fixed before translation (`$ctx->page_names`); cross-page links resolve from there.
 
 ## How is validation done?
