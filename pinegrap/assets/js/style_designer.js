@@ -8578,6 +8578,13 @@ const StyleDesigner = (function () {
                     if (p.matches('div.sd-wrap:not([data-sd-self])')) {
                         // The page root keeps its box: it is the canvas-wide drop target.
                         if (p.getAttribute('data-sd-type') === 'root') break;
+                        // A wrapper whose own marks the canvas stylesheet
+                        // places against it (the bound-off label, a system
+                        // widget's name band, a shared component's frame)
+                        // stays positioned: script does not place those. The
+                        // element is then placed by that wrapper, inside the
+                        // widget, as before this pass.
+                        if (p.classList.contains('sd-binding-off') || p.classList.contains('sd-shared-wrap')) break;
                         if (unposWraps.indexOf(p) === -1) unposWraps.push(p);
                         continue;
                     }
