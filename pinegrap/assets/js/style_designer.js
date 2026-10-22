@@ -11792,6 +11792,10 @@ const StyleDesigner = (function () {
         return _sdDateSample(true);
     }
 
+    // The record counters a form list can order by; the same list as
+    // pg_sw_form_order_counters() (includes/fn/widgets.php).
+    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views'];
+
     // Preview values for the system fields of a submitted form and for the
     // account fields beside them. Without these a reference code would fall
     // through to lorem ipsum and a card would preview nothing like the page it
@@ -28926,10 +28930,18 @@ const StyleDesigner = (function () {
                     } else {
                         html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
                         html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
+                        // Counters of the detail page (pg_sw_counter_order_sql()).
+                        html += '<optgroup label="' + esc(_sdT('Statistics')) + '">';
+                        html += '<option value="number_of_views"'    + (selected === 'number_of_views'    ? ' selected' : '') + '>' + esc(_sdT('Number of Views')) + '</option>';
+                        html += '<option value="number_of_comments"' + (selected === 'number_of_comments' ? ' selected' : '') + '>' + esc(_sdT('Number of Comments')) + '</option>';
+                        html += '<option value="recent_views"'       + (selected === 'recent_views'       ? ' selected' : '') + '>' + esc(_sdT('Views in recent days')) + '</option>';
+                        html += '</optgroup>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                             _ff.forEach(function (ff) {
                                 var token = (ff.name && ('' + ff.name).trim()) || ('field_' + ff.id);
+                                // A counter name orders by the counter on the server.
+                                if (_SW_FORM_ORDER_COUNTERS.indexOf(token) !== -1) return;
                                 var label = ff.label || ff.name || ('#' + ff.id);
                                 html += '<option value="' + esc(token) + '"' + (token === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
                             });
@@ -28940,6 +28952,16 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                // Counter orders: the counters are kept per detail page, so
+                // without one the list keeps the date order (say so), and the
+                // recent-views window gets its Days box (1-180, 7 by default,
+                // as pg_sw_recent_views_days()).
+                var _orderCounter = !_isCatalogListing && (_SW_FORM_ORDER_COUNTERS.indexOf(_orderField) !== -1 || _SW_FORM_ORDER_COUNTERS.indexOf(_order2Field) !== -1);
+                var _orderNoDetail = _orderCounter && (_cfg.detail_page_id == null || String(_cfg.detail_page_id) === '' || String(_cfg.detail_page_id) === '0');
+                var _orderRecent = !_isCatalogListing && (_orderField === 'recent_views' || _order2Field === 'recent_views');
+                var _orderDays = parseInt(_cfg.order_recent_days, 10);
+                if (!(_orderDays >= 1)) _orderDays = 7;
+                if (_orderDays > 180) _orderDays = 180;
 
                 // Detail-page select options. The backing list differs by region:
                 //   form_list_view  → page_type='form item view' filtered to those
@@ -29014,7 +29036,8 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>'
+                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
                         '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
@@ -29030,6 +29053,10 @@ const StyleDesigner = (function () {
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
+                    ) : '') +
+                    (_orderRecent ? row(_sdT('Days counted'),
+                        '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
@@ -31068,7 +31095,10 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = _swPageVal(this);
-                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; });
+                // Re-render: the counter-order hint depends on it.
+                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
             });
         }
 
@@ -31147,7 +31177,24 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = this.value || 'submitted_date_and_time';
-                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; });
+                // Re-render to show/hide the Days row and the detail-page hint.
+                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
+            });
+        }
+
+        // ── order_recent_days (number) — window of the recent_views order ──
+        var obdaysEl = document.getElementById('sd-sw-orderby-days');
+        if (obdaysEl) {
+            obdaysEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var n = parseInt(this.value, 10);
+                if (!(n >= 1)) n = 7;
+                if (n > 180) n = 180;
+                this.value = n;
+                _patchSysCfg(sid, function (cfg) { cfg.order_recent_days = n; });
             });
         }
 
@@ -45658,7 +45705,8 @@ const StyleDesigner = (function () {
     function _swTypeDefaults(cfg, newType) {
         cfg.regionType = newType;
         if (newType === 'catalog_listing') {
-            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined) {
+            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined ||
+                _SW_FORM_ORDER_COUNTERS.indexOf(cfg.order_by_field) !== -1) {
                 cfg.order_by_field = 'sort_order';
             }
             // 'Kayıt bulunamadı.' is the pre-i18n default; widgets saved before the
