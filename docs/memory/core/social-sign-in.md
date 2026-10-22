@@ -10,6 +10,7 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 ## How is an account matched?
 - By the identity (`user_identities`), else by the verified e-mail of an account that has no identity at that provider yet (it is tied then), else an account is opened where the screen allows it (`create` on registration, `membership` hands over to the membership form, `none` on every login screen).
 - An e-mail the provider does not vouch for never matches. An account whose address matches but is tied to another person at the provider is neither taken over nor opened a second time.
+- Only the very address (letter case aside) ties; a look-alike is refused: [[social-sign-in-address-match]].
 - A provider account whose address differs from the account's is tied by connecting it while signed in ("Connect with ...", [[social-sign-in-connect]]); signing in with it before that is refused.
 
 ## What does a refused or failed sign-in show?
@@ -20,9 +21,6 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 - The response code stays 200, as `output_error()` without a code gave; the screen sends `X-Robots-Tag: noindex` and `Cache-Control: no-store`.
 
 ## Where do the buttons come from?
-- One place: `pg_signin_buttons()`, a `pg-signin-buttons` block with one `pg_signin_button_html()` per enabled provider (Google, Microsoft, Apple; same markup and width). Every entrance screen, the designer sections `google_signin`/`google_signup` and custom layouts (`$google_signin`) print it; `pg_google_signin_button()` is a Google-only wrapper. The `__google_*_url` tokens stay Google only.
-- A provider shows only when switched on with a complete app (`pg_signin_enabled()`; Apple also needs Team ID + Key ID). Before (PR #469) an incomplete one hid silently ("Microsoft and Apple do not come after Google"). Now Settings › Security says which buttons visitors see and which are on but hidden (`pg_signin_button_state()`), and the designer block's hint lists them (`siteFlags.signin_providers`).
-- Starter-site entrance layouts (`data/backups/*/layouts/895, 126, 982.php`) printed no button; they print `$google_signin` now. Existing modified layouts need `<?=$google_signin ?? ''?>` added by hand.
+- `pg_signin_buttons()` and which providers show: social-sign-in-buttons.md.
 
-## Old browsers?
-- The buttons are plain links (no JavaScript, no popup). An old browser that "does nothing" fails at the provider (Google can refuse outdated browsers and in-app webviews) or comes back cancelled, which now shows the screen above.
+Related: docs/memory/core/social-sign-in-providers.md (adding a provider), docs/memory/core/social-sign-in-buttons.md

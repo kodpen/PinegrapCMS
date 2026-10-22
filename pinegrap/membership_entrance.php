@@ -206,6 +206,10 @@ if (!$_POST) {
         // if an error does not exist
         if ($activated['ok']) {
 
+            // The welcome e-mail, when the membership widget names a page
+            // for it (the posted widget, else the site's live one).
+            pg_account_email_send_welcome($activated['user_id'], 'membership', ($return_to !== '') ? (int) ($_POST['pg_widget_id'] ?? 0) : 0);
+
             // The designed page: a send_to it chose, else back to itself with
             // the notice its Messages block prints. The legacy screen: the
             // membership confirmation page.

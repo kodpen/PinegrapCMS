@@ -5390,6 +5390,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     $sql_ids = implode(',', array_map('intval', $subtree));
 
+                    // A parent deleted outright while the group sat in the bin
+                    // would leave it under a group that no longer exists, out
+                    // of the catalog tree; it comes back under the root group.
+                    $restore_parent_id = (int) db_value("SELECT parent_id FROM product_groups WHERE id = '" . e($item_id) . "'");
+
+                    if (($restore_parent_id > 0) && ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id = '" . e($restore_parent_id) . "'") == 0)) {
+
+                        $restore_root_id = (int) db_value("SELECT id FROM product_groups WHERE parent_id = '0' ORDER BY id LIMIT 1");
+
+                        if (($restore_root_id > 0) && ($restore_root_id != $item_id)) {
+                            db("UPDATE product_groups SET parent_id = '" . e($restore_root_id) . "' WHERE id = '" . e($item_id) . "'");
+                        }
+                    }
+
                     db(
                         "UPDATE product_groups
                         SET recycled = '0',
@@ -6000,6 +6014,15 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                     }
                 }
 
+                // The stock as stored, when this edit may move it: compared
+                // with the row after the write, so only the products whose
+                // stock really moved are announced. A selection is a few rows
+                // an operator changed on purpose, not an import, so each one
+                // is announced the way edit_products.php announces it.
+                $stock_was = (($bulk_quantity_mode !== '') || ($bulk_inventory !== ''))
+                    ? db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'")
+                    : null;
+
                 if ((count($sql_parts) > 0) || ($bulk_tax_sql !== '')) {
 
                     $audit_before = pg_audit_fetch('products', $product_id);
@@ -6015,6 +6038,19 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     if ($bulk_price_method !== '') {
                         pg_price_history_queue($product_id, 'panel');
+                    }
+
+                    if ($stock_was) {
+                        $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+                        $stock_delta = $stock_now ? pg_product_stock_delta(
+                            ((string) $stock_was['inventory'] === '1'),
+                            $stock_was['inventory_quantity'],
+                            ((string) $stock_now['inventory'] === '1'),
+                            $stock_now['inventory_quantity']) : null;
+
+                        if ($stock_delta) {
+                            pg_product_stock_changed((int) $product_id, $stock_delta[0], $stock_delta[1], 'bulk_edit');
+                        }
                     }
                 }
 
@@ -6426,7 +6462,7 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             // Live rows only, the same rule the rest of this screen follows: a
             // product in the bin is restored before it is edited.
             $quick_row = db_item(
-                "SELECT id, name, price, inventory, inventory_quantity, short_description
+                "SELECT id, name, price, inventory, inventory_quantity, out_of_stock, short_description
                 FROM products
                 WHERE id = '" . e($quick_id) . "'" . pg_catalog_live_filter('products'));
 
@@ -6436,6 +6472,12 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $quick_sql = '';
             $quick_note = '';
+
+            // The column the field writes and the value it is given, compared
+            // with the row as read above: the same value again announces
+            // nothing.
+            $quick_target = '';
+            $quick_new = '';
 
             if ($quick_field === 'price') {
 
@@ -6459,6 +6501,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 $quick_sql = "price = '" . e($quick_number) . "'";
                 $quick_note = lang('price changed');
+                $quick_target = 'price';
+                $quick_new = $quick_number;
 
             } elseif ($quick_field === 'quantity') {
 
@@ -6482,9 +6526,13 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 }
 
                 // Out of stock is a consequence rather than a field: putting
-                // something back on the shelf takes the flag off it.
-                $quick_sql = "inventory_quantity = '" . e($quick_number) . "'" . (($quick_number > 0) ? ", out_of_stock = '0'" : '');
+                // something back on the shelf takes the flag off it, and
+                // emptying the shelf puts it on, stamped the day it ran out.
+                $quick_sql = "inventory_quantity = '" . e($quick_number) . "', "
+                    . pg_product_out_of_stock_sql(true, $quick_number, $quick_row['out_of_stock']);
                 $quick_note = lang('stock quantity changed');
+                $quick_target = 'inventory_quantity';
+                $quick_new = $quick_number;
 
             } else {
 
@@ -6506,7 +6554,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 $quick_sql = "short_description = '" . e($quick_value) . "'";
                 $quick_note = lang('short description changed');
+                $quick_target = 'short_description';
+                $quick_new = $quick_value;
             }
+
+            $quick_changed = ((string) $quick_row[$quick_target] !== (string) $quick_new);
 
             // address_name is left alone on purpose. It is derived from the
             // short description when a product is created, but by the time it
@@ -6527,9 +6579,20 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             // Price and stock are what the marketplaces are told about, and
             // this is now one of the places they change. Queue only -- the
-            // scheduled job does the sending.
-            if ((($quick_field === 'price') || ($quick_field === 'quantity')) && function_exists('pg_marketplace_product_changed')) {
+            // scheduled job does the sending. A stock count goes through the
+            // stock helper, which queues the marketplace itself.
+            if (($quick_field === 'price') && function_exists('pg_marketplace_product_changed')) {
                 pg_marketplace_product_changed($quick_id);
+            }
+
+            // A stock write like the product screen's: inventory.changed, and
+            // stock.low on the crossing, when the count really moved.
+            if (($quick_field === 'quantity') && $quick_changed) {
+                pg_product_stock_changed($quick_id, (int) $quick_row['inventory_quantity'], $quick_number, 'panel');
+            }
+
+            if ($quick_changed) {
+                pg_announce('product.updated', array('id' => $quick_id, 'name' => (string) $quick_row['name']));
             }
 
             $quick_message = lang(array(
@@ -9805,6 +9868,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
             $new_file_id = (int) mysqli_insert_id(db::$con);
 
+            pg_audit_record('create', 'files', $new_file_id);
+
             log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $zip_name)), $_SESSION['sessionusername']);
 
             $message = lang(array('string' => '{var:1} files were compressed', 'vars' => $added));
@@ -10244,6 +10309,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                 $style_skipped = count($allowed) - count($style_targets);
             }
 
+            $audit_before = (count($allowed) > 0) ? pg_audit_fetch_many('page', $allowed) : array();
+
             if ((count($assignments) > 0) && (count($allowed) > 0)) {
                 db(
                     "UPDATE page
@@ -10265,6 +10332,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         page_user = '" . USER_ID . "'
                     WHERE page_id IN (" . implode(',', $style_targets) . ")");
             }
+
+            pg_audit_record_many('update', 'page', $audit_before);
 
             if (count($allowed) > 0) {
                 log_activity(lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);

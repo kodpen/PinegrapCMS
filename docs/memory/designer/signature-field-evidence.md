@@ -16,7 +16,7 @@ description: Signature form field (form_fields.type 'signature'): legal status, 
 - The hash covers all field definitions (labels and `information` contents) and the given answers; the signature's own value is outside it.
 - Everything in the hash must be readable back from `form_data`: verification re-reads answers and recomputes, and any byte difference from signing time makes every document show "changed". When adding to the hash, measure the round trip with a real record.
 
-## Invariants
+## Which invariants must every change keep?
 - Lock is in the schema: `UNIQUE (form_id, form_field_id)`; no second signature for the same field of a submission.
 - A signature is displayed, never submitted: `edit_submitted_form.php` draws no control for it (an editable signature is not evidence). A new screen showing it calls `pg_signature_display()`.
 - Time, address and identity never come from the request: `signed_at` is server time; address via `waf_client_ip()` (behind a CDN `REMOTE_ADDR` is the edge).

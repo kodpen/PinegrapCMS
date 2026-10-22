@@ -837,6 +837,8 @@ function erp_edoc_http($method, $url, $headers = array(), $body = null, $timeout
  * A provider's own record ids are not personal numbers and stay readable
  * under an "id" or "detail_id" key (Paraşüt's are ten digits, as long as a
  * VKN), so a log line still names the invoice, card or line it was about.
+ * So does the title of a provider's error ("errors": [{"title": ...}],
+ * JSON:API): it says what went wrong, not whose name it is.
  *
  * @param string $text
  * @return string
@@ -846,13 +848,46 @@ function erp_edoc_mask($text)
     $text = (string) $text;
 
     // "key": "value" pairs whose key names a secret or a person.
-    $text = preg_replace_callback(
-        '/("(?:[^"]*?(?:password|passwd|secret|apikey|api_key|token|authorization|tcknvkn|taxorpersonalid|vkntckn|identifier|tax_number|taxnumber|tckn|vkn|iban|email|emailaddress|useremail|phone|address|firstname|lastname|fullname|name|title)[^"]*?)"\s*:\s*)("(?:[^"\\\\]|\\\\.)*"|-?\d[\d.]*)/i',
-        function ($m) {
-            return $m[1] . '"***"';
+    $secrets = 'password|passwd|secret|apikey|api_key|token|authorization|tcknvkn|taxorpersonalid|vkntckn|identifier|tax_number|taxnumber|tckn|vkn|iban|email|emailaddress|useremail|phone|address|firstname|lastname|fullname|name';
+    $pairs = function ($text, $keys) {
+        return preg_replace_callback(
+            '/("(?:[^"]*?(?:' . $keys . ')[^"]*?)"\s*:\s*)("(?:[^"\\\\]|\\\\.)*"|-?\d[\d.]*)/i',
+            function ($m) {
+                return $m[1] . '"***"';
+            },
+            $text
+        );
+    };
+
+    // The error lists are set aside, masked with every key but the title,
+    // and put back once the rest is masked with it too. A list nested deeper
+    // than one bracket is not matched and is masked as a whole.
+    $errors = array();
+    $set_aside = preg_replace_callback(
+        '/("errors"\s*:\s*\[)((?:[^\[\]]++|\[[^\[\]]*+\])*+)(\])/i',
+        function ($m) use (&$errors, $pairs, $secrets) {
+            $errors[] = $m[1] . $pairs($m[2], $secrets) . $m[3];
+
+            return "\x00" . (count($errors) - 1) . "\x00";
         },
         $text
     );
+    if ($set_aside === null) {
+        $errors = array();
+    } else {
+        $text = $set_aside;
+    }
+
+    $text = $pairs($text, $secrets . '|title');
+    if (!empty($errors)) {
+        $text = preg_replace_callback(
+            '/\x00(\d+)\x00/',
+            function ($m) use ($errors) {
+                return isset($errors[(int) $m[1]]) ? $errors[(int) $m[1]] : $m[0];
+            },
+            $text
+        );
+    }
 
     // Header lines and bare long digit runs (a VKN is 10, a TCKN 11 digits),
     // except the value of a record id key.

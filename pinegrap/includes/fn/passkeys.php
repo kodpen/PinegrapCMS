@@ -1,0 +1,831 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Passkeys (WebAuthn) of accounts: the user_passkeys table (2026.11.0,
+ * 11.0.13), the two ceremonies around the verifier in includes/webauthn/,
+ * and the challenge each ceremony keeps in the session.
+ *
+ *   Registration  a signed-in account asks for creation options
+ *                 (pg_passkey_registration_begin()); the browser makes the
+ *                 credential and pg_passkey_register() checks and keeps it.
+ *   Sign-in       request options (pg_passkey_signin_begin()) for an account,
+ *                 whose passkeys are the browser's allow list, or for none,
+ *                 when the browser offers whatever passkey it holds for the
+ *                 site; pg_passkey_signin_check() checks the answer against
+ *                 the stored passkey and moves its counter forward.
+ *
+ * The site is the relying party under its configured scheme and host
+ * (URL_SCHEME, HOSTNAME_SETTING), never the Host header of a request. A
+ * challenge is used once: it is taken out of the session before the answer
+ * is read, whatever the outcome.
+ *
+ * Every ceremony answers array('ok' => true, ...) or array('ok' => false,
+ * 'error' => <code>): the verifier's codes (webauthn.php) and these:
+ *
+ *   unavailable  no table yet, no OpenSSL with EC keys, or a site address a
+ *                browser makes no passkey for (an IP address, plain http
+ *                other than localhost)
+ *   host         the page was opened at another name of the site
+ *   challenge    no ceremony waiting: never begun, for another account,
+ *                answered already, or older than its lifetime
+ *   none         the account has no passkey to sign in with
+ *   limit        the account keeps PG_PASSKEYS_MAX passkeys already
+ *   duplicate    the credential is registered already
+ *   storage      the row could not be written
+ *
+ * The codes are for the log and the caller's logic; a visitor is shown one
+ * plain sentence (pg_passkey_refusal()), so a stranger cannot learn which
+ * credential belongs to which account.
+ *
+ * Endpoints: passkey.php (options and registration, JSON); mfa.php takes a
+ * passkey at the second step of a sign-in.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+// How many passkeys one account may keep: a phone, a laptop, two security
+// keys and a password manager are five; the cap only keeps a script from
+// filling the table.
+if (!defined('PG_PASSKEYS_MAX')) {
+    define('PG_PASSKEYS_MAX', 20);
+}
+
+// The longest name a passkey is given, in characters (the column's size).
+if (!defined('PG_PASSKEY_NAME_MAX')) {
+    define('PG_PASSKEY_NAME_MAX', 100);
+}
+
+// ── The site as a relying party ─────────────────────────────────────────────
+
+/**
+ * Loads the verifier and says whether this PHP can check passkeys with it.
+ *
+ * @return bool
+ */
+function pg_passkey_verifier()
+{
+    static $supported = null;
+
+    if ($supported === null) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/webauthn/webauthn.php');
+        $supported = pg_webauthn_supported();
+    }
+
+    return $supported;
+}
+
+/**
+ * Whether the user_passkeys table exists. Probed by exact name in
+ * information_schema (SHOW TABLES LIKE reads '_' as a wildcard) and cached
+ * for the request. Between new files landing and the upgrade running this is
+ * false, and passkeys are simply not offered.
+ *
+ * @return bool
+ */
+function pg_passkeys_table_exists()
+{
+    static $exists = null;
+
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $exists = ((int) db_value("SELECT COUNT(*) FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_passkeys'") === 1);
+
+    return $exists;
+}
+
+/**
+ * The relying party for a scheme, host and site title: id (the host alone,
+ * pg_webauthn_rp_id()), name (the title, or the host), origin (as the
+ * browser writes it into clientDataJSON). null where a browser makes no
+ * passkey: an IP address, a malformed host, plain http on a host other than
+ * localhost.
+ *
+ * @param string $scheme 'https://' or 'http://' (URL_SCHEME)
+ * @param string $host   the host, with a port when it has one
+ * @param string $title  the site's title
+ * @return array|null
+ */
+function pg_passkey_relying_party_for($scheme, $host, $title)
+{
+    if (!pg_passkey_verifier() || !pg_webauthn_secure_context($scheme, $host)) {
+        return null;
+    }
+
+    $id = pg_webauthn_rp_id($host);
+    $origin = pg_webauthn_origin($scheme, $host);
+
+    if (($id === '') || ($origin === '')) {
+        return null;
+    }
+
+    // Browsers show the name beside the account in their passkey list and may
+    // cut it; one line of at most 64 characters.
+    $name = trim((string) preg_replace('/\s+/u', ' ', (string) $title));
+    $name = ($name !== '') ? mb_substr($name, 0, 64) : $id;
+
+    return array('id' => $id, 'name' => $name, 'origin' => $origin);
+}
+
+/**
+ * This site as the relying party, from its settings.
+ *
+ * @return array|null id, name, origin; null when passkeys cannot work here
+ */
+function pg_passkey_relying_party()
+{
+    if (!defined('URL_SCHEME') || !defined('HOSTNAME_SETTING')) {
+        return null;
+    }
+
+    return pg_passkey_relying_party_for(URL_SCHEME, HOSTNAME_SETTING, defined('TITLE') ? (string) TITLE : '');
+}
+
+/**
+ * Whether passkeys can be used on this site: the table exists, PHP can check
+ * them and the site's address is one a browser makes passkeys for.
+ *
+ * @return bool
+ */
+function pg_passkeys_available()
+{
+    return pg_passkeys_table_exists() && (pg_passkey_relying_party() !== null);
+}
+
+/**
+ * The relying party a ceremony of this request runs under, or the reason it
+ * cannot run: 'unavailable', or 'host' when the page was opened at another
+ * name of the site. A browser makes and offers passkeys only for the host of
+ * the page it is on, so on an alias the ceremony would fail in the browser
+ * with nothing to tell the visitor why. The Host header only chooses that
+ * message; what is checked is the origin the browser signs.
+ *
+ * @return array ok, rp; or ok false and error
+ */
+function pg_passkey_ready()
+{
+    $rp = pg_passkeys_table_exists() ? pg_passkey_relying_party() : null;
+
+    if ($rp === null) {
+        return array('ok' => false, 'error' => 'unavailable');
+    }
+
+    if (defined('HOSTNAME') && (pg_webauthn_origin(URL_SCHEME, (string) HOSTNAME) !== $rp['origin'])) {
+        return array('ok' => false, 'error' => 'host');
+    }
+
+    return array('ok' => true, 'rp' => $rp);
+}
+
+// ── Ceremonies kept in the session ──────────────────────────────────────────
+
+/**
+ * How long a ceremony waits for its answer, in seconds: the browser's own
+ * timeout (PG_WEBAUTHN_TIMEOUT, five minutes) and a minute for the answer to
+ * arrive.
+ *
+ * @return int
+ */
+function pg_passkey_ceremony_lifetime()
+{
+    return 360;
+}
+
+/**
+ * Starts a ceremony: its challenge is kept for the account it is for, one
+ * ceremony per purpose, a newer one replacing the older (the options asked
+ * for again, another tab). The challenge is kept as base64url so a session
+ * handler that stores text never meets raw bytes.
+ *
+ * @param mixed  $store     the session's ceremonies, by reference
+ * @param string $purpose   'register' or 'signin'
+ * @param int    $user_id   the account; 0 for a sign-in that does not know it
+ * @param string $challenge raw bytes (pg_webauthn_challenge())
+ * @param int    $now
+ * @param array  $extra     other values to keep with it (the user handle a
+ *                          registration offered)
+ */
+function pg_passkey_ceremony_begin(&$store, $purpose, $user_id, $challenge, $now, $extra = array())
+{
+    if (!is_array($store)) {
+        $store = array();
+    }
+
+    $store[$purpose] = array_merge($extra, array(
+        'user_id'   => (int) $user_id,
+        'challenge' => pg_webauthn_base64url_encode($challenge),
+        'time'      => (int) $now,
+    ));
+}
+
+/**
+ * Takes a ceremony out of the store. It is removed whatever follows, so an
+ * answer, right or wrong, uses its challenge up. null when there is none for
+ * the purpose, it was begun for another account, it is older than
+ * pg_passkey_ceremony_lifetime() or its challenge does not read back.
+ *
+ * @param mixed  $store   by reference
+ * @param string $purpose
+ * @param int    $user_id the account the answer is for (0: not known)
+ * @param int    $now
+ * @return array|null the kept values, challenge as raw bytes
+ */
+function pg_passkey_ceremony_take(&$store, $purpose, $user_id, $now)
+{
+    if (!is_array($store) || !isset($store[$purpose])) {
+        return null;
+    }
+
+    $ceremony = $store[$purpose];
+    unset($store[$purpose]);
+
+    if (!is_array($ceremony) || !isset($ceremony['user_id'], $ceremony['challenge'], $ceremony['time'])
+        || ((int) $ceremony['user_id'] !== (int) $user_id)
+        || (((int) $now - (int) $ceremony['time']) > pg_passkey_ceremony_lifetime())
+        || ((int) $ceremony['time'] > (int) $now)) {
+        return null;
+    }
+
+    $challenge = is_string($ceremony['challenge']) ? pg_webauthn_base64url_decode($ceremony['challenge']) : false;
+
+    if (!is_string($challenge) || (strlen($challenge) < 16)) {
+        return null;
+    }
+
+    $ceremony['challenge'] = $challenge;
+
+    return $ceremony;
+}
+
+// ── Stored passkeys ─────────────────────────────────────────────────────────
+
+/**
+ * A name as it is kept: control characters dropped, white space collapsed,
+ * at most PG_PASSKEY_NAME_MAX characters of valid UTF-8; '' when nothing is
+ * left (the caller gives the default then).
+ *
+ * @param mixed $name
+ * @return string
+ */
+function pg_passkey_name($name)
+{
+    if (!is_string($name) || !mb_check_encoding($name, 'UTF-8')) {
+        return '';
+    }
+
+    $name = (string) preg_replace('/[\x00-\x1f\x7f\x{80}-\x{9f}\x{200b}-\x{200f}\x{2028}-\x{202e}\x{2066}-\x{2069}\x{feff}]/u', ' ', $name);
+    $name = trim((string) preg_replace('/\s+/u', ' ', $name));
+
+    return mb_substr($name, 0, PG_PASSKEY_NAME_MAX);
+}
+
+/**
+ * The transports column read back as a list of the values the specification
+ * defines.
+ *
+ * @param mixed $text
+ * @return string[]
+ */
+function pg_passkey_transports_list($text)
+{
+    return pg_webauthn_transports(explode(',', (string) $text));
+}
+
+/**
+ * The row a verified registration is kept as (column => value).
+ *
+ * @param array  $credential the credential of pg_webauthn_verify_registration()
+ * @param array  $transports what the browser reported (getTransports())
+ * @param int    $user_id
+ * @param string $handle     the user handle the ceremony offered, raw bytes
+ * @param string $name       already cleaned (pg_passkey_name())
+ * @param int    $now
+ * @return array
+ */
+function pg_passkey_row_values($credential, $transports, $user_id, $handle, $name, $now)
+{
+    return array(
+        'user_id'         => (int) $user_id,
+        'credential_hash' => hash('sha256', (string) $credential['id']),
+        'credential_id'   => pg_webauthn_base64url_encode((string) $credential['id']),
+        'public_key'      => (string) $credential['public_key'],
+        'alg'             => (int) $credential['alg'],
+        'sign_count'      => (int) $credential['sign_count'],
+        'transports'      => implode(',', pg_webauthn_transports($transports)),
+        'aaguid'          => pg_webauthn_aaguid_text(isset($credential['aaguid']) ? $credential['aaguid'] : ''),
+        'backup_eligible' => !empty($credential['backup_eligible']) ? 1 : 0,
+        'backup_state'    => !empty($credential['backup_state']) ? 1 : 0,
+        'user_handle'     => pg_webauthn_base64url_encode((string) $handle),
+        'name'            => (string) $name,
+        'created_at'      => (int) $now,
+        'last_used_at'    => 0,
+    );
+}
+
+/**
+ * A stored row as the record pg_webauthn_verify_assertion() checks against:
+ * binary values decoded, the counter, algorithm and backup eligibility passed
+ * as the database gave them (the verifier reads '-7', '0' and '1' strictly,
+ * and refuses what it cannot read).
+ *
+ * @param array $row
+ * @return array id, public_key, alg, sign_count, backup_eligible, user_handle
+ */
+function pg_passkey_record($row)
+{
+    $row = is_array($row) ? $row : array();
+    $id = isset($row['credential_id']) ? pg_webauthn_base64url_decode((string) $row['credential_id']) : false;
+    $handle = isset($row['user_handle']) ? pg_webauthn_base64url_decode((string) $row['user_handle']) : false;
+
+    return array(
+        'id'              => is_string($id) ? $id : '',
+        'public_key'      => isset($row['public_key']) ? (string) $row['public_key'] : '',
+        'alg'             => isset($row['alg']) ? $row['alg'] : null,
+        'sign_count'      => isset($row['sign_count']) ? $row['sign_count'] : null,
+        'backup_eligible' => array_key_exists('backup_eligible', $row) ? $row['backup_eligible'] : null,
+        'user_handle'     => is_string($handle) ? $handle : '',
+    );
+}
+
+/**
+ * An account's passkeys, oldest first: id, name, credential_id (raw bytes),
+ * transports, aaguid, backup_eligible, backup_state, created_at,
+ * last_used_at. Empty before the upgrade.
+ *
+ * @param int $user_id
+ * @return array
+ */
+function pg_passkeys_of_user($user_id)
+{
+    if (!pg_passkeys_table_exists() || !pg_passkey_verifier()) {
+        return array();
+    }
+
+    $passkeys = array();
+
+    foreach ((array) db_items("SELECT id, name, credential_id, transports, aaguid, backup_eligible, backup_state, created_at, last_used_at
+        FROM user_passkeys WHERE user_id = '" . (int) $user_id . "' ORDER BY id") as $row) {
+
+        $credential_id = pg_webauthn_base64url_decode((string) $row['credential_id']);
+
+        if (!is_string($credential_id) || ($credential_id === '')) {
+            continue;
+        }
+
+        $passkeys[] = array(
+            'id'              => (int) $row['id'],
+            'name'            => (string) $row['name'],
+            'credential_id'   => $credential_id,
+            'transports'      => pg_passkey_transports_list($row['transports']),
+            'aaguid'          => (string) $row['aaguid'],
+            'backup_eligible' => ((int) $row['backup_eligible'] === 1),
+            'backup_state'    => ((int) $row['backup_state'] === 1),
+            'created_at'      => (int) $row['created_at'],
+            'last_used_at'    => (int) $row['last_used_at'],
+        );
+
+    }
+
+    return $passkeys;
+}
+
+/**
+ * How many passkeys an account keeps.
+ *
+ * @param int $user_id
+ * @return int
+ */
+function pg_passkey_count($user_id)
+{
+    if (!pg_passkeys_table_exists()) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM user_passkeys WHERE user_id = '" . (int) $user_id . "'");
+}
+
+/**
+ * The credential descriptors of an account's passkeys, for the exclude list
+ * of a registration or the allow list of a sign-in.
+ *
+ * @param array $passkeys pg_passkeys_of_user()
+ * @return array list of id, transports
+ */
+function pg_passkey_descriptors($passkeys)
+{
+    $list = array();
+
+    foreach ((array) $passkeys as $passkey) {
+        $list[] = array('id' => $passkey['credential_id'], 'transports' => $passkey['transports']);
+    }
+
+    return $list;
+}
+
+/**
+ * The user handle of an account, raw bytes: the one its passkeys carry, or 32
+ * new random bytes for its first. Never personal data and never derived from
+ * the account id, so a passkey list read off a device says nothing about the
+ * account.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function pg_passkey_user_handle($user_id)
+{
+    $kept = pg_passkeys_table_exists()
+        ? (string) db_value("SELECT user_handle FROM user_passkeys WHERE user_id = '" . (int) $user_id . "' ORDER BY id LIMIT 1")
+        : '';
+
+    $handle = ($kept !== '') ? pg_webauthn_base64url_decode($kept) : false;
+
+    if (is_string($handle) && ($handle !== '') && (strlen($handle) <= 64)) {
+        return $handle;
+    }
+
+    return random_bytes(32);
+}
+
+/**
+ * Removes every passkey of an account: the account is being deleted. Silent
+ * before the upgrade.
+ *
+ * @param int $user_id
+ */
+function pg_passkeys_forget($user_id)
+{
+    if (!pg_passkeys_table_exists() || ((int) $user_id <= 0)) {
+        return;
+    }
+
+    db("DELETE FROM user_passkeys WHERE user_id = '" . (int) $user_id . "'");
+}
+
+// ── Registration ────────────────────────────────────────────────────────────
+
+/**
+ * The account a passkey is made for, as the browser shows it: name is what
+ * the person signs in with (the e-mail address, which members sign in with,
+ * or the username), display name the username.
+ *
+ * @param array $account username, email
+ * @return array name, display_name
+ */
+function pg_passkey_user_entity($account)
+{
+    $username = isset($account['username']) ? trim((string) $account['username']) : '';
+    $email = isset($account['email']) ? trim((string) $account['email']) : '';
+    $name = ($email !== '') ? $email : $username;
+
+    return array(
+        'name'         => mb_substr($name, 0, 64),
+        'display_name' => mb_substr(($username !== '') ? $username : $name, 0, 64),
+    );
+}
+
+/**
+ * Creation options for a new passkey of a signed-in account, with the
+ * ceremony kept in the session for its answer. The account's passkeys are
+ * excluded, so an authenticator that holds one is not registered twice.
+ * Discoverable credentials are preferred, not required: an older security
+ * key that cannot store one still works as a second step.
+ *
+ * @param array $account id, username, email
+ * @return array ok, options (the publicKey JSON for the browser); or error
+ */
+function pg_passkey_registration_begin($account)
+{
+    $ready = pg_passkey_ready();
+
+    if (!$ready['ok']) {
+        return $ready;
+    }
+
+    $user_id = (int) $account['id'];
+
+    if (pg_passkey_count($user_id) >= PG_PASSKEYS_MAX) {
+        return array('ok' => false, 'error' => 'limit');
+    }
+
+    $handle = pg_passkey_user_handle($user_id);
+    $challenge = pg_webauthn_challenge();
+    $entity = pg_passkey_user_entity($account);
+
+    $options = pg_webauthn_creation_options(
+        array('id' => $ready['rp']['id'], 'name' => $ready['rp']['name']),
+        array('handle' => $handle, 'name' => $entity['name'], 'display_name' => $entity['display_name']),
+        $challenge,
+        array(
+            'exclude'           => pg_passkey_descriptors(pg_passkeys_of_user($user_id)),
+            'resident_key'      => 'preferred',
+            'user_verification' => 'preferred',
+        ));
+
+    if ($options === false) {
+        return array('ok' => false, 'error' => 'unavailable');
+    }
+
+    pg_passkey_ceremony_begin($_SESSION['software']['passkey_ceremonies'], 'register', $user_id, $challenge, time(),
+        array('handle' => pg_webauthn_base64url_encode($handle)));
+
+    return array('ok' => true, 'options' => $options);
+}
+
+/**
+ * The checks of a registration answer that need no database: the browser's
+ * JSON read and verified against the kept ceremony and the relying party.
+ *
+ * @param mixed $input    the posted credential JSON
+ * @param array $ceremony from pg_passkey_ceremony_take()
+ * @param array $rp       id, origin
+ * @return array ok, credential, transports; or error
+ */
+function pg_passkey_registration_check($input, $ceremony, $rp)
+{
+    $response = pg_webauthn_registration_response($input);
+
+    if (!$response['ok']) {
+        return $response;
+    }
+
+    $result = pg_webauthn_verify_registration($response, array(
+        'challenge'         => $ceremony['challenge'],
+        'origins'           => array($rp['origin']),
+        'rp_id'             => $rp['id'],
+        'user_verification' => 'preferred',
+    ));
+
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    return array('ok' => true, 'credential' => $result['credential'], 'transports' => $response['transports']);
+}
+
+/**
+ * Checks the answer to pg_passkey_registration_begin() and keeps the passkey.
+ *
+ * @param array  $account id, username, email
+ * @param mixed  $input   the posted credential JSON
+ * @param string $name    what the person calls it; '' gives "Passkey"
+ * @return array ok, passkey (id, name, created_at, backup_eligible,
+ *               backup_state); or error
+ */
+function pg_passkey_register($account, $input, $name = '')
+{
+    $ready = pg_passkey_ready();
+
+    if (!$ready['ok']) {
+        return $ready;
+    }
+
+    $user_id = (int) $account['id'];
+    $ceremony = pg_passkey_ceremony_take($_SESSION['software']['passkey_ceremonies'], 'register', $user_id, time());
+
+    if ($ceremony === null) {
+        return array('ok' => false, 'error' => 'challenge');
+    }
+
+    $handle = isset($ceremony['handle']) && is_string($ceremony['handle']) ? pg_webauthn_base64url_decode($ceremony['handle']) : false;
+
+    if (!is_string($handle) || ($handle === '') || (strlen($handle) > 64)) {
+        return array('ok' => false, 'error' => 'challenge');
+    }
+
+    $checked = pg_passkey_registration_check($input, $ceremony, $ready['rp']);
+
+    if (!$checked['ok']) {
+        return $checked;
+    }
+
+    if (pg_passkey_count($user_id) >= PG_PASSKEYS_MAX) {
+        return array('ok' => false, 'error' => 'limit');
+    }
+
+    $name = pg_passkey_name($name);
+    $row = pg_passkey_row_values($checked['credential'], $checked['transports'], $user_id, $handle,
+        ($name !== '') ? $name : lang('Passkey'), time());
+
+    // WebAuthn 7.1 step 26: a credential ID registered already is refused,
+    // whichever account holds it. The unique key catches two answers racing.
+    if (db_value("SELECT id FROM user_passkeys WHERE credential_hash = '" . e($row['credential_hash']) . "'") !== null) {
+        return array('ok' => false, 'error' => 'duplicate');
+    }
+
+    $values = array();
+
+    foreach ($row as $value) {
+        $values[] = "'" . e((string) $value) . "'";
+    }
+
+    // Not db(): a failed statement there prints an HTML page, and the caller
+    // answers JSON.
+    if (!@mysqli_query(db::$con, "INSERT INTO user_passkeys (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")")) {
+        return array('ok' => false, 'error' => (mysqli_errno(db::$con) === 1062) ? 'duplicate' : 'storage');
+    }
+
+    return array('ok' => true, 'passkey' => array(
+        'id'              => (int) mysqli_insert_id(db::$con),
+        'name'            => $row['name'],
+        'created_at'      => $row['created_at'],
+        'backup_eligible' => ($row['backup_eligible'] === 1),
+        'backup_state'    => ($row['backup_state'] === 1),
+    ));
+}
+
+// ── Sign-in ─────────────────────────────────────────────────────────────────
+
+/**
+ * Request options for a sign-in with a passkey, with the ceremony kept in the
+ * session for its answer.
+ *
+ * With an account (the second step of its sign-in, after its password) the
+ * browser is offered that account's passkeys only, and the person need not
+ * be verified on the device: the password was the first factor. With none
+ * (0) the browser offers whatever passkey it holds for the site; the answer
+ * then names its account by the user handle and must verify the person (PIN,
+ * fingerprint, face), since the passkey is the only factor.
+ *
+ * @param int $user_id
+ * @return array ok, options (the publicKey JSON); or error
+ */
+function pg_passkey_signin_begin($user_id)
+{
+    $ready = pg_passkey_ready();
+
+    if (!$ready['ok']) {
+        return $ready;
+    }
+
+    $user_id = (int) $user_id;
+    $allow = array();
+
+    if ($user_id > 0) {
+
+        $allow = pg_passkey_descriptors(pg_passkeys_of_user($user_id));
+
+        if (count($allow) === 0) {
+            return array('ok' => false, 'error' => 'none');
+        }
+
+    }
+
+    $challenge = pg_webauthn_challenge();
+
+    $options = pg_webauthn_request_options($ready['rp']['id'], $challenge, array(
+        'allow'             => $allow,
+        'user_verification' => ($user_id > 0) ? 'preferred' : 'required',
+    ));
+
+    if ($options === false) {
+        return array('ok' => false, 'error' => 'unavailable');
+    }
+
+    pg_passkey_ceremony_begin($_SESSION['software']['passkey_ceremonies'], 'signin', $user_id, $challenge, time());
+
+    return array('ok' => true, 'options' => $options);
+}
+
+/**
+ * The checks of a sign-in answer that need no database: the answer verified
+ * against the kept ceremony, the relying party and the stored row.
+ *
+ * @param array $response     from pg_webauthn_assertion_response()
+ * @param array $ceremony     from pg_passkey_ceremony_take()
+ * @param array $rp           id, origin
+ * @param array $row          the stored passkey the response names
+ * @param bool  $discoverable true when no account was known before (the
+ *                            passkey is the only factor)
+ * @return array the verifier's answer: ok, sign_count, user_verified,
+ *               backup_eligible, backup_state; or error
+ */
+function pg_passkey_assertion_check($response, $ceremony, $rp, $row, $discoverable)
+{
+    return pg_webauthn_verify_assertion($response, array(
+        'challenge'         => $ceremony['challenge'],
+        'origins'           => array($rp['origin']),
+        'rp_id'             => $rp['id'],
+        'user_verification' => $discoverable ? 'required' : 'preferred',
+        'discoverable'      => (bool) $discoverable,
+    ), pg_passkey_record($row));
+}
+
+/**
+ * Checks a sign-in answer against the ceremony kept for it and the stored
+ * passkey, and records the use: the new counter, whether it is backed up
+ * now, when it was used. The counter is written only over the value it was
+ * checked against, so of two answers checked at the same moment against the
+ * same counter, one is refused.
+ *
+ * @param mixed $input   the posted credential JSON
+ * @param int   $user_id the account the ceremony was begun for (0: none)
+ * @return array ok, user_id, passkey_id, name; or error
+ */
+function pg_passkey_signin_check($input, $user_id)
+{
+    $ready = pg_passkey_ready();
+
+    if (!$ready['ok']) {
+        return $ready;
+    }
+
+    $user_id = (int) $user_id;
+    $ceremony = pg_passkey_ceremony_take($_SESSION['software']['passkey_ceremonies'], 'signin', $user_id, time());
+
+    if ($ceremony === null) {
+        return array('ok' => false, 'error' => 'challenge');
+    }
+
+    $response = pg_webauthn_assertion_response($input);
+
+    if (!$response['ok']) {
+        return $response;
+    }
+
+    $row = db_item("SELECT id, user_id, credential_id, public_key, alg, sign_count, backup_eligible, user_handle, name
+        FROM user_passkeys WHERE credential_hash = '" . e(hash('sha256', $response['credential_id'])) . "'");
+
+    // A passkey of another account answers like one that does not exist.
+    if (!is_array($row) || (($user_id > 0) && ((int) $row['user_id'] !== $user_id))) {
+        return array('ok' => false, 'error' => 'credential');
+    }
+
+    $result = pg_passkey_assertion_check($response, $ceremony, $ready['rp'], $row, ($user_id === 0));
+
+    if (!$result['ok']) {
+        return $result;
+    }
+
+    $stored = (int) $row['sign_count'];
+    $counted = ($result['sign_count'] !== 0) || ($stored !== 0);
+
+    db("UPDATE user_passkeys SET
+            sign_count = '" . (int) $result['sign_count'] . "',
+            backup_state = '" . ($result['backup_state'] ? 1 : 0) . "',
+            last_used_at = '" . time() . "'
+        WHERE id = '" . (int) $row['id'] . "'"
+        . ($counted ? " AND sign_count = '" . $stored . "'" : ''));
+
+    if ($counted && (mysqli_affected_rows(db::$con) !== 1)) {
+        return array('ok' => false, 'error' => 'sign_count');
+    }
+
+    return array(
+        'ok'         => true,
+        'user_id'    => (int) $row['user_id'],
+        'passkey_id' => (int) $row['id'],
+        'name'       => (string) $row['name'],
+    );
+}
+
+// ── Words for the visitor ───────────────────────────────────────────────────
+
+/**
+ * The one sentence a visitor is shown for a refused ceremony. Only the codes
+ * about the site, the session or the account's own list get words of their
+ * own; every refusal of the credential itself reads the same.
+ *
+ * @param string $error   a code of this module or of the verifier
+ * @param string $context 'register' or 'signin'
+ * @return string
+ */
+function pg_passkey_refusal($error, $context)
+{
+    switch ($error) {
+        case 'unavailable':
+            return lang('Passkeys cannot be used on this site.');
+
+        case 'host':
+            return lang(array('string' => 'Passkeys work at {var:1} only. Open the site there and try again.', 'vars' => defined('HOSTNAME_SETTING') ? (string) HOSTNAME_SETTING : ''));
+
+        case 'challenge':
+            return lang('The request has expired or was used already. Please try again.');
+
+        case 'none':
+            return lang('This account has no passkey.');
+
+        case 'limit':
+            return lang(array('string' => 'An account can keep at most {var:1} passkeys. Remove one first.', 'vars' => (string) PG_PASSKEYS_MAX));
+
+        case 'duplicate':
+            return lang('This passkey is registered already.');
+    }
+
+    return ($context === 'register')
+        ? lang('The passkey could not be added. Please try again.')
+        : lang('The passkey was not accepted.');
+}

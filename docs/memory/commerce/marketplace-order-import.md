@@ -13,7 +13,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 
 ## Which checkout side effects are used?
 - The checkout page's side effects are NOT used. The three wanted: stock decrement, `pg_marketplace_product_changed()`, `create_notification('new_order')`.
-- Email / auto-membership / points / gift card / campaign / QUOTES are deliberately left out.
+- Deliberately left out (header of `includes/api/outbound/orders.php`): the receipt e-mail (the marketplace sent one), auto-registration, reward points, gift card issuance, e-mail campaigns, offers (they would re-price the sale against rules the marketplace never knew) and payment.
 - `process_order_cancellation()` is not used for import either: it attempts a refund on an order that never passed the gateway.
 
 ## What happens with unmatched or code-matched lines?

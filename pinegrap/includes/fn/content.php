@@ -3325,14 +3325,22 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                         $data = $submitted_form[$field_name] ?? '';
                         break;
                     case 'custom':
-                        $data = $submitted_form['field_' . $field_id];
+                        // A field the visitor left empty (an unticked box) has no form_data row.
+                        $data = $submitted_form['field_' . $field_id] ?? '';
                         // if this field is a WYSIWYG field, then do not prepare for HTML
                         if ($field_wysiwyg == 1) {
                             $prepare_this_field_for_html = false;
                         }
                         break;
                 }
-                $data = prepare_form_data_for_output($data, $field_type, $prepare_this_field_for_html, $date_format);
+                // ^^name^^%%Yes|No%% on a check box prints one of the two texts as
+                // written in the content instead of the stored value.
+                $checkbox_text = ($field_type == 'check box') ? pg_cf_checkbox_format_text($data, $variable[3] ?? '') : null;
+                if ($checkbox_text !== null) {
+                    $data = $checkbox_text;
+                } else {
+                    $data = prepare_form_data_for_output($data, $field_type, $prepare_this_field_for_html, $date_format);
+                }
                 // if this is a standard field, then do some extra things for standard fields
                 if ($field_group == 'standard') {
                     // If this is the number of views or number of comments field then do some things for the numeric value.

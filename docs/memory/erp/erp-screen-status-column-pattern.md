@@ -4,7 +4,7 @@ description: Owner decision on ERP screen width: form column plus sticky status 
 ---
 
 ## What did the owner decide about wide ERP screens?
-- Owner decision (Erdal): fix the sprawling layouts on these screens; the software design language (Bootstrap 5, card structure, toolbar pattern) stays, but badly laid-out screens must not keep being repeated. Full-width cards stacked in a single column are out.
+- Owner decision: fix the sprawling layouts on these screens; the software design language (Bootstrap 5, card structure, toolbar pattern) stays, but badly laid-out screens must not keep being repeated. Full-width cards stacked in a single column are out.
 - Applies to ERP screens; a new ERP screen assumes this pattern by default.
 
 ## What is the reference layout?

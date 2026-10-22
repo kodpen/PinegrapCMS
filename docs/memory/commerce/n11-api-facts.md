@@ -1,10 +1,15 @@
 ---
 name: n11-api-facts
-description: n11 REST API facts for the connector: headers, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
+description: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 ---
 
 ## How does the n11 API behave? (developer.n11.com)
 - Host `api.n11.com`, headers `appKey` / `appSecret` (the docs write them two different ways in two services; the connector sends both). SOAP services are NOT used.
+
+## How is the connection tested? (`mp_n11_test_credentials()`)
+- GET `/cdn/categories`, the whole category tree, read with `mp_n11_category_tree_bytes()` (8 MB) like every call to that endpoint. 401/403 is reported as a refused key.
+- Symptom before the fix (#1029): it read 4,000 bytes, so the right key failed with "n11 answered 200 with something that is not JSON" and the account's last error was written.
+- `mp_n11_call()` reports a 2xx body that is not JSON and as long as its limit as cut off, and does not retry it (asking again gets the same cut). A 5xx/408 body of that length stays "not JSON" with its status and is retried, so a long gateway error page during an outage does not fail queued price/stock rows for good (#1029).
 
 ## How does the async product side work?
 - `price-stock-update` (1000 SKU/request) -> `taskId` -> `task-details/page-query` -> SUCCESS/FAIL PER SKU.
