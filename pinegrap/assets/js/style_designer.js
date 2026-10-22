@@ -5146,8 +5146,12 @@ const StyleDesigner = (function () {
         // no margin, baseline-aligned like the <span> it stands for.
         _SD_BX + '.sd-wrap[data-content-type="span"], .sd-wrap[data-content-type="text"] { display:inline; margin:0; width:auto; min-height:unset; max-width:100%; vertical-align:baseline; }',
         '.sd-wrap[data-content-type="span"] > .sd-lbl, .sd-wrap[data-content-type="text"] > .sd-lbl { display:none; }',
-        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width
-        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width.
+        // No margin, like the span/text wrapper above: the 3px of a content
+        // wrapper grew the line box (and a block-drawn d-block wrapper) by
+        // 6px, so a caption under a strong title stood 12px taller than on
+        // the page.
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.

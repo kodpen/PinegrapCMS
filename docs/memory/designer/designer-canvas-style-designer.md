@@ -14,6 +14,7 @@ description: style_designer.js canvas rules: widget tree root, lockstep cfg, tab
 - Other frameworks (`_sdFxFlatOn()`): the wrapper is `display:contents` (`.sd-fx-flat`) and the framework's structural selectors are bridged through the wrapper in the canvas CSSOM by `_sdBridgeSheets()` (specificity unchanged).
 - Measurement-dependent fixes for both models live in `_sdCanvasFidelityPass()`: `sd-fx-block`, `sd-fx-inline` (block wrapper of an inline element is transparent), loop area's parent layout, card image placeholder (height of the first ghost image).
 - Measure the wrapper with `_sdBoxRect()`.
+- Content and component wrappers keep `margin:3px 0`; inline-tag (`sd-wrap-inline`) and span/text wrappers have none, as their elements on the page. With it, each caption line grew 6px (showcase-floating cards 10-12px taller).
 
 ## Where does the canvas put an absolutely positioned element?
 - Where the page does. Every boxed wrapper is `position:relative`, so such an element (hero overlay, card or badge over a picture, `pg-float`) used to be placed against its own wrapper or a wrapper between it and its frame.
