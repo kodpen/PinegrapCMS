@@ -463,6 +463,89 @@ function test_marketplace_trendyol_slicer_falls_back_to_the_articles_value()
 	pg_assert_same(null, mp_listing_attributes_of($definitions, array(), $own));
 }
 
+// Items as mp_listing_items() builds them, from each product's own options.
+function trendyol_test_variant_items($definitions, $chosen, $products)
+{
+	$items = array();
+
+	foreach ($products as $code => $own) {
+		$items[] = array('stock_code' => $code, 'attributes' => mp_listing_attributes_of($definitions, $chosen, $own));
+	}
+
+	return $items;
+}
+
+// Sizes under a name the category does not use, with labels not on its list:
+// both fall back to the article's Beden M and would go out as the same row.
+function test_marketplace_trendyol_unmatched_sizes_clash_on_the_articles_value()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	$items = trendyol_test_variant_items($definitions, array('293' => 'M', '47' => '686230', '180' => 'Pamuk'), array(
+		'CHAIR-M' => array(array('name' => 'Size', 'value' => 'Medium'), array('name' => 'Renk', 'value' => 'Siyah')),
+		'CHAIR-L' => array(array('name' => 'Size', 'value' => 'Large'), array('name' => 'Renk', 'value' => 'Siyah')),
+	));
+
+	pg_assert_same(array(0, 1), mp_listing_variant_clash($definitions, $items));
+}
+
+// Colours under another name, with labels not on the list: both take the Renk
+// stored for the article, and the shared Beden M leaves nothing apart.
+function test_marketplace_trendyol_unmatched_colours_clash_on_the_stored_colour()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	$items = trendyol_test_variant_items($definitions, array('47' => '686230', '180' => 'Pamuk'), array(
+		'CHAIR-MOCHA' => array(array('name' => 'Beden', 'value' => 'M'), array('name' => 'Colour', 'value' => 'Mocha')),
+		'CHAIR-GREEN' => array(array('name' => 'Beden', 'value' => 'M'), array('name' => 'Colour', 'value' => 'Green')),
+	));
+
+	pg_assert_same(array(0, 1), mp_listing_variant_clash($definitions, $items));
+}
+
+// A single-size article split by colour: the article's Tek Ebat is shared, the
+// colours differ, so it lists.
+function test_marketplace_trendyol_single_size_colour_split_article_does_not_clash()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	$items = trendyol_test_variant_items($definitions, array('293' => '4872'), array(
+		'CHAIR-BLACK' => array(array('name' => 'Renk', 'value' => 'Siyah')),
+		'CHAIR-RED'   => array(array('name' => 'Renk', 'value' => 'Kırmızı')),
+	));
+
+	pg_assert_same('4872', $items[1]['attributes'][0]['value_id']);
+	pg_assert_same(null, mp_listing_variant_clash($definitions, $items));
+}
+
+// One product has nothing to be confused with; free text is compared without
+// case, and items without variant values are not compared at all.
+function test_marketplace_trendyol_variant_clash_edges()
+{
+	$definitions = trendyol_test_category_definitions();
+
+	$one = trendyol_test_variant_items($definitions, array('293' => 'M', '47' => '686230'), array(
+		'CHAIR' => array(array('name' => 'Renk', 'value' => 'Siyah')),
+	));
+
+	pg_assert_same(null, mp_listing_variant_clash($definitions, $one));
+
+	$custom = array(
+		array('stock_code' => 'A', 'attributes' => array(array('id' => '293', 'value_id' => '', 'custom_value' => 'XL '))),
+		array('stock_code' => 'B', 'attributes' => array(array('id' => '180', 'value_id' => '', 'custom_value' => 'Pamuk'))),
+		array('stock_code' => 'C', 'attributes' => array(array('id' => '293', 'value_id' => '', 'custom_value' => 'xl'))),
+	);
+
+	pg_assert_same(array(0, 2), mp_listing_variant_clash($definitions, $custom));
+
+	$plain = array(
+		array('stock_code' => 'A', 'attributes' => array(array('id' => '180', 'value_id' => '', 'custom_value' => 'Pamuk'))),
+		array('stock_code' => 'B', 'attributes' => array(array('id' => '180', 'value_id' => '', 'custom_value' => 'Pamuk'))),
+	);
+
+	pg_assert_same(null, mp_listing_variant_clash($definitions, $plain));
+}
+
 function test_marketplace_trendyol_attribute_value_budget_ends_with_an_error()
 {
 	// A count that never ends: every page answers "page 0 of 1000".

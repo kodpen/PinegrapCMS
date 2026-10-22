@@ -426,6 +426,18 @@ function mp_listing_items($account, $group_id) {
 
 	}
 
+	// Products that fell back to the article's value can end up the same.
+	$clash = mp_listing_variant_clash($definitions, $items);
+
+	if ($clash !== null) {
+
+		return array('ok' => false, 'items' => array(), 'error' => lang(array(
+			'string' => '{var:1} and {var:2} would be sent with the same variant values. Give each product its own option, named as the category names it or with a value from its list.',
+			'vars'   => array($items[$clash[0]]['stock_code'], $items[$clash[1]]['stock_code'])
+		)));
+
+	}
+
 	return array('ok' => true, 'items' => $items, 'error' => '');
 
 }
@@ -575,11 +587,13 @@ function mp_listing_attributes($definitions, $chosen, $product_id) {
 // The same, from the product's own options already read: array(name, value)
 // pairs, the shop's attribute name and the option's label.
 //
-// A variant attribute takes the product's own option first. A product that has
-// no such option takes the value chosen for the article, if one was: an article
-// in a single colour still lists when the category splits its pages by colour,
-// and an article whose products are its colours sends each one's own colour
-// rather than the article's.
+// A variant attribute takes the product's own option first. A product whose
+// options do not match it (no option of that name, no label on the category's
+// list) takes the value chosen for the article, if one was: an article in a
+// single colour still lists when the category splits its pages by colour, and
+// an article whose products are its colours sends each one's own colour rather
+// than the article's. Products that end up the same are refused afterwards by
+// mp_listing_variant_clash().
 function mp_listing_attributes_of($definitions, $chosen, $own) {
 
 	$attributes = array();
@@ -627,6 +641,77 @@ function mp_listing_attributes_of($definitions, $chosen, $own) {
 	}
 
 	return $attributes;
+
+}
+
+// The first two items of one article that would be sent with the same variant
+// values, as array(first index, second index), or null.
+//
+// Two SKUs with the same varianter and slicer values under one productMainId
+// are rows the marketplace cannot tell apart. The article's value makes this
+// possible: a product whose option has another name and a label not on the
+// category's list falls back to it, so [Size: Medium] and [Size: Large] both
+// go out as the article's Beden M. Only the variant attributes are compared,
+// a value from their list by its id and free text without case, and an item
+// with no variant value at all is left out, as a category without variant
+// attributes has nothing to tell its products apart by.
+function mp_listing_variant_clash($definitions, $items) {
+
+	$variant = array();
+
+	foreach ((array)$definitions as $definition) {
+
+		if (!empty($definition['is_variant'])) {
+
+			$variant[(string)$definition['attribute_id']] = true;
+
+		}
+
+	}
+
+	$seen = array();
+
+	foreach (array_values((array)$items) as $index => $item) {
+
+		$parts = array();
+
+		foreach ((array)(isset($item['attributes']) ? $item['attributes'] : array()) as $attribute) {
+
+			$id = (string)$attribute['id'];
+
+			if (!isset($variant[$id])) {
+
+				continue;
+
+			}
+
+			$parts[$id] = ((string)$attribute['value_id'] !== '')
+				? $id . '=' . (string)$attribute['value_id']
+				: $id . '=#' . mb_strtolower(trim((string)$attribute['custom_value']));
+
+		}
+
+		if (!$parts) {
+
+			continue;
+
+		}
+
+		ksort($parts, SORT_STRING);
+
+		$key = implode("\n", $parts);
+
+		if (isset($seen[$key])) {
+
+			return array($seen[$key], $index);
+
+		}
+
+		$seen[$key] = $index;
+
+	}
+
+	return null;
 
 }
 

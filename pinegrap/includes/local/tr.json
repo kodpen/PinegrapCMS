@@ -25408,7 +25408,6 @@
     "Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).": "Yanıttaki sınıflar ve stiller kalır: yanıtları sitede ancak incelendikten sonra gösterin (kayıt görünümünde bir filtreyle).",
     "Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.": "Önceden verilmiş yanıtların metni kalır ama satır sonları kaybolur; kapatılırsa saklanan biçimlendirme kod olarak görünür.",
     "rich text": "zengin metin",
-    "Taken from each product's own option. This value is used only for a product without one.": "Her ürünün kendi seçeneğinden alınır. Bu değer yalnız kendi seçeneği olmayan ürün için kullanılır.",
     "Started again, it goes on from {var:1}: the dates it wrote and those that passed while it was stopped are not written.": "Yeniden başlatılırsa {var:1} tarihinden devam eder: yazdığı tarihler ve durduğu sürede geçen tarihler yazılmaz.",
     "Views in recent days": "Son günlerdeki görüntüleme",
     "Days counted": "Sayılan gün",
@@ -25454,5 +25453,7 @@
     "Value from the page address (when is equal to finds records)": "Sayfa adresindeki değer (eşittir kayıt bulduğunda)",
     "A value from the page address, compared with is equal to, finds records": "Sayfa adresindeki değer eşittir ile karşılaştırıldı ve kayıt buldu",
     "No value from the page address is applied": "Sayfa adresinden bir değer uygulanmadı",
-    "An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order's shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.": "İnternet satışı e-Arşiv faturası web adresini ve taşıyıcıyı yazar; bu sipariş şunları vermiyor: {var:1}. Taşıyıcı siparişin nakliye yönteminde girilir (Taşıyıcı Unvanı, Taşıyıcı VKN). Paraşüt'e bir şey gönderilmedi."
+    "An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order's shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.": "İnternet satışı e-Arşiv faturası web adresini ve taşıyıcıyı yazar; bu sipariş şunları vermiyor: {var:1}. Taşıyıcı siparişin nakliye yönteminde girilir (Taşıyıcı Unvanı, Taşıyıcı VKN). Paraşüt'e bir şey gönderilmedi.",
+    "Taken from each product's own option. This value is used only for a product whose options do not match this attribute; two products that would end up the same refuse the article.": "Her ürünün kendi seçeneğinden alınır. Bu değer yalnız seçenekleri bu özniteliğe uymayan ürün için kullanılır; aynı değerlerle kalan iki ürün makaleyi durdurur.",
+    "{var:1} and {var:2} would be sent with the same variant values. Give each product its own option, named as the category names it or with a value from its list.": "{var:1} ve {var:2} aynı varyant değerleriyle gönderilecekti. Her ürüne kendi seçeneğini verin; adı kategorideki gibi olsun ya da değeri kategorinin listesinden seçilsin."
 }

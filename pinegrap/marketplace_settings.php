@@ -679,9 +679,11 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 
 		// A variant attribute is answered by the products themselves - it is
 		// what tells them apart - so it is never required here. A value chosen
-		// for the article is used only by a product without an option of its
-		// own: an article in one colour, in a category that splits its pages
-		// by colour.
+		// for the article is used only by a product whose options do not match
+		// it (no option of that name, no label on the category's list): an
+		// article in one colour, in a category that splits its pages by colour.
+		// Two products that would end up the same refuse the article
+		// (mp_listing_variant_clash()).
 		$variant = !empty($attribute['is_variant']);
 
 		$required = !empty($attribute['mandatory']) && !$variant;
@@ -725,7 +727,7 @@ function mp_settings_article_form($account, $account_id, $article, $map, $attrib
 
 			$out .= '
 							<div class="form-text">'
-								. lang('Taken from each product\'s own option. This value is used only for a product without one.') . '</div>';
+								. lang('Taken from each product\'s own option. This value is used only for a product whose options do not match this attribute; two products that would end up the same refuse the article.') . '</div>';
 
 		}
 
