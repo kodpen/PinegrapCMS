@@ -753,6 +753,24 @@ function pg_defuse_page_message($html)
     return preg_replace('/<(\/?(?:cregion|pregion|dregion|menu|menu_sequence|system|login|ad|cart|tcloud|pdf|mobile_switch|if|else|php)\b)/i', '&lt;$1', $html);
 }
 
+// A liveform message as plain text, for a place that shows it in a text-only
+// context (a field's inline feedback) rather than as the alert HTML.
+//
+// A message is HTML: the alerts print it as it is, some carry a link, and a
+// value it names (a refused file name) is escaped before it goes in. Shown in
+// a text node its tags must not appear and its entities must be read once, so
+// the markup is dropped and the entities are resolved; the caller escapes the
+// result for its own context. Reading the HTML as text here also means a byte
+// the HTML escape replaced survives instead of emptying the whole sentence.
+function pg_liveform_message_text($message)
+{
+    if ($message === null || $message === '') {
+        return '';
+    }
+
+    return trim(html_entity_decode(strip_tags((string) $message), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
