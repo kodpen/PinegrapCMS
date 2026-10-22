@@ -48,8 +48,6 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_conversion_pack();        // 11.0.14
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
-}
-
 	upgrade_2026_11_0_passkeys();               // 11.0.13
 
 }
