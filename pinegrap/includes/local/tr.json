@@ -25460,6 +25460,8 @@
     "Set your password": "Parolanızı belirleyin",
     "You can set a password with \"Forgot password\" on the sign-in page.": "Giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilirsiniz.",
     "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}",
+    "These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.": "Şu satırlar, içlerindeki fiyat, karşılaştırma fiyatı ya da ek kargo ücreti bir tutar olmadığı için içe aktarılmadı: {var:1}.",
+    "An offer needs a start date.": "Teklifin bir başlangıç tarihi olmalı.",
     "PHP Security Fixes": "PHP Güvenlik Düzeltmeleri",
     "PHP fixes": "PHP düzeltmeleri",
     "This PHP has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619).": "Bu PHP, PHP2Shell açıklarının (CVE-2026-109618, CVE-2026-109619) düzeltmelerini içeriyor.",
