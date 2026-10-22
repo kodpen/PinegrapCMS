@@ -25443,5 +25443,7 @@
     "Set your password: {var:1}": "Parolanızı belirleyin: {var:1}",
     "Set your password": "Parolanızı belirleyin",
     "You can set a password with \"Forgot password\" on the sign-in page.": "Giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilirsiniz.",
-    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}"
+    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}",
+    "A new account was created with this order: {var:1}": "Bu siparişle yeni bir hesap oluşturuldu: {var:1}",
+    "We have created a new account for you so you can view your orders on our site.": "Siparişlerinizi sitemizde görüntüleyebilmeniz için sizin adınıza yeni bir hesap oluşturduk."
 }

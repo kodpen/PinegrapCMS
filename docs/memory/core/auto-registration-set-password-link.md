@@ -24,6 +24,6 @@ description: A form's auto-registered account gets a signed single-use set passw
 - The designer token `__new_account_password` (widgets.php) carries the same note; a separate link token and a new designer label are not added yet.
 
 ## What is still open?
-- Orders (`submit_order.php` → `$_SESSION['software']['auto_registration']['password']`, `get_order_receipt*.php`, `get_view_order_screen_content.php`, `templates/order_receipt.php`) still print the password: separate fix.
+- Orders use the same link; the receipt copy for the store is split from the customer's: `commerce/order-auto-registration-set-password-link.md`.
 - `add_user.php` mails the random password an administrator's new account gets: out of scope.
 - Tests: `tests/auto_registration_set_password_test.php`.

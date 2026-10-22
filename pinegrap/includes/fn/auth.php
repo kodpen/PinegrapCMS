@@ -4464,6 +4464,172 @@ function pg_set_password_link_issue($user_id)
 }
 
 /**
+ * Who the order receipt being drawn now is for: 'screen' (the receipt page of
+ * the session that placed the order; the default), 'customer' (their copy of
+ * the receipt e-mail) or 'store' (the copy for the store's BCC addresses).
+ * submit_order.php sets it around each copy it draws. Pass a value to set it,
+ * nothing to ask.
+ *
+ * @param string|null $audience
+ * @return string
+ */
+function pg_order_receipt_audience($audience = null)
+{
+    static $current = 'screen';
+
+    if (in_array($audience, array('screen', 'customer', 'store'), true)) {
+        $current = $audience;
+    }
+
+    return $current;
+}
+
+/**
+ * Whether the account an order's auto-registration opened is handed to the
+ * reader of the receipt: the customer's e-mail, and the receipt page unless a
+ * staff member placed the order for the customer (ghosting) - that session is
+ * not the customer's. Never the store's copy.
+ *
+ * @param string $audience see pg_order_receipt_audience()
+ * @param bool   $ghost    the order was placed by a staff member for the customer
+ * @return bool
+ */
+function pg_order_new_account_for_customer($audience, $ghost)
+{
+    if ($audience === 'customer') {
+        return true;
+    }
+
+    return ($audience === 'screen') && !$ghost;
+}
+
+/**
+ * The copies of an order receipt e-mail: one to the customer with the BCC
+ * addresses, or, when the order opened an account, the customer's copy alone
+ * (it carries the set password link) and one copy for each BCC address.
+ *
+ * @param string $customer_email_address
+ * @param array  $bcc_email_addresses
+ * @param bool   $new_account
+ * @return array list of array('to' => string, 'bcc' => array, 'audience' => 'customer'|'store')
+ */
+function pg_order_receipt_copies($customer_email_address, $bcc_email_addresses, $new_account)
+{
+    $bcc_email_addresses = array_values(array_filter((array) $bcc_email_addresses, 'strlen'));
+
+    if (!$new_account || (count($bcc_email_addresses) === 0)) {
+        return array(array('to' => (string) $customer_email_address, 'bcc' => $bcc_email_addresses, 'audience' => 'customer'));
+    }
+
+    $copies = array(array('to' => (string) $customer_email_address, 'bcc' => array(), 'audience' => 'customer'));
+
+    foreach ($bcc_email_addresses as $email_address) {
+        $copies[] = array('to' => (string) $email_address, 'bcc' => array(), 'audience' => 'store');
+    }
+
+    return $copies;
+}
+
+/**
+ * The e-mail address of the account the last order of this session opened,
+ * or ''.
+ *
+ * @return string
+ */
+function pg_order_new_account_email()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    return (is_array($entry) && isset($entry['email_address'])) ? (string) $entry['email_address'] : '';
+}
+
+/**
+ * Whether the receipt being drawn now may hand that account over (see
+ * pg_order_new_account_for_customer()).
+ *
+ * @return bool
+ */
+function pg_order_new_account_drawn_for_customer()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    return pg_order_new_account_for_customer(pg_order_receipt_audience(), is_array($entry) && !empty($entry['ghost']));
+}
+
+/**
+ * The set password link of that account for the customer, or '' (someone
+ * else's copy, no account, or the link was used or expired).
+ *
+ * @return string
+ */
+function pg_order_new_account_link()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    if (!is_array($entry) || empty($entry['user_id']) || !pg_order_new_account_drawn_for_customer()) {
+        return '';
+    }
+
+    return pg_set_password_link((int) $entry['user_id']);
+}
+
+/**
+ * The "new account" block of an order receipt, plain text or HTML. The
+ * customer gets the address and the link to set a password; anyone else only
+ * learns that the order opened an account for the address. No password is
+ * ever written.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when there is no live link
+ * @param bool   $for_customer
+ * @param bool   $html
+ * @return string '' without an account
+ */
+function pg_order_new_account_block($email_address, $set_password_url, $for_customer, $html)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    if (!$for_customer) {
+        $line = lang(array('string' => 'A new account was created with this order: {var:1}', 'vars' => array($html ? h($email_address) : $email_address)));
+
+        return $html
+            ? '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" . '<div class="account data"><p>' . $line . '</p></div>'
+            : "\n\n" . lang('New Account') . ':' . "\n" . '-------------------------' . "\n" . $line;
+    }
+
+    $intro = lang('We have created a new account for you so you can view your orders on our site.');
+
+    if ($html) {
+        $out =
+            '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" .
+            '<div class="account data">' . "\n" .
+            '<p>' . $intro . '</p>' . "\n" .
+            '<p>' . lang('Email') . ': ' . h($email_address) . '</p>' . "\n";
+
+        $out .= ($set_password_url !== '')
+            ? '<p><a href="' . h($set_password_url) . '">' . lang('Set your password') . '</a></p>' . "\n"
+            : '<p>' . h(lang('You can set a password with "Forgot password" on the sign-in page.')) . '</p>' . "\n";
+
+        return $out . '</div>';
+    }
+
+    $out =
+        "\n\n" . lang('New Account') . ':' . "\n" . '-------------------------' . "\n" .
+        $intro . "\n" .
+        "\n" .
+        lang('Email') . ': ' . $email_address . "\n";
+
+    return $out . (($set_password_url !== '')
+        ? lang(array('string' => 'Set your password: {var:1}', 'vars' => array($set_password_url)))
+        : lang('You can set a password with "Forgot password" on the sign-in page.'));
+}
+
+/**
  * The set password link issued for an account by pg_set_password_link_issue(),
  * or '' once it was used, replaced by a forgot password request or expired.
  * The page is the site's set password page (the panel's set_password.php,
