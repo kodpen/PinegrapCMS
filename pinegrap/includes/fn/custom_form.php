@@ -608,9 +608,12 @@ function pg_cf_default_email_body($fields)
  * empty is replaced by the form's fields, the way the visual editor writes
  * it; a form without a named field still names the submission. Labels come
  * from the legacy field screen too, where they may be empty or end in a
- * colon. $fields: rows with `name` and `label`.
+ * colon. $fields: rows with `name`, `label` and `office_use_only`. The
+ * submitter's copy ($for_submitter) leaves out the fields marked "Hide This
+ * Field from Submitter": the visitor never saw them, and the site fills
+ * their values in for the office.
  */
-function pg_cf_email_body_fallback($body, $fields)
+function pg_cf_email_body_fallback($body, $fields, $for_submitter = false)
 {
     if (trim((string)$body) !== '') return (string)$body;
 
@@ -618,6 +621,7 @@ function pg_cf_email_body_fallback($body, $fields)
     foreach ((array)$fields as $f) {
         $name = isset($f['name']) ? (string)$f['name'] : '';
         if ($name === '') continue;
+        if ($for_submitter && !empty($f['office_use_only'])) continue;
         $label = rtrim(trim(strip_tags(isset($f['label']) ? (string)$f['label'] : '')), ': ');
         $rows[] = array('name' => $name, 'label' => ($label !== '') ? $label : $name);
     }
@@ -631,9 +635,9 @@ function pg_cf_email_body_fallback($body, $fields)
 
 /**
  * pg_cf_email_body_fallback() for a form page; the fields are read only when
- * the body is empty.
+ * the body is empty. $for_submitter: the e-mail goes to the submitter.
  */
-function pg_cf_email_body_or_default($page_id, $body)
+function pg_cf_email_body_or_default($page_id, $body, $for_submitter = false)
 {
     if (trim((string)$body) !== '') return (string)$body;
 
@@ -641,28 +645,32 @@ function pg_cf_email_body_or_default($page_id, $body)
     $fields  = array();
     if ($page_id > 0) {
         $fields = db_items(
-            "SELECT name, label FROM form_fields
+            "SELECT name, label, office_use_only FROM form_fields
              WHERE page_id = '$page_id' AND form_type = 'custom'
                  AND name != '' AND type != 'information'
              ORDER BY sort_order ASC, id ASC");
     }
-    return pg_cf_email_body_fallback($body, is_array($fields) ? $fields : array());
+    return pg_cf_email_body_fallback($body, is_array($fields) ? $fields : array(), $for_submitter);
 }
 
 /**
  * Whether a submission ends on the form's confirmation message rather than
  * on its next page.
  *
- * A next page that was never chosen, or has been deleted since, used to send
- * the visitor to the home page without a word; the message is shown instead.
- * The page is looked up only when a next page is chosen.
+ * A next page that was never chosen, has been deleted since or is in the
+ * Recycle Bin used to send the visitor to the home page, or to a binned page
+ * in a private folder, without a word; the message is shown instead.
+ * Deleting a page in the panel keeps its row and moves it into the bin
+ * (pg_recycle_page()), so the row alone does not prove the page is on the
+ * site. The page is looked up only when a next page is chosen.
  */
 function pg_cf_confirmation_shows_message($type, $page_id)
 {
     if ((string)$type !== 'page') return true;
     $page_id = (int)$page_id;
     if ($page_id <= 0) return true;
-    return !db_value("SELECT COUNT(*) FROM page WHERE page_id = '$page_id'");
+    if (!db_value("SELECT COUNT(*) FROM page WHERE page_id = '$page_id'")) return true;
+    return function_exists('pg_recycle_page_binned') && pg_recycle_page_binned($page_id);
 }
 
 /**
@@ -679,11 +687,14 @@ function pg_cf_confirmation_message_or_default($message)
 /**
  * What the legacy page screen refuses to save for a custom form: an e-mail
  * that is switched on with nothing to send (plain text without a body, HTML
- * without a page) and a "Next Page" confirmation without a page.
+ * without a page) and a "Next Page" confirmation without a page. Only the
+ * 'page' confirmation type needs a page: an empty or missing type is the
+ * message, as on submit (pg_cf_confirmation_shows_message()).
  *
  * $settings: the 'custom form' properties of
  * pg_page_form_type_properties_from_post(). $page_exists: callable that
- * answers whether a page id names an existing page. Returns the screen's
+ * answers whether a page id names a page on the site, neither deleted nor in
+ * the Recycle Bin. Returns the screen's
  * field id => message, in the order of the screen.
  */
 function pg_cf_legacy_settings_errors($settings, $page_exists)
@@ -710,7 +721,7 @@ function pg_cf_legacy_settings_errors($settings, $page_exists)
         }
     }
 
-    if ($value('confirmation_type') !== 'message' && !call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
+    if ($value('confirmation_type') === 'page' &&!call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
         $errors['custom_form_confirmation_page_id'] = lang('The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.');
     }
 

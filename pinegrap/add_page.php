@@ -249,7 +249,9 @@ if (!$_POST) {
         $custom_form_setting_errors = pg_cf_legacy_settings_errors(
             pg_page_form_type_properties_from_post('custom form', 0),
             function ($page_id) {
-                return ($page_id > 0) && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0);
+                return ($page_id > 0)
+                    && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0)
+                    && !(function_exists('pg_recycle_page_binned') && pg_recycle_page_binned((int) $page_id));
             });
 
         if ($custom_form_setting_errors) {

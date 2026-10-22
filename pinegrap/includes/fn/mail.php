@@ -1969,7 +1969,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             // Check the body for variable data and replace
             // any variables with content from the submitted form;
             // an empty body becomes the list of the form's fields.
-            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body']), $prepare_for_html = false);
+            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body'], true), $prepare_for_html = false);
 
         // Otherwise the format of the e-mail should be HTML, so prepare that.
         } else {

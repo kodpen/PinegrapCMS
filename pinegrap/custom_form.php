@@ -1345,7 +1345,7 @@ if ($liveform->check_form_errors() == false) {
 
                     // Check the body for variable data and replace any variables with content from the submitted form.
                     // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body), $prepare_for_html = FALSE);
+                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
 
                     // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                     // with the key code that was created, or a blank value if no key code was created.

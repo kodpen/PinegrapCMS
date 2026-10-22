@@ -183,3 +183,33 @@ function test_custom_form_default_settings_confirmation_page()
 		pg_assert_same(array('custom_form_confirmation_page_id'), array_keys($errors), 'page ' . $page_id);
 	}
 }
+
+// An empty or missing confirmation type is the message, as on submit, so it
+// needs no next page.
+function test_custom_form_default_settings_empty_confirmation_type()
+{
+	pg_assert_same(array(), pg_cf_legacy_settings_errors(_test_cf_default_settings(array(
+		'confirmation_type' => '', 'confirmation_page_id' => '',
+	)), '_test_cf_default_page_exists'), 'empty type');
+	$settings = _test_cf_default_settings();
+	unset($settings['confirmation_type'], $settings['confirmation_page_id']);
+	pg_assert_same(array(), pg_cf_legacy_settings_errors($settings, '_test_cf_default_page_exists'), 'no type posted');
+}
+
+// The submitter's copy leaves out fields hidden from the submitter; the
+// administrator's copy keeps them.
+function test_custom_form_default_email_body_hidden_fields()
+{
+	$fields = array(
+		array('name' => 'email', 'label' => 'E-mail', 'office_use_only' => '0'),
+		array('name' => 'internal_note', 'label' => 'Internal Note', 'office_use_only' => '1'),
+	);
+	pg_assert_same("E-mail: ^^email^^", pg_cf_email_body_fallback('', $fields, true), 'submitter');
+	pg_assert_same("E-mail: ^^email^^\nInternal Note: ^^internal_note^^", pg_cf_email_body_fallback('', $fields, false), 'administrator');
+	pg_assert_same("E-mail: ^^email^^\nInternal Note: ^^internal_note^^", pg_cf_email_body_fallback('', $fields), 'administrator by default');
+
+	$hidden_only = array(array('name' => 'internal_note', 'label' => 'Internal Note', 'office_use_only' => 1));
+	$body = pg_cf_email_body_fallback('', $hidden_only, true);
+	pg_assert_contains('^^reference_code^^', $body, 'only hidden fields');
+	pg_assert_true(strpos($body, 'internal_note') === false, 'hidden field not named');
+}
