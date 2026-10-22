@@ -184,22 +184,28 @@ function erp_quantity_text($quantity)
  * treats that has changed between PHP versions. The invoice editor applies
  * the same rule (decimalUnits(), assets/js/erp_invoice_editor.js).
  *
+ * The units are a whole number held in a float: a float is exact up to 2^53,
+ * far above the 999999999999999 units a DECIMAL(15,4) quantity can hold,
+ * while an int stops at PHP_INT_MAX, which on a 32-bit build is 214748.3647
+ * at four places.
+ *
  * @param float|int|string $value
  * @param int              $places  0 to 10
- * @return int
+ * @return float
  */
 function erp_decimal_units($value, $places)
 {
     $value = (float) $value;
     $places = max(0, min(10, (int) $places));
     $parts = explode('.', sprintf('%.10F', abs($value)));
-    $units = (int) ($parts[0] . substr($parts[1], 0, $places));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
 
     if ((int) substr($parts[1], $places, 1) >= 5) {
-        $units++;
+        $units += 1;
     }
 
-    return ($value < 0) ? -$units : $units;
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
 }
 
 /**

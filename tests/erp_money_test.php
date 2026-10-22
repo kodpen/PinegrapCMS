@@ -187,17 +187,21 @@ function test_erp_rate_vat_adds_up_on_random_documents()
 
 // A decimal becomes whole units on the digits it is written with, half away
 // from zero: 1.15 is 11500 although 1.15 x 10000 is 11499.999... in binary,
-// and 1.33335 rounds up at four places.
+// and 1.33335 rounds up at four places. The units are a whole number held in
+// a float, so 250,000 at four places is not clamped at PHP_INT_MAX on a
+// 32-bit build.
 function test_erp_decimal_units_round_on_the_written_digits()
 {
-	pg_assert_same(11500, erp_decimal_units(1.15, 4));
-	pg_assert_same(13334, erp_decimal_units(1.33335, 4));
-	pg_assert_same(13333, erp_decimal_units('1.3333333333', 4));
-	pg_assert_same(-20001, erp_decimal_units(-2.00005, 4));
-	pg_assert_same(4350, erp_decimal_units(4.35, 3));
-	pg_assert_same(20000, erp_decimal_units('20.000', 3));
-	pg_assert_same(0, erp_decimal_units(0.00004, 4));
-	pg_assert_same(3, erp_decimal_units(2.5, 0));
+	pg_assert_same(11500.0, erp_decimal_units(1.15, 4));
+	pg_assert_same(13334.0, erp_decimal_units(1.33335, 4));
+	pg_assert_same(13333.0, erp_decimal_units('1.3333333333', 4));
+	pg_assert_same(-20001.0, erp_decimal_units(-2.00005, 4));
+	pg_assert_same(4350.0, erp_decimal_units(4.35, 3));
+	pg_assert_same(20000.0, erp_decimal_units('20.000', 3));
+	pg_assert_same(0.0, erp_decimal_units(0.00004, 4));
+	pg_assert_same(3.0, erp_decimal_units(2.5, 0));
+	pg_assert_same(2500000000.0, erp_decimal_units(250000, 4));
+	pg_assert_same('0', sprintf('%.0F', erp_decimal_units(-0.00004, 4)), 'no negative zero');
 }
 
 // A quantity is taken at the four places it is stored with.
@@ -207,4 +211,6 @@ function test_erp_quantity_round_keeps_four_places()
 	pg_assert_same(0.1235, erp_quantity_round('0.12345'));
 	pg_assert_same(2.0, erp_quantity_round(2));
 	pg_assert_same(0.0, erp_quantity_round(0.00004));
+	pg_assert_same(250000.0, erp_quantity_round(250000));
+	pg_assert_same(99999999999.9999, erp_quantity_round('99999999999.9999'));
 }

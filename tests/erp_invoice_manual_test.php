@@ -133,12 +133,14 @@ function test_erp_invoice_manual_skips_empty_rows()
 // A quantity with more places than the four it is stored with is priced as
 // stored: 1.3333333333 x 1,500.00 is 1.3333 x 1,500.00 = 1,999.95, and the
 // lines rebuilt from what was stored, as an issue rebuilds them, come to the
-// same totals.
+// same totals. A large quantity (250,000 x 1.00) is kept whole, also on a
+// 32-bit build, where its units are above PHP_INT_MAX.
 function test_erp_invoice_manual_prices_the_stored_quantity()
 {
 	$cases = array(
 		array('1.3333333333', 150000, 199995, 239994),
 		array(0.33333, 30000, 9999, 11999),
+		array(250000, 100, 25000000, 30000000),
 	);
 
 	foreach ($cases as $index => $case) {
@@ -182,16 +184,21 @@ function test_erp_invoice_manual_inbox_line_checks_the_stored_quantity()
 				'exemption_code' => '', 'exemption_reason' => '')));
 	};
 
+	$energy = $line('3', 250000, '1.00', 25000000);
+	$energy['unit_code'] = 'KWH';
+
 	$read = erp_edoc_inbox_lines(array('lines' => array(
 		$line('1', 0.12345, '400000.00', 4938000),
 		$line('2', 0.125, '400000.00', 5000000),
+		$energy,
 	)));
 
 	pg_assert_same(array('1'), $read['folded']);
 	pg_assert_same(array(1.0, 'C62', 4938000), array($read['lines'][0]['quantity'], $read['lines'][0]['unit_code'], $read['lines'][0]['unit_price']));
 	pg_assert_contains('0.12345', $read['lines'][0]['description']);
 	pg_assert_same(array(0.125, 'TNE', 40000000), array($read['lines'][1]['quantity'], $read['lines'][1]['unit_code'], $read['lines'][1]['unit_price']));
+	pg_assert_same(array(250000.0, 'KWH', 100), array($read['lines'][2]['quantity'], $read['lines'][2]['unit_code'], $read['lines'][2]['unit_price']));
 
 	$built = erp_manual_lines_build($read['lines']);
-	pg_assert_same(array(4938000, 5000000), array($built['lines'][0]['line_total'], $built['lines'][1]['line_total']));
+	pg_assert_same(array(4938000, 5000000, 25000000), array($built['lines'][0]['line_total'], $built['lines'][1]['line_total'], $built['lines'][2]['line_total']));
 }
