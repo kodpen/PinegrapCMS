@@ -4505,16 +4505,14 @@ const StyleDesigner = (function () {
                     inner = doc.createElement('img');
                     inner.src = p.src;
                     inner.alt = p.alt || '';
-                    // HTML width/height attributes only accept integers (pixels).
-                    // Percentage or px-suffixed values must be applied via style.
-                    if (p.width) {
-                        if (/^\d+$/.test(String(p.width))) { inner.setAttribute('width',  p.width); }
-                        else { inner.style.width  = p.width; }
-                    }
-                    if (p.height) {
-                        if (/^\d+$/.test(String(p.height))) { inner.setAttribute('height', p.height); }
-                        else { inner.style.height = p.height; }
-                    }
+                    // A whole number is the width / height attribute; a value
+                    // with a unit is a style (_sdImgDim()), here and through
+                    // getNodeExtraStyle(). In a ratio box the box takes it.
+                    var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                    if (_dw.attr) inner.setAttribute('width', _dw.attr);
+                    if (_dh.attr) inner.setAttribute('height', _dh.attr);
+                    if (!p.aspectRatio && _dw.css) inner.style.width  = _dw.css;
+                    if (!p.aspectRatio && _dh.css) inner.style.height = _dh.css;
                     if (p.fluid) inner.classList.add('img-fluid');
                     if (p.rounded) inner.classList.add('rounded');
                     if (p.cssClass) inner.className += ' ' + p.cssClass;
@@ -4542,11 +4540,9 @@ const StyleDesigner = (function () {
                     }
                     if (p.rounded) wrapCls += ' rounded';
                     wrap.className = wrapCls;
-                    var wrapStyleParts = [];
-                    if (p.overflow)  wrapStyleParts.push('overflow:'   + p.overflow);
-                    if (p.overflowX) wrapStyleParts.push('overflow-x:' + p.overflowX);
-                    if (p.overflowY) wrapStyleParts.push('overflow-y:' + p.overflowY);
-                    if (wrapStyleParts.length) wrap.setAttribute('style', wrapStyleParts.join(';'));
+                    // The box's style (size, overflow) is the node's sizing
+                    // style (getNodeExtraStyle()), which goes on this, the
+                    // element's first tag.
                     wrap.appendChild(inner);
                     return wrap;
                 }
@@ -4554,9 +4550,14 @@ const StyleDesigner = (function () {
             },
             toHTML: function (p, pad) {
                 var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
-                var w = p.width ? ' width="' + esc(p.width) + '"' : '';
-                var h = p.height ? ' height="' + esc(p.height) + '"' : '';
-                var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
+                // A whole number is the width / height attribute (_sdImgDim());
+                // a value with a unit, and outside a ratio box object-position,
+                // come with the node's style (addGlobalAttrs(),
+                // getNodeExtraStyle()) as one style attribute.
+                var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
+                var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
+                var style = (p.aspectRatio && p.objectPosition) ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
                 if (p.aspectRatio) {
                     var wrapClsExp = 'ratio ratio-' + esc(p.aspectRatio);
@@ -4567,12 +4568,9 @@ const StyleDesigner = (function () {
                         }
                     }
                     if (p.rounded) wrapClsExp += ' rounded';
-                    var wrapStyleExpParts = [];
-                    if (p.overflow)  wrapStyleExpParts.push('overflow:'   + esc(p.overflow));
-                    if (p.overflowX) wrapStyleExpParts.push('overflow-x:' + esc(p.overflowX));
-                    if (p.overflowY) wrapStyleExpParts.push('overflow-y:' + esc(p.overflowY));
-                    var wrapStyleExp = wrapStyleExpParts.length ? ' style="' + wrapStyleExpParts.join(';') + '"' : '';
-                    return pad + '<div class="' + wrapClsExp + '"' + wrapStyleExp + '>\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
+                    // The box's size and overflow are the node's style, which
+                    // addGlobalAttrs() writes on this first tag.
+                    return pad + '<div class="' + wrapClsExp + '">\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
                 }
                 return pad + imgTag + '\n';
             }
@@ -10606,13 +10604,14 @@ const StyleDesigner = (function () {
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
-            // Force the wrapper to block so the percentage applies against the column width.
+            // Force the wrapper to block so the percentage applies against the column width,
+            // as on the page. The wrapper keeps the column's width: given the percentage too,
+            // the image took that percentage of it (50% drew a quarter of the column).
             // (A see-through wrapper has no box to size; the image sizes itself.)
             if (node.type === 'content' && node.props.contentType === 'image' && !wrapper.classList.contains('sd-fx-flat')) {
                 var _imgPW = node.props.width ? String(node.props.width) : '';
                 if (_imgPW.indexOf('%') !== -1) {
                     wrapper.style.setProperty('display', 'block', 'important');
-                    wrapper.style.setProperty('width', _imgPW, 'important');
                 }
             }
         }
@@ -22944,9 +22943,15 @@ const StyleDesigner = (function () {
     function addGlobalAttrs(htmlStr, node) {
         var extraCls   = getNodeExtraClasses(node);
         var extraStyle = getNodeExtraStyle(node);
+        // An image outside a ratio box is the first tag: its object-position
+        // joins this one style attribute (a second style attribute on the tag
+        // would be dropped by the browser). In a ratio box the image's
+        // toHTML() writes it on the <img>, and this style goes on the box.
+        var _imgPos = (node.type === 'content' && node.props.contentType === 'image' && !node.props.aspectRatio && node.props.objectPosition)
+            ? 'object-position:' + node.props.objectPosition : '';
         var hasAttrs = node.props.id || node.props.title || node.props.inlineStyle || node.props.fontFamily ||
             (node.props._attrs && node.props._attrs.length) ||
-            node.props.tooltipEnabled || node.props.srOnly || extraStyle || extraCls;
+            node.props.tooltipEnabled || node.props.srOnly || extraStyle || extraCls || _imgPos;
         if (!hasAttrs) return htmlStr;
         var firstTagEnd = htmlStr.indexOf('>');
         if (firstTagEnd === -1) return htmlStr;
@@ -22982,6 +22987,7 @@ const StyleDesigner = (function () {
             var _ffhq = String(node.props.fontFamily).replace(/'/g, '');
             styleParts.push("font-family:'" + _ffhq + "',sans-serif");
         }
+        if (_imgPos) styleParts.push(_imgPos);
         if (extraStyle) styleParts.push(extraStyle);
         var _attrStyleVal = '';
         if (node.props._attrs) {
@@ -23001,15 +23007,41 @@ const StyleDesigner = (function () {
 
 
     // ── Sizing / Tooltip / A11y helpers ──
+    // How an image's width or height prop is written: a whole number as the
+    // width / height attribute (pixels; it keeps the layout box before the
+    // file arrives), anything else as CSS with its own unit ('50%', '12rem',
+    // '120px', 'auto'). A bare decimal is taken as pixels, so a style never
+    // carries a number without a unit, which a browser drops. The page's
+    // renderer writes the same (pg_img_dimension(), includes/fn/image.php).
+    function _sdImgDim(v) {
+        var s = (v === undefined || v === null) ? '' : String(v).trim();
+        if (s === '') return { attr: '', css: '' };
+        if (/^\d+$/.test(s)) return { attr: s, css: '' };
+        if (/^\d*\.\d+$/.test(s)) return { attr: '', css: s + 'px' };
+        return { attr: '', css: s };
+    }
+    // The CSS an image's width or height ('width' | 'height') is drawn with.
+    // In its ratio box the box takes the size, a whole number in pixels, and
+    // the image fills it; otherwise only a value with a unit is CSS (a whole
+    // number is the attribute, see _sdImgDim()).
+    function _sdImgSizeCss(p, which) {
+        var d = _sdImgDim(p[which]);
+        if (p.aspectRatio) return d.attr ? d.attr + 'px' : d.css;
+        return d.css;
+    }
     // Returns extra inline style string from prop-based sizing inputs.
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
+        // An image's own width / height go through _sdImgSizeCss().
+        var _isImg = n.type === 'content' && p.contentType === 'image';
+        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : p.width;
+        var _h = _isImg ? _sdImgSizeCss(p, 'height') : p.height;
         if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
-        if (p.width)     parts.push('width:'       + p.width);
+        if (_w)          parts.push('width:'       + _w);
         if (p.minWidth)  parts.push('min-width:'   + p.minWidth);
         if (p.maxWidth)  parts.push('max-width:'   + p.maxWidth);
-        if (p.height)    parts.push('height:'      + p.height);
+        if (_h)          parts.push('height:'      + _h);
         if (p.minHeight) parts.push('min-height:'  + p.minHeight);
         if (p.maxHeight) parts.push('max-height:'  + p.maxHeight);
         if (p.overflow)  parts.push('overflow:'    + p.overflow);

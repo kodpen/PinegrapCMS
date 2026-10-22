@@ -5,7 +5,11 @@
  * Tests for how an Image element's width and height props are written: a
  * whole number as the width / height attribute, a value with a unit as a
  * style with that unit, never a number without a unit in a style
- * (pg_img_dimension() and the image case of _render_content_html()).
+ * (pg_img_dimension() and the image case of _render_content_html()). The
+ * editor's side (_sdImgDim(), _sdImgSizeCss(), the image's toHTML() and
+ * addGlobalAttrs()) is cut out of assets/js/style_designer.js and run under
+ * Node, and has to write the same markup as the page; on a machine without
+ * Node that part is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -111,6 +115,122 @@ function test_designer_image_size_no_unitless_style()
 			$html = designer_image_size_test_page(array('width' => $value, 'height' => $value, 'aspectRatio' => $ratio));
 			pg_assert_false((bool) preg_match('/style="[^"]*(?:^|[";])\s*(?:width|height)\s*:\s*[0-9.]+\s*(?:;|")/', $html), $value . ' ' . ($ratio !== '' ? 'in a ratio box' : 'alone') . ': ' . $html);
 			pg_assert_same(1, preg_match_all('/<img\b/', $html), 'one image');
+		}
+	}
+}
+
+// The source of one declaration of the designer, braces matched (the code cut
+// out holds no brace inside a string); '' when it is not found.
+function designer_image_size_test_cut($source, $start)
+{
+	$from = strpos($source, $start);
+
+	if ($from === false) {
+		return '';
+	}
+
+	$open = strpos($source, '{', $from);
+	$depth = 0;
+
+	for ($i = $open; $i < strlen($source); $i++) {
+		if ($source[$i] === '{') {
+			$depth++;
+		} elseif ($source[$i] === '}') {
+			$depth--;
+
+			if ($depth === 0) {
+				return substr($source, $from, $i - $from + 1);
+			}
+		}
+	}
+
+	return '';
+}
+
+// The editor's markup for the same nodes ($props by label), or null without Node.
+function designer_image_size_test_editor($cases)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$code_js = '';
+
+	foreach (array('function _sdImgDim(', 'function _sdImgSizeCss(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'function addGlobalAttrs(') as $start) {
+		$found = designer_image_size_test_cut($source, $start);
+		pg_assert_true($found !== '', $start . ' is in the designer');
+		$code_js .= $found . "\n";
+	}
+
+	$image = designer_image_size_test_cut($source, "        image: {\n            label: _sdT('Image')");
+	pg_assert_true($image !== '', 'the Image element is in the designer');
+
+	$script = 'function _sdT(s) { return s; }'
+		. 'function esc(s) { return s ? String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : ""; }'
+		. $code_js
+		. 'var CONTENT = {' . $image . '};'
+		. 'var cases = ' . json_encode($cases) . ';'
+		. 'var out = {};'
+		. 'Object.keys(cases).forEach(function (k) {'
+		. '  var p = Object.assign({ contentType: "image", src: "https://example.com/a.jpg", alt: "A" }, cases[k]);'
+		. '  var node = { type: "content", props: p };'
+		. '  out[k] = addGlobalAttrs(CONTENT.image.toHTML(p, ""), node);'
+		. '  out[k + " / dim"] = [_sdImgDim(p.width), _sdImgDim(p.height)];'
+		. '});'
+		. 'console.log(JSON.stringify(out));';
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgsdimgsize');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	if ($code !== 0) {
+		return array('error' => implode("\n", $out));
+	}
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The editor (code view, preview, HTML export) writes what the page writes,
+// and splits a value the same way as pg_img_dimension().
+function test_designer_image_size_editor_matches_page()
+{
+	$cases = array();
+
+	foreach (designer_image_size_test_cases() as $label => $case) {
+		$cases[$label] = $case[0];
+	}
+
+	$cases['decimal without a leading zero'] = array('width' => '.5', 'height' => ' 48 ');
+	$result = designer_image_size_test_editor($cases);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+
+	foreach ($cases as $label => $props) {
+		pg_assert_same(designer_image_size_test_page($props), designer_image_size_test_flat($result[$label]), $label);
+
+		foreach (array(0 => 'width', 1 => 'height') as $i => $prop) {
+			$value = isset($props[$prop]) ? $props[$prop] : '';
+			pg_assert_same(pg_img_dimension($value), $result[$label . ' / dim'][$i], $label . ' ' . $prop . ' split');
 		}
 	}
 }
