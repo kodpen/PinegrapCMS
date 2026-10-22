@@ -7,10 +7,10 @@
  * the accordion's <h2><button>) or a sentence, but never into another link or
  * a button at any depth, a label holds one control, block content stays out
  * of headings and paragraphs, and a ready-made palette block is judged by
- * what it holds. canDrop() and its helpers are cut out of
- * assets/js/style_designer.js and run under Node with stubs for the lock,
- * shared-component and loop checks and for createFromPalette(); on a machine
- * without Node the test is skipped.
+ * what it holds. canDrop() and its helpers, and _paletteInsert(), are cut out
+ * of assets/js/style_designer.js and run under Node with stubs for the lock,
+ * shared-component and loop checks, for createFromPalette() and for the
+ * component list; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -40,6 +40,9 @@ function designer_inline_drop_test_run($setup, $cases)
 	$from = strpos($source, '// ── Semantic HTML validation helpers');
 	$to = strpos($source, '// insertCtx: null (append)', $from);
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has canDrop() and its helpers');
+	$insert_from = strpos($source, 'function _paletteInsert(');
+	$insert_to = strpos($source, 'function _getCpActionItems(', (int) $insert_from);
+	pg_assert_true(($insert_from !== false) && ($insert_to !== false), 'the designer has _paletteInsert()');
 
 	$script = 'var _sharedCache = {}; var tree = null;'
 		. 'function hasLockedAncestor(n) { var p = _parentOf(n); while (p) { if (p.props && p.props._locked) return true; p = _parentOf(p); } return false; }'
@@ -61,11 +64,19 @@ function designer_inline_drop_test_run($setup, $cases)
 		. 'function createFromPalette(type, extra) { builds++; nodeIdCounter += 5; if (!_sdPaletteDry) styleWrites++;'
 		. ' if (type === "semantic") return sem(extra.tag);'
 		. ' if (type === "content") return con(extra.contentType, extra.contentType === "link" ? { text: "Link", href: "#" } : {});'
+		. ' if (type === "cf_field" && extra.cfType === "hidden") return sem("input", [], { _attrs: [{ name: "type", value: "hidden" }] });'
 		. ' if (type === "cf_field" && extra.cfType === "text") return sem("div", [sem("label", [], { text: "Name" }), sem("input", [], { _attrs: [{ name: "type", value: "text" }] })]);'
 		. ' if (type === "component" && extra.componentType === "links-block") return sem("section", [sem("div", [sem("h3", [con("link", { text: "Title", href: "#" })]), N("component", { componentType: "btn", text: "More", href: "#" })])]);'
 		. ' if (type === "component") return N("component", { componentType: extra.componentType });'
 		. ' return null; }'
+		// An atomic component that prints its own interactive markup, as the
+		// language switcher prints a dropdown button and links.
+		. 'var COMPONENTS = { language_switcher: { toHTML: function () { return "<div class=\\"dropdown\\"><button type=\\"button\\">EN</button><ul><li><a href=\\"#\\">English</a></li></ul></div>"; } } };'
+		// What _paletteInsert() touches besides the drop rules.
+		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
+		. 'function _trackRecentComp() {} function _renderRecentCompSection() {} var document = { getElementById: function () { return null; } };'
 		. substr($source, $from, $to - $from)
+		. substr($source, $insert_from, $insert_to - $insert_from)
 		. 'var T = {};' . $setup . 'tree = root;'
 		. 'console.log(JSON.stringify([' . implode(',', array_map(function ($c) {
 			return is_array($c) ? 'canDrop(' . $c[0] . ', T.' . $c[1] . ')' : '(' . $c . ')';
@@ -271,4 +282,105 @@ function test_designer_inline_drop_palette_block_by_its_content()
 	}
 
 	pg_assert_same(array(false, false, false, false, false, true, true, 0, 0, 3), $answer, 'a block holding links and a text field stay out of a span or a div inside a link or a button, the block out of p; it goes into a div, a badge into a span inside a link; the dry builds (one per item) leave the id counter and the styles alone');
+}
+
+// A content heading printed as <button> or <a> (the accordion and tab header
+// buttons) prints its text only, so it takes no child: a dropped span or icon
+// would show on the canvas and be gone from the page. A content link prints
+// its children and still takes them.
+function test_designer_inline_drop_heading_button_takes_no_children()
+{
+	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
+		array('pal("content", { contentType: "span" })', 'accButton'),
+		array('node(sem("span"))', 'accButton'),
+		array('pal("content", { contentType: "icon" })', 'accButton'),
+		array('node(con("icon", { iconName: "bi-x" }))', 'accButton'),
+		array('pal("content", { contentType: "link" })', 'accButton'),
+		array('node(sem("span"))', 'contentLink'),
+		array('pal("content", { contentType: "icon" })', 'contentLink'),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, false, false, false, true, true), $answer, 'no span, icon or link into the accordion header button; a span and an icon into a content link');
+}
+
+// What a link or a button holds is looked at all the way down, and a node's
+// own markup counts: an <a> holding a span that holds a <div> stays out of a
+// heading and a sentence, a span written with an <input> is a second control
+// for a label, and an atomic component printing a button and links (the
+// language switcher) is interactive and a control. A hidden input is neither.
+function test_designer_inline_drop_depth_markup_and_hidden_input()
+{
+	$deep = 'node(sem("a", [sem("span", [sem("div")])], { href: "#" }))';
+	$markup_input = 'node(con("span", { text: "<input type=\\"checkbox\\"> Agree" }))';
+	$switcher = 'pal("component", { componentType: "language_switcher" })';
+	$hidden = 'node(sem("input", [], { _attrs: [{ name: "type", value: "hidden" }] }))';
+	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
+		array($deep, 'p'),
+		array($deep, 'h3'),
+		array($markup_input, 'labelWithInput'),
+		array($markup_input, 'labelEmpty'),
+		array($switcher, 'spanInA'),
+		array($switcher, 'labelWithInput'),
+		array($switcher, 'div'),
+		array($hidden, 'spanInA'),
+		array('pal("cf_field", { cfType: "hidden" })', 'spanInA'),
+		array('node(sem("input", [], { _attrs: [{ name: "type", value: "text" }] }))', 'spanInA'),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, false, true, false, false, true, true, true, false), $answer, 'a link with a div two levels down stays out of p / h3; a span with an <input> stays out of a label holding one, goes into an empty one; the language switcher stays out of a span in a link and a label with a control, goes into a div; a hidden input goes into a span in a link, a text input does not');
+}
+
+// Double-click and the command palette insert ask canDrop() with the payload
+// a palette drag carries, so the item is judged by what it holds: a link
+// goes into a selected heading, a block holding links lands on the page and
+// not in a span inside a link.
+function test_designer_inline_drop_palette_insert_payload()
+{
+	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
+		'(function () { var before = root.children.length;'
+		. ' selectedNode = T.h3; _paletteInsert("content", { contentType: "link" });'
+		. ' var inH3 = T.h3.children.length;'
+		. ' selectedNode = T.spanInA; _paletteInsert("component", { componentType: "links-block" });'
+		. ' return [inH3, T.spanInA.children.length, root.children.length - before]; })()',
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(array(1, 0, 1)), $answer, 'a link into the selected h3; a block with links not into the selected span inside a link but onto the page');
+
+	// The double-click insert sits in a click handler; no palette check may
+	// go back to the type-only payload.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_same(0, preg_match('/canDrop\(\{\s*type\s*:\s*type\s*\}/', $source), 'no palette check passes { type: type } alone');
+	$payloads = preg_match_all('/var _pd = \{([^}]*)\}/', $source, $found);
+	pg_assert_same(2, $payloads, 'the command palette and the double-click insert build a palette payload');
+	foreach ($found[1] as $payload) {
+		pg_assert_true(strpos($payload, "source: 'palette'") !== false && strpos($payload, 'extra') !== false, 'the insert payload names its source and its extra: ' . $payload);
+	}
+}
+
+// The look at a palette item's shape builds it without side effects: inside
+// createFromPalette() every write of block styles waits for a real build.
+function test_designer_inline_drop_dry_build_writes_no_styles()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($source, 'function createFromPalette(');
+	pg_assert_true($from !== false, 'the designer has createFromPalette()');
+	$to = strpos($source, "\n    function ", $from + 1);
+	$body = substr($source, $from, ($to === false ? strlen($source) : $to) - $from);
+
+	$calls = preg_match_all('/_sdEnsureBlockStyles\(/', $body);
+	$guarded = preg_match_all('/if \(!_sdPaletteDry\) _sdEnsureBlockStyles\(/', $body);
+	pg_assert_true($calls > 0, 'createFromPalette() writes block styles');
+	pg_assert_same($calls, $guarded, 'every block-style write in createFromPalette() is skipped during a dry build');
 }

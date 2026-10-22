@@ -13037,18 +13037,13 @@ const StyleDesigner = (function () {
     }
 
     // Returns true if node is an interactive element that cannot contain other interactive elements.
-    // Covers: semantic button/a/input/select/textarea, component btn, content button/link,
-    // and a content heading printed as <button> or <a> (the blocks' accordion header button).
+    // Covers: semantic button/a/input/select/textarea, component btn, content button/link.
     function _isInteractiveNode(node) {
         if (!node) return false;
         var tag = (node.type === 'semantic' && node.props && node.props.tag || '').toLowerCase();
         if (['button','a','input','select','textarea'].indexOf(tag) !== -1) return true;
         if (node.type === 'component' && node.props && node.props.componentType === 'btn') return true;
         if (node.type === 'content' && node.props && (node.props.contentType === 'button' || node.props.contentType === 'link')) return true;
-        if (node.type === 'content' && node.props && node.props.contentType === 'heading') {
-            var htag = String(node.props.tag || '').toLowerCase();
-            if (htag === 'button' || htag === 'a') return true;
-        }
         return false;
     }
 
@@ -13107,11 +13102,51 @@ const StyleDesigner = (function () {
         return built;
     }
 
-    // An <a> or a <button> written in a content node's markup.
+    // A semantic <input type="hidden">: it draws nothing, so it is neither
+    // interactive content nor a control a label labels.
+    function _sdIsHiddenInput(n) {
+        if (!n || n.type !== 'semantic' || !n.props || String(n.props.tag || '').toLowerCase() !== 'input') return false;
+        var attrs = Array.isArray(n.props._attrs) ? n.props._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'type' && String(attrs[i].value || '').toLowerCase() === 'hidden') return true;
+        }
+        return false;
+    }
+
+    // Interactive content for the rules about what may sit inside a link, a
+    // button or a label: _isInteractiveNode() without a hidden input, plus a
+    // content heading printed as <button> or <a> (the blocks' accordion and
+    // tab header buttons). Such a heading prints its text only, never child
+    // nodes, so it is left out of _isInteractiveNode(), which decides what
+    // takes inline children.
+    function _sdIsInteractiveEl(n) {
+        if (!n || _sdIsHiddenInput(n)) return false;
+        if (_isInteractiveNode(n)) return true;
+        if (n.type === 'content' && n.props && n.props.contentType === 'heading') {
+            var htag = String(n.props.tag || '').toLowerCase();
+            return htag === 'button' || htag === 'a';
+        }
+        return false;
+    }
+
+    // The markup a node prints itself instead of child nodes: a content
+    // node's text, or what an atomic component other than btn writes (the
+    // language switcher's dropdown button and links). Empty otherwise.
+    function _sdNodeMarkup(n) {
+        if (!n || !n.props) return '';
+        if (n.type === 'content') return String(n.props.text || '') + String(n.props.html || '');
+        if (n.type === 'component' && n.props.componentType !== 'btn' && typeof COMPONENTS !== 'undefined') {
+            var comp = COMPONENTS[n.props.componentType];
+            if (comp && typeof comp.toHTML === 'function') {
+                try { return String(comp.toHTML(n.props, '') || ''); } catch (e) { return ''; }
+            }
+        }
+        return '';
+    }
+
+    // An <a> or a <button> written in a node's own markup.
     function _sdMarkupInteractive(n) {
-        if (!n || n.type !== 'content' || !n.props) return false;
-        var markup = String(n.props.text || '') + String(n.props.html || '');
-        return /<(a|button)[\s>\/]/i.test(markup);
+        return /<(a|button)[\s>\/]/i.test(_sdNodeMarkup(n));
     }
 
     // A link or a button as an element of its own (not an input, a select or
@@ -13120,7 +13155,7 @@ const StyleDesigner = (function () {
     function _sdIsLinkOrButton(n) {
         if (!n || !n.props) return false;
         if (n.type === 'semantic') return ['a', 'button'].indexOf(String(n.props.tag || '').toLowerCase()) !== -1;
-        return _isInteractiveNode(n);
+        return _sdIsInteractiveEl(n);
     }
 
     // A link or a button that may go where only inline content goes (a
@@ -13135,7 +13170,7 @@ const StyleDesigner = (function () {
             var kids = n.children || [];
             for (var i = 0; i < kids.length; i++) {
                 var k = kids[i];
-                if (!k || _isInteractiveNode(k) || _sdMarkupInteractive(k)) return false;
+                if (!k || _sdIsInteractiveEl(k) || _sdMarkupInteractive(k)) return false;
                 if (!_isInlineOnlyDrag({ source: 'node', type: k.type, node: k })) return false;
                 if (!kidsInline(k)) return false;
             }
@@ -13154,14 +13189,14 @@ const StyleDesigner = (function () {
         var found = root
             ? (function walk(n) {
                 if (!n) return false;
-                if (_isInteractiveNode(n) || _sdMarkupInteractive(n)) return true;
+                if (_sdIsInteractiveEl(n) || _sdMarkupInteractive(n)) return true;
                 var kids = n.children || [];
                 for (var i = 0; i < kids.length; i++) {
                     if (walk(kids[i])) return true;
                 }
                 return false;
             })(root)
-            : _isInteractiveNode({ type: data.type, props: data.extra || {} });
+            : _sdIsInteractiveEl({ type: data.type, props: data.extra || {} });
         try { data._sdIact = found; } catch (e) {}
         return found;
     }
@@ -13171,7 +13206,7 @@ const StyleDesigner = (function () {
     function _sdInInteractive(target) {
         var n = target;
         for (var guard = 0; n && guard < 500; guard++) {
-            if (_isInteractiveNode(n)) return true;
+            if (_sdIsInteractiveEl(n)) return true;
             var up = _sdAnyParent(n);
             n = up ? up.parent : null;
         }
@@ -13186,13 +13221,7 @@ const StyleDesigner = (function () {
         if (!n || !n.props) return false;
         if (n.type === 'semantic') {
             var tag = String(n.props.tag || '').toLowerCase();
-            if (tag === 'input') {
-                var attrs = Array.isArray(n.props._attrs) ? n.props._attrs : [];
-                for (var i = 0; i < attrs.length; i++) {
-                    if (attrs[i] && attrs[i].name === 'type' && String(attrs[i].value || '').toLowerCase() === 'hidden') return false;
-                }
-                return true;
-            }
+            if (tag === 'input') return !_sdIsHiddenInput(n);
             return ['button', 'select', 'textarea'].indexOf(tag) !== -1;
         }
         if (n.type === 'component') {
@@ -13210,7 +13239,7 @@ const StyleDesigner = (function () {
     function _sdHoldsControl(n, skip) {
         if (!n || n === skip) return false;
         if (_sdIsLabelableControl(n)) return true;
-        if (n.type === 'content' && n.props && /<(button|input|select|textarea)[\s>\/]/i.test(String(n.props.text || '') + String(n.props.html || ''))) return true;
+        if (/<(button|input|select|textarea)[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
         var kids = n.children || [];
         for (var i = 0; i < kids.length; i++) {
             if (_sdHoldsControl(kids[i], skip)) return true;
@@ -26386,6 +26415,9 @@ const StyleDesigner = (function () {
             document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
                 x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
             });
+            // Only the position this move found legal may be used by the
+            // drop; one left from an earlier move over the row may not.
+            li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
@@ -26432,6 +26464,7 @@ const StyleDesigner = (function () {
 
         li.addEventListener('dragleave', function() {
             li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
@@ -26439,7 +26472,11 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
 
-            var pos = li._dropPos || 'inside';
+            // No position means the dragover found no legal place on this
+            // row (canDrop() refused inside and beside it): nothing moves.
+            var pos = li._dropPos;
+            li._dropPos = null;
+            if (!pos) return;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -26500,6 +26537,26 @@ const StyleDesigner = (function () {
                 ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
                 : [treeDragNode];
             if (!nodesToMove.length) return;
+
+            // Every moved node must be one canDrop() lets into where it
+            // lands, as on the canvas: the dragover asked only for the
+            // dragged row, and a multi-selection carries others.
+            var _destParent = null;
+            if (pos === 'inside' && node.type === 'shared_ref') {
+                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+            } else if (pos === 'inside') {
+                _destParent = node;
+            } else {
+                var _dInfo = _findParentAnywhere(node);
+                _destParent = _dInfo ? _dInfo.parent : null;
+            }
+            if (!_destParent) return;
+            for (var _mi = 0; _mi < nodesToMove.length; _mi++) {
+                var _mn = nodesToMove[_mi];
+                if (!canDrop({ source: 'node', node: _mn, type: _mn.type }, _destParent)) return;
+            }
 
             saveState();
 
