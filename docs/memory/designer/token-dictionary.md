@@ -1,6 +1,6 @@
 ---
 name: token-dictionary
-description: System widget token namespaces (bare names vs __ prefix), shared cart vocabulary, raw-HTML key escaping, row id uniquify, and tools/check_bindings.php.
+description: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 ---
 
 ## How are token namespaces split?
@@ -10,7 +10,11 @@ The boundary is a rule, not an accident.
 
 ## Do widgets share names?
 - The same value has the same name in every widget. Cart, express order and order view show the same cart, so they share one vocabulary: `__cart_subtotal`, `__item_price`, `__item_total`, `__item_url`, `__item_description`.
-- Two empty states are two names, and the setting key equals the token name: `empty_message` / `^^__empty_message^^` (list empty), `not_found_message` / `^^__not_found_message^^` (requested record missing).
+- Two empty states are two names, and the setting key equals the token name: `empty_message` / `^^__empty_message^^` (list empty), `not_found_message` / `^^__not_found_message^^` (requested record missing; catalog and calendar widgets).
+
+## Where may a token name appear?
+- Never in panel texts: name the option of the binding list, not `^^token^^`. Never typed into page content either: a value arrives through a binding.
+- Old names are answered only for trees that carry them: in the form list `__detail_url` is `form_item_view` (a link bound to it printed an empty address), on the form detail `__not_found_message` is `not_found`; `my_account` reads `__detail_url` as `form_item_view` too. The renderer fills both names; the dropdown shows the option they stand for (`_bindAlias`, `_swBindLabel()`). New layouts bind the record names.
 
 ## Where is escaping done?
 - One place: `pg_sw_escape_token_values()` escapes the whole map; keys that are **raw HTML are listed by name in `pg_sw_raw_token_keys()`** (operator's rich text, prices open to markup on discount, renderer-built blocks). The alternative, each renderer remembering what to wrap, broke layouts when forgotten.
@@ -20,5 +24,5 @@ The boundary is a rule, not an accident.
 - `pg_sw_uniquify_row_ids()` makes ids unique and carries seven id-referencing attributes together: `id`, `for`, `data-bs-target`, `aria-controls`, `aria-labelledby`, `href="#…"`, `data-bs-parent`. If one is left behind, an accordion closes another row.
 
 ## What does tools/check_bindings.php check?
-- Compares both ends: is every `__token` the designer offers produced by a renderer, and is every produced token in a dropdown. The second matters: a token missing from the list must be typed by hand under "Özel", and invented token spellings entered the repo that way.
+- Compares both ends: is every `__token` the designer offers produced by a renderer, and is every produced token in a dropdown. The second matters: a token missing from the list must be typed by hand under "Custom…", and invented token spellings entered the repo that way.
 - Exempt shapes: `*_inner_html` (section-binding pass writes the tree itself) and `__link_label` (renderer expands it per node to `__link_label_N`).

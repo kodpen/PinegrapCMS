@@ -105,3 +105,65 @@ function test_core_relative_time_without_a_signed_in_person()
 {
 	pg_assert_false(pg_time_uses_user_zone(array()), 'nobody signed in');
 }
+
+// Every zone the pick lists offer is a current IANA name, so a PHP that reads
+// the system's time zone database without its legacy links (Debian and
+// Ubuntu's tzdata-legacy) knows each one. Etc/Greenwich is the one fixed GMT
+// zone and has no current name of its own in the list of identifiers.
+function test_core_timezone_list_offers_current_names()
+{
+	$known = timezone_identifiers_list();
+
+	foreach (get_timezones() as $label => $zone) {
+		if ($zone === 'Etc/Greenwich') {
+			continue;
+		}
+
+		pg_assert_true(in_array($zone, $known, true), $label . ' (' . $zone . ') is a current zone name');
+	}
+
+	foreach (pg_timezone_legacy_names() as $old => $new) {
+		pg_assert_true(in_array($new, $known, true), $old . ' becomes the current name ' . $new);
+		pg_assert_false(in_array($old, get_timezones(), true), $old . ' is no longer offered');
+	}
+}
+
+// A stored name is read as this PHP knows it: an old name as its current one,
+// a current name as its old one where an older database lacks it, an unknown
+// name as none (the site's zone).
+function test_core_timezone_canonical_maps_old_names()
+{
+	pg_assert_same('America/New_York', pg_timezone_canonical('US/Eastern'), 'an old name becomes its current one');
+	pg_assert_same('Asia/Kathmandu', pg_timezone_canonical(' Asia/Katmandu '), 'trimmed');
+	pg_assert_same('Europe/Istanbul', pg_timezone_canonical('Europe/Istanbul'), 'a current name stays');
+	pg_assert_same('UTC', pg_timezone_canonical('UTC'), 'UTC stays');
+	pg_assert_same('', pg_timezone_canonical(''), 'none is none');
+	pg_assert_same('', pg_timezone_canonical('Nowhere/Atlantis'), 'an unknown name is none');
+
+	// A database older than tzdata 2020a has America/Godthab, not America/Nuuk.
+	$old_database = function ($zone) {
+		return $zone !== 'America/Nuuk';
+	};
+
+	pg_assert_same('America/Godthab', pg_timezone_canonical('America/Godthab', $old_database), 'the old name where the current one is missing');
+	pg_assert_same('America/Godthab', pg_timezone_canonical('America/Nuuk', $old_database), 'and the current name falls back to it');
+
+	// A system database without the legacy links.
+	$no_links = function ($zone) {
+		return !array_key_exists($zone, pg_timezone_legacy_names());
+	};
+
+	pg_assert_same('America/Chicago', pg_timezone_canonical('US/Central', $no_links), 'the current name where the old one is missing');
+
+	pg_assert_same('America/New_York', pg_timezone_list_value('US/Eastern'), 'the pick list shows an old name as its current option');
+	pg_assert_same('Europe/Istanbul', pg_timezone_list_value('Europe/Istanbul'), 'a current name as it is');
+}
+
+// A zone that cannot be built never stops the request: the site's zone,
+// then UTC.
+function test_core_timezone_object_never_throws()
+{
+	pg_assert_same('America/New_York', pg_timezone_object('US/Eastern')->getName(), 'an old name');
+	pg_assert_same(date_default_timezone_get(), pg_timezone_object('Nowhere/Atlantis')->getName(), 'an unknown name: the default zone');
+	pg_assert_same(date_default_timezone_get(), pg_timezone_object('')->getName(), 'none: the default zone');
+}

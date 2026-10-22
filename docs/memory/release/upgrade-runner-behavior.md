@@ -11,6 +11,7 @@ description: How the upgrade runner reacts to failing statements, locks and fata
 - `install_run_upgrades($versions, $from_key, array('stream' => true))`: `GET_LOCK` (else `flock`), `ignore_user_abort(true)`, shutdown guard (a fatal error is also written to the progress file).
 - The version marker is written the moment the function returns, before anything is printed to the screen.
 - An interrupted upgrade resumes where it stopped via "Tekrar dene". A syntax error in a file is caught as `ParseError` and stops only that version.
+- A step may end its pass with `install_pause()`; the version is then run again instead of being written (`migration-long-steps.md`).
 
 ## How does the screen run (since 2026-08-29)?
 - One version per request: JS calls `install_action=upgrade_step` with `array('one' => true)` and continues using `next` in the response. `locked` -> wait 5 s; error -> "Tekrar dene"; no response -> "Devam Et".

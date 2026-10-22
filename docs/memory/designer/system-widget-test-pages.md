@@ -20,7 +20,7 @@ description: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.
 - `/c?r=<reference_code>`: a saved-cart link restores the cart even without a session cookie.
 
 ## A change does not show on the page: what to check, in order?
-1. Is a SAVED tree in use? New nodes enter only after "Varsayılan Düzeni Yükle".
+1. Is a SAVED tree in use? New nodes enter only after "Load the Default Layout".
 2. opcache: a file change can take ~1 minute to reach the server.
 
 Related: docs/memory/designer/system-widget-change-checklist.md
