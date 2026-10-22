@@ -571,10 +571,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Order',
 			'summary' => 'Change an order',
-			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'The status and the internal note. Cancelling records who did it and why, the same way the order screen does. Moving a cancelled order to complete or exported is the order screen\'s Restore: the cancellation and an unfinished refund flag are cleared and the gift cards the cancellation expired get their date back. incomplete is the basket\'s status and is not accepted: an order is not turned back into a basket, and a basket (status incomplete) cannot be completed, exported or cancelled here - 422. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                  'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled')),
+				array('name' => 'status',              'in' => 'body', 'type' => 'enum', 'values' => array('complete', 'exported', 'cancelled')),
 				array('name' => 'cancellation_reason', 'in' => 'body', 'type' => 'string', 'max_length' => 500),
 				array('name' => 'notes',               'in' => 'body', 'type' => 'string', 'max_length' => 2000)
 			)
