@@ -1,13 +1,18 @@
 ---
 name: erp-invoice-cancel-and-open-amount
-description: When an ERP invoice can be cancelled, what cancel does to ledger and numbers, and how open amount and paid status treat returns.
+description: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, the period lock, and how open amount and paid status treat returns.
 ---
 
-## When can an invoice be cancelled and what happens?
-- Only when nothing hangs on it: no settlements, no returns.
-- Cancel does not delete the ledger row; it reverses it with a counter entry, and it does not release the number.
-- An order that produced the invoice becomes re-invoiceable again with `erp_invoice_id = 0`.
-- Drafts are deleted, not cancelled (see erp-manual-invoice-draft-issue).
+## When can an invoice be cancelled?
+- `erp_invoice_cancel()` (`includes/erp/returns.php`) only when nothing hangs on it: no money allocated (the gift-card allocation the invoice posted itself does not count; `erp_invoice_receipt_count()`), no return against it, and its issue date outside the closed period (erp-period-lock).
+- Drafts are deleted, not cancelled (erp-manual-invoice-draft-issue). Whether an order's invoice is cancelled or answered with a return: erp-order-cancel-and-refund.
+
+## What does cancel do?
+- The ledger row is never deleted: an opposite entry (`kind = 'adjustment'`, `doc_type = 'cancel'`) reverses it, dated today, carrying the document's own currency, rate and base value.
+- The number is not released: a gap that can be explained beats a number that appears twice.
+- The gift-card credit and its allocation are reversed with it; every stock move the document made is turned round (`erp_stock_post_cancel()`, counts applied after the commit).
+- An order that produced the invoice gets `orders.erp_invoice_id = 0` and can be invoiced again; cancelling a return gives its quantities back to the parent (`returned_qty`) and recomputes the parent's status.
+- After the commit the `erp.invoice.cancelled` event is raised.
 
 ## What does the period lock do to a cancel?
 - An invoice dated on or before the lock date cannot be cancelled; it is taken back with a return dated in the open period.
@@ -15,15 +20,8 @@ description: When an ERP invoice can be cancelled, what cancel does to ledger an
 - Before, the provider was taken back and the order card's allocations removed, and only `erp_invoice_cancel()` refused: the invoice stayed issued, unpaid, with nothing at the provider.
 
 ## How do open amount and paid status treat returns?
-- `erp_invoice_open_amount()` deducts both settlements and returns.
+- `erp_invoice_open_amount()` deducts both settlements and returns; a cancelled invoice or a return document has nothing open.
 - `erp_invoice_refresh_paid()` measures settlements against the same figure (total − returns), so the two cannot diverge.
-- Still only money makes an invoice "paid": a fully returned invoice that never saw a collection stays `issued`.
+- Only money makes an invoice "paid": a fully returned invoice that never saw a collection stays `issued`; a receipt never goes to a return (erp-receipt-not-for-return).
 - Opening a return and cancelling a return both recompute the parent invoice status (`returns.php`, inside the transaction); on a foreign-currency parent the exchange difference is posted when it reaches `paid` and reversed when it leaves it (#1071, erp-money-and-currency).
-
-
-## Can a receipt be allocated to a return?
-- No. `erp_post_receipt()` reads the named document with its `doc_type` and refuses anything but an invoice ("That document is not an invoice; a receipt does not close it."); `POST /erp/receipts` answers 422 `invoice_id` with the same sentence. A return closes against the invoice it returns (`erp_invoice_returned_total()`), never with money.
-- Before (#1063, PR #1132) the row was read without `doc_type`, so `erp_invoice_open_amount()`'s return gate never held: a return's whole total counted as open, the money settled the return (marked paid) and the invoice stayed open. Checked on the sandbox in a rolled-back transaction.
-- Still open: the bank statement's "one open invoice" suggestion (`erp_bank_line_suggestion()`) can still offer a return; posting it is now refused.
-
-Related: docs/memory/erp/erp-return-documents.md
+Related: docs/memory/erp/erp-return-documents.md, docs/memory/erp/erp-order-cancel-and-refund.md, docs/memory/erp/erp-receipt-not-for-return.md

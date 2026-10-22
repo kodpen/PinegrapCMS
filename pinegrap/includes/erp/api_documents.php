@@ -967,7 +967,7 @@ function erp_api_order_invoice_check($order, $field = null)
     }
 
     $built = erp_order_lines($order, $items, null, true);
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'];
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'];
 
     if ((int) $built['totals']['grand_total'] !== $expected) {
         api_fail_validation(lang(array(

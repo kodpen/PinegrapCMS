@@ -8095,11 +8095,12 @@ function pg_design_template_install($template_id, $user, $opts = array())
 }
 
 // The flags a template widget shows a part for, as a first-time visitor sees
-// the page: signed out, looking at a record that exists. Every other flag
-// (signed in, has orders, just submitted...) is off in a preview.
+// the page: signed out, looking at a record that exists, at a list page
+// whose address names no value. Every other flag (signed in, has orders,
+// just submitted...) is off in a preview.
 function _pg_tpl_preview_flag_on($flag)
 {
-    return in_array((string)$flag, array('is_signed_out', 'record_found'), true);
+    return in_array((string)$flag, array('is_signed_out', 'record_found', 'no_filter_value'), true);
 }
 
 // A template tree made drawable without a site: every shared component the

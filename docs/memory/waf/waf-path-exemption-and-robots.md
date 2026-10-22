@@ -20,7 +20,10 @@ description: waf_is_excluded() matches the resolved script path only (never quer
 - The exemption is from the BOT POLICY ONLY; the IP blacklist and rate limit still apply.
 - `health.php` (uptime monitors) gets the same bot-policy and country exemption through `waf_is_health_request()`, which asks the running script, never the path: `/x/health.php/y` handed to `router.php` must not carry it. See `docs/memory/platform/maintenance-mode-health.md`.
 
+## Which endpoints skip the bot policy?
+- The credential-checked ones (`integration.php`, `mcp.php`, `oauth.php`, `workspace_ical.php`, `feed.php`), not `api.php`: `waf-bot-policy-credential-endpoints.md`.
+
 ## Which feed readers are good bots?
 - Feedly, Inoreader, Feedbin, NewsBlur, Miniflux, Netvibes, The Old Reader, FeedFetcher. Each request represents a real subscribed person; blocked, the feed silently empties and nobody reports "my feed stopped".
 
-Related: docs/memory/visitors/robots-txt-disallow-rules.md
+Related: docs/memory/visitors/robots-txt-disallow-rules.md, docs/memory/waf/waf-bot-policy-credential-endpoints.md, docs/memory/waf/waf-country-restriction.md, docs/memory/api/external-api-iis-environment.md

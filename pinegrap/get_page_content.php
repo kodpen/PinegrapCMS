@@ -503,6 +503,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // record the sender passed with it (a form's confirmation: form_id; an
     // order receipt: order_id), which on an e-mail page no URL carries.
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
+    // An e-mail drawn while a page is drawn adds nothing and clears nothing.
+    if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         $pg_sw_prev_ctx = function_exists('pg_sw_render_context')
             ? pg_sw_render_context(array('email' => (bool)$email) + (is_array($dynamic_properties) ? $dynamic_properties : array()))
@@ -918,6 +920,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if (is_array($pg_sw_item)) {
             $path = $pg_sw_item['path'];
             $query_string = $pg_sw_item['query'];
+
+        // A list that took its records from a value in the address (an
+        // author's or a tag's archive) is that address: the applied
+        // parameters and the later page it showed stay in it.
+        } elseif (function_exists('pg_sw_url_filter_query')
+            && (($pg_sw_url_filter_query = pg_sw_url_filter_query(pg_sw_url_filter_state())) !== '')
+        ) {
+            $query_string = '?' . $pg_sw_url_filter_query;
         }
     }
 
@@ -2051,10 +2061,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $_pg_sw_structured_data_enabled = ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE));
 
             if ($_pg_sw_form_feed) {
+                // A list's feed for the value its address applied.
+                $_pg_sw_feed_query = (($_pg_sw_form_feed['type'] === 'form_list_view') && function_exists('pg_sw_url_filter_query'))
+                    ? pg_sw_url_filter_query(pg_sw_url_filter_state(), false) : '';
                 $rss_feeds[] = array(
                     'sort'         => 0,
                     'output_title' => $_pg_sw_title,
-                    'output_url'   => OUTPUT_PATH . h(encode_url_path($page_name)) . '?rss=true',
+                    'output_url'   => OUTPUT_PATH . h(encode_url_path($page_name)) . '?' . h(($_pg_sw_feed_query !== '' ? $_pg_sw_feed_query . '&' : '') . 'rss=true'),
                 );
             }
 
@@ -5788,6 +5801,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
     
+    // A list page showing the records of a value from its address takes the
+    // list's title for that value (filter_title, pg_sw_filter_title()); set
+    // only when the list found records for a value compared with "is equal
+    // to".
+    if (($page_type == 'standard') && ($email == FALSE) && !is_array($pg_sw_item) && ($pg_sw_form_item === null)
+        && function_exists('pg_sw_url_filter_state')
+    ) {
+        $pg_sw_url_filter_title = pg_sw_url_filter_state();
+
+        if ($pg_sw_url_filter_title['title'] !== '') {
+            $page_title = $pg_sw_url_filter_title['title'];
+        }
+    }
+
     // The page is drawn as the site's error screen (output_error()): the
     // error may call for a title of its own (maintenance mode).
     if (function_exists('pg_sw_error_context') && (($pg_error_screen = pg_sw_error_context()) !== null)) {
@@ -6000,8 +6027,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     $pg_item_missing = function_exists('pg_sw_item_missing') && pg_sw_item_missing();
 
     if ($email != TRUE) {
+        // A list page whose address value found nothing, or was compared
+        // other than "is equal to", stays out of the index as well
+        // (pg_sw_url_filter_noindex()).
         $robots_content = pg_page_robots_content(
-            ($page_noindex == 1) || $pg_item_missing,
+            ($page_noindex == 1) || $pg_item_missing
+                || (function_exists('pg_sw_url_filter_noindex') && pg_sw_url_filter_noindex(pg_sw_url_filter_state())),
             ($page_nofollow == 1),
             ($page_noarchive == 1),
             $page_max_snippet);
@@ -6134,7 +6165,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if ((strpos($content, 'data-pg-search-section') !== false) && function_exists('pg_search_sections_jsonld')) {
             $pg_sections_ld = pg_search_sections_jsonld($page_id, $canonical_url, $page_title);
             if ($pg_sections_ld) {
-                $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode($pg_sections_ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>';
+                $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . pg_search_sections_jsonld_json($pg_sections_ld) . '</script>';
             }
         }
 

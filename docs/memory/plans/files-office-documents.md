@@ -8,7 +8,7 @@ description: Plan (2026-10-19) for docx and xlsx in the file manager and the Wor
 
 ## What exists today (2026-10-19)?
 - File manager (`view_folders.php`, actions in `view_folder_and_files_f.php` via `pg_explorer_handle()`): previews for images (Pintura editor), PDF (browser iframe), video, audio and text (CodeMirror, `pg_explorer_editable_formats()`, 2 MB). Office files show an icon and "No preview"; `get_file.php` has no OOXML MIME types, so they always download.
-- No office library anywhere: no SheetJS, mammoth, docx-preview, JSZip, PhpSpreadsheet or PHPWord. Server side has a hand-written xlsx writer (`export_products_f.php`, `includes/erp/accountant.php`; the ERP skill forbids a second one), an XMLReader xlsx reader (`import_products_f.php`), PHPExcel only for xls/ods, pclzip, ZipArchive (optional).
+- No office library anywhere: no SheetJS, mammoth, docx-preview, JSZip, PhpSpreadsheet or PHPWord. Server side has a hand-written xlsx writer (`export_products_f.php`, `includes/erp/accountant.php`; `erp/erp-accountant-pack.md` forbids another), an XMLReader xlsx reader (`import_products_f.php`), PHPExcel only for xls/ods, pclzip, ZipArchive (optional).
 - Workspace files are copies in a private `Workspace/<channel>` folder (`ws_store_upload_bytes()` in includes/workspace/files.php, 20 MB, svg/html/xml/js refused). Edits exist for images and text only (`file_edits.php`: the poster replaces with a version, others reply with a copy; endpoint `workspace_file_save.php`). Bridges to the file manager: the `#dosya` tag, and since D4 the send-to-channel entry and the picker.
 
 ## What are the slices?

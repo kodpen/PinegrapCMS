@@ -234,7 +234,7 @@ if (!$_POST) {
             // update username in session
             $_SESSION['sessionusername'] = $liveform->get_field_value('email_address');
             
-            $liveform->add_notice(lang(array('string' => 'Your username has been updated. Username: {var:1}', 'vars' => array($liveform->get_field_value('email_address')))));
+            $liveform->add_notice(lang(array('string' => 'Your username has been updated. Username: {var:1}', 'vars' => array(h($liveform->get_field_value('email_address'))))));
         }
     
     // else user is not logged in
