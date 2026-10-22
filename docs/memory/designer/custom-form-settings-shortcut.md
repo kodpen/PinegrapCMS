@@ -4,7 +4,7 @@ description: Designer custom_form: "Form settings" shortcut from any node inside
 ---
 
 ## How does the operator reach a form's settings from the canvas?
-- A click on a form lands on a control or a wrapper inside the widget, never on the widget's `shared_ref`, and the form-level settings (notification, auto-reply) live only in the `shared_ref` panel (`propsSharedRef` → "Custom Form Settings"). Before PR #PRNUM they were reachable only from the page tree "[System] …" row (found on kodpen.com, 2026-10-21).
+- A click on a form lands on a control or a wrapper inside the widget, never on the widget's `shared_ref`, and the form-level settings (notification, auto-reply) live only in the `shared_ref` panel (`propsSharedRef` → "Custom Form Settings"). Before PR #1207 they were reachable only from the page tree "[System] …" row (found on kodpen.com, 2026-10-21).
 - Now every node inside a custom_form widget (`_cfWidgetOf(node)`) gets a **"Form settings"** button on top of its panel (`_cfSettingsShortcut()`) and a `bi-ui-checks` button in its canvas toolbar (`tb._sdFill` in `buildNodeEl`).
 - Both call `_cfOpenFormSettings(sid)`: selects the widget's placement (`_cfRefOf(sid)`: the page tree first, then other shared component trees), opens the "Custom Form Settings" section if it was collapsed and scrolls to it.
 
