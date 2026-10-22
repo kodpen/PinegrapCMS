@@ -16,7 +16,7 @@ description: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchan
 
 ## How do files carry it?
 - Export (`export_products_f.php`): heading `compare_at_price` after every fixed column, kind `money_optional`: an empty cell for none, `1299.90` otherwise.
-- Import (`import_products.php`, heading `compare_at_price`, read with the product screen's reader): an empty cell leaves it as it is (the rule of every column), `0` takes it off, a negative figure or one the column cannot hold leaves the stored value alone. A new product without one gets `NULL`.
+- Import (`import_products.php`, heading `compare_at_price`, read like the price: docs/memory/commerce/product-import-prices.md): an empty cell leaves it as it is (the rule of every column), `0` takes it off, a negative figure or one the column cannot hold leaves the stored value alone. A new product without one gets `NULL`.
 - Copies: `duplicate_product()` and `duplicate_products.php` copy it when their `SELECT *` row has the column.
 
 ## How does the API take it?

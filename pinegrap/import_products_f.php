@@ -743,3 +743,64 @@ function pg_products_import_xlsx_to_csv($source_path, &$error)
 
     return $path;
 }
+
+// A price cell of an import file (price, extra_shipping_cost,
+// compare_at_price) in minor units, or null when it is not an amount.
+//
+// Two kinds of text reach the importer. A spreadsheet stores a number with a
+// dot and as many decimals as it has (1499.99, 1799.988 for a formula's
+// =B2*1,2, 1799.9879999999998 when Excel writes all seventeen digits, 1E+3),
+// and a .xlsx or .ods cell comes through as exactly that: it is read as the
+// number it is and rounded to the minor unit. Anything else was typed: a
+// currency symbol or code, a decimal comma, grouping (₺15,00, 12,50,
+// 1.234,56, 1 234,56), read by the product screen's own reader,
+// pg_pb_price_to_cents(), so a figure means the same in a file as in the box.
+//
+// Words, other characters, a minus sign, more than fifteen digits (beyond
+// that a float is no longer exact) or more than the price column holds give
+// null: the caller reports the row rather than storing a figure nobody wrote.
+// Needs product_builder.php for the typed reader.
+function pg_products_import_price_cents($value)
+{
+    $value = trim((string) $value);
+
+    if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
+
+        $amount = round(((float) $value) * 100);
+
+        if (!is_finite($amount) || ($amount > 2147483647)) {
+            return null;
+        }
+
+        return (int) $amount;
+    }
+
+    // A symbol or a code before or after the figure, and spaces or
+    // apostrophes that group its digits, are left out; whatever else is
+    // there makes it not an amount.
+    if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
+        return null;
+    }
+
+    $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
+    $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
+
+    if (($digits === 0) || ($digits > 15)) {
+        return null;
+    }
+
+    $amount = pg_pb_price_to_cents($figure);
+
+    return ($amount > 2147483647) ? null : $amount;
+}
+
+// The text of one column of a CSV row: '' when the file has no such column
+// (null, or false from array_search()) or the row ends before it.
+function pg_products_import_row_value($row, $key)
+{
+    if (($key === null) || ($key === false) || !isset($row[$key])) {
+        return '';
+    }
+
+    return (string) $row[$key];
+}
