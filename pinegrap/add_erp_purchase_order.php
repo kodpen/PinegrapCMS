@@ -164,7 +164,7 @@ if (!$_POST) {
     $result = erp_purchase_order_save($data, 0, (int) $user['id']);
 
     if (!$result['success']) {
-        $liveform->mark_error($result['field'] ?? '_error', $result['error']);
+        $liveform->mark_error($result['field'] ?? '_error', h($result['error']));
         go($self_url);
     }
 
