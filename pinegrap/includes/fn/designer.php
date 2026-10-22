@@ -1057,6 +1057,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 'address_book'      => '_render_system_widget_address_book',
                 'account_security'  => '_render_system_widget_account_security',
                 'account_invoices'  => '_render_system_widget_account_invoices',
+                'account_email'     => '_render_system_widget_account_email',
                 'cart_link'         => '_render_system_widget_cart_link',
             );
             if (isset($account_renderers[$region_type])) {

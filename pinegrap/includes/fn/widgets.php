@@ -70,6 +70,7 @@ function pg_sw_type_labels()
         'address_book'        => lang('Address Book'),
         'account_security'    => lang('Account Security'),
         'account_invoices'    => lang('My Invoices'),
+        'account_email'       => lang('Account E-mail'),
         'logout'              => lang('Logout'),
         'error_page'          => lang('Error Page (404)'),
         'language_switcher'   => lang('Language Switcher'),
@@ -3122,7 +3123,8 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
 //
 // cfg: redirect_page_id (send_to: where the visitor may go afterwards),
 // login_page_id (the "back to sign-in" link; the legacy login page type is
-// the fallback).
+// the fallback), reset_email_page_id / reset_email_subject (the designed
+// reset e-mail, read by forgot_password.php; widgets_account.php).
 function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
 {
     $widget_id = (int)$widget_id;
@@ -3178,10 +3180,12 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
     $rendered = trim(_render_tree_node($tree, 0, 0));
     $lf->remove();
     if ($screen !== 'confirm') {
+        // pg_widget_id: this widget's reset_email_page_id chooses the e-mail.
         $rendered = _pg_member_form_wrap($rendered, $software . '/forgot_password.php', array(
-            'send_to'   => $send_to,
-            'return_to' => $page_url,
-            'screen'    => $screen,
+            'send_to'      => $send_to,
+            'return_to'    => $page_url,
+            'screen'       => $screen,
+            'pg_widget_id' => $widget_id,
         ), 'pg-forgot-password-form');
     }
 
