@@ -23,4 +23,5 @@ description: Which classes keep a ready-made designer block in step with the des
 - `.blockquote-footer` is a literal grey in Bootstrap 5.3.8 and does not follow dark mode: add `text-body-secondary`.
 - `btn-outline-primary` on a dark band without a palette is 3.4:1; use `btn-primary` there.
 - `.badge` is `white-space: nowrap`: a pill longer than two words needs `text-wrap`, or a Turkish translation pushes the page sideways at 360 px.
+- A block may have no palette accent when it is photos, logos, plain lists or Bootstrap status colours (`image-grid`, `logos-*`, `alert-*`, tables): it still follows the look and dark mode. A navbar shows only its brand at 360/768 px, so the brand is `text-primary`.
 - The editor's audit measures the same thing on the canvas: `docs/memory/designer/designer-audit-contrast.md`.

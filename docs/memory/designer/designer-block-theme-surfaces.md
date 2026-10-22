@@ -4,7 +4,7 @@ description: How a ready-made designer block writes a dark navbar, a hero on a p
 ---
 
 ## Where do these recipes come from?
-- The older palette blocks and the Components-tab items were reworked to the theme-driven classes of `docs/memory/designer/designer-block-theme-colours.md`, then measured with the theme/a11y harness (all `_sdBlockPaletteItems()` blocks and Components-tab items, 5 looks x 5 palettes x light/dark x 360/768/1280 x en/tr). What failed there is written down here.
+- The older palette blocks and Components-tab items were moved to the classes of `designer-block-theme-colours.md` and measured with the theme/a11y harness (5 looks x 5 palettes x light/dark x 360/768/1280 x en/tr). What failed is written down here.
 
 ## How is a dark navbar written?
 - `navbar navbar-expand-* bg-body border-bottom` with `_attrs` `data-bs-theme="dark"` (`navbar`, `navbar-search`, `navbar-dark-center`). `navbar-dark` is deprecated in Bootstrap 5.3 and `bg-dark` ignores dark mode. Give it one palette accent: brand `text-primary`, a CTA `link-primary` or a `btn-primary` (a dark bar has nothing else that follows the palette).
@@ -15,9 +15,9 @@ description: How a ready-made designer block writes a dark navbar, a hero on a p
 
 ## Which buttons and links stay readable on a tinted or primary surface?
 - Outline buttons (`btn-outline-primary`, `btn-outline-secondary`) and link text use the palette's readable shade, which is checked against `bg-body` only: on `bg-body-tertiary`, `bg-primary-subtle`, an alert or a scrim they measured 3.8–4.4:1. There a second action is a solid `btn-secondary` (`cta-simple`, `booking-cta`, `hero-image-bg`), or a `btn-link` with `text-reset` on an alert or a `text-bg-primary` band (`alert-warning-actions`, `cta-gradient`). A row of links moves to `bg-body` (`error-404-search`, `breadcrumbs-with-header`).
-- Small primary text on a tinted card: `text-primary-emphasis` (`team-leadership`), not `text-primary`.
+- Small primary text sits on `bg-body` (`team-leadership` card): on `bg-body-tertiary` even `text-primary-emphasis` measured 3.85:1 in dark mode (midnight, crimson).
 - Status headers: `bg-danger-subtle text-danger-emphasis` with `border-danger-subtle` (`compare-vs`); `bg-danger bg-opacity-10 text-danger` measured 3.1:1.
-- Never `opacity-*` on text: `opacity-75` on a primary band measured 2.4:1.
+- Never `opacity-*` on text: `opacity-75` on a primary band measured 2.4:1. No `progress-bar-striped` under a label: the stripes took white text to 3.97:1 (Components-tab progress).
 - A badge on a primary band: `text-bg-secondary`; `bg-white bg-opacity-25 text-white` had no measurable contrast.
 - A fixed gradient image ignores the palette and makes the text contrast unmeasurable: `cta-gradient` is a flat `text-bg-primary` band; an operator can add a gradient in Background.
 
