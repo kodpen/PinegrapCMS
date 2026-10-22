@@ -4,14 +4,9 @@ description: ERP money storage (integer minor units), the single rounding point 
 ---
 
 ## How is money stored and rounded in the ERP?
-- Integer minor units (kuruş), `BIGINT`, same as the rest of the codebase; no `bcmath`. Rates `DECIMAL(6,3)` / `DECIMAL(15,6)`, quantities `DECIMAL(15,4)`.
+- Integer minor units (kuruş), `BIGINT`, same as the rest of the codebase; no `bcmath`. Rates `DECIMAL(6,3)` / `DECIMAL(15,6)`, quantities `DECIMAL(15,4)`, priced at those four places (erp-line-quantity-places).
 - `includes/erp/money.php` is the single multiply/round point; do not open a second one. `erp_apply_rate()` is the only amount × rate, `erp_line_total()` the only amount × quantity, `erp_allocate()` splits one amount over lines (largest remainders, the parts always add up). Rounding is `round()` (half away from zero, as the order side does), never an `(int)` cut.
 - A tax-inclusive amount is split with `erp_split_gross($gross, $rate)` (net + tax = gross exactly, rate × net within a kuruş); never `/ (1 + rate)`. An order's VAT is taken per rate on the sum of the rate's lines (`erp_rate_vat()`, #1168), and a rate's gross total is split with `erp_rate_amount()` (#1211): erp-discounted-order-vat, erp-order-charges-vat.
-
-## How many places does a quantity keep?
-- Four, as stored. `erp_manual_lines_build()` takes it through `erp_quantity_round()` before pricing (#1230). Before, 1.3333333333 x 1,500.00 showed 2,400.00 on the draft, but the issued invoice was 2,399.94 because issue rebuilds the lines from the stored 1.3333. The editor's `quantityRound()` does the same.
-- `erp_decimal_units($value, $places)` rounds on the digits `sprintf('%.10F')` writes (JS `toFixed(10)` writes the same ones), half away from zero. It never rounds a binary product such as `1.15 * 10000`.
-- Incoming e-invoice line: the price is checked against the stored quantity. A longer quantity whose price does not add up folds into one unit, with the supplier's figures in the text.
 
 ## What is the home currency?
 - The store's main currency, not `'TRY'`: the ERP follows `BASE_CURRENCY_CODE` (`erp_base_currency()`, `includes/erp/fx.php`). Pinegrap installs worldwide; no country-specific rate source or tax rule enters the core.
