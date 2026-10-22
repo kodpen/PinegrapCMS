@@ -128,8 +128,9 @@ if (!$_POST) {
     require_once(dirname(__FILE__) . '/import_products_f.php');
 
     // Price cells are read by pg_products_import_price_cents(), which hands a
-    // typed figure to the product screen's reader (pg_pb_price_to_cents()),
-    // so a figure means the same in a file as in the box.
+    // typed figure to the product screen's rule (pg_pb_price_figure(), the
+    // figure behind pg_pb_price_to_cents()), so a figure means the same in a
+    // file as in the box.
     require_once(dirname(__FILE__) . '/product_builder.php');
 
     if (pg_products_import_is_spreadsheet($_FILES['file']['name'])) {
