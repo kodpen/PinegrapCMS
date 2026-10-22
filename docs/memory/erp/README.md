@@ -49,6 +49,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-send-failures.md: What the ERP does when a step of a Paraşüt send goes wrong (no answer to the create, a record that would not be deleted, a failed conversion job) so that no second sales invoice is opened there
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
+- erp-recurring-invoice-day.md: The day of the month a repeating invoice keeps: an invoice of the 31st repeats on every month's last day, not on the 28th the first February cut it to
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
