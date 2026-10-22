@@ -8,8 +8,10 @@
  * _sdBlockPaletteGroups(); every rule a block asks for in _SD_BLOCK_CSS_NEEDS
  * exists in _SD_BLOCK_CSS and names its own key as a class (otherwise
  * _sdEnsureBlockStyles() appends it again on every drop); every pg-* class a
- * builder writes is defined by a rule the block needs; and no block rule
- * uses !important (Bootstrap utilities would lose the override war silently).
+ * builder writes is defined by a rule the block needs; no block rule
+ * uses !important (Bootstrap utilities would lose the override war silently);
+ * no builder writes a fixed colour class that ignores the colour palette and
+ * dark mode; and no builder carousel plays by itself.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -382,4 +384,61 @@ function test_designer_blocks_builder_classes_are_needed()
 	}
 	pg_assert_true($seen > 0, 'pg-* classes are found in the builders');
 	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
+}
+
+// String literals of createFromPalette() and of makeCarouselSlide(): the
+// markup every block and Components-tab item is built from.
+function _test_blocks_builder_strings()
+{
+	$out = array();
+	$range = _test_blocks_cfp_range();
+	$at = strpos(_test_blocks_js(), 'function makeCarouselSlide(');
+	$slide = $at === false ? null : _test_blocks_block($at);
+	foreach (array($range, $slide) as $block) {
+		if ($block) {
+			$scan = _test_blocks_scan(_test_blocks_js(), $block[0] + 1);
+			$out = array_merge($out, $scan['strings']);
+		}
+	}
+	return $out;
+}
+
+// A block follows the design's colour palette and dark mode only through
+// classes that read the theme variables. These ones are fixed colours:
+// bg-dark stays dark in a light design, bg-white stays white in a dark one,
+// text-white is unreadable on an amber primary. A dark band is written
+// data-bs-theme="dark" + bg-body text-body, a primary surface text-bg-primary
+// (docs/memory/designer/designer-block-theme-colours.md).
+function test_designer_blocks_use_theme_driven_colours()
+{
+	$fixed = array('bg-white', 'bg-light', 'bg-dark', 'bg-black', 'text-white', 'text-white-50', 'text-dark',
+		'text-black', 'text-black-50', 'text-muted', 'btn-light', 'btn-dark', 'btn-outline-light', 'btn-outline-dark',
+		'link-light', 'link-dark', 'navbar-dark', 'navbar-light', 'bg-primary', 'bg-secondary');
+	$strings = _test_blocks_builder_strings();
+	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
+	$found = array();
+	foreach ($strings as $str) {
+		foreach (preg_split('/\s+/', $str) as $token) {
+			if (in_array($token, $fixed, true)) {
+				$found[$token] = true;
+			}
+		}
+	}
+	pg_assert_same(array(), array_keys($found), 'fixed colour classes written by createFromPalette()');
+
+	$range = _test_blocks_cfp_range();
+	$body = $range ? substr(_test_blocks_js(), $range[0], $range[1] - $range[0]) : '';
+	preg_match_all("/variant:\\s*'((?:outline-)?(?:light|dark))'/", $body, $m);
+	pg_assert_same(array(), array_values(array_unique($m[1])), 'light/dark button variants written by createFromPalette()');
+}
+
+// Bootstrap's carousel keeps cycling under keyboard focus and reduced motion
+// and has no pause button (WCAG 2.2.2): no block or Components-tab carousel
+// plays by itself. Carousel Options > Autoplay switches it on per carousel.
+function test_designer_blocks_carousels_do_not_autoplay()
+{
+	$strings = _test_blocks_builder_strings();
+	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
+	pg_assert_false(in_array('data-bs-ride', $strings, true), 'no builder writes data-bs-ride');
+	pg_assert_false(in_array('data-bs-interval', $strings, true), 'no builder writes data-bs-interval');
 }

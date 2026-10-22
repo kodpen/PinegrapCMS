@@ -1,6 +1,6 @@
 ---
 name: designer-block-theme-colours
-description: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the news, maintenance and creative blocks.
+description: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.
 ---
 
 ## Why does a block need theme-driven classes?
@@ -9,8 +9,8 @@ description: Which classes keep a ready-made designer block in step with the des
 ## Which classes follow the palette and the look?
 - Colour: `text-bg-primary` / `text-bg-secondary` (text colour is `--pg-on-primary`), `bg-primary-subtle text-primary-emphasis`, `text-primary`, `link-primary`, `btn-primary`, `btn-outline-primary`, `btn-outline-secondary`, `bg-body`, `bg-body-secondary`, `bg-body-tertiary`, `text-body`, `text-body-secondary`, `text-body-emphasis`, `text-reset`, `border`, `border-primary`.
 - Shape and depth: `rounded*`, `shadow-sm|shadow|shadow-lg`, `card`, `badge`, `.blockquote`, `display-*`, `lead` (base.css maps them to the look's tokens). Never set a font family.
-- **Never**: `bg-white`, `bg-light`, `bg-dark`, `text-white`, `text-dark`, `text-muted`, `btn-light`, `btn-dark`, `link-light`, `bg-primary text-white` (write `text-bg-primary`; an amber palette has dark text on primary), hex colours.
-- Older blocks still break this and are not reworked yet: `newsletter-split` (`bg-primary text-white`), `hero` (`bg-dark text-white`), `navbar-dark-center` (`navbar-dark bg-dark`), `cta-gradient` and `hero-image-bg` (`text-white`).
+- **Never**: `bg-white`, `bg-light`, `bg-dark`, `text-white`, `text-white-50`, `text-dark`, `text-muted`, `btn-light`, `btn-dark`, `btn-outline-light`, `link-light`, `navbar-dark`, `bg-primary text-white` (write `text-bg-primary`; an amber palette has dark text on primary), hex colours.
+- Every palette block and Components-tab item follows this, and `tests/designer_blocks_test.php` fails on a fixed colour class in `createFromPalette()`. Recipes for dark navbars, photo heroes, buttons on tinted surfaces and carousels: `docs/memory/designer/designer-block-theme-surfaces.md`.
 
 ## How is a dark band or text on a photo written?
 - Dark band: `_attrs` `data-bs-theme="dark"` **and** `bg-body text-body`; palettes redefine their dark colours under `[data-bs-theme=dark]`, and without `text-body` the text colour is inherited from the light page.
