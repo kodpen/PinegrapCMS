@@ -7,7 +7,7 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 - A file `includes/payments/<key>.php` (or an add-on file, absolute path, `pg_payment_driver_register()`) defining `pg_payment_<key>_<op>()`. Contract: `includes/payments/driver.php`; registry, settings, checkout helpers: `includes/fn/payments.php`. Function tables, not an interface: what is not defined is not supported.
 - Required: `_capabilities()` (of `pg_payment_capability_names()`; `hosted_fields` = card typed in the service's fields, token posted). Optional: `_fields()`, operations `prepare`, `authorize`, `complete`, `capture`, `refund`, `cancel`, `notify` (`pg_payment_operations()`). `pg_payment_can($key, $what)` asks first.
 - Key: lowercase, letter first, single underscores, 2–32 chars (`__` splits key and field in input names).
-- `<key>_return` mode only for a driver with `complete()`: the mode skips CSRF and field checks (#937).
+- `<key>_return` mode only with `complete()`: it skips CSRF and field checks (#937).
 
 ## What do callers get back?
 - Always `pg_payment_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (`raw.exception`, `raw.message`). `pg_payment_answer()` fills every key in the driver.php header (`installments`, `card_brand`, `log` lines the caller writes). A failure: the service's words in `raw.message`.
@@ -30,6 +30,6 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 - Save: `pg_payment_settings_check()` before the card's UPDATE (marks refuse it), `_save()` after. `pg_payment_settings_decide()` (pure): only drivers whose `payment_<key>__present` was posted; empty secret keeps; required only when active; no row while all values are defaults.
 
 ## How was it verified?
-- `tests/payment_drivers_test.php`; sandbox with a registered test driver.
+- `tests/payment_drivers_test.php`; sandbox with a registered driver.
 
 Related: docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/payment-driver-stripe.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md, docs/memory/platform/sms-provider-layer.md
