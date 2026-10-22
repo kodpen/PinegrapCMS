@@ -1,6 +1,6 @@
 ---
 name: api-order-status-moves
-description: What POST /orders/{id} does with a status (plain write, cancellation, restore) and which moves it refuses; incomplete is the cart's status and is not accepted (#877, PR #PRNUM)
+description: What POST /orders/{id} does with a status (plain write, cancellation, restore) and which moves it refuses; incomplete is the cart's status and is not accepted (#877, PR #1258)
 ---
 
 ## Which status moves does the order update accept?
