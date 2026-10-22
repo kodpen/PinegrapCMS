@@ -21905,7 +21905,14 @@ const StyleDesigner = (function () {
     //           _attrs.style and the prop is cleared, since the style wins
     function _sdInlineStyleProps(node) {
         var same = function (v) { return String(v); };
-        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: same }];
+        // A family as the page writes it (_sdFontFamilyCss(): quoted, with
+        // the sans-serif fallback) reads back as the bare family; a stack
+        // of several stays in the style (null).
+        var family = function (v) {
+            var m = /^\s*(?:'([^',]+)'|"([^",]+)"|([^'",]+?))\s*(?:,\s*sans-serif\s*)?$/i.exec(String(v));
+            return m ? (m[1] || m[2] || m[3]).trim() : null;
+        };
+        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: family }];
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
@@ -24986,6 +24993,10 @@ const StyleDesigner = (function () {
         }
         if (name === 'style') {
             if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            // The typed style is the whole attribute: the old inline style
+            // field, printed ahead of the Attributes panel's style
+            // (_sdNodeStyle()), is folded into it.
+            if (p.inlineStyle) p.inlineStyle = '';
             _sdApplyInlineStyle(node, now || '');
             return;
         }
@@ -24994,8 +25005,7 @@ const StyleDesigner = (function () {
         // literal; a literal written over a binding ends it.
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
-        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
-        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (_sdCodeSetTitleAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -25004,6 +25014,37 @@ const StyleDesigner = (function () {
         if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
         else if (idx === -1) p._attrs.push({ name: name, value: now });
         else p._attrs[idx].value = now;
+    }
+
+    // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
+    // to the props they came from: the tooltip's text, placement and switch,
+    // or the plain title. false when the attribute is the Attributes
+    // panel's (an entry of that name, or another toggle's data-bs-toggle),
+    // which the caller then writes to the list.
+    function _sdCodeSetTitleAttr(node, name, now) {
+        var p = node.props;
+        if (name !== 'title' && name !== 'data-bs-placement' && name !== 'data-bs-toggle') return false;
+        var written = {};
+        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        if (written[name]) return false;
+        var tipOn = !!p.tooltipEnabled && !written['data-bs-toggle'];
+        if (name === 'title') {
+            if (tipOn) { p.tooltipTitle = now || ''; return true; }
+            if (p.title && ['content', 'semantic', 'container', 'row', 'col'].indexOf(node.type) !== -1) { p.title = now || ''; return true; }
+            return false;
+        }
+        if (name === 'data-bs-placement') {
+            if (tipOn) { p.tooltipPlacement = now || 'top'; return true; }
+            return false;
+        }
+        // data-bs-toggle="tooltip" is the tooltip's switch; another value
+        // typed over it turns the tooltip off and goes to the list.
+        if (!tipOn || !p.tooltipTitle) return false;
+        if (now === 'tooltip') return true;
+        p.tooltipEnabled = false;
+        return now === undefined;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
