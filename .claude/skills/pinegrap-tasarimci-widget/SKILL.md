@@ -113,8 +113,11 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
 - Grid hiyerarşisi: `container/container-fluid > row > col`. Utility sırası:
   display → flex/grid → spacing → sizing → typography → color → border → shadow.
   Breakpoint'ler mobile-first.
-- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>` içinde `<a>` yok,
-  `<p>`/`<button>`/`<h1-h6>` inline-only, `<ul>/<ol>` sadece `<li>`.
+- `canDrop` semantiğine uy: void tag çocuk almaz, `<a>`/`<button>` içinde
+  hiçbir derinlikte etkileşimli öğe yok, `<p>`/`<button>`/`<h1-h6>` inline-only
+  (başlık ve `<p>` bağlantı/düğme de alır), `<label>` tek kontrol, `<ul>/<ol>`
+  sadece `<li>`. Palet öğesi kuracağı ağaçla yargılanır
+  (docs/memory/designer/inline-drop-links-buttons.md).
 - Erişilebilirlik minimumu: ikon-only düğmede `aria-label`, toggle'da
   `aria-expanded`+`aria-controls`, `<img>`de `alt`, input'ta `<label for>`.
 - Satır oluğunu `gutter: '4'` + `cssClass: 'g-lg-5'` yaz; düz `gutter: '5'`
@@ -486,7 +489,16 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   sayfaları da şablon sayfasıdır (özel klasör, sitemap/arama kapalı): form
   ayarı `notify_page_id` / `confirm_page_id`, yorum `comments` dizisinde
   `email_page` / `email_subject` / `notify_email`, ödeme cfg
-  `order_receipt_email_page_id`; `{{site_email}}` = `EMAIL_ADDRESS`. E-posta
+  `order_receipt_email_page_id`; `{{site_email}}` = `EMAIL_ADDRESS`. Her
+  şablon hesap e-postalarını da taşır: `email_account_welcome` /
+  `email_password_reset` sayfası, üzerinde açık ağaçlı (`starter` değil,
+  bayraksız) `account_email` widget'ı; `registration` cfg
+  `welcome_email_page_id` + `welcome_email_subject`, `forgot_password` cfg
+  `reset_email_page_id` + `reset_email_subject` (`lang()`). Sıfırlama
+  düğmesinin href'i `__set_password_url`'e bağlı olmalı: gövdede bağlantı
+  yoksa tasarımlı e-posta gönderilmez. Satır içi renkte yedek `var()`
+  içinde olur (`var(--bs-primary,#hex)`); yalnız `var(--x)` CSS bağlantısını
+  engelleyen istemcide düğmeyi şeffaf bırakır. E-posta
   sayfasındaki widget kaydı/siparişi `pg_sw_render_context()`'ten alır (URL
   yok); mesaj düğümü e-postada boş kalır. Ayar anahtarlarını
   renderer'ın okuduğu `$cfg[...]`'dan doğrula (ör. sepet
