@@ -22,4 +22,4 @@ No, and the screen says so: it is the texts as last extracted. A widget may draw
 Rows that are not reviewed get a checkbox; "Select all on this page" and the toolbar button above the rows open a dialog with the count. `translations_action.php` action `accept_source` (JSON, session token, manager only - the page-only gate allows just node/save/status) validates the ids with `pg_tr_screen_string_ids()` (positive ints, unique, over 500 refused whole) and calls `pg_tr_accept_source()`: for each string not already reviewed, `pg_tr_save_translation($id, $lang, sanitized source, 'manual', 'reviewed', $user, 0, true)` - the same write and engine as a translation typed by hand. A reviewed translation is left as it is and counted as `kept`. A machine translation that differs is replaced. The write drops the stored verdicts of the language, so pages show "not checked" until they are drawn again.
 
 ## Where are the helpers and tests?
-`includes/translate/screen.php` (loaded by `pg_tr_load()`); `tests/translations_screen_test.php`.
+`includes/translate/screen.php` (loaded by `pg_tr_load()`); `tests/translations_screen_test.php` Added in PR #1175 (issue #1096).
