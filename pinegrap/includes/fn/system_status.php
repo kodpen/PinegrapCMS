@@ -1449,6 +1449,16 @@ function pg_php_build_time_from_info($info)
     return gmmktime((int) $match[4], (int) $match[5], (int) $match[6], $months[$match[1]], (int) $match[2], (int) $match[3]);
 }
 
+// A build time from pg_php_build_time_from_info() as a date for a message, in
+// UTC as it was read: in the site's time zone a build of 21 October could show
+// as the 20th, before the fixes it is said to come after.
+function pg_php_build_date_text($build_time)
+{
+    return defined('DATE_FORMAT')
+        ? gmdate(get_date_format_code() . '/Y', (int) $build_time)
+        : gmdate('Y-m-d', (int) $build_time);
+}
+
 // When the PHP serving this request was built. phpinfo() is the only place
 // PHP says it; a host that disables phpinfo() (disable_functions) leaves it
 // unknown. On PHP 7 a disabled function still exists and only warns.
@@ -2269,7 +2279,7 @@ function get_system_status_checks()
                 'vars'   => array(
                     PHP_VERSION,
                     $php2shell['fixed_in'],
-                    defined('DATE_FORMAT') ? date(get_date_format_code() . '/Y', $php2shell_build_time) : date('Y-m-d', $php2shell_build_time),
+                    pg_php_build_date_text($php2shell_build_time),
                 ),
             ))
         );

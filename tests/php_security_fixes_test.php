@@ -86,6 +86,24 @@ function test_php_security_fixes_build_time_from_phpinfo()
 	pg_assert_same(null, pg_php_build_time_from_info('Build Date => Foo 99 2026 18:06:38'));
 }
 
+// The build date in the message is the day phpinfo() shows, whatever the
+// site's time zone: printed in New York, a build of 21 October 03:12 UTC came
+// out as the 20th, before the publication it is said to follow.
+function test_php_security_fixes_build_date_text_is_utc()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('America/New_York');
+
+	try {
+		$built = pg_php_build_time_from_info('Build Date => Oct 21 2026 03:12:00');
+
+		pg_assert_same('likely_fixed', pg_php2shell_status('8.3.6', $built)['state']);
+		pg_assert_same(defined('DATE_FORMAT') ? gmdate(get_date_format_code() . '/Y', $built) : '2026-10-21', pg_php_build_date_text($built));
+	} finally {
+		date_default_timezone_set($zone);
+	}
+}
+
 // The Docker image runs a PHP the fixes reach on every rebuild, and turns off
 // the session upload progress Pinegrap never uses: one of the ways in on a
 // PHP without them.

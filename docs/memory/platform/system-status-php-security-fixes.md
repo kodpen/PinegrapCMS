@@ -11,7 +11,7 @@ description: The "PHP Security Fixes" System Status check (PHP2Shell, CVE-2026-1
 ## How does the check decide? (`includes/fn/system_status.php`)
 - `pg_php2shell_status(PHP_VERSION, pg_php_build_time())`. At or above its line's release (`pg_php2shell_fixed_releases()`), or a later line: fixed (green).
 - Otherwise the build date decides, because distributions patch without changing the number (Ubuntu 24.04 stays 8.3.6): built before 2026-10-01, missing (red, full weight); on or after 2026-10-21, likely_fixed (grey, not scored, "confirm with your host"); in between (the embargo weeks) or no build date, unknown (yellow, half weight).
-- The build date is read from `phpinfo(INFO_GENERAL)`: `pg_php_build_time()` asks `function_exists()` first (disable-functions-rule.md), `pg_php_build_time_from_info()` reads the command-line and the HTML form as UTC.
+- The build date is read from `phpinfo(INFO_GENERAL)`: `pg_php_build_time()` asks `function_exists()` first (disable-functions-rule.md), `pg_php_build_time_from_info()` reads the command-line and the HTML form as UTC, and `pg_php_build_date_text()` prints it in UTC too (in the site's time zone a 21 October build could show as the 20th).
 - Red and yellow add one sentence on turning off `session.upload_progress.enabled` while it is on.
 - Title "PHP Security Fixes", short label "PHP fixes", icon `bi-bug-fill`, group server right after PHP Version, weight `php_security` = 18 (Serious class).
 
