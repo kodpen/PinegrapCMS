@@ -534,6 +534,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_theme_switcher_inject($content);
     }
 
+    // ── Sideways rows ───────────────────────────────────────────────────────────
+    // The previous / next buttons of a row marked data-pg-scroller carry no
+    // script either; the row brings it (pg_scroller_inject()), checked once
+    // everything is drawn in. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
+        $content = pg_scroller_inject($content);
+    }
+
     // ── Tooltips and popovers ───────────────────────────────────────────────────
     // Bootstrap starts neither by itself: a visual editor page holding a
     // tooltip (the panel's Tooltip option) or a popover gets the small script

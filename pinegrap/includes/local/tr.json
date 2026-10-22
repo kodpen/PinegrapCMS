@@ -25471,5 +25471,6 @@
     "Until then, turning off session.upload_progress.enabled in php.ini closes one of the ways in; Pinegrap does not use it.": "O zamana kadar php.ini'de session.upload_progress.enabled ayarını kapatmak giriş yollarından birini kapatır; Pinegrap bu ayarı kullanmıyor.",
     "Line \"{var:1}\" has an amount below zero, and Paraşüt takes no such line: a line's price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.": "\"{var:1}\" satırının tutarı sıfırın altında; Paraşüt eksi tutarlı satır kabul etmiyor: satırın fiyatı, indirimi ve KDV'si sıfır ya da daha büyük olmalı. Paraşüt'e hiçbir şey gönderilmedi.",
     "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
-    "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin."
+    "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin.",
+    "Scroller Controls": "Kaydırıcı Kontrolleri"
 }

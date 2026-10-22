@@ -1,12 +1,13 @@
 ---
 name: designer-preview-page-scripts
-description: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
+description: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 ---
 
 ## Which platform scripts does a designer page get, and from where?
 - A marker in the final HTML (after shared components and widgets are drawn in) brings a small file, added in `get_page_content.php`, never in an e-mail:
   - `data-pg-theme-switcher` -> `assets/js/pg_theme_switcher.js` + an inline resolve in `<head>` (`pg_theme_switcher_inject()`).
   - `data-bs-toggle="tooltip"|"popover"` (`pg_bs_tips_pattern()`) -> `assets/js/pg_bs_tips.js`, deferred (`pg_bs_tips_inject()`), only when `style_layout` is `visual_designer` (classic pages start their own).
+  - `data-pg-scroller` (`pg_scroller_pattern()`) -> `assets/js/pg_scroller.js`, deferred (`pg_scroller_inject()`; designer-scroller-controls).
 - The Preview asks the same table: `_SD_PAGE_SCRIPTS` in `style_designer.js` (marker expression -> file, absolute URL from the editor's base, with the editor script's own `?v=` stamp so an upgrade is not served from cache). A new row needs its server step; `tests/designer_page_scripts_test.php` compares the two sides.
 - The Preview writes its scripts before the last `</body>` with `_sdInsertBeforeBodyEnd()`, found by a regex on the markup itself. An index from `html.toLowerCase()` drifted one place per `İ` (lower-cased it is two code units): Bootstrap was cut out and `</body` showed as text on Turkish pages.
 

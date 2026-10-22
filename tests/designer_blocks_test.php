@@ -10,8 +10,9 @@
  * _sdEnsureBlockStyles() appends it again on every drop); every pg-* class a
  * builder writes is defined by a rule the block needs; and no block rule
  * uses !important (Bootstrap utilities would lose the override war silently).
- * Two blocks keep a checked shape: scroller-cards' scroll hint points both
- * ways, and the weather strip's cities are look-driven chips.
+ * Two blocks keep a checked shape: scroller-cards' previous / next buttons
+ * (tied to their row, mirrored on RTL pages), and the weather strip's cities
+ * are look-driven chips.
  *
  * The markup of every block and Components-tab item follows the design: no
  * builder writes a fixed colour class that ignores the colour palette and
@@ -1024,14 +1025,44 @@ function test_designer_blocks_one_way_icon_matcher()
 	}
 }
 
-// The scroll hint of scroller-cards points both ways: the row scrolls both
-// ways, and a one-way arrow points against the reading direction on an RTL
-// page.
-function test_designer_blocks_scroll_hint_is_direction_neutral()
+// scroller-cards' previous / next buttons: real buttons with no script of
+// their own, named for screen readers and tied to the row, which carries the
+// marker that brings assets/js/pg_scroller.js (pg_scroller_inject(), the
+// preview's _SD_PAGE_SCRIPTS, the canvas's _sdScrollers()).
+function test_designer_blocks_scroller_buttons()
 {
 	$strings = _test_blocks_builder_strings('scroller-cards');
 	pg_assert_true(count($strings) > 0, 'the scroller-cards builder is found');
-	pg_assert_true(in_array('bi-arrow-left-right', $strings, true), 'scroller-cards draws the two-headed arrow');
+	foreach (array('button', 'type', 'data-pg-scroll', 'prev', 'next', 'aria-controls', 'aria-label', 'data-pg-scroller', 'aria-hidden') as $str) {
+		pg_assert_true(in_array($str, $strings, true), 'scroller-cards writes ' . $str);
+	}
+	pg_assert_true(in_array('Previous', $strings, true) && in_array('Next', $strings, true), 'the buttons are named Previous and Next');
+	pg_assert_true(!in_array('Scroll sideways', $strings, true), 'the plain-text scroll hint is gone');
+	pg_assert_true(!in_array('bi-arrow-left-right', $strings, true), 'the hint\'s two-headed arrow is gone');
+
+	// The row's id is the buttons' aria-controls.
+	$at = _test_blocks_builder_at('scroller-cards');
+	$block = $at === false ? null : _test_blocks_block($at);
+	$body = $block ? substr(_test_blocks_js(), $block[0], $block[1] - $block[0]) : '';
+	pg_assert_true((bool) preg_match("/name:\\s*'aria-controls',\\s*value:\\s*_crScRowId\\b/", $body), 'aria-controls names the row id');
+	pg_assert_true(strpos($body, '_crScRow.props.id = _crScRowId;') !== false, 'the row carries that id');
+
+	// The script reads what the builder writes; the canvas and the preview load it.
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_scroller.js');
+	foreach (array('[data-pg-scroller]', '[data-pg-scroll]', "'prev'", 'aria-controls', 'prefers-reduced-motion', 'pgScrollerBind', 'pgScrollerEditing') as $hook) {
+		pg_assert_true(strpos($script, $hook) !== false, 'pg_scroller.js reads ' . $hook);
+	}
+	$js = _test_blocks_js();
+	pg_assert_true(strpos($js, "_sdThemeSwitchers();\n        _sdScrollers();") !== false, 'renderCanvas() binds the scrollers after every render');
+	pg_assert_true(strpos($js, "file: 'assets/js/pg_scroller.js'") !== false, 'the preview loads pg_scroller.js');
+}
+
+// The chevrons of scroller-cards point the reading direction: every
+// one-way icon of the block is mirrored on an RTL page (pg-flip-rtl), where
+// the previous / next buttons swap sides.
+function test_designer_blocks_scroller_chevrons_follow_direction()
+{
+	$strings = _test_blocks_builder_strings('scroller-cards');
 	$one_way = array();
 	foreach ($strings as $str) {
 		foreach (preg_split('/\s+/', trim($str)) as $token) {
@@ -1040,7 +1071,15 @@ function test_designer_blocks_scroll_hint_is_direction_neutral()
 			}
 		}
 	}
-	pg_assert_same(array(), $one_way, 'one-way arrows in scroller-cards');
+	pg_assert_same(array('bi-chevron-left', 'bi-chevron-right'), $one_way, 'one-way icons of scroller-cards');
+	pg_assert_true(in_array('pg-flip-rtl', $strings, true), 'scroller-cards mirrors its chevrons on RTL pages');
+	$rules = _test_blocks_css_rules();
+	$needs = _test_blocks_css_needs();
+	pg_assert_true(isset($needs['scroller-cards']) && in_array('pg-flip-rtl', $needs['scroller-cards'], true), 'scroller-cards needs pg-flip-rtl');
+	$rule = isset($rules['pg-flip-rtl']) ? $rules['pg-flip-rtl'] : '';
+	pg_assert_contains('[dir="rtl"] .pg-flip-rtl', $rule, 'pg-flip-rtl applies on RTL pages only');
+	pg_assert_contains('scaleX(-1)', $rule, 'pg-flip-rtl mirrors');
+	pg_assert_contains('inline-block', $rule, 'pg-flip-rtl gives the inline icon a box a transform applies to');
 }
 
 // The weather strip's city builder (_nbWsCity inside the news-weather-strip
