@@ -25454,6 +25454,7 @@
     "A value from the page address, compared with is equal to, finds records": "Sayfa adresindeki değer eşittir ile karşılaştırıldı ve kayıt buldu",
     "No value from the page address is applied": "Sayfa adresinden bir değer uygulanmadı",
     "An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order's shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.": "İnternet satışı e-Arşiv faturası web adresini ve taşıyıcıyı yazar; bu sipariş şunları vermiyor: {var:1}. Taşıyıcı siparişin nakliye yönteminde girilir (Taşıyıcı Unvanı, Taşıyıcı VKN). Paraşüt'e bir şey gönderilmedi.",
+    "These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.": "Şu satırlar, içlerindeki fiyat, karşılaştırma fiyatı ya da ek kargo ücreti bir tutar olmadığı için içe aktarılmadı: {var:1}.",
     "An offer needs a start date.": "Teklifin bir başlangıç tarihi olmalı.",
     "PHP Security Fixes": "PHP Güvenlik Düzeltmeleri",
     "PHP fixes": "PHP düzeltmeleri",
