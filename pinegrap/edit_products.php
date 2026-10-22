@@ -80,7 +80,8 @@ if (!$_POST) {
 		if(($raw_price_value === '') || !is_numeric($raw_price_value) || ((float) $raw_price_value <= 0)){
 			$price_value_refused = true;
 			$edit_change_price_method = '';
-			$liveform->mark_error('Update Error', lang('Enter an amount for the price change.'));
+			// Numbered, so a tax rate error in the same submit does not replace it.
+			$liveform->add_error(lang('Enter an amount for the price change.'));
 		}
 		else if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
 			// convert price from dollars to cents
