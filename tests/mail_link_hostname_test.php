@@ -49,6 +49,7 @@ function test_mail_link_hostname_mail_screens_use_hostname_setting()
 		'add_comment.php',
 		'email_a_friend.php',
 		'includes/fn/mail.php',
+		'includes/fn/widgets_account.php',
 	);
 
 	foreach ($files as $file) {
