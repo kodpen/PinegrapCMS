@@ -29,7 +29,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-retirement-prerequisites.md: Plan (2026-10-19, not started): regions editable in the visual designer before classic pages move: common/designer regions as shared components with content rights, dynamic, page, menu
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932) done; 2b or 4 next
 - mobile-api-shelved.md: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
-- news-magazine-templates.md: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 6, 7a done): News and Magazine design templates with author submissions, after the platform steps they need first
+- news-magazine-templates.md: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4, 6, 7a done): News and Magazine design templates with author submissions, after the platform steps they need first
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip and Evernote .enex import done; Keep, HTML readers, API gaps a sync client needs, later Notion/OneNote; slices N1-N4, open questions
 - passkeys.md: Plan (approved 2026-10-19; steps 1-2 done, registration closed until re-auth): WebAuthn passkeys as second factor or passwordless sign-in; account screens, gate left
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873; 2b, 3b open): payment drivers beside submit_order.php; iyzico and Stripe on it, PayTR, PayPal v2 next
