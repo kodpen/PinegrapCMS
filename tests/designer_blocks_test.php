@@ -12,7 +12,8 @@
  * uses !important (Bootstrap utilities would lose the override war silently);
  * no builder writes a fixed colour class that ignores the colour palette and
  * dark mode; no builder carousel plays by itself; every component type a
- * builder writes exists; and every block form can be submitted.
+ * builder writes exists; every block form can be submitted; and every field
+ * a builder writes is named by a label (or, outside a form, an aria-label).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -504,9 +505,10 @@ function _test_blocks_call_end($js, $open)
 	return -1;
 }
 
-// Source of every createNode('semantic', { tag: 'form', … }) call written by
-// createFromPalette(), keyed by its line number.
-function _test_blocks_form_calls()
+// Every createNode('semantic', { tag: … }) call inside createFromPalette()
+// whose tag is one of $tags: a list of array('tag', 'start', 'end', 'src',
+// 'line'), 'end' being the offset of the call's closing ')'.
+function _test_blocks_semantic_calls($tags)
 {
 	$js = _test_blocks_js();
 	$range = _test_blocks_cfp_range();
@@ -514,14 +516,62 @@ function _test_blocks_form_calls()
 	if (!$range) {
 		return $out;
 	}
-	$at = $range[0];
-	while (($at = strpos($js, "createNode('semantic', { tag: 'form'", $at)) !== false && $at < $range[1]) {
-		$open = strpos($js, '(', $at);
-		$end = _test_blocks_call_end($js, $open);
-		$out[substr_count($js, "\n", 0, $at) + 1] = $end < 0 ? '' : substr($js, $at, $end - $at + 1);
-		$at = $open + 1;
+	$re = "/createNode\\('semantic',\\s*\\{\\s*tag:\\s*'(" . implode('|', $tags) . ")'/";
+	preg_match_all($re, substr($js, $range[0], $range[1] - $range[0]), $m, PREG_OFFSET_CAPTURE);
+	foreach ($m[0] as $i => $hit) {
+		$at = $range[0] + $hit[1];
+		$end = _test_blocks_call_end($js, strpos($js, '(', $at));
+		$out[] = array(
+			'tag'   => $m[1][$i][0],
+			'start' => $at,
+			'end'   => $end,
+			'src'   => $end < 0 ? '' : substr($js, $at, $end - $at + 1),
+			'line'  => substr_count($js, "\n", 0, $at) + 1,
+		);
 	}
 	return $out;
+}
+
+// Source of every createNode('semantic', { tag: 'form', … }) call written by
+// createFromPalette(), keyed by its line number.
+function _test_blocks_form_calls()
+{
+	$out = array();
+	foreach (_test_blocks_semantic_calls(array('form')) as $call) {
+		$out[$call['line']] = $call['src'];
+	}
+	return $out;
+}
+
+// The JavaScript expression a node gives as its id: an 'id' entry of its
+// _attrs, or its id prop. Whitespace is removed so that the same expression
+// written twice compares equal; '' when the node has no id.
+function _test_blocks_node_id($src)
+{
+	if (preg_match("/name:\\s*'id',\\s*value:\\s*([^}]+?)\\s*\\}/", $src, $m)
+		|| preg_match("/[{,]\\s*id:\\s*([^,}]+?)\\s*[,}]/", $src, $m)) {
+		return preg_replace('/\\s+/', '', $m[1]);
+	}
+	return '';
+}
+
+// array(start, end) of the innermost builder test or function inside
+// createFromPalette() whose block holds $offset: the scope a field and the
+// label naming it are written in (a builder, or a field helper such as
+// contact-form's _cfField).
+function _test_blocks_scope_of($offset)
+{
+	$js = _test_blocks_js();
+	$range = _test_blocks_cfp_range();
+	$head = substr($js, $range[0], $offset - $range[0]);
+	preg_match_all("/if \\(ctype === '[a-z0-9-]+'\\)[^{\\n]*\\{|function\\s*\\([^)]*\\)\\s*\\{/", $head, $m, PREG_OFFSET_CAPTURE);
+	for ($i = count($m[0]) - 1; $i >= 0; $i--) {
+		$block = _test_blocks_block($range[0] + $m[0][$i][1]);
+		if ($block && $block[1] > $offset) {
+			return $block;
+		}
+	}
+	return $range;
 }
 
 // A Button component is an <a href="#"> unless it says otherwise, and a form
@@ -546,4 +596,69 @@ function test_designer_blocks_forms_can_be_submitted()
 	}
 	pg_assert_same(array(), array_values(array_unique($links)), 'block forms holding a Button component drawn as a link');
 	pg_assert_same(array(), $no_submit, 'block forms without a submit button');
+}
+
+// A field without a name is read aloud as "edit text" (WCAG 1.3.1, 4.1.2) and
+// a label whose 'for' names no field labels nothing. Every input, select and
+// textarea a builder writes is named by a label whose 'for' is the field's id
+// expression, written in the same builder or field helper; outside a form an
+// aria-label also names it (the Components-tab input group, the theme switch).
+// Every label 'for' names a field of its scope. Buttons, hidden and submit
+// inputs carry their own name or none.
+function test_designer_blocks_fields_have_labels()
+{
+	$fields = _test_blocks_semantic_calls(array('input', 'select', 'textarea'));
+	$labels = _test_blocks_semantic_calls(array('label'));
+	$forms = _test_blocks_semantic_calls(array('form'));
+	pg_assert_true(count($fields) > 20, 'the fields of createFromPalette() are read');
+	pg_assert_true(count($labels) > 20, 'the labels of createFromPalette() are read');
+	$label_for = array();
+	foreach ($labels as $i => $label) {
+		$label_for[$i] = preg_match("/name:\\s*'for',\\s*value:\\s*([^}]+?)\\s*\\}/", $label['src'], $m) ? preg_replace('/\\s+/', '', $m[1]) : '';
+	}
+	$unnamed = array();
+	$field_ids = array();
+	foreach ($fields as $field) {
+		if (preg_match("/name:\\s*'type',\\s*value:\\s*'(hidden|submit|button|reset|image)'/", $field['src'])) {
+			continue;
+		}
+		$id = _test_blocks_node_id($field['src']);
+		$scope = _test_blocks_scope_of($field['start']);
+		if ($id !== '') {
+			$field_ids[] = array($scope, $id);
+		}
+		$labelled = false;
+		foreach ($labels as $i => $label) {
+			if ($id !== '' && $label_for[$i] === $id && $label['start'] > $scope[0] && $label['start'] < $scope[1]) {
+				$labelled = true;
+				break;
+			}
+		}
+		$in_form = false;
+		foreach ($forms as $form) {
+			if ($field['start'] > $form['start'] && $field['start'] < $form['end']) {
+				$in_form = true;
+				break;
+			}
+		}
+		if (!$labelled && ($in_form || !preg_match("/name:\\s*'aria-label(?:ledby)?',\\s*value:\\s*(?!'')\\S/", $field['src']))) {
+			$unnamed[] = 'line ' . $field['line'] . ($in_form ? ' (in a form)' : '');
+		}
+	}
+	pg_assert_same(array(), $unnamed, 'fields of createFromPalette() without a label naming them');
+
+	$dangling = array();
+	foreach ($labels as $i => $label) {
+		$found = false;
+		foreach ($field_ids as $pair) {
+			if ($pair[1] === $label_for[$i] && $label['start'] > $pair[0][0] && $label['start'] < $pair[0][1]) {
+				$found = true;
+				break;
+			}
+		}
+		if (!$found) {
+			$dangling[] = 'line ' . $label['line'] . ($label_for[$i] === '' ? ' (no for)' : ' (for ' . $label_for[$i] . ')');
+		}
+	}
+	pg_assert_same(array(), $dangling, 'labels of createFromPalette() whose for names no field');
 }
