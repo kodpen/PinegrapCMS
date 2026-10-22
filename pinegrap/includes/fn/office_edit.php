@@ -417,12 +417,19 @@ function pg_office_xlsx_date1904($workbook_xml)
  * here, as a document with writeProtection is not
  * (pg_office_docx_restriction()).
  *
+ * The attributes before the password are skipped one quoted value at a
+ * time: XML allows a raw > inside a value (userName="R&amp;D >Team"), and a
+ * name inside another attribute's value is not an attribute. A start tag
+ * too long for PCRE to walk token by token (thousands of attributes; the
+ * match stops with a stack or backtrack limit error) counts as reserved, so
+ * an error never opens a workbook for editing.
+ *
  * @param string $workbook_xml xl/workbook.xml
  * @return bool
  */
 function pg_office_xlsx_write_reserved($workbook_xml)
 {
-    return (bool) preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b[^>]*\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
+    return 0 !== preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*?\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
 }
 
 /**
