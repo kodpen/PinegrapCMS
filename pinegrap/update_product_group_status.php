@@ -80,8 +80,13 @@ function update_product_group_status($properties) {
         FROM products_groups_xref
         WHERE $sql_product_groups");
 
+    // The rows as they were, so the products the loop below changes each get
+    // an audit line.
+    $audit_before = pg_audit_fetch_many('products', array_column((array) $products, 'id'));
+    $audit_changed = array();
+
     // Loop through the products in order to update the status for each.
-    foreach ($products as $product) {
+    foreach ((array) $products as $product) {
 
         // If we are disabling products, and this product is enabled
         // in an enabled product group in a different area of the catalog,
@@ -114,12 +119,16 @@ function update_product_group_status($properties) {
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($product['id']) . "'");
 
+        $audit_changed[(int) $product['id']] = true;
+
         $items[] = array(
             'id' => $product['id'],
             'type' => 'product',
             'status' => $status);
 
     }
+
+    pg_audit_record_many('update', 'products', array_intersect_key($audit_before, $audit_changed));
 
     $product_group = db_item(
         "SELECT name

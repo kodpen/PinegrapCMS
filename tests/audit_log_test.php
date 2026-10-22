@@ -337,3 +337,40 @@ function test_audit_private_and_license_names()
 
 	pg_assert_same(array('title' => 'x'), pg_audit_volatile('config', array('title' => 'x', 'backup_remote_settings' => 'cipher:iv', 'parasut_credentials_enc' => 'cipher')), 'config ciphertext re-encrypted on every save');
 }
+
+// The text of a product source file between two markers ('' when either is
+// missing), read without loading the file.
+function audit_log_test_between($relative, $from, $to)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+	$start = strpos($source, $from);
+	$end = ($start === false) ? false : strpos($source, $to, $start + strlen($from));
+
+	return (($start === false) || ($end === false)) ? '' : (string) substr($source, $start, $end - $start);
+}
+
+// Save paths that changed records without a line: the File Manager's bulk
+// page edit and zip, a product copied from its screen or with a variant set,
+// and a variant set switched on or off (each product it changes).
+function test_audit_file_manager_and_catalog_copies_write_lines()
+{
+	$bulk = audit_log_test_between('view_folder_and_files_f.php', "case 'explorer_pages_bulk_edit':", "case 'explorer_files_bulk_edit':");
+	$before = strpos($bulk, "pg_audit_fetch_many('page', \$allowed)");
+
+	pg_assert_true(($before !== false) && ($before < strpos($bulk, '"UPDATE page')), 'bulk page edit reads the pages first');
+	pg_assert_contains("pg_audit_record_many('update', 'page', \$audit_before);", $bulk, 'bulk page edit records them');
+
+	$zip = audit_log_test_between('view_folder_and_files_f.php', "case 'explorer_zip_create':", "case 'explorer_zip_extract':");
+
+	pg_assert_contains("pg_audit_record('create', 'files', \$new_file_id);", $zip, 'zip records the new file');
+
+	$copy = audit_log_test_between('includes/fn/ecommerce.php', 'function duplicate_product($id)', 'return $new_product_id;');
+
+	pg_assert_contains("pg_audit_record('create', 'products', (int) \$new_product_id);", $copy, 'a copied product is recorded');
+
+	$status = audit_log_test_between('update_product_group_status.php', 'function update_product_group_status(', 'return $items;');
+	$fetch = strpos($status, "pg_audit_fetch_many('products'");
+
+	pg_assert_true(($fetch !== false) && ($fetch < strpos($status, '"UPDATE products')), 'status change reads the products first');
+	pg_assert_contains("pg_audit_record_many('update', 'products', array_intersect_key(\$audit_before, \$audit_changed));", $status, 'and records the ones it changed');
+}
