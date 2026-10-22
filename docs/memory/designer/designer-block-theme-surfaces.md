@@ -7,7 +7,7 @@ description: How a ready-made designer block writes a dark navbar, a hero on a p
 - The older palette blocks and Components-tab items were moved to the classes of `designer-block-theme-colours.md` and measured with the theme/a11y harness (5 looks x 5 palettes x light/dark x 360/768/1280 x en/tr). What failed is written down here.
 
 ## How is a dark navbar written?
-- `navbar navbar-expand-* bg-body border-bottom` with `_attrs` `data-bs-theme="dark"` (`navbar`, `navbar-search`, `navbar-dark-center`). `navbar-dark` is deprecated in Bootstrap 5.3 and `bg-dark` ignores dark mode. Give it one palette accent: brand `text-primary`, a CTA `link-primary` or a `btn-primary` (a dark bar has nothing else that follows the palette).
+- `navbar navbar-expand-* bg-body text-body border-bottom` with `_attrs` `data-bs-theme="dark"` (`navbar`, `navbar-search`, `navbar-dark-center`). `navbar-dark` is deprecated in Bootstrap 5.3 and `bg-dark` ignores dark mode. Give it one palette accent: brand `text-primary`, a CTA `link-primary` or a `btn-primary` (a dark bar has nothing else that follows the palette).
 - A light bar is `bg-body`, never `bg-white`: in dark mode the links turn white on white (1:1 measured on `navbar-light-cta`).
 
 ## How does a section with a background photo carry its text?

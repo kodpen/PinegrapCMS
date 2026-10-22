@@ -14113,7 +14113,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Compare the Plans'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('See what every plan offers in a single table.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('Compare the Plans') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded overflow-hidden shadow-sm mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -15037,7 +15040,10 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('How We Compare'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('We put ourselves next to the rest of the market, feature by feature.'), cssClass: 'lead text-body-secondary mb-0' })
                             ]),
-                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap') }, [
+                            // A table that scrolls sideways on phones is a named, focusable
+                            // region, so a keyboard can scroll it.
+                            createNode('semantic', { tag: 'div', cssClass: 'table-responsive', customName: _sdT('Table Wrap'),
+                                _attrs: [{ name: 'role', value: 'region' }, { name: 'aria-label', value: _sdT('How We Compare') }, { name: 'tabindex', value: '0' }] }, [
                                 createNode('semantic', { tag: 'table', cssClass: 'table align-middle text-center bg-body border rounded shadow-sm overflow-hidden mb-0', customName: _sdT('Comparison Table') }, [
                                     createNode('semantic', { tag: 'thead', cssClass: 'bg-body-secondary', customName: _sdT('Table Head') }, [
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
@@ -18454,7 +18460,7 @@ const StyleDesigner = (function () {
                     var navId = 'nav_' + Math.random().toString(36).substr(2, 6);
                     // Dark bar through the theme switch (navbar-dark is deprecated in
                     // Bootstrap 5.3); the brand takes the palette's readable shade.
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom', customName: 'Navbar',
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
                             createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
@@ -18509,7 +18515,7 @@ const StyleDesigner = (function () {
                 // Navbar: Brand + search input + user dropdown
                 if (ctype === 'navbar-search') {
                     var _nsId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md bg-body border-bottom', customName: 'Navbar',
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-md bg-body text-body border-bottom', customName: 'Navbar',
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: _sdT('Navbar Container') }, [
                             createNode('content', { contentType: 'link', text: _sdT('Brand'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),
@@ -18555,7 +18561,7 @@ const StyleDesigner = (function () {
                 // Navbar: Dark theme, centered links
                 if (ctype === 'navbar-dark-center') {
                     var _ndId = 'nav_' + Math.random().toString(36).substr(2, 6);
-                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom', customName: 'Navbar',
+                    return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('semantic', { tag: 'div', cssClass: 'container', customName: _sdT('Navbar Container') }, [
                             createNode('content', { contentType: 'link', text: _sdT('ACME'), href: '#', cssClass: 'navbar-brand fw-bold text-primary' }),

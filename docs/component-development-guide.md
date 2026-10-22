@@ -164,7 +164,7 @@ pricing: {
 `createFromPalette` case'i monolitik component döndürmek yerine `createNode` ağacı inşa eder:
 
 ```js
-return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body border-bottom', customName: 'Navbar',
+return createNode('semantic', { tag: 'nav', cssClass: 'navbar navbar-expand-lg bg-body text-body border-bottom', customName: 'Navbar',
     _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
     createNode('semantic', { tag: 'div', cssClass: 'container-fluid', customName: 'Navbar Container' }, [
         createNode('content', { contentType: 'link', text: 'Brand', href: '#', cssClass: 'navbar-brand' }),
