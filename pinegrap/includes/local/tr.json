@@ -25411,5 +25411,17 @@
     "Views in recent days": "Son günlerdeki görüntüleme",
     "Days counted": "Sayılan gün",
     "Today and the days before it, 1 to 180: daily view figures are kept for six months.": "Bugün ve öncesindeki günler, 1 ile 180 arası: günlük görüntüleme sayıları altı ay saklanır.",
-    "Views and comments are counted on the detail page. Without one the list keeps the date order.": "Görüntüleme ve yorumlar detay sayfasında sayılır. Detay sayfası seçilmezse liste tarih sırasında kalır."
+    "Views and comments are counted on the detail page. Without one the list keeps the date order.": "Görüntüleme ve yorumlar detay sayfasında sayılır. Detay sayfası seçilmezse liste tarih sırasında kalır.",
+    "email-account-welcome": "e-posta-hesap-hosgeldin",
+    "email-password-reset": "e-posta-sifre-sifirlama",
+    "Welcome! Your account is ready": "Hoş geldiniz! Hesabınız hazır",
+    "Reset your password": "Şifrenizi sıfırlayın",
+    "We are glad to have you with us.": "Aramızda olduğunuz için mutluyuz.",
+    "Happy reading!": "Keyifli okumalar!",
+    "Thank you for joining us.": "Bize katıldığınız için teşekkür ederiz.",
+    "See you soon at the café!": "Kafede görüşmek üzere!",
+    "If you have any questions, we are here to help.": "Sorularınız olursa yardım için buradayız.",
+    "Thanks for signing up. Come and say hi any time!": "Kaydolduğunuz için teşekkürler. İstediğiniz zaman gelip merhaba deyin!",
+    "Happy shopping!": "İyi alışverişler!",
+    "Account Welcome E-mail": "Hesap Hoş Geldin E-postası"
 }
