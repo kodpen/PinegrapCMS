@@ -243,11 +243,10 @@ function pg_pb_product_attribute_rows($product_id)
 /**
  * Convert a price typed by an operator into integer cents.
  *
- * Prices are stored as integer cents throughout the codebase. The inputmask on
- * these fields uses "," as the thousands separator and "." as the decimal
- * point, matching the parsing of the screen this replaced — do not get
- * clever here, a locale guess that disagrees with the mask silently multiplies
- * or divides the price by a thousand.
+ * Prices are stored as integer cents throughout the codebase. The input mask
+ * on these fields writes the panel language's separators
+ * (pg_money_mask_attributes(): 1.234,56 on a Turkish panel, 1,234.56 on an
+ * English one), and the rule below reads both without a locale guess.
  *
  * round() rather than (int): a 33% discount on 1499 produces 1004.33 and
  * truncation loses a cent against the feed and the card charge.
@@ -4228,7 +4227,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         '<div class="col-12 col-sm-6 col-lg-4">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <div class="input-group">
-                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask="" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0" style="text-align:right;" />
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                 <label class="input-group-text" for="compare_at_price">' . BASE_CURRENCY_SYMBOL . '</label>
                             </div>
                             <div class="form-text">' . lang('Empty or zero is none.') . '</div>
@@ -4308,7 +4307,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-6 col-lg-3 my-1">
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
                                                         <div class="input-group">
-                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-control" maxlength="12" inputmode="decimal" inputmask="" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0" style="text-align:right;" />
+                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                                             <label class="input-group-text" for="extra_shipping_cost">' . BASE_CURRENCY_SYMBOL . '</label>
                                                         </div>
                                                     </div>
@@ -4760,7 +4759,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     <div class="col-12 col-lg-3 my-2">
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
                                         <div class="input-group">
-                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-control" maxlength="12" inputmode="decimal" inputmask="" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0" style="text-align:right;" />
+                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                             <label class="input-group-text" for="price">' . BASE_CURRENCY_SYMBOL . '</label>
                                         </div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
@@ -5655,15 +5654,21 @@ function pg_pb_load_product($product_id)
         return NULL;
     }
 
-    // Prices are stored in cents; the box shows currency.
-    $row['price'] = number_format(((int) $row['price']) / 100, 2, '.', '');
+    // Prices are stored in cents; the box shows currency, written with the
+    // panel language's decimal separator the money mask reads
+    // (pg_money_mask_attributes()).
+    $row['price'] = pg_format_input_amount(((int) $row['price']) / 100);
+
+    // The same for the extra shipping cost, which was put in the box as
+    // stored (500 for 5.00) and so read back a hundred times larger.
+    $row['extra_shipping_cost'] = pg_format_input_amount(((int) $row['extra_shipping_cost']) / 100);
 
     // The "was" price, NULL for none, and the switch that shows it. SELECT *
     // carries the column only on a site that has it.
     $compare_at = pg_compare_at_price_value(isset($row['compare_at_price']) ? $row['compare_at_price'] : null);
 
     $row['compare_at_price_enabled'] = is_int($compare_at);
-    $row['compare_at_price']         = is_int($compare_at) ? pg_pb_cents_to_price($compare_at) : '';
+    $row['compare_at_price']         = is_int($compare_at) ? pg_format_input_amount($compare_at / 100) : '';
 
     // The cover is products.image_name and the rest live in the xref, in the
     // order they were added. The screen treats them as one list whose first
