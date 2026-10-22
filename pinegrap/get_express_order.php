@@ -2362,11 +2362,15 @@ function get_express_order($properties) {
                 
                 // A minor unit lower where it would leave a rate's total no
                 // amount reaches, as submit_order.php charges it
-                // (pg_order_charges_reachable()). The script that redraws the
-                // totals when a method is picked compares the methods' costs
-                // with the recipients' stored ones (software.shipping below),
-                // so the page keeps the lower figure while the methods it was
-                // drawn with stay picked.
+                // (pg_order_charges_reachable()). The method script
+                // (frontend.js update_totals()) redraws the shipping when
+                // the picked methods' costs differ from software.shipping,
+                // so it gets the recipients' stored costs: a page with one
+                // recipient keeps the lower figure as it loads. Another pick,
+                // or a page with several recipients once their methods load,
+                // shows the methods' own costs; the order is still charged
+                // the lower figure, as submit_order.php refuses only a
+                // higher total than the one shown.
                 $grand_shipping_drawn = $grand_shipping;
 
                 if (($grand_shipping > 0) && pg_order_charges_settle_rates()) {
@@ -5105,8 +5109,9 @@ function get_express_order($properties) {
             if ($shippable_items) {
                 // A minor unit lower where it would leave a rate's total no
                 // amount reaches, as submit_order.php charges it
-                // (pg_order_charges_reachable()); the method script compares
-                // with the recipients' stored costs (software.shipping below).
+                // (pg_order_charges_reachable()); the method script gets the
+                // recipients' stored costs (software.shipping below), as in
+                // the system layout above.
                 $shipping_drawn = $shipping;
 
                 if (($shipping > 0) && pg_order_charges_settle_rates()) {
