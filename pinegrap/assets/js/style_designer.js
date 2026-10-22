@@ -6477,40 +6477,8 @@ const StyleDesigner = (function () {
                     return;
                 }
             }
-            // ── Dropdowns are opened by the editor, not by Bootstrap ─────────
-            // Bootstrap's Dropdown finds its menu as a SIBLING of the toggle
-            // (next, then previous, then inside the toggle's parentNode). On the
-            // canvas every node is wrapped in its own .sd-wrap, so the menu is a
-            // sibling of the WRAPPER, never of the toggle: all three lookups
-            // return nothing, `this._menu` is undefined and Bootstrap throws
-            // "Cannot read properties of null (reading 'classList')" — the
-            // dropdown simply never opened. `display: contents` does not help
-            // here; it changes the box, not the DOM relationship.
-            //
-            // Toggling it here also fits the editor better than Bootstrap would:
-            // the menu stays open while the operator selects and edits the items
-            // inside it, instead of closing on the next click.
-            var _ddTog = e.target.closest ? e.target.closest('[data-bs-toggle="dropdown"]') : null;
-            if (_ddTog) {
-                e.preventDefault();
-                // Keep it from reaching Bootstrap's delegated handler, which
-                // would throw on the same missing menu.
-                e.stopPropagation();
-                var _ddScope = _ddTog.closest('.dropdown, .dropup, .dropend, .dropstart, .btn-group, .nav-item, .navbar-nav') ||
-                               _ddTog.parentElement;
-                var _ddMenu = _ddScope ? _ddScope.querySelector('.dropdown-menu') : null;
-                if (_ddMenu) {
-                    var _wasOpen = _ddMenu.classList.contains('show');
-                    // One open menu at a time, so the canvas does not fill up.
-                    canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
-                    canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
-                    if (!_wasOpen) {
-                        _ddMenu.classList.add('show');
-                        _ddTog.setAttribute('aria-expanded', 'true');
-                    }
-                }
-                return;
-            }
+            // Dropdown toggles never get here: the canvas window's guard
+            // below opens them and stops the click first.
 
             var a = e.target.closest ? e.target.closest('a') : null;
             if (a && a.hasAttribute('href')) {
@@ -6548,6 +6516,73 @@ const StyleDesigner = (function () {
                 if (btn.type === 'submit') { e.preventDefault(); }
             }
         }, true); // capture phase
+
+        // ── Dropdowns are opened by the editor, not by Bootstrap ─────────
+        // Bootstrap's Dropdown finds its menu as a SIBLING of the toggle
+        // (next, then previous, then inside the toggle's parentNode). On the
+        // canvas every node is wrapped in its own .sd-wrap, so the menu is a
+        // sibling of the WRAPPER, never of the toggle: all three lookups
+        // return nothing and Bootstrap throws "Cannot read properties of
+        // null (reading 'classList')". Where toggle and menu are siblings in
+        // one node (the language switcher component) Bootstrap opened the
+        // menu and the editor closed it again in the same click.
+        //
+        // The guard sits on the canvas WINDOW in the capture phase: Bootstrap
+        // 5.3 registers its delegated data-api handlers on the document with
+        // capture = true, so a capture listener on the document runs beside
+        // them (stopPropagation() never stops a listener on the same node).
+        // The window comes before the document, and stopping the event there
+        // keeps Bootstrap out entirely.
+        //
+        // The editor toggles the menu itself, which also fits it better than
+        // Bootstrap would: the menu stays open while the operator selects and
+        // edits the items inside it, instead of closing on the next click.
+        function _sdDdScopeMenu(tog) {
+            var scope = tog.closest('.dropdown, .dropup, .dropend, .dropstart, .btn-group, .nav-item, .navbar-nav') || tog.parentElement;
+            return scope ? scope.querySelector('.dropdown-menu') : null;
+        }
+        function _sdDdCloseAll() {
+            canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
+            canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+        }
+        var _cvWin = canvasDoc.defaultView;
+        if (_cvWin) {
+            _cvWin.addEventListener('click', function (e) {
+                var tog = (e.target && e.target.closest) ? e.target.closest('[data-bs-toggle="dropdown"]') : null;
+                if (!tog || !canvasDoc || tog.ownerDocument !== canvasDoc) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var menu = _sdDdScopeMenu(tog);
+                if (!menu) return;
+                var wasOpen = menu.classList.contains('show');
+                // One open menu at a time, so the canvas does not fill up.
+                _sdDdCloseAll();
+                if (!wasOpen) {
+                    menu.classList.add('show');
+                    tog.setAttribute('aria-expanded', 'true');
+                }
+            }, true);
+            // Bootstrap's keydown data-api (Escape, ArrowUp, ArrowDown on a
+            // toggle or inside a menu) builds a Dropdown on the same missing
+            // menu and throws as well. Escape closes the open menus here; the
+            // editor's own shortcuts still see the key. A text being written
+            // in place is left alone: its own key handling sits on the element
+            // and would not run once the event is stopped at the window.
+            _cvWin.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                var t = e.target;
+                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc || t.isContentEditable) return;
+                if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
+                if (!t.closest('[data-bs-toggle="dropdown"], .dropdown-menu')) return;
+                e.stopPropagation();
+                if (e.key === 'Escape' && canvasDoc.querySelector('.dropdown-menu.show')) {
+                    e.preventDefault();
+                    _sdDdCloseAll();
+                    return;
+                }
+                _sdShortcutKeydown(e);
+            }, true);
+        }
 
         // Middle-click (and any browser that routes it through auxclick) would
         // open the href in a new tab. Same surprise as navigation, different

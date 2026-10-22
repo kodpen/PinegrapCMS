@@ -5,7 +5,9 @@
  * Tests for the controls of a page that keep working on the visual editor's
  * canvas: a selected element inside a see-through container is lifted for
  * its outline without moving an element its own classes place (an alert's
- * close button stays in its corner and dismisses the alert).
+ * close button stays in its corner and dismisses the alert); dropdowns are
+ * opened by the editor from a guard on the canvas window, before
+ * Bootstrap's document listeners.
  *
  * The canvas stylesheet (IFRAME_CSS) is cut out of
  * assets/js/style_designer.js and evaluated under Node; on a machine without
@@ -133,4 +135,53 @@ function test_designer_canvas_controls_selected_lift_skips_placed_elements()
 		}
 	}
 	pg_assert_true($outlined, 'a selected child of an alert keeps its outline, without being moved');
+}
+
+// The body of the listener `$target.addEventListener('$type', function …`
+// registered in the canvas set-up, up to its closing `}, true);`; '' when
+// there is none.
+function _test_canvas_controls_listener($target, $type)
+{
+	$js = _test_canvas_controls_js();
+	$from = strpos($js, 'function _sdInitCanvasDoc(');
+	$to = strpos($js, 'function _sdCanvasRealmReset(', (int) $from);
+	if ($from === false || $to === false) {
+		return '';
+	}
+	$setup = substr($js, $from, $to - $from);
+	$at = strpos($setup, $target . ".addEventListener('" . $type . "', function");
+	if ($at === false) {
+		return '';
+	}
+	$end = strpos($setup, "}, true);", $at);
+	return ($end === false) ? '' : substr($setup, $at, $end - $at);
+}
+
+// Bootstrap 5.3 puts its delegated data-api listeners on the document in the
+// capture phase, so the editor's dropdown guard has to stop the click before
+// the document: on the canvas window. A guard on the document ran beside
+// Bootstrap, which threw on every toggle click and toggled the language
+// switcher's menu back closed.
+function test_designer_canvas_controls_dropdown_guard_on_window()
+{
+	$js = _test_canvas_controls_js();
+	pg_assert_contains('var _cvWin = canvasDoc.defaultView;', $js, 'the guard sits on the canvas window');
+
+	$click = _test_canvas_controls_listener('_cvWin', 'click');
+	pg_assert_true($click !== '', 'the canvas window has a capture click listener');
+	pg_assert_contains("closest('[data-bs-toggle=\"dropdown\"]')", $click, 'it takes dropdown toggles');
+	pg_assert_contains('e.stopPropagation()', $click, 'it keeps the click from Bootstrap');
+	pg_assert_contains("menu.classList.add('show')", $click, 'the editor opens the menu itself');
+
+	$doc_click = _test_canvas_controls_listener('canvasDoc', 'click');
+	pg_assert_true($doc_click !== '', 'the canvas document keeps its click guard for links and submits');
+	pg_assert_false(strpos($doc_click, 'data-bs-toggle="dropdown"') !== false, 'no dropdown handling is left beside Bootstrap on the document');
+
+	$keys = _test_canvas_controls_listener('_cvWin', 'keydown');
+	pg_assert_true($keys !== '', 'the canvas window guards the dropdown keys');
+	foreach (array("'Escape'", "'ArrowUp'", "'ArrowDown'") as $key) {
+		pg_assert_contains($key, $keys, $key . ' is kept from Bootstrap');
+	}
+	pg_assert_contains('isContentEditable', $keys, 'a text written in place keeps its own key handling');
+	pg_assert_contains('_sdShortcutKeydown(e)', $keys, 'the editor shortcuts still see the other keys');
 }
