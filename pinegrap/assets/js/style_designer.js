@@ -42798,6 +42798,14 @@ const StyleDesigner = (function () {
                 if (jsFiles[j].meta === 'bootstrap-js' && jsFiles[j].content !== BS_JS_URL) { jsFiles[j].content = BS_JS_URL; changedJs = true; }
                 if (jsFiles[j].meta === 'jquery-js'    && jsFiles[j].content !== JQUERY_URL) { jsFiles[j].content = JQUERY_URL; changedJs = true; }
             }
+            // The Themes panel's light block in the old selector form is
+            // rewritten when the design loads, so the next save publishes
+            // the form that lets a theme switcher's dark mode through.
+            for (var ui = 0; ui < cssFiles.length; ui++) {
+                if (cssFiles[ui].meta !== 'user-styles') continue;
+                var upgraded = _themeUpgradeLightSelector(cssFiles[ui].content || '');
+                if (upgraded !== (cssFiles[ui].content || '')) { cssFiles[ui].content = upgraded; changedCss = true; }
+            }
             if (changedCss) saveFiles('sd-custom-css-field', cssFiles);
             if (changedJs)  saveFiles('sd-custom-js-field',  jsFiles);
         }
@@ -43932,9 +43940,12 @@ const StyleDesigner = (function () {
         _flushPendingOverlays = function (done) { done(); };
 
         // ── Theme: Bootstrap CSS variable overrides ─────────────────────────
-        // Edits write `:root, [data-bs-theme="light"] { … }` (light mode) or
-        // `[data-bs-theme="dark"] { … }` (dark mode) into the user-styles
-        // content. Single source of truth — same place the bottom Styles
+        // Edits write light values under
+        // `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"] { … }`
+        // (variables Bootstrap gives a dark value) or
+        // `:root, [data-bs-theme="light"] { … }` (the rest, which also apply
+        // in dark mode), and dark values under `[data-bs-theme="dark"] { … }`,
+        // into the user-styles content (see _themeBlockFor()). Single source of truth — same place the bottom Styles
         // panel and "Dosyaya Aktar" extract from.
         //
         // Each group has an `id` (used for collapse persistence), a friendly
@@ -44088,9 +44099,10 @@ const StyleDesigner = (function () {
         // Locate a CSS rule block whose selector matches `selectorRe` in the
         // given source. Returns { selStart, openIdx, bodyStart, bodyEnd, body }
         // or null. Brace-matched parser — survives nested rules and inline
-        // braces inside string values.
-        function _findRuleBlock(source, selectorRe) {
-            selectorRe.lastIndex = 0;
+        // braces inside string values. `from` starts the search at that
+        // offset (a /g regex), for a scan over several blocks.
+        function _findRuleBlock(source, selectorRe, from) {
+            selectorRe.lastIndex = from || 0;
             var m = selectorRe.exec(source);
             if (!m) return null;
             var openIdx = source.indexOf('{', m.index + m[0].length - 1);
@@ -44114,28 +44126,211 @@ const StyleDesigner = (function () {
             };
         }
 
-        // Selector regex per mode. Light accepts any of:
-        //   :root, [data-bs-theme="light"]
-        //   :root
-        //   [data-bs-theme="light"]
-        // Dark only matches `[data-bs-theme="dark"]`. The lookahead ensures
-        // we anchor at the `{` boundary, so partial selector text inside a
+        // Variables Bootstrap's own `[data-bs-theme=dark]` block (5.3.8)
+        // gives a dark value. A light value of one of these must never reach
+        // an <html> a theme switcher set to dark: the user styles load after
+        // bootstrap.css, so it would beat Bootstrap's dark value. Every other
+        // variable (fonts, sizes, radii, link decoration, focus ring, the
+        // eight theme colours) has one Bootstrap value for both modes, so a
+        // light value of it is the design's value in dark mode too.
+        // A function, not a `var`: _ensureBootstrapSentinels() splits the
+        // old light block at load, before this part of the setup has run.
+        function _themeDarkOwnVars() {
+            return _themeDarkOwnVars.list || (_themeDarkOwnVars.list = [
+                '--bs-body-color', '--bs-body-color-rgb', '--bs-body-bg', '--bs-body-bg-rgb',
+                '--bs-emphasis-color', '--bs-emphasis-color-rgb',
+                '--bs-secondary-color', '--bs-secondary-color-rgb', '--bs-secondary-bg', '--bs-secondary-bg-rgb',
+                '--bs-tertiary-color', '--bs-tertiary-color-rgb', '--bs-tertiary-bg', '--bs-tertiary-bg-rgb',
+                '--bs-primary-text-emphasis', '--bs-secondary-text-emphasis', '--bs-success-text-emphasis', '--bs-info-text-emphasis',
+                '--bs-warning-text-emphasis', '--bs-danger-text-emphasis', '--bs-light-text-emphasis', '--bs-dark-text-emphasis',
+                '--bs-primary-bg-subtle', '--bs-secondary-bg-subtle', '--bs-success-bg-subtle', '--bs-info-bg-subtle',
+                '--bs-warning-bg-subtle', '--bs-danger-bg-subtle', '--bs-light-bg-subtle', '--bs-dark-bg-subtle',
+                '--bs-primary-border-subtle', '--bs-secondary-border-subtle', '--bs-success-border-subtle', '--bs-info-border-subtle',
+                '--bs-warning-border-subtle', '--bs-danger-border-subtle', '--bs-light-border-subtle', '--bs-dark-border-subtle',
+                '--bs-heading-color', '--bs-link-color', '--bs-link-hover-color', '--bs-link-color-rgb', '--bs-link-hover-color-rgb',
+                '--bs-code-color', '--bs-highlight-color', '--bs-highlight-bg',
+                '--bs-border-color', '--bs-border-color-translucent',
+                '--bs-form-valid-color', '--bs-form-valid-border-color', '--bs-form-invalid-color', '--bs-form-invalid-border-color'
+            ]);
+        }
+        function _themeVarHasDarkDefault(name) {
+            return _themeDarkOwnVars().indexOf(name) !== -1;
+        }
+
+        // The block a value is written to:
+        //   'light'  — light value of a variable Bootstrap gives a dark value
+        //   'shared' — light value of any other variable; it also applies to
+        //              a dark <html> unless the dark block sets the variable
+        //   'dark'   — every dark value
+        function _themeBlockFor(mode, name) {
+            if (mode === 'dark') return 'dark';
+            return _themeVarHasDarkDefault(name) ? 'light' : 'shared';
+        }
+
+        // Selector regex per mode. Dark only matches `[data-bs-theme="dark"]`.
+        // Light matches every light form, so a scan meets each light block
+        // once, at its first selector (_themeLightKind() names the block):
+        //   :root:not([data-bs-theme="dark"]), [data-bs-theme="light"]  light
+        //   :root, [data-bs-theme="light"]                              shared
+        //   :root                                                       shared (hand-written)
+        //   [data-bs-theme="light"]                                     shared (hand-written)
+        // The `:not(...)` of the first form is never taken for the dark
+        // block: the dark regex needs `{` right after `]`. The lookahead
+        // anchors at the `{` boundary, so partial selector text inside a
         // longer selector list doesn't confuse the parser.
         function _themeSelectorRe(mode) {
             if (mode === 'dark') {
                 return /\[data-bs-theme=["']dark["']\]\s*(?=\{)/g;
             }
-            return /(?::root\s*,\s*\[data-bs-theme=["']light["']\]|\[data-bs-theme=["']light["']\]|:root)\s*(?=\{)/g;
+            return /(?::root:not\(\[data-bs-theme=["']dark["']\]\)\s*,\s*\[data-bs-theme=["']light["']\]|:root\s*,\s*\[data-bs-theme=["']light["']\]|\[data-bs-theme=["']light["']\]|:root)\s*(?=\{)/g;
         }
 
-        // Canonical selector string used when CREATING a new block for a mode
-        // that doesn't yet exist in user-styles. Light writes the combined
-        // form `:root, [data-bs-theme="light"]` so the variables apply both
-        // to default rendering AND when the user toggles `data-bs-theme`.
-        function _themeCanonicalSelector(mode) {
-            return (mode === 'dark')
-                ? '[data-bs-theme="dark"]'
-                : ':root,\n[data-bs-theme="light"]';
+        // 'light' or 'shared' for a block _themeSelectorRe('light') matched.
+        function _themeLightKind(blockText) {
+            return /^:root:not\(/.test(blockText) ? 'light' : 'shared';
+        }
+
+        // First block of `kind` ('light', 'shared' or 'dark'), or null.
+        function _themeFindBlock(content, kind) {
+            if (kind === 'dark') return _findRuleBlock(content, _themeSelectorRe('dark'));
+            var re = _themeSelectorRe('light');
+            var from = 0, blk;
+            while ((blk = _findRuleBlock(content, re, from))) {
+                if (_themeLightKind(blk.full) === kind) return blk;
+                from = blk.bodyEnd + 1;
+            }
+            return null;
+        }
+
+        // Selector string used when CREATING a block.
+        //   light  — the default page and an explicit light section, never an
+        //            <html> a theme switcher set to dark (a plain `:root`
+        //            matches that <html> too). A dark section inside a light
+        //            page still gets the dark values: its own declarations
+        //            win over the inherited ones.
+        //   shared — `:root` as well, so the value also reaches a dark <html>;
+        //            `[data-bs-theme="light"]` because Bootstrap sets these
+        //            variables again on a light section.
+        function _themeCanonicalSelector(kind) {
+            if (kind === 'dark') return '[data-bs-theme="dark"]';
+            if (kind === 'shared') return ':root,\n[data-bs-theme="light"]';
+            return ':root:not([data-bs-theme="dark"]),\n[data-bs-theme="light"]';
+        }
+
+        // Sets (or, with an empty value, removes) one declaration in the
+        // `kind` block of `content` and returns the new content. A missing
+        // block is created: a shared one before the dark block, so a dark
+        // value set for the same variable wins on a dark <html> (equal
+        // specificity, later rule wins); the others at the end. A block left
+        // without declarations is dropped.
+        function _themeSetDecl(content, kind, varName, value) {
+            content = content || '';
+            var blk = _themeFindBlock(content, kind);
+            if (!blk) {
+                if (!value) return content;
+                var newBlock = _themeCanonicalSelector(kind) + ' {\n  ' + varName + ': ' + value + ';\n}\n';
+                var dark = (kind === 'shared') ? _themeFindBlock(content, 'dark') : null;
+                if (dark) {
+                    return content.slice(0, dark.selStart) + newBlock + '\n' + content.slice(dark.selStart);
+                }
+                return (content ? content.replace(/\s+$/, '') + '\n\n' : '') + newBlock;
+            }
+            var declRe = new RegExp('(^|\\s|;)\\s*(' + varName.replace(/-/g, '\\-') + ')\\s*:\\s*([^;}\\n]*)\\s*(;?)', 'g');
+            var hasDecl = false;
+            var newBody = blk.body.replace(declRe, function (m, lead, n, oldVal, semi) {
+                hasDecl = true;
+                if (!value) return lead.replace(/[^\s;]/g, ''); // strip the decl
+                return lead + n + ': ' + value + (semi || ';');
+            });
+            if (!hasDecl && !value) return content;
+            if (!hasDecl) {
+                var trimmed = newBody.replace(/\s+$/, '');
+                newBody = (trimmed ? trimmed + '\n  ' : '\n  ') + varName + ': ' + value + ';\n';
+            }
+            // If we just emptied the block, drop the whole rule.
+            if (!/[^\s;]/.test(newBody.replace(/\/\*[\s\S]*?\*\//g, ''))) {
+                return (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
+            }
+            return content.slice(0, blk.bodyStart) + newBody + content.slice(blk.bodyEnd);
+        }
+
+        // Rewrites the light block the panel used to write
+        // (`:root, [data-bs-theme="light"]`, every variable together):
+        //   • the variables Bootstrap gives a dark value move to the light
+        //     block (the whole block is renamed when nothing else is in it),
+        //     so they stop overriding a dark page;
+        //   • the rest stay in it as the shared block, so fonts, radii and
+        //     the like still apply in dark mode, and it moves before the dark
+        //     block when it sits after it, so a dark value wins on a dark
+        //     <html>.
+        // A bare `:root` or `[data-bs-theme="light"]` block was written by
+        // hand and is left as written. Returns the content unchanged when
+        // there is nothing to do; a second pass changes nothing.
+        function _themeUpgradeLightSelector(content) {
+            if (!content) return content;
+            var re = _themeSelectorRe('light');
+            var from = 0, guard = 0, blk;
+            while ((blk = _findRuleBlock(content, re, from)) && guard++ < 100) {
+                from = blk.bodyEnd + 1;
+                if (!/^:root\s*,/.test(blk.full)) continue;
+
+                // Declarations are split on `;` as _parseThemeDecls() reads them.
+                var kept = [], taken = [];
+                blk.body.split(';').forEach(function (seg) {
+                    var m = /^\s*(?:\/\*[\s\S]*?\*\/\s*)*(--[A-Za-z0-9_-]+)\s*:([\s\S]*)$/.exec(seg);
+                    if (m && _themeVarHasDarkDefault(m[1])) taken.push({ name: m[1], value: m[2].trim(), text: seg.trim() });
+                    else kept.push(seg);
+                });
+                var keptBody = kept.join(';');
+                var keptEmpty = !/[^\s;]/.test(keptBody.replace(/\/\*[\s\S]*?\*\//g, ''));
+                var dark = _themeFindBlock(content, 'dark');
+                var darkBefore = !!dark && dark.selStart < blk.selStart && !keptEmpty;
+                if (!taken.length && !darkBefore) continue;
+
+                var light = _themeFindBlock(content, 'light');
+                var selText = blk.full.slice(0, blk.openIdx - blk.selStart);
+                var sharedPart = keptEmpty ? '' : (taken.length ? selText + '{' + keptBody + '}' : blk.full);
+                var lightPart = '';
+                if (taken.length && !light) {
+                    lightPart = keptEmpty
+                        ? _themeCanonicalSelector('light') + ' {' + blk.body + '}'
+                        : _themeCanonicalSelector('light') + ' {\n' + taken.map(function (t) { return '  ' + t.text; }).join(';\n') + ';\n}';
+                }
+                var here = darkBefore ? lightPart : [sharedPart, lightPart].filter(Boolean).join('\n\n');
+                if (here) {
+                    content = content.slice(0, blk.selStart) + here + content.slice(blk.bodyEnd + 1);
+                } else {
+                    content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
+                }
+                if (darkBefore) {
+                    content = content.slice(0, dark.selStart) + sharedPart + '\n\n' + content.slice(dark.selStart);
+                }
+                if (taken.length && light) {
+                    var have = _parseThemeDecls(light.body);
+                    taken.forEach(function (t) {
+                        if (!(t.name in have)) content = _themeSetDecl(content, 'light', t.name, t.value);
+                    });
+                }
+                from = 0;
+            }
+            return content;
+        }
+
+        // What the panel shows for `mode`, as { name: value }. Light: the
+        // light block over the shared one, as the cascade resolves them
+        // (the light block's selector is the more specific one).
+        function _themeModeDecls(content, mode) {
+            if (mode === 'dark') {
+                var d = _themeFindBlock(content, 'dark');
+                return d ? _parseThemeDecls(d.body) : {};
+            }
+            var out = {};
+            ['shared', 'light'].forEach(function (kind) {
+                var b = _themeFindBlock(content, kind);
+                var decls = b ? _parseThemeDecls(b.body) : {};
+                for (var n in decls) if (Object.prototype.hasOwnProperty.call(decls, n)) out[n] = decls[n];
+            });
+            return out;
         }
 
         // Parse declarations inside a rule body into a { name: value } map.
@@ -44160,10 +44355,7 @@ const StyleDesigner = (function () {
             for (var i = 0; i < cssFiles.length; i++) {
                 if (cssFiles[i].meta === 'user-styles') { content = cssFiles[i].content || ''; break; }
             }
-            var blk = _findRuleBlock(content, _themeSelectorRe(mode));
-            if (!blk) return '';
-            var decls = _parseThemeDecls(blk.body);
-            return decls[varName] || '';
+            return _themeModeDecls(content, mode)[varName] || '';
         }
 
         // Update or remove a "cascade" block for a theme color. Marker
@@ -44222,38 +44414,13 @@ const StyleDesigner = (function () {
             } else {
                 entry = cssFiles[entryIdx];
             }
-            var content = entry.content || '';
-            var blk = _findRuleBlock(content, _themeSelectorRe(mode));
-            var declRe = new RegExp('(^|\\s|;)\\s*(' + varName.replace(/-/g, '\\-') + ')\\s*:\\s*([^;}\\n]*)\\s*(;?)', 'g');
-
-            if (!blk) {
-                // No existing block — create one with just this declaration
-                // (or nothing, if we're clearing).
-                if (value) {
-                    var newBlock = _themeCanonicalSelector(mode) + ' {\n  ' + varName + ': ' + value + ';\n}\n';
-                    content = (content ? content.replace(/\s+$/, '') + '\n\n' : '') + newBlock;
-                }
-            } else {
-                // Block exists — try to update or append the declaration.
-                var body = blk.body;
-                var hasDecl = false;
-                var newBody = body.replace(declRe, function (m, lead, n, oldVal, semi) {
-                    hasDecl = true;
-                    if (!value) return lead.replace(/[^\s;]/g, ''); // strip the decl
-                    return lead + n + ': ' + value + (semi || ';');
-                });
-                if (!hasDecl && value) {
-                    var trimmed = newBody.replace(/\s+$/, '');
-                    newBody = (trimmed ? trimmed + '\n  ' : '\n  ') + varName + ': ' + value + ';\n';
-                }
-                // If we just emptied the block, drop the whole rule.
-                var bodyHasContent = /\S/.test(newBody.replace(/\/\*[\s\S]*?\*\//g, ''));
-                if (!bodyHasContent) {
-                    content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '');
-                } else {
-                    content = content.slice(0, blk.bodyStart) + newBody + content.slice(blk.bodyEnd);
-                }
-            }
+            // A light block in the old form is rewritten on every write, so a
+            // value set now never overrides a dark page. A light value lives
+            // in one block only: the one its variable belongs to.
+            var kind = _themeBlockFor(mode, varName);
+            var content = _themeUpgradeLightSelector(entry.content || '');
+            if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');
+            content = _themeSetDecl(content, kind, varName, value);
 
             // For theme colors (primary/.../dark), also (re)emit the cascade
             // override block for the current mode. Light cascade is unscoped;
@@ -44310,10 +44477,11 @@ const StyleDesigner = (function () {
                 if (cssFiles[i].meta === 'user-styles') { content = cssFiles[i].content || ''; break; }
             }
             var out = '';
-            ['light', 'dark'].forEach(function (mode) {
-                var blk = _findRuleBlock(content, _themeSelectorRe(mode));
+            content = _themeUpgradeLightSelector(content);
+            ['shared', 'light', 'dark'].forEach(function (kind) {
+                var blk = _themeFindBlock(content, kind);
                 if (blk && blk.body && blk.body.trim()) {
-                    out += _themeCanonicalSelector(mode) + ' {\n    ' + blk.body.trim().replace(/\n\s*/g, '\n    ') + '\n}\n\n';
+                    out += _themeCanonicalSelector(kind) + ' {\n    ' + blk.body.trim().replace(/\n\s*/g, '\n    ') + '\n}\n\n';
                 }
             });
             return out.trim();
@@ -44414,8 +44582,10 @@ const StyleDesigner = (function () {
             for (var i = 0; i < cssFiles.length; i++) {
                 if (cssFiles[i].meta === 'user-styles') { content = cssFiles[i].content || ''; break; }
             }
-            var blk = _findRuleBlock(content, _themeSelectorRe(_themeMode));
-            var current = blk ? _parseThemeDecls(blk.body) : {};
+            var current = _themeModeDecls(content, _themeMode);
+            // In dark mode a variable without a Bootstrap dark value shows
+            // the light value it inherits there as its placeholder.
+            var inherited = (_themeMode === 'dark') ? _themeModeDecls(content, 'light') : {};
 
             var html = '';
             THEME_VAR_GROUPS.forEach(function (g) {
@@ -44434,6 +44604,7 @@ const StyleDesigner = (function () {
                 g.vars.forEach(function (v) {
                     var val = current[v.name] || '';
                     var ph  = (typeof v.def[_themeMode] === 'string') ? v.def[_themeMode] : '';
+                    if (_themeMode === 'dark' && !_themeVarHasDarkDefault(v.name) && inherited[v.name]) ph = inherited[v.name];
                     var modified = !!val;        // ← class hook for the blue label
                     var displayColor = val || ph;
 
