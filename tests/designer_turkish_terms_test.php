@@ -140,3 +140,35 @@ function test_designer_turkish_terms_shipping_and_documents()
 	}
 	pg_assert_same(array(), $misspelt);
 }
+
+// The news blocks name every part of a headline 'Haber Başlığı …'.
+// 'Haber …' alone is a story (Story List) and 'Başlık …' a table or
+// card header (Header Row), so a headline part must not read like either.
+function test_designer_turkish_terms_headline_layer_names()
+{
+	$language = _test_tt_language();
+	$keys = _test_tt_designer_short_keys();
+	$owners = array();
+	foreach ($keys as $key) {
+		if (isset($language[$key])) {
+			$owners[$language[$key]][] = $key;
+		}
+	}
+	$headline = array();
+	$found = array();
+	foreach ($keys as $key) {
+		if (!preg_match('/^Headline\b/', $key) || !isset($language[$key])) {
+			continue;
+		}
+		$headline[] = $key;
+		$value = $language[$key];
+		if (strpos($value, 'Haber Başlığı') !== 0) {
+			$found[] = $key . ' => ' . $value;
+		}
+		if (count($owners[$value]) > 1) {
+			$found[] = $key . ' shares ' . $value . ' with ' . implode(', ', array_diff($owners[$value], array($key)));
+		}
+	}
+	pg_assert_same(6, count($headline));
+	pg_assert_same(array(), $found);
+}
