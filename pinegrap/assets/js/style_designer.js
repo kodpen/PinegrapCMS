@@ -4702,11 +4702,11 @@ const StyleDesigner = (function () {
                 var pos = p.thumbsPosition || 'bottom';
                 var posLabels = { bottom: _sdT('bottom'), top: _sdT('top'), left: _sdT('left'), right: _sdT('right'), none: _sdT('hidden') };
                 var bits = [];
-                if (p.lightbox)  bits.push('lightbox');
-                if (p.hoverZoom) bits.push('hover-zoom');
-                if (p.autoplay)  bits.push('autoplay');
+                if (p.lightbox)  bits.push(_sdT('Lightbox (full screen)'));
+                if (p.hoverZoom) bits.push(_sdT('Hover zoom (magnifier)'));
+                if (p.autoplay)  bits.push(_sdT('Autoplay'));
                 d.innerHTML = '<span class="bi bi-images" style="font-size:2rem;display:block;margin-bottom:6px"></span>' +
-                    '<strong>Carousel</strong>' +
+                    '<strong>' + esc(_sdT('Carousel')) + '</strong>' +
                     '<div class="text-muted small mt-1">' + esc(_sdT('The slides come from the product images at render time')) +
                     '<br>' + esc(_sdT('thumbnails')) + ': <strong>' + esc(posLabels[pos] || pos) + '</strong>' +
                     (bits.length ? '<br>' + esc(_sdT('features')) + ': ' + esc(bits.join(', ')) : '') +
