@@ -239,6 +239,32 @@ function test_short_link_redirects_refuses_loops_and_long_chains()
 	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'start', '/n3'), array_slice($chain, 0, 10)), 'eight hops');
 }
 
+// A pattern saved after the links it closes a loop with: the loop shows only
+// for the requests those links send to it, not for any sample request.
+function test_short_link_redirects_pattern_saved_last_is_walked_from_the_links_that_reach_it()
+{
+	$exact = array(short_link_redirects_test_link(1, 'q/z', '/p/z'));
+
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'p/*', '/q/$1'), $exact), 'p/z -> q/z -> p/z');
+
+	$prefixed = array(short_link_redirects_test_link(1, 'b/c*', '/a/c$1'));
+
+	pg_assert_same('to_loop', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a/*', '/b/$1'), $prefixed), 'a/cx -> b/cx -> a/cx');
+
+	// a/x is answered by its own exact link, so coming back to it is no loop.
+	$taken = array(
+		short_link_redirects_test_link(1, 'c', '/a/y'),
+		short_link_redirects_test_link(2, 'b/y', '/a/x'),
+		short_link_redirects_test_link(3, 'a/x', 'https://other.com/'),
+	);
+
+	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a/*', '/b/$1'), $taken), 'a/y -> b/y -> a/x (exact) -> another site');
+
+	$elsewhere = array(short_link_redirects_test_link(1, 'q/z', '/r/z'));
+
+	pg_assert_same('', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'p/*', '/q/$1'), $elsewhere), 'no link reaches the pattern');
+}
+
 function test_short_link_redirects_wildcard_references()
 {
 	pg_assert_same('to_references', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'a/*', '/x/$2')), 'more references than stars');
