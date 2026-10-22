@@ -18373,7 +18373,9 @@ const StyleDesigner = (function () {
                                 ]),
                                 _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
                                     _bkH('span', _sdT('Scroll sideways')),
-                                    _bkIcon('bi-arrow-right')
+                                    // Two-headed: the row scrolls both ways, and a
+                                    // one-way arrow points the wrong way on RTL pages.
+                                    _bkIcon('bi-arrow-left-right')
                                 ])
                             ]),
                             _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
