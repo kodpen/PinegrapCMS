@@ -738,6 +738,66 @@ function erp_order_payment_date($order)
 }
 
 /**
+ * Whether an order is an internet sale, and the address it was made at.
+ *
+ * A sale over the counter is not an internet sale, whatever else the order
+ * carries. Everything that came in over the wire (web checkout,
+ * marketplace, or the default type of an older row) is one, and only an
+ * internet sale states the address it was made at: the ERP setting, or
+ * failing that the site's own address.
+ *
+ * @param array $order  The orders row (type)
+ * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
+ */
+function erp_order_internet_sale($order)
+{
+    return _erp_order_internet_sale(
+        (string) ($order['type'] ?? ''),
+        defined('ERP_WEB_ADDRESS') ? (string) ERP_WEB_ADDRESS : '',
+        (defined('URL_SCHEME') && defined('HOSTNAME')) ? URL_SCHEME . HOSTNAME : ''
+    );
+}
+
+/**
+ * erp_order_internet_sale() with the setting and the site's address passed
+ * in.
+ *
+ * @param string $type     orders.type
+ * @param string $setting  ERP_WEB_ADDRESS
+ * @param string $site     The site's own address (URL_SCHEME . HOSTNAME)
+ * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
+ */
+function _erp_order_internet_sale($type, $setting, $site)
+{
+    if ((string) $type === 'local') {
+        return array('is_internet_sale' => 0, 'web_address' => '');
+    }
+
+    $web_address = trim((string) $setting);
+
+    return array('is_internet_sale' => 1, 'web_address' => ($web_address !== '') ? $web_address : trim((string) $site));
+}
+
+/**
+ * The VUK 509 fields of an order's sale, as an e-Arşiv invoice states them:
+ * whether it is an internet sale and its address, how and when it was paid,
+ * when the goods left and who carried them. The order's ERP invoice stores
+ * them (erp_invoice_from_order_locked()); the order screen's own Paraşüt
+ * button sends them with its e-Arşiv (parasut_create_invoice()).
+ *
+ * @param array $order  The orders row
+ * @return array is_internet_sale, web_address, payment_method, payment_date,
+ *               shipment_date, carrier_title, carrier_vkn
+ */
+function erp_order_sale_fields($order)
+{
+    return erp_order_internet_sale($order) + array(
+        'payment_method' => erp_order_payment_method_code($order),
+        'payment_date' => erp_order_payment_date($order),
+    ) + erp_order_shipment((int) ($order['id'] ?? 0));
+}
+
+/**
  * The name of an order's invoicing lock, as SQL.
  *
  * GET_LOCK names belong to the whole MySQL server, so the database is part of
@@ -927,21 +987,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
     }
 
     $totals = $built['totals'];
-
-    // A sale over the counter is not an internet sale, whatever else the order
-    // carries. Everything that came in over the wire (web checkout,
-    // marketplace, or the default type of an older row) is one, and only an
-    // internet sale states the address it was made at: the ERP setting, or
-    // failing that the site's own address.
-    $is_internet_sale = (($order['type'] ?? '') === 'local') ? 0 : 1;
-    $web_address = '';
-    if ($is_internet_sale === 1) {
-        $web_address = trim((string) (defined('ERP_WEB_ADDRESS') ? ERP_WEB_ADDRESS : ''));
-        if ($web_address === '' && defined('URL_SCHEME') && defined('HOSTNAME')) {
-            $web_address = URL_SCHEME . HOSTNAME;
-        }
-    }
-    $shipment = erp_order_shipment($order_id);
+    $sale = erp_order_sale_fields($order);
 
     $ok = erp_query("INSERT INTO erp_invoices SET
             direction = 'sales',
@@ -968,13 +1014,13 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_base = '" . (int) $totals['grand_total'] . "',
             status = 'issued',
-            is_internet_sale = '" . $is_internet_sale . "',
-            payment_method = '" . escape(erp_order_payment_method_code($order)) . "',
-            payment_date = '" . escape(erp_order_payment_date($order)) . "',
-            shipment_date = '" . escape($shipment['shipment_date']) . "',
-            carrier_title = '" . escape($shipment['carrier_title']) . "',
-            carrier_vkn = '" . escape($shipment['carrier_vkn']) . "',
-            web_address = '" . escape($web_address) . "',
+            is_internet_sale = '" . (int) $sale['is_internet_sale'] . "',
+            payment_method = '" . escape($sale['payment_method']) . "',
+            payment_date = '" . escape($sale['payment_date']) . "',
+            shipment_date = '" . escape($sale['shipment_date']) . "',
+            carrier_title = '" . escape($sale['carrier_title']) . "',
+            carrier_vkn = '" . escape($sale['carrier_vkn']) . "',
+            web_address = '" . escape($sale['web_address']) . "',
             created_by = '" . (int) ($options['created_by'] ?? 0) . "',
             created_at = '" . time() . "',
             updated_at = '" . time() . "'");

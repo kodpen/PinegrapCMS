@@ -298,3 +298,106 @@ function test_parasut_order_invoice_lines_settle_an_installment_out_of_reach()
 	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
 	pg_assert_same(5996, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
 }
+
+// The sale an order's e-Archive states (erp_order_sale_fields()): dev order
+// #1180, paid by card, shipped with ABC Kargo.
+function pg_test_parasut_order_sale($overrides = array())
+{
+	return array_merge(array(
+		'is_internet_sale' => 1,
+		'web_address' => 'https://dev.pinegrap.com',
+		'payment_method' => 'KREDIKARTI/BANKAKARTI',
+		'payment_date' => '2026-10-22',
+		'shipment_date' => '2026-10-23',
+		'carrier_title' => 'ABC Kargo A.Ş.',
+		'carrier_vkn' => '1234567808',
+	), $overrides);
+}
+
+// A counter sale is not an internet sale and states no address; anything
+// else is one, at the ERP's web address or, without it, the site's own.
+function test_parasut_order_edoc_internet_sale_rule()
+{
+	pg_assert_same(array('is_internet_sale' => 0, 'web_address' => ''), _erp_order_internet_sale('local', 'https://shop.example', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => 'https://dev.pinegrap.com'), _erp_order_internet_sale('online', '', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => 'https://shop.example'), _erp_order_internet_sale('marketplace', ' https://shop.example ', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => ''), _erp_order_internet_sale('', '', ''), 'an older row without a type');
+}
+
+// An internet sale's e-Archive carries its address, payment and carrier, as
+// the ERP's invoice of the order does; before, the old button sent none.
+function test_parasut_order_edoc_attributes_of_an_internet_sale()
+{
+	$lines = array(array('tax_rate' => '20.000', 'vat_exemption_code' => ''));
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(), $lines, 'earchive', '', '2026-10-20');
+
+	pg_assert_same('', $edoc['error']);
+	pg_assert_same(array(
+		'internet_sale' => array(
+			'url' => 'https://dev.pinegrap.com',
+			'payment_type' => 'KREDIKARTI/BANKAKARTI',
+			'payment_platform' => erp_payment_method_labels()['KREDIKARTI/BANKAKARTI'],
+			'payment_date' => '2026-10-22',
+		),
+		'shipment' => array('title' => 'ABC Kargo A.Ş.', 'date' => '2026-10-23', 'vkn' => '1234567808'),
+	), $edoc['attributes']);
+
+	// A payment or a shipment the order does not date goes on the invoice's
+	// day; a carrier with a TCKN is named as a person.
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array(
+		'payment_method' => '',
+		'payment_date' => '0000-00-00',
+		'shipment_date' => '0000-00-00',
+		'carrier_title' => 'Ayşe Kaya',
+		'carrier_vkn' => '10000000146',
+	)), $lines, 'earchive', '', '2026-10-20');
+
+	pg_assert_same('DIGER', $edoc['attributes']['internet_sale']['payment_type']);
+	pg_assert_same('2026-10-20', $edoc['attributes']['internet_sale']['payment_date']);
+	pg_assert_same(array('title' => 'Ayşe Kaya', 'date' => '2026-10-20', 'tckn' => '10000000146', 'name' => 'Ayşe Kaya'), $edoc['attributes']['shipment']);
+}
+
+// An internet sale whose carrier the order does not give is refused before
+// anything is sent; an e-Invoice and a counter sale do not carry one.
+function test_parasut_order_edoc_refuses_an_internet_sale_without_its_carrier()
+{
+	$lines = array(array('tax_rate' => '20.000', 'vat_exemption_code' => ''));
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_same(array(), $edoc['attributes']);
+	pg_assert_contains(lang('Carrier VKN / TCKN'), $edoc['error']);
+	pg_assert_contains('Paraşüt', $edoc['error']);
+
+	// A download or a service: no shipping method, so no carrier at all.
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('shipment_date' => '0000-00-00', 'carrier_title' => '', 'carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_contains(lang('Carrier') . ', ' . lang('Carrier VKN / TCKN'), $edoc['error']);
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('carrier_vkn' => '')), $lines, 'einvoice', 'urn:mail:defaultpk@example.com', '2026-10-20');
+	pg_assert_same('', $edoc['error']);
+	pg_assert_same(array('scenario' => 'commercial', 'to' => 'urn:mail:defaultpk@example.com'), $edoc['attributes']);
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('is_internet_sale' => 0, 'web_address' => '', 'carrier_title' => '', 'carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_same(array('attributes' => array(), 'error' => ''), $edoc);
+}
+
+// A zero-rated line names its exemption on either kind of document. Paraşüt
+// takes one reason per document, and an "other" exemption needs the words
+// an order cannot give.
+function test_parasut_order_edoc_names_the_exemption_of_a_zero_rated_line()
+{
+	$sale = pg_test_parasut_order_sale(array('is_internet_sale' => 0, 'web_address' => ''));
+	$lines = array(
+		array('tax_rate' => '0.000', 'vat_exemption_code' => '301'),
+		array('tax_rate' => '20.000', 'vat_exemption_code' => ''),
+	);
+
+	pg_assert_same(array('attributes' => array('vat_exemption_reason_code' => '301'), 'error' => ''), parasut_order_edoc_attributes($sale, $lines, 'earchive', '', '2026-10-20'));
+	pg_assert_same(array('vat_exemption_reason_code' => '301', 'scenario' => 'commercial', 'to' => 'urn:mail:defaultpk@example.com'), parasut_order_edoc_attributes($sale, $lines, 'einvoice', 'urn:mail:defaultpk@example.com', '2026-10-20')['attributes']);
+
+	$lines[1] = array('tax_rate' => '0.000', 'vat_exemption_code' => '302');
+	pg_assert_contains('one VAT exemption reason', parasut_order_edoc_attributes($sale, $lines, 'earchive', '', '2026-10-20')['error']);
+
+	$edoc = parasut_order_edoc_attributes($sale, array(array('tax_rate' => '0.000', 'vat_exemption_code' => '350')), 'earchive', '', '2026-10-20');
+	pg_assert_same(array(), $edoc['attributes']);
+	pg_assert_contains('350', $edoc['error']);
+}
