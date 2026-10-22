@@ -108,9 +108,9 @@ function pg_tr_node_fields($type, $props)
         $add('_labelExpand', 'text');
     }
 
-    // Attributes with words in them, on any node. A button's value is its
-    // label; an input's value is what the form posts unless the input is a
-    // button itself.
+    // Attributes with words in them, on any node. A submit, button or reset
+    // input's value is its label; any other value (a text input's, a
+    // <button>'s) is what the form posts (pg_tr_input_value_is_label()).
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         $tag = isset($props['tag']) ? strtolower((string) $props['tag']) : '';
         $input_type = '';
@@ -122,7 +122,7 @@ function pg_tr_node_fields($type, $props)
         }
 
         $worded = array_flip(pg_tr_worded_attrs());
-        $value_is_label = ($tag === 'button') || (($tag === 'input') && pg_tr_input_value_is_label($input_type));
+        $value_is_label = pg_tr_input_value_is_label($tag, $input_type);
 
         foreach ($props['_attrs'] as $attr) {
             if (!is_array($attr) || empty($attr['name']) || !isset($attr['value']) || !is_string($attr['value'])) {

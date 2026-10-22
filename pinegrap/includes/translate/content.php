@@ -344,16 +344,19 @@ function pg_tr_worded_attrs()
 }
 
 /**
- * Whether an input of this type shows its value as its label (a submit,
- * button or reset input). Any other input's value is what the form posts
- * and stays as it is.
+ * Whether an element shows its value attribute as its label: only an input
+ * of type submit, button or reset. Any other input's value is what the form
+ * posts and stays as it is; so is a <button>'s value, whose label is its
+ * content. One rule for a node's attributes and for tags in HTML.
  *
- * @param string $type the input's type attribute
+ * @param string $tag  the element's tag name
+ * @param string $type its type attribute
  * @return bool
  */
-function pg_tr_input_value_is_label($type)
+function pg_tr_input_value_is_label($tag, $type)
 {
-    return in_array(strtolower(trim((string) $type)), array('submit', 'button', 'reset'), true);
+    return (strtolower(trim((string) $tag)) === 'input')
+        && in_array(strtolower(trim((string) $type)), array('submit', 'button', 'reset'), true);
 }
 
 /**
@@ -393,7 +396,7 @@ function pg_tr_html_attrs_map($html, $callback)
         if ((strtolower($parts[1]) === 'input') && preg_match_all($attr_pattern, $parts[2], $found, PREG_SET_ORDER)) {
             foreach ($found as $attr) {
                 if ((strtolower($attr[2]) === 'type') && isset($attr[4])) {
-                    $value_is_label = pg_tr_input_value_is_label(trim($attr[4], '"\''));
+                    $value_is_label = pg_tr_input_value_is_label($parts[1], trim($attr[4], '"\''));
                 }
             }
         }

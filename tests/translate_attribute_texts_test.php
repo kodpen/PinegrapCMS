@@ -300,3 +300,30 @@ function test_translate_attribute_texts_button_input_values_render()
 	pg_assert_same($stored, $looked_up, 'hashes');
 	pg_assert_same(2, count($stored), 'count');
 }
+
+// A <button>'s value is posted data and its label is its content: neither a
+// node's attributes nor stored HTML give that value as a text. One rule
+// decides it for both paths.
+function test_translate_attribute_texts_button_value_is_posted_data()
+{
+	pg_assert_true(pg_tr_input_value_is_label('input', 'submit'), 'submit input');
+	pg_assert_true(pg_tr_input_value_is_label('INPUT', ' Reset '), 'reset input, any case');
+	pg_assert_false(pg_tr_input_value_is_label('input', 'text'), 'text input');
+	pg_assert_false(pg_tr_input_value_is_label('button', 'submit'), 'button element');
+	pg_assert_false(pg_tr_input_value_is_label('button', ''), 'button element without a type');
+
+	$button = array('type' => 'semantic', 'props' => array('tag' => 'button', 'text' => 'Sil', '_attrs' => array(
+		array('name' => 'type', 'value' => 'submit'),
+		array('name' => 'name', 'value' => 'islem'),
+		array('name' => 'value', 'value' => 'Siparişi sil'),
+	)));
+
+	pg_assert_same(array(array('Sil', 'text', 'text')), translate_attribute_texts_rows(pg_tr_node_segments($button)), 'node button: its text, not its value');
+
+	$input = array('type' => 'semantic', 'props' => array('tag' => 'input', '_attrs' => array(
+		array('name' => 'type', 'value' => 'submit'),
+		array('name' => 'value', 'value' => 'Gönder'),
+	)));
+
+	pg_assert_same(array(array('Gönder', 'text', '_attrs:value')), translate_attribute_texts_rows(pg_tr_node_segments($input)), 'node submit input: its value');
+}
