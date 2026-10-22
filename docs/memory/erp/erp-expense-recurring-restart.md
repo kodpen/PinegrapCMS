@@ -8,7 +8,7 @@ description: Starting a stopped repeating expense again goes on from where it st
 - Without a stopped repeat it is one period after the expense, as before (the run may still catch up to twelve past dates for a back-dated first start).
 
 ## What was wrong before?
-- The restart always began one period after the expense's own date; the run catches up to twelve past dates and does not look for an expense already written on a date. A rent repeated 08, 09, 10, stopped and started again wrote 08, 09, 10 a second time; paid ones took the money from the till twice and the deductible VAT counted twice (#1078, PR #XXXX).
+- The restart always began one period after the expense's own date; the run catches up to twelve past dates and does not look for an expense already written on a date. A rent repeated 08, 09, 10, stopped and started again wrote 08, 09, 10 a second time; paid ones took the money from the till twice and the deductible VAT counted twice (#1078, PR #1227).
 
 ## Which recurrences belong together?
 - A restart keeps `source_expense_id` of the stopped repeat (the first expense), even when started from an expense the repeat wrote; the expense it was started from gets `recurrence_id` of the new row.
