@@ -8,8 +8,9 @@
  * a product that does not track stock; and for the rule that decides
  * whether a save of the whole row moved the stock at all
  * (pg_product_stock_delta()). Also that every stock writer on the site calls
- * pg_product_stock_changed(), and that the API's own writer announces the
- * same keys.
+ * pg_product_stock_changed(), that the API's own writer announces the
+ * same keys, and that the quiet bulk writers (a marketplace order import or
+ * cancellation, an ERP stock count) still move products.timestamp.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,6 +25,31 @@ if (!defined('PG_TEST_RUNNER')) {
 function product_stock_events_test_source($relative)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+}
+
+// The body of one function in a source file: from its declaration to the
+// next top-level declaration (or the end of the file).
+function product_stock_events_test_function($relative, $name)
+{
+	$code = product_stock_events_test_source($relative);
+	$start = strpos($code, 'function ' . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($code, "\nfunction ", $start + 1);
+
+	return ($end === false) ? substr($code, $start) : substr($code, $start, $end - $start);
+}
+
+// Every "UPDATE products ... inventory_quantity = ..." statement in a piece
+// of code, up to the closing quote of its string.
+function product_stock_events_test_stock_updates($code)
+{
+	preg_match_all('/UPDATE products\s+SET\s+inventory_quantity\s*=.*?"\s*\)\s*;/s', $code, $matches);
+
+	return $matches[0];
 }
 
 // -- pg_product_stock_events() ----------------------------------------------
@@ -198,4 +224,43 @@ function test_product_stock_events_are_in_the_catalogue()
 
 	pg_assert_contains("'inventory.changed'", $catalogue);
 	pg_assert_contains("'stock.low'", $catalogue);
+}
+
+// The quiet bulk writers announce nothing, but each still moves
+// products.timestamp in the statement that writes the stock, so a system
+// syncing with GET /products?updated_since= lists the product (issue #1161).
+function test_product_stock_quiet_writers_move_the_timestamp()
+{
+	$writers = array(
+		array('includes/api/outbound/orders.php', 'mp_order_take_stock'),
+		array('includes/api/outbound/orders.php', 'mp_order_return_stock'),
+		array('includes/erp/stock_counts.php', 'erp_stock_count_apply'),
+	);
+
+	foreach ($writers as $writer) {
+		list($file, $function) = $writer;
+		$body = product_stock_events_test_function($file, $function);
+
+		pg_assert_true($body !== '', $function . '() is in ' . $file);
+
+		$updates = product_stock_events_test_stock_updates($body);
+
+		pg_assert_same(1, count($updates), $function . '() writes the stock once');
+		// The column itself, not out_of_stock_timestamp.
+		pg_assert_true(
+			preg_match('/(?<![a-z_])timestamp = UNIX_TIMESTAMP\(\)/', $updates[0]) === 1,
+			$function . '() moves products.timestamp: ' . $updates[0]);
+	}
+}
+
+// The catalogue's inventory.changed line names the quiet paths, and says
+// that they still move the timestamp updated_since reads.
+function test_product_stock_catalogue_says_quiet_paths_are_listed()
+{
+	$catalogue = product_stock_events_test_source('includes/api/outbound/webhooks.php');
+	$line = preg_match("/'inventory\.changed'\s*=>\s*'[^']*'/", $catalogue, $match) ? $match[0] : '';
+
+	pg_assert_true($line !== '', 'the catalogue has an inventory.changed line');
+	pg_assert_contains('marketplace order imports', $line);
+	pg_assert_contains('updated_since', $line);
 }
