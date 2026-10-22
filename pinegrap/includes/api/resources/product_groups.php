@@ -104,9 +104,17 @@ function api_product_group_extras($ids, $with_options = false) {
 
 	$in = implode(',', $ids);
 
-	$products = api_rows("SELECT product, product_group FROM products_groups_xref
-		WHERE product_group IN (" . $in . ")
-		ORDER BY product_group ASC, sort_order ASC");
+	// A binned product keeps its group links so that restoring it puts it back
+	// where it was, but it is off the shop: GET /products does not list it and
+	// adding it to a group is refused. A connector building variants from
+	// product_ids would publish it, so it is left out here, and with it the
+	// options only it carries drop out of in_use below.
+	$products = api_rows("SELECT products_groups_xref.product, products_groups_xref.product_group
+		FROM products_groups_xref
+		INNER JOIN products ON products.id = products_groups_xref.product
+		WHERE products_groups_xref.product_group IN (" . $in . ")"
+		. (api_catalog_bin_columns() ? " AND products.recycled = '0'" : '') . "
+		ORDER BY products_groups_xref.product_group ASC, products_groups_xref.sort_order ASC");
 
 	$product_ids = array();
 
