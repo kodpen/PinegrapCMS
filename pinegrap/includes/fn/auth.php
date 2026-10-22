@@ -4514,6 +4514,37 @@ function pg_set_password_link($user_id)
     return pg_set_password_link_url(URL_SCHEME . HOSTNAME_SETTING, $path, $token);
 }
 
+/**
+ * The body of the e-mail add_user.php sends when an administrator opens an
+ * account and notifies its owner: the address, the link to set a password
+ * (or, without one, where to get one) and the sign-in address. The password
+ * the account was created with is never written.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when no link could be issued
+ * @param string $login            the "Login:" lines, or ''
+ * @return string plain text
+ */
+function pg_new_user_email_body($email_address, $set_password_url, $login)
+{
+    $body =
+        lang('An administrator has created a new account for you.') . "\n" .
+        "\n" .
+        lang('Email') . ': ' . (string) $email_address . "\n";
+
+    if ((string) $set_password_url !== '') {
+        $body .= lang(array('string' => 'Set your password: {var:1}', 'vars' => array((string) $set_password_url))) . "\n";
+    } else {
+        $body .= lang('You can set a password with "Forgot password" on the sign-in page.') . "\n";
+    }
+
+    if ((string) $login !== '') {
+        $body .= "\n" . (string) $login;
+    }
+
+    return $body;
+}
+
 
 /**
  * Is this account locked out of signing in, and until when?

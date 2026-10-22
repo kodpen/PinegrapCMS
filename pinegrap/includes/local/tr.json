@@ -25443,5 +25443,8 @@
     "Set your password: {var:1}": "Parolanızı belirleyin: {var:1}",
     "Set your password": "Parolanızı belirleyin",
     "You can set a password with \"Forgot password\" on the sign-in page.": "Giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilirsiniz.",
-    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}"
+    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}",
+    "An administrator has created a new account for you.": "Bir yönetici sizin için yeni bir hesap oluşturdu.",
+    "A link to set a password has been emailed to the user.": "Kullanıcıya parola belirleme bağlantısı e-postayla gönderildi.",
+    "The user has been emailed and can set a password with \"Forgot password\" on the sign-in page.": "Kullanıcıya e-posta gönderildi; giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilir."
 }
