@@ -19,7 +19,7 @@ description: The attributes every designer content, semantic and grid node write
 - All but `class`, `style` and `id` (any case) and the ones the props wrote: a link's `href` (and `target`/`rel` when set), an image's `src`, `alt`, `width`, `height`, `onerror`, a semantic `<a>`'s href/target/rel or `<img>`'s src/alt. `style` merges into the style attribute; a `class` entry is written by neither side (classes are `cssClass`); `id` is `props.id`.
 
 ## What do content nodes get from Display & Sizing?
-- The classes join `cssClass` once, the style goes in the style attribute, as on the canvas. An image's `width`/`height` and a spacer's `height` are the element's own props, not sizing (`_pg_content_sizing()` / `_sdContentSizingNode()`). In a ratio box (a preset) the box takes an image's whole sizing style, its width and height in it (a bare number in px), and its rounded classes; the `<img>` keeps its id, attributes and own style.
+- The classes join `cssClass` once, the style goes in the style attribute, as on the canvas. A spacer's `height` is its own prop, not sizing (`_pg_content_sizing()` / `_sdContentSizingNode()`). An image's size and its ratio box: docs/memory/designer/image-size-props.md (the box takes the whole sizing style and the image's rounded classes; the `<img>` keeps its id, attributes and own style).
 - A divider writes `my-<margin>`, then `cssClass`, each class once. The Divider component sets `margin`, no class; its old `cssClass: 'my-4'` gave `<hr class="my-4 my-4">`.
 - Only the types whose page markup carries attributes get them: heading, paragraph, span, text, link, icon, image, divider, spacer, svg. Custom HTML and a PHP block print as written; carousel, messages, breadcrumb, variant picker and applied offers are the server's.
 

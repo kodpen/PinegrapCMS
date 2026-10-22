@@ -65,6 +65,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, and why a canvas paste is not an import (no disk, style/script dropped, URLs kept).
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
+- image-size-props.md: How the Image element's size is written: whole-number width/height as attributes, a unit as a style, the Sizing panel's style; in a ratio box the box takes the style, the img its attributes
 - import-lazy-images.md: Designer import/paste of lazy-loaded images: which source an image node keeps (data-src, srcset, picture, noscript) instead of the placeholder GIF in src.
 - import-zip-url-resolution.md: How the Import ZIP File screen resolves relative references (url_to_absolute.php), the PCRE2 failure that left imported pages with broken images/CSS/JS, and the resolver's rules
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
@@ -92,6 +93,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
+- sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls when replacing submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page.
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if), action binding list, href-bound UI rule, HTML token canvas previews.

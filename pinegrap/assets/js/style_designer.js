@@ -4692,16 +4692,14 @@ const StyleDesigner = (function () {
                     inner = doc.createElement('img');
                     inner.src = p.src;
                     inner.alt = p.alt || '';
-                    // HTML width/height attributes only accept integers (pixels).
-                    // Percentage or px-suffixed values must be applied via style.
-                    if (p.width) {
-                        if (/^\d+$/.test(String(p.width))) { inner.setAttribute('width',  p.width); }
-                        else { inner.style.width  = p.width; }
-                    }
-                    if (p.height) {
-                        if (/^\d+$/.test(String(p.height))) { inner.setAttribute('height', p.height); }
-                        else { inner.style.height = p.height; }
-                    }
+                    // A whole number is the width / height attribute; a value
+                    // with a unit is a style (_sdImgDim()), here and through
+                    // getNodeExtraStyle(). In a ratio box the box takes it.
+                    var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                    if (_dw.attr) inner.setAttribute('width', _dw.attr);
+                    if (_dh.attr) inner.setAttribute('height', _dh.attr);
+                    if (!_sdImgInRatio(p) && _dw.css) inner.style.width  = _dw.css;
+                    if (!_sdImgInRatio(p) && _dh.css) inner.style.height = _dh.css;
                     if (p.fluid) inner.classList.add('img-fluid');
                     if (p.rounded) inner.classList.add('rounded');
                     if (p.cssClass) inner.className += ' ' + p.cssClass;
@@ -4713,14 +4711,14 @@ const StyleDesigner = (function () {
                     inner.className = 'sd-img-placeholder' + (p.rounded ? ' rounded' : '');
                     inner.innerHTML = '<span class="bi bi-image"></span><span class="sd-img-ph-hint">' + esc(_sdT('Double-click to select image')) + '</span>';
                 }
-                if (p.aspectRatio) {
+                if (_sdImgInRatio(p)) {
                     var wrap = doc.createElement('div');
                     // Hoist overflow + rounded classes to the wrapper so
                     // clipping (object-fit:cover edges) works against the
                     // ratio'd box. Without this, an `overflow:hidden` on the
                     // img wouldn't clip anything since the img is sized by
                     // the .ratio rule on its parent.
-                    var wrapCls = 'ratio ratio-' + p.aspectRatio;
+                    var wrapCls = _sdImgRatioClass(p);
                     if (p.cssClass) {
                         var _cArr = String(p.cssClass).split(/\s+/);
                         for (var _ci = 0; _ci < _cArr.length; _ci++) {
@@ -4729,11 +4727,9 @@ const StyleDesigner = (function () {
                     }
                     if (p.rounded) wrapCls += ' rounded';
                     wrap.className = wrapCls;
-                    var wrapStyleParts = [];
-                    if (p.overflow)  wrapStyleParts.push('overflow:'   + p.overflow);
-                    if (p.overflowX) wrapStyleParts.push('overflow-x:' + p.overflowX);
-                    if (p.overflowY) wrapStyleParts.push('overflow-y:' + p.overflowY);
-                    if (wrapStyleParts.length) wrap.setAttribute('style', wrapStyleParts.join(';'));
+                    // The box takes the node's sizing style (size, overflow:
+                    // getNodeExtraStyle()); the image keeps its id, classes,
+                    // attributes and style (buildNodeEl()).
                     wrap.appendChild(inner);
                     return wrap;
                 }
@@ -4741,16 +4737,21 @@ const StyleDesigner = (function () {
             },
             toHTML: function (p, pad) {
                 var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
-                var w = p.width ? ' width="' + esc(p.width) + '"' : '';
-                var h = p.height ? ' height="' + esc(p.height) + '"' : '';
+                // A whole number is the width / height attribute (_sdImgDim());
+                // a value with a unit comes with the node's sizing style
+                // (getNodeExtraStyle()), which addGlobalAttrs() writes.
+                var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
+                var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
+                var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
                 var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
                 var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
-                if (_sdImgInRatioBox(p)) {
+                if (_sdImgInRatio(p)) {
                     // The box as _render_content_html() writes it: the
                     // image's rounded classes in their order. Its size and
                     // overflow are the node's sizing style, which
-                    // addGlobalAttrs() writes on this first tag.
-                    var wrapClsExp = 'ratio ratio-' + esc(p.aspectRatio);
+                    // addGlobalAttrs() writes on this first tag; the image's
+                    // attributes go on the <img>.
+                    var wrapClsExp = _sdImgRatioClass(p);
                     var _wcArr = cls.split(/\s+/);
                     for (var _wi = 0; _wi < _wcArr.length; _wi++) {
                         if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
@@ -10320,6 +10321,89 @@ const StyleDesigner = (function () {
         }
     }
 
+    // The canvas side of a node's own attributes (buildNodeEl()): its id,
+    // title, Attributes-panel entries, tooltip, classes and style on the
+    // element buildInnerElement() drew, as addGlobalAttrs() writes them in
+    // the editor's HTML.
+    function _sdApplyNodeAttrs(innerEl, node) {
+        // The element that takes the node's id, classes, attributes and
+        // style. An image in its own ratio box keeps them on the <img>
+        // (the element the operator selected), and the box takes the
+        // sizing style - as on the page and in the editor's HTML
+        // (addGlobalAttrs()).
+        var _attrEl = innerEl, _boxEl = null;
+        if (node.type === 'content' && node.props.contentType === 'image' && _sdImgInRatio(node.props) && innerEl.firstElementChild) {
+            _attrEl = innerEl.firstElementChild;
+            _boxEl  = innerEl;
+        }
+        if (node.props.id) { _attrEl.id = node.props.id; }
+        if (node.props.title) { _attrEl.title = node.props.title; }
+        // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
+        var _inlineBase = node.props.inlineStyle || '';
+        var _attrStyle  = '';
+        if (node.props.fontFamily) {
+            // Single-quote the family name + sans-serif fallback so
+            // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
+            // …) tokenise as ONE family rather than several keywords.
+            var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
+            _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
+        }
+        // Prop-backed inline styles (_sdInlineStyleProps()): included in
+        // _inlineBase so they survive when _attrStyle is non-empty
+        // (setAttribute('style', _attrStyle) would wipe out el.style.* set
+        // by the render fn). A copy an older tree kept in _attrs.style
+        // still wins until the node is selected and
+        // migrateNodeStyleProps() folds it back into the prop.
+        if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
+            if (!getAttrStyleProp(node, 'font-size')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
+            }
+        }
+        if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
+            if (!getAttrStyleProp(node, 'object-position')) {
+                _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
+            }
+        }
+        // Custom _attrs: data-*, aria-*, etc.
+        if (node.props._attrs && node.props._attrs.length) {
+            node.props._attrs.forEach(function(a) {
+                if (a.name === 'style') { _attrStyle = a.value || ''; }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
+            });
+        }
+        // Sizing props extra style (before _attrStyle so Attrs panel can override)
+        var _extraStyleStr = getNodeExtraStyle(node);
+        var _extraClsStr   = getNodeExtraClasses(node);
+        if (_boxEl) {
+            if (_extraStyleStr) _boxEl.setAttribute('style', _extraStyleStr);
+        } else if (_extraStyleStr) {
+            _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
+        }
+        // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
+        var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
+        if (_combined) _attrEl.setAttribute('style', _combined);
+        // Extra classes (visually-hidden, ratio, etc.)
+        if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) _attrEl.classList.add(c); });
+        // Tooltip attrs on canvas element
+        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
+            _attrEl.setAttribute('data-bs-toggle', 'tooltip');
+            _attrEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
+            _attrEl.title = node.props.tooltipTitle;
+        } else if (node.props.title) {
+            _attrEl.title = node.props.title;
+        }
+    }
+
+    // Whether an image's canvas wrapper is a block (buildNodeEl()): a
+    // percentage width, min-width or max-width resolves against the column
+    // only then, as on the page; in the wrapper's inline-block it resolves
+    // against the shrunk wrapper.
+    function _sdImgWrapperIsBlock(node) {
+        if (!node || node.type !== 'content' || !node.props || node.props.contentType !== 'image') return false;
+        var _imgPW = [node.props.width, node.props.minWidth, node.props.maxWidth].map(function (v) { return v ? String(v) : ''; }).join(' ');
+        return _imgPW.indexOf('%') !== -1;
+    }
+
     function buildNodeEl(node) {
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
@@ -10738,58 +10822,7 @@ const StyleDesigner = (function () {
         var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
         if (innerEl) {
             if (_sdTextInnerHost(node)) innerEl.setAttribute('data-sd-inner-host', '');
-            if (node.props.id) { innerEl.id = node.props.id; }
-            if (node.props.title) { innerEl.title = node.props.title; }
-            // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
-            var _inlineBase = node.props.inlineStyle || '';
-            var _attrStyle  = '';
-            if (node.props.fontFamily) {
-                // Single-quote the family name + sans-serif fallback so
-                // multi-word names ("Press Start 2P", "Plus Jakarta Sans"
-                // …) tokenise as ONE family rather than several keywords.
-                var _ffQ = String(node.props.fontFamily).replace(/'/g, '');
-                _inlineBase = "font-family:'" + _ffQ + "',sans-serif" + (_inlineBase ? ';' + _inlineBase : '');
-            }
-            // Prop-backed inline styles (_sdInlineStyleProps()): included in
-            // _inlineBase so they survive when _attrStyle is non-empty
-            // (setAttribute('style', _attrStyle) would wipe out el.style.* set
-            // by the render fn). A copy an older tree kept in _attrs.style
-            // still wins until the node is selected and
-            // migrateNodeStyleProps() folds it back into the prop.
-            if (node.type === 'content' && node.props.contentType === 'icon' && node.props.fontSize) {
-                if (!getAttrStyleProp(node, 'font-size')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'font-size:' + node.props.fontSize + 'px';
-                }
-            }
-            if (node.type === 'content' && node.props.contentType === 'image' && node.props.objectPosition) {
-                if (!getAttrStyleProp(node, 'object-position')) {
-                    _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + 'object-position:' + node.props.objectPosition;
-                }
-            }
-            // Custom _attrs: data-*, aria-*, etc.
-            if (node.props._attrs && node.props._attrs.length) {
-                node.props._attrs.forEach(function(a) {
-                    if (a.name === 'style') { _attrStyle = a.value || ''; }
-                    else if (a.name && a.name.trim()) { innerEl.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '')); }
-                });
-            }
-            // Sizing props extra style (before _attrStyle so Attrs panel can override)
-            var _extraStyleStr = getNodeExtraStyle(node);
-            var _extraClsStr   = getNodeExtraClasses(node);
-            if (_extraStyleStr) _inlineBase = (_inlineBase ? _inlineBase + ';' : '') + _extraStyleStr;
-            // Combine: _attrStyle appended after inlineBase; duplicate props: last wins in CSS
-            var _combined = [_inlineBase, _attrStyle].filter(Boolean).join(';');
-            if (_combined) innerEl.setAttribute('style', _combined);
-            // Extra classes (visually-hidden, ratio, etc.)
-            if (_extraClsStr) _extraClsStr.split(/\s+/).forEach(function(c) { if (c) innerEl.classList.add(c); });
-            // Tooltip attrs on canvas element
-            if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-                innerEl.setAttribute('data-bs-toggle', 'tooltip');
-                innerEl.setAttribute('data-bs-placement', node.props.tooltipPlacement || 'top');
-                innerEl.title = node.props.tooltipTitle;
-            } else if (node.props.title) {
-                innerEl.title = node.props.title;
-            }
+            _sdApplyNodeAttrs(innerEl, node);
             // A column's inner holder: see-through when it carries nothing of
             // its own (its children are then laid out by the column, and an
             // h-100 card fills it); otherwise it fills the column's height.
@@ -10806,14 +10839,13 @@ const StyleDesigner = (function () {
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
-            // Force the wrapper to block so the percentage applies against the column width.
+            // Force the wrapper to block so the percentage applies against the column width,
+            // as on the page. The wrapper keeps the column's width: given the percentage too,
+            // the image took that percentage of it (50% drew a quarter of the column).
             // (A see-through wrapper has no box to size; the image sizes itself.)
-            if (node.type === 'content' && node.props.contentType === 'image' && !wrapper.classList.contains('sd-fx-flat')) {
-                var _imgPW = node.props.width ? String(node.props.width) : '';
-                if (_imgPW.indexOf('%') !== -1) {
-                    wrapper.style.setProperty('display', 'block', 'important');
-                    wrapper.style.setProperty('width', _imgPW, 'important');
-                }
+            // The same holds for a percentage minimum or maximum width.
+            if (!wrapper.classList.contains('sd-fx-flat') && _sdImgWrapperIsBlock(node)) {
+                wrapper.style.setProperty('display', 'block', 'important');
             }
         }
 
@@ -21648,8 +21680,13 @@ const StyleDesigner = (function () {
             // Image attrs are editable — propKey links the input directly to n.props[propKey]
             attrs.push({ name: 'src',    value: p.src    || '', propKey: 'src'    });
             attrs.push({ name: 'alt',    value: p.alt    !== undefined ? p.alt : '', propKey: 'alt'    });
-            attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
-            attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
+            // width / height are attribute rows while they are written as
+            // attributes (empty or a whole number, _sdImgDim()). A value with
+            // a unit is a style: outside a ratio box it is shown in the
+            // merged 'style' row (_sdInlineStyleProps()), in a ratio box it
+            // is the box's, not the image's, and is not listed here.
+            if (!_sdImgDim(p.width).css)  attrs.push({ name: 'width',  value: p.width  || '', propKey: 'width'  });
+            if (!_sdImgDim(p.height).css) attrs.push({ name: 'height', value: p.height || '', propKey: 'height' });
             // Note: objectPosition is shown in the merged, editable 'style'
             // row (_sdInlineStyleProps()) — not locked here.
         }
@@ -22322,6 +22359,18 @@ const StyleDesigner = (function () {
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
+            // A width / height with a unit is written in the image's style
+            // (outside a ratio box): listed there, not as an attribute row
+            // (getNodeBuiltinAttrs()). A whole number written in the style
+            // row goes back to the prop and so to the attribute.
+            if (!_sdImgInRatio(p)) {
+                ['width', 'height'].forEach(function (k) {
+                    if (!_sdImgDim(p[k]).css) return;
+                    out.push({ prop: k, css: k,
+                               toCss: function (v) { return _sdImgDim(v).css; },
+                               fromCss: function (v) { var t = String(v).trim(); return t === '' ? null : t; } });
+                });
+            }
         }
         if (node && node.type === 'content' && p.contentType === 'icon') {
             out.push({ prop: 'fontSize', css: 'font-size',
@@ -22727,7 +22776,7 @@ const StyleDesigner = (function () {
                 '<input type="text" class="sd-attr-val" data-prop="id" value="' + esc(n.props.id || '') + '" placeholder="element id">' +
                 '<span class="sd-attr-del-ph"></span>' +
             '</div>' +
-            // Sabit: class (chip-input)
+            // Fixed: class (chip-input)
             '<div class="sd-attr-row sd-attr-row-fixed sd-attr-row-class">' +
                 '<span class="sd-attr-name-lbl">class</span>' +
                 '<span class="sd-attr-sep">:</span>' +
@@ -23368,36 +23417,18 @@ const StyleDesigner = (function () {
 
     // The node the Display & Sizing style of a content node is read from:
     // a spacer's height is the element's own prop. An image's width and
-    // height are its attributes; in a ratio box (_sdImgInRatioBox()) the box
-    // takes the whole style, the image's width and height in it (a bare
-    // number in px), so the ratio applies to that size. Twin of
-    // _pg_content_sizing().
+    // height are read by getNodeExtraStyle() itself (_sdImgSizeCss()), and
+    // in a ratio box addGlobalAttrs() moves the whole style to the box.
+    // Twin of _pg_content_sizing().
     function _sdContentSizingNode(n) {
-        var p = n.props || {}, ct = p.contentType, drop = null, px = null;
-        if (ct === 'image') {
-            if (_sdImgInRatioBox(p)) px = ['width', 'height'];
-            else drop = ['width', 'height'];
-        } else if (ct === 'spacer') {
+        var p = n.props || {}, ct = p.contentType, drop = null;
+        if (ct === 'spacer') {
             drop = ['height'];
         }
-        if (!drop && !px) return n;
+        if (!drop) return n;
         var copy = {};
-        Object.keys(p).forEach(function (k) {
-            if (drop && drop.indexOf(k) !== -1) return;
-            var v = p[k];
-            if (px && px.indexOf(k) !== -1 && ((typeof v === 'number' && v > 0 && v % 1 === 0) || (typeof v === 'string' && /^\d+$/.test(v.trim())))) {
-                v = String(v).trim() + 'px';
-            }
-            copy[k] = v;
-        });
+        Object.keys(p).forEach(function (k) { if (drop.indexOf(k) === -1) copy[k] = p[k]; });
         return { type: n.type, props: copy };
-    }
-
-    // Whether an image is drawn in its own .ratio box: an aspectRatio
-    // preset ('16x9'). The page uses the same test (the image case of
-    // _render_content_html()).
-    function _sdImgInRatioBox(p) {
-        return /^[0-9]+x[0-9]+$/.test(String((p && p.aspectRatio) || ''));
     }
 
     // The props a content node's toHTML() writes from: the sizing classes
@@ -23432,9 +23463,11 @@ const StyleDesigner = (function () {
         var list = P._attrs;
         var sizing = getNodeExtraStyle(_sdContentSizingNode(node));
         // An image in its own ratio box: the box (the first tag) takes the
-        // sizing style, the <img> its own attributes and style.
+        // sizing style, the <img> - the element the operator selected - its
+        // own attributes and style, as on the page and the canvas
+        // (_sdApplyNodeAttrs()).
         var boxStyle = '';
-        if (ct === 'image' && _sdImgInRatioBox(p)) { boxStyle = sizing; sizing = ''; }
+        if (ct === 'image' && _sdImgInRatio(p)) { boxStyle = sizing; sizing = ''; }
         var hasAttrs = p.id || p.title || p.inlineStyle || p.fontFamily || sizing || boxStyle ||
             (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle);
         if (!hasAttrs) return htmlStr;
@@ -23475,10 +23508,6 @@ const StyleDesigner = (function () {
     }
 
     // ── Sizing / Tooltip / A11y helpers ──
-    // Returns extra inline style string from prop-based sizing inputs.
-    // Twin of _build_node_sizing_attrs() (includes/fn/designer.php), which
-    // writes the saved page: the same order (z-index, the lengths, overflow,
-    // the offsets, a custom ratio), z-index only as an integer or auto.
     // A Display & Sizing option as text: a string trimmed ('0' is a value),
     // a non-zero finite number as written, anything else (the number 0,
     // false, no value) ''.
@@ -23486,24 +23515,89 @@ const StyleDesigner = (function () {
         if (typeof v === 'string') return v.trim();
         return (typeof v === 'number' && isFinite(v) && v !== 0) ? String(v) : '';
     }
-    var _SD_SIZING_STYLE_PROPS = [
-        ['width', 'width'], ['minWidth', 'min-width'], ['maxWidth', 'max-width'],
-        ['height', 'height'], ['minHeight', 'min-height'], ['maxHeight', 'max-height'],
-        ['overflow', 'overflow'], ['overflowX', 'overflow-x'], ['overflowY', 'overflow-y'],
-        ['top', 'top'], ['right', 'right'], ['bottom', 'bottom'], ['left', 'left']
-    ];
+    // A length typed into the Sizing panel (width, height, their minimum and
+    // maximum, the position offsets) as CSS. The panel takes CSS values
+    // ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a unit
+    // ('48', '-8', '1.5') is taken as pixels, the unit of the panel's
+    // examples and of an image's width / height attributes: a browser drops
+    // a declaration whose length has no unit. The page's renderer writes the
+    // same (pg_designer_css_length(), includes/fn/designer.php).
+    function _sdCssLen(v) {
+        var s = (v === undefined || v === null) ? '' : String(v).trim();
+        if (/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(s)) return s + 'px';
+        return s;
+    }
+    // How an image's width or height prop is written: a whole number as the
+    // width / height attribute (pixels; it keeps the layout box before the
+    // file arrives), anything else as CSS with its own unit ('50%', '12rem',
+    // '120px', 'auto'); a bare decimal is pixels (_sdCssLen()). The page's
+    // renderer writes the same (pg_img_dimension(), includes/fn/image.php).
+    // A prop JavaScript takes as false (the number 0, '', no value) is no
+    // size; the string '0' is one, as on the page (pg_designer_prop_text()).
+    function _sdImgDim(v) {
+        var s = (!v || typeof v === 'object') ? '' : String(v).trim();
+        if (s === '') return { attr: '', css: '' };
+        if (/^\d+$/.test(s)) return { attr: s, css: '' };
+        return { attr: '', css: _sdCssLen(s) };
+    }
+    // The CSS an image's width or height ('width' | 'height') is drawn with.
+    // In its ratio box the box takes the size, a whole number in pixels, and
+    // the image fills it; otherwise only a value with a unit is CSS (a whole
+    // number is the attribute, see _sdImgDim()).
+    function _sdImgSizeCss(p, which) {
+        var d = _sdImgDim(p[which]);
+        if (_sdImgInRatio(p)) return d.attr ? d.attr + 'px' : d.css;
+        return d.css;
+    }
+    // Whether an image stands in its own .ratio box: a preset ratio ('16x9'),
+    // or the Sizing panel's custom ratio when it is switched on with a value
+    // (its --bs-aspect-ratio comes with the sizing style, on the box). The
+    // page uses the same test (the image case of _render_content_html()).
+    function _sdImgInRatio(p) {
+        var ar = String((p && p.aspectRatio) || '');
+        if (/^\d+x\d+$/.test(ar)) return true;
+        return ar === 'custom' && !!p.aspectRatioEnabled && !!p.aspectRatioCustom;
+    }
+    // The class of an image's ratio box: 'ratio ratio-16x9', or 'ratio'
+    // alone for a custom ratio.
+    function _sdImgRatioClass(p) {
+        var ar = String(p.aspectRatio || '');
+        return /^\d+x\d+$/.test(ar) ? 'ratio ratio-' + ar : 'ratio';
+    }
+    // Returns extra inline style string from prop-based sizing inputs.
+    // The page writes the same declarations in the same order
+    // (_pg_node_sizing_decls(), includes/fn/designer.php): z-index first
+    // (an integer or auto only), the lengths, overflow, the offsets, then a
+    // custom ratio. A bare number is pixels; the string '0' is a value and
+    // the number 0 none.
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
-        var zi = _sdSizingValue(p.zIndex);
-        if (zi === 'auto' || /^-?\d+$/.test(zi)) parts.push('z-index:' + zi);
-        _SD_SIZING_STYLE_PROPS.forEach(function (m) {
-            var v = _sdSizingValue(p[m[0]]);
-            if (v !== '') parts.push(m[1] + ':' + v);
-        });
-        var arc = _sdSizingValue(p.aspectRatioCustom);
-        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && arc !== '') {
-            parts.push('--bs-aspect-ratio:' + arc);
+        // An image's own width / height go through _sdImgSizeCss(); every
+        // other length through _sdCssLen() (a bare number is pixels).
+        var _isImg = n.type === 'content' && p.contentType === 'image';
+        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : _sdCssLen(_sdSizingValue(p.width));
+        var _h = _isImg ? _sdImgSizeCss(p, 'height') : _sdCssLen(_sdSizingValue(p.height));
+        var _len = function (css, v) { var c = _sdCssLen(_sdSizingValue(v)); if (c) parts.push(css + ':' + c); };
+        var _raw = function (css, v) { var c = _sdSizingValue(v); if (c) parts.push(css + ':' + c); };
+        var _zi = _sdSizingValue(p.zIndex);
+        if (_zi === 'auto' || /^-?\d+$/.test(_zi)) parts.push('z-index:' + _zi);
+        if (_w)          parts.push('width:'       + _w);
+        _len('min-width',  p.minWidth);
+        _len('max-width',  p.maxWidth);
+        if (_h)          parts.push('height:'      + _h);
+        _len('min-height', p.minHeight);
+        _len('max-height', p.maxHeight);
+        _raw('overflow',   p.overflow);
+        _raw('overflow-x', p.overflowX);
+        _raw('overflow-y', p.overflowY);
+        _len('top',    p.top);
+        _len('right',  p.right);
+        _len('bottom', p.bottom);
+        _len('left',   p.left);
+        var _arc = _sdSizingValue(p.aspectRatioCustom);
+        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && _arc) {
+            parts.push('--bs-aspect-ratio:' + _arc);
         }
         return parts.join(';');
     }
