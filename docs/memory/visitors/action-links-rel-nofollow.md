@@ -14,7 +14,7 @@ description: Every action link (login, register, reset, subscribe, remove from c
 ## Who stamps `rel` in system widgets?
 - The SERVER stamps `rel` (e.g. the `remove_from_cart` action binding); it is not left to the designer. Whether a crawler may follow a "remove this product" link is not a design choice.
 
-## Complementary measure
+## What else keeps crawlers off those addresses?
 - Turning on `page.noindex` for the login page also writes a `Disallow` to `robots.txt`, so crawlers never request the address. Trade-off documented in docs/memory/visitors/page-noindex-switch.md ("Known trade-off").
 
 Related: docs/memory/visitors/robots-txt-disallow-rules.md

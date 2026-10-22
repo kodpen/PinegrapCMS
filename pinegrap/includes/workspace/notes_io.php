@@ -285,13 +285,20 @@ function ws_note_export_vault($viewer, $zip_path)
         return array('ok' => false, 'error' => lang('This server cannot make zip files (the PHP zip extension is missing). Export the notes one by one instead.'), 'count' => 0);
     }
 
+    // libzip writes no file for an archive without entries (close() deletes
+    // it), so a person with no notes of their own and none shared is told so.
+    $rows = ws_note_export_rows($viewer);
+
+    if (empty($rows['mine']) && empty($rows['shared'])) {
+        return array('ok' => false, 'error' => lang('There are no notes to export.'), 'count' => 0);
+    }
+
     $zip = new ZipArchive();
 
     if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
         return array('ok' => false, 'error' => lang('The file could not be saved.'), 'count' => 0);
     }
 
-    $rows = ws_note_export_rows($viewer);
     $count = 0;
 
     foreach (array('mine' => '', 'shared' => 'Shared/') as $set => $folder) {
@@ -324,7 +331,11 @@ function ws_note_export_vault($viewer, $zip_path)
         }
     }
 
-    $zip->close();
+    // close() is where the archive is written: a failed write, or one that
+    // left no file, is not sent as an empty download.
+    if (!$zip->close() || !is_file($zip_path)) {
+        return array('ok' => false, 'error' => lang('The file could not be saved.'), 'count' => 0);
+    }
 
     return array('ok' => true, 'error' => '', 'count' => $count);
 }

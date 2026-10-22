@@ -139,7 +139,7 @@ if (CAPTCHA == TRUE) {
 // refused at validation, so the visitor is told rather than a renamed file
 // quietly landing in the upload folder.
 if (isset($_FILES['file']) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
-    $liveform->mark_error('file', h(pg_upload_blocked_message($_FILES['file']['name'])));
+    $liveform->mark_error('file', pg_upload_blocked_message(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
 }
 
 // if an error exists, then send user back to previous screen

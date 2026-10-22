@@ -14,7 +14,7 @@ description: Header account menu (pg_account_menu()): fixed card, phone sheet, w
 
 ## Which ids and classes does other code rely on?
 - `.pg-acctbtn`: the frame tour's account step and the tour link's handler (`includes/fn/tour.php`). `#tour_link`: plays that tour. `#help_link a`: F1's fallback. `#theme-light|dark|auto` with `data-bs-theme-value`: the theme switch in `backend.src.js`. `#pg_contact_quick` with `data-pg-contact-quick`: the address book form (texts and the api address in `data-*`).
-- Menu rows carry no colour, logout included (`pinegrap-ui-deseni`), and no `title` (every titled element gets a hover popover).
+- Menu rows carry no colour, logout included (`admin-screen-toolbar-rules.md`), and no `title` (every titled element gets a hover popover).
 
 ## Where did the keyboard shortcuts go?
 - Out of the menu (nobody found the accordion). `pg_shortcuts_dialog()` prints `#pg_shortcuts` on every screen; `?` outside a field opens it, and the search box offers a "Keyboard Shortcuts" chip (`command-palette.md`). On Apple devices the `kbd[data-pg-mod]` keys read ⌘.

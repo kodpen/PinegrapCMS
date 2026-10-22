@@ -82,7 +82,7 @@ if (isset($_POST['parasut_action'])) {
                 $liveform->add_notice(lang(array(
                     'string' => '{var:1} created in Parasut.',
                     'vars' => $kind_label,
-                )) . ' (ID: ' . h($result['parasut_invoice_id']) . ')' . $state_note . _parasut_variance_notice($result));
+                )) . ' (ID: ' . h($result['parasut_invoice_id']) . ')' . $state_note);
             } else {
                 $liveform->mark_error('_error', lang('Parasut Invoice Error') . ': ' . h($result['error']));
             }
@@ -2436,11 +2436,7 @@ if (!$_POST) {
     $output_parasut_buttons      = '';
     $output_parasut_forms        = '';
     $output_parasut_status_rows  = '';
-    if (
-        defined('ENABLE_PARASUT') && ENABLE_PARASUT
-        && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== ''
-        && defined('PARASUT_CLIENT_ID') && PARASUT_CLIENT_ID !== ''
-    ) {
+    if (parasut_order_buttons_on()) {
         $parasut_order_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int)$_GET['id'];
 
         // Determine shippable vs non-shippable line composition.
@@ -3173,30 +3169,14 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Read before the cancellation bookkeeping is cleared below: the gift
-        // cards step needs the order number and the time of the cancellation.
-        $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
-
-        // Clear the cancellation bookkeeping too. Leaving cancelled_at set
-        // would keep an "Order Cancelled" entry on the order_view timeline
-        // of an order that is complete again, and would keep the refund
-        // banner up. Columns are 2026.1.26 / 2026.1.27 additions, so both
-        // groups are probed before use.
-        db("UPDATE orders SET status = 'complete' WHERE id = '" . e($order_id) . "'");
-
-        if (db_item("SHOW COLUMNS FROM orders LIKE 'cancelled_at'")) {
-            db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
-                WHERE id = '" . e($order_id) . "'");
+        // Status, the cancellation bookkeeping, an unfinished refund flag and
+        // the gift cards the cancellation expired: one path with the external
+        // API's status change (pg_order_restore_cancelled()). False when
+        // another request restored the order in the meantime.
+        if (!pg_order_restore_cancelled($order_id, 'complete')) {
+            $liveform->mark_error('_error', lang('Only cancelled orders can be restored.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
-        if (db_item("SHOW COLUMNS FROM orders LIKE 'refund_status'")) {
-            db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
-                WHERE id = '" . e($order_id) . "' AND refund_status != 'refunded'");
-        }
-
-        // Gift cards the cancellation expired get back the date they had.
-        pg_order_restore_gift_cards($order_id, $cancelled_order['order_number'] ?? '', $cancelled_order['cancelled_at'] ?? 0);
-
-        log_activity('Restored cancelled order #' . $order_id . ' to complete.');
 
         pg_audit_record('restore', 'orders', $order_id, $audit_before);
 
