@@ -1,6 +1,6 @@
 ---
 name: image-files-left-alone
-description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) and a JPEG whose Exif orientation cannot be read (PR #NNNN); how each is told and what each path does
+description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) and a JPEG whose Exif orientation cannot be read (PR #1242); how each is told and what each path does
 ---
 
 ## Which images does pg_process_image_file() leave alone?
