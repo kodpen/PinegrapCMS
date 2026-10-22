@@ -405,6 +405,31 @@ function test_designer_blocks_builder_classes_are_needed()
 	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
 }
 
+// True when the Bootstrap Icons class $token is an arrow, chevron or caret
+// that points one way along the line (left or right, also diagonally,
+// doubled, short, filled or boxed); the two-headed bi-arrow-left-right and
+// the vertical ones are not.
+function _test_blocks_is_one_way_icon($token)
+{
+	if (strpos($token, 'left-right') !== false) {
+		return false;
+	}
+	return (bool) preg_match('/^bi-(?:[a-z0-9]+-)*(?:arrow|chevron|caret)(?:-[a-z0-9]+)*-(?:left|right)(?:-[a-z0-9]+)*$/', $token);
+}
+
+function test_designer_blocks_one_way_icon_matcher()
+{
+	foreach (array('bi-arrow-right', 'bi-arrow-left', 'bi-chevron-right', 'bi-chevron-left', 'bi-caret-right',
+		'bi-caret-left-fill', 'bi-arrow-right-short', 'bi-chevron-double-right', 'bi-arrow-up-right',
+		'bi-arrow-right-circle-fill', 'bi-box-arrow-right', 'bi-arrow-bar-left') as $icon) {
+		pg_assert_true(_test_blocks_is_one_way_icon($icon), $icon . ' points one way');
+	}
+	foreach (array('bi-arrow-left-right', 'bi-arrow-up', 'bi-chevron-down', 'bi-caret-up-fill', 'bi-cloud-drizzle',
+		'bi-arrow-repeat', 'arrow-right') as $icon) {
+		pg_assert_true(!_test_blocks_is_one_way_icon($icon), $icon . ' does not point left or right');
+	}
+}
+
 // The scroll hint of scroller-cards points both ways: the row scrolls both
 // ways, and a one-way arrow points against the reading direction on an RTL
 // page.
@@ -416,7 +441,7 @@ function test_designer_blocks_scroll_hint_is_direction_neutral()
 	$one_way = array();
 	foreach ($strings as $str) {
 		foreach (preg_split('/\s+/', trim($str)) as $token) {
-			if (in_array($token, array('bi-arrow-right', 'bi-arrow-left', 'bi-chevron-right', 'bi-chevron-left'), true)) {
+			if (_test_blocks_is_one_way_icon($token)) {
 				$one_way[] = $token;
 			}
 		}
