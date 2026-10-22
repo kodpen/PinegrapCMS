@@ -12,6 +12,7 @@ description: System widget renderer rules: Messages node named after the livefor
 - "No records" / "not found" is written by `pg_sw_state_message_html($message, $parent_tag, $class)` as an element that may stand where the records go: an `li` in a list, a `tr` with `colspan` in a table, a `col-12` in a grid row, a `span` in text, an `option` in a select. `$parent_tag` is the `loop_parent` that `_split_widget_tree()` returns.
 - Never write a div, a search box or a pagination inside a list or table: `_split_widget_tree($tree, true)` puts `<!--pg-loop-before-->` / `<!--pg-loop-after-->` beside an element that may hold only its rows (`pg_sw_loop_parent_is_closed()`).
 - A widget always draws its own tree: a state prunes it, never a plain `<div class="alert">` in its place (member-widgets-rendering.md).
+- Its default words fit every view a visitor can switch to: the calendar's one `empty_message` serves month, week and upcoming, so it names no period ("There are no events to show."); a stored "There are no events this month." (either language) reads as that default (`pg_sw_calendar_empty_message()`, JS `_swCalendarEmptyMessage()`).
 
 ## How does `pg-hide-if-empty` decide?
 - `pg_sw_hide_empty_fields()` drops a marked element that came out empty. Its value is the inside of its `pg-field-value` element, or the whole element when it has none. Words, a picture with an address, a video, a frame, a link or a form control count; inner marked elements go first, so a box whose rows all left goes too.

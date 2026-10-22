@@ -2,12 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for system widget HTML that leaves the renderer outside a page's own
- * output: the editor's Preview and the canvas's ghost records resolve the
- * address placeholders the page resolves last
- * (pg_designer_resolve_output_placeholders()), and rich text written for the
+ * Tests for what system widgets print: the editor's Preview and the canvas's
+ * ghost records resolve the address placeholders the page resolves last
+ * (pg_designer_resolve_output_placeholders()); rich text written for the
  * classic theme keeps its pictures in their column on a Bootstrap 5 page
- * (pg_img_fluid_alias()).
+ * (pg_img_fluid_alias()); the starter layouts put a long description in a
+ * div and the account menu behind a button; the calendar's empty message
+ * names no period (pg_sw_calendar_empty_message()); the product carousel's
+ * links are named (pg_carousel_image_label()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
