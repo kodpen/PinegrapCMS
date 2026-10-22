@@ -340,7 +340,7 @@ if (!$_POST) {
         $linked = erp_account_link_contact($account_id, $contact_id);
 
         if (!$linked['success']) {
-            $liveform->mark_error('contact_id', $linked['error']);
+            $liveform->mark_error('contact_id', h($linked['error']));
         }
     }
 
