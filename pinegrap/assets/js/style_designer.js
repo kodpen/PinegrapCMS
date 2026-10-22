@@ -58987,30 +58987,126 @@ const StyleDesigner = (function () {
     }
 
     // ========================= HTML VALIDATION =========================
+    // Whether a text prop holds words a reader hears once markup and &nbsp;
+    // are taken out.
+    function _sdAuditHasText(t) {
+        return typeof t === 'string' && t.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim() !== '';
+    }
+
+    // An attribute in the node's raw attributes with a value that is not blank.
+    function _sdAuditAttr(node, name) {
+        var v = _sdAttr(node, name);
+        return v !== null && v.trim() !== '';
+    }
+
+    // Whether a node gives the link or button it sits in a name, the way the
+    // emitter prints it: its own text prop (a semantic <a>/<button> writes
+    // props.text after its children, a content link before them), a bound
+    // text, an aria-label / aria-labelledby / title, an image's alt, or a
+    // child that does. A visually hidden span counts (it is read); an icon
+    // or anything under aria-hidden="true" does not. A shared component, a
+    // raw HTML block and content whose markup the server writes when the page
+    // is served (custom PHP, the form's messages, applied offers, the catalog
+    // breadcrumb, variant choices, the product gallery) are not read from the
+    // tree, so they are taken as named.
+    function _sdAuditHasName(node) {
+        if (!node || !node.props) return false;
+        var p = node.props;
+        if (_sdAttr(node, 'aria-hidden') === 'true') return false;
+        if (_sdAuditAttr(node, 'aria-label') || _sdAuditAttr(node, 'aria-labelledby') || _sdAuditAttr(node, 'title')) return true;
+        if (p.tooltipEnabled && String(p.tooltipTitle || '').trim() !== '') return true;
+        if (p._bindings && p._bindings.text) return true;
+        if (node.type === 'shared_ref') return true;
+        if (node.type === 'content' && ['custom_html', 'custom_php', 'messages', 'applied_offers', 'breadcrumb', 'variant_attr', 'carousel'].indexOf(p.contentType) !== -1) return true;
+        if ((node.type === 'content' && p.contentType === 'image') || (node.type === 'semantic' && p.tag === 'img')) {
+            return !!(p._bindings && p._bindings.alt) || (typeof p.alt === 'string' && p.alt.trim() !== '') || _sdAuditAttr(node, 'alt');
+        }
+        if (node.type === 'content' && p.contentType === 'icon') return false;
+        if (_sdAuditHasText(p.text)) return true;
+        return !!(node.children && node.children.some(_sdAuditHasName));
+    }
+
+    // Whether an image carries an alt decision. Any alt string is one: words
+    // describe the picture, and alt="" says it is decorative (the duplicated
+    // marquee copy, a thumbnail beside its headline, an avatar beside the
+    // name), which is also how the server's SEO check reads it. So is a bound
+    // alt, role="presentation" / "none", and aria-hidden="true" on the image
+    // or an ancestor (ctx._ariaHidden, kept by validateTree()). An image with
+    // no alt prop at all, such as an imported <img> without the attribute,
+    // has none, and neither has one that still carries the palette image's
+    // placeholder alt (CONTENT.image.defaultProps.alt, 'Image') or its
+    // translation in the editor's language: nobody wrote it.
+    function _sdAuditAltDecided(node, ctx) {
+        var p = node.props;
+        if (p._bindings && p._bindings.alt) return true;
+        var role = (_sdAttr(node, 'role') || '').trim().toLowerCase();
+        if (role === 'presentation' || role === 'none') return true;
+        if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return true;
+        if (typeof p.alt !== 'string') return false;
+        var alt = p.alt.trim().toLowerCase();
+        return alt === '' || (alt !== 'image' && alt !== _sdT('Image').trim().toLowerCase());
+    }
+
+    // Whether a printed type attribute makes a <button> or an <input> submit
+    // its form, as the browser reads it: the keyword is matched in any case
+    // but not trimmed, and a <button> whose type is missing, blank or not a
+    // keyword falls back to the Submit state. type is null when the element
+    // prints none.
+    function _sdAuditTypeSubmits(tag, type) {
+        var t = type === null ? '' : type.toLowerCase();
+        if (tag === 'button') return t !== 'button' && t !== 'reset';
+        return t === 'submit' || t === 'image';
+    }
+
+    // Whether a node is a control that submits the form it sits in, as the
+    // renderer prints it: a <button> (a semantic node, or a text node drawn
+    // with the button tag, which print only the _attrs type) or an <input>
+    // (semantic, _attrs type), and a Button component drawn as <button> or
+    // <input>, whose type is btnType ("button" when it has none; drawn as a
+    // link it does not submit). The old content button has no renderer.
+    function _sdAuditSubmits(n) {
+        var p = n.props || {};
+        if (n.type === 'semantic' || (n.type === 'content' && p.contentType === 'heading')) {
+            var tag = String(p.tag || '').toLowerCase();
+            if (tag === 'button' || (tag === 'input' && n.type === 'semantic')) return _sdAuditTypeSubmits(tag, _sdAttr(n, 'type'));
+            return false;
+        }
+        if (n.type === 'component' && p.componentType === 'btn' && (p.btnElement === 'button' || p.btnElement === 'input')) {
+            return _sdAuditTypeSubmits(p.btnElement, p.btnType == null ? 'button' : String(p.btnType));
+        }
+        return false;
+    }
+
+    // Whether a form holds a control that submits it, at any depth.
+    function _sdAuditFormHasSubmit(node) {
+        return !!(node.children && node.children.some(function (n) {
+            return _sdAuditSubmits(n) || _sdAuditFormHasSubmit(n);
+        }));
+    }
+
     var _validationRules = [
         { id: 'img_alt', label: _sdT('img alt is missing'),
-            check: function(node) {
-                return node.type === 'content' && node.props.contentType === 'image' && !node.props.alt;
+            check: function(node, ctx) {
+                return node.type === 'content' && node.props.contentType === 'image' && !_sdAuditAltDecided(node, ctx);
             }
         },
         { id: 'empty_btn', label: _sdT('Empty button/link'),
-            check: function(node) {
-                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link');
+            check: function(node, ctx) {
+                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link' ||
+                    (node.props.contentType === 'heading' && /^(a|button)$/i.test(String(node.props.tag || ''))));
                 var isSemBtn = node.type === 'semantic' && (node.props.tag === 'button' || node.props.tag === 'a');
                 if (!isContentBtn && !isSemBtn) return false;
-                // A control that carries an accessible name is not empty, even
-                // with no text of its own. A screen reader announces aria-label
-                // / aria-labelledby / title, which is the whole point of this
-                // rule; flagging such a control tells the designer to fix
-                // something that is already correct, and a dismiss button has
-                // no text to add in the first place.
-                if (_sdAttr(node, 'aria-label') || _sdAttr(node, 'aria-labelledby') || _sdAttr(node, 'title')) return false;
+                // A control hidden from assistive technology announces no
+                // name, so it cannot be an empty one.
+                if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return false;
                 // Bootstrap's dismiss button is an icon drawn by .btn-close and
                 // is emitted by the alert, modal, offcanvas and toast blocks —
                 // the designer neither writes its text nor can.
                 if (/(^|\s)btn-close(\s|$)/.test(node.props.cssClass || '')) return false;
-                if (isContentBtn) return !node.props.text;
-                return !node.children || !node.children.length;
+                // A control with an accessible name is not empty: its text
+                // prop, an aria-label / aria-labelledby / title, or a child
+                // that is read (an icon with a visually hidden label).
+                return !_sdAuditHasName(node);
             }
         },
         { id: 'dup_id', label: _sdT('Duplicate id'),
@@ -59072,13 +59168,7 @@ const StyleDesigner = (function () {
         { id: 'form_no_submit', label: _sdT('The form has no submit button'),
             check: function(node) {
                 if (node.type !== 'semantic' || node.props.tag !== 'form') return false;
-                function hasSubmit(n) {
-                    if (n.type === 'content' && n.props.contentType === 'button') return true;
-                    if (n.type === 'semantic' && n.props.tag === 'button') return true;
-                    if (n.children) return n.children.some(hasSubmit);
-                    return false;
-                }
-                return !hasSubmit(node);
+                return !_sdAuditFormHasSubmit(node);
             }
         },
         // ── SEO rules ──────────────────────────────────────────────────
@@ -59097,6 +59187,15 @@ const StyleDesigner = (function () {
         { id: 'heading_empty', label: _sdT('Empty heading'), seo: 'heading_empty',
             check: function(node) {
                 if (node.type === 'content' && node.props.contentType === 'heading') {
+                    // A text node is a heading only when it prints as one.
+                    // The renderer draws it with its tag, h2 when the tag is
+                    // missing or malformed; drawn as a button, span or div
+                    // (carousel indicators and arrows, a dismiss button, a
+                    // badge) it is a control or a label, and an empty
+                    // control is empty_btn's to report.
+                    var tag = String(node.props.tag == null ? '' : node.props.tag);
+                    if (!/^[a-z][a-z0-9]*$/i.test(tag)) tag = 'h2';
+                    if (!/^h[1-6]$/i.test(tag)) return false;
                     return !String(node.props.text || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() && !(node.props._bindings && node.props._bindings.text);
                 }
                 if (node.type === 'semantic' && /^h[1-6]$/.test(node.props.tag || '')) {
@@ -59454,7 +59553,7 @@ const StyleDesigner = (function () {
 
     function validateTree(root) {
         var issues = [];
-        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {} };
+        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {}, _ariaHidden: 0 };
         // <label for="…"> targets, so an input labelled from elsewhere is not
         // flagged. One pass up front: the label can come after the input.
         (function collect(n) {
@@ -59485,7 +59584,12 @@ const StyleDesigner = (function () {
                     issues.push({ rule: rule.id, label: label, node: node, nodeLabel: getNodeLabel(node), seo: rule.seo || '' });
                 }
             });
+            // The rules see whether an ancestor is hidden from assistive
+            // technology (aria-hidden="true"), like the marquee's copy group.
+            var hides = _sdAttr(node, 'aria-hidden') === 'true';
+            if (hides) ctx._ariaHidden++;
             if (node.children) node.children.forEach(traverse);
+            if (hides) ctx._ariaHidden--;
             _validationRules.forEach(function(rule) { if (rule.exit) rule.exit(node, ctx); });
         }
         if (root.children) root.children.forEach(traverse);
