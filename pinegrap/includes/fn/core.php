@@ -1274,6 +1274,25 @@ function escape_regex($string)
 }
 
 /**
+ * Text made safe to use as (part of) a preg_replace() replacement, so it
+ * arrives as written.
+ *
+ * PCRE reads $n, ${n} and \n in a replacement as back references, and a
+ * reference to a group the pattern does not have prints nothing: "$400'dan"
+ * in a meta description came out as "0'dan" ($40 dropped), "$50/yıl" as
+ * "/yıl". Escaping the backslash and the dollar sign keeps every one of
+ * them literal. A reference the caller writes next to the result ('$1')
+ * keeps working.
+ *
+ * @param mixed $text
+ * @return string
+ */
+function pg_regex_replacement($text)
+{
+    return addcslashes((string) $text, '\\$');
+}
+
+/**
  * Where an edit screen sends the operator back to.
  *
  * The screens that open from the File Manager, the store and the user list all
