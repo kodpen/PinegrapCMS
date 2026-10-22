@@ -2350,15 +2350,17 @@ function pg_office_text_tokens($text)
  * Where two texts differ, as changes to the first: [start, end, insert] in
  * characters of the old text, in order and not overlapping.
  *
- * The texts are compared as words (pg_office_text_tokens()), never as
- * letters: the common beginning and end are set aside whole words at a
- * time, so a word added before one that starts with the same letters
- * ("BIG" before "BOLD") goes before that word, not into it and its
- * formatting, and a word changed in part is changed whole. What lies
- * between is compared word by word, so two separate changes come out as
- * two and the runs between them (with their formatting) are left alone. A
- * middle too long to compare word by word (the product of the two word
- * counts above $limit) is one change.
+ * The texts are compared as words (pg_office_text_tokens()): the common
+ * beginning and end are set aside whole words at a time, so a word added
+ * before one that starts with the same letters ("BIG" before "BOLD") goes
+ * before that word, not into it and its formatting. What lies between is
+ * compared word by word, so two separate changes come out as two and the
+ * runs between them (with their formatting) are left alone. A middle too
+ * long to compare word by word (the product of the two word counts above
+ * $limit) is one change. Each change then gives back the letters its old
+ * words and its new ones share at either end (pg_office_text_hunk_trim()),
+ * so a letter added inside a word ("aple" to "apple") is only that letter
+ * added, and the parts of the word in other runs keep their formatting.
  *
  * @param string $old
  * @param string $new
@@ -2396,7 +2398,9 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
     $prefix = mb_strlen(implode('', array_slice($a, 0, $prefix)), 'UTF-8');
 
     if (($rows * $columns) > $limit) {
-        return array(array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
+        $hunk = pg_office_text_hunk_trim($old, array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
+
+        return ($hunk === null) ? array() : array($hunk);
     }
 
     // The longest run of words both share, filled in from the end.
@@ -2445,7 +2449,59 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         $hunks[] = $open;
     }
 
-    return $hunks;
+    $trimmed = array();
+
+    foreach ($hunks as $hunk) {
+        $hunk = pg_office_text_hunk_trim($old, $hunk);
+
+        if ($hunk !== null) {
+            $trimmed[] = $hunk;
+        }
+    }
+
+    return $trimmed;
+}
+
+/**
+ * One change of pg_office_text_hunks() without the letters its old text and
+ * its insert share: first at the start, then at the end (no more than what
+ * is left of both after the start). The old range may shrink to nothing, so
+ * a change inside a word becomes a plain insertion or removal there.
+ *
+ * @param string $old  the whole old text
+ * @param array  $hunk [start, end, insert] in characters of $old
+ * @return array|null the change; null when nothing is left of it
+ */
+function pg_office_text_hunk_trim($old, $hunk)
+{
+    $start = $hunk[0];
+    $end = $hunk[1];
+
+    if (($start === $end) || ($hunk[2] === '')) {
+        return $hunk;
+    }
+
+    $before = preg_split('//u', mb_substr($old, $start, $end - $start, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
+    $after = preg_split('//u', $hunk[2], -1, PREG_SPLIT_NO_EMPTY);
+    $old_length = count($before);
+    $new_length = count($after);
+    $lead = 0;
+
+    while (($lead < $old_length) && ($lead < $new_length) && ($before[$lead] === $after[$lead])) {
+        $lead++;
+    }
+
+    $trail = 0;
+
+    while (($trail < $old_length - $lead) && ($trail < $new_length - $lead) && ($before[$old_length - 1 - $trail] === $after[$new_length - 1 - $trail])) {
+        $trail++;
+    }
+
+    if (($lead + $trail === $old_length) && ($lead + $trail === $new_length)) {
+        return null;
+    }
+
+    return array($start + $lead, $end - $trail, implode('', array_slice($after, $lead, $new_length - $lead - $trail)));
 }
 
 /**
@@ -2454,9 +2510,11 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
  * change starts in (or, for text only added, the run of the character before
  * it, whose formatting carries on as it does when typing; at the very start,
  * the first run with text). Text added right after a link goes into the run
- * after it, as a word processor types it, rather than into the link; when
- * the link ends the paragraph, into a new run after it, formatted like the
- * paragraph mark. Runs the change does not reach keep their text.
+ * after it, as a word processor types it, rather than into the link (runs
+ * without text at the end of the link count as the link); when the link
+ * ends the paragraph, or another link follows it directly, into a new run
+ * after it, formatted like the paragraph mark without its character style
+ * or hiding. Runs the change does not reach keep their text.
  *
  * @param array  $runs   [run, text] in order, the texts updated (a run may be added)
  * @param int    $start  in characters of the paragraph's text
@@ -2486,25 +2544,45 @@ function pg_office_docx_apply_hunk(&$runs, $start, $end, $insert)
                 }
             } elseif (($start > 0) && ($start > $offset) && ($start <= $offset + $length)) {
                 $target = $index;
-                $next = isset($keys[$place + 1]) ? $runs[$keys[$place + 1]]['run'] : null;
 
                 if (($start === $offset + $length) && pg_office_docx_in_link($run['run'])) {
+                    $link = $run['run']->parentNode;
+                    $after = $place + 1;
+
+                    // Runs left without text at the end of the same link
+                    // (only formatting, or a rendered page break) are still
+                    // the link: the text goes past them.
+                    while (isset($keys[$after]) && ($runs[$keys[$after]]['text'] === '') && ($runs[$keys[$after]]['run']->parentNode === $link)) {
+                        $after++;
+                    }
+
+                    $next = isset($keys[$after]) ? $runs[$keys[$after]]['run'] : null;
+                    $paragraph = $link->parentNode;
+
+                    while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
+                        $paragraph = $paragraph->parentNode;
+                    }
+
                     if ($next === null) {
-                        $paragraph = $run['run']->parentNode;
-
-                        while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
-                            $paragraph = $paragraph->parentNode;
-                        }
-
                         if ($paragraph instanceof DOMElement) {
-                            $runs[] = array('run' => pg_office_docx_new_run($paragraph), 'text' => '', 'changed' => true);
+                            $runs[] = array('run' => pg_office_docx_new_run($paragraph, true), 'text' => '', 'changed' => true);
                             end($runs);
                             $target = key($runs);
                         }
                     } elseif (!pg_office_docx_in_link($next)) {
-                        $target = $keys[$place + 1];
+                        $target = $keys[$after];
+                    } elseif (($next->parentNode !== $link) && ($paragraph instanceof DOMElement)) {
+                        // Another link right after this one: a new run
+                        // between the two, in neither.
+                        array_splice($runs, $after, 0, array(array('run' => pg_office_docx_new_run($paragraph, true, $next->parentNode), 'text' => '', 'changed' => true)));
+                        $target = $after;
                     }
                 }
+
+                // The runs are in order and the target holds text, so the
+                // ones after it change nothing found here (and their keys
+                // may have moved).
+                break;
             }
         }
 
@@ -2642,14 +2720,21 @@ function pg_office_docx_paragraph_write($paragraph, $edit, $text, $limit = 25000
 }
 
 /**
- * A new, empty run at the end of a paragraph, with the formatting of the
- * paragraph mark: for a paragraph that has no run, or text typed after a
- * link that ends it.
+ * A new, empty run in a paragraph, with the formatting of the paragraph
+ * mark: for a paragraph that has no run, or text typed after a link that
+ * ends it or that another link follows.
  *
- * @param DOMElement $paragraph
+ * After a link the mark often carries the link's character style (Word
+ * gives the mark the formatting of the text before it), and a style
+ * separator's mark is hidden; $plain leaves the style and the hiding out,
+ * so the text typed there neither looks like a link nor disappears.
+ *
+ * @param DOMElement      $paragraph
+ * @param bool            $plain  without w:rStyle, w:vanish and w:specVanish
+ * @param DOMElement|null $before a child of the paragraph the run goes before; null for the end
  * @return DOMElement
  */
-function pg_office_docx_new_run($paragraph)
+function pg_office_docx_new_run($paragraph, $plain = false, $before = null)
 {
     $document = $paragraph->ownerDocument;
     $namespace = (string) $paragraph->namespaceURI;
@@ -2660,13 +2745,29 @@ function pg_office_docx_new_run($paragraph)
         if (($child instanceof DOMElement) && ($child->localName === 'pPr')) {
             foreach ($child->childNodes as $property) {
                 if (($property instanceof DOMElement) && ($property->localName === 'rPr')) {
-                    $run->appendChild($property->cloneNode(true));
+                    $copy = $property->cloneNode(true);
+
+                    if ($plain) {
+                        foreach (iterator_to_array($copy->childNodes) as $setting) {
+                            if (($setting instanceof DOMElement) && in_array($setting->localName, array('rStyle', 'vanish', 'specVanish'), true)) {
+                                $copy->removeChild($setting);
+                            }
+                        }
+                    }
+
+                    if (!$plain || $copy->hasChildNodes()) {
+                        $run->appendChild($copy);
+                    }
                 }
             }
         }
     }
 
-    $paragraph->appendChild($run);
+    if ($before instanceof DOMElement) {
+        $paragraph->insertBefore($run, $before);
+    } else {
+        $paragraph->appendChild($run);
+    }
 
     return $run;
 }

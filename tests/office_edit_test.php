@@ -658,11 +658,17 @@ function test_office_edit_text_hunks()
 	pg_assert_same(array(array(0, 5, 'Bugün'), array(15, 20, 'yarın')), pg_office_text_hunks('Dünkü toplantı bitti', 'Bugün toplantı yarın'), 'two changes, the word between left alone');
 	pg_assert_same(array(array(6, 6, 'çok ')), pg_office_text_hunks('Kalem güzel', 'Kalem çok güzel'), 'an addition');
 	pg_assert_same(array(array(6, 10, '')), pg_office_text_hunks('Kalem çok güzel', 'Kalem güzel'), 'a removal');
-	pg_assert_same(array(array(0, 19, 'Merhaba')), pg_office_text_hunks('Sayın Ayşe, merhaba.', 'Merhaba.'), 'the words kept at the ends stay out of the change; a word changed in part is changed whole');
+	pg_assert_same(array(array(0, 13, 'M')), pg_office_text_hunks('Sayın Ayşe, merhaba.', 'Merhaba.'), 'the letters kept at the ends of a change stay out of it');
 	pg_assert_same(array(array(14, 14, 'BIG ')), pg_office_text_hunks('This contains BOLD, ITALIC', 'This contains BIG BOLD, ITALIC'), 'a word added before one starting with the same letter goes before it, not into it');
 	pg_assert_same(array(array(10, 10, 'helpful ')), pg_office_text_hunks('We have a hyperlink here', 'We have a helpful hyperlink here'), 'the same before a link');
 	pg_assert_same(array(array(8, 8, 'dost ')), pg_office_text_hunks('Merhaba dünya', 'Merhaba dost dünya'), 'and in Turkish');
-	pg_assert_same(array(array(6, 11, 'kalemler')), pg_office_text_hunks('Mavi  kalem', 'Mavi  kalemler'), 'a word made longer is one word; the spaces before it stay');
+	pg_assert_same(array(array(11, 11, 'ler')), pg_office_text_hunks('Mavi  kalem', 'Mavi  kalemler'), 'a word made longer: only the letters added');
+	pg_assert_same(array(array(2, 2, 'p')), pg_office_text_hunks('aple pie', 'apple pie'), 'a letter added inside a word is only added');
+	pg_assert_same(array(array(3, 3, 'o')), pg_office_text_hunks('book', 'boook'), 'a letter repeated: the first place it can go after the shared start');
+	pg_assert_same(array(array(5, 5, 'r')), pg_office_text_hunks('occured', 'occurred'), 'a typo fixed by one letter');
+	pg_assert_same(array(array(3, 3, '2')), pg_office_text_hunks('H2O molecule', 'H2O2 molecule'), 'a digit added at the end of a word');
+	pg_assert_same(array(array(13, 14, '')), pg_office_text_hunks('Sayın merhabaa', 'Sayın merhaba'), 'a letter taken out of a word');
+	pg_assert_same(array(array(2, 2, 'p'), array(14, 14, 'r')), pg_office_text_hunks('aple and occured', 'apple and occurred'), 'two words fixed, each by its letter');
 	pg_assert_same(array(array(16, 16, ' adresinden ulaşabilirsiniz.')), pg_office_text_hunks('Site: kodpen.com', 'Site: kodpen.com adresinden ulaşabilirsiniz.'), 'words added after the last word');
 	pg_assert_same(array(array(0, 0, 'Yeni')), pg_office_text_hunks('', 'Yeni'), 'into an empty paragraph');
 	pg_assert_same(array(array(0, 4, '')), pg_office_text_hunks('Eski', ''), 'everything taken out');
@@ -752,7 +758,7 @@ function test_office_edit_docx_paragraph_write_keeps_formatting()
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın </w:t></w:r><w:r><w:t>merhaba.</w:t></w:r></w:p>',
 		$write($runs, 'Sayın merhaba.'), 'a removal across runs: the run left empty goes');
 
-	pg_assert_same('<w:p><w:r><w:t>Merhaba</w:t></w:r><w:r><w:t>.</w:t></w:r></w:p>',
+	pg_assert_same('<w:p><w:r><w:t>M</w:t></w:r><w:r><w:t>erhaba.</w:t></w:r></w:p>',
 		$write($runs, 'Merhaba.'), 'what replaces a selection takes the formatting of its first letter, as in Word');
 
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Sayın dost </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>Ayşe</w:t></w:r><w:r><w:t>, merhaba.</w:t></w:r></w:p>',
@@ -786,6 +792,39 @@ function test_office_edit_docx_paragraph_write_keeps_formatting()
 	pg_assert_same('<w:p><w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve"> adresinden ulaşabilirsiniz.</w:t></w:r></w:p>',
 		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink>', 'Web sitemiz: kodpen.com adresinden ulaşabilirsiniz.')),
 		'words typed after a link that ends the paragraph go into a new run formatted like the paragraph mark');
+
+	pg_assert_same('<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>app</w:t></w:r><w:r><w:t>le pie</w:t></w:r></w:p>',
+		$write('<w:r><w:rPr><w:b/></w:rPr><w:t>ap</w:t></w:r><w:r><w:t>le pie</w:t></w:r>', 'apple pie'), 'a letter added inside a word split across runs leaves the rest of the word as it was');
+
+	pg_assert_same('<w:p><w:r><w:t>H</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="subscript"/></w:rPr><w:t>2</w:t></w:r><w:r><w:t>O2 molecule</w:t></w:r></w:p>',
+		$write('<w:r><w:t>H</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="subscript"/></w:rPr><w:t>2</w:t></w:r><w:r><w:t>O molecule</w:t></w:r>', 'H2O2 molecule'), 'the subscript inside the word stays');
+
+	pg_assert_same('<w:p><w:r><w:t>Sayın m</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>erhaba</w:t></w:r></w:p>',
+		$write('<w:r><w:t>Sayın m</w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>erhabaa</w:t></w:r>', 'Sayın merhaba'), 'a letter taken out of the italic part of a word');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>sayfa</w:t></w:r></w:hyperlink><w:r><w:t>mızda</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>sayfa</w:t></w:r></w:hyperlink><w:r><w:t>mız</w:t></w:r>', 'Bkz. sayfamızda')),
+		'a suffix added after a link over the stem stays out of the link');
+
+	pg_assert_same('<w:p><w:pPr><w:rPr><w:rStyle w:val="Hyperlink"/><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve"> adresinden.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:pPr><w:rPr><w:rStyle w:val="Hyperlink"/><w:sz w:val="20"/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r></w:hyperlink>', 'Web sitemiz: kodpen.com adresinden.')),
+		'the new run after a link does not take the link style of the paragraph mark');
+
+	pg_assert_same('<w:p><w:pPr><w:rPr><w:vanish/><w:specVanish/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> sonra.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:pPr><w:rPr><w:vanish/><w:specVanish/></w:rPr></w:pPr><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink>', 'Bkz. site sonra.')),
+		'nor is it hidden when the mark is');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> adresinden.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Web sitemiz: </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr><w:t>kodpen.com</w:t></w:r><w:r><w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr></w:r></w:hyperlink>', 'Web sitemiz: kodpen.com adresinden.')),
+		'a run with no text at the end of the link is still the link: the text goes after it');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r><w:r><w:lastRenderedPageBreak/></w:r></w:hyperlink><w:r><w:t>!.</w:t></w:r></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r><w:r><w:lastRenderedPageBreak/></w:r></w:hyperlink><w:r><w:t>.</w:t></w:r>', 'Bkz. site!.')),
+		'and into the run after the link when there is one');
+
+	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:r><w:t>?</w:t></w:r><w:hyperlink r:id="rId2"><w:r><w:t>!</w:t></w:r></w:hyperlink></w:p>',
+		str_replace(' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"', '', $write('<w:r><w:t xml:space="preserve">Bkz. </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>site</w:t></w:r></w:hyperlink><w:hyperlink r:id="rId2"><w:r><w:t>!</w:t></w:r></w:hyperlink>', 'Bkz. site?!')),
+		'text typed between two links goes into a new run between them, in neither link');
 
 	pg_assert_same('<w:p><w:r><w:t xml:space="preserve">a  b </w:t></w:r></w:p>',
 		$write('<w:r><w:t>a</w:t></w:r>', 'a  b '), 'spaces kept');
