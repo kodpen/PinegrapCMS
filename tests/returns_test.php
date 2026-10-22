@@ -624,6 +624,33 @@ function test_returns_erp_line_map()
 	pg_assert_same(null, pg_return_erp_line_map($items, null), 'no source');
 }
 
+// A recurring line that starts after the order day was not charged with it,
+// so the ERP's refund lines leave it out (left_out): the other lines still
+// map, and the left-out line has no entry.
+function test_returns_erp_line_map_skips_left_out_lines()
+{
+	$items = array(11 => 7, 12 => 8, 13 => 9);
+
+	$order = array('source' => 'order', 'left_out' => array(12), 'lines' => array(array('id' => 11, 'product_id' => 7), array('id' => 13, 'product_id' => 9), array('id' => -1, 'product_id' => 0)));
+	pg_assert_same(array(11 => 11, 13 => 13), pg_return_erp_line_map($items, $order), 'the lines of the order without the deferred one');
+
+	$invoice = array('source' => 'invoice', 'left_out' => array(12), 'lines' => array(array('id' => 501, 'product_id' => 7), array('id' => 503, 'product_id' => 9), array('id' => 504, 'product_id' => 0)));
+	pg_assert_same(array(11 => 501, 13 => 503), pg_return_erp_line_map($items, $invoice), 'an invoice without the deferred line');
+
+	// An invoice issued while every line was still put on it.
+	$older = array('source' => 'invoice', 'left_out' => array(12), 'lines' => array(array('id' => 501, 'product_id' => 7), array('id' => 502, 'product_id' => 8), array('id' => 503, 'product_id' => 9)));
+	pg_assert_same(array(11 => 501, 12 => 502, 13 => 503), pg_return_erp_line_map($items, $older), 'an invoice that still carries the deferred line');
+
+	$last = array('source' => 'invoice', 'left_out' => array(13), 'lines' => array(array('id' => 501, 'product_id' => 7), array('id' => 502, 'product_id' => 8)));
+	pg_assert_same(array(11 => 501, 12 => 502), pg_return_erp_line_map($items, $last), 'the deferred line last, past the lines of the invoice');
+
+	$swapped = array('source' => 'invoice', 'left_out' => array(12), 'lines' => array(array('id' => 501, 'product_id' => 9), array('id' => 503, 'product_id' => 7)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $swapped), 'the charged lines still have to line up');
+
+	$missing = array('source' => 'order', 'left_out' => array(12), 'lines' => array(array('id' => 11, 'product_id' => 7)));
+	pg_assert_same(null, pg_return_erp_line_map($items, $missing), 'a charged line not on the lines of the order');
+}
+
 // Reminded from three days before the deadline, again after it.
 function test_returns_reminder_stage()
 {

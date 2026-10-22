@@ -1282,6 +1282,25 @@ const StyleDesigner = (function () {
         }, force);
     }
 
+    // Refresh a form's cached rows once a save or a move has rewritten them, so
+    // every panel and canvas token that reads the form (its own page, and the
+    // list and detail pages bound to it) shows the stored state. The old rows
+    // stay until the new ones arrive: some panels read the cache without
+    // fetching (the list view's field pickers) and would otherwise sit on
+    // their loading text. The read-only copy of another page's form is
+    // dropped; its panels load it again when they draw.
+    function _cfDropFieldCache(formPageId) {
+        formPageId = parseInt(formPageId, 10) || 0;
+        if (!formPageId) return;
+        delete _cfForeign[formPageId];
+        delete _sdLabelFieldsAsked[formPageId];
+        if (!_formFieldsCache[formPageId]) return;
+        _fetchFormFields(formPageId, function () {
+            if (typeof renderCanvas === 'function') renderCanvas();
+            _sdSchedulePropsRefresh();
+        }, true);
+    }
+
     // Fetch the form_fields rows for a given custom form page_id. Caches per page_id.
     // Calls cb(items) on completion. Idempotent unless `force` is true.
     function _fetchFormFields(formPageId, cb, force) {
@@ -1363,6 +1382,9 @@ const StyleDesigner = (function () {
      *   office_use_only     staff see and fill it, the visitor never does
      *   validation_message  what the visitor reads when `pattern` refuses
      *   upload_folder_id, quiz_question, quiz_answer
+     *   wysiwyg             a text area visitors fill in with the rich-text
+     *                       editor; absent, the field row keeps its own flag
+     *                       (one set on the classic field screen survives)
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1702,6 +1724,7 @@ const StyleDesigner = (function () {
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
                     office_use_only: !!rec.office_use_only,
+                    rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
                 };
                 order.push(byKey[key]);
@@ -1718,6 +1741,41 @@ const StyleDesigner = (function () {
         var rec = (node.props && node.props._cf) || {};
         if (!pid || !rec.ids || typeof rec.ids !== 'object') return 0;
         return parseInt(rec.ids[String(pid)], 10) || 0;
+    }
+
+    // A field row's flag: a boolean from designer/form_fields, the string
+    // '1' / '0' from shared_component/list_form_fields.
+    function _cfFlagOn(v) {
+        return v === true || String(v) === '1';
+    }
+
+    // Whether a text area is filled in with the rich-text editor. Once the
+    // switch has been used the control's _cf.wysiwyg decides; before that the
+    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
+    // the panel shows. null while the page's rows are being loaded.
+    var _cfRichRowsLoading = {};
+    function _cfRichOn(lead) {
+        if (_cfTagOf(lead) !== 'textarea') return false;
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+        var p   = _pgActivePage();
+        var pid = p ? (parseInt(p.page_id, 10) || 0) : 0;
+        if (!pid) return false;
+        var rows = _formFieldsCache[pid];
+        if (!rows) {
+            if (!_cfRichRowsLoading[pid]) {
+                _cfRichRowsLoading[pid] = true;
+                _fetchFormFields(pid, function () {
+                    delete _cfRichRowsLoading[pid];
+                    _sdSchedulePropsRefresh();
+                });
+            }
+            return null;
+        }
+        var id = _cfRowId(lead), key = String(_cfControlName(lead) || '').toLowerCase(), hit = null, i;
+        for (i = 0; id && !hit && i < rows.length; i++) if (parseInt(rows[i].id, 10) === id) hit = rows[i];
+        for (i = 0; key && !hit && i < rows.length; i++) if (String(rows[i].name || '').toLowerCase() === key) hit = rows[i];
+        return !!hit && hit.type === 'text area' && _cfFlagOn(hit.wysiwyg);
     }
 
     // The control whose record a panel edits: the first control of the group
@@ -1993,6 +2051,21 @@ const StyleDesigner = (function () {
         // Another page's form, shown here. Its fields are that page's to
         // change; this panel only says what they are.
         if (!w.owns) {
+            var fFormId = parseInt(w.cfg.form_id || w.cfg.custom_form_page_id || 0, 10) || 0;
+            var fForm = _cfForeign[fFormId];
+            // The widget panel is not the only way in: a control clicked
+            // first loads the form itself. _cfEnsureForeign() asks once and
+            // remembers a failure, so the redraw cannot loop.
+            if (!fForm && fFormId && c.tag === 'textarea') {
+                _cfEnsureForeign(fFormId, function () { _sdSchedulePropsRefresh(); });
+            }
+            var fRich = false;
+            if (c.tag === 'textarea' && fForm && Array.isArray(fForm.fields)) {
+                fForm.fields.forEach(function (f) {
+                    if (String(f.name || '').toLowerCase() === String(name).toLowerCase()
+                        && f.type === 'text area' && _cfFlagOn(f.wysiwyg)) fRich = true;
+                });
+            }
             return sect('bi-ui-checks', _sdT('Form Field'),
                 '<div class="sd-prop-row"><div class="sd-prop-control">' +
                     '<div style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45">' +
@@ -2001,7 +2074,8 @@ const StyleDesigner = (function () {
                 '</div></div>' +
                 row(_sdT('Label'),  '<span class="sd-prop-static">' + esc(src.text || name) + '</span>') +
                 row(_sdT('Field Name'), '<code class="small">' + esc(name) + '</code>') +
-                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
+                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>') +
+                (fRich ? row(_sdT('Rich-text Editor'), '<span class="sd-prop-static">✓</span>') : '')
             );
         }
 
@@ -2035,6 +2109,23 @@ const StyleDesigner = (function () {
                     ? _cfHint(_sdT('Staff who open the page in edit mode see and fill this; on a visitor\'s submission the field\'s default value is saved (Input → Value).'))
                     : '') +
                 '</div></div>';
+
+        // A text area can take the rich-text editor; the published page
+        // loads it (pg_cf_rich_text_inject()), the canvas and the Preview
+        // show the plain control.
+        if (c.tag === 'textarea') {
+            var rich = _cfRichOn(lead) === true;
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-rich', rich, _sdT('Rich-text Editor')) +
+                    (rich
+                        ? _cfHint(esc(_sdT('Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.'))) +
+                          _cfHint(esc(_sdT('Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).')))
+                        : '') +
+                    (rowId > 0
+                        ? _cfHint(esc(_sdT('Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.')))
+                        : '') +
+                    '</div></div>';
+        }
 
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
@@ -2229,6 +2320,10 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-office', 'change', function (el) {
             _cfRec(lead).office_use_only = !!el.checked;
+            commit(true);
+        });
+        on('sd-cf-rich', 'change', function (el) {
+            _cfRec(lead).wysiwyg = !!el.checked;
             commit(true);
         });
         on('sd-cf-contact', 'change', function (el) {
@@ -2531,6 +2626,7 @@ const StyleDesigner = (function () {
             rec.upload_folder_id   = parseInt(f.upload_folder, 10) || 0;
             rec.quiz_question      = !!f.quiz_question;
             rec.quiz_answer        = f.quiz_answer || '';
+            if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -2627,6 +2723,93 @@ const StyleDesigner = (function () {
         if (!p) return {};
         if (!p.formSettings || typeof p.formSettings !== 'object') p.formSettings = {};
         return p.formSettings;
+    }
+
+    // A form that sends no e-mail at all: no notification address and no
+    // auto-reply. Allowed (some forms are meant to be quiet), but said.
+    function _cfSettingsSilent(fs) {
+        fs = fs || {};
+        return String(fs.notify_email || '').trim() === '' && !parseInt(fs.confirm_email || 0, 10);
+    }
+
+    // A custom form widget just placed or turned into a page form: when the
+    // page has no form record yet, its notification address starts as the
+    // site's own address. A page whose form already exists keeps what it
+    // has, an empty address included, and a page seeded once is not seeded
+    // again (an address the operator cleared stays cleared).
+    var _cfNotifySeeded = {};
+    var _cfSilentWarned = {};   // page_id => warned after a publish this session
+    function _cfSeedNotifyAddress(sid) {
+        var p   = _pgActivePage();
+        var cfg = _cfCfgOf(sid);
+        if (!p || !cfg || !_cfWidgetOwnsPageForm(cfg) || _cfNotifySeeded[p.key]) return;
+        var addr = (_design && _design.siteEmail) ? String(_design.siteEmail).trim() : '';
+        var fs   = _cfPageSettings(p);
+        if (!addr || fs.exists || String(fs.notify_email || '').trim() !== '') return;
+        fs.notify_email = addr;
+        _cfNotifySeeded[p.key] = true;
+    }
+
+    // The placement that opens a custom form widget's settings: the
+    // shared_ref of `sid` on the page tree, else inside another shared
+    // component (a form placed in a header).
+    function _cfRefOf(sid) {
+        var hit = null;
+        var walk = function (n) {
+            if (hit || !n) return;
+            if (n.type === 'shared_ref') {
+                if (parseInt(n.props && n.props.sharedId, 10) === sid) hit = n;
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        if (!hit) Object.keys(_sharedCache).forEach(function (k) {
+            if (!hit && parseInt(k, 10) !== sid && _sharedCache[k] && _sharedCache[k].tree) walk(_sharedCache[k].tree);
+        });
+        return hit;
+    }
+
+    // Select the widget's placement so the panel shows its form settings,
+    // and bring the Custom Form Settings section into view.
+    function _cfOpenFormSettings(sid) {
+        var ref = _cfRefOf(parseInt(sid, 10) || 0);
+        if (!ref) return;
+        selectedNode  = ref;
+        selectedNodes = [];
+        if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+        _sdSelectRender();
+        setTimeout(function () {
+            var src  = document.getElementById('sd-sw-cf-source');
+            var sect = src ? src.closest('.sd-props-section') : null;
+            if (!sect) return;
+            var hdr = sect.querySelector('.sd-sect-hdr');
+            if (hdr && !hdr.classList.contains('sd-sect-open')) hdr.click();
+            sect.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 0);
+    }
+
+    // The "Form settings" bar on top of the panel of any node inside a
+    // custom form widget: on the canvas a click lands on a control or a
+    // wrapper inside the form, never on the widget, and the form's own
+    // settings (notification, auto-reply) were reachable only from the page
+    // tree.
+    function _cfSettingsShortcut(node) {
+        if (!node || node.type === 'shared_ref') return '';
+        var w = _cfWidgetOf(node);
+        if (!w) return '';
+        var silent = w.owns && _cfSettingsSilent(_cfPageSettings());
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
+                '<i class="bi bi-ui-checks me-1"></i>' + esc(_sdT('Form settings')) +
+            '</button>' +
+            (silent
+                ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px;line-height:1.45">' +
+                      '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                      esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                  '</div>'
+                : '') +
+        '</div>';
     }
 
     // If `node` lives inside a cached shared component tree, returns that sid.
@@ -3945,16 +4128,20 @@ const StyleDesigner = (function () {
     var _myAccountDetailPagesCache = null;
 
     // ========================= COL CLASSES =========================
+    // Twin of _build_col_classes() (includes/fn/designer.php), which writes
+    // the saved page. A column with no width is a full row (col-12), the
+    // width the Column options show for it; 'col' (Equal) at a breakpoint
+    // is Bootstrap's col-<bp>.
     function buildColClasses(p) {
         var c = [];
         if (p.xs && p.xs !== '' && p.xs !== 'none') {
             if (p.xs === 'auto') c.push('col-auto');
             else if (p.xs === 'col') c.push('col');
             else c.push('col-' + p.xs);
-        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col');
+        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col-12');
         ['sm','md','lg','xl','xxl'].forEach(function(bp) {
             if (p[bp] && p[bp] !== '' && p[bp] !== 'none')
-                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : 'col-' + bp + '-' + p[bp]);
+                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : (p[bp] === 'col' ? 'col-' + bp : 'col-' + bp + '-' + p[bp]));
         });
         if (p.offsetXs && p.offsetXs !== '' && p.offsetXs !== 'none') c.push('offset-' + p.offsetXs);
         if (p.offsetMd && p.offsetMd !== '' && p.offsetMd !== 'none') c.push('offset-md-' + p.offsetMd);
@@ -4551,25 +4738,24 @@ const StyleDesigner = (function () {
             toHTML: function (p, pad) {
                 var cls = (p.fluid ? 'img-fluid' : '') + (p.rounded ? ' rounded' : '') + (p.cssClass ? ' ' + p.cssClass : '');
                 // A whole number is the width / height attribute (_sdImgDim());
-                // a value with a unit and object-position come with the node's
-                // style (addGlobalAttrs(), getNodeExtraStyle()) as one style
-                // attribute.
+                // a value with a unit comes with the node's sizing style
+                // (getNodeExtraStyle()), which addGlobalAttrs() writes.
                 var _dw = _sdImgDim(p.width), _dh = _sdImgDim(p.height);
                 var w = _dw.attr ? ' width="' + esc(_dw.attr) + '"' : '';
                 var h = _dh.attr ? ' height="' + esc(_dh.attr) + '"' : '';
-                var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + '>';
+                var style = p.objectPosition ? ' style="object-position:' + esc(p.objectPosition) + '"' : '';
+                var imgTag = '<img src="' + esc(p.src || '') + '" alt="' + esc(p.alt || '') + '"' + w + h + (cls.trim() ? ' class="' + cls.trim() + '"' : '') + style + '>';
                 if (_sdImgInRatio(p)) {
+                    // The box as _render_content_html() writes it: the
+                    // image's rounded classes in their order. Its size and
+                    // overflow are the node's sizing style, which
+                    // addGlobalAttrs() writes on this first tag; the image's
+                    // attributes go on the <img>.
                     var wrapClsExp = _sdImgRatioClass(p);
-                    if (p.cssClass) {
-                        var _wcArr = String(p.cssClass).split(/\s+/);
-                        for (var _wi = 0; _wi < _wcArr.length; _wi++) {
-                            if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
-                        }
+                    var _wcArr = cls.split(/\s+/);
+                    for (var _wi = 0; _wi < _wcArr.length; _wi++) {
+                        if (_wcArr[_wi] && _wcArr[_wi].indexOf('rounded') === 0) wrapClsExp += ' ' + esc(_wcArr[_wi]);
                     }
-                    if (p.rounded) wrapClsExp += ' rounded';
-                    // The box's size and overflow are the node's sizing style,
-                    // which addGlobalAttrs() writes on this first tag; the
-                    // image's attributes go on the <img>.
                     return pad + '<div class="' + wrapClsExp + '">\n' + pad + '    ' + imgTag + '\n' + pad + '</div>\n';
                 }
                 return pad + imgTag + '\n';
@@ -4578,13 +4764,16 @@ const StyleDesigner = (function () {
         divider: {
             label: _sdT('Divider'), icon: 'bi-dash-lg',
             defaultProps: { margin: '4', cssClass: '' },
+            // The margin class first, then cssClass, each class once (a
+            // cssClass that repeats the margin class is not written twice),
+            // as the divider case of _render_content_html() does.
             render: function (doc, p) {
                 var el = doc.createElement('hr');
-                el.className = 'my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '');
+                el.className = _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || ''));
                 return el;
             },
             toHTML: function (p, pad) {
-                return pad + '<hr class="my-' + (p.margin || '4') + (p.cssClass ? ' ' + p.cssClass : '') + '">\n';
+                return pad + '<hr class="' + _sdUniqueClasses('my-' + (p.margin || '4') + ' ' + (p.cssClass || '')) + '">\n';
             }
         },
         spacer: {
@@ -4888,7 +5077,8 @@ const StyleDesigner = (function () {
                 return el;
             },
             toHTML: function(p, pad, children) {
-                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '') + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '');
+                // The page's order (_render_content_html()): href, class, target, rel.
+                var attrs = ' href="' + esc(p.href||'#') + '"' + (p.cssClass ? ' class="' + esc(p.cssClass) + '"' : '') + (p.target ? ' target="' + esc(p.target) + '"' : '') + (p.rel ? ' rel="' + esc(p.rel) + '"' : '');
                 var kids = children || '';
                 if (kids) return pad + '<a' + attrs + '>' + (p.text || '') + '\n' + kids + pad + '</a>\n';
                 return pad + '<a' + attrs + '>' + (p.text || '') + '</a>\n';
@@ -9854,6 +10044,7 @@ const StyleDesigner = (function () {
                     address_book:         _sdT('Address Book'),
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
+                    account_email:        _sdT('Account E-mail'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -10548,6 +10739,18 @@ const StyleDesigner = (function () {
                     });
                     tbBtns.appendChild(bindBtn);
                 }
+            }
+            // Inside a custom form widget: the form's own settings, which a
+            // click on the canvas never selects (it lands on a control).
+            var _cfTbW = (node.type !== 'root') ? _cfWidgetOf(node) : null;
+            if (_cfTbW) {
+                var cfSetBtn = doc.createElement('button');
+                cfSetBtn.type = 'button';
+                cfSetBtn.className = 'bi bi-ui-checks';
+                cfSetBtn.title = _sdT('Form settings');
+                cfSetBtn.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                cfSetBtn.addEventListener('click', function (e) { e.stopPropagation(); _cfOpenFormSettings(_cfTbW.sid); });
+                tbBtns.appendChild(cfSetBtn);
             }
             // Notes — opens a floating notes popup anchored to this node
             if (node.type !== 'root') {
@@ -11489,6 +11692,7 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
         '__installment_per_month': _sdMoney(207.77),
@@ -11722,6 +11926,10 @@ const StyleDesigner = (function () {
     function _sdDatePlaceholder() {
         return _sdDateSample(true);
     }
+
+    // The record counters a form list can order by; the same list as
+    // pg_sw_form_order_counters() (includes/fn/widgets.php).
+    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views'];
 
     // Preview values for the system fields of a submitted form and for the
     // account fields beside them. Without these a reference code would fall
@@ -13104,6 +13312,200 @@ const StyleDesigner = (function () {
         return false;
     }
 
+    // Palette items as the tree they would add, built once per item for the
+    // drop rules (_sdDragTree()). While one is built, createFromPalette()
+    // leaves the design's User Styles alone (_sdPaletteDry).
+    var _sdPaletteShapes = {};
+    var _sdPaletteDry = false;
+
+    // The tree a drag would place: the moved node, or for a palette item the
+    // node createFromPalette() builds from it, so a ready-made block is
+    // judged by what it holds and not by its top-level type alone. Null when
+    // the payload names no palette item. The build changes nothing: the id
+    // counter is put back and the item's block styles are not written.
+    function _sdDragTree(data) {
+        if (!data) return null;
+        if (data.source === 'node') return data.node || null;
+        if (data.source !== 'palette' || !data.type) return null;
+        var key;
+        try { key = data.type + '|' + JSON.stringify(data.extra || {}); } catch (e) { return null; }
+        if (Object.prototype.hasOwnProperty.call(_sdPaletteShapes, key)) return _sdPaletteShapes[key];
+        var built = null;
+        var ids = nodeIdCounter;
+        _sdPaletteDry = true;
+        try { built = createFromPalette(data.type, data.extra || {}) || null; } catch (e) { built = null; }
+        finally { _sdPaletteDry = false; nodeIdCounter = ids; }
+        _sdPaletteShapes[key] = built;
+        return built;
+    }
+
+    // A semantic <input type="hidden">: it draws nothing, so it is neither
+    // interactive content nor a control a label labels.
+    function _sdIsHiddenInput(n) {
+        if (!n || n.type !== 'semantic' || !n.props || String(n.props.tag || '').toLowerCase() !== 'input') return false;
+        var attrs = Array.isArray(n.props._attrs) ? n.props._attrs : [];
+        for (var i = 0; i < attrs.length; i++) {
+            if (attrs[i] && attrs[i].name === 'type' && String(attrs[i].value || '').toLowerCase() === 'hidden') return true;
+        }
+        return false;
+    }
+
+    // Interactive content for the rules about what may sit inside a link, a
+    // button or a label: _isInteractiveNode() without a hidden input, plus a
+    // content heading printed as <button> or <a> (the blocks' accordion and
+    // tab header buttons). Such a heading prints its text only, never child
+    // nodes, so it is left out of _isInteractiveNode(), which decides what
+    // takes inline children.
+    function _sdIsInteractiveEl(n) {
+        if (!n || _sdIsHiddenInput(n)) return false;
+        if (_isInteractiveNode(n)) return true;
+        if (n.type === 'content' && n.props && n.props.contentType === 'heading') {
+            var htag = String(n.props.tag || '').toLowerCase();
+            return htag === 'button' || htag === 'a';
+        }
+        return false;
+    }
+
+    // The markup a node prints itself instead of child nodes: a content
+    // node's text, or what an atomic component other than btn writes (the
+    // language switcher's dropdown button and links). Empty otherwise.
+    function _sdNodeMarkup(n) {
+        if (!n || !n.props) return '';
+        if (n.type === 'content') return String(n.props.text || '') + String(n.props.html || '');
+        if (n.type === 'component' && n.props.componentType !== 'btn' && typeof COMPONENTS !== 'undefined') {
+            var comp = COMPONENTS[n.props.componentType];
+            if (comp && typeof comp.toHTML === 'function') {
+                try { return String(comp.toHTML(n.props, '') || ''); } catch (e) { return ''; }
+            }
+        }
+        return '';
+    }
+
+    // An <a> or a <button> written in a node's own markup.
+    function _sdMarkupInteractive(n) {
+        return /<(a|button)[\s>\/]/i.test(_sdNodeMarkup(n));
+    }
+
+    // A link or a button as an element of its own (not an input, a select or
+    // a textarea): semantic a / button, component btn, content link / button,
+    // a content heading printed as <a> or <button>.
+    function _sdIsLinkOrButton(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') return ['a', 'button'].indexOf(String(n.props.tag || '').toLowerCase()) !== -1;
+        return _sdIsInteractiveEl(n);
+    }
+
+    // A link or a button that may go where only inline content goes (a
+    // headline link in an <h3>, a link inside a sentence, the accordion
+    // header button in its <h2>): everything inside it is inline content
+    // too, and nothing inside it is a link or a button of its own. A link
+    // card holding a <div> stays out of headings and paragraphs.
+    function _sdInlineInteractiveDrag(data) {
+        var root = _sdDragTree(data) || { type: data.type, props: data.extra || {}, children: [] };
+        if (!_sdIsLinkOrButton(root) || _sdMarkupInteractive(root)) return false;
+        return (function kidsInline(n) {
+            var kids = n.children || [];
+            for (var i = 0; i < kids.length; i++) {
+                var k = kids[i];
+                if (!k || _sdIsInteractiveEl(k) || _sdMarkupInteractive(k)) return false;
+                if (!_isInlineOnlyDrag({ source: 'node', type: k.type, node: k })) return false;
+                if (!kidsInline(k)) return false;
+            }
+            return true;
+        })(root);
+    }
+
+    // Does the drag place interactive content: the dragged element, any
+    // element below it, or an <a> / <button> written in a content node's
+    // markup. Kept on the payload: dragover asks on every mouse move and the
+    // subtree does not change during a drag.
+    function _sdDragCarriesInteractive(data) {
+        if (!data) return false;
+        if (typeof data._sdIact === 'boolean') return data._sdIact;
+        var root = _sdDragTree(data);
+        var found = root
+            ? (function walk(n) {
+                if (!n) return false;
+                if (_sdIsInteractiveEl(n) || _sdMarkupInteractive(n)) return true;
+                var kids = n.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    if (walk(kids[i])) return true;
+                }
+                return false;
+            })(root)
+            : _sdIsInteractiveEl({ type: data.type, props: data.extra || {} });
+        try { data._sdIact = found; } catch (e) {}
+        return found;
+    }
+
+    // Is the target a link or a button, or does it sit inside one at any
+    // depth (a span inside a link, a heading inside a card link)?
+    function _sdInInteractive(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_sdIsInteractiveEl(n)) return true;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return false;
+    }
+
+    // A form control a <label> labels: button, input (not a hidden one),
+    // select, textarea, a btn component printed as <button> / <input>, a
+    // content button or a heading printed as <button>. A btn printed as <a>
+    // is a link, which a label may hold.
+    function _sdIsLabelableControl(n) {
+        if (!n || !n.props) return false;
+        if (n.type === 'semantic') {
+            var tag = String(n.props.tag || '').toLowerCase();
+            if (tag === 'input') return !_sdIsHiddenInput(n);
+            return ['button', 'select', 'textarea'].indexOf(tag) !== -1;
+        }
+        if (n.type === 'component') {
+            return n.props.componentType === 'btn' && (n.props.btnElement === 'button' || n.props.btnElement === 'input');
+        }
+        if (n.type === 'content') {
+            if (n.props.contentType === 'button') return true;
+            return n.props.contentType === 'heading' && String(n.props.tag || '').toLowerCase() === 'button';
+        }
+        return false;
+    }
+
+    // Does the tree hold a labelable control, leaving out `skip` (the node
+    // being moved, which may already sit in the label)?
+    function _sdHoldsControl(n, skip) {
+        if (!n || n === skip) return false;
+        if (_sdIsLabelableControl(n)) return true;
+        if (/<(button|input|select|textarea)[\s>\/]/i.test(_sdNodeMarkup(n))) return true;
+        var kids = n.children || [];
+        for (var i = 0; i < kids.length; i++) {
+            if (_sdHoldsControl(kids[i], skip)) return true;
+        }
+        return false;
+    }
+
+    // Does the drag place a labelable control, anywhere in what it carries?
+    // Kept on the payload like _sdDragCarriesInteractive().
+    function _sdDragCarriesControl(data) {
+        if (!data) return false;
+        if (typeof data._sdCtl === 'boolean') return data._sdCtl;
+        var root = _sdDragTree(data);
+        var found = root ? _sdHoldsControl(root, null) : _sdIsLabelableControl({ type: data.type, props: data.extra || {} });
+        try { data._sdCtl = found; } catch (e) {}
+        return found;
+    }
+
+    // The <label> the target is or sits in, at any depth; null outside one.
+    function _sdLabelOf(target) {
+        var n = target;
+        for (var guard = 0; n && guard < 500; guard++) {
+            if (_semTag(n) === 'label') return n;
+            var up = _sdAnyParent(n);
+            n = up ? up.parent : null;
+        }
+        return null;
+    }
+
     function canDrop(data, target) {
         if (!data || !target) return false;
 
@@ -13185,20 +13587,31 @@ const StyleDesigner = (function () {
         var srcTag = _dragSemTag(data);
         var HEADING = ['h1','h2','h3','h4','h5','h6'];
 
-        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline content
+        // Rule 0: nothing interactive inside a link or a button, at any depth:
+        // no <a> in an <a>, no link or button in a <button>, also through a
+        // span or a heading in between, and not as part of a dragged wrapper.
+        if (_sdDragCarriesInteractive(data) && _sdInInteractive(target)) return false;
+
+        // Rule 0b: a <label> labels one control. No button, input, select or
+        // textarea goes into a label (or an element inside it) that already
+        // holds one; the moved node itself does not count.
+        if (_sdDragCarriesControl(data)) {
+            var _lbl = _sdLabelOf(target);
+            if (_lbl && _sdHoldsControl(_lbl, data.source === 'node' ? data.node : null)) return false;
+        }
+
+        // Rule 1+2: <button> / <h1-h6> / interactive components — only inline
+        // content. A heading also takes a link or a button (<h3><a>…</a></h3>,
+        // the accordion's <h2><button>); a link or a button never does (Rule 0).
         if (tgtTag === 'button' || HEADING.indexOf(tgtTag) !== -1 || _isInteractiveNode(target)) {
-            return _isInlineOnlyDrag(data);
+            if (_isInlineOnlyDrag(data)) return true;
+            return HEADING.indexOf(tgtTag) !== -1 && _sdInlineInteractiveDrag(data);
         }
 
-        // Rule 3: <a> cannot contain another <a> or link content
-        if (tgtTag === 'a') {
-            if (srcTag === 'a') return false;
-            if (_dragContentType(data) === 'link') return false;
-        }
-
-        // Rule 4: <p> — inline content only
+        // Rule 4: <p> — inline content only, a link or a button inside the
+        // sentence too
         if (tgtTag === 'p') {
-            return _isInlineOnlyDrag(data);
+            return _isInlineOnlyDrag(data) || _sdInlineInteractiveDrag(data);
         }
 
         // Rule 5: <ul> / <ol> — only direct <li> children. A loop area is
@@ -13597,8 +14010,9 @@ const StyleDesigner = (function () {
             case 'recipient_loop_area': return createNode('recipient_loop_area', {}, []);
             case 'component':
                 var ctype = extra.componentType;
-                // Rules this block needs go to the Styles panel, not inline.
-                _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                // Rules this block needs go to the Styles panel, not inline;
+                // not while the drop rules only look at the block's shape.
+                if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -18942,7 +19356,7 @@ const StyleDesigner = (function () {
                 }
 
                 if (ctype === 'divider_line') {
-                    return createNode('content', { contentType: 'divider', cssClass: 'my-4' });
+                    return createNode('content', { contentType: 'divider', margin: '4' });
                 }
 
                 if (ctype === 'table') {
@@ -21934,7 +22348,14 @@ const StyleDesigner = (function () {
     //           _attrs.style and the prop is cleared, since the style wins
     function _sdInlineStyleProps(node) {
         var same = function (v) { return String(v); };
-        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: same }];
+        // A family as the page writes it (_sdFontFamilyCss(): quoted, with
+        // the sans-serif fallback) reads back as the bare family; a stack
+        // of several stays in the style (null).
+        var family = function (v) {
+            var m = /^\s*(?:'([^',]+)'|"([^",]+)"|([^'",]+?))\s*(?:,\s*sans-serif\s*)?$/i.exec(String(v));
+            return m ? (m[1] || m[2] || m[3]).trim() : null;
+        };
+        var out = [{ prop: 'fontFamily', css: 'font-family', toCss: same, fromCss: family }];
         var p = (node && node.props) || {};
         if (node && node.type === 'content' && p.contentType === 'image') {
             out.push({ prop: 'objectPosition', css: 'object-position', toCss: same, fromCss: same });
@@ -22987,88 +23408,113 @@ const StyleDesigner = (function () {
     end legacy renderStylesPanel */
 
     // ========================= HTML COMPILER =========================
-    function addGlobalAttrs(htmlStr, node) {
-        var extraCls   = getNodeExtraClasses(node);
-        var extraStyle = getNodeExtraStyle(node);
-        // An image's object-position joins its one style attribute (a second
-        // style attribute on the tag would be dropped by the browser).
-        var _isImg = node.type === 'content' && node.props.contentType === 'image';
-        var _imgPos = (_isImg && node.props.objectPosition) ? 'object-position:' + node.props.objectPosition : '';
-        // An image in its own ratio box: the box (the first tag) takes the
-        // sizing style, the <img> - the element the operator selected - its
-        // id, classes, attributes and style, as on the page and the canvas.
-        var _ratioImg = _isImg && _sdImgInRatio(node.props);
-        var boxStyle  = _ratioImg ? extraStyle : '';
-        if (_ratioImg) extraStyle = '';
-        var hasAttrs = node.props.id || node.props.title || node.props.inlineStyle || node.props.fontFamily ||
-            (node.props._attrs && node.props._attrs.length) ||
-            node.props.tooltipEnabled || node.props.srOnly || extraStyle || boxStyle || extraCls || _imgPos;
-        if (!hasAttrs) return htmlStr;
-        var tagAt = 0;
-        if (_ratioImg) {
-            tagAt = htmlStr.indexOf('<img');
-            if (tagAt === -1) tagAt = 0;
+    // The content types whose page markup carries the node's own attributes
+    // (_render_content_html() writes them through _compose_inline_style()
+    // and _render_extra_attrs()). The others print their markup as it is on
+    // the page (Custom HTML, a PHP block) or are drawn by the server
+    // (carousel, messages, breadcrumb, variant picker, applied offers).
+    var _SD_CONTENT_GLOBAL_ATTRS = { heading: 1, paragraph: 1, span: 1, text: 1, link: 1, icon: 1, image: 1, divider: 1, spacer: 1, svg: 1 };
+
+    // The node the Display & Sizing style of a content node is read from:
+    // a spacer's height is the element's own prop. An image's width and
+    // height are read by getNodeExtraStyle() itself (_sdImgSizeCss()), and
+    // in a ratio box addGlobalAttrs() moves the whole style to the box.
+    // Twin of _pg_content_sizing().
+    function _sdContentSizingNode(n) {
+        var p = n.props || {}, ct = p.contentType, drop = null;
+        if (ct === 'spacer') {
+            drop = ['height'];
         }
-        var tagEnd = htmlStr.indexOf('>', tagAt);
-        if (tagEnd === -1) return htmlStr;
-        // 1. Inject extra classes into existing class="" or add new class attr
-        if (extraCls) {
-            var ft = htmlStr.slice(tagAt, tagEnd);
-            var clsIdx = ft.indexOf(' class="');
-            if (clsIdx !== -1) {
-                var clsAt  = tagAt + clsIdx;
-                var clsEnd = htmlStr.indexOf('"', clsAt + 8);
-                var existing = htmlStr.slice(clsAt + 8, clsEnd);
-                htmlStr = htmlStr.slice(0, clsAt) + ' class="' + (existing ? existing + ' ' : '') + extraCls + '"' +
-                    htmlStr.slice(clsEnd + 1);
-            } else {
-                htmlStr = htmlStr.slice(0, tagEnd) + ' class="' + extraCls + '"' + htmlStr.slice(tagEnd);
-            }
-            tagEnd = htmlStr.indexOf('>', tagAt);
-        }
-        // 2. Build attribute string
-        var attrs = '';
-        if (node.props.id) attrs += ' id="' + esc(node.props.id) + '"';
-        var _titleVal = (node.props.tooltipEnabled && node.props.tooltipTitle) ? node.props.tooltipTitle : node.props.title;
-        if (_titleVal) attrs += ' title="' + esc(_titleVal) + '"';
-        if (node.props.tooltipEnabled && node.props.tooltipTitle) {
-            attrs += ' data-bs-toggle="tooltip"';
-            attrs += ' data-bs-placement="' + esc(node.props.tooltipPlacement || 'top') + '"';
-        }
-        // Merge inlineStyle, fontFamily, extraStyle, _attrs.style into one style attribute
-        var styleParts = [];
-        if (node.props.inlineStyle) styleParts.push(node.props.inlineStyle.replace(/;?\s*$/, ''));
-        if (node.props.fontFamily) {
-            // Quote the family name so multi-word ("Press Start 2P") faces
-            // tokenize as one identifier in the resulting `style` attribute.
-            var _ffhq = String(node.props.fontFamily).replace(/'/g, '');
-            styleParts.push("font-family:'" + _ffhq + "',sans-serif");
-        }
-        if (_imgPos) styleParts.push(_imgPos);
-        if (extraStyle) styleParts.push(extraStyle);
-        var _attrStyleVal = '';
-        if (node.props._attrs) {
-            node.props._attrs.forEach(function(attr) {
-                if (attr.name === 'style') { _attrStyleVal = attr.value || ''; }
-                // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                else if (attr.name && attr.name.trim() && attr.name !== 'id') {
-                    attrs += ' ' + attr.name.trim() + '="' + esc(attr.value || '') + '"';
-                }
-            });
-        }
-        if (_attrStyleVal) styleParts.push(_attrStyleVal);
-        if (styleParts.length) attrs += ' style="' + esc(styleParts.join(';')) + '"';
-        htmlStr = htmlStr.slice(0, tagEnd) + attrs + htmlStr.slice(tagEnd);
-        // 3. The ratio box's style (toHTML() writes none on the box).
-        if (boxStyle) {
-            var boxEnd = htmlStr.indexOf('>');
-            htmlStr = htmlStr.slice(0, boxEnd) + ' style="' + esc(boxStyle) + '"' + htmlStr.slice(boxEnd);
-        }
-        return htmlStr;
+        if (!drop) return n;
+        var copy = {};
+        Object.keys(p).forEach(function (k) { if (drop.indexOf(k) === -1) copy[k] = p[k]; });
+        return { type: n.type, props: copy };
     }
 
+    // The props a content node's toHTML() writes from: the sizing classes
+    // join cssClass once, as in _render_content_html().
+    function _sdContentProps(n, P) {
+        var extra = getNodeExtraClasses(n);
+        if (!extra || !_SD_CONTENT_GLOBAL_ATTRS[n.props.contentType]) return P;
+        var out = {};
+        Object.keys(P).forEach(function (k) { out[k] = P[k]; });
+        out.cssClass = _sdUniqueClasses((P.cssClass || '') + ' ' + extra);
+        return out;
+    }
+
+    function _sdDecodeAttr(s) {
+        return String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    }
+
+    // A content node's own attributes on the tag its toHTML() wrote (an
+    // image's <img>, inside a ratio box too), as the page writes them: one
+    // style attribute (_sdNodeStyle(): font, inline style, the type's own
+    // style, sizing, the Attributes panel's style) where the type wrote its
+    // own, or after the type's attributes; then the id, the title and
+    // tooltip and the Attributes panel's entries. An entry the type wrote
+    // from its props (a link's href, an image's src) is not written twice.
+    // `P`: the props the markup was written from (the code view's carry
+    // {{tokens}} for bound values).
+    function addGlobalAttrs(htmlStr, node, P) {
+        var p = node.props;
+        var ct = p.contentType;
+        if (!_SD_CONTENT_GLOBAL_ATTRS[ct]) return htmlStr;
+        P = P || p;
+        var list = P._attrs;
+        var sizing = getNodeExtraStyle(_sdContentSizingNode(node));
+        // An image in its own ratio box: the box (the first tag) takes the
+        // sizing style, the <img> - the element the operator selected - its
+        // own attributes and style, as on the page and the canvas
+        // (_sdApplyNodeAttrs()).
+        var boxStyle = '';
+        if (ct === 'image' && _sdImgInRatio(p)) { boxStyle = sizing; sizing = ''; }
+        var hasAttrs = p.id || p.title || p.inlineStyle || p.fontFamily || sizing || boxStyle ||
+            (Array.isArray(list) && list.length) || (p.tooltipEnabled && p.tooltipTitle);
+        if (!hasAttrs) return htmlStr;
+        var start = ct === 'image' ? htmlStr.indexOf('<img') : htmlStr.indexOf('<');
+        if (start === -1) return htmlStr;
+        var end = htmlStr.indexOf('>', start);
+        if (end === -1) return htmlStr;
+        var open = htmlStr.slice(start, end);
+        var close = '';
+        if (open.charAt(open.length - 1) === '/') { close = '/'; open = open.slice(0, -1); }
+        var names = [];
+        open.replace(/\s([^\s="]+)(?:="[^"]*")?/g, function (all, name) { names.push(name.toLowerCase()); return all; });
+        // The type's own style is taken out and written back, merged, in
+        // its place.
+        var own = '', styleAt = -1;
+        var sm = /\sstyle="([^"]*)"/i.exec(open);
+        if (sm) {
+            own = _sdDecodeAttr(sm[1]);
+            styleAt = sm.index;
+            open = open.slice(0, sm.index) + open.slice(sm.index + sm[0].length);
+        }
+        var style = _sdNodeStyle({ fontFamily: p.fontFamily, inlineStyle: p.inlineStyle, _attrs: list }, own, sizing);
+        var styleAttr = style ? ' style="' + esc(style) + '"' : '';
+        open = styleAt !== -1 ? open.slice(0, styleAt) + styleAttr + open.slice(styleAt) : open + styleAttr;
+        // What _render_content_html() leaves out of the Attributes panel's
+        // list: an image's own attributes, a link's href and the window and
+        // relationship its props set.
+        var skip = [];
+        if (ct === 'image') skip = ['src', 'alt', 'width', 'height', 'onerror'];
+        if (ct === 'link') skip = ['href', 'target', 'rel'].filter(function (k) { return names.indexOf(k) !== -1; });
+        open += _sdNodeExtraAttrs(p, list, skip);
+        var out = htmlStr.slice(0, start) + open + close + htmlStr.slice(end);
+        if (boxStyle) {
+            var boxEnd = out.indexOf('>');
+            out = out.slice(0, boxEnd) + ' style="' + esc(boxStyle) + '"' + out.slice(boxEnd);
+        }
+        return out;
+    }
 
     // ── Sizing / Tooltip / A11y helpers ──
+    // A Display & Sizing option as text: a string trimmed ('0' is a value),
+    // a non-zero finite number as written, anything else (the number 0,
+    // false, no value) ''.
+    function _sdSizingValue(v) {
+        if (typeof v === 'string') return v.trim();
+        return (typeof v === 'number' && isFinite(v) && v !== 0) ? String(v) : '';
+    }
     // A length typed into the Sizing panel (width, height, their minimum and
     // maximum, the position offsets) as CSS. The panel takes CSS values
     // ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a unit
@@ -23120,32 +23566,38 @@ const StyleDesigner = (function () {
     }
     // Returns extra inline style string from prop-based sizing inputs.
     // The page writes the same declarations in the same order
-    // (_pg_node_sizing_decls(), includes/fn/designer.php).
+    // (_pg_node_sizing_decls(), includes/fn/designer.php): z-index first
+    // (an integer or auto only), the lengths, overflow, the offsets, then a
+    // custom ratio. A bare number is pixels; the string '0' is a value and
+    // the number 0 none.
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
         // An image's own width / height go through _sdImgSizeCss(); every
         // other length through _sdCssLen() (a bare number is pixels).
         var _isImg = n.type === 'content' && p.contentType === 'image';
-        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : (p.width  ? _sdCssLen(p.width)  : '');
-        var _h = _isImg ? _sdImgSizeCss(p, 'height') : (p.height ? _sdCssLen(p.height) : '');
-        var _len = function (css, v) { var c = v ? _sdCssLen(v) : ''; if (c) parts.push(css + ':' + c); };
-        if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
+        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : _sdCssLen(_sdSizingValue(p.width));
+        var _h = _isImg ? _sdImgSizeCss(p, 'height') : _sdCssLen(_sdSizingValue(p.height));
+        var _len = function (css, v) { var c = _sdCssLen(_sdSizingValue(v)); if (c) parts.push(css + ':' + c); };
+        var _raw = function (css, v) { var c = _sdSizingValue(v); if (c) parts.push(css + ':' + c); };
+        var _zi = _sdSizingValue(p.zIndex);
+        if (_zi === 'auto' || /^-?\d+$/.test(_zi)) parts.push('z-index:' + _zi);
         if (_w)          parts.push('width:'       + _w);
         _len('min-width',  p.minWidth);
         _len('max-width',  p.maxWidth);
         if (_h)          parts.push('height:'      + _h);
         _len('min-height', p.minHeight);
         _len('max-height', p.maxHeight);
-        if (p.overflow)  parts.push('overflow:'    + p.overflow);
-        if (p.overflowX) parts.push('overflow-x:'  + p.overflowX);
-        if (p.overflowY) parts.push('overflow-y:'  + p.overflowY);
+        _raw('overflow',   p.overflow);
+        _raw('overflow-x', p.overflowX);
+        _raw('overflow-y', p.overflowY);
         _len('top',    p.top);
         _len('right',  p.right);
         _len('bottom', p.bottom);
         _len('left',   p.left);
-        if (p.aspectRatioEnabled && p.aspectRatio === 'custom' && p.aspectRatioCustom) {
-            parts.push('--bs-aspect-ratio:' + p.aspectRatioCustom);
+        var _arc = _sdSizingValue(p.aspectRatioCustom);
+        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && _arc) {
+            parts.push('--bs-aspect-ratio:' + _arc);
         }
         return parts.join(';');
     }
@@ -23166,33 +23618,38 @@ const StyleDesigner = (function () {
         var cls = (p.cssClass || '').split(/\s+/).filter(function (c) {
             return c && !_SD_SIZING_CLASS_RE.test(c);
         });
-        // Re-add active sizing classes (matches getNodeExtraClasses logic)
-        if (p.srOnly) cls.push('visually-hidden');
+        // Re-add active sizing classes (matches getNodeExtraClasses logic,
+        // in its order)
         if (p.aspectRatioEnabled) {
             cls.push('ratio');
             var _ar = p.aspectRatio || '16x9';
             if (_ar && _ar !== 'custom') cls.push('ratio-' + _ar);
         }
+        if (p.srOnly) cls.push('visually-hidden');
+        if (p.focusRing) cls.push('focus-ring');
         if (p.placeholderMode) {
             cls.push('placeholder');
             if (p.placeholderAnim === 'glow') cls.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') cls.push('placeholder-wave');
         }
-        if (p.focusRing) cls.push('focus-ring');
         p.cssClass = cls.join(' ').trim();
     }
 
+    // The Display & Sizing classes in the order of
+    // _build_node_sizing_attrs(), which writes the saved page: ratio,
+    // visually-hidden, focus-ring, placeholder.
     function getNodeExtraClasses(n) {
         var p = n.props;
         var classes = [];
-        if (p.srOnly) classes.push('visually-hidden');
         if (p.aspectRatioEnabled) {
             classes.push('ratio');
             // Default to 16x9 when toggle is enabled but no preset has been chosen yet —
             // matches the dropdown's UI default so the visual effect is immediate.
-            var _arVal = p.aspectRatio || '16x9';
-            if (_arVal && _arVal !== 'custom') classes.push('ratio-' + _arVal);
+            var _arVal = _sdSizingValue(p.aspectRatio) || '16x9';
+            if (_arVal !== 'custom' && /^\d+x\d+$/.test(_arVal)) classes.push('ratio-' + _arVal);
         }
+        if (p.srOnly) classes.push('visually-hidden');
+        if (p.focusRing) classes.push('focus-ring');
         // Loading-skeleton mode: puts a .placeholder class on the element itself. Bootstrap's
         // animation classes (.placeholder-glow / .placeholder-wave) are traditionally set on the
         // parent, but applying them to the element works in practice — keeps the tree clean
@@ -23202,7 +23659,6 @@ const StyleDesigner = (function () {
             if (p.placeholderAnim === 'glow') classes.push('placeholder-glow');
             else if (p.placeholderAnim === 'wave') classes.push('placeholder-wave');
         }
-        if (p.focusRing) classes.push('focus-ring');
         return classes.join(' ');
     }
 
@@ -25070,6 +25526,10 @@ const StyleDesigner = (function () {
         }
         if (name === 'style') {
             if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
+            // The typed style is the whole attribute: the old inline style
+            // field, printed ahead of the Attributes panel's style
+            // (_sdNodeStyle()), is folded into it.
+            if (p.inlineStyle) p.inlineStyle = '';
             _sdApplyInlineStyle(node, now || '');
             return;
         }
@@ -25078,8 +25538,7 @@ const StyleDesigner = (function () {
         // literal; a literal written over a binding ends it.
         if (_sdCodeApplyBoundValue(node, key || name, now)) return;
         if (key) { p[key] = now || ''; return; }
-        if (p.tooltipEnabled && name === 'title') { p.tooltipTitle = now || ''; return; }
-        if (p.tooltipEnabled && name === 'data-bs-placement') { p.tooltipPlacement = now || 'top'; return; }
+        if (_sdCodeSetTitleAttr(node, name, now)) return;
         if (!Array.isArray(p._attrs)) p._attrs = [];
         var idx = -1;
         for (var i = 0; i < p._attrs.length; i++) {
@@ -25088,6 +25547,37 @@ const StyleDesigner = (function () {
         if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
         else if (idx === -1) p._attrs.push({ name: name, value: now });
         else p._attrs[idx].value = now;
+    }
+
+    // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
+    // to the props they came from: the tooltip's text, placement and switch,
+    // or the plain title. false when the attribute is the Attributes
+    // panel's (an entry of that name, or another toggle's data-bs-toggle),
+    // which the caller then writes to the list.
+    function _sdCodeSetTitleAttr(node, name, now) {
+        var p = node.props;
+        if (name !== 'title' && name !== 'data-bs-placement' && name !== 'data-bs-toggle') return false;
+        var written = {};
+        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        if (written[name]) return false;
+        var tipOn = !!p.tooltipEnabled && !written['data-bs-toggle'];
+        if (name === 'title') {
+            if (tipOn) { p.tooltipTitle = now || ''; return true; }
+            if (p.title && ['content', 'semantic', 'container', 'row', 'col'].indexOf(node.type) !== -1) { p.title = now || ''; return true; }
+            return false;
+        }
+        if (name === 'data-bs-placement') {
+            if (tipOn) { p.tooltipPlacement = now || 'top'; return true; }
+            return false;
+        }
+        // data-bs-toggle="tooltip" is the tooltip's switch; another value
+        // typed over it turns the tooltip off and goes to the list.
+        if (!tipOn || !p.tooltipTitle) return false;
+        if (now === 'tooltip') return true;
+        p.tooltipEnabled = false;
+        return now === undefined;
     }
 
     // The body tag's id and style live where the Attributes panel keeps the
@@ -26334,6 +26824,9 @@ const StyleDesigner = (function () {
             document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
                 x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
             });
+            // Only the position this move found legal may be used by the
+            // drop; one left from an earlier move over the row may not.
+            li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
@@ -26380,6 +26873,7 @@ const StyleDesigner = (function () {
 
         li.addEventListener('dragleave', function() {
             li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
@@ -26387,7 +26881,11 @@ const StyleDesigner = (function () {
             e.stopPropagation();
             li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
 
-            var pos = li._dropPos || 'inside';
+            // No position means the dragover found no legal place on this
+            // row (canDrop() refused inside and beside it): nothing moves.
+            var pos = li._dropPos;
+            li._dropPos = null;
+            if (!pos) return;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -26448,6 +26946,26 @@ const StyleDesigner = (function () {
                 ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
                 : [treeDragNode];
             if (!nodesToMove.length) return;
+
+            // Every moved node must be one canDrop() lets into where it
+            // lands, as on the canvas: the dragover asked only for the
+            // dragged row, and a multi-selection carries others.
+            var _destParent = null;
+            if (pos === 'inside' && node.type === 'shared_ref') {
+                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+            } else if (pos === 'inside') {
+                _destParent = node;
+            } else {
+                var _dInfo = _findParentAnywhere(node);
+                _destParent = _dInfo ? _dInfo.parent : null;
+            }
+            if (!_destParent) return;
+            for (var _mi = 0; _mi < nodesToMove.length; _mi++) {
+                var _mn = nodesToMove[_mi];
+                if (!canDrop({ source: 'node', node: _mn, type: _mn.type }, _destParent)) return;
+            }
 
             saveState();
 
@@ -28139,9 +28657,11 @@ const StyleDesigner = (function () {
         }
 
         // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
+        if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
         _sdIlBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
@@ -28651,6 +29171,7 @@ const StyleDesigner = (function () {
             var _isCartLink        = (_regionType === 'cart_link');
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
             var _isAccountInvoices = (_regionType === 'account_invoices');
+            var _isAccountEmail    = (_regionType === 'account_email');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -28694,6 +29215,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isAccountEmail) {
+                _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
@@ -28950,10 +29473,18 @@ const StyleDesigner = (function () {
                     } else {
                         html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
                         html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
+                        // Counters of the detail page (pg_sw_counter_order_sql()).
+                        html += '<optgroup label="' + esc(_sdT('Statistics')) + '">';
+                        html += '<option value="number_of_views"'    + (selected === 'number_of_views'    ? ' selected' : '') + '>' + esc(_sdT('Number of Views')) + '</option>';
+                        html += '<option value="number_of_comments"' + (selected === 'number_of_comments' ? ' selected' : '') + '>' + esc(_sdT('Number of Comments')) + '</option>';
+                        html += '<option value="recent_views"'       + (selected === 'recent_views'       ? ' selected' : '') + '>' + esc(_sdT('Views in recent days')) + '</option>';
+                        html += '</optgroup>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                             _ff.forEach(function (ff) {
                                 var token = (ff.name && ('' + ff.name).trim()) || ('field_' + ff.id);
+                                // A counter name orders by the counter on the server.
+                                if (_SW_FORM_ORDER_COUNTERS.indexOf(token) !== -1) return;
                                 var label = ff.label || ff.name || ('#' + ff.id);
                                 html += '<option value="' + esc(token) + '"' + (token === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
                             });
@@ -28964,6 +29495,16 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                // Counter orders: the counters are kept per detail page, so
+                // without one the list keeps the date order (say so), and the
+                // recent-views window gets its Days box (1-180, 7 by default,
+                // as pg_sw_recent_views_days()).
+                var _orderCounter = !_isCatalogListing && (_SW_FORM_ORDER_COUNTERS.indexOf(_orderField) !== -1 || _SW_FORM_ORDER_COUNTERS.indexOf(_order2Field) !== -1);
+                var _orderNoDetail = _orderCounter && (_cfg.detail_page_id == null || String(_cfg.detail_page_id) === '' || String(_cfg.detail_page_id) === '0');
+                var _orderRecent = !_isCatalogListing && (_orderField === 'recent_views' || _order2Field === 'recent_views');
+                var _orderDays = parseInt(_cfg.order_recent_days, 10);
+                if (!(_orderDays >= 1)) _orderDays = 7;
+                if (_orderDays > 180) _orderDays = 180;
 
                 // Detail-page select options. The backing list differs by region:
                 //   form_list_view  → page_type='form item view' filtered to those
@@ -29038,7 +29579,8 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>'
+                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
                         '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
@@ -29054,6 +29596,10 @@ const StyleDesigner = (function () {
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
+                    ) : '') +
+                    (_orderRecent ? row(_sdT('Days counted'),
+                        '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
@@ -29570,6 +30116,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
+
+                // ── Filters (form_item_view): which records the page shows ──
+                // Same rows and handlers as the list's filters; a record
+                // outside them is not found, in its feed and sitemap too.
+                systemSection += sect('bi-funnel', _sdT('Filters'),
+                    _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _fivFields || [], _fivFields === null,
+                        _sdT('The page shows a record only when it matches every filter; any other address gets the not-found state, and the record stays out of the page\'s RSS feed and the sitemap. For example, Status is equal to Published keeps drafts off this page. The filters belong to this widget, not to the form: give every other public list and record view of the same form, on any page, the same filter, because a record\'s pretty address opens on every page that shows its form. If a filtered field is renamed or deleted, or the widget is pointed at another form, the page shows no record. E-mails still show the record they were sent for.')));
             }
 
             // ── Records in the translation (form list / detail) ───────────
@@ -29725,7 +30278,8 @@ const StyleDesigner = (function () {
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
-                    )
+                    ) +
+                    _swAccountEmailRow(sid, _cfg, 'reset')
                 );
             }
 
@@ -29754,6 +30308,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
@@ -30231,6 +30786,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
@@ -30290,6 +30846,7 @@ const StyleDesigner = (function () {
                             if (f.rss_field)       flags.push(_sdT('role: ') + (_cfMeta().rss[f.rss_field] || f.rss_field));
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
+                            if (f.rich)            flags.push(_sdT('rich text'));
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -30358,7 +30915,14 @@ const StyleDesigner = (function () {
                         ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>'
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
+                            // Shown and hidden as the address is typed
+                            // (the .sd-cf-s handler); the auto-reply switch
+                            // redraws the panel.
+                            '<div id="sd-cf-silent-warn" style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45;margin-top:4px' + (_cfSettingsSilent(_cfFS) ? '' : ';display:none') + '">' +
+                                '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')) +
+                            '</div>'
                         ) +
                         row(_sdT('Notification subject'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_subject" value="' + esc(_cfFS.notify_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('New form submission')) + '">'
@@ -30468,7 +31032,8 @@ const StyleDesigner = (function () {
                                 _cfF.fields.forEach(function (f) {
                                     _cfFL += '<li><span class="bi bi-dot"></span><strong>' + esc(f.label || f.name) + '</strong> ' +
                                              '<code>' + esc(f.name) + '</code> <span style="color:#888">' + esc(_cfTypeLabel(f.type)) +
-                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') + '</span></li>';
+                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') +
+                                             (_cfFlagOn(f.wysiwyg) ? ' · ' + esc(_sdT('rich text')) : '') + '</span></li>';
                                 });
                                 _cfFL += '</ul>';
                             } else {
@@ -30883,6 +31448,7 @@ const StyleDesigner = (function () {
                         if (cached && (cached.autoNamed || _swIsAutoName(cached.name))) {
                             _swRename(sid, _swAutoName(newType, null, { sid: sid }), null);
                         }
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(sid);
                         if (!_offerStarterTree(sid, newType)) { render(); renderProperties(); }
                     }
                 });
@@ -30903,7 +31469,10 @@ const StyleDesigner = (function () {
                 ]
             }).then(function (choice) {
                 if (choice === 'fork') {
-                    _swForkForThisPage(sid, { regionType: newType }, function () { renderProperties(); });
+                    _swForkForThisPage(sid, { regionType: newType }, function (newId) {
+                        if (newType === 'custom_form') _cfSeedNotifyAddress(newId);
+                        renderProperties();
+                    });
                 } else if (choice === 'all') {
                     applyHere();
                 } else {
@@ -31080,7 +31649,10 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = _swPageVal(this);
-                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; });
+                // Re-render: the counter-order hint depends on it.
+                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
             });
         }
 
@@ -31159,7 +31731,24 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = this.value || 'submitted_date_and_time';
-                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; });
+                // Re-render to show/hide the Days row and the detail-page hint.
+                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
+            });
+        }
+
+        // ── order_recent_days (number) — window of the recent_views order ──
+        var obdaysEl = document.getElementById('sd-sw-orderby-days');
+        if (obdaysEl) {
+            obdaysEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var n = parseInt(this.value, 10);
+                if (!(n >= 1)) n = 7;
+                if (n > 180) n = 180;
+                this.value = n;
+                _patchSysCfg(sid, function (cfg) { cfg.order_recent_days = n; });
             });
         }
 
@@ -31962,6 +32551,8 @@ const StyleDesigner = (function () {
         //   data-sw-cfg-kind      text (default) | int (clamped to min/max) |
         //                         choice (one of data-sw-cfg-choices) | page
         //   data-sw-cfg-list="key" checkboxes that together write an id list
+        //   data-sw-cfg-repaint   the panel is redrawn once saved (a hint
+        //                         under the control depends on the value)
         document.querySelectorAll('#sd-properties [data-sw-cfg]').forEach(function (el) {
             el.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
@@ -31992,7 +32583,8 @@ const StyleDesigner = (function () {
                 // type radios), so the canvas repaints after it.
                 _patchSysCfg(sid, function (cfg) { cfg[key] = v; },
                     (kind === 'choice') ? { afterSave: function () { renderProperties(); render(); } }
-                        : ((kind === 'bool') ? { afterSave: function () { render(); } } : undefined));
+                        : ((kind === 'bool') ? { afterSave: function () { render(); } }
+                            : (this.dataset.swCfgRepaint ? { afterSave: function () { renderProperties(); } } : undefined)));
             });
         });
         document.querySelectorAll('#sd-properties [data-sw-cfg-list]').forEach(function (el) {
@@ -32516,6 +33108,8 @@ const StyleDesigner = (function () {
         document.querySelectorAll('.sd-cf-s').forEach(function (el) {
             el.addEventListener('change', function () {
                 _cfPageSettings()[el.dataset.s] = ('' + el.value).slice(0, 255);
+                var warn = (el.dataset.s === 'notify_email') ? document.getElementById('sd-cf-silent-warn') : null;
+                if (warn) warn.style.display = _cfSettingsSilent(_cfPageSettings()) ? '' : 'none';
             });
         });
         document.querySelectorAll('.sd-cf-sn').forEach(function (el) {
@@ -32605,6 +33199,8 @@ const StyleDesigner = (function () {
                 // The rows moved page; the controls point at them under the
                 // new page's id from now on.
                 _cfAdoptIds(p, res.fields || []);
+                _cfDropFieldCache(from);
+                _cfDropFieldCache(p.page_id);
                 _patchSysCfg(sid, function (c) { c.form_source = 'page'; c.form_id = 0; c.custom_form_page_id = 0; }, {
                     silent: true,
                     afterSave: function () {
@@ -33309,6 +33905,27 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // account_email token palette — mirrors _render_system_widget_account_email()
+    // in widgets_account.php. Filled only when the page is sent as a welcome
+    // or password reset e-mail; anywhere else the values are empty and the
+    // links drop.
+    var SW_ACCOUNT_EMAIL_TOKEN_GROUPS = [
+        { label: _sdT('Member'), tokens: [
+            ['__user_name',        _sdT('Name (full name, else the user name)')],
+            ['__user_first_name',  _sdT('First name (else the user name)')],
+            ['__user_email',       _sdT('Email')],
+            ['__username',         _sdT('User name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
+            ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
+            ['__my_account_url',   _sdT('My account page address (the link drops when there is none)')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',        _sdT('Site name')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -33320,7 +33937,8 @@ const StyleDesigner = (function () {
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
-        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS
+        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -33571,7 +34189,8 @@ const StyleDesigner = (function () {
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
-            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -34080,6 +34699,9 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
+            ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -34238,6 +34860,10 @@ const StyleDesigner = (function () {
             ['has_badge',        _sdT('The member has a badge')],
             ['is_staff',         _sdT('The visitor may open the staff page')],
             ['has_panel_access', _sdT('The user has work in the control panel')]
+        ],
+        account_email: [
+            ['is_welcome',        _sdT('The e-mail welcomes a new account')],
+            ['is_password_reset', _sdT('The e-mail carries a password reset link')]
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
@@ -34466,10 +35092,7 @@ const StyleDesigner = (function () {
         // The semantic element has no font picker or style field: both go
         // into its style attribute, ahead of the one already typed there.
         var style = [];
-        if (p.fontFamily) {
-            var fam = String(p.fontFamily);
-            style.push('font-family:' + ((/\s/.test(fam) || /^[0-9]/.test(fam)) ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif');
-        }
+        if (p.fontFamily) style.push(_sdFontFamilyCss(p.fontFamily));
         if (p.inlineStyle) style.push(String(p.inlineStyle).replace(/[;\s]+$/, ''));
         var attrs = [];
         (p._attrs || []).forEach(function (at) {
@@ -45541,6 +46164,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
@@ -45550,7 +46174,7 @@ const StyleDesigner = (function () {
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -45634,7 +46258,8 @@ const StyleDesigner = (function () {
     function _swTypeDefaults(cfg, newType) {
         cfg.regionType = newType;
         if (newType === 'catalog_listing') {
-            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined) {
+            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined ||
+                _SW_FORM_ORDER_COUNTERS.indexOf(cfg.order_by_field) !== -1) {
                 cfg.order_by_field = 'sort_order';
             }
             // 'Kayıt bulunamadı.' is the pre-i18n default; widgets saved before the
@@ -45786,6 +46411,7 @@ const StyleDesigner = (function () {
         _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
             saveState();
             _swInsertRef(newId, newName, target, insertCtx);
+            if (type === 'custom_form') _cfSeedNotifyAddress(newId);
             render();
             // Refresh the "System" tab so the new widget appears in "In this design".
             // Do NOT refresh the "Shared" tab — system widgets are excluded from there.
@@ -46017,7 +46643,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -46047,10 +46673,17 @@ const StyleDesigner = (function () {
             // so the filter is not rewritten behind the designer's back.
             if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
 
-            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var rawOp = String(f.operator == null ? '' : f.operator);
+            var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
+            // An operator outside the list (a hand-written config) is skipped
+            // by a list and closes a record view, so on a row with a field it
+            // stays visible here instead of reading as "is equal to".
+            var opBad = !opKnown && field !== '';
+            var op = opKnown ? rawOp : 'is equal to';
             var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
-                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
+            if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -46079,7 +46712,7 @@ const StyleDesigner = (function () {
         });
         html +=
             '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
-            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
 
@@ -46190,6 +46823,56 @@ const StyleDesigner = (function () {
             if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
         }
         return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+    }
+
+    // The setting row of an account e-mail: the page sent as the welcome
+    // e-mail of a registration or membership widget (kind 'welcome') or as
+    // the reset e-mail of a forgot password widget (kind 'reset'), its
+    // subject, and a line saying what goes out - or what is missing for the
+    // page to be sent. The keys are the ones pg_account_email_keys() reads.
+    // The page is picked before its Account E-mail widget is added
+    // (otherTabs), so a page that still lacks one is named in the hint.
+    function _swAccountEmailRow(sid, cfg, kind) {
+        var reset   = (kind === 'reset');
+        var pageKey = reset ? 'reset_email_page_id' : 'welcome_email_page_id';
+        var subjKey = reset ? 'reset_email_subject' : 'welcome_email_subject';
+        var cur     = (cfg[pageKey] == null) ? '' : String(cfg[pageKey]);
+        var opts    = _swPageOptions(cur, _allPagesCache, {
+            types: ['account_email'],
+            otherTabs: _sdT('This design — no Account E-mail widget yet'),
+            none: reset ? _sdT('— Built-in text e-mail —') : _sdT('— No welcome e-mail —')
+        });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var tab = null, server = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (_swPageRef(p) === cur) tab = p; });
+        if (/^\d+$/.test(cur) && cur !== '0' && _allPagesCache) {
+            _allPagesCache.forEach(function (p) { if (String(p.page_id) === cur) server = p; });
+        }
+        var name = tab ? (tab.page_name || _sdT('New Page')) : (server ? (server.page_name || ('#' + cur)) : '');
+        // A tab not opened yet has its widgets outside the cache: the saved
+        // page's widget list (list_all_pages) answers for it too.
+        var serverHas = !!(server && Array.isArray(server.widgets) && server.widgets.indexOf('account_email') !== -1);
+        var hint;
+        if ((tab && !_swTabHasWidget(tab, ['account_email']) && !serverHas) ||
+            (!tab && server && Array.isArray(server.widgets) && !serverHas)) {
+            hint = note(_sdT('"{var}" has no Account E-mail widget yet, so the e-mail cannot show the member\'s name or links. Add one to that page.', name), true);
+        } else if (tab && _pgDraftsReady() && tab.page_draft) {
+            hint = note(_sdT('"{var}" is a draft. A draft page is not sent: publish it.', name), true);
+        } else if (reset) {
+            hint = note(_sdT('Sent to the account\'s address when the page shows a link bound to "{var}"; otherwise the built-in text e-mail goes out.', _swBindLabel('account_email', '__set_password_url')), false);
+        } else {
+            hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
+        }
+        return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
+            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
+                ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
+            hint +
+            note(_sdT('The subject is plain text: no data can be bound into it.'), false)
+        );
     }
 
     function _swPageOptions(cur, serverPages, o) {
@@ -48821,6 +49504,24 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        // Last day of the right of withdrawal: 14 days
+                                        // from the last delivery. One note says the
+                                        // date rests on planned dates, the other that
+                                        // the day has passed.
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
+                                            customName: _sdT('Right of Withdrawal'),
+                                            _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Last day of the right of withdrawal:') }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
+                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Estimated; the 14 days run from delivery.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('The right of withdrawal has ended.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),
@@ -49030,6 +49731,59 @@ const StyleDesigner = (function () {
                             _bindings: { text: '__empty_message' } }),
                         loopArea
                     ])
+                ]);
+            }
+
+            case 'account_email': {
+                // The member part of a welcome and a password reset e-mail;
+                // the server keeps the part of the e-mail being sent
+                // (is_welcome / is_password_reset). E-mail programs drop
+                // linked stylesheets, so the texts and the button also carry
+                // inline styles. A colour fallback sits inside var(): a
+                // client that reads var() but blocks the linked stylesheet
+                // would otherwise drop the button's background. The name stands in an element of its own: a
+                // translated page matches whole texts, and a sentence with
+                // the name inside it would no longer match. Mirrors
+                // _render_system_widget_account_email().
+                var aeStyle = function (css) { return [{ name: 'style', value: css }]; };
+                var aeGreeting = function () {
+                    return createNode('semantic', { tag: 'h1', cssClass: 'h4 fw-bold mb-3', customName: _sdT('Greeting'),
+                        _attrs: aeStyle('font-size:22px;font-weight:700;margin:0 0 16px;color:#111827') }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Hello,'), customName: _sdT('Label'),
+                            _attrs: aeStyle('margin-right:4px') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Jane'), customName: _sdT('First Name'),
+                            _bindings: { text: '__user_first_name' } })
+                    ]);
+                };
+                var aePara = function (text, extraCss) {
+                    return createNode('content', { contentType: 'paragraph', text: text, cssClass: 'mb-3',
+                        _attrs: aeStyle('margin:0 0 16px' + (extraCss || '')) });
+                };
+                var aeButton = function (text, token) {
+                    return createNode('semantic', { tag: 'p', cssClass: 'my-4', customName: _sdT('Button'),
+                        _attrs: aeStyle('margin:24px 0') }, [
+                        createNode('content', { contentType: 'link', text: text, href: '#', cssClass: 'btn btn-primary px-4',
+                            _attrs: aeStyle('display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;' +
+                                'background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff)'),
+                            _bindings: { href: token } })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Welcome E-mail'),
+                        _bindings: { eo_visible_if: 'is_welcome' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('Your account is ready.')),
+                        aeButton(_sdT('Go to my account'), '__my_account_url')
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Reset E-mail'),
+                        _bindings: { eo_visible_if: 'is_password_reset' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('We received a request to reset your password.')),
+                        aeButton(_sdT('Set a new password'), '__set_password_url'),
+                        aePara(_sdT('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'),
+                            ';font-size:13px;color:#6b7280')
+                    ]),
+                    createNode('loop_area', {}, [])
                 ]);
             }
 
@@ -49733,7 +50487,8 @@ const StyleDesigner = (function () {
     // step. Their layouts get no Messages block, and one an older layout still
     // carries is dropped on load (prefetchShared()): on the canvas it was a
     // "PHP Messages" box in the middle of the header that the page never shows.
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1 };
+    // An e-mail shows no alerts either (_render_system_widget_account_email()).
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -50217,35 +50972,27 @@ const StyleDesigner = (function () {
         var kidsMark = sink ? sink.ranges.length : 0;
         switch (n.type) {
             case 'container': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '') + (_pEC ? ' ' + _pEC : '');
-                var _ccStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + cc + '"' + _ccStyle + '>\n';
+                var cc = (n.props.fluid ? 'container-fluid' : 'container') + (n.props.cssClass ? ' ' + n.props.cssClass : '');
+                h += pad + _sdGridOpenTag(n, cc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'semantic': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
+                // The attributes as the page writes them (the semantic case
+                // of _render_tree_node()): id, class (cssClass and the sizing
+                // classes, each once), a link's href, target and rel or an
+                // image's src and alt, the title and tooltip, the Attributes
+                // panel's entries, then the style.
                 var stg = n.props.tag || 'section';
-                var _semCls = (n.props.cssClass || '') + (_pEC ? ' ' + _pEC : '');
-                var scls = _semCls ? ' class="' + esc(_semCls.trim()) + '"' : '';
-                var sid2 = n.props.id ? ' id="' + esc(n.props.id) + '"' : '';
-                var sStyleParts = [];
-                if (n.props.inlineStyle) sStyleParts.push(n.props.inlineStyle.replace(/;?\s*$/, ''));
-                if (n.props.fontFamily) sStyleParts.push('font-family:' + n.props.fontFamily);
-                if (_pES) sStyleParts.push(_pES);
-                var sfont = sStyleParts.length ? ' style="' + esc(sStyleParts.join(';')) + '"' : '';
-                var shref = (stg === 'a' && P.href) ? ' href="' + esc(P.href) + '"' : '';
-                var starget = (stg === 'a' && n.props.target) ? ' target="' + esc(n.props.target) + '"' : '';
-                var srel = (stg === 'a' && n.props.rel) ? ' rel="' + esc(n.props.rel) + '"' : '';
-                var sattrs = '';
-                if (P._attrs) P._attrs.forEach(function(a) {
-                    // Skip `id` — always sourced from props.id to avoid duplicate attributes
-                    if (a.name && a.name.trim() && a.name !== 'id') sattrs += ' ' + a.name.trim() + '="' + esc(a.value || '') + '"';
-                });
-                if (n.props.tooltipEnabled && n.props.tooltipTitle) {
-                    sattrs += ' data-bs-toggle="tooltip" data-bs-placement="' + esc(n.props.tooltipPlacement || 'top') + '" title="' + esc(n.props.tooltipTitle) + '"';
-                }
+                var _stgL = stg.toLowerCase();
+                var _semCls = _sdUniqueClasses((n.props.cssClass || '') + ' ' + getNodeExtraClasses(n));
+                var shead = (n.props.id ? ' id="' + esc(n.props.id) + '"' : '') + (_semCls ? ' class="' + esc(_semCls) + '"' : '');
+                var sbuilt = [];
+                if (_stgL === 'a') ['href', 'target', 'rel'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                if (_stgL === 'img') ['src', 'alt'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
+                var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
+                if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
                 var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
                 var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
                 // Whitespace is CONTENT in these two. The pretty-printer's
@@ -50257,7 +51004,7 @@ const StyleDesigner = (function () {
                 // gain is indentation the visitor reads.
                 var _semWsTags = ['pre', 'textarea', 'code'];
                 var _semIsWs = _semWsTags.indexOf(stg.toLowerCase()) !== -1;
-                h += pad + '<' + stg + sid2 + scls + sfont + shref + starget + srel + sattrs + '>';
+                h += pad + '<' + stg + shead + sattrs + '>';
                 if (_semIsVoid) {
                     // Void elements: no content, no closing tag
                     h += '\n';
@@ -50286,23 +51033,17 @@ const StyleDesigner = (function () {
                 }
                 break; }
             case 'row': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
                 var rc = 'row';
                 if (n.props.gutter) rc += ' g-' + n.props.gutter;
                 if (n.props.justify) rc += ' justify-content-' + n.props.justify;
                 if (n.props.align) rc += ' align-items-' + n.props.align;
                 if (n.props.cssClass) rc += ' ' + n.props.cssClass;
-                if (_pEC) rc += ' ' + _pEC;
-                var _rcStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + rc + '"' + _rcStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, rc) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
             case 'col': {
-                var _pEC = getNodeExtraClasses(n); var _pES = getNodeExtraStyle(n);
-                var _colCls = buildColClasses(n.props) + (_pEC ? ' ' + _pEC : '');
-                var _colStyle = _pES ? ' style="' + esc(_pES) + '"' : '';
-                h += pad + '<div class="' + _colCls + '"' + _colStyle + '>\n';
+                h += pad + _sdGridOpenTag(n, buildColClasses(n.props)) + '\n';
                 if (n.children) n.children.forEach(function (c) { h += _sdEmitNode(c, indent + 1, base + h.length, sink); });
                 h += pad + '</div>\n';
                 break; }
@@ -50323,8 +51064,9 @@ const StyleDesigner = (function () {
                 if (cnt && cnt.toHTML) {
                     var _pctChildren = '';
                     if (n.children) n.children.forEach(function(c) { _pctChildren += _sdEmitNode(c, indent + 1, _pctChildren.length, sink); });
-                    var cHtml = cnt.toHTML(P, pad, _pctChildren);
-                    cHtml = addGlobalAttrs(cHtml, n);
+                    var _pcP = _sdContentProps(n, P);
+                    var cHtml = cnt.toHTML(_pcP, pad, _pctChildren);
+                    cHtml = addGlobalAttrs(cHtml, n, _pcP);
                     h += cHtml;
                     if (sink) _sdEmitPlaceKids(sink, kidsMark, h, _pctChildren, base);
                 }
@@ -50365,6 +51107,116 @@ const StyleDesigner = (function () {
         }
         if (rec) rec.to = base + h.length;
         return h;
+    }
+
+    // The opening tag of a grid node (container, row, col), twin of
+    // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
+    // saved page: the classes once each (the Display & Sizing toggles are
+    // in cssClass as well), the style as on any other node, then the id,
+    // the title or tooltip and the panel's other attributes (class, style
+    // and id are never printed from the list). The page's search section
+    // mark (data-pg-search-section) is the Search section switch's and is
+    // left out here as on every other node: typed or removed in the code
+    // view it would change nothing.
+    function _sdGridOpenTag(n, classes) {
+        var p = n.props || {};
+        var style = _sdNodeStyle(p, '', getNodeExtraStyle(n));
+        var out = '<div class="' + esc(_sdUniqueClasses(classes + ' ' + getNodeExtraClasses(n))) + '"';
+        if (style) out += ' style="' + esc(style) + '"';
+        return out + _sdNodeExtraAttrs(p, p._attrs, []) + '>';
+    }
+
+    // A class attribute's value with each class once, in the order first
+    // written. Twin of _pg_unique_classes().
+    function _sdUniqueClasses(classes) {
+        var seen = [];
+        String(classes || '').split(/\s+/).forEach(function (c) {
+            if (c && seen.indexOf(c) === -1) seen.push(c);
+        });
+        return seen.join(' ');
+    }
+
+    // The value of a node's Attributes panel entry (the first of that name,
+    // any case), '' when there is none. Twin of _user_attr_value().
+    function _sdUserAttrValue(list, name) {
+        if (!Array.isArray(list)) return '';
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            if (a && a.name && String(a.name).toLowerCase() === name) {
+                return (a.value === undefined || a.value === null) ? '' : String(a.value);
+            }
+        }
+        return '';
+    }
+
+    // The font picker's family as a declaration: quoted when it holds a
+    // space or starts with a digit, then the sans-serif fallback. A bare
+    // name stays bare, so a generic family (serif) keeps working.
+    function _sdFontFamilyCss(family) {
+        var fam = String(family);
+        var quote = fam.indexOf(' ') !== -1 || /^[0-9]/.test(fam);
+        return 'font-family:' + (quote ? "'" + fam.replace(/'/g, '') + "'" : fam) + ',sans-serif';
+    }
+
+    // The style attribute's value of a content, semantic or grid node,
+    // unescaped: the font, the old inline style field, the type's own
+    // style, the Display & Sizing props, then the Attributes panel's style;
+    // the last wins on a property written twice. Twin of
+    // _compose_inline_style(), which writes the saved page.
+    function _sdNodeStyle(p, own, sizing) {
+        var parts = [];
+        var trim = function (s) { return String(s).replace(/^[; ]+|[; ]+$/g, ''); };
+        if (p.fontFamily) parts.push(_sdFontFamilyCss(p.fontFamily));
+        if (p.inlineStyle) parts.push(String(p.inlineStyle).replace(/[; ]+$/, ''));
+        if (own) parts.push(trim(own));
+        if (sizing) parts.push(trim(sizing));
+        var u = _sdUserAttrValue(p._attrs, 'style');
+        if (u !== '') parts.push(trim(u));
+        return parts.join(';');
+    }
+
+    // The title and the tooltip of a content, semantic or grid node: the
+    // tooltip's text while the tooltip is on, the plain title otherwise,
+    // then data-bs-toggle and data-bs-placement. An element that is another
+    // toggle's (data-bs-toggle in the Attributes panel) gets no tooltip;
+    // title and placement yield to a panel entry of the same name. Twin of
+    // _pg_node_title_attrs().
+    function _sdNodeTitleAttrs(p, list) {
+        var written = {};
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (a && a.name) written[String(a.name).toLowerCase()] = true;
+        });
+        var tip = !!(p.tooltipEnabled && p.tooltipTitle) && !written['data-bs-toggle'];
+        var title = tip ? p.tooltipTitle : p.title;
+        var out = '';
+        if (title && !written.title) out += ' title="' + esc(String(title)) + '"';
+        if (tip) {
+            out += ' data-bs-toggle="tooltip"';
+            if (!written['data-bs-placement']) out += ' data-bs-placement="' + esc(p.tooltipPlacement || 'top') + '"';
+        }
+        return out;
+    }
+
+    // The id, the title and tooltip, then the Attributes panel's entries
+    // (`list`, the node's _attrs) of a content, semantic or grid node.
+    // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
+    // the id out. class, style and id are never written from the list.
+    // Twin of _render_extra_attrs($props, $skip, true), less the search
+    // section mark the page adds after the id; a copy of that mark typed
+    // into the panel of a search section is left out as the page leaves it.
+    function _sdNodeExtraAttrs(p, list, skip) {
+        var out = '';
+        if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';
+        out += _sdNodeTitleAttrs(p, list);
+        (Array.isArray(list) ? list : []).forEach(function (a) {
+            if (!a || !a.name) return;
+            var name = String(a.name), lname = name.toLowerCase();
+            if (lname === 'class' || lname === 'style' || lname === 'id' || skip.indexOf(lname) !== -1) return;
+            if (lname === 'data-pg-search-section' && p.id && p.searchSection) return;
+            var val = (a.value === undefined || a.value === null) ? '' : String(a.value);
+            out += ' ' + esc(name) + '="' + esc(val) + '"';
+        });
+        return out;
     }
 
     // Children written into a component's output (see _sdEmitNode): their
@@ -55902,7 +56754,16 @@ const StyleDesigner = (function () {
                 var p = _pgPageByKey(f.key) || _pgPageByKey('p' + f.page_id);
                 if (!p || !(f.page_id > 0)) return;
                 _cfAdoptIds(p, Array.isArray(f.fields) ? f.fields : []);
+                _cfDropFieldCache(f.page_id);
                 p.formSettings = (f.settings && typeof f.settings === 'object') ? f.settings : {};
+                // A page form that e-mails nobody is published as asked; it
+                // is said once per page and editor session, not blocked.
+                if (p.formSettings.exists && _cfSettingsSilent(p.formSettings) && !_cfSilentWarned[f.page_id] &&
+                    _pgTreeOf(p) && _cfPageHasOwnForm(_pgTreeOf(p))) {
+                    _cfSilentWarned[f.page_id] = true;
+                    sdToast('<strong>' + esc(p.page_title || p.page_name || _sdT('new page')) + '</strong>: ' +
+                            esc(_sdT('This form notifies nobody: no notification address and no auto-reply.')), 'warning', 8000);
+                }
             });
         }
         if (data && data.style_id && _design) _design.styleId = data.style_id;
@@ -56987,9 +57848,12 @@ const StyleDesigner = (function () {
     function _paletteInsert(type, extra) {
         var target = selectedNode || tree;
         if (!target) return;
-        if (!canDrop({ type: type }, target)) {
+        // The same payload a palette drag carries, so the drop rules see
+        // what the item holds (_sdDragTree()), not its type alone.
+        var _pd = { source: 'palette', type: type, extra: extra || {} };
+        if (!canDrop(_pd, target)) {
             target = tree;
-            if (!canDrop({ type: type }, target)) return;
+            if (!canDrop(_pd, target)) return;
         }
         saveState();
         var n = createFromPalette(type, extra || {});
@@ -58313,14 +59177,16 @@ const StyleDesigner = (function () {
                 var hintIcon  = this.dataset.icon || '';
                 var target = selectedNode || tree;
                 if (!target) return;
-                if (!canDrop({ type: type }, target)) {
+                // The same payload a palette drag carries (see _paletteInsert()).
+                var _pd = { source: 'palette', type: type, extra: extra };
+                if (!canDrop(_pd, target)) {
                     if (target.children && target.children.length) {
                         for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop({ type: type }, target.children[i])) { target = target.children[i]; break; }
+                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
                         }
                     }
-                    if (!canDrop({ type: type }, target)) target = tree;
-                    if (!canDrop({ type: type }, target)) return;
+                    if (!canDrop(_pd, target)) target = tree;
+                    if (!canDrop(_pd, target)) return;
                 }
                 saveState();
                 var n = createFromPalette(type, extra);
@@ -58423,30 +59289,126 @@ const StyleDesigner = (function () {
     }
 
     // ========================= HTML VALIDATION =========================
+    // Whether a text prop holds words a reader hears once markup and &nbsp;
+    // are taken out.
+    function _sdAuditHasText(t) {
+        return typeof t === 'string' && t.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim() !== '';
+    }
+
+    // An attribute in the node's raw attributes with a value that is not blank.
+    function _sdAuditAttr(node, name) {
+        var v = _sdAttr(node, name);
+        return v !== null && v.trim() !== '';
+    }
+
+    // Whether a node gives the link or button it sits in a name, the way the
+    // emitter prints it: its own text prop (a semantic <a>/<button> writes
+    // props.text after its children, a content link before them), a bound
+    // text, an aria-label / aria-labelledby / title, an image's alt, or a
+    // child that does. A visually hidden span counts (it is read); an icon
+    // or anything under aria-hidden="true" does not. A shared component, a
+    // raw HTML block and content whose markup the server writes when the page
+    // is served (custom PHP, the form's messages, applied offers, the catalog
+    // breadcrumb, variant choices, the product gallery) are not read from the
+    // tree, so they are taken as named.
+    function _sdAuditHasName(node) {
+        if (!node || !node.props) return false;
+        var p = node.props;
+        if (_sdAttr(node, 'aria-hidden') === 'true') return false;
+        if (_sdAuditAttr(node, 'aria-label') || _sdAuditAttr(node, 'aria-labelledby') || _sdAuditAttr(node, 'title')) return true;
+        if (p.tooltipEnabled && String(p.tooltipTitle || '').trim() !== '') return true;
+        if (p._bindings && p._bindings.text) return true;
+        if (node.type === 'shared_ref') return true;
+        if (node.type === 'content' && ['custom_html', 'custom_php', 'messages', 'applied_offers', 'breadcrumb', 'variant_attr', 'carousel'].indexOf(p.contentType) !== -1) return true;
+        if ((node.type === 'content' && p.contentType === 'image') || (node.type === 'semantic' && p.tag === 'img')) {
+            return !!(p._bindings && p._bindings.alt) || (typeof p.alt === 'string' && p.alt.trim() !== '') || _sdAuditAttr(node, 'alt');
+        }
+        if (node.type === 'content' && p.contentType === 'icon') return false;
+        if (_sdAuditHasText(p.text)) return true;
+        return !!(node.children && node.children.some(_sdAuditHasName));
+    }
+
+    // Whether an image carries an alt decision. Any alt string is one: words
+    // describe the picture, and alt="" says it is decorative (the duplicated
+    // marquee copy, a thumbnail beside its headline, an avatar beside the
+    // name), which is also how the server's SEO check reads it. So is a bound
+    // alt, role="presentation" / "none", and aria-hidden="true" on the image
+    // or an ancestor (ctx._ariaHidden, kept by validateTree()). An image with
+    // no alt prop at all, such as an imported <img> without the attribute,
+    // has none, and neither has one that still carries the palette image's
+    // placeholder alt (CONTENT.image.defaultProps.alt, 'Image') or its
+    // translation in the editor's language: nobody wrote it.
+    function _sdAuditAltDecided(node, ctx) {
+        var p = node.props;
+        if (p._bindings && p._bindings.alt) return true;
+        var role = (_sdAttr(node, 'role') || '').trim().toLowerCase();
+        if (role === 'presentation' || role === 'none') return true;
+        if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return true;
+        if (typeof p.alt !== 'string') return false;
+        var alt = p.alt.trim().toLowerCase();
+        return alt === '' || (alt !== 'image' && alt !== _sdT('Image').trim().toLowerCase());
+    }
+
+    // Whether a printed type attribute makes a <button> or an <input> submit
+    // its form, as the browser reads it: the keyword is matched in any case
+    // but not trimmed, and a <button> whose type is missing, blank or not a
+    // keyword falls back to the Submit state. type is null when the element
+    // prints none.
+    function _sdAuditTypeSubmits(tag, type) {
+        var t = type === null ? '' : type.toLowerCase();
+        if (tag === 'button') return t !== 'button' && t !== 'reset';
+        return t === 'submit' || t === 'image';
+    }
+
+    // Whether a node is a control that submits the form it sits in, as the
+    // renderer prints it: a <button> (a semantic node, or a text node drawn
+    // with the button tag, which print only the _attrs type) or an <input>
+    // (semantic, _attrs type), and a Button component drawn as <button> or
+    // <input>, whose type is btnType ("button" when it has none; drawn as a
+    // link it does not submit). The old content button has no renderer.
+    function _sdAuditSubmits(n) {
+        var p = n.props || {};
+        if (n.type === 'semantic' || (n.type === 'content' && p.contentType === 'heading')) {
+            var tag = String(p.tag || '').toLowerCase();
+            if (tag === 'button' || (tag === 'input' && n.type === 'semantic')) return _sdAuditTypeSubmits(tag, _sdAttr(n, 'type'));
+            return false;
+        }
+        if (n.type === 'component' && p.componentType === 'btn' && (p.btnElement === 'button' || p.btnElement === 'input')) {
+            return _sdAuditTypeSubmits(p.btnElement, p.btnType == null ? 'button' : String(p.btnType));
+        }
+        return false;
+    }
+
+    // Whether a form holds a control that submits it, at any depth.
+    function _sdAuditFormHasSubmit(node) {
+        return !!(node.children && node.children.some(function (n) {
+            return _sdAuditSubmits(n) || _sdAuditFormHasSubmit(n);
+        }));
+    }
+
     var _validationRules = [
         { id: 'img_alt', label: _sdT('img alt is missing'),
-            check: function(node) {
-                return node.type === 'content' && node.props.contentType === 'image' && !node.props.alt;
+            check: function(node, ctx) {
+                return node.type === 'content' && node.props.contentType === 'image' && !_sdAuditAltDecided(node, ctx);
             }
         },
         { id: 'empty_btn', label: _sdT('Empty button/link'),
-            check: function(node) {
-                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link');
+            check: function(node, ctx) {
+                var isContentBtn = node.type === 'content' && (node.props.contentType === 'button' || node.props.contentType === 'link' ||
+                    (node.props.contentType === 'heading' && /^(a|button)$/i.test(String(node.props.tag || ''))));
                 var isSemBtn = node.type === 'semantic' && (node.props.tag === 'button' || node.props.tag === 'a');
                 if (!isContentBtn && !isSemBtn) return false;
-                // A control that carries an accessible name is not empty, even
-                // with no text of its own. A screen reader announces aria-label
-                // / aria-labelledby / title, which is the whole point of this
-                // rule; flagging such a control tells the designer to fix
-                // something that is already correct, and a dismiss button has
-                // no text to add in the first place.
-                if (_sdAttr(node, 'aria-label') || _sdAttr(node, 'aria-labelledby') || _sdAttr(node, 'title')) return false;
+                // A control hidden from assistive technology announces no
+                // name, so it cannot be an empty one.
+                if (_sdAttr(node, 'aria-hidden') === 'true' || (ctx && ctx._ariaHidden > 0)) return false;
                 // Bootstrap's dismiss button is an icon drawn by .btn-close and
                 // is emitted by the alert, modal, offcanvas and toast blocks —
                 // the designer neither writes its text nor can.
                 if (/(^|\s)btn-close(\s|$)/.test(node.props.cssClass || '')) return false;
-                if (isContentBtn) return !node.props.text;
-                return !node.children || !node.children.length;
+                // A control with an accessible name is not empty: its text
+                // prop, an aria-label / aria-labelledby / title, or a child
+                // that is read (an icon with a visually hidden label).
+                return !_sdAuditHasName(node);
             }
         },
         { id: 'dup_id', label: _sdT('Duplicate id'),
@@ -58508,13 +59470,7 @@ const StyleDesigner = (function () {
         { id: 'form_no_submit', label: _sdT('The form has no submit button'),
             check: function(node) {
                 if (node.type !== 'semantic' || node.props.tag !== 'form') return false;
-                function hasSubmit(n) {
-                    if (n.type === 'content' && n.props.contentType === 'button') return true;
-                    if (n.type === 'semantic' && n.props.tag === 'button') return true;
-                    if (n.children) return n.children.some(hasSubmit);
-                    return false;
-                }
-                return !hasSubmit(node);
+                return !_sdAuditFormHasSubmit(node);
             }
         },
         // ── SEO rules ──────────────────────────────────────────────────
@@ -58533,6 +59489,15 @@ const StyleDesigner = (function () {
         { id: 'heading_empty', label: _sdT('Empty heading'), seo: 'heading_empty',
             check: function(node) {
                 if (node.type === 'content' && node.props.contentType === 'heading') {
+                    // A text node is a heading only when it prints as one.
+                    // The renderer draws it with its tag, h2 when the tag is
+                    // missing or malformed; drawn as a button, span or div
+                    // (carousel indicators and arrows, a dismiss button, a
+                    // badge) it is a control or a label, and an empty
+                    // control is empty_btn's to report.
+                    var tag = String(node.props.tag == null ? '' : node.props.tag);
+                    if (!/^[a-z][a-z0-9]*$/i.test(tag)) tag = 'h2';
+                    if (!/^h[1-6]$/i.test(tag)) return false;
                     return !String(node.props.text || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim() && !(node.props._bindings && node.props._bindings.text);
                 }
                 if (node.type === 'semantic' && /^h[1-6]$/.test(node.props.tag || '')) {
@@ -58890,7 +59855,7 @@ const StyleDesigner = (function () {
 
     function validateTree(root) {
         var issues = [];
-        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {} };
+        var ctx = { ids: {}, lastHeading: 0, inInteractive: false, _intStack: 0, _labelFor: {}, _ariaHidden: 0 };
         // <label for="…"> targets, so an input labelled from elsewhere is not
         // flagged. One pass up front: the label can come after the input.
         (function collect(n) {
@@ -58921,7 +59886,12 @@ const StyleDesigner = (function () {
                     issues.push({ rule: rule.id, label: label, node: node, nodeLabel: getNodeLabel(node), seo: rule.seo || '' });
                 }
             });
+            // The rules see whether an ancestor is hidden from assistive
+            // technology (aria-hidden="true"), like the marquee's copy group.
+            var hides = _sdAttr(node, 'aria-hidden') === 'true';
+            if (hides) ctx._ariaHidden++;
             if (node.children) node.children.forEach(traverse);
+            if (hides) ctx._ariaHidden--;
             _validationRules.forEach(function(rule) { if (rule.exit) rule.exit(node, ctx); });
         }
         if (root.children) root.children.forEach(traverse);

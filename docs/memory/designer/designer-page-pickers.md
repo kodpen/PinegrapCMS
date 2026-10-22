@@ -16,5 +16,6 @@ description: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<
 
 ## Which pickers belong to membership widgets?
 - `redirect_page_id`, `forgot_password_page_id`, `register_page_id`, `login_page_id`; `types` filters tabs that carry the relevant widget. See the membership widget files.
+- `welcome_email_page_id` / `reset_email_page_id` (`_swAccountEmailRow()`): `types: ['account_email']` plus `otherTabs`, so the page is picked before its widget exists.
 
 Related: docs/memory/designer/system-widget-type-and-name.md, docs/memory/designer/member-widgets-tokens-and-fields.md

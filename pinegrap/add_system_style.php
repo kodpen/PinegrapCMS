@@ -95,8 +95,9 @@ if (!$_POST) {
             'theme_id'                          => $liveform->get_field_value('theme_id'),
             'collection'                        => $liveform->get_field_value('collection'),
             'social_networking_position'        => $liveform->get_field_value('social_networking_position'),
-            // A template made from a design brings the design's assets;
-            // the editor's hidden fields carry them to the first save.
+            // A template brings its assets (a template made from a design
+            // the design's, a shipped one its User Styles and fonts); the
+            // editor's hidden fields carry them to the first save.
             'additional_body_classes'           => $tpl_asset('body_classes'),
             'style_head'                        => $tpl_asset('head'),
             'style_empty_cell_width_percentage' => '',

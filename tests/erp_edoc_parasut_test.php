@@ -706,6 +706,59 @@ function test_erp_edoc_parasut_written_matches()
 	pg_assert_same(array(), erp_edoc_parasut_written_matches($body, array('data' => array('attributes' => array('description' => '', 'issue_date' => '2026-10-19'))), '7001'));
 	pg_assert_same(array(), erp_edoc_parasut_written_matches(null, $payload, '7001'));
 	pg_assert_same(array('5001'), array_map('strval', array_keys(erp_edoc_parasut_written_matches(array('data' => array($item('5001', array('issue_date' => '2026-10-19T00:00:00+03:00')))), $payload, '7001'))), 'a date with a time');
+
+	// A record that is already an e-document (the issued one of a rejected
+	// invoice sent again) and the row's own earlier record are not the
+	// unanswered try's.
+	$issued = $item('5006', array());
+	$issued['relationships']['active_e_document'] = array('data' => array('id' => '8001', 'type' => 'e_archives'));
+	$no_document = $item('5007', array());
+	$no_document['relationships']['active_e_document'] = array('data' => null);
+	$body = array('data' => array($issued, $no_document, $item('5008', array())));
+	pg_assert_same(array('5007'), array_map('strval', array_keys(erp_edoc_parasut_written_matches($body, $payload, '7001', '5008'))), 'issued and own earlier records are skipped');
+	pg_assert_same(array('5007', '5008'), array_map('strval', array_keys(erp_edoc_parasut_written_matches($body, $payload, '7001'))), 'no id to skip');
+}
+
+// The unanswered-try mark keeps the date and contact the request carried, so
+// the search does not follow a redate or a party fix made in between.
+function test_erp_edoc_parasut_unsure_mark()
+{
+	$mark = erp_edoc_parasut_unsure_mark('2026-10-19', '7001');
+	pg_assert_same('?2026-10-19:7001', $mark);
+	pg_assert_same(array('date' => '2026-10-19', 'contact_id' => '7001'), erp_edoc_parasut_unsure_read($mark), 'round trip');
+	pg_assert_same(array('date' => '', 'contact_id' => ''), erp_edoc_parasut_unsure_read('?'), 'a bare mark from before');
+	pg_assert_same(null, erp_edoc_parasut_unsure_read(''), 'no mark');
+	pg_assert_same(null, erp_edoc_parasut_unsure_read('5001'), 'a real id');
+	pg_assert_same(null, erp_edoc_parasut_unsure_read(null));
+
+	pg_assert_true(strlen(erp_edoc_parasut_unsure_mark('2026-10-19', str_repeat('9', 40))) <= 32, 'fits the column');
+	pg_assert_same(array('date' => '2026-10-19', 'contact_id' => ''), erp_edoc_parasut_unsure_read(erp_edoc_parasut_unsure_mark('2026-10-19', str_repeat('9', 40))), 'a contact id that would be cut is left out, not cut');
+	pg_assert_same(array('date' => '', 'contact_id' => '7001'), erp_edoc_parasut_unsure_read(erp_edoc_parasut_unsure_mark('19.10.2026', '7001')), 'a malformed date is left out');
+	pg_assert_same(array('date' => '', 'contact_id' => '7001'), erp_edoc_parasut_unsure_read('?2026-1-9:7001'), 'a malformed stored date is ignored');
+	pg_assert_same(array('date' => '2026-10-19', 'contact_id' => ''), erp_edoc_parasut_unsure_read('?2026-10-19:70a1'), 'a malformed stored contact is ignored');
+}
+
+// Only a draft waiting at Paraşüt is handed to GİB: an error row that keeps
+// a record whose total is not the ERP's, a rejected or a sent one is not.
+function test_erp_edoc_parasut_submit_refusal()
+{
+	pg_assert_same('', erp_edoc_parasut_submit_refusal(array('edoc_status' => 'created')));
+
+	foreach (array('error', 'rejected', 'sent', 'accepted', 'none', '') as $status) {
+		pg_assert_true(erp_edoc_parasut_submit_refusal(array('edoc_status' => $status)) !== '', $status);
+	}
+
+	pg_assert_true(erp_edoc_parasut_submit_refusal(array()) !== '', 'no status');
+}
+
+// The search answer: more pages than were read and nothing found is not
+// "never written".
+function test_erp_edoc_parasut_search_incomplete()
+{
+	pg_assert_false(erp_edoc_parasut_search_incomplete(array(), 3, 3), 'every page read');
+	pg_assert_false(erp_edoc_parasut_search_incomplete(array(), 1, 1));
+	pg_assert_true(erp_edoc_parasut_search_incomplete(array(), 20, 21), 'pages left unread');
+	pg_assert_false(erp_edoc_parasut_search_incomplete(array('5001' => array()), 20, 21), 'found among the newest');
 }
 
 // An e_invoice_inboxes answer: every mailbox once, and the registered name

@@ -9,6 +9,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - A ZIP is measured before it is read (`pg_zip_import_open()`); every entry is read by its own index through `pg_zip_entry_contents()`, a page at most 8 MB: docs/memory/platform/zip-entry-declared-size.md.
 - Inline `<svg>` is taken raw BEFORE parsing (libxml nests `<path/>`): `bi-*` class -> icon node, otherwise `.svg` file + image node. NEVER produce custom_html.
 - `srcset`/`sizes` are not carried to the image (it would override src).
+- An `<img>` without an alt attribute gets no `alt` prop (the audit asks for one); `alt=""` is kept as the decorative statement.
 - Page names are fixed before translation (`$ctx->page_names`); cross-page links resolve from there.
 
 ## How is validation done?
@@ -16,6 +17,7 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - `api.php designer/seo_check` -> `pg_seo_evaluate_meta` + `pg_seo_analyze_html('fragment')` + `pg_seo_compose`; writes nothing. Save runs `pg_seo_analyze_record` + `pg_seo_recalculate`.
 - When adding a node-level SEO check, write its client twin too: a server finding cannot be mapped to a node.
 - Text contrast is measured on the canvas, not from the tree: docs/memory/designer/designer-audit-contrast.md.
+- Empty link/button, image alt, form submit and empty heading rules (what counts as a name, an alt decision, a submit, a heading): docs/memory/designer/designer-audit-tree-rules.md.
 
 ## How is the theme stored?
 - A theme is a `files` row (`design=1`). The "theme" row in the Styles list does not enter `cssFiles`; it is read from `select[name=theme_id]` (`_sdActiveTheme`).
