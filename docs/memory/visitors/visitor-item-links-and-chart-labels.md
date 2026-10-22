@@ -5,10 +5,10 @@ description: How visitor report rows build item URLs, why chart and tooltip numb
 
 ## How is an item link built in the visitor report?
 The recorded `page_name` is the template that SHOWS the item, not the item's address. Used alone the panel links to something like `/blog-post`. `pg_visitor_label_content_rows()` builds three shapes:
-- Product / group: `{recorded page}/{address_name}` (pattern from `get_catalog.php:1088`).
-- Form, pretty URLs on: `{list page}/{address_name}` (`get_form_list_view.php:1407`).
-- Form, pretty URLs off: `{recorded page}?r={reference_code}` (`get_form_list_view.php:1411`).
-- With pretty URLs the recorded page CANNOT be used: `get_page.php:122` turns the page name into the form item view, but the link must target the LIST page (`/blog/...`, not `/blog-post/...`).
+- Product / group: `{recorded page}/{address_name}` (pattern from `get_catalog.php`).
+- Form, pretty URLs on: `{list page}/{address_name}` (`get_form_list_view.php`).
+- Form, pretty URLs off: `{recorded page}?r={reference_code}` (`get_form_list_view.php`).
+- With pretty URLs the recorded page CANNOT be used: `get_page.php` turns the page name into the form item view, but the link must target the LIST page (`/blog/...`, not `/blog-post/...`).
 - "Pretty URLs on" is two conditions: `custom_form_pages.pretty_urls = 1` AND at least one `form_fields.rss_field = 'title'` field (the address name derives from it). Same rule as `check_if_pretty_urls_are_enabled()`, but one query per result set, not per row.
 
 ## Why can chart and tooltip disagree?

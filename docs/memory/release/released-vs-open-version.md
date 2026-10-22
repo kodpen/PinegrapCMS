@@ -4,12 +4,12 @@ description: Released versions are closed, unreleased ones open: where the statu
 ---
 
 ## Where do I find the released and the open version?
-- `docs/memory/release/release-status.md`. Look there before adding anything new.
+- `docs/memory/release/release-status.md`. Look there before adding anything new; if you cannot read it, ask instead of guessing.
 
 ## What is closed and what is open?
 - The criterion is release, not having run on a dev install.
-- A number that shipped to servers is closed: do not touch its `$versions` row, its `changelog.txt` heading, or the meaning of the DB change its `upgrade_to_*` function brings.
-- An unreleased number is open: add the new schema step as a sub-step of that version's entry (e.g. `upgrade_2026_4_4_<topic>()`); the changelog section describes the final state (docs/memory/release/upgrade-changelog-rules.md).
+- A number that shipped to servers is closed: do not touch its `$versions` row, its `changelog.txt` heading, or the meaning of the DB change its `upgrade_to_*` function brings. Its function body may still be fixed for the sites that have not run it yet: `upgrade_to_2022_2()` got `install_drop_column_default()` for MySQL 5.7 (issue #464, PR #470; `database-server-compatibility.md`).
+- An unreleased number is open: add the new schema step as a sub-step of that version's entry (e.g. `upgrade_2026_11_0_<topic>()`); the changelog section describes the final state (docs/memory/release/upgrade-changelog-rules.md).
 - Never open a new number while an unreleased version exists. Reason: the old rule ("a number that ran once on dev is also closed") piled up eight numbers after 2026.4.3; on 2026-08-28 they were collapsed into one 2026.4.4 and the rule changed.
 
 ## What does the upgrade loop compare?

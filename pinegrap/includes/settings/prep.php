@@ -86,7 +86,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $signin_apple_app = $signin_ready ? pg_connect_app('apple') : null;
     $proxy_address = $row['proxy_address'];
     $badge_label = $row['badge_label'];
-    $timezone = $row['timezone'];
+    // An old zone name stays selected as its current option.
+    $timezone = pg_timezone_list_value($row['timezone']);
     $date_format = $row['date_format'];
     $time_format = $row['time_format'];
     $organization_name = $row['organization_name'];
@@ -1132,7 +1133,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // Check to see if the server's timezone is one of the timezones in our pick list
     // and get the label if it exists.
-    $server_timezone_label = array_search(SERVER_TIMEZONE, $timezones);
+    $server_timezone_label = array_search(pg_timezone_list_value(SERVER_TIMEZONE), $timezones);
 
     // If a label could not be found then just use the actual server's timezone for the label.
     if (!$server_timezone_label) {

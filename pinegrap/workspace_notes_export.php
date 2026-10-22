@@ -42,6 +42,12 @@ session_write_close();
  */
 function ws_notes_export_send($name, $mime, $content = '', $path = '')
 {
+    // A file that is not there is an error page, not an empty download;
+    // checked before the attachment headers are set.
+    if (($path !== '') && !is_file($path)) {
+        output_error(lang('The file could not be saved.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // The name goes out twice: ASCII for old browsers, UTF-8 for the rest.
     $ascii = preg_replace('/[^\x20-\x7E]/', '_', str_replace('"', '', $name));
 

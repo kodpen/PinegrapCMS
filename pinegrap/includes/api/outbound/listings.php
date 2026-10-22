@@ -213,13 +213,15 @@ function mp_listing_articles($account_id, $limit = 300) {
 			marketplace_categories.path AS category_path
 		FROM product_groups
 		INNER JOIN products_groups_xref ON products_groups_xref.product_group = product_groups.id
+		INNER JOIN products ON products.id = products_groups_xref.product
 		LEFT JOIN marketplace_category_map
 			ON  (marketplace_category_map.group_id = product_groups.id)
 			AND (marketplace_category_map.account_id = '" . e($account_id) . "')
 		LEFT JOIN marketplace_categories
 			ON  (marketplace_categories.remote_id = marketplace_category_map.remote_category_id)
 			AND (marketplace_categories.provider = (SELECT provider FROM marketplace_accounts WHERE id = '" . e($account_id) . "'))
-		WHERE product_groups.id IN (SELECT product_group_id FROM product_groups_attributes_xref)
+		WHERE product_groups.id IN (SELECT product_group_id FROM product_groups_attributes_xref)"
+			. pg_catalog_bin_live_sql('products') . "
 		GROUP BY product_groups.id
 		ORDER BY product_groups.name ASC
 		LIMIT " . (int)$limit);
@@ -230,10 +232,18 @@ function mp_listing_articles($account_id, $limit = 300) {
 
 // One article's rows, ready for the connector.
 //
-// Answers array('ok', 'items', 'error'). Refuses rather than sending something
+// Answers array('ok', 'items', 'error'), and 'retry' when the refusal is a
+// momentary failure worth trying again. Refuses rather than sending something
 // the marketplace will reject per SKU hours later: a missing category, a
-// mandatory attribute nobody filled in, or a product with no picture are all
-// things this shop can see before the call is made.
+// category whose attributes could not be read, a mandatory attribute nobody
+// filled in, or a product with no picture are all things this shop can see
+// before the call is made.
+//
+// A product in the catalogue's Recycle Bin keeps its products_groups_xref rows
+// so that restoring it puts it back where it was, but the shop no longer sells
+// it. It is left out here, from the queue and from the article's variant
+// count: sent, it would open a sold-out variant (binning switches it off) that
+// stays on the marketplace after the bin is emptied.
 function mp_listing_items($account, $group_id) {
 
 	$account_id = (int) $account['id'];
@@ -263,9 +273,16 @@ function mp_listing_items($account, $group_id) {
 
 	$chosen = is_array($chosen) ? $chosen : array();
 
-	$definitions = mp_category_attributes($account, $map['remote_category_id']);
+	$definitions = mp_listing_definitions(mp_category_attributes($account, $map['remote_category_id']));
 
-	$definitions = $definitions['ok'] ? (array)$definitions['data']['attributes'] : array();
+	if (!$definitions['ok']) {
+
+		return array('ok' => false, 'items' => array(), 'error' => $definitions['error'],
+			'retry' => $definitions['retry']);
+
+	}
+
+	$definitions = $definitions['definitions'];
 
 	// Everything the category insists on, that is not something the variants
 	// themselves answer, has to have been filled in on the mapping screen.
@@ -296,7 +313,8 @@ function mp_listing_items($account, $group_id) {
 			products.enabled, products.taxable, products.tax_rate, products.image_name, products.brand
 		FROM products
 		INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
-		WHERE products_groups_xref.product_group = '" . e($group_id) . "'
+		WHERE products_groups_xref.product_group = '" . e($group_id) . "'"
+			. pg_catalog_bin_live_sql('products') . "
 		ORDER BY products.id ASC");
 
 	if (!$products) {
@@ -409,6 +427,34 @@ function mp_listing_items($account, $group_id) {
 	}
 
 	return array('ok' => true, 'items' => $items, 'error' => '');
+
+}
+
+// The category's attribute definitions, out of what mp_category_attributes()
+// answered. Answers array('ok', 'definitions', 'error', 'retry').
+//
+// A failed read (a timeout, a 5xx, the per-minute limit) is not a category
+// without attributes. Taken as one, the mandatory check has nothing to check
+// and the variant attribute is never sent, so the article goes out with no
+// attributes at all: the marketplace refuses it per SKU hours later, or lists
+// the variants as one and the same thing. The cache makes this matter only on
+// the first listing of a category and after a forced refresh. 'retry' carries
+// the connector's own verdict, so a momentary failure is tried again by the
+// queue and a refusal is not.
+function mp_listing_definitions($loaded) {
+
+	if (empty($loaded['ok'])) {
+
+		return array('ok' => false, 'definitions' => array(), 'retry' => !empty($loaded['retry']),
+			'error' => lang(array(
+				'string' => 'The attributes of this category could not be read from the marketplace: {var:1}',
+				'vars'   => array(isset($loaded['error']) ? (string)$loaded['error'] : '')
+			)));
+
+	}
+
+	return array('ok' => true, 'error' => '', 'retry' => false,
+		'definitions' => isset($loaded['data']['attributes']) ? (array)$loaded['data']['attributes'] : array());
 
 }
 
@@ -676,7 +722,8 @@ function mp_listing_enqueue($account_id, $group_id, $priority = 3) {
 	$products = (array) db_items("SELECT products.id
 		FROM products
 		INNER JOIN products_groups_xref ON products_groups_xref.product = products.id
-		WHERE products_groups_xref.product_group = '" . e((int)$group_id) . "'");
+		WHERE products_groups_xref.product_group = '" . e((int)$group_id) . "'"
+		. pg_catalog_bin_live_sql('products'));
 
 	$written = 0;
 

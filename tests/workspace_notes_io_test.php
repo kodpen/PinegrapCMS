@@ -281,3 +281,32 @@ function test_workspace_notes_io_import_merge_keeps_unchanged_lines_and_tags()
 	pg_assert_same('A <#product:7> line', $merged[1], 'an unchanged line keeps a tag that went out as a bare word');
 	pg_assert_same('New: <@user:12>, <#order:5> and @Ayşegül', $merged[3], 'a changed line gets back the tags it still holds, not a longer name');
 }
+
+// libzip writes no file for an archive with no entries: close() deletes it.
+// So a person without notes is told so before a zip is opened, the vault
+// checks the file is there after close(), and the endpoint does not stream
+// a file that is gone (filesize()/readfile() warnings and a 0-byte zip).
+function test_workspace_notes_io_vault_refuses_an_empty_export()
+{
+	if (class_exists('ZipArchive')) {
+		$path = tempnam(sys_get_temp_dir(), 'pg_test_');
+		$zip = new ZipArchive();
+		$zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+		$zip->close();
+
+		pg_assert_false(is_file($path), 'an archive with no entries leaves no file behind');
+		@unlink($path);
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notes_io.php');
+	$start = strpos($source, 'function ws_note_export_vault(');
+	$vault = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains("lang('There are no notes to export.')", $vault, 'no notes: an error, not an empty zip');
+	pg_assert_true(strpos($vault, "lang('There are no notes to export.')") < strpos($vault, '$zip->open('), 'said before a zip is opened');
+	pg_assert_contains('!is_file($zip_path)', $vault, 'the file is checked after close()');
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_notes_export.php');
+
+	pg_assert_contains('!is_file($path)', $endpoint, 'the endpoint does not stream a missing file');
+}
