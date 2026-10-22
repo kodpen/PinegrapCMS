@@ -4,7 +4,7 @@ description: Custom form e-mail body and confirmation fallbacks at submit time, 
 ---
 
 ## What was the symptom?
-- kodpen.com, 2026-10-21: a legacy subscription form (plain text, empty Body) put e-mails in the queue that failed six times with PHPMailer `empty_message`. The same form had Next Page with no page, so `get_page_name(0)` sent the visitor to `/` without a thank-you. Fixed in PR #PRNUM.
+- kodpen.com, 2026-10-21: a legacy subscription form (plain text, empty Body) put e-mails in the queue that failed six times with PHPMailer `empty_message`. The same form had Next Page with no page, so `get_page_name(0)` sent the visitor to `/` without a thank-you. Fixed in PR #1209.
 
 ## What does a submission do with an empty plain text body?
 - `pg_cf_email_body_or_default($page_id, $body)` (`includes/fn/custom_form.php`) runs before `get_variable_submitted_form_data_for_content()` at all six plain text sites: `custom_form.php` (submitter, administrator), `pg_send_custom_form_notifications()` in `includes/fn/mail.php` (both), `submit_order.php` (form sent with a product, both).
