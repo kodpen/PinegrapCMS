@@ -101,3 +101,16 @@ function test_order_no_password_in_session_or_output()
 		pg_assert_same(0, preg_match('/\$random_password/', $source), $file . ': random password');
 	}
 }
+
+// The account is created without a password (algo 3), like the form's, so
+// the signed-in customer's change password screen asks for no current
+// password; the customer's copy, which may carry the link, is sent as secret
+// so a failed delivery never writes it to the activity log or the notice.
+function test_order_account_has_no_password_and_customer_copy_is_secret()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_same(1, preg_match('/create_member_user\(array\(/', $source), 'account is created');
+	pg_assert_same(0, preg_match('/create_member_user\(array\((?:(?!\)\);).)*\'password\'/s', $source), 'no password passed');
+	pg_assert_contains("'secret' => ((\$receipt_copy['audience'] === 'customer') && (pg_order_new_account_email() !== ''))", $source, 'customer copy is secret');
+}

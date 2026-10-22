@@ -4169,14 +4169,13 @@ function submit_order($type) {
             $username = strtok($billing_email_address, '@');
             $username = get_unique_username($username);
 
-            // Auto-registration: create the member with a modern password hash.
-            // The password is random and nobody is told it: the customer sets
-            // their own through the set password link issued below.
+            // Created without a password (algo 3, which no password matches):
+            // the customer sets one through the set password link issued
+            // below, or on the change password screen while still signed in.
             $user_id = create_member_user(array(
                 'username'   => $username,
                 'email'      => $billing_email_address,
                 'contact_id' => $contact_id,
-                'password'   => bin2hex(random_bytes(16)),
             ));
 
             pg_set_password_link_issue($user_id);
@@ -6008,6 +6007,9 @@ function submit_order($type) {
                 'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
                 'format' => $order_receipt_email_format,
                 'body' => $body,
+                // The customer's copy may carry the set password link, which
+                // must stay out of the failure log and the delivery-failed notice.
+                'secret' => (($receipt_copy['audience'] === 'customer') && (pg_order_new_account_email() !== '')),
                 // The checkout documents the customer accepted go with the
                 // receipt as they were kept with the order.
                 'attachments' => pg_legal_documents_attachments((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_number),
