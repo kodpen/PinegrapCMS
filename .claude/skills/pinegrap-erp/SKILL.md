@@ -281,7 +281,10 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
   Tarih `UPDATE … WHERE next_date = <tarih>` ile sahiplenilir (iki koşu aynı
   ayı iki kez yazmaz); kilitli tarih atlanır, başka hata tarihi geri verir;
   sebep `last_error`'da. Koşu günlük iş + gider listesi ziyareti; bir koşuda
-  en çok 12 tarih yetişir. Durmuş tekrar yeniden başlatılabilir (yeni satır).
+  en çok 12 tarih yetişir. Durmuş tekrar yeniden başlatılabilir (yeni satır):
+  kaldığı `next_date`'ten bugüne ilerletilerek sürer, geçmiş dönemi yeniden yazmaz;
+  yeni satır ilk giderin `source_expense_id`'sini taşır (`erp_expense_recurrence_of()`
+  bir tekrarın bütün giderlerinde aynı tekrarı bulur).
 
 ## Olay kapısı, denetim izi, bildirim, e-posta (4.90, 4.91, 4.97)
 

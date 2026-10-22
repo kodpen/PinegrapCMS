@@ -22,6 +22,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-edoc-driver-layer.md: ERP e-document driver layer (migration 4.61): registry gate, adding a provider, driver contract, encrypted credentials, active provider, test ping, schema.
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice send/poll line.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
+- erp-expense-recurring-restart.md: Starting a stopped repeating expense again goes on from where it stopped and does not write past periods a second time; a restart keeps the first expense as its source
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye, not e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
 - erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what cancel does to ledger and numbers, and how open amount and paid status treat returns.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
