@@ -18,7 +18,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
-- api-webhook-stock-events.md: What a stock change announces: pg_product_stock_changed() (stamp, inventory.changed, stock.low on the crossing, marketplace queue) behind every site writer, its pure rules, which writers stay quiet
+- api-webhook-stock-events.md: What a stock change announces through pg_product_stock_changed() and its pure rules, which writers stay quiet, and which panel writers announce product.updated
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
