@@ -9,7 +9,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - Before step 11.0.20 (`pg_shipment_rows_ready()`) the record writes the number alone and the delivery has only the caller's guard.
 
 ## When is the list replaced?
-- `update_order()` replaces it only when the address's request has the `tracking_numbers` key. `api_orders_ship()` sets the key only when the caller sent the field (`api_orders_ship_recipient()`, #PRNUM, issue #976). A date-only call used to send `[]`: every row was pruned, the order stopped counting as shipped and each date correction announced `order.delivered` again. `[]` sent on purpose still removes them.
+- `update_order()` replaces it only when the address's request has the `tracking_numbers` key. `api_orders_ship()` sets the key only when the caller sent the field (`api_orders_ship_recipient()`, #1232, issue #976). A date-only call used to send `[]`: every row was pruned, the order stopped counting as shipped and each date correction announced `order.delivered` again. `[]` sent on purpose still removes them.
 
 ## What does a row get?
 - New row: `status` created, `status_at`/`created_at` now, `shipped_at` now (or `$opts['shipped_at']`), `source`, `tracking_url` only when an absolute http(s) address (`pg_shipment_tracking_url_clean()`).
