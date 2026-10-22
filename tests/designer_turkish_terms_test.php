@@ -119,3 +119,24 @@ function test_designer_turkish_terms_flex_wrap_has_own_key()
 	pg_assert_same('Satır Kaydırma', $language['Wrap Lines']);
 	pg_assert_same('Döngü', $language['Wrap']);
 }
+
+// 'Shipped' reads 'Sevk edildi', so its partners in the order filters and
+// the dashboard order list use the same verb; 'Documents' reads 'Belgeler'
+// and the file manager's filter follows it ('Döküman' with ö is a
+// misspelling; 'Doküman' is a correct word and stays where it is used).
+function test_designer_turkish_terms_shipping_and_documents()
+{
+	$language = _test_tt_language();
+	pg_assert_same('Sevk edildi', $language['Shipped']);
+	pg_assert_same('Sevk edilmemiş', $language['Unshipped']);
+	pg_assert_same('Henüz sevk edilmedi', $language['Not shipped yet']);
+	pg_assert_same('Belgeler', $language['Documents']);
+	pg_assert_same('Belgelerim', $language['My Documents']);
+	$misspelt = array();
+	foreach ($language as $key => $value) {
+		if (preg_match('/döküman/iu', $value)) {
+			$misspelt[] = $key . ' => ' . $value;
+		}
+	}
+	pg_assert_same(array(), $misspelt);
+}
