@@ -2291,13 +2291,15 @@ if (!$_POST) {
 
     // orders.total has the gift card part taken off, and that part does not
     // go back to the cards by itself either, so the money still to return is
-    // both. Each part gets its own instruction: the provider sentence only
-    // when a payment was taken, the gift card one only when cards paid.
+    // both. What the order screen or a return refunded already is not owed
+    // again. Each part gets its own instruction: the provider sentence only
+    // when payment money is left, the gift card one only when cards paid.
+    $refund_payment_left_cents = max(0, $total_cents - $refunded_amount_cents);
     $refund_currency_text = ($currency_code != '' ? ' ' . h($currency_code) : '');
-    $refund_amount_text   = pg_format_number(($total_cents + $gift_card_discount_cents) / 100, 2) . $refund_currency_text;
+    $refund_amount_text   = pg_format_number(($refund_payment_left_cents + $gift_card_discount_cents) / 100, 2) . $refund_currency_text;
 
     $refund_instructions = '';
-    if ($total_cents > 0 || $gift_card_discount_cents <= 0) {
+    if ($refund_payment_left_cents > 0 || $gift_card_discount_cents <= 0) {
         $refund_instructions .= '<div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>';
     }
     if ($gift_card_discount_cents > 0) {
@@ -2367,18 +2369,27 @@ if (!$_POST) {
     }
     if ($status != 'cancelled' && $status != 'incomplete') {
 
-        // The same driver process_order_cancellation() asks to void the payment.
+        // The decision process_order_cancellation() makes when this window
+        // is confirmed (it forces the void, hence the auto refund on): the
+        // same driver, and the money left after earlier refunds.
         $cancel_driver = pg_payment_cancel_driver($payment_method);
-        $cancel_voids_payment =
-            ($cancel_driver !== '')
-            && $transaction_id
-            && $total_cents > $refunded_amount_cents;
+        $cancel_payment_plan = pg_order_cancel_payment_plan($total_cents, $refunded_amount_cents, $payment_method, (bool) $transaction_id, $cancel_driver, true);
 
-        $cancel_payment_note = $cancel_voids_payment
-            ? '<p class="text-muted small">' . lang(array('string' => 'This will void the payment via {var:1}.', 'vars' => h(pg_payment_driver($cancel_driver)['label']))) . '</p>'
-            : ($total_cents > 0
-                ? '<p class="text-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>'
-                : '');
+        if ($cancel_payment_plan['action'] === 'void') {
+            $cancel_payment_note = '<p class="text-muted small">' . lang(array('string' => 'This will void the payment via {var:1}.', 'vars' => h(pg_payment_driver($cancel_driver)['label']))) . '</p>';
+        } elseif ($cancel_payment_plan['remaining'] > 0 && $cancel_payment_plan['refunded'] > 0) {
+            $cancel_payment_note = '<p class="text-warning small">' . lang(array(
+                'string' => '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
+                'vars'   => array(
+                    pg_format_number($cancel_payment_plan['refunded'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : ''),
+                    pg_format_number($cancel_payment_plan['remaining'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : '')))) . '</p>';
+        } elseif ($cancel_payment_plan['remaining'] > 0) {
+            $cancel_payment_note = '<p class="text-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>';
+        } elseif ($cancel_payment_plan['refunded'] > 0) {
+            $cancel_payment_note = '<p class="text-muted small">' . lang('The payment was already refunded in full. Cancelling the order does not touch it.') . '</p>';
+        } else {
+            $cancel_payment_note = '';
+        }
 
         // The invoice is the ERP's, and cancelling the order leaves it alone:
         // an official document is taken back with a return, not deleted. The
@@ -2932,10 +2943,11 @@ if (!$_POST) {
         $liveform->add_notice(lang('The order has been cancelled.'));
 
         // Surface the refund outcome so a failed void is never silent. The
-        // provider wording applies only to a payment that was taken; what gift
-        // cards paid is told apart, as it never goes back by itself.
-        $cancelled_amounts = db_item("SELECT total, gift_card_discount, currency_code FROM orders WHERE id = '" . e($order_id) . "'");
-        $cancelled_total_cents     = (int) ($cancelled_amounts['total'] ?? 0);
+        // provider wording applies only to payment money not refunded before
+        // the cancellation; what gift cards paid is told apart, as it never
+        // goes back by itself.
+        $cancelled_amounts = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+        $cancelled_total_cents     = max(0, (int) ($cancelled_amounts['total'] ?? 0) - (int) ($cancelled_amounts['refunded_amount'] ?? 0));
         $cancelled_gift_card_cents = (int) round((float) ($cancelled_amounts['gift_card_discount'] ?? 0));
 
         if ($response['refund_status'] == 'refunded') {
