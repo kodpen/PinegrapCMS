@@ -49,7 +49,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
 - designer-audit-targets-entry.md: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exception) and redundant entry (3.3.7) hints: measured on the canvas, exemptions, the email_verify exemption left to drop
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
-- designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, no unknown component types, and what the audit and the block test check.
+- designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
 - designer-block-markup.md: Heading levels and inline content in ready-made designer blocks: no skipped level, size from an h-class, no paragraph or block inside a button, label, span or heading.
 - designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns.
 - designer-block-sample-content.md: Canonical sample content (brand, companies, people, plans, domains, images, prices) to use when writing ready-made designer blocks.
