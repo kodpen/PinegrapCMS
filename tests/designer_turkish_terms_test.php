@@ -187,3 +187,21 @@ function test_designer_turkish_terms_headline_layer_names()
 	pg_assert_same('Başlık Bağlantısı', $language['Headline Link']);
 	pg_assert_same('Başlık Karuseli', $language['Headline Carousel']);
 }
+
+// The product-image carousel panel calls a thumbnail 'küçük görsel'
+// ('Thumbnail URL' already did) and leaves no English word in its rows.
+function test_designer_turkish_terms_thumbnail_rows()
+{
+	$language = _test_tt_language();
+	$found = array();
+	foreach (_test_tt_designer_short_keys() as $key) {
+		if (preg_match('/thumb/i', $key) && isset($language[$key]) && preg_match('/thumb/i', $language[$key])) {
+			$found[] = $key . ' => ' . $language[$key];
+		}
+	}
+	pg_assert_same(array(), $found);
+	pg_assert_same('Küçük görsel konumu', $language['Thumbnail position']);
+	pg_assert_same('Üzerine gelince yakınlaştır (büyüteç)', $language['Hover zoom (magnifier)']);
+	pg_assert_same('Seçenek sınıfı (her seçenek)', $language['Option class (each option)']);
+	pg_assert_same('Bootstrap çatısı yüklenmedi.', $language['Bootstrap framework is not loaded.']);
+}

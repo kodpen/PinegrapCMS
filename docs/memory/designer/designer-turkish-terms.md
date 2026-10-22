@@ -21,6 +21,7 @@ One English key serves every caller: `_sdT()` in `style_designer.js`, `lang()` i
 - Radio input: `Radyo düğmesi` (`Aylık Radyo Düğmesi`, `Radyo listesi`).
 - Table header cell of a plan: `<Plan> Başlığı` (`Pro Başlığı`).
 - Menu legend block (`Diet Key`): `Beslenme Simgeleri`; "key" there is a legend, not `Anahtar`.
+- Thumbnail: `küçük görsel` (`Küçük görsel konumu`); hover zoom: `Üzerine gelince yakınlaştır`; framework: `çatı`.
 - Flex wrap: row `Flex Wrap` and option `Wrap Lines` = `Satır Kaydırma` (`Satır Kaydırma Yok`, `Ters Satır Kaydırma`).
 - Parent element: `Üst Öğe` (`Üst Öğeyi Seç`); page body: `Gövde` (`Gövdeyi Seç`). External file: `Harici`. Stylesheet: `Stil Dosyası`.
 - Snapshot stays `Snapshot` and product attribute stays `Attribute`: both are used the same way across the designer.
