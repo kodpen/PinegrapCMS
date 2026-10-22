@@ -22340,7 +22340,7 @@ const StyleDesigner = (function () {
                 '<input type="text" class="sd-attr-val" data-prop="id" value="' + esc(n.props.id || '') + '" placeholder="element id">' +
                 '<span class="sd-attr-del-ph"></span>' +
             '</div>' +
-            // Sabit: class (chip-input)
+            // Fixed: class (chip-input)
             '<div class="sd-attr-row sd-attr-row-fixed sd-attr-row-class">' +
                 '<span class="sd-attr-name-lbl">class</span>' +
                 '<span class="sd-attr-sep">:</span>' +
