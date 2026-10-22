@@ -5,7 +5,7 @@ description: Opening tag of designer container/row/col on the page and in the ed
 
 ## Which code writes a grid node's tag?
 - The page: `_render_tree_node()` cases `container`, `row`, `col` call `_pg_grid_open_tag()` (`includes/fn/designer.php`). The editor's HTML (code view, preview, revision compare): `_sdEmitNode()` calls its twin `_sdGridOpenTag()` (`style_designer.js`). The saved page is the PHP side (`page.page_tree_code`, system widgets on each request); the JS side follows it. The canvas draws through its own path and is not covered here.
-- Order on both: `class` (base classes, then `cssClass`, then the Display & Sizing classes), `style` (sizing props, then the Attributes panel's `style`), `id` with `data-pg-search-section` when the node is a search section, then the panel's other `_attrs`. A `class` or `id` entry in `_attrs` is not printed. Class and attributes are escaped once.
+- Order on both: `class` (base classes, then `cssClass`, then the Display & Sizing classes), `style`, `id`, the title and tooltip, then the panel's other `_attrs`; the style, title, tooltip and `_attrs` rules are every node's (designer/designer-node-attributes.md). A `class` or `id` entry in `_attrs` is not printed. Class and attributes are escaped once. The page adds `data-pg-search-section` after the id of a search section; the editor's HTML leaves it out.
 - `tests/designer_grid_nodes_test.php` checks the PHP tag and runs the cut-out emitter under Node on the same nodes (skipped without Node).
 
 ## Why is each class printed once?
@@ -25,7 +25,10 @@ description: Opening tag of designer container/row/col on the page and in the ed
 ## When does an existing site see it?
 - System widgets: at once. A page body: on its next save or with "Save and rebuild page HTML" (designer/page-html-rebuild.md).
 
-## What still differs between the canvas and the page?
-- The canvas applies a grid node's `inlineStyle` (Styles panel), `fontFamily`, `title` and tooltip; neither the page nor the editor's HTML prints them for container, row or col.
+## Does a grid node write its font, inline style, title and tooltip?
+- Yes, since the canvas applies them: before, neither the page nor the editor's HTML wrote a container's, row's or column's `fontFamily`, old `inlineStyle`, `title` or tooltip, so a value set there showed in the editor and did nothing on the site.
 
-Related: docs/memory/designer/page-html-rebuild.md, docs/memory/designer/designer-code-view-editing.md
+## Why is the search section mark not in the code view?
+- The Search section switch sets it; the code view printed it on a grid node, and deleting it there did nothing (it came back on refresh). No other node printed it in the editor's HTML.
+
+Related: docs/memory/designer/designer-node-attributes.md, docs/memory/designer/page-html-rebuild.md, docs/memory/designer/designer-code-view-editing.md
