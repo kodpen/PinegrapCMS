@@ -2029,7 +2029,7 @@ function _eo_payment_method_label_html($method)
 // — kept as separate small functions so the designer can place each piece
 // independently (radios in one section, card fields as real <input>s in
 // another, installment selector in a third).
-function _eo_render_payment_methods_only($lf)
+function _eo_render_payment_methods_only($lf, $hosted_card_html = '')
 {
     $methods = array();
     $cc_on   = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
@@ -2049,9 +2049,13 @@ function _eo_render_payment_methods_only($lf)
     }
     $sel = $lf ? (string)$lf->get_field_value('payment_method') : '';
     if (!in_array($sel, $methods, true)) $sel = $methods[0];
+    // The payment service's own card fields, moved into the tree's card
+    // section by their script (the tree's card inputs are then not used).
+    $hosted = in_array('Credit/Debit Card', $methods, true) ? (string) $hosted_card_html : '';
     if (count($methods) === 1) {
         return '<input type="hidden" name="payment_method" value="' . h($methods[0]) . '">'
-             . '<div class="text-muted small">' . _eo_payment_method_label_html($methods[0]) . '</div>';
+             . '<div class="text-muted small">' . _eo_payment_method_label_html($methods[0]) . '</div>'
+             . $hosted;
     }
     $html = '';
     foreach ($methods as $m) {
@@ -2121,7 +2125,58 @@ function _eo_render_payment_methods_only($lf)
           . '}else{syncAll();}'
           . 'window.addEventListener("pageshow",syncAll);'
           . '})();</script>';
-    return $html;
+    return $html . $hosted;
+}
+
+/**
+ * The card section when the card gateway's driver takes the card in the
+ * payment service's own fields (Stripe's Payment Element): the box the fields
+ * are drawn in, the hidden input the service's token is posted in, the
+ * service's script and the site's script that draws the fields
+ * (assets/js/payment_hosted.js). '' when the card inputs are the site's own.
+ *
+ * @param int $amount_cents what the card would be charged (surcharge included)
+ * @return string
+ */
+function _eo_hosted_card_html($amount_cents)
+{
+    $key = function_exists('pg_payment_hosted_card_driver') ? pg_payment_hosted_card_driver() : '';
+
+    if (($key === '') || ((int) $amount_cents <= 0)) {
+        return '';
+    }
+
+    $order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
+    $answer = pg_payment_call($key, 'prepare', array(is_array($order) ? $order : array(), (int) $amount_cents));
+    $client = $answer['client'];
+
+    // The service's script is loaded only from a host the driver lists for
+    // the site's security policy.
+    $definition = pg_payment_driver($key);
+    $script = (isset($client['script']) && is_string($client['script'])) ? $client['script'] : '';
+    $script_host = (preg_match('#^(https://[^/\s]+)/#', $script, $script_match) === 1) ? $script_match[1] : '';
+    $script_allowed = ($script_host !== '') && isset($definition['csp']['script-src']) && in_array($script_host, $definition['csp']['script-src'], true);
+
+    if (!$answer['success'] || !$script_allowed) {
+        return '<div class="alert alert-warning small mb-3" role="alert">' . h(lang('Card payments are not available right now. Please choose another payment method.')) . '</div>';
+    }
+
+    $config = array(
+        'driver'   => $key,
+        'client'   => $client,
+        'messages' => array(
+            'unavailable' => lang('Card payments are not available right now. Please choose another payment method.'),
+            'invalid'     => lang('The card details could not be read. Please check them and try again.'),
+        ),
+    );
+
+    return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
+         .   '<div class="pg-eo-hosted-card-element"></div>'
+         .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
+         . '</div>'
+         . '<input type="hidden" name="payment_token" value="">'
+         . '<script src="' . h($script) . '"></script>'
+         . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
 }
 
 function _eo_render_billing_country_select($lf)
@@ -2762,7 +2817,7 @@ function _eo_render_installment_box($lf)
     return $html;
 }
 
-function _eo_render_payment_methods($lf, $cfg)
+function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
 {
     $methods = array();
 
@@ -2860,6 +2915,15 @@ function _eo_render_payment_methods($lf, $cfg)
             $brand_pills_html .= '</div>';
         }
 
+        // Iyzipay's instalment selector, below the card inputs and in the
+        // script after them.
+        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
+        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
+
+        // The payment service's own fields take the card's place.
+        if ((string) $hosted_card_html !== '') {
+            $html .= $hosted_card_html . '</div>';
+        } else {
         $html .=
             $brand_pills_html
           . '<div class="row">'
@@ -2889,8 +2953,6 @@ function _eo_render_payment_methods($lf, $cfg)
         // posts alongside the form. submit_order.php's existing Iyzipay
         // pipeline reads `installment` via $liveform->get_field_value() —
         // no server-side wiring needed beyond this.
-        $max_installments = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0;
-        $is_iyzipay_gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay';
         if ($is_iyzipay_gateway && $max_installments >= 2) {
             $saved_inst = $lf ? (int)$lf->get_field_value('installment') : 0;
             if ($saved_inst < 1) $saved_inst = 1;
@@ -2906,6 +2968,7 @@ function _eo_render_payment_methods($lf, $cfg)
         }
 
         $html .= '</div>';
+        }
 
         // Tiny radio→cc-fields toggle JS. Idempotent global init so multiple
         // express order widgets on a page register only once. Same script
@@ -3774,8 +3837,12 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
 //      as radio buttons; on selection, updates the hidden shipping_<rid>_method
 //      input AND the sidebar shipping cost in-place.
 //
-// $recipients is passed so the JS knows the rids it needs to wire.
-function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients, $base_path)
+// $recipients is passed so the JS knows the rids it needs to wire. $totals
+// carries what the totals table was drawn with, in the base currency's minor
+// units: the recipients' stored shipping ('shipping_drawn'), the shipping the
+// order is charged ('shipping', a minor unit lower where the order's tax
+// rates need it: pg_order_charges_reachable()) and the total shown ('total').
+function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients, $base_path, $totals = array())
 {
     // Always emit at minimum the gift-card delivery-date converter — gift
     // cards can be in the cart even on a "digital order" (no ship_tos),
@@ -3816,6 +3883,10 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     $_eo_label_exp_month    = json_encode((string)lang('The expiration month must be between 01 and 12.'));
     $_eo_label_exp_past     = json_encode((string)lang('The card expiry date has already passed.'));
 
+    $_eo_ship_drawn   = (int)($totals['shipping_drawn'] ?? 0);
+    $_eo_ship_charged = (int)($totals['shipping'] ?? $_eo_ship_drawn);
+    $_eo_total_shown  = (int)($totals['total'] ?? 0);
+
     // Inline script. Idempotent — multiple express_order widgets on the
     // same page register only one global init via window.__pgEoInit.
     return <<<HTML
@@ -3825,6 +3896,9 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     var API_URL     = {$api_url_json};
     var RIDS        = {$rids_json};
     var DATE_FORMAT = {$date_format_json};
+    var SHIP_DRAWN   = {$_eo_ship_drawn};
+    var SHIP_CHARGED = {$_eo_ship_charged};
+    var TOTAL_SHOWN  = {$_eo_total_shown};
     var form = document.getElementById(FORM_ID);
     if (!form) return;
 
@@ -4189,65 +4263,53 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         var hidEl = form.querySelector('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] .pg-eo-method-input');
         if (!hidEl) return;
         hidEl.value = radio.value;
-        // Sidebar shipping update — sum cost across all recipients.
+        // Sidebar shipping update — sum cost across all recipients, in the
+        // base currency's minor units. While the methods picked are the ones
+        // the page was drawn with, the shipping is the one the order is
+        // charged: a minor unit lower where the order's tax rates need it
+        // (pg_order_charges_reachable() on the server).
         var total = 0;
         form.querySelectorAll('input.pg-eo-method-radio:checked').forEach(function (r) {
             total += parseFloat(r.getAttribute('data-pg-eo-cost') || 0);
         });
+        var shipCents = Math.round(total * 100);
+        if (shipCents === SHIP_DRAWN) shipCents = SHIP_CHARGED;
         var shipSpan = document.querySelector('.pg-eo-shipping-formatted');
         // The method costs are in the base currency, the sidebar shows the
         // visitor's.
-        if (shipSpan) shipSpan.textContent = total > 0 ? formatCost(total * moneyRate()) : '—';
-        // Recompute total too — read other displayed amounts and sum.
-        recomputeSidebarTotal();
+        if (shipSpan) shipSpan.textContent = shipCents > 0 ? formatCost(shipCents / 100 * moneyRate()) : '—';
+        recomputeSidebarTotal(shipCents);
     }
-    function recomputeSidebarTotal() {
-        // Guard: only trust this client-side recompute when it can find ALL
-        // the pieces it needs. Express Order templates saved before the
-        // pg-eo-subtotal-formatted / pg-eo-tax-formatted /
-        // pg-eo-shipping-formatted hook classes were added to the Subtotal /
-        // Tax / Shipping rows (_eo_default_designer_tree's \$tot_row calls)
-        // don't carry those classes on their value <span>s — every lookup
-        // below then silently resolves to 0, and this used to blindly
-        // overwrite the CORRECT server-rendered "Toplam" with "0.00" the
-        // moment a shipping method was auto-selected on page load. That's
-        // the "Toplam: 0.00" / "tutar değişti" bug. Bailing out here means
-        // older templates simply don't live-update the total on shipping
-        // change (a full "Güncelle" still recalculates correctly
-        // server-side) instead of showing a wrong number.
-        var subEl = document.querySelector('.pg-eo-subtotal-formatted');
-        if (!subEl) return;
-        var sub  = parseAmt(subEl);
-        var tax  = parseAmt(document.querySelector('.pg-eo-tax-formatted'));
-        var ship = parseAmt(document.querySelector('.pg-eo-shipping-formatted'));
-        // A real cart always has a positive subtotal — never let a parse
-        // failure (0) masquerade as a legitimate recompute.
-        if (sub <= 0) return;
-        var total = sub + tax + ship;
+    function recomputeSidebarTotal(shipCents) {
+        // Guard: only trust this client-side recompute on a template whose
+        // Subtotal / Shipping / Total rows carry the hook classes
+        // (pg-eo-subtotal-formatted, pg-eo-shipping-formatted,
+        // pg-eo-total-formatted; _eo_default_designer_tree's \$tot_row
+        // calls). Express Order templates saved before they existed would
+        // otherwise get a new total beside a shipping row nothing updates;
+        // they keep the server-rendered total, and a full "Güncelle"
+        // recalculates it.
+        if (!document.querySelector('.pg-eo-subtotal-formatted')) return;
+        if (!document.querySelector('.pg-eo-shipping-formatted')) return;
         var totalSpan = document.querySelector('.pg-eo-total-formatted');
-        if (totalSpan) totalSpan.textContent = formatCost(total);
+        if (!totalSpan || TOTAL_SHOWN <= 0) return;
+        // The total the page was drawn with, moved by the difference between
+        // the shipping picked now and the shipping it was drawn with: the
+        // discount, the tax and the gift cards stay as the server worked
+        // them out. Adding the displayed subtotal, tax and shipping left the
+        // order discount out.
+        var cents = Math.max(0, TOTAL_SHOWN + shipCents - SHIP_CHARGED);
+        totalSpan.textContent = formatCost(cents / 100 * moneyRate());
     }
-    // software_money_format / software_format_money / software_parse_money
-    // come from frontend.js and write money the way the server does; the
-    // fallbacks below only matter on a page without them.
+    // software_money_format / software_format_money come from frontend.js
+    // and write money the way the server does; the fallback below only
+    // matters on a page without them.
     function moneyFormat() {
         return (typeof software_money_format !== 'undefined' && software_money_format) ? software_money_format : null;
     }
     function moneyRate() {
         var f = moneyFormat();
         return (f && f.rate > 0) ? f.rate : 1;
-    }
-    function parseAmt(el) {
-        if (!el) return 0;
-        if (window.software_parse_money && moneyFormat()) return software_parse_money(el.textContent);
-        var t = el.textContent.replace(/[^0-9,.\-]/g, '');
-        // Locale-aware: assume Turkish format `1.234,56` if comma present
-        // after a dot; else fall back to dot-decimal.
-        if (t.indexOf(',') !== -1 && t.lastIndexOf('.') < t.lastIndexOf(',')) {
-            t = t.replace(/\./g, '').replace(',', '.');
-        }
-        var n = parseFloat(t);
-        return isNaN(n) ? 0 : n;
     }
     function formatCost(amount) {
         var f = moneyFormat();

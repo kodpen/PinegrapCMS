@@ -1265,6 +1265,9 @@ Work through the queue:
       A request with message.reply_to_id answers an earlier message, often your own
       answer: read it (message.reply_to_text) and the conversation around it in the
       context, and carry on from there.
+      A request whose channel.kind is thread was asked in a discussion: a room of its
+      own about one message of a channel. The context's thread holds that message and
+      the channel it was written in: it is what the discussion is about.
    c. POST /workspace/claude/requests/{id}/answer with {"text": "..."}. Write in the
       language of the request, short and concrete, to the person who asked. Mention
       people as <@user:ID> and records as tags such as <#order:ID> or <#task:ID>; a
