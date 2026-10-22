@@ -4,12 +4,12 @@ description: form_list_view filters valued from the page address (author, tag ar
 ---
 
 ## What does the URL-parameter dynamic value do?
-- Filter `{field, operator, value: '', dynamic_value: 'url parameter', dynamic_value_attribute: 'author'}` compares the field with `?author=…` Lists only.
-- No value in the address: filter left out, every record listed. A fixed `value` wins.
+- Filter `{field, operator, value: '', dynamic_value: 'url parameter', dynamic_value_attribute: 'author'}` compares the field with `?author=…` (lists only, #1272).
+- No value in the address: filter left out, all records listed. A fixed `value` wins.
 
 ## Which names are refused, and why?
-- `pg_sw_url_param_name()`: `[a-z][a-z0-9_]{0,31}`, not in `pg_sw_url_param_reserved()`, not starting `utm_` or `pg_`. A refused name gives no value (filter left out).
-- `t`, `a`, `o` write tracking/affiliate/offer codes; `rss`, `pdf`, `email` switch the output; `pg_lang`, `highlight`, `send_to`, `r`, `page_number`, `query`, widget names are read elsewhere. Editor twin `_swUrlParamName()` warns; a test compares the lists.
+- `pg_sw_url_param_name()`: `[a-z][a-z0-9_]{0,31}`, not in `pg_sw_url_param_reserved()`, not starting `utm_` or `pg_`. A refused name gives no value.
+- `t`, `a`, `o` write tracking/affiliate/offer codes; `rss`, `pdf`, `email` switch the output; `pg_lang`, `highlight`, `send_to`, `r`, `page_number`, `query`, widget names are read elsewhere. Editor twin `_swUrlParamName()` warns; a test compares them.
 - The editor normalises only the name being edited; other rows keep their stored name and warning.
 
 ## Which values are accepted?
