@@ -8,7 +8,7 @@ description: A webhook subscription narrowed to one group of Workspace channels 
 - Body, signature (`X-Pinegrap-Signature`), queue, retries, test and secret rotation are the ordinary ones: the filter only decides which subscriptions an event is queued for. The answer (`Webhook`) carries `channel_group_id` (null when not narrowed).
 - The channel's group is read when the event happens (`ws_webhook_event_groups()`), so a channel moved into the group is heard from then on, one moved out is not.
 - Events about the groups themselves (`workspace.channel_group.*`, PR #495) are matched by the group, not a channel: see `workspace-channel-group-events.md`.
-- Which channel: `channel_id` in the event, or `task.channel_id` for `workspace.task.note_added`; for an event of a discussion (`thread.channel_id`, `workspace.app.mentioned`) the channel the discussion is about, since a discussion is in no group (PR #809, `ws_webhook_event_channel_id()`). A task with no channel is heard only by whole-site subscriptions.
+- Which channel: `channel_id` in the event, or `task.channel_id` for `workspace.task.note_added`; for an event of a discussion (`thread.channel_id`, `workspace.app.mentioned`) the channel the discussion is about, since a discussion is in no group (PR #809, `ws_webhook_event_channel_id()`). A task with no channel is heard only by whole-site subscriptions, and so is any event without one: a new `workspace.*` event must carry `channel_id` (or `task.channel_id`) to reach a narrowed subscription.
 - Privacy is unchanged: a private channel's message is never announced as `workspace.message.created`; task events of private channels go out as before; a mention reaches only the application mentioned (workspace-app-mentioned-webhook.md).
 
 ## What is refused?

@@ -21,5 +21,5 @@ description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approv
 - ERP session: auto invoice / e-Arşiv. API session: marketplaces, agent feeds, storefront API. SMS + İYS and carrier labels each get their own session. Designer items go to the running designer session.
 
 ## Which rules bind every plan?
-- Owner rules (`docs/memory/workflow/owner-rules.md`), CLAUDE.md fixed rules, the decisions skill. Schema only through 2026.11.0 migration steps. Express-order totals (`get_express_order.php`, `get_order_preview.php`) never change. A plan-driven feature gets one `[NEW]` changelog line when it ships; plans get none.
+- Owner rules (`docs/memory/workflow/owner-rules.md`), CLAUDE.md fixed rules, `workflow/decisions-made.md`. Schema only through 2026.11.0 migration steps. Express-order totals (`get_express_order.php`, `get_order_preview.php`) never change. A plan-driven feature gets one `[NEW]` changelog line when it ships; plans get none.
 - When a plan is finished its lasting decisions move to the topic folder and the plan file is deleted.

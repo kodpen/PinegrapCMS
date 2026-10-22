@@ -338,6 +338,10 @@ function pg_payment_iyzico_start_error($error_message, $raw)
  *   subtotal, discount   hundredths, for the 3-D Secure row
  *   lines            order lines; ship_to: the order's single delivery
  *                    address, null when there is none
+ *   settle_rates     the checkout keeps every rate's total reachable
+ *                    (pg_order_charges_settle_rates()); charged_lines and
+ *                    charges (shipping, surcharge) are then what it charged,
+ *                    for the instalment charge (pg_order_installment_charge())
  *   customer_id, ip, basket_id, return_url
  *
  * @param array    $order    orders row
@@ -391,6 +395,19 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
 
                     if ($installment_cents > $total) {
                         $installment_charge = $installment_cents - $total;
+
+                        // A charge that would leave a rate's total one the
+                        // VAT, taken on the whole, never reaches goes the
+                        // fewest kurus lower, as the checkout takes the
+                        // shipping: the order's invoice is then the payment.
+                        if (!empty($payment['settle_rates'])) {
+                            $installment_charge = pg_order_installment_charge(
+                                isset($payment['charged_lines']) ? $payment['charged_lines'] : array(),
+                                $discount,
+                                isset($payment['charges']) ? $payment['charges'] : array(),
+                                $installment_charge);
+                        }
+
                         $total = $total + $installment_charge;
                     }
 
