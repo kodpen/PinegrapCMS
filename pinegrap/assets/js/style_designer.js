@@ -9856,6 +9856,7 @@ const StyleDesigner = (function () {
                     address_book:         _sdT('Address Book'),
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
+                    account_email:        _sdT('Account E-mail'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -28527,6 +28528,7 @@ const StyleDesigner = (function () {
             var _isCartLink        = (_regionType === 'cart_link');
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
             var _isAccountInvoices = (_regionType === 'account_invoices');
+            var _isAccountEmail    = (_regionType === 'account_email');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -28570,6 +28572,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isAccountEmail) {
+                _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
@@ -29446,6 +29450,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
+
+                // ── Filters (form_item_view): which records the page shows ──
+                // Same rows and handlers as the list's filters; a record
+                // outside them is not found, in its feed and sitemap too.
+                systemSection += sect('bi-funnel', _sdT('Filters'),
+                    _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _fivFields || [], _fivFields === null,
+                        _sdT('The page shows a record only when it matches every filter; any other address gets the not-found state, and the record stays out of the page\'s RSS feed and the sitemap. For example, Status is equal to Published keeps drafts off this page. The filters belong to this widget, not to the form: give every other public list and record view of the same form, on any page, the same filter, because a record\'s pretty address opens on every page that shows its form. If a filtered field is renamed or deleted, or the widget is pointed at another form, the page shows no record. E-mails still show the record they were sent for.')));
             }
 
             // ── Records in the translation (form list / detail) ───────────
@@ -29601,7 +29612,8 @@ const StyleDesigner = (function () {
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
-                    )
+                    ) +
+                    _swAccountEmailRow(sid, _cfg, 'reset')
                 );
             }
 
@@ -29630,6 +29642,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
@@ -30107,6 +30120,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
@@ -31838,6 +31852,8 @@ const StyleDesigner = (function () {
         //   data-sw-cfg-kind      text (default) | int (clamped to min/max) |
         //                         choice (one of data-sw-cfg-choices) | page
         //   data-sw-cfg-list="key" checkboxes that together write an id list
+        //   data-sw-cfg-repaint   the panel is redrawn once saved (a hint
+        //                         under the control depends on the value)
         document.querySelectorAll('#sd-properties [data-sw-cfg]').forEach(function (el) {
             el.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
@@ -31868,7 +31884,8 @@ const StyleDesigner = (function () {
                 // type radios), so the canvas repaints after it.
                 _patchSysCfg(sid, function (cfg) { cfg[key] = v; },
                     (kind === 'choice') ? { afterSave: function () { renderProperties(); render(); } }
-                        : ((kind === 'bool') ? { afterSave: function () { render(); } } : undefined));
+                        : ((kind === 'bool') ? { afterSave: function () { render(); } }
+                            : (this.dataset.swCfgRepaint ? { afterSave: function () { renderProperties(); } } : undefined)));
             });
         });
         document.querySelectorAll('#sd-properties [data-sw-cfg-list]').forEach(function (el) {
@@ -33185,6 +33202,27 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // account_email token palette — mirrors _render_system_widget_account_email()
+    // in widgets_account.php. Filled only when the page is sent as a welcome
+    // or password reset e-mail; anywhere else the values are empty and the
+    // links drop.
+    var SW_ACCOUNT_EMAIL_TOKEN_GROUPS = [
+        { label: _sdT('Member'), tokens: [
+            ['__user_name',        _sdT('Name (full name, else the user name)')],
+            ['__user_first_name',  _sdT('First name (else the user name)')],
+            ['__user_email',       _sdT('Email')],
+            ['__username',         _sdT('User name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
+            ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
+            ['__my_account_url',   _sdT('My account page address (the link drops when there is none)')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',        _sdT('Site name')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -33196,7 +33234,8 @@ const StyleDesigner = (function () {
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
-        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS
+        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -34118,6 +34157,10 @@ const StyleDesigner = (function () {
             ['has_badge',        _sdT('The member has a badge')],
             ['is_staff',         _sdT('The visitor may open the staff page')],
             ['has_panel_access', _sdT('The user has work in the control panel')]
+        ],
+        account_email: [
+            ['is_welcome',        _sdT('The e-mail welcomes a new account')],
+            ['is_password_reset', _sdT('The e-mail carries a password reset link')]
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
@@ -45421,6 +45464,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
@@ -45430,7 +45474,7 @@ const StyleDesigner = (function () {
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -45897,7 +45941,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -45927,10 +45971,17 @@ const StyleDesigner = (function () {
             // so the filter is not rewritten behind the designer's back.
             if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
 
-            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var rawOp = String(f.operator == null ? '' : f.operator);
+            var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
+            // An operator outside the list (a hand-written config) is skipped
+            // by a list and closes a record view, so on a row with a field it
+            // stays visible here instead of reading as "is equal to".
+            var opBad = !opKnown && field !== '';
+            var op = opKnown ? rawOp : 'is equal to';
             var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
-                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
+            if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -45959,7 +46010,7 @@ const StyleDesigner = (function () {
         });
         html +=
             '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
-            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
 
@@ -46070,6 +46121,56 @@ const StyleDesigner = (function () {
             if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
         }
         return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+    }
+
+    // The setting row of an account e-mail: the page sent as the welcome
+    // e-mail of a registration or membership widget (kind 'welcome') or as
+    // the reset e-mail of a forgot password widget (kind 'reset'), its
+    // subject, and a line saying what goes out - or what is missing for the
+    // page to be sent. The keys are the ones pg_account_email_keys() reads.
+    // The page is picked before its Account E-mail widget is added
+    // (otherTabs), so a page that still lacks one is named in the hint.
+    function _swAccountEmailRow(sid, cfg, kind) {
+        var reset   = (kind === 'reset');
+        var pageKey = reset ? 'reset_email_page_id' : 'welcome_email_page_id';
+        var subjKey = reset ? 'reset_email_subject' : 'welcome_email_subject';
+        var cur     = (cfg[pageKey] == null) ? '' : String(cfg[pageKey]);
+        var opts    = _swPageOptions(cur, _allPagesCache, {
+            types: ['account_email'],
+            otherTabs: _sdT('This design — no Account E-mail widget yet'),
+            none: reset ? _sdT('— Built-in text e-mail —') : _sdT('— No welcome e-mail —')
+        });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var tab = null, server = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (_swPageRef(p) === cur) tab = p; });
+        if (/^\d+$/.test(cur) && cur !== '0' && _allPagesCache) {
+            _allPagesCache.forEach(function (p) { if (String(p.page_id) === cur) server = p; });
+        }
+        var name = tab ? (tab.page_name || _sdT('New Page')) : (server ? (server.page_name || ('#' + cur)) : '');
+        // A tab not opened yet has its widgets outside the cache: the saved
+        // page's widget list (list_all_pages) answers for it too.
+        var serverHas = !!(server && Array.isArray(server.widgets) && server.widgets.indexOf('account_email') !== -1);
+        var hint;
+        if ((tab && !_swTabHasWidget(tab, ['account_email']) && !serverHas) ||
+            (!tab && server && Array.isArray(server.widgets) && !serverHas)) {
+            hint = note(_sdT('"{var}" has no Account E-mail widget yet, so the e-mail cannot show the member\'s name or links. Add one to that page.', name), true);
+        } else if (tab && _pgDraftsReady() && tab.page_draft) {
+            hint = note(_sdT('"{var}" is a draft. A draft page is not sent: publish it.', name), true);
+        } else if (reset) {
+            hint = note(_sdT('Sent to the account\'s address when the page shows a link bound to "{var}"; otherwise the built-in text e-mail goes out.', _swBindLabel('account_email', '__set_password_url')), false);
+        } else {
+            hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
+        }
+        return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
+            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
+                ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
+            hint +
+            note(_sdT('The subject is plain text: no data can be bound into it.'), false)
+        );
     }
 
     function _swPageOptions(cur, serverPages, o) {
@@ -48931,6 +49032,59 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'account_email': {
+                // The member part of a welcome and a password reset e-mail;
+                // the server keeps the part of the e-mail being sent
+                // (is_welcome / is_password_reset). E-mail programs drop
+                // linked stylesheets, so the texts and the button also carry
+                // inline styles. A colour fallback sits inside var(): a
+                // client that reads var() but blocks the linked stylesheet
+                // would otherwise drop the button's background. The name stands in an element of its own: a
+                // translated page matches whole texts, and a sentence with
+                // the name inside it would no longer match. Mirrors
+                // _render_system_widget_account_email().
+                var aeStyle = function (css) { return [{ name: 'style', value: css }]; };
+                var aeGreeting = function () {
+                    return createNode('semantic', { tag: 'h1', cssClass: 'h4 fw-bold mb-3', customName: _sdT('Greeting'),
+                        _attrs: aeStyle('font-size:22px;font-weight:700;margin:0 0 16px;color:#111827') }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Hello,'), customName: _sdT('Label'),
+                            _attrs: aeStyle('margin-right:4px') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Jane'), customName: _sdT('First Name'),
+                            _bindings: { text: '__user_first_name' } })
+                    ]);
+                };
+                var aePara = function (text, extraCss) {
+                    return createNode('content', { contentType: 'paragraph', text: text, cssClass: 'mb-3',
+                        _attrs: aeStyle('margin:0 0 16px' + (extraCss || '')) });
+                };
+                var aeButton = function (text, token) {
+                    return createNode('semantic', { tag: 'p', cssClass: 'my-4', customName: _sdT('Button'),
+                        _attrs: aeStyle('margin:24px 0') }, [
+                        createNode('content', { contentType: 'link', text: text, href: '#', cssClass: 'btn btn-primary px-4',
+                            _attrs: aeStyle('display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;' +
+                                'background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff)'),
+                            _bindings: { href: token } })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Welcome E-mail'),
+                        _bindings: { eo_visible_if: 'is_welcome' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('Your account is ready.')),
+                        aeButton(_sdT('Go to my account'), '__my_account_url')
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Reset E-mail'),
+                        _bindings: { eo_visible_if: 'is_password_reset' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('We received a request to reset your password.')),
+                        aeButton(_sdT('Set a new password'), '__set_password_url'),
+                        aePara(_sdT('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'),
+                            ';font-size:13px;color:#6b7280')
+                    ]),
+                    createNode('loop_area', {}, [])
+                ]);
+            }
+
             case 'error_page': {
                 // The site's error screen: one block for "not found", one for
                 // maintenance mode, one for every other error; the server
@@ -49631,7 +49785,8 @@ const StyleDesigner = (function () {
     // step. Their layouts get no Messages block, and one an older layout still
     // carries is dropped on load (prefetchShared()): on the canvas it was a
     // "PHP Messages" box in the middle of the header that the page never shows.
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1 };
+    // An e-mail shows no alerts either (_render_system_widget_account_email()).
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

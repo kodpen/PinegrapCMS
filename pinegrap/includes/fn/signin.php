@@ -1503,8 +1503,9 @@ function pg_signin_finish($params)
 
 /**
  * The account a finished sign-in belongs to: the one holding the identity,
- * else one with the verified address that has no identity at this provider
- * yet (and is then tied to it). 0 when there is none.
+ * else one whose stored address is the verified address (letter case aside)
+ * and that has no identity at this provider yet (it is then tied to it).
+ * 0 when there is none.
  *
  * @param array $identity what pg_signin_finish() returned
  * @return int
@@ -1525,20 +1526,24 @@ function pg_signin_match_user($identity)
 
     // The address only finds the row; the identity is what signs in from
     // now on. An account already tied to another person at this provider is
-    // never taken over, Google's still in the old column included.
+    // never taken over, Google's still in the old column included. The
+    // column's collation folds accents, so the rows are candidates only:
+    // the stored address must be the reported one (pg_email_address_matches()),
+    // or a provider account "jane@sirket.com" would be tied to the account
+    // of "jane@şirket.com".
     $legacy_google = (($identity['provider'] === 'google') && pg_signin_google_legacy_column())
         ? " AND (user.user_google_id IS NULL OR user.user_google_id = '')"
         : '';
 
-    $match_id = (int) db_value(
-        "SELECT user.user_id
+    $match_id = pg_signin_same_address_user(db_items(
+        "SELECT user.user_id, user.user_email
         FROM user
         LEFT JOIN user_identities
             ON user_identities.user_id = user.user_id
             AND user_identities.provider = '" . e($identity['provider']) . "'
         WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . "
         ORDER BY user.user_id
-        LIMIT 1");
+        LIMIT 20"), $identity['email']);
 
     if ($match_id && pg_signin_identity_add($match_id, $identity['provider'], $identity['subject'], $identity['email'])) {
         log_activity(lang(array(
@@ -1597,23 +1602,62 @@ function pg_signin_create_member($identity)
 }
 
 /**
- * The account that uses an e-mail address, or 0. Asked only after
- * pg_signin_match_user() found nobody for a verified address: an account
- * here is then already tied to another person at the provider, and is
- * neither taken over nor opened a second time.
+ * The first of the rows (user_id, user_email) whose stored address is the
+ * given one, letter case aside; 0 when none is. The rows come from a lookup
+ * on user.user_email, whose collation also returns accent-folded look-alikes.
  *
+ * @param array  $rows
  * @param string $email
  * @return int
  */
-function pg_signin_address_user($email)
+function pg_signin_same_address_user($rows, $email)
 {
-    if ((string) $email === '') {
-        return 0;
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && pg_email_address_matches($email, isset($row['user_email']) ? $row['user_email'] : '')) {
+            return (int) $row['user_id'];
+        }
     }
 
-    return (int) db_value("SELECT user_id FROM user WHERE user_email = '" . e($email) . "' ORDER BY user_id LIMIT 1");
+    return 0;
 }
 
+/**
+ * The accounts (user_id, user_email) a lookup on an e-mail address finds,
+ * accent-folded look-alikes included. Asked only after
+ * pg_signin_match_user() found nobody for a verified address.
+ *
+ * @param string $email
+ * @return array
+ */
+function pg_signin_address_accounts($email)
+{
+    if ((string) $email === '') {
+        return array();
+    }
+
+    return db_items("SELECT user_id, user_email FROM user WHERE user_email = '" . e($email) . "' ORDER BY user_id LIMIT 20");
+}
+
+/**
+ * Why a verified address nobody matched may not sign in or open an account:
+ * 'connected' when an account here has that very address (it is then tied
+ * to another person at the provider: neither taken over nor opened a second
+ * time), 'in_use' when only a look-alike the column folds to it has one (one
+ * account per address, as the sign-up forms count it; not tied either),
+ * '' when no account uses it.
+ *
+ * @param string $email
+ * @param array  $rows  what pg_signin_address_accounts() returned
+ * @return string
+ */
+function pg_signin_address_refusal($email, $rows)
+{
+    if (empty($rows)) {
+        return '';
+    }
+
+    return pg_signin_same_address_user($rows, $email) ? 'connected' : 'in_use';
+}
 
 /* ---------------------------------------------------------------------------
    Connecting a provider while signed in
