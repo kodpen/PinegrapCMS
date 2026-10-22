@@ -1,6 +1,6 @@
 ---
 name: offer-donation-lines
-description: Donation lines and offers: never the cheapest item, never discounted by a product offer, their typed amount kept when offers are taken off the cart (#987, PR #PRNUM)
+description: Donation lines and offers: never the cheapest item, never discounted by a product offer, their typed amount kept when offers are taken off the cart (#987, PR #1259)
 ---
 
 ## How do offers treat a donation line?
