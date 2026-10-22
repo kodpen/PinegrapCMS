@@ -18,7 +18,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid, marked refunded, restore), API `orders.php`.
 - Files: `add_file.php`, `edit_file.php`, `edit_files.php`, API `files.php`, file manager (create, upload, paste, folder copy, zip create and extract, rename, move, bin, restore, delete, WebP, save, rotate, bulk edit, design flag). Users: `add_user.php`.
 - Personal data downloads: `privacy_export.php` (`export`, type `person`; `core/personal-data-export.md`).
-- Bulk page edit, zip, product Copy and variant set on/off wrote nothing before #993's fix.
+- Bulk page edit, zip, product Copy and variant set on/off wrote nothing before #1237 (issue #993).
 
 ## What is not hooked yet?
 - Files other open work held: `edit_user.php`, `delete_users.php` (#672), `includes/workspace/changes.php` (#805), `view_orders.php` (export status), `pg_catalog_bin_product()` itself (`includes/fn/ecommerce.php`; its callers are hooked, the Workspace one is not).
