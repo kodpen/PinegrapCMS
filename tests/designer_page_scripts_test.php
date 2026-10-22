@@ -146,11 +146,108 @@ function test_page_scripts_preview_loads_bootstrap_once()
 	pg_assert_false(strpos($fn, 'new bootstrap.Tooltip') !== false, 'no inline tooltip start');
 }
 
-// The editor's dark view is written on <html>, where a theme switcher
-// writes: on <body> it outranks the switcher.
-function test_page_scripts_preview_dark_view_on_html()
+// Runs $steps after the Preview's document helpers (_sdPreviewDarkView(),
+// _sdSetDarkThemeAttr(), _sdInsertBeforeBodyEnd(), _SD_ASSET_STAMP,
+// _SD_PAGE_SCRIPTS, _sdPageScriptFiles()) with the editor script loaded
+// from $script_src; the decoded JSON it prints, or null without Node.
+function _test_page_scripts_run($steps, $script_src = 'https://example.test/pinegrap/assets/js/style_designer.js?v=1700000000')
 {
-	$fn = _test_page_scripts_js_function('_sdPreviewDocHtml');
-	pg_assert_contains("'<html' + attrs + ' data-bs-theme=\"dark\">'", $fn);
-	pg_assert_false(strpos($fn, "'<body' + attrs + ' data-bs-theme") !== false, 'the body tag is left alone');
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return null;
+	}
+
+	$source = _test_page_scripts_designer_js();
+	$from = strpos($source, "\n    function _sdPreviewDarkView(");
+	$to = ($from !== false) ? strpos($source, "\n    function _sdPreviewHarness(", $from) : false;
+	pg_assert_true(($from !== false) && ($to !== false), 'the Preview helpers are found');
+	if (($from === false) || ($to === false)) {
+		return null;
+	}
+
+	$script = 'var document = { currentScript: { src: ' . json_encode($script_src) . ' }, baseURI: "https://example.test/pinegrap/" };'
+		. substr($source, $from, $to - $from)
+		. $steps;
+
+	$file = tempnam(sys_get_temp_dir(), 'pgpagescripts');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	pg_assert_same(0, $code, implode("\n", $out));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The Preview's scripts go just before the page's own last </body>, also
+// when the text before it holds letters whose lower case is longer: each
+// "İ" is two code units lower-cased, and an index taken from a lower-cased
+// copy cut the end tag apart (Bootstrap lost, "</body" shown as text).
+function test_page_scripts_preview_inserts_before_the_last_body()
+{
+	$answer = _test_page_scripts_run(
+		'var inj = "<script src=\"b.js\"></script>\n";'
+		. 'console.log(JSON.stringify(['
+		. '_sdInsertBeforeBodyEnd("<html><body><p>İSTANBUL İzmir İ</p></body></html>", inj),'
+		. '_sdInsertBeforeBodyEnd("<html><body><pre>&lt;/body&gt;</pre><script>var s=\"</body>\";</script></BODY >\n</html>", inj),'
+		. '_sdInsertBeforeBodyEnd("<p>İ</p>", inj)'
+		. ']));'
+	);
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same("<html><body><p>\u{130}STANBUL \u{130}zmir \u{130}</p><script src=\"b.js\"></script>\n</body></html>", $answer[0]);
+	pg_assert_same("<html><body><pre>&lt;/body&gt;</pre><script>var s=\"</body>\";</script><script src=\"b.js\"></script>\n</BODY >\n</html>", $answer[1], 'the last end tag, in any case');
+	pg_assert_same("<p>\u{130}</p><script src=\"b.js\"></script>\n", $answer[2], 'appended without an end tag');
+	pg_assert_false(strpos(_test_page_scripts_js_function('_sdPreviewDocHtml'), 'toLowerCase()') !== false, 'no index from a lower-cased copy');
+}
+
+// The editor's dark view is written on <html>, where a theme switcher
+// writes; on <body> too only when the page has no switcher (as on the
+// canvas: Bootstrap's dark block then wins over the Themes panel's light
+// block, whose `:root` also matches a dark <html>).
+function test_page_scripts_preview_dark_view()
+{
+	$answer = _test_page_scripts_run(
+		'console.log(JSON.stringify(['
+		. '_sdPreviewDarkView("<html lang=\"tr\"><head></head><body class=\"x\"><p>a</p></body></html>"),'
+		. '_sdPreviewDarkView("<html data-bs-theme=\"light\"><body data-bs-theme=\"light\"><button data-pg-theme-switcher=\"toggle\"></button></body></html>")'
+		. ']));'
+	);
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same('<html lang="tr" data-bs-theme="dark"><head></head><body class="x" data-bs-theme="dark"><p>a</p></body></html>', $answer[0]);
+	pg_assert_same('<html data-bs-theme="dark"><body data-bs-theme="light"><button data-pg-theme-switcher="toggle"></button></body></html>', $answer[1], 'with a switcher <body> is left alone');
+	pg_assert_contains('if (canvasDarkTheme) html = _sdPreviewDarkView(html);', _test_page_scripts_js_function('_sdPreviewDocHtml'));
+}
+
+// The platform scripts the Preview loads carry the editor's own ?v= stamp,
+// so a copy cached before an upgrade is not run.
+function test_page_scripts_preview_files_carry_the_editor_stamp()
+{
+	$answer = _test_page_scripts_run(
+		'console.log(JSON.stringify([_sdPageScriptFiles("<div data-pg-theme-switcher=\"switch\"></div><a data-bs-toggle=\"popover\">x</a>"), _sdPageScriptFiles("<p>none</p>")]));'
+	);
+	if ($answer === null) {
+		return;
+	}
+	pg_assert_same(array(
+		'https://example.test/pinegrap/assets/js/pg_theme_switcher.js?v=1700000000',
+		'https://example.test/pinegrap/assets/js/pg_bs_tips.js?v=1700000000',
+	), $answer[0]);
+	pg_assert_same(array(), $answer[1]);
+
+	$bare = _test_page_scripts_run(
+		'console.log(JSON.stringify(_sdPageScriptFiles("<a data-bs-toggle=\"tooltip\">x</a>")));',
+		'https://example.test/pinegrap/assets/js/style_designer.js'
+	);
+	if ($bare !== null) {
+		pg_assert_same(array('https://example.test/pinegrap/assets/js/pg_bs_tips.js'), $bare, 'no stamp, no ?v=');
+	}
 }

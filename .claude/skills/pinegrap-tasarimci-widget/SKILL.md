@@ -572,7 +572,9 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   `pg_bs_tips.js`) iki yerde yazılır: sayfada `pg_*_inject()`
   (`get_page_content.php`), önizlemede `_SD_PAGE_SCRIPTS` satırı. Önizleme
   çatı betiğini yalnız `bootstrap-js` satırı yoksa ekler; `#` bağlantıları ve
-  koyu görünüm `_sdPreviewHarness()`'te
+  tema seçici motoru `_sdPreviewHarness()`'te, koyu görünüm
+  `_sdPreviewDarkView()`'da. Son `</body>`'yi `_sdInsertBeforeBodyEnd()` bulur:
+  `html.toLowerCase()` kopyasının indeksi her `İ`'de bir kayar
   (`docs/memory/designer/designer-preview-page-scripts.md`).
 - Tuvaldeki hayalet kayıtlar (`_sdAppendGhosts`, `designer/widget_ghosts`)
   yalnız DOM'dur: `data-sd-id` taşımaz, `inert`, ağaca girmez. Yeni bir liste

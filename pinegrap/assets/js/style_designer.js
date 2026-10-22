@@ -52071,17 +52071,7 @@ const StyleDesigner = (function () {
             return (widgetHtml && widgetHtml[id] != null) ? String(widgetHtml[id]) : '';
         });
 
-        // The editor's dark view goes to the preview's <html>, where a theme
-        // switcher writes too: on <body> it would outrank the switcher's
-        // choice for every element of the page.
-        if (canvasDarkTheme) {
-            html = html.replace(/<html\b([^>]*)>/i, function (m, attrs) {
-                if (/\sdata-bs-theme\s*=/i.test(attrs)) {
-                    return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/i, 'data-bs-theme="dark"');
-                }
-                return '<html' + attrs + ' data-bs-theme="dark">';
-            });
-        }
+        if (canvasDarkTheme) html = _sdPreviewDarkView(html);
 
         // Compute absolute site base URL. OUTPUT_PATH is Pinegrap's URL path prefix
         // ("/" or "/subfolder/") — prepend scheme+host for a blob:-safe absolute base.
@@ -52226,16 +52216,59 @@ const StyleDesigner = (function () {
         _sdPageScriptFiles(html).forEach(function (src) {
             _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
         });
-        var _pvBody = html.toLowerCase().lastIndexOf('</body>');
-        html = (_pvBody !== -1)
-            ? html.slice(0, _pvBody) + _pvJsInject + html.slice(_pvBody)
-            : html + _pvJsInject;
+        html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
         // The preview's own harness, ahead of the page's scripts.
         html = html.replace('</head>', function () { return _sdPreviewHarness(html) + '</head>'; });
 
         return html;
     }
+
+    // The preview document `html` in the editor's dark view. The theme goes
+    // to <html>, where a theme switcher writes. Without a switcher it goes to
+    // <body> as well, as on the canvas: a light block of the Themes panel
+    // written as `:root, [data-bs-theme="light"]` matches a dark <html> too
+    // and, loaded after bootstrap.css, wins there, while on <body>
+    // Bootstrap's dark block wins. With a switcher <body> is left alone, or
+    // it would outrank the switcher's choice for every element of the page.
+    function _sdPreviewDarkView(html) {
+        html = _sdSetDarkThemeAttr(html, 'html');
+        if (!/data-pg-theme-switcher/.test(html)) html = _sdSetDarkThemeAttr(html, 'body');
+        return html;
+    }
+
+    // `html` with data-bs-theme="dark" on its first <tag> (`tag` is "html"
+    // or "body"), replacing a theme the tag already names.
+    function _sdSetDarkThemeAttr(html, tag) {
+        return html.replace(new RegExp('<' + tag + '\\b([^>]*)>', 'i'), function (m, attrs) {
+            if (/\sdata-bs-theme\s*=/i.test(attrs)) {
+                return m.replace(/data-bs-theme\s*=\s*["'][^"']*["']/i, 'data-bs-theme="dark"');
+            }
+            return '<' + tag + attrs + ' data-bs-theme="dark">';
+        });
+    }
+
+    // `html` with `inject` written just before its last </body> (the page's
+    // own end tag; an earlier one can sit in a script or a code sample), or
+    // appended when it has none. The tag is looked for in `html` itself:
+    // an index taken from a lower-cased copy drifts, since lower-casing can
+    // change the length ("İ" becomes two code units).
+    function _sdInsertBeforeBodyEnd(html, inject) {
+        var re = /<\/body\s*>/gi, m, at = -1;
+        while ((m = re.exec(html)) !== null) at = m.index;
+        return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
+    }
+
+    // The editor's own ?v= stamp (designer_screen.php prints it on this
+    // script), added to the platform scripts the Preview loads so a copy
+    // cached before an upgrade is not used; the page uses ?v= too.
+    var _SD_ASSET_STAMP = (function () {
+        try {
+            var src = (document.currentScript && document.currentScript.src) || '';
+            var m = /[?&]v=([^&#]*)/.exec(src);
+            return m ? m[1] : '';
+        } catch (e) { return ''; }
+    })();
 
     // Platform scripts a visitor page gets when its markup holds their
     // marker. The server's twins add the same file to the published page:
@@ -52252,7 +52285,11 @@ const StyleDesigner = (function () {
         var out = [];
         _SD_PAGE_SCRIPTS.forEach(function (row) {
             if (!row.test.test(markup)) return;
-            try { out.push(new URL(row.file, document.baseURI).href); } catch (e) {}
+            try {
+                var url = new URL(row.file, document.baseURI);
+                if (_SD_ASSET_STAMP) url.searchParams.set('v', _SD_ASSET_STAMP);
+                out.push(url.href);
+            } catch (e) {}
         });
         return out;
     }
