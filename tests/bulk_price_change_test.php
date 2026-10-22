@@ -25,6 +25,12 @@ function test_bulk_price_change_decrease_keeps_the_price_above_zero()
 	pg_assert_same(array('price' => 1000, 'refused' => true), pg_bulk_price_change(1000, '1', 1500), 'below zero');
 	pg_assert_same(array('price' => 750, 'refused' => false), pg_bulk_price_change(1000, '3', '25'));
 	pg_assert_same(array('price' => 1000, 'refused' => true), pg_bulk_price_change(1000, '3', '100'), 'all of it');
+
+	// Any result at or below zero, a free or negative price included.
+	pg_assert_same(array('price' => 0, 'refused' => true), pg_bulk_price_change(0, '3', '10'), 'a free product');
+	pg_assert_same(array('price' => 0, 'refused' => true), pg_bulk_price_change(0, '1', 0), 'a free product, nothing off');
+	pg_assert_same(array('price' => -1000, 'refused' => true), pg_bulk_price_change(-1000, '3', '25'), 'a negative price');
+	pg_assert_same(array('price' => -1000, 'refused' => true), pg_bulk_price_change(-1000, '1', -500), 'a negative price raised');
 }
 
 // An increase by a negative amount or percentage is a decrease: it may lower
@@ -56,9 +62,24 @@ function test_bulk_price_change_a_negative_price_only_goes_up()
 	pg_assert_same(array('price' => -500, 'refused' => true), pg_bulk_price_change(-500, '2', -100));
 }
 
-// Stored prices come as strings; an unknown method changes nothing.
+// Stored prices come as strings; an amount rounds to whole minor units; an
+// unknown method changes nothing, a near miss of a method's name included.
 function test_bulk_price_change_reads_stored_values()
 {
 	pg_assert_same(array('price' => 1250, 'refused' => false), pg_bulk_price_change('1000', 2, '250'));
+	pg_assert_same(array('price' => 1251, 'refused' => false), pg_bulk_price_change(1000, '2', 250.7), 'rounded, not cut');
 	pg_assert_same(array('price' => 1000, 'refused' => false), pg_bulk_price_change('1000', '5', 300));
+	pg_assert_same(array('price' => 1000, 'refused' => false), pg_bulk_price_change(1000, '01', 300));
+	pg_assert_same(array('price' => 0, 'refused' => false), pg_bulk_price_change(0, ' 3', '10'));
+}
+
+// The screen refuses an empty, non-numeric or non-positive value before any
+// product is touched, as the Catalog Manager's bulk price change does.
+function test_bulk_price_change_screen_refuses_a_value_that_is_no_amount()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
+
+	pg_assert_contains("!is_numeric(\$raw_price_value) || ((float) \$raw_price_value <= 0)", $source);
+	pg_assert_contains("lang('Enter an amount for the price change.')", $source);
+	pg_assert_contains("(\$_POST['edit_change_price_method'] != '') && !\$price_value_refused", $source);
 }

@@ -66,16 +66,29 @@ if (!$_POST) {
 
     validate_token_field();
 
-	$edit_change_price_method = $_POST['edit_change_price_method'];
-	if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
-		$raw_price_value = $_POST['edit_price_value'];
-		// remove commas from price
-		$price_value = str_replace(',', '', $raw_price_value);
-		// convert price from dollars to cents
-		$price_value = (int) round($price_value * 100);
-	}
-	else if(($edit_change_price_method == '3') || ($edit_change_price_method == '4')){
-		$price_value = $_POST['edit_price_value'];
+	$edit_change_price_method = (string) ($_POST['edit_change_price_method'] ?? '');
+	$price_value = 0;
+	$price_value_refused = false;
+	if(in_array($edit_change_price_method, array('1', '2', '3', '4'), true)){
+		$raw_price_value = trim((string) ($_POST['edit_price_value'] ?? ''));
+		// remove commas from an amount
+		if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
+			$raw_price_value = str_replace(',', '', $raw_price_value);
+		}
+		// The amount or percentage is a number above zero, as in the Catalog
+		// Manager's bulk price change: the method says which way it goes.
+		if(($raw_price_value === '') || !is_numeric($raw_price_value) || ((float) $raw_price_value <= 0)){
+			$price_value_refused = true;
+			$edit_change_price_method = '';
+			$liveform->mark_error('Update Error', lang('Enter an amount for the price change.'));
+		}
+		else if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
+			// convert price from dollars to cents
+			$price_value = (int) round((float) $raw_price_value * 100);
+		}
+		else {
+			$price_value = (float) $raw_price_value;
+		}
 	}
 
     // If at least one product was selected then continue.
@@ -92,7 +105,7 @@ if (!$_POST) {
                     || ($_POST['edit_disallowed_zones'])
                     || ($_POST['edit_inventory'] != '')
                     || ($_POST['edit_inventory_quantity'] != '')
-					|| ($_POST['edit_change_price_method'] != '')
+					|| (($_POST['edit_change_price_method'] != '') && !$price_value_refused)
                     || (($_POST['edit_tax_rate_method'] ?? '') != '')
                 ) {
                     if ($_POST['edit_allowed_zones']) {
