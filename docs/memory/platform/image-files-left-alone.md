@@ -9,8 +9,8 @@ description: Images the engine refuses to process and why: animated GIF/APNG/Web
 
 ## How is an animated file told apart?
 - By its bytes, never its name or extension (an APNG named `.jpg` still counts).
-- GIF: two or more image descriptors (`pg_image_is_animated_gif()`).
-- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only the 8-byte chunk headers are read; each chunk's data is skipped with `fseek()`, so a large text chunk costs nothing. An `acTL` after `IDAT` is a still PNG to every reader.
+- GIF: two or more Graphic Control Extension blocks (`00 21 F9 04`) (`pg_image_is_animated_gif()`).
+- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only the 8-byte chunk headers are read; each chunk's data is skipped with `fseek()`, so a large text chunk costs nothing. An `acTL` after `IDAT` is a still PNG to every reader. A chunk length near 2 GB ends the search instead of overflowing the `fseek()` offset on 32-bit PHP (a `TypeError` there, a 500 on upload, Optimize, `?w=` and page render).
 - WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
 
 ## What happens to an animated file on each path?

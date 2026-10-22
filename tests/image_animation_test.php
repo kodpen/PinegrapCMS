@@ -264,3 +264,40 @@ function test_image_animation_engine_leaves_animated_webp()
 		image_animation_test_remove($folder);
 	}
 }
+
+// A chunk length near 2 GB right after IHDR ends the PNG search. On 32-bit
+// PHP the seek offset past such a chunk no longer fits an int, and fseek()
+// throws a TypeError for the float instead of failing.
+function test_image_animation_huge_png_chunk_length_ends_search()
+{
+	if (!function_exists('imagepng')) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = image_animation_test_folder();
+	$source = $folder . '/files/huge-chunk.png';
+
+	try {
+		$png = image_animation_test_png(40, 30);
+		file_put_contents($source, substr($png, 0, 33) . pack('N', 0x7FFFFFFD) . 'zTXt' . substr($png, 33));
+
+		try {
+			pg_assert_false(pg_image_is_animated_png($source), 'pg_image_is_animated_png()');
+			pg_assert_false(pg_image_is_animated($source), 'pg_image_is_animated()');
+		} catch (Throwable $throwable) {
+			pg_assert_true(false, 'the animation check threw ' . get_class($throwable) . ': ' . $throwable->getMessage());
+		}
+
+		try {
+			$report = @pg_process_image_file($source, array('write' => false));
+			pg_assert_true(is_array($report), 'a report comes back');
+			pg_assert_true(!is_array($report) || !isset($report['reason']) || ($report['reason'] !== 'animated'), 'not reported as animated');
+		} catch (Throwable $throwable) {
+			pg_assert_true(false, 'pg_process_image_file() threw ' . get_class($throwable) . ': ' . $throwable->getMessage());
+		}
+
+	} finally {
+		image_animation_test_remove($folder);
+	}
+}
