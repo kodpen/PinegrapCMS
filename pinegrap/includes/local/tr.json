@@ -25437,5 +25437,8 @@
     "This product group has groups inside it in the Recycle Bin. Delete those from the Recycle Bin first.": "Bu ürün grubunun Geri Dönüşüm Kutusu'nda alt grupları var. Önce onları Geri Dönüşüm Kutusu'ndan silin.",
     "The attributes of this category could not be read from the marketplace: {var:1}": "Bu kategorinin öznitelikleri pazaryerinden okunamadı: {var:1}",
     "Orders are not brought in from {var:1} yet.": "{var:1} üzerinden siparişler henüz içe aktarılmıyor.",
-    "An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz: sepet yalnızca ödeme adımıyla siparişe dönüşür, sipariş de sepete geri dönmez."
+    "An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.": "Sipariş {var:1} durumundan {var:2} durumuna taşınamaz: sepet yalnızca ödeme adımıyla siparişe dönüşür, sipariş de sepete geri dönmez.",
+    "Paraşüt takes VAT at {var:1} only; this order was charged {var:2}, so it cannot be invoiced there.": "Paraşüt KDV'yi yalnız {var:1} oranlarıyla alır; bu siparişte {var:2} alındı, bu yüzden orada faturalanamaz.",
+    "Paraşüt computed {var:1} for the invoice where the order comes to {var:2}; the record was deleted there and nothing was issued.": "Paraşüt fatura için {var:1} hesapladı, sipariş {var:2} tutuyor; kayıt oradan silindi ve hiçbir şey kesilmedi.",
+    "Paraşüt computed {var:1} for the invoice where the order comes to {var:2}, and the record could not be deleted there ({var:3}): it is still at Paraşüt as id {var:4}, not issued. Delete it on Paraşüt's screen.": "Paraşüt fatura için {var:1} hesapladı, sipariş {var:2} tutuyor; kayıt orada silinemedi ({var:3}): Paraşüt'te {var:4} id'siyle duruyor, düzenlenmedi. Paraşüt ekranında silin."
 }

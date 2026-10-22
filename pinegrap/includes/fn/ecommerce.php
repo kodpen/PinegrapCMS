@@ -2717,14 +2717,19 @@ function pg_order_charges_taxed()
 /**
  * Whether the checkout keeps the total of every rate on its orders one that
  * the tax, taken on the whole, can reach (pg_order_charges_reachable()): the
- * store invoices its orders in the ERP, charges tax, and its shipping and
- * surcharges hold tax (pg_order_charges_taxed()).
+ * store invoices its orders in the ERP, or sends them to Paraşüt from the
+ * order screen without it (parasut_order_buttons_on(); those invoices carry
+ * the ERP's lines, parasut_create_invoice()), charges tax, and its shipping
+ * and surcharges hold tax (pg_order_charges_taxed()).
  *
  * @return bool
  */
 function pg_order_charges_settle_rates()
 {
-    return defined('ERP_ENABLED') && ERP_ENABLED
+    $invoiced = (defined('ERP_ENABLED') && ERP_ENABLED)
+        || (function_exists('parasut_order_buttons_on') && parasut_order_buttons_on());
+
+    return $invoiced
         && defined('ECOMMERCE_TAX') && (ECOMMERCE_TAX == true)
         && pg_order_charges_taxed();
 }
