@@ -18829,7 +18829,10 @@ const StyleDesigner = (function () {
                 if (ctype === 'progress') {
                     return createNode('semantic', { tag: 'div', cssClass: 'progress pg-progress-18', customName: _sdT('Progress')
  }, [
-                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar progress-bar-striped text-bg-primary', customName: _sdT('Progress Bar'),
+                        // Plain bar: the label stays readable on it. Stripes lay 15% white
+                        // over the primary colour and drop white text to 3.97:1 (classic
+                        // palette); Striped is a switch in the Progress panel.
+                        createNode('semantic', { tag: 'div', cssClass: 'progress-bar text-bg-primary', customName: _sdT('Progress Bar'),
                             _attrs: [{ name: 'role', value: 'progressbar' }, { name: 'aria-label', value: _sdT('Progress') }, { name: 'style', value: 'width:50%' },
                                      { name: 'aria-valuenow', value: '50' }, { name: 'aria-valuemin', value: '0' }, { name: 'aria-valuemax', value: '100' }] }, [
                             createNode('content', { contentType: 'heading', tag: 'span', text: '50%', cssClass: '' })
