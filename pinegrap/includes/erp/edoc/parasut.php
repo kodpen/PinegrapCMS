@@ -789,9 +789,8 @@ function erp_edoc_parasut_no_product_text($line)
 /**
  * The amount before VAT that comes to the total once Paraşüt adds the VAT
  * at the rate on the whole of it, half up to the kurus; null when no amount
- * does. There is one at most: a kurus more on the amount puts one or two on
- * the total, so at 20% one total in six (3 kurus off a multiple of 6, such
- * as 57.93) is never reached.
+ * does (erp_rate_amount(): at 20% one total in six, such as 57.93, is never
+ * reached). The ERP's own documents take their VAT the same way.
  *
  * @param int   $total  Kurus, VAT included
  * @param float $rate   The VAT rate in percent
@@ -799,16 +798,7 @@ function erp_edoc_parasut_no_product_text($line)
  */
 function erp_edoc_parasut_rate_amount($total, $rate)
 {
-    $total = (int) $total;
-    $near = (int) round($total * 100 / (100 + (float) $rate));
-
-    foreach (array($near, $near - 1, $near + 1) as $amount) {
-        if (($amount >= 0) && (($amount + erp_apply_rate($amount, $rate)) === $total)) {
-            return $amount;
-        }
-    }
-
-    return null;
+    return erp_rate_amount($total, $rate);
 }
 
 /**

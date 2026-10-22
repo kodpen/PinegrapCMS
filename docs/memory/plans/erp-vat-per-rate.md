@@ -4,7 +4,7 @@ description: Plan (owner's decisions 2026-10-21; steps 1-4 done): the ERP takes 
 ---
 
 ## Why?
-- Paraşüt takes the VAT on the sum of each group of lines with one VAT rate and one withholding rate, and the withholding on the groups' VAT, rounded once per invoice (erp-parasut-invoice-lines.md); the ERP, the checkout and the old order path take both line by line. The driver moves a kurus or so per rate (#961) to keep the total, so Paraşüt's before-VAT and VAT differ from the ERP's books by that much; a rate total no amount reaches (57.93 at 20%) cannot go at all, and a rate with withholding is not moved (2-4 withheld lines at 20%: four invoices in ten refused).
+- Paraşüt takes the VAT on the sum of each group of lines with one VAT rate and one withholding rate, and the withholding on the groups' VAT, rounded once per invoice (erp-parasut-invoice-lines.md); the ERP, the checkout and the old order path take both line by line. The driver moves a kurus or so per rate (#961) to keep the total; a rate total no amount reaches (57.93 at 20%) cannot go at all, and a rate with withholding is not moved.
 
 ## What is decided? (owner, 2026-10-21)
 - The ERP takes the taxes as Paraşüt does: VAT per (VAT rate, withholding rate) group, the withholding summed over the groups and rounded once; the second tax per its own rate. Issued documents keep their figures; the driver's shift stays for them.
@@ -29,5 +29,5 @@ description: Plan (owner's decisions 2026-10-21; steps 1-4 done): the ERP takes 
 
 ## Where to start?
 - Step 5: `parasut_create_invoice()` builds its own lines; give them the driver's shift (`erp_edoc_parasut_vat_shift()`) or take `erp_order_lines()`.
-- Once #1174 (claim on includes/erp/edoc/parasut.php) merges, `erp_edoc_parasut_rate_amount()` can call `erp_rate_amount()`.
+- After #1243 (exact `erp_apply_rate()`): `pg_tax_by_rate()` / `pg_tax_rate_amount()` take its rule (float `round()` of a rate like 7.7 differs on PHP 8.4+).
 - Open, for the owner: an instalment charge that leaves a rate's total out of reach (erp-order-charges-vat.md).
