@@ -6139,7 +6139,7 @@ const StyleDesigner = (function () {
             '<a href="#" target="_blank" rel="noopener" class="sd-vb-btn" id="sd-vb-live" title="' + esc(_sdT('Open the page on the site (as saved)')) + '" style="display:none"><span class="bi bi-box-arrow-up-right"></span> <span class="sd-vb-txt">' + esc(_sdT('Open on Site')) + '</span></a>' +
             '</div>' +
             '</div>' +
-            '<div class="sd-ctx-bar" id="sd-ctx-bar" style="display:none">' +
+            '<div class="sd-ctx-bar sd-ctx-idle" id="sd-ctx-bar">' +
             '<span class="sd-ctx-label" id="sd-ctx-label"></span>' +
             '<div class="sd-ctx-showhide" id="sd-ctx-showhide">' +
             '<button type="button" class="sd-ctx-btn" id="sd-ctx-show"><span class="bi bi-eye"></span>' + esc(_sdT(' Show')) + '</button>' +
@@ -7636,6 +7636,17 @@ const StyleDesigner = (function () {
         render(); renderProperties();
     }
 
+    // The context bar keeps its row whether or not it has something to show;
+    // only its contents go (sd-ctx-idle, visibility). Shown and hidden with
+    // display, it pushed the canvas down or up by its height while a press
+    // that selected an element was still held, so the release and the click
+    // landed on whatever had moved under the pointer: the first accordion
+    // question or pill could never be opened, a double-click did not edit.
+    function _sdCtxBarIdle(bar, idle) {
+        bar.classList.toggle('sd-ctx-idle', !!idle);
+        if (idle) bar.removeAttribute('data-ctx-target-id');
+    }
+
     /**
      * Update the ctx bar visibility and state based on the currently selected node.
      *
@@ -7657,7 +7668,7 @@ const StyleDesigner = (function () {
         // ── Priority 1: Dropdown ────────────────────────────────────────
         var ddContainer = selectedNode ? findDropdownContainer(selectedNode) : null;
         if (ddContainer) {
-            bar.style.display = '';
+            _sdCtxBarIdle(bar, false);
             if (labelEl) labelEl.textContent = 'Dropdown';
             bar.removeAttribute('data-ctx-target-id');
 
@@ -7722,7 +7733,7 @@ const StyleDesigner = (function () {
         var navItemNode = selectedNode ? findNavItemContainer(selectedNode) : null;
         // Only show nav-item bar if NOT inside a dropdown (dropdown takes priority)
         if (navItemNode && !ddContainer) {
-            bar.style.display = '';
+            _sdCtxBarIdle(bar, false);
             if (labelEl) labelEl.textContent = 'Nav';
             if (showHide) showHide.style.display = 'none';
             bar.removeAttribute('data-ctx-target-id');
@@ -7748,7 +7759,7 @@ const StyleDesigner = (function () {
         // ── Priority 1c: Navbar context (inside a navbar, outside dropdown/nav-item) ─
         var navbarNode = selectedNode ? findNavbarContainer(selectedNode) : null;
         if (navbarNode && !ddContainer) {
-            bar.style.display = '';
+            _sdCtxBarIdle(bar, false);
             if (labelEl) labelEl.textContent = 'Navbar';
             if (showHide) showHide.style.display = 'none';
             bar.removeAttribute('data-ctx-target-id');
@@ -7799,7 +7810,7 @@ const StyleDesigner = (function () {
         if (_compCtx && !ddContainer && !navItemNode && !navbarNode) {
             var _compNode    = _compCtx.compositeNode;
             var compositeType = _compCtx.addType;
-            bar.style.display = '';
+            _sdCtxBarIdle(bar, false);
             if (labelEl) labelEl.textContent = COMPOSITE_LABELS[compositeType] || compositeType;
             if (showHide) { showHide.innerHTML = ''; showHide.style.display = 'none'; }
             bar.removeAttribute('data-ctx-target-id');
@@ -7830,11 +7841,11 @@ const StyleDesigner = (function () {
         var hideBtn = document.getElementById('sd-ctx-hide');
         var result = resolveCtxTarget(selectedNode);
         if (!result) {
-            bar.style.display = 'none';
+            _sdCtxBarIdle(bar, true);
             return;
         }
 
-        bar.style.display = '';
+        _sdCtxBarIdle(bar, false);
         if (labelEl) labelEl.textContent = result.label;
         if (showHide) {
             showHide.innerHTML =
