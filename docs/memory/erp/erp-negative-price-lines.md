@@ -9,7 +9,7 @@ description: An order line of a product priced below zero: how the checkout, the
 ## How is it taxed?
 - Checkout: alone (`pg_tax_by_rate()`), so a group's shares never run backwards. `orders.tax` holds that figure.
 - ERP invoice (`erp_order_lines()`): without an order discount it keeps the checkout's line figures. With one, the credit gets a negative share of it (`erp_allocate()`) and the VAT is taken again per rate with the credit in its rate's group (`erp_rate_vat()`); a group whose sum is zero or less puts its whole VAT on its first line (1.00 and −3.00 at 20%: −0.40 and 0.00).
-- The tie to `orders.tax` moves only lines with VAT above zero, by a kurus or so. Where the checkout held the order's VAT at zero, the gap stays and the invoice is refused as a total mismatch before a number is taken; Create Invoice names the credit line first (#1297).
+- The tie to `orders.tax` moves only lines with VAT above zero, by at most a kurus a taxed line and one. Where the checkout held the order's VAT at zero, a wider gap stays and the invoice is refused as a total mismatch before a number is taken; a narrower one is absorbed, the invoice is numbered, and the driver refuses the credit line at send. Create Invoice names the credit line first either way (#1297).
 - Not grouped at the checkout as well (weighed 2026-10-23): Paraşüt takes no such line anyway, and a group share can move a line's VAT by about a kurus per credit line of its rate, which a subscription then bills every period.
 
 ## Does it go to Paraşüt?
