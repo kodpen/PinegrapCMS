@@ -145,23 +145,26 @@ function erp_order_charged_items($order, $items, $clearcommerce = null)
  * Returned as plain arrays rather than written, so the caller can show them
  * before anything is saved and so this can be tested without a transaction.
  *
- * The order's invoice asks for $settle_installment: an instalment charge that
- * leaves the total of a rate one the VAT, taken on the whole, never reaches
- * (a payment service such as Pay with iyzico sets it, and the checkout could
- * not take it lower) goes on the invoice the fewest kurus lower that reach
- * it (erp_order_charge_lines()). The invoice then comes to that much less
- * than the customer paid (totals['installment_left']); the kurus stays with
- * the payment, on the customer's account. A refund of the order's lines
- * leaves it off and gives back what was paid.
+ * The order's invoice asks for $settle_charges: a charge - the shipping, the
+ * surcharge, the instalment charge - that leaves the total of a rate one the
+ * VAT, taken on the whole, never reaches goes on the invoice the fewest kurus
+ * lower that reach it (erp_order_charge_lines()). The checkout keeps what it
+ * charges reachable (pg_order_charges_reachable(), the iyzico card's
+ * instalment charge); this settles an order placed before that rule and an
+ * instalment charge a payment service set itself (Pay with iyzico). The
+ * invoice then comes to that much less than the customer paid
+ * (totals['charges_left']); the kurus stays with the payment, on the
+ * customer's account. A refund of the order's lines leaves it off and gives
+ * back what was paid.
  *
- * @param array     $order               Order row
- * @param array     $items               order_items rows (saved_for_later already excluded)
- * @param bool|null $charges_taxed       The shipping and the surcharges hold tax; null asks the
- *                                       store (erp_shipping_taxed())
- * @param bool      $settle_installment  Lower an instalment charge that leaves a rate out of reach
+ * @param array     $order           Order row
+ * @param array     $items           order_items rows (saved_for_later already excluded)
+ * @param bool|null $charges_taxed   The shipping and the surcharges hold tax; null asks the
+ *                                   store (erp_shipping_taxed())
+ * @param bool      $settle_charges  Lower a charge that leaves a rate out of reach
  * @return array  ['lines' => array, 'totals' => array]
  */
-function erp_order_lines($order, $items, $charges_taxed = null, $settle_installment = false)
+function erp_order_lines($order, $items, $charges_taxed = null, $settle_charges = false)
 {
     $lines = array();
     $weights = array();
@@ -272,17 +275,21 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_installm
     // well; without its line the invoice fell short of every installment
     // order and was refused. The document has no column of its own for it,
     // so surcharge_total counts it with the surcharge.
-    $installment = (int) ($order['installment_charges'] ?? 0);
-    $charges = erp_order_charge_lines($lines, array(
+    $charged = array(
         'shipping' => array(lang('Shipping'), (int) ($order['shipping'] ?? 0)),
         'surcharge' => array(lang('Surcharge'), (int) ($order['surcharge'] ?? 0)),
-        'installment' => array(lang('Installment Charge'), $installment),
-    ), $charges_taxed, $settle_installment ? array('installment') : array());
+        'installment' => array(lang('Installment Charge'), (int) ($order['installment_charges'] ?? 0)),
+    );
+    $charges = erp_order_charge_lines($lines, $charged, $charges_taxed, $settle_charges ? array_keys($charged) : array());
 
-    // What of the instalment charge the invoice leaves to the payment.
-    $installment_left = $installment;
-    foreach ($charges['installment'] as $line) {
-        $installment_left -= (int) $line['line_total'] + (int) $line['tax_total'];
+    // What of the charges the invoice leaves to the payment.
+    $charges_left = 0;
+    foreach ($charged as $name => $charge) {
+        $charges_left += max(0, (int) $charge[1]);
+
+        foreach ($charges[$name] as $line) {
+            $charges_left -= (int) $line['line_total'] + (int) $line['tax_total'];
+        }
     }
 
     $shipping_lines = $charges['shipping'];
@@ -323,9 +330,9 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_installm
     // two lines account for; they are informational and are NOT added again.
     // A reader that sums subtotal + shipping_total + tax_total counts the
     // shipping twice. gift_card_total is not part of the sale at all - it is
-    // how part of the grand total was paid. installment_left is the part of
-    // the instalment charge the invoice leaves to the payment (above): the
-    // order's total and gift card come to the grand total plus it.
+    // how part of the grand total was paid. charges_left is the part of the
+    // charges the invoice leaves to the payment (above): the order's total
+    // and gift card come to the grand total plus it.
     $totals = array(
         'subtotal' => $subtotal,
         'discount_total' => $discount_total,
@@ -334,7 +341,7 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_installm
         'gift_card_total' => (int) ($order['gift_card_discount'] ?? 0),
         'tax_total' => $tax_total,
         'grand_total' => $subtotal - $discount_total + $tax_total,
-        'installment_left' => max(0, $installment_left),
+        'charges_left' => max(0, $charges_left),
     );
 
     return array('lines' => $lines, 'totals' => $totals);
@@ -879,11 +886,10 @@ function erp_invoice_from_order_locked($order_id, $options = array())
 
     // What the customer was actually charged. A gift card is a means of
     // payment, so it is added back: the invoice states the whole sale, and the
-    // gift card settles its share of it once the document exists. An
-    // instalment charge that left a rate's total out of reach is invoiced the
-    // kurus lower that reaches it (erp_order_lines()); that kurus stays with
-    // the payment.
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'];
+    // gift card settles its share of it once the document exists. A charge
+    // that left a rate's total out of reach is invoiced the kurus lower that
+    // reaches it (erp_order_lines()); that kurus stays with the payment.
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'];
 
     if ($built['totals']['grand_total'] !== $expected) {
         return $fail(lang(array(
