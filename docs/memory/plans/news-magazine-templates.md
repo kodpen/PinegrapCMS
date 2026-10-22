@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 7a done): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 6, 7a done): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -20,7 +20,7 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 2, 3, 4, 7a
 3. Done (#1212): rich text in designer form textareas (the designer reset the flag; designed pages never loaded the editor).
 4. Done (#1197): site search finds designer form records (verify after an index update; fix if needed).
 5. List filter value read from a URL parameter (author, tag, section archives).
-6. Lists ordered by stored view counts (most read).
+6. Done (#1241): designed record pages count views; lists order by views, comments or views in recent days (most read).
 7a. Done (#1199): templates ship User Styles (block rules read from the editor); the installer preview prints template CSS.
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
