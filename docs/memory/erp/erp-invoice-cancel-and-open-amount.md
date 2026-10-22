@@ -22,7 +22,7 @@ description: When an ERP invoice can be cancelled, what cancel does to ledger an
 
 ## Which invoice does a bank statement line suggest?
 - `erp_bank_line_suggestion()`, when no tax number or name is in the line, offers the one open invoice the amount closes exactly; the query is `erp_bank_open_invoice_query()` (`includes/erp/bank_import.php`): `doc_type = 'invoice'`, money in a sale and money out a purchase, the line's currency (`erp_bank_line_currency()`, the store's own also taking documents with no currency), and open as `erp_invoice_open_amount()` counts it, total less paid less the returns that are not cancelled.
-- Before (#1063, PR #PRNO) the query had no `doc_type`, no currency and no returns: it offered a return document (whose posting #1132 refuses) and matched a partly returned invoice by its old open amount, or a foreign invoice by a bare number.
+- Before (#1063, PR #1228) the query had no `doc_type`, no currency and no returns: it offered a return document (whose posting #1132 refuses) and matched a partly returned invoice by its old open amount, or a foreign invoice by a bare number.
 - Returns are summed in one grouped join per query: `erp_invoices.parent_invoice_id` has no index, so a subquery per open invoice would scan the table for each.
 
 Related: docs/memory/erp/erp-return-documents.md
