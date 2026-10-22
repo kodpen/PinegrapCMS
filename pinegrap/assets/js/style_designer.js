@@ -4937,11 +4937,11 @@ const StyleDesigner = (function () {
                 var pos = p.thumbsPosition || 'bottom';
                 var posLabels = { bottom: _sdT('bottom'), top: _sdT('top'), left: _sdT('left'), right: _sdT('right'), none: _sdT('hidden') };
                 var bits = [];
-                if (p.lightbox)  bits.push('lightbox');
-                if (p.hoverZoom) bits.push('hover-zoom');
-                if (p.autoplay)  bits.push('autoplay');
+                if (p.lightbox)  bits.push(_sdT('Lightbox (full screen)'));
+                if (p.hoverZoom) bits.push(_sdT('Hover zoom (magnifier)'));
+                if (p.autoplay)  bits.push(_sdT('Autoplay'));
                 d.innerHTML = '<span class="bi bi-images" style="font-size:2rem;display:block;margin-bottom:6px"></span>' +
-                    '<strong>Carousel</strong>' +
+                    '<strong>' + esc(_sdT('Carousel')) + '</strong>' +
                     '<div class="text-muted small mt-1">' + esc(_sdT('The slides come from the product images at render time')) +
                     '<br>' + esc(_sdT('thumbnails')) + ': <strong>' + esc(posLabels[pos] || pos) + '</strong>' +
                     (bits.length ? '<br>' + esc(_sdT('features')) + ': ' + esc(bits.join(', ')) : '') +
@@ -14472,7 +14472,7 @@ const StyleDesigner = (function () {
                                 // switches it on. pg-carousel-ink draws the indicators in the
                                 // text colour: Bootstrap's white (black in dark mode) assumes
                                 // a photo behind them.
-                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: 'Carousel',
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: _sdT('Carousel'),
                                     _attrs: [
                                         { name: 'id',              value: carId }
                                     ] }, [
@@ -14536,7 +14536,7 @@ const StyleDesigner = (function () {
                             // Carousel Options > Autoplay switches it on. pg-carousel-photo
                             // keeps the controls and indicators white over the photos and
                             // the caption scrim in a dark design too.
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: 'Carousel',
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: _sdT('Carousel'),
                                 _attrs: [
                                     { name: 'id',               value: imgCarId }
                                 ] }, [
@@ -19442,7 +19442,7 @@ const StyleDesigner = (function () {
                     // No autoplay: Bootstrap's carousel keeps cycling under keyboard
                     // focus and reduced motion and has no pause button (WCAG 2.2.2).
                     // Carousel Options > Autoplay switches it on.
-                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: 'Carousel' }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: _sdT('Carousel') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Indicators') }, [
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'active',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: '0' }, { name: 'aria-current', value: 'true' }, { name: 'aria-label', value: _sdT('Slide 1') }] }),
@@ -39710,7 +39710,7 @@ const StyleDesigner = (function () {
         var jcValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['between',_sdT('Space Between')],['around',_sdT('Space Around')],['evenly',_sdT('Space Evenly')]];
         var aiValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['stretch',_sdT('Stretch')],['baseline',_sdT('Baseline')]];
         var acValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['between',_sdT('Space Between')],['around',_sdT('Space Around')],['stretch',_sdT('Stretch')]];
-        var wrapValues     = [['nowrap',_sdT('No Wrap')],['wrap',_sdT('Wrap')],['wrap-reverse',_sdT('Wrap Reverse')]];
+        var wrapValues     = [['nowrap',_sdT('No Wrap')],['wrap',_sdT('Wrap Lines')],['wrap-reverse',_sdT('Wrap Reverse')]];
         var asValues       = [['start',_sdT('Start')],['center',_sdT('Center')],['end',_sdT('End')],['stretch',_sdT('Stretch')],['baseline',_sdT('Baseline')]];
         var orderValues    = [['first',_sdT('First')],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['last',_sdT('Last')]];
         var gapValues      = [['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5']];
