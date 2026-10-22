@@ -25473,5 +25473,6 @@
     "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
     "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin.",
     "Scroller Controls": "Kaydırıcı Kontrolleri",
-    "There are no events to show.": "Gösterilecek etkinlik yok."
+    "There are no events to show.": "Gösterilecek etkinlik yok.",
+    "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}"
 }

@@ -120,6 +120,30 @@ function test_designer_widget_output_calendar_empty_message_editor()
 	pg_assert_contains("stored === 'There are no events this month.' || stored === 'Bu ay etkinlik yok.'", $source);
 }
 
+// -- carousel links are named ---------------------------------------------------
+
+function test_designer_widget_output_carousel_image_label()
+{
+	pg_assert_same('Image 2 of 5', pg_carousel_image_label(2, 5));
+}
+
+// The slide links, the thumbnail links and the indicators wrap or are
+// pictures with an empty alt: each carries the image's name, on the server
+// and where the variant chooser rebuilds them.
+function test_designer_widget_output_carousel_links_named()
+{
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	pg_assert_same(0, substr_count($php, 'aria-label="Slide '), 'no English slide label');
+	pg_assert_same(3, substr_count($php, "aria-label=\"' . h(pg_carousel_image_label(\$_si + 1, count("), 'slide link, thumbnail link, indicator');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_civ_variants.js');
+	pg_assert_same(0, substr_count($js, 'aria-label="Slide '), 'no English slide label in the variant chooser');
+	pg_assert_same(3, substr_count($js, "aria-label=\"' + escAttr(imageLabel(i, gallery.length)) + '\""), 'the variant chooser names the same three');
+
+	$catalog = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');
+	pg_assert_contains("'image_of'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),", $catalog, 'the words reach the script');
+}
+
 // Every widget's finished output goes through the alias before its srcset
 // pass, outside an e-mail.
 function test_designer_widget_output_fluid_alias_on_widgets()

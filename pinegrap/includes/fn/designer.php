@@ -4175,6 +4175,22 @@ function _pg_fancybox_assets_once()
 }
 
 /**
+ * The name of one image of an image carousel, for its slide link, its
+ * thumbnail link and its indicator: the links wrap pictures with an empty
+ * alt, so without it a screen reader reads out the file's address. The
+ * variant chooser (pg_civ_variants.js) rebuilds the same links with the same
+ * words.
+ *
+ * @param int $number 1-based
+ * @param int $total
+ * @return string plain text
+ */
+function pg_carousel_image_label($number, $total)
+{
+    return lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array((int)$number, (int)$total)));
+}
+
+/**
  * Render the thumbnail strip for a carousel.
  *
  * Fancybox v6 lightbox triggers require the image inside an <a data-fancybox>
@@ -4217,7 +4233,8 @@ function _pg_render_carousel_thumbs($slides, $crl_id, $thumb_size, $lightbox, $f
                   . ' data-fancybox-trigger="' . h($fb_gallery) . '"'
                   . ' data-fancybox-index="' . (int)$_si . '"'
                   . ' data-bs-target="#' . h($crl_id) . '" data-bs-slide-to="' . (int)$_si . '"'
-                  . ' class="pg-carousel-thumb-link">'
+                  . ' class="pg-carousel-thumb-link"'
+                  . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($slides))) . '">'
                   . '<img src="' . h($_slide) . '"'
                   . ' class="pg-carousel-thumb' . $_active_cls . '"'
                   . ' style="' . $_thumb_style . '"'
@@ -5749,7 +5766,7 @@ function _render_content_html($props, $pad, $kids = '')
                 foreach ($crl_slides as $_si => $_slide) {
                     $out .= '<button type="button" data-bs-target="#' . $crl_id . '" data-bs-slide-to="' . (int)$_si . '"'
                           . ($_si === 0 ? ' class="active" aria-current="true"' : '')
-                          . ' aria-label="Slide ' . ($_si + 1) . '"></button>';
+                          . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($crl_slides))) . '"></button>';
                 }
                 $out .= '</div>';
             }
@@ -5774,6 +5791,7 @@ function _render_content_html($props, $pad, $kids = '')
                           . '<a href="' . h($_slide) . '"'
                           . ' data-fancybox="' . h($crl_fb_gallery) . '"'
                           . ' class="pg-carousel-slide-link d-block w-100' . $_zoom_cls . '"'
+                          . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($crl_slides))) . '"'
                           . $_zoom_src . '>'
                           . '<img src="' . h($_slide) . '" class="d-block w-100" alt="" loading="lazy">'
                           . '</a>'
