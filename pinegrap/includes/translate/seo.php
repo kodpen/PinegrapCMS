@@ -156,14 +156,20 @@ function pg_tr_index_decide($policy, $verdict)
 
 /**
  * Whether a page's robots meta keeps it out of the search engines: a
- * "noindex" directive, or "none" (noindex and nofollow together).
+ * "noindex" directive, or "none" (noindex and nofollow together). Only whole
+ * comma-separated directives count, so the value of "max-image-preview:none"
+ * does not.
  *
  * @param string $html the page
  * @return bool
  */
 function pg_tr_robots_says_noindex($html)
 {
-    return (bool) preg_match('~<meta\s+name="robots"\s+content="[^"]*\b(?:noindex|none)\b~i', (string) $html);
+    if (!preg_match('~<meta\s+name="robots"\s+content="([^"]*)"~i', (string) $html, $match)) {
+        return false;
+    }
+
+    return (bool) preg_match('~(?:^|,)\s*(?:noindex|none)\s*(?:,|$)~i', $match[1]);
 }
 
 /**

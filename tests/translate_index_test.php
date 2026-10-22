@@ -110,20 +110,21 @@ function test_translate_index_robots_says_noindex()
 	pg_assert_false(pg_tr_robots_says_noindex('<meta name="robots" content="index, follow, max-snippet:-1">'), 'index');
 	pg_assert_false(pg_tr_robots_says_noindex('<meta name="robots" content="noarchive">'), 'noarchive only');
 	pg_assert_false(pg_tr_robots_says_noindex('<head><title>noindex</title></head>'), 'no robots meta');
+	pg_assert_true(pg_tr_robots_says_noindex('<meta name="robots" content="NONE">'), 'none in capitals');
+	pg_assert_true(pg_tr_robots_says_noindex('<meta name="robots" content="follow,noindex">'), 'noindex last, no space');
+	pg_assert_false(pg_tr_robots_says_noindex('<meta name="robots" content="max-image-preview:none">'), 'a value named none');
+	pg_assert_false(pg_tr_robots_says_noindex('<meta name="robots" content="index, max-image-preview:none, max-snippet:-1">'), 'a value named none among others');
 }
 
-// A reviewed translation, or the first translation of a text, keeps the
-// pages' "index" answers; overwriting a translation with a machine one, or
-// forcing it over a reviewed one, drops them.
+// Only a reviewed translation keeps the pages' "index" answers. Any machine
+// write drops them, a text's first one included: a text printed from the
+// database (pg_tr_db_text()) is not counted while it has no translation, but
+// once it has a machine one the page turns noindex.
 function test_translate_index_write_keeps_verdicts()
 {
-	pg_assert_true(pg_tr_write_keeps_verdicts('reviewed', 'machine'), 'reviewed over machine');
-	pg_assert_true(pg_tr_write_keeps_verdicts('reviewed', null), 'reviewed, first');
-	pg_assert_true(pg_tr_write_keeps_verdicts('machine', null), 'machine, first');
-	pg_assert_true(pg_tr_write_keeps_verdicts('machine', ''), 'machine, no row (empty answer)');
-	pg_assert_true(pg_tr_write_keeps_verdicts('machine', false), 'machine, no row (false)');
-	pg_assert_false(pg_tr_write_keeps_verdicts('machine', 'machine'), 'machine over machine');
-	pg_assert_false(pg_tr_write_keeps_verdicts('machine', 'reviewed'), 'machine forced over reviewed');
+	pg_assert_true(pg_tr_write_keeps_verdicts('reviewed'), 'reviewed');
+	pg_assert_false(pg_tr_write_keeps_verdicts('machine'), 'machine');
+	pg_assert_false(pg_tr_write_keeps_verdicts(''), 'no status');
 }
 
 // Dropping the answers deletes the rows, of one language or of all.

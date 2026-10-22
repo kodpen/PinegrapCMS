@@ -752,32 +752,27 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
             text = VALUES(text), engine = VALUES(engine), status = VALUES(status), suspicious = VALUES(suspicious),
             updated_by = VALUES(updated_by), updated_at = VALUES(updated_at)");
 
-    pg_tr_invalidate_pages($language, 0, !pg_tr_write_keeps_verdicts($status, $current));
+    pg_tr_invalidate_pages($language, 0, !pg_tr_write_keeps_verdicts($status));
 
     return true;
 }
 
 /**
  * Whether writing a translation leaves the pages' "may be indexed" answers
- * standing (pg_tr_page_verdicts()). A page answered "index" only when every
- * text it drew had a reviewed translation or one that is the source text
- * itself, so a reviewed translation, or a first translation of a text that
- * had none (no such page drew it), cannot turn that answer. Overwriting a
- * machine translation can: one that was the source text itself may become
- * engine output.
+ * standing (pg_tr_page_verdicts()). A page answered "index" only when no text
+ * it drew counted as engine output, so a reviewed translation cannot turn
+ * that answer. Any machine translation can, a text's first one included: a
+ * text printed from the database (pg_tr_db_text(): catalog, widget output,
+ * custom HTML, a rich-text record field) is not counted while it has no
+ * translation, but once it has a machine one it counts as engine output and
+ * pg_tr_render_finalize() prints noindex.
  *
- * @param string $status   machine | reviewed, as written
- * @param mixed  $previous the status the text had in the language before,
- *                         anything else when it had no translation
+ * @param string $status machine | reviewed, as written
  * @return bool
  */
-function pg_tr_write_keeps_verdicts($status, $previous)
+function pg_tr_write_keeps_verdicts($status)
 {
-    if ($status === 'reviewed') {
-        return true;
-    }
-
-    return !in_array($previous, array('machine', 'reviewed'), true);
+    return ($status === 'reviewed');
 }
 
 /**

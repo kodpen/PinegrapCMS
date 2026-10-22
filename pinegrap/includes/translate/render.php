@@ -141,8 +141,9 @@ function pg_tr_render_props($props, $type)
 /**
  * The rules a page is drawn by in a language: what is translated, and what
  * keeps the page from the search engines. A body drawn under other rules is
- * drawn again (pg_tr_render_page_body()), and what the pages answered the
- * search engines is dropped once when they change (pg_tr_render_rules_check()).
+ * drawn again (pg_tr_render_page_body()). When they change, the drawn bodies
+ * are dropped once and the kept "index" answers stay
+ * (pg_tr_render_rules_check()).
  *
  * @return string
  */

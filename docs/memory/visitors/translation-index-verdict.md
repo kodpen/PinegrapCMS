@@ -18,8 +18,9 @@ description: One rule for a translated page's robots meta, hreflang alternates a
 
 ## What drops a kept answer?
 - `pg_tr_invalidate_pages($language, $page_id, $verdicts = true)` (`store.php`, statements from `pg_tr_invalidate_sql()`) deletes body and answer. With `$verdicts = false` a `1` keeps its row, body emptied; `0` and empty rows are deleted.
-- Keeping: `pg_tr_write_keeps_verdicts()` (a reviewed translation, or a text's first one: a page answering `1` drew no untranslated text), `pg_tr_set_status('reviewed')`, `pg_tr_review_all()`, the rules check below.
-- Dropping: overwriting a machine translation, forcing over a reviewed one, back to machine, clearing, an emptied box, the API's `pending`.
+- Keeping: a reviewed translation (`pg_tr_write_keeps_verdicts()`), `pg_tr_set_status('reviewed')`, `pg_tr_review_all()`, the rules check below.
+- Dropping: any machine translation, a text's first one included (a database-printed text, `pg_tr_db_text()`, is not counted while untranslated but counts as `machine` once it has one, so the page turns noindex); back to machine, clearing, an emptied box, the API's `pending`.
+- Settings > Languages save (`languages.save.php`): bodies always; answers only when the source language or an index policy changed (answers are per page and language, not per prefix).
 - Page save: `pg_designer_save_page()` -> `pg_tr_owner_saved('page', id)` (`includes/fn/translate.php`); an editor edit of a shared component reaches its pages as carried saves.
 - Panel shared component `update` / `content_update` -> `pg_tr_owner_saved('shared', id)`: pages whose `page_ref` rows name it.
 - `pg_purge_caches()` drops every row ("Translated pages (n)").
@@ -32,8 +33,8 @@ description: One rule for a translated page's robots meta, hreflang alternates a
 - A new list record, a product or menu change, legacy page screens: a `1` can stay while the page says noindex, until its next draw in the language (the crawl that would read it).
 - Ageing by `rendered_at` was rejected: it is written with the body, not the answer, and would drop alternates periodically.
 
-## Known trade-off
-- After a drop the address is missing until somebody (a visitor, a crawler following the switcher) opens it; a purge does this site-wide.
+## What does "not offered until drawn" cost?
+- After a drop the address is missing until somebody (a visitor, a crawler following the switcher) opens it; each engine job (a machine write) does this for its language, a purge site-wide.
 - `robots.txt`-blocked pages: docs/memory/visitors/page-noindex-switch.md (decided).
 
 Related: docs/memory/visitors/page-noindex-switch.md, docs/memory/platform/language-address-prefix.md
