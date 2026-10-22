@@ -6288,7 +6288,26 @@ function submit_order($type) {
         $reservations = $product['reservations'];
         $limit_reservations = $product['limit_reservations'];
         $number_of_initial_spots = $product['number_of_initial_spots'];
-        
+
+        // $products was read before the payment call, so the first row of a
+        // product reads its stock again right before the decrement: a sale
+        // or a restock made meanwhile would otherwise be the 'before' the
+        // stock.low crossing is decided from (two parallel checkouts both
+        // announced it, a restock during payment hid it). Later rows of the
+        // same product carry on from what the row above left; $stock_left
+        // is only set for a product that tracks stock.
+        if (isset($stock_left[$product_id])) {
+            $inventory = 1;
+            $inventory_quantity = $stock_left[$product_id];
+        } else {
+            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+
+            if ($stock_now) {
+                $inventory = $stock_now['inventory'];
+                $inventory_quantity = $stock_now['inventory_quantity'];
+            }
+        }
+
         // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
         if (($inventory == 1) && ($inventory_quantity != 0)) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
@@ -6323,7 +6342,7 @@ function submit_order($type) {
             // the decrement happened in the UPDATE.
             $stock_left[$product_id] = pg_product_stock_changed(
                 $product_id,
-                isset($stock_left[$product_id]) ? $stock_left[$product_id] : (int) $inventory_quantity,
+                (int) $inventory_quantity,
                 null,
                 'checkout');
         }

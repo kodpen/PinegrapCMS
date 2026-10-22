@@ -417,12 +417,19 @@ function pg_office_xlsx_date1904($workbook_xml)
  * here, as a document with writeProtection is not
  * (pg_office_docx_restriction()).
  *
+ * The attributes before the password are skipped one quoted value at a
+ * time: XML allows a raw > inside a value (userName="R&amp;D >Team"), and a
+ * name inside another attribute's value is not an attribute. A start tag
+ * too long for PCRE to walk token by token (thousands of attributes; the
+ * match stops with a stack or backtrack limit error) counts as reserved, so
+ * an error never opens a workbook for editing.
+ *
  * @param string $workbook_xml xl/workbook.xml
  * @return bool
  */
 function pg_office_xlsx_write_reserved($workbook_xml)
 {
-    return (bool) preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b[^>]*\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
+    return 0 !== preg_match('/<(?:[A-Za-z_][\w.\-]*:)?fileSharing\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*?\s(?:reservationPassword|hashValue)\s*=\s*["\'][^"\']/', (string) $workbook_xml);
 }
 
 /**
@@ -566,19 +573,24 @@ function pg_office_xlsx_patch_workbook($xml)
  * the sheet-wide facts (it looks at the cells it changes itself).
  *
  * A cell the file does not hold takes the row's own style (customFormat)
- * when there is one, else its column's (pg_office_xlsx_new_cell_style()):
- * so that the preview can tell which empty cells of a protected sheet are
- * open, the rows with a style of their own, the columns whose style is
- * unlocked and the cells in the file that keep a locked style although
- * that rule would open them are listed too.
+ * when there is one, else its column's, else the default style
+ * (pg_office_xlsx_new_cell_style()): so that the preview can tell which
+ * empty cells of a protected sheet are open, the rows with a style of their
+ * own, the columns whose style is unlocked (and, when the default style is
+ * unlocked, the columns whose style is not) and the cells in the file that
+ * keep a locked style although that rule would open them are listed too.
+ * The column styles are the save's own (pg_office_xlsx_column_styles()), so
+ * that both read the same <cols> lists the same way.
  *
- * @param XMLReader $reader     opened on the sheet
- * @param int       $until_row  list the cells of rows up to this one; 0 for none
- * @param array     $open_styles style number => true for unlocked styles
+ * @param XMLReader $reader        opened on the sheet
+ * @param int       $until_row     list the cells of rows up to this one; 0 for none
+ * @param array     $open_styles   style number => true for unlocked styles
+ * @param array     $column_styles pg_office_xlsx_column_styles() of the same sheet
  * @return array addressed, unusual, crowded (more ranges than are kept), protected, merges, arrays, locked (ref => formula|value),
- *               formulas (ref => text), open (ref => true), closed (ref => true), rows (row => open?), columns ([first, last] 0-based)
+ *               formulas (ref => text), open (ref => true), closed (ref => true), rows (row => open?), columns ([first, last] 0-based),
+ *               closed_columns ([first, last] 0-based; only when the default style is unlocked)
  */
-function pg_office_xlsx_scan($reader, $until_row, $open_styles)
+function pg_office_xlsx_scan($reader, $until_row, $open_styles, $column_styles = array())
 {
     $out = array(
         'addressed' => true,
@@ -592,12 +604,25 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
         'open' => array(),
         'closed' => array(),
         'rows' => array(),
-        'columns' => array(),
+        'columns' => pg_office_xlsx_column_ranges($column_styles, $open_styles, true),
+        'closed_columns' => array(),
     );
+
+    // Whether a new cell with no row style of its own would be open, by
+    // column: its column's style, else the default style (number 0).
+    $default_open = isset($open_styles[0]);
+    $open_columns = array();
+
+    foreach ($column_styles as $column => $style) {
+        $open_columns[$column] = isset($open_styles[(int) $style]);
+    }
+
+    if ($default_open) {
+        $out['closed_columns'] = pg_office_xlsx_column_ranges($column_styles, $open_styles, false);
+    }
 
     $row = 0;
     $row_open = null;
-    $open_columns = array();
     $cell = '';
     $record = false;
     $ranges = 0;
@@ -648,23 +673,6 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                 }
                 break;
 
-            case 'col':
-                // The styles of whole columns come before the rows.
-                $style = (int) $reader->getAttribute('style');
-                $first = (int) $reader->getAttribute('min');
-                $last = min((int) $reader->getAttribute('max'), PG_OFFICE_MAX_COLUMNS);
-
-                if (($first < 1) || ($last < $first) || !isset($open_styles[$style])) {
-                    break;
-                }
-
-                $out['columns'][] = array($first - 1, $last - 1);
-
-                for ($column = $first - 1; $column < $last; $column++) {
-                    $open_columns[$column] = true;
-                }
-                break;
-
             case 'c':
                 $reference = (string) $reader->getAttribute('r');
                 $position = pg_office_xlsx_cell($reference);
@@ -683,7 +691,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles)
                         $out['locked'][$reference] = 'value';
                     } elseif (isset($open_styles[(int) $reader->getAttribute('s')])) {
                         $out['open'][$reference] = true;
-                    } elseif (($row_open === null) ? isset($open_columns[$position[1]]) : $row_open) {
+                    } elseif (($row_open === null) ? (isset($open_columns[$position[1]]) ? $open_columns[$position[1]] : $default_open) : $row_open) {
                         $out['closed'][$reference] = true;
                     }
                 }
@@ -890,11 +898,12 @@ function pg_office_signed($zip)
  * @param array      $sheet     pg_office_xlsx_sheets() entry
  * @param int        $until_row the last row number the preview shows
  * @param array      $styles    pg_office_xlsx_style_kinds()
- * @return array ok, why, protected, locked, formulas, open, closed, rows, columns, ranges
+ * @return array ok, why, protected, locked, formulas, open, closed, rows, columns, closed_columns,
+ *               other (a new cell with no row or column style is open), ranges
  */
 function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
 {
-    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'closed' => array(), 'rows' => array(), 'columns' => array(), 'ranges' => array());
+    $out = array('ok' => false, 'why' => '', 'protected' => false, 'locked' => array(), 'formulas' => array(), 'open' => array(), 'closed' => array(), 'rows' => array(), 'columns' => array(), 'closed_columns' => array(), 'other' => false, 'ranges' => array());
 
     if ($sheet['type'] !== 'worksheet') {
         $out['why'] = 'kind';
@@ -924,7 +933,9 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
         return $out;
     }
 
-    $scan = pg_office_xlsx_scan($reader, max(0, (int) $until_row), $styles['open']);
+    // The column styles as the save reads them (pg_office_xlsx_patch_sheet()).
+    $prefix = (preg_match('/<([A-Za-z_][\w.\-]*:)?worksheet(?=[\s>])/', $xml, $root) && isset($root[1])) ? $root[1] : '';
+    $scan = pg_office_xlsx_scan($reader, max(0, (int) $until_row), $styles['open'], pg_office_xlsx_column_styles($xml, $prefix));
     $reader->close();
     unset($xml);
 
@@ -955,9 +966,13 @@ function pg_office_xlsx_sheet_edit_info($zip, $sheet, $until_row, $styles)
     $out['locked'] = $scan['locked'];
     $out['formulas'] = $scan['formulas'];
     // What opens a cell matters only under protection.
-    foreach (array('open', 'closed', 'rows', 'columns') as $name) {
+    foreach (array('open', 'closed', 'rows', 'columns', 'closed_columns') as $name) {
         $out[$name] = $scan['protected'] ? $scan[$name] : array();
     }
+
+    // A cell the file does not hold, in a row and a column without a style
+    // of their own, takes the default style (pg_office_xlsx_new_cell_style()).
+    $out['other'] = $scan['protected'] && isset($styles['open'][0]);
 
     $ranges = array();
 
@@ -1094,39 +1109,79 @@ function pg_office_xlsx_new_cell_style($row, $column, $column_styles)
 }
 
 /**
- * The column styles a sheet declares (its <cols> list), by column number.
+ * The column styles a sheet declares (its <cols> lists), by column number.
+ * A sheet may hold more than one list; they are read in order and, where
+ * two entries cover the same column, the later one counts. A column whose
+ * entry has no style (or style 0) has the default style and is left out.
  *
  * @param string $xml    the sheet
  * @param string $prefix the sheet's own namespace prefix, with its colon
- * @return array column number => style number
+ * @return array column number (0-based) => style number
  */
 function pg_office_xlsx_column_styles($xml, $prefix)
 {
     $out = array();
     $quoted = preg_quote($prefix, '/');
 
-    if (!preg_match('/<' . $quoted . 'cols(?=[\s>])[^>]*>(.*?)<\/' . $quoted . 'cols>/s', $xml, $block)) {
+    if (!preg_match_all('/<' . $quoted . 'cols(?=[\s>])[^>]*>(.*?)<\/' . $quoted . 'cols>/s', $xml, $blocks)) {
         return $out;
     }
 
-    preg_match_all('/<' . $quoted . 'col(?=[\s\/>])([^>]*)>/', $block[1], $columns);
+    foreach ($blocks[1] as $block) {
+        preg_match_all('/<' . $quoted . 'col(?=[\s\/>])([^>]*)>/', $block, $columns);
 
-    foreach ($columns[1] as $attributes) {
-        $values = array();
+        foreach ($columns[1] as $attributes) {
+            $values = array();
 
-        foreach (array('min', 'max', 'style') as $name) {
-            $values[$name] = preg_match('/\s' . $name . '\s*=\s*["\'](\d+)["\']/', $attributes, $found) ? (int) $found[1] : 0;
+            foreach (array('min', 'max', 'style') as $name) {
+                $values[$name] = preg_match('/\s' . $name . '\s*=\s*["\'](\d+)["\']/', $attributes, $found) ? (int) $found[1] : 0;
+            }
+
+            if (($values['min'] <= 0) || ($values['max'] < $values['min'])) {
+                continue;
+            }
+
+            // A run over the rest of the sheet (min 1, max 16384) need not
+            // be spelt out cell by cell: only the columns a preview can show
+            // ever take a new cell.
+            for ($column = $values['min']; $column <= min($values['max'], PG_OFFICE_MAX_COLUMNS); $column++) {
+                if ($values['style'] > 0) {
+                    $out[$column - 1] = $values['style'];
+                } else {
+                    unset($out[$column - 1]);
+                }
+            }
         }
+    }
 
-        if (($values['style'] <= 0) || ($values['min'] <= 0) || ($values['max'] < $values['min'])) {
+    return $out;
+}
+
+/**
+ * The columns whose style opens a new cell, or whose style locks it, as
+ * runs of next columns.
+ *
+ * @param array $column_styles pg_office_xlsx_column_styles()
+ * @param array $open_styles   style number => true for unlocked styles
+ * @param bool  $open          true for the unlocked columns, false for the locked ones
+ * @return array[] [first, last] 0-based, in column order
+ */
+function pg_office_xlsx_column_ranges($column_styles, $open_styles, $open)
+{
+    $out = array();
+    ksort($column_styles);
+
+    foreach ($column_styles as $column => $style) {
+        if (isset($open_styles[(int) $style]) !== (bool) $open) {
             continue;
         }
 
-        // A run over the rest of the sheet (min 1, max 16384) need not
-        // be spelt out cell by cell: only the columns a preview can show
-        // ever take a new cell.
-        for ($column = $values['min']; $column <= min($values['max'], PG_OFFICE_MAX_COLUMNS); $column++) {
-            $out[$column - 1] = $values['style'];
+        $last = count($out) - 1;
+
+        if (($last >= 0) && ($out[$last][1] === $column - 1)) {
+            $out[$last][1] = $column;
+        } else {
+            $out[] = array($column, $column);
         }
     }
 
@@ -2343,15 +2398,17 @@ function pg_office_text_tokens($text)
  * Where two texts differ, as changes to the first: [start, end, insert] in
  * characters of the old text, in order and not overlapping.
  *
- * The texts are compared as words (pg_office_text_tokens()), never as
- * letters: the common beginning and end are set aside whole words at a
- * time, so a word added before one that starts with the same letters
- * ("BIG" before "BOLD") goes before that word, not into it and its
- * formatting, and a word changed in part is changed whole. What lies
- * between is compared word by word, so two separate changes come out as
- * two and the runs between them (with their formatting) are left alone. A
- * middle too long to compare word by word (the product of the two word
- * counts above $limit) is one change.
+ * The texts are compared as words (pg_office_text_tokens()): the common
+ * beginning and end are set aside whole words at a time, so a word added
+ * before one that starts with the same letters ("BIG" before "BOLD") goes
+ * before that word, not into it and its formatting. What lies between is
+ * compared word by word, so two separate changes come out as two and the
+ * runs between them (with their formatting) are left alone. A middle too
+ * long to compare word by word (the product of the two word counts above
+ * $limit) is one change. Each change then gives back the letters its old
+ * words and its new ones share at either end (pg_office_text_hunk_trim()),
+ * so a letter added inside a word ("aple" to "apple") is only that letter
+ * added, and the parts of the word in other runs keep their formatting.
  *
  * @param string $old
  * @param string $new
@@ -2389,7 +2446,9 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
     $prefix = mb_strlen(implode('', array_slice($a, 0, $prefix)), 'UTF-8');
 
     if (($rows * $columns) > $limit) {
-        return array(array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
+        $hunk = pg_office_text_hunk_trim($old, array($prefix, $prefix + mb_strlen(implode('', $old_middle), 'UTF-8'), implode('', $new_middle)));
+
+        return ($hunk === null) ? array() : array($hunk);
     }
 
     // The longest run of words both share, filled in from the end.
@@ -2438,7 +2497,59 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
         $hunks[] = $open;
     }
 
-    return $hunks;
+    $trimmed = array();
+
+    foreach ($hunks as $hunk) {
+        $hunk = pg_office_text_hunk_trim($old, $hunk);
+
+        if ($hunk !== null) {
+            $trimmed[] = $hunk;
+        }
+    }
+
+    return $trimmed;
+}
+
+/**
+ * One change of pg_office_text_hunks() without the letters its old text and
+ * its insert share: first at the start, then at the end (no more than what
+ * is left of both after the start). The old range may shrink to nothing, so
+ * a change inside a word becomes a plain insertion or removal there.
+ *
+ * @param string $old  the whole old text
+ * @param array  $hunk [start, end, insert] in characters of $old
+ * @return array|null the change; null when nothing is left of it
+ */
+function pg_office_text_hunk_trim($old, $hunk)
+{
+    $start = $hunk[0];
+    $end = $hunk[1];
+
+    if (($start === $end) || ($hunk[2] === '')) {
+        return $hunk;
+    }
+
+    $before = preg_split('//u', mb_substr($old, $start, $end - $start, 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
+    $after = preg_split('//u', $hunk[2], -1, PREG_SPLIT_NO_EMPTY);
+    $old_length = count($before);
+    $new_length = count($after);
+    $lead = 0;
+
+    while (($lead < $old_length) && ($lead < $new_length) && ($before[$lead] === $after[$lead])) {
+        $lead++;
+    }
+
+    $trail = 0;
+
+    while (($trail < $old_length - $lead) && ($trail < $new_length - $lead) && ($before[$old_length - 1 - $trail] === $after[$new_length - 1 - $trail])) {
+        $trail++;
+    }
+
+    if (($lead + $trail === $old_length) && ($lead + $trail === $new_length)) {
+        return null;
+    }
+
+    return array($start + $lead, $end - $trail, implode('', array_slice($after, $lead, $new_length - $lead - $trail)));
 }
 
 /**
@@ -2447,9 +2558,11 @@ function pg_office_text_hunks($old, $new, $limit = 250000)
  * change starts in (or, for text only added, the run of the character before
  * it, whose formatting carries on as it does when typing; at the very start,
  * the first run with text). Text added right after a link goes into the run
- * after it, as a word processor types it, rather than into the link; when
- * the link ends the paragraph, into a new run after it, formatted like the
- * paragraph mark. Runs the change does not reach keep their text.
+ * after it, as a word processor types it, rather than into the link (runs
+ * without text at the end of the link count as the link); when the link
+ * ends the paragraph, or another link follows it directly, into a new run
+ * after it, formatted like the paragraph mark without its character style
+ * or hiding. Runs the change does not reach keep their text.
  *
  * @param array  $runs   [run, text] in order, the texts updated (a run may be added)
  * @param int    $start  in characters of the paragraph's text
@@ -2479,25 +2592,45 @@ function pg_office_docx_apply_hunk(&$runs, $start, $end, $insert)
                 }
             } elseif (($start > 0) && ($start > $offset) && ($start <= $offset + $length)) {
                 $target = $index;
-                $next = isset($keys[$place + 1]) ? $runs[$keys[$place + 1]]['run'] : null;
 
                 if (($start === $offset + $length) && pg_office_docx_in_link($run['run'])) {
+                    $link = $run['run']->parentNode;
+                    $after = $place + 1;
+
+                    // Runs left without text at the end of the same link
+                    // (only formatting, or a rendered page break) are still
+                    // the link: the text goes past them.
+                    while (isset($keys[$after]) && ($runs[$keys[$after]]['text'] === '') && ($runs[$keys[$after]]['run']->parentNode === $link)) {
+                        $after++;
+                    }
+
+                    $next = isset($keys[$after]) ? $runs[$keys[$after]]['run'] : null;
+                    $paragraph = $link->parentNode;
+
+                    while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
+                        $paragraph = $paragraph->parentNode;
+                    }
+
                     if ($next === null) {
-                        $paragraph = $run['run']->parentNode;
-
-                        while (($paragraph instanceof DOMElement) && ($paragraph->localName !== 'p')) {
-                            $paragraph = $paragraph->parentNode;
-                        }
-
                         if ($paragraph instanceof DOMElement) {
-                            $runs[] = array('run' => pg_office_docx_new_run($paragraph), 'text' => '', 'changed' => true);
+                            $runs[] = array('run' => pg_office_docx_new_run($paragraph, true), 'text' => '', 'changed' => true);
                             end($runs);
                             $target = key($runs);
                         }
                     } elseif (!pg_office_docx_in_link($next)) {
-                        $target = $keys[$place + 1];
+                        $target = $keys[$after];
+                    } elseif (($next->parentNode !== $link) && ($paragraph instanceof DOMElement)) {
+                        // Another link right after this one: a new run
+                        // between the two, in neither.
+                        array_splice($runs, $after, 0, array(array('run' => pg_office_docx_new_run($paragraph, true, $next->parentNode), 'text' => '', 'changed' => true)));
+                        $target = $after;
                     }
                 }
+
+                // The runs are in order and the target holds text, so the
+                // ones after it change nothing found here (and their keys
+                // may have moved).
+                break;
             }
         }
 
@@ -2635,14 +2768,21 @@ function pg_office_docx_paragraph_write($paragraph, $edit, $text, $limit = 25000
 }
 
 /**
- * A new, empty run at the end of a paragraph, with the formatting of the
- * paragraph mark: for a paragraph that has no run, or text typed after a
- * link that ends it.
+ * A new, empty run in a paragraph, with the formatting of the paragraph
+ * mark: for a paragraph that has no run, or text typed after a link that
+ * ends it or that another link follows.
  *
- * @param DOMElement $paragraph
+ * After a link the mark often carries the link's character style (Word
+ * gives the mark the formatting of the text before it), and a style
+ * separator's mark is hidden; $plain leaves the style and the hiding out,
+ * so the text typed there neither looks like a link nor disappears.
+ *
+ * @param DOMElement      $paragraph
+ * @param bool            $plain  without w:rStyle, w:vanish and w:specVanish
+ * @param DOMElement|null $before a child of the paragraph the run goes before; null for the end
  * @return DOMElement
  */
-function pg_office_docx_new_run($paragraph)
+function pg_office_docx_new_run($paragraph, $plain = false, $before = null)
 {
     $document = $paragraph->ownerDocument;
     $namespace = (string) $paragraph->namespaceURI;
@@ -2653,13 +2793,29 @@ function pg_office_docx_new_run($paragraph)
         if (($child instanceof DOMElement) && ($child->localName === 'pPr')) {
             foreach ($child->childNodes as $property) {
                 if (($property instanceof DOMElement) && ($property->localName === 'rPr')) {
-                    $run->appendChild($property->cloneNode(true));
+                    $copy = $property->cloneNode(true);
+
+                    if ($plain) {
+                        foreach (iterator_to_array($copy->childNodes) as $setting) {
+                            if (($setting instanceof DOMElement) && in_array($setting->localName, array('rStyle', 'vanish', 'specVanish'), true)) {
+                                $copy->removeChild($setting);
+                            }
+                        }
+                    }
+
+                    if (!$plain || $copy->hasChildNodes()) {
+                        $run->appendChild($copy);
+                    }
                 }
             }
         }
     }
 
-    $paragraph->appendChild($run);
+    if ($before instanceof DOMElement) {
+        $paragraph->insertBefore($run, $before);
+    } else {
+        $paragraph->appendChild($run);
+    }
 
     return $run;
 }

@@ -10,6 +10,7 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 ## How is an account matched?
 - By the identity (`user_identities`), else by the verified e-mail of an account that has no identity at that provider yet (it is tied then), else an account is opened where the screen allows it (`create` on registration, `membership` hands over to the membership form, `none` on every login screen).
 - An e-mail the provider does not vouch for never matches. An account whose address matches but is tied to another person at the provider is neither taken over nor opened a second time.
+- Only the very address (letter case aside) ties; a look-alike is refused: [[social-sign-in-address-match]].
 - A provider account whose address differs from the account's is tied by connecting it while signed in ("Connect with ...", [[social-sign-in-connect]]); signing in with it before that is refused.
 
 ## What does a refused or failed sign-in show?

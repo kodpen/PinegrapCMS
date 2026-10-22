@@ -560,6 +560,41 @@ if ($_POST) {
 
 	}
 
+	if ($action === 'retry_orders' && $account) {
+
+		// A refused order is taken again only when the feed hands its package
+		// back, and a package nobody has touched on the marketplace since is no
+		// longer in the window. So the cursor goes back to the oldest refused
+		// one: the next run reads on from there, imports what was refused and
+		// passes over what is already here, because the importer is keyed on
+		// the package. remote_timestamp is on the same scale as the pull's own
+		// cursor (read_to is the last package's placed_at), and the pull
+		// already starts a few minutes before its cursor, so it is used as it
+		// is. Only the imported_timestamp fallback, this server's clock, goes
+		// back 3 h. Going back further would read packages from before the
+		// first pull and import them as new orders.
+		$oldest = (int) db_value("SELECT MIN(IF(remote_timestamp > 0, remote_timestamp, imported_timestamp - 10800))
+			FROM marketplace_order_map
+			WHERE (account_id = '" . e($account_id) . "') AND (status = 'failed') AND (order_id = 0)");
+
+		if ($oldest > 0) {
+
+			$from = max(1, $oldest);
+
+			db("UPDATE marketplace_accounts
+				SET last_order_pull = '" . e($from) . "', updated_timestamp = UNIX_TIMESTAMP()
+				WHERE (id = '" . e($account_id) . "') AND (last_order_pull > '" . e($from) . "')");
+
+		}
+
+		$liveform->add_notice(lang('The orders that failed will be read from the marketplace again on the next run.'));
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
 	if ($action === 'clear_queue' && $account) {
 
 		db("DELETE FROM marketplace_sync_queue
@@ -810,6 +845,8 @@ $maps = array();
 
 $orders = array();
 
+$failed_orders = 0;
+
 $articles = array();
 
 $category_count = 0;
@@ -876,6 +913,9 @@ if ($selected) {
 		$open_chosen = is_array($decoded) ? $decoded : array();
 
 	}
+
+	$failed_orders = (int) db_value("SELECT COUNT(*) FROM marketplace_order_map
+		WHERE (account_id = '" . e($selected_id) . "') AND (status = 'failed') AND (order_id = 0)");
 
 	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total,
 			orders.billing_first_name, orders.billing_last_name, orders.status AS order_status
@@ -1158,6 +1198,10 @@ if ($selected) {
 
 			}
 
+			// The figure the marketplace gets; marked when it carries tax the
+			// product's stored price does not, so it is not read as a typo.
+			$map_price = mp_product_price($map);
+
 			echo '
 			<div class="mp-row">
 				<span>
@@ -1168,7 +1212,8 @@ if ($selected) {
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
-				<span>' . prepare_price_for_output(mp_product_price($map), false, 0, 'html', false) . '</span>
+				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
+					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
 				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'
@@ -1310,7 +1355,16 @@ if ($selected) {
 				. ((int)$selected['last_order_pull']
 					? h(lang(array('string' => 'Orders read up to {var:1}',
 						'vars' => array(mp_settings_ago((int)$selected['last_order_pull'])))))
-					: lang('Never pulled')) . '</span>
+					: lang('Never pulled')) . '</span>'
+			. ($failed_orders ? '
+			<form method="post" action="marketplace_settings.php" class="d-inline">
+				' . get_token_field() . '
+				<input type="hidden" name="mp_action" value="retry_orders">
+				<input type="hidden" name="account_id" value="' . $selected_id . '">
+				<button type="submit" class="btn btn-sm btn-outline-secondary"
+					title="' . h(lang('Match the products first. The next run reads the failed orders again.')) . '">
+					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
+			</form>' : '') . '
 		</div>
 		<div class="card-body px-2 py-3">';
 
