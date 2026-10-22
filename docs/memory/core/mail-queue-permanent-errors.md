@@ -4,7 +4,7 @@ description: Mail queue gives a message up on its first attempt when the failure
 ---
 
 ## Which failures are permanent?
-- Decided by structure, never by reading the (localised) error text. `pg_mail_permanent_problem($properties)` (`includes/fn/mail_queue.php`): `no_recipient` when `to` holds no non-blank string, `empty_body` when the body is empty or only white space (plain or HTML, before `prepare_page_for_email()`). Recipient is checked first.
+- PR #1206 (2026.11.0). Decided by structure, never by reading the (localised) error text. `pg_mail_permanent_problem($properties)` (`includes/fn/mail_queue.php`): `no_recipient` when `to` holds no non-blank string, `empty_body` when the body is empty or only white space (plain or HTML, before `prepare_page_for_email()`). Recipient is checked first.
 - Inside `email()` (`includes/fn/mail.php`) a local `$permanent` is true for that check and while `addAddress()`, `addBCC()`, `setFrom()` and `addReplyTo()` run: PHPMailer throws there only for an address it refuses, and the address is in the stored properties, so a retry fails the same way. A connected account's From rewrite in between is pure.
 - An internationalised address PHPMailer queues and validates later in `send()` is not marked permanent (retried as before).
 - `pg_mail_last_error_permanent()` carries the flag next to `pg_mail_last_error()`, reset by every `email()` call and set last in the `catch`.
