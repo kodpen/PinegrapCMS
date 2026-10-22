@@ -280,6 +280,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   alanının adı; dinamik değer alanın tipine göre (tarih → bugün / gün önce,
   username → izleyici, e-posta → izleyicinin e-postası). Editör etiketleri
   `_sdT('…')` literal'i olmalı: çeviri haritası literal çağrılardan taranır.
+- `form_item_view` cfg `filters` (aynı biçim): kaydın görünürlüğüdür
+  (`pg_sw_record_view_filters()`, `pg_sw_record_passes_filters()`; alanı
+  kalmayan ya da operatörü listede olmayan filtrede kapalı kalır, operatör
+  her zaman İngilizce sabit, asla `lang()`). Filtre formun değil widget'ın:
+  aynı formun her herkese açık listesi ve kayıt görünümü aynı filtreyi
+  ister. Bkz. `docs/memory/designer/record-view-filters.md`.
 
 ## Ortak bileşenler (`shared_ref`)
 
@@ -522,8 +528,10 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   (`is_signed_out` / `is_signed_in`), tuvalde şerit çipleriyle geçilir.
   Yerleşim başına id tekilleştirmesi form sarmadan **önce** yapılır (CSRF
   alanının id'si korunur). Tasarlanmış form detay sayfasında yorumlar kayda
-  aittir: `pg_sw_record_comment_context()`; görünürlük widget'la aynı
-  (`pg_sw_submitted_form_visible()`).
+  aittir: `pg_sw_record_comment_context()`; görünürlük onun `visible`'ı
+  (erişim ayarı `pg_sw_submitted_form_visible()` VE kayıt filtreleri;
+  e-posta istisnası yalnız sunucunun verdiği kayıt id'siyle). Tek başına
+  `pg_sw_submitted_form_visible()` taslağı geçirir.
 - Birden çok eylemli hesap widget'ı (`account_security`): blok başına
   `semantic form` `_bindings.action='account_security_form'`, düğmeler
   eylemine bağlı (`_pg_sec_apply_action_bindings()`). Tek sarmalayıcı +

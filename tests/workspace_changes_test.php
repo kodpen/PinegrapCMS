@@ -89,3 +89,46 @@ function test_workspace_changes_money_stays_within_the_column()
 	pg_assert_contains("'extra_shipping_cost'     => array('money', 2147483647, lang('Extra Shipping Cost'), 'extra_shipping_cost'),", $source, 'and so does the shipping cost');
 	pg_assert_contains("'credit_limit' => array('money', 0, lang('Credit limit'), 'credit_limit'),", $source, 'the BIGINT credit limit has none');
 }
+
+// A refused value is named for what is wrong with it: a number the field
+// cannot hold is out of range, anything else is of the wrong kind, and a
+// value the field takes has no refusal at all.
+function test_workspace_changes_refusal_names_a_value_out_of_range()
+{
+	$price = array('money', 2147483647, 'Price', 'price');
+	$stock = array('int', array(0, 9999999), 'Stock', 'inventory_quantity');
+	$weight = array('decimal', array(0, 99999, 2, true), 'Weight', 'weight');
+	$range = lang(array('string' => '{var:1}: the value is out of range.', 'vars' => 'price'));
+	$kind = lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => 'price'));
+
+	pg_assert_same('', ws_change_value_refusal($price, 12550, 'price'), 'a price the column holds');
+	pg_assert_same($range, ws_change_value_refusal($price, 2147483648, 'price'), 'one over the INT ceiling');
+	pg_assert_same($range, ws_change_value_refusal($price, '2147483648', 'price'), 'the same as text');
+	pg_assert_same($range, ws_change_value_refusal($price, -1, 'price'), 'a negative amount');
+	pg_assert_same($range, ws_change_value_refusal($price, '1e30', 'price'), 'far beyond any integer');
+	pg_assert_same($kind, ws_change_value_refusal($price, 'ucuz', 'price'), 'a word is the wrong kind');
+	pg_assert_same($kind, ws_change_value_refusal($price, 125.5, 'price'), 'so is a fraction of a minor unit');
+	pg_assert_same($kind, ws_change_value_refusal($price, array(1), 'price'), 'and a list');
+	pg_assert_same($kind, ws_change_value_refusal($price, true, 'price'), 'and a yes/no');
+
+	pg_assert_contains('Stock', ws_change_value_refusal($stock, -3, 'Stock'), 'the label is the one the caller gives');
+	pg_assert_same(lang(array('string' => '{var:1}: the value is out of range.', 'vars' => 'Stock')), ws_change_value_refusal($stock, -3, 'Stock'), 'stock below zero');
+	pg_assert_same(lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => 'Stock')), ws_change_value_refusal($stock, '2.5', 'Stock'), 'half a piece');
+
+	pg_assert_same('', ws_change_value_refusal($weight, '12,5', 'Weight'), 'a weight with a decimal comma');
+	pg_assert_same(lang(array('string' => '{var:1}: the value is out of range.', 'vars' => 'Weight')), ws_change_value_refusal($weight, '100000,5', 'Weight'), 'a weight over the maximum');
+	pg_assert_same(lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => 'Weight')), ws_change_value_refusal($weight, 'ağır', 'Weight'), 'a weight in words');
+
+	// Text fields have no range: their refusal stays the wrong kind.
+	pg_assert_same(lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => 'Name')), ws_change_value_refusal(array('text', 100, 'Name', 'name'), array('a'), 'Name'), 'a list given for a text');
+}
+
+// The writers that check a value against its field say why it was refused.
+function test_workspace_changes_writers_use_the_refusal_sentence()
+{
+	foreach (array('changes.php' => 'return $refuse(ws_change_value_refusal(', 'bulk.php' => 'return $fail(ws_change_value_refusal(', 'scheduled.php' => 'return $fail(ws_change_value_refusal(') as $file => $call) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file);
+
+		pg_assert_same(($file === 'bulk.php') ? 2 : 1, substr_count($source, $call), $file . ' names the refusal');
+	}
+}

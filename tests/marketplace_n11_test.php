@@ -325,12 +325,13 @@ function test_marketplace_n11_vat_rate_rounds_down_to_theirs()
 	pg_assert_same(0, mp_n11_vat_rate(array('tax_rate' => 0.0)));
 }
 
-// A product the shop does not tax carries no tax in its price, whatever rate
-// it or the zone has; an item built without the flag is taxed as before.
-function test_marketplace_n11_vat_rate_is_zero_for_an_untaxed_product()
+// The rate inside the price that is sent wins over the product's own: 0 for
+// a product the shop does not tax (tests/marketplace_vat_rate_test.php has
+// every tax state). Without it the product's own rate is declared.
+function test_marketplace_n11_vat_rate_follows_the_applied_rate()
 {
-	pg_assert_same(0, mp_n11_vat_rate(array('taxable' => false, 'tax_rate' => 20.0)));
-	pg_assert_same(0, mp_n11_vat_rate(array('taxable' => '0', 'tax_rate' => null)));
-	pg_assert_same(20, mp_n11_vat_rate(array('taxable' => true, 'tax_rate' => 20.0)));
+	pg_assert_same(0, mp_n11_vat_rate(array('taxable' => false, 'tax_rate' => 20.0, 'vat_rate' => 0.0)));
+	pg_assert_same(10, mp_n11_vat_rate(array('taxable' => true, 'tax_rate' => null, 'vat_rate' => 18.0)));
+	pg_assert_same(20, mp_n11_vat_rate(array('taxable' => true, 'tax_rate' => 20.0, 'vat_rate' => null)));
 	pg_assert_same(20, mp_n11_vat_rate(array('tax_rate' => 20.0)));
 }

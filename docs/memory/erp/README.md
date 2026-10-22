@@ -16,7 +16,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-counter-sale-completion.md: Counter sale completion chain in add_order.php (order, invoice, receipt), when invoice is mandatory, issue_invoice_seen, and the till right check.
 - erp-dev-environment-traps.md: Traps when developing ERP code on the dev setup: device_commit_files overwrite, long lint runs, strict sql_mode on migrations, PHP via Python heredoc.
-- erp-discounted-order-vat.md: How the checkout takes an order's VAT (per rate, again per rate after a discount) and the ERP invoice the same, and why order header amounts are not line items.
+- erp-discounted-order-vat.md: Order VAT at checkout and on the ERP invoice (per rate, again after a discount), which lines they carry, and why header amounts are not line items.
 - erp-document-templates-settings.md: Per-document template settings in erp_settings.php (config.erp_<doc>_template, $documents map, preview) and how placeholder references are built from data.
 - erp-edoc-account-autolink.md: Which provider cards ERP › Account sync links to accounts on its own after a read (erp_edoc_accounts_autolink()): active cards only, the shared number rule, what is left to the operator
 - erp-edoc-driver-layer.md: ERP e-document driver layer (migration 4.61): registry gate, adding a provider, driver contract, encrypted credentials, active provider, test ping, schema.
@@ -36,6 +36,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51) and extra document data.
 - erp-module-basics.md: ERP module switch and access gates, the three permission columns, menu slot 22, why tables always install, and naming traps (tax_total, contacts link).
 - erp-money-and-currency.md: ERP money storage (integer minor units), home-currency rule, *_base columns, opt-in FX switch, rate history and the fx_diff ledger line.
+- erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum) and the checkout's kurus-lower shipping for an out-of-reach rate total (9.99 shows 9.98)
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices

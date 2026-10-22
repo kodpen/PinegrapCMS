@@ -1776,7 +1776,7 @@ function email($properties)
             $log .= lang('Reply-To') . ': ' . $reply_to . "\n";
         }
 
-        if ($format !== 'html') {
+        if (pg_mail_failure_body_shown($properties)) {
             $log .= lang('Body') . ":\n" . $body;
         }
 
@@ -1801,6 +1801,18 @@ function email($properties)
         return false;
     }
 }
+
+// Whether email() writes a message's body into the failure entry of the
+// activity log and the "delivery failed" notice to the sender: plain text
+// only (HTML is left out), and never a message marked 'secret' => true (a
+// password reset link, which works for whoever reads it).
+function pg_mail_failure_body_shown($properties)
+{
+    if (!is_array($properties)) return false;
+    $format = isset($properties['format']) ? $properties['format'] : 'plain_text';
+    return ($format !== 'html') && empty($properties['secret']);
+}
+
 // Looks at 3 different areas of a submitted form in order to determine
 // which we consider to be the submitter email address for a submitted form.
 function get_submitter_email_address($submitted_form_id)

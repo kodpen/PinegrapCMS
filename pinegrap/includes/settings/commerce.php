@@ -814,7 +814,7 @@ $pg_settings_cards[] = '
                                                                                         <option value="PayPal Payflow Pro"' . $ecommerce_payment_gateway_paypal_payflow_pro . '>PayPal Payflow Pro</option>
                                                                                         <option value="PayPal Payments Pro"' . $ecommerce_payment_gateway_paypal_payments_pro . '>PayPal Payments Pro</option>
                                                                                         <option value="Sage"' . $ecommerce_payment_gateway_sage . '>Sage</option>
-                                                                                        <option value="Stripe"' . $ecommerce_payment_gateway_stripe . '>Stripe</option>
+                                                                                        <option value="Stripe"' . $ecommerce_payment_gateway_stripe . '>' . h(lang('Stripe (classic)')) . '</option>
                                                                                         <option value="Iyzipay"' . $ecommerce_payment_gateway_iyzipay . '>Iyzipay</option>' . pg_payment_settings_gateway_options($ecommerce_payment_gateway) . '
                                                                                     </select>
                                                                                 </div>

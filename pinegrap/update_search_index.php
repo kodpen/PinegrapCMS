@@ -126,6 +126,10 @@ $calendar_event_view_urls = array();
 // Different form list views might link to the same form item view, so that is why this is necessary.
 $form_item_view_urls = array();
 
+// The pages built in the visual editor that carry record lists, collected in
+// the page loop: array('page' => page row, 'lists' => list widget configs).
+$designer_hosts = array();
+
 // if calendars enabled than output search properties else do not include them because error while update search index.
 $sql_where = "";
 if(defined('CALENDARS') && CALENDARS == 1){
@@ -186,6 +190,33 @@ $count_pages = 1;
 foreach ($pages as $page) {
 
     $url = encode_url_path($page['name']);
+
+    // A page built in the visual editor carries its record lists and record
+    // views as system widgets. Its lists are kept for the record items
+    // written after this loop. A record page drawn without ?r= shows its
+    // not-found state, so it is not an item itself; its records are.
+    if ($page['type'] == 'standard') {
+        $designer_lists = array();
+        $designer_record_page = false;
+
+        foreach (pg_sw_page_widgets($page['id']) as $widget) {
+            $widget_type = isset($widget['cfg']['regionType']) ? (string) $widget['cfg']['regionType'] : '';
+
+            if (in_array($widget_type, pg_sw_form_list_types(), true)) {
+                $designer_lists[] = $widget['cfg'];
+            } elseif ($widget_type === 'form_item_view') {
+                $designer_record_page = true;
+            }
+        }
+
+        if ($designer_lists) {
+            $designer_hosts[] = array('page' => $page, 'lists' => $designer_lists);
+        }
+
+        if ($designer_record_page) {
+            continue;
+        }
+    }
 
     // Get HTML version of page.
     $content = get_page_content($page['id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false);
@@ -921,6 +952,242 @@ foreach ($pages as $page) {
 
             break;
     }
+}
+
+// The records of the lists on pages built in the visual editor, one item per
+// record at its address on the list's detail page, as the sitemap lists
+// them (get_sitemap_info.php): the list's filters and the record view's
+// (which fail closed), complete records only, both widgets public and
+// neither filtering by the viewer. The detail page must be a standard page
+// in site search itself. Each record is drawn with ?r= for its widget and
+// form_id for its head; one that fails to draw, or that the page would not
+// show, is left out (and its old item goes with the sweep below) instead of
+// ending the run. Records come before files so the files they link are
+// indexed.
+$designer_record_urls = array();
+$designer_detail_pages = array();
+$designer_failures = 0;
+$recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
+
+foreach ($designer_hosts as $designer_host) {
+    $host_page = $designer_host['page'];
+
+    foreach ($designer_host['lists'] as $list_cfg) {
+        $form_page_id = pg_sw_form_widget_form_page_id($list_cfg);
+        $detail_page_id = isset($list_cfg['detail_page_id']) ? (int) $list_cfg['detail_page_id'] : 0;
+
+        if (($form_page_id <= 0) || ($detail_page_id <= 0)) {
+            continue;
+        }
+
+        if (!array_key_exists($detail_page_id, $designer_detail_pages)) {
+            $detail_page = db_item(
+                "SELECT
+                    page.page_name,
+                    page.page_title,
+                    page.page_folder,
+                    page.page_search_keywords
+                FROM page
+                INNER JOIN folder ON page.page_folder = folder.folder_id
+                WHERE
+                    (page.page_id = '" . $detail_page_id . "')
+                    AND (page.page_type = 'standard')
+                    AND (page.page_search = '1')
+                    AND (folder.folder_archived = '0')");
+
+            if (!is_array($detail_page) || in_array((int) $detail_page['page_folder'], $recycle_bin_folder_ids)) {
+                $detail_page = null;
+            }
+
+            $designer_detail_pages[$detail_page_id] = $detail_page;
+        }
+
+        $detail_page = $designer_detail_pages[$detail_page_id];
+
+        if ($detail_page === null) {
+            continue;
+        }
+
+        // The record view on the detail page that shows the list's form.
+        $record_view = null;
+
+        foreach (pg_sw_page_widgets($detail_page_id) as $widget) {
+            if (
+                isset($widget['cfg']['regionType'])
+                && ($widget['cfg']['regionType'] === 'form_item_view')
+                && (pg_sw_form_widget_form_page_id($widget['cfg']) === $form_page_id)
+            ) {
+                $record_view = $widget;
+                break;
+            }
+        }
+
+        if (!$record_view || !pg_sw_search_index_eligible($list_cfg, $record_view['cfg'])) {
+            continue;
+        }
+
+        $folder_id = pg_sw_search_index_folder(
+            $host_page['folder_id'],
+            pg_sw_search_index_folder_open(get_access_control_type($host_page['folder_id'])),
+            $detail_page['page_folder'],
+            pg_sw_search_index_folder_open(get_access_control_type($detail_page['page_folder'])));
+
+        $saved_error_throws = pg_error_throws();
+        pg_error_throws(true);
+
+        try {
+            $filter_sql = pg_sw_list_record_filter_clause($form_page_id, $list_cfg, $record_view['cfg'], $detail_page_id);
+
+            $records = db_items(
+                "SELECT forms.id, forms.reference_code, forms.address_name
+                FROM forms
+                " . $filter_sql['join'] . "
+                WHERE
+                    (forms.page_id = '" . (int) $form_page_id . "')
+                    AND (forms.complete = 1)
+                    AND (forms.reference_code != '')
+                    " . $filter_sql['where'] . "
+                ORDER BY forms.id ASC");
+        } catch (Throwable $throwable) {
+            $records = array();
+            $designer_failures++;
+        } finally {
+            pg_error_throws($saved_error_throws);
+        }
+
+        $pretty = pg_sw_form_pretty_urls($form_page_id);
+
+        foreach ((array) $records as $record) {
+            $url = pg_sw_search_index_record_url($detail_page['page_name'], $record['reference_code'], $record['address_name'], $pretty);
+
+            if ($url === '') {
+                continue;
+            }
+
+            // Several lists can reach the same record. It is drawn once; a
+            // list on an open page (or on a page in the record page's own
+            // folder) widens the folder an earlier list on a closed page
+            // filed it under to the record page's.
+            if (array_key_exists($url, $designer_record_urls)) {
+                if (
+                    ($designer_record_urls[$url] !== null)
+                    && ($designer_record_urls[$url] !== $folder_id)
+                    && ($folder_id === (int) $detail_page['page_folder'])
+                ) {
+                    db("UPDATE search_items SET folder_id = '" . $folder_id . "' WHERE url = '" . e($url) . "'");
+                    $designer_record_urls[$url] = $folder_id;
+                }
+
+                continue;
+            }
+
+            $designer_record_urls[$url] = null;
+
+            $had_reference_code = array_key_exists('r', $_GET);
+            $saved_reference_code = $had_reference_code ? $_GET['r'] : null;
+            $saved_error_throws = pg_error_throws();
+            $saved_ob_level = ob_get_level();
+
+            $_GET['r'] = (string) $record['reference_code'];
+            pg_error_throws(true);
+
+            try {
+                // The record page would not show it (gone since the query,
+                // or held back by the page's own record view).
+                $record_context = pg_sw_record_comment_context($detail_page_id, (int) $record['id']);
+
+                if (!is_array($record_context) || empty($record_context['visible'])) {
+                    continue;
+                }
+
+                $content = get_page_content($detail_page_id, '', '', 'preview', false, array('form_id' => (int) $record['id']));
+
+                if (((string) $content === '') || pg_sw_item_missing()) {
+                    continue;
+                }
+
+                $record_rows = db_items(
+                    "SELECT form_fields.name, form_fields.rss_field, form_data.data, form_data.type
+                    FROM form_data
+                    LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+                    WHERE form_data.form_id = '" . (int) $record['id'] . "'
+                    ORDER BY form_fields.sort_order ASC, form_data.id ASC");
+
+                $record_texts = pg_sw_search_index_record_texts($record_view['cfg'], $record_rows, $record['reference_code']);
+
+                $title = $record_texts['title'];
+
+                if ($title === '') {
+                    $title = ((string) $detail_page['page_title'] !== '') ? (string) $detail_page['page_title'] : (string) $detail_page['page_name'];
+                }
+
+                $linked_item_names = update_linked_item_names($content, $linked_item_names);
+
+                $promoted_keywords = (string) $detail_page['page_search_keywords'];
+                $more_promoted_keywords = get_promoted_keywords($content);
+
+                if ($more_promoted_keywords != '') {
+                    if ($promoted_keywords != '') {
+                        $promoted_keywords .= ', ';
+                    }
+
+                    $promoted_keywords .= $more_promoted_keywords;
+                }
+
+                // The record's own title and description, which the drawn
+                // page need not print, then its text. The detail page's
+                // title and meta description are left out: every record of
+                // the page would match their words.
+                $content = $title . ' ' . $record_texts['description'] . ' ' . $detail_page['page_search_keywords'] . ' ' . convert_html_to_text($content);
+
+                pg_sw_search_index_save_item(array(
+                    'url' => $url,
+                    'content' => $content,
+                    'title' => $title,
+                    'description' => $record_texts['description'],
+                    'keywords' => $promoted_keywords,
+                    'page_id' => $detail_page_id,
+                    'folder_id' => $folder_id
+                ), $timestamp);
+
+                $designer_record_urls[$url] = $folder_id;
+            } catch (Throwable $throwable) {
+                $designer_failures++;
+                continue;
+            } finally {
+                // A render that throws skips the ob_get_clean() of a PHP
+                // region or dynamic region it was evaluating; its buffer
+                // would swallow the rest of the run's output.
+                while (ob_get_level() > $saved_ob_level) {
+                    ob_end_clean();
+                }
+
+                pg_error_throws($saved_error_throws);
+
+                if ($had_reference_code) {
+                    $_GET['r'] = $saved_reference_code;
+                } else {
+                    unset($_GET['r']);
+                }
+            }
+
+            echo
+                '<li class="list-group-item px-2 py-2">
+                    <div class="d-flex align-items-start gap-2">
+                        <small class="text-muted flex-shrink-0 text-end mt-1" style="min-width:22px;font-size:10px">' . $count_pages++ . '</small>
+                        <div class="flex-fill overflow-hidden">
+                            <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:13px">' . h($title) . '</a>
+                            <div class="text-muted text-truncate" style="font-size:11px">' . h($url) . ($record_texts['description'] !== '' ? ' &middot; ' . h($record_texts['description']) : '') . '</div>
+                        </div>
+                        <span class="badge text-bg-light border flex-shrink-0" style="font-size:9px">' . lang('Form') . '</span>
+                    </div>
+                </li>';
+        }
+    }
+}
+
+if ($designer_failures > 0) {
+    error_log('Pinegrap: the search index left out ' . $designer_failures . ' record list(s) or record page(s) that failed to load.');
 }
 
 // Get files that should be included in search index.
