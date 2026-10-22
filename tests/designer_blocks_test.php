@@ -10,6 +10,8 @@
  * _sdEnsureBlockStyles() appends it again on every drop); every pg-* class a
  * builder writes is defined by a rule the block needs; and no block rule
  * uses !important (Bootstrap utilities would lose the override war silently).
+ * Two blocks keep a checked shape: scroller-cards' scroll hint points both
+ * ways, and the weather strip's cities are look-driven chips.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -172,8 +174,8 @@ function _test_blocks_builder_at($ctype)
 	return ($at === false || $at > $range[1]) ? false : $at;
 }
 
-// The pg-* classes written in the string literals of $ctype's builder body.
-function _test_blocks_builder_classes($ctype)
+// The string literals of $ctype's builder body, in source order.
+function _test_blocks_builder_strings($ctype)
 {
 	$at = _test_blocks_builder_at($ctype);
 	$block = $at === false ? null : _test_blocks_block($at);
@@ -181,8 +183,27 @@ function _test_blocks_builder_classes($ctype)
 		return array();
 	}
 	$scan = _test_blocks_scan(_test_blocks_js(), $block[0] + 1);
+	return $scan['strings'];
+}
+
+// True when one string literal of $ctype's builder carries every class in
+// $classes as a whole token.
+function _test_blocks_builder_has_classes($ctype, array $classes)
+{
+	foreach (_test_blocks_builder_strings($ctype) as $str) {
+		$tokens = preg_split('/\s+/', trim($str));
+		if (!array_diff($classes, $tokens)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The pg-* classes written in the string literals of $ctype's builder body.
+function _test_blocks_builder_classes($ctype)
+{
 	$out = array();
-	foreach ($scan['strings'] as $str) {
+	foreach (_test_blocks_builder_strings($ctype) as $str) {
 		if (preg_match_all('/(?<![\\w-])pg-[a-z0-9-]*[a-z0-9]/', $str, $m)) {
 			$out = array_merge($out, $m[0]);
 		}
@@ -382,4 +403,33 @@ function test_designer_blocks_builder_classes_are_needed()
 	}
 	pg_assert_true($seen > 0, 'pg-* classes are found in the builders');
 	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
+}
+
+// The scroll hint of scroller-cards points both ways: the row scrolls both
+// ways, and a one-way arrow points against the reading direction on an RTL
+// page.
+function test_designer_blocks_scroll_hint_is_direction_neutral()
+{
+	$strings = _test_blocks_builder_strings('scroller-cards');
+	pg_assert_true(count($strings) > 0, 'the scroller-cards builder is found');
+	pg_assert_true(in_array('bi-arrow-left-right', $strings, true), 'scroller-cards draws the two-headed arrow');
+	$one_way = array();
+	foreach ($strings as $str) {
+		foreach (preg_split('/\s+/', trim($str)) as $token) {
+			if (in_array($token, array('bi-arrow-right', 'bi-arrow-left', 'bi-chevron-right', 'bi-chevron-left'), true)) {
+				$one_way[] = $token;
+			}
+		}
+	}
+	pg_assert_same(array(), $one_way, 'one-way arrows in scroller-cards');
+}
+
+// The weather strip's cities are outlined chips on the body colour, so the
+// look's radius and border width reach the band.
+function test_designer_blocks_weather_cities_follow_the_look()
+{
+	pg_assert_true(
+		_test_blocks_builder_has_classes('news-weather-strip', array('bg-body', 'border', 'rounded', 'text-nowrap')),
+		'a news-weather-strip city item carries bg-body, border and rounded'
+	);
 }
