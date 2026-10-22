@@ -13,7 +13,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - Escape every value printed into HTML with `h()`, `lang()` `{var:N}` values included; give `h()` a raw `&` in query strings; wrap `_sdT()` in `esc()` (`output-escaping.md`).
 - Make a JSON endpoint refuse in JSON with a status (`validate_area_access()`, `validate_token_field()` print HTML); `api.php` reads only a JSON body (`json-endpoint-rules.md`).
 - Add an `api.php` action as a `pg_panel_actions()` row; unlisted names hit the session + role <= 1 gate, so a role 2/3 action is `exempt` (its handler checks session, token, role) or `any_role` (`panel-action-table.md`).
-- Keep a secret config value as one encrypted blob decrypted where used: never a constant, never hashed if it must be read back (`security-helpers-and-secret-storage.md`).
+- Keep a secret config value as one encrypted blob decrypted where used: never a constant, never hashed if it must be read back, never shown back on a settings screen (a new field is drawn empty) (`security-helpers-and-secret-storage.md`).
 - Build a module's paths from `PG_FUNCTIONS_DIR`, not `__DIR__`, and start every include with its loader's gate constant (`functions-php-split-rules.md`, `file-placement-rules.md`).
 <!-- key-rules:end -->
 
