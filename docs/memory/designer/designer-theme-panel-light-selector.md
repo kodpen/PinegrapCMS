@@ -11,7 +11,7 @@ description: Which blocks the designer's Themes panel writes light and dark vari
 - Helpers in `assets/js/style_designer.js`: `_themeFindBlock()`, `_themeCanonicalSelector()`, `_themeSetDecl()`, `_themeUpgradeLightSelector()`, `_themeModeDecls()`, `_writeThemeVar()`.
 
 ## Why two light selectors?
-- `:root` also matches an `<html data-bs-theme="dark">` a theme switcher sets, and at equal specificity the later user styles beat Bootstrap's dark block: with Background `#fdf6e3` under Light, "Dark" kept the light page with light grey text. So colours Bootstrap redefines for dark use the `:not()` form.
+- `:root` also matches an `<html data-bs-theme="dark">` a theme switcher sets, and at equal specificity the later user styles beat Bootstrap's dark block: a light Background `#fdf6e3` kept a "Dark" page light with light grey text (fixed in #1298). So colours Bootstrap redefines for dark use the `:not()` form.
 - Bootstrap has one value for both modes for the rest, so a dark `<html>` with the `:not()` form fell back to Bootstrap's defaults (font system-ui, radius 6px). Those stay under `:root`.
 - The shared block is created before the dark block, so a Dark value of the same variable wins on a dark `<html>`. The light block wins over the shared one (`(0,2,0)`); a hand-written `:root` rule in a stylesheet ordered after User Styles loses to it.
 - The editor canvas hid the bug: its toolbar dark view puts `data-bs-theme` on `<body>`.
