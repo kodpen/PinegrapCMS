@@ -12,11 +12,11 @@ description: How a ready-made designer block writes a form that can be sent and 
 - The submit is either the Button component with `btnElement: 'button', btnType: 'submit'` (keeps the Button panel: variant, size; used by the older blocks) or a semantic `<button type="submit">` (the maintenance notify forms). No `href` on a submit button.
 - The forms are samples: they have no `action` until the operator wires them (Bind Data, or a custom form).
 
-## What does the audit accept as a submit?
-- `form_no_submit` (`_validationRules` in `style_designer.js`) counts a content button, a semantic `button`, and a Button component drawn as `<button>`/`<input>` with `btnType: 'submit'`. A Button component left as a link does not count.
+## Where does the editor's audit come in?
+- The builders write a control that really submits; which controls the audit's `form_no_submit` rule counts as a submit is that rule's business, not the builders'. The blocks never change the rule.
 - `input_no_label` looks the field's `props.id` up among the `for` values of every `label` in the tree.
 
 ## What keeps this from coming back?
 - `tests/designer_blocks_test.php`: every `createNode('component', …)` type in `createFromPalette()` has a `COMPONENTS` entry; every Button component inside a block `form` has `btnElement` `button` or `input`, and every block form has a submit.
 - The same test reads every semantic `input`/`select`/`textarea` in `createFromPalette()`: its id expression (`_attrs` `id` or the `id` prop) must be the `for` of a `label` written in the same builder or field helper (`_cfField`, `_lmFloating`, `_mnNotify`); outside a form an `aria-label` also counts. Every label `for` must name such a field. Ids are compared as source expressions (`nlId + '_email'`), so a field and its label use the same expression.
-- The editor's audit (`input_no_label`, `form_no_submit`) reports the same on the canvas.
+- On the canvas the editor's audit reports a field without a label (`input_no_label`).
