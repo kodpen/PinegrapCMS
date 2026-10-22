@@ -16,7 +16,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-counter-sale-completion.md: Counter sale completion chain in add_order.php (order, invoice, receipt), when invoice is mandatory, issue_invoice_seen, and the till right check.
 - erp-dev-environment-traps.md: Traps when developing ERP code on the dev setup: device_commit_files overwrite, long lint runs, strict sql_mode on migrations, PHP via Python heredoc.
-- erp-discounted-order-vat.md: How a discounted order's VAT is computed at checkout vs on the ERP invoice, and why order header amounts are not line items.
+- erp-discounted-order-vat.md: How the checkout takes an order's VAT (per rate, again per rate after a discount) and the ERP invoice the same, and why order header amounts are not line items.
 - erp-document-templates-settings.md: Per-document template settings in erp_settings.php (config.erp_<doc>_template, $documents map, preview) and how placeholder references are built from data.
 - erp-edoc-account-autolink.md: Which provider cards ERP › Account sync links to accounts on its own after a read (erp_edoc_accounts_autolink()): active cards only, the shared number rule, what is left to the operator
 - erp-edoc-driver-layer.md: ERP e-document driver layer (migration 4.61): registry gate, adding a provider, driver contract, encrypted credentials, active provider, test ping, schema.
@@ -31,7 +31,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-isbasi-invoice-payload.md: What goes to Isbasi on send_invoice: final-consumer rule, pre-send validation, SimpleInv body fields, internet-sale block, unsupported types.
 - erp-isbasi-poll-documents-screens.md: Isbasi poll status mapping, fetch_document type pitfalls, e-document screens/buttons, invoice list column, edoc_changed event, 4.62 schema.
 - erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight) and which lists must not be DataTables.
-- erp-local-sale.md: Counter sale (add_order.php) customer handling, walk-in account, VAT per line, invoice from order screen, waybill from invoice and write-back rules (4.59).
+- erp-local-sale.md: Counter sale (add_order.php) customer handling, walk-in account, VAT per rate, invoice from order screen, waybill from invoice and write-back rules (4.59).
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), issue transaction, invoice_manual.php functions, foreign-currency drafts.
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51) and extra document data.
 - erp-module-basics.md: ERP module switch and access gates, the three permission columns, menu slot 22, why tables always install, and naming traps (tax_total, contacts link).
