@@ -1673,7 +1673,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                     }
 
                     if (ws_change_value($allowed[$name], $value) === null) {
-                        return $fail(lang(array('string' => '{var:1} does not have a value of the right kind.', 'vars' => $allowed[$name][2])));
+                        return $fail(ws_change_value_refusal($allowed[$name], $value, $allowed[$name][2]));
                     }
 
                     $fields[$name] = $value;
