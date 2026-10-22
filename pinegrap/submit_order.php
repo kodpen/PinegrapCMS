@@ -911,8 +911,34 @@ function submit_order($type) {
     $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $shipping = $row['shipping'];
-    
+    $shipping = (int) $row['shipping'];
+
+    // The shipping holds tax: on the order's invoice it is taken with the
+    // goods of each rate, on their sum, and where that leaves a rate's total
+    // no amount reaches (57.93 at 20%) the shipping is charged a minor unit
+    // lower (pg_order_charges_reachable()), as the checkout showed it. The
+    // recipient that gives up the minor units is the last one whose cost
+    // covers them; its cost is lowered when the order is placed (below), so
+    // the order's pages read what was charged.
+    $shipping_less = 0;
+    $shipping_less_ship_to_id = 0;
+
+    if (($shipping > 0) && pg_order_charges_settle_rates()) {
+        $settled = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping));
+
+        if ($settled['shipping'] < $shipping) {
+            $shipping_less_ship_to_id = (int) db_value(
+                "SELECT id FROM ship_tos
+                WHERE order_id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "' AND shipping_cost >= '" . ($shipping - $settled['shipping']) . "'
+                ORDER BY id DESC LIMIT 1");
+
+            if ($shipping_less_ship_to_id > 0) {
+                $shipping_less = $shipping - $settled['shipping'];
+                $shipping = $settled['shipping'];
+            }
+        }
+    }
+
     $total = $subtotal - $discount + $tax + $shipping;
 
     $gift_card_discount = 0;
@@ -950,6 +976,13 @@ function submit_order($type) {
             && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
         ) {
             $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total);
+
+            // Like the shipping, a minor unit lower where it would leave a
+            // rate's total no amount reaches (pg_order_charges_reachable()).
+            if (pg_order_charges_settle_rates()) {
+                $surcharge = pg_order_charges_reachable($charged_lines, $discount, array('shipping' => $shipping, 'surcharge' => (int) $surcharge))['surcharge'];
+            }
+
             $total = $total + $surcharge;
         }
         
@@ -4430,6 +4463,13 @@ function submit_order($type) {
     // A later bank transfer in the same visit is not called that.
     } elseif (($_SESSION['ecommerce']['offline_payment_label'] ?? '') === lang('Put it on my account')) {
         unset($_SESSION['ecommerce']['offline_payment_label']);
+    }
+
+    // The recipient that gave up the shipping's minor units (see the totals
+    // above) keeps the cost the order was charged.
+    if ($shipping_less > 0) {
+        db("UPDATE ship_tos SET shipping_cost = shipping_cost - " . (int) $shipping_less . "
+            WHERE id = '" . (int) $shipping_less_ship_to_id . "'");
     }
 
     // add data to orders table
