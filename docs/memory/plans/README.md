@@ -9,7 +9,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
 - anonymous-page-cache.md: Proposal (2026-10-21, awaiting owner decision): short full-page cache for anonymous GETs; a cacheability gate first, then a Cloudflare Cache Rule (A) or a Pinegrap file cache (B)
-- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default built): pre-information form, distance sales contract; left: KVKK, withdrawal timer
+- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: model, My Account, panel, refund and reminders done): API and webhooks, staff-recorded requests, the classic order view left
