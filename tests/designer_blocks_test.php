@@ -8,9 +8,11 @@
  * _sdBlockPaletteGroups(); every rule a block asks for in _SD_BLOCK_CSS_NEEDS
  * exists in _SD_BLOCK_CSS and names its own key as a class (otherwise
  * _sdEnsureBlockStyles() appends it again on every drop); every pg-* class a
- * builder writes is defined by a rule the block needs; no block rule
- * uses !important (Bootstrap utilities would lose the override war silently);
- * no builder writes a fixed colour class that ignores the colour palette and
+ * builder writes is defined by a rule the block needs; and no block rule
+ * uses !important (Bootstrap utilities would lose the override war silently).
+ *
+ * The markup of every block and Components-tab item follows the design: no
+ * builder writes a fixed colour class that ignores the colour palette and
  * dark mode; no builder carousel plays by itself; every component type a
  * builder writes exists; every block form can be submitted; and every field
  * a builder writes is named by a label (or, outside a form, an aria-label).
@@ -358,39 +360,9 @@ function test_designer_blocks_every_rule_names_its_key()
 	pg_assert_same(array(), $silent, '_SD_BLOCK_CSS entries whose rule does not use their key as a class');
 }
 
-// A pg-* class with no rule behind it does nothing on the published page.
-// Classes written by shared helpers outside a builder's own body are not
-// seen here. The theme switcher's classes are hooks its script looks up.
-function test_designer_blocks_builder_classes_are_needed()
-{
-	$rules = _test_blocks_css_rules();
-	$needs = _test_blocks_css_needs();
-	$hooks = array('pg-active-icon', 'pg-check');
-	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js');
-	foreach ($hooks as $hook) {
-		pg_assert_true(strpos($script, $hook) !== false, $hook . ' is still read by pg_theme_switcher.js');
-	}
-	$seen = 0;
-	$uncovered = array();
-	foreach (_test_blocks_palette_ctypes() as $ctype) {
-		$css = '';
-		foreach (isset($needs[$ctype]) ? $needs[$ctype] : array() as $name) {
-			$css .= isset($rules[$name]) ? $rules[$name] . "\n" : '';
-		}
-		foreach (_test_blocks_builder_classes($ctype) as $class) {
-			$seen++;
-			if (!in_array($class, $hooks, true) && !_test_blocks_css_has_class($css, $class)) {
-				$uncovered[] = $ctype . ' => ' . $class;
-			}
-		}
-	}
-	pg_assert_true($seen > 0, 'pg-* classes are found in the builders');
-	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
-}
-
 // String literals of createFromPalette() and of makeCarouselSlide(): the
 // markup every block and Components-tab item is built from.
-function _test_blocks_builder_strings()
+function _test_blocks_all_builder_strings()
 {
 	$out = array();
 	$range = _test_blocks_cfp_range();
@@ -418,7 +390,7 @@ function test_designer_blocks_use_theme_driven_colours()
 		'text-black', 'text-black-50', 'text-muted', 'btn-light', 'btn-dark', 'btn-outline-light', 'btn-outline-dark',
 		'link-light', 'link-dark', 'navbar-dark', 'navbar-light', 'bg-primary', 'bg-secondary',
 		'text-light', 'text-bg-light', 'text-bg-dark');
-	$strings = _test_blocks_builder_strings();
+	$strings = _test_blocks_all_builder_strings();
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
 	$found = array();
 	foreach ($strings as $str) {
@@ -453,7 +425,7 @@ function test_designer_blocks_use_theme_driven_colours()
 // plays by itself. Carousel Options > Autoplay switches it on per carousel.
 function test_designer_blocks_carousels_do_not_autoplay()
 {
-	$strings = _test_blocks_builder_strings();
+	$strings = _test_blocks_all_builder_strings();
 	pg_assert_true(count($strings) > 1000, 'the string literals of the builders are read');
 	pg_assert_false(in_array('data-bs-ride', $strings, true), 'no builder writes data-bs-ride');
 	pg_assert_false(in_array('data-bs-interval', $strings, true), 'no builder writes data-bs-interval');
@@ -701,4 +673,34 @@ function test_designer_blocks_fields_have_labels()
 		}
 	}
 	pg_assert_same(array(), $empty, 'labels of createFromPalette() without text');
+}
+
+// A pg-* class with no rule behind it does nothing on the published page.
+// Classes written by shared helpers outside a builder's own body are not
+// seen here. The theme switcher's classes are hooks its script looks up.
+function test_designer_blocks_builder_classes_are_needed()
+{
+	$rules = _test_blocks_css_rules();
+	$needs = _test_blocks_css_needs();
+	$hooks = array('pg-active-icon', 'pg-check');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js');
+	foreach ($hooks as $hook) {
+		pg_assert_true(strpos($script, $hook) !== false, $hook . ' is still read by pg_theme_switcher.js');
+	}
+	$seen = 0;
+	$uncovered = array();
+	foreach (_test_blocks_palette_ctypes() as $ctype) {
+		$css = '';
+		foreach (isset($needs[$ctype]) ? $needs[$ctype] : array() as $name) {
+			$css .= isset($rules[$name]) ? $rules[$name] . "\n" : '';
+		}
+		foreach (_test_blocks_builder_classes($ctype) as $class) {
+			$seen++;
+			if (!in_array($class, $hooks, true) && !_test_blocks_css_has_class($css, $class)) {
+				$uncovered[] = $ctype . ' => ' . $class;
+			}
+		}
+	}
+	pg_assert_true($seen > 0, 'pg-* classes are found in the builders');
+	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
 }
