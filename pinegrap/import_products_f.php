@@ -802,7 +802,7 @@ function pg_products_import_price_cents($value)
 }
 
 // The money cells of one import row, read before the database is touched.
-// $price_keys maps each money column the header has (price,
+// $money_positions maps each money column the header has (price,
 // extra_shipping_cost, compare_at_price) to its position. Returns
 // array('prices' => array(column => minor units), 'refused' => bool): an
 // empty cell (or spaces alone) is left out, as is a compare_at_price that
@@ -812,11 +812,11 @@ function pg_products_import_price_cents($value)
 // A function of its own because the importer keeps each header column's
 // position in a script variable named <column>_key: a loop there with a
 // variable such as $price_key overwrote the price column's position.
-function pg_products_import_row_prices($row, $price_keys)
+function pg_products_import_row_prices($row, $money_positions)
 {
     $prices = array();
 
-    foreach ($price_keys as $money_column => $money_position) {
+    foreach ($money_positions as $money_column => $money_position) {
         $cell = trim(pg_products_import_row_value($row, $money_position));
 
         if (($cell === '') || (($money_column == 'compare_at_price') && (strpos($cell, '-') === 0))) {
