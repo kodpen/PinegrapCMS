@@ -309,10 +309,11 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
             $type = (string)$custom[$name]['type'];
             $data = (string)$custom[$name]['data'];
             // Markup from a WYSIWYG area was typed by the submitter, so it is
-            // filtered rather than escaped.
+            // filtered rather than escaped. It is printed raw, so PHP open
+            // tags are defused before the page's PHP_REGIONS eval.
             if (!empty($custom[$name]['wysiwyg'])) {
                 $prepare_for_html = false;
-                $data = pg_sanitize_rich_text($data);
+                $data = pg_defuse_php_tags(pg_sanitize_rich_text($data));
             }
         } else {
             // Not a field of this form. Left in place here and swept by the
@@ -5036,6 +5037,11 @@ function pg_sw_item_summary($html, $max = 140)
 //     visibility flags: has_legal_documents, has_legal_preinfo, has_legal_contract
 //     Empty in the receipt e-mail (it attaches the copies). A layout that
 //     binds neither link gets a card listing them after the widget.
+//     __withdrawal_deadline    last day of the right of withdrawal (14 days
+//                              from the last delivery; date text)
+//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_estimated,
+//     withdrawal_ended. None in the receipt e-mail; the card after the widget
+//     carries the line when the layout does not bind the token.
 //
 //   Invoice print:
 //     __order_invoice_pdf_url  URL to customer-facing printable invoice endpoint
@@ -5731,12 +5737,21 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         empty($sw_ctx['email']) ? pg_legal_documents_of_order((int)$order['id']) : array(),
         (int)$order['id']
     );
+    // The last day of the right of withdrawal: 14 days from the last
+    // delivery, an estimate while the deliveries carry only planned dates.
+    // The receipt e-mail goes out before anything is shipped, so it gets none.
+    $withdrawal = empty($sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)$order['id']) : null;
+    $withdrawal_date = is_array($withdrawal) ? $fmt_gc_date($withdrawal['deadline']) : '';
     // A layout made before the links existed binds neither of them: the
     // kept copies are listed in a card after the widget instead, so every
-    // design shows them. A layout that binds a link places them itself.
+    // design shows them, with the withdrawal line under them unless the
+    // layout places that itself. A layout that binds a link places them.
     $legal_block = (strpos((string)$tree_json, '__legal_preinfo_url') === false
                     && strpos((string)$tree_json, '__legal_contract_url') === false)
-        ? pg_legal_documents_order_view_block($legal_urls)
+        ? pg_legal_documents_order_view_block(
+            $legal_urls,
+            (strpos((string)$tree_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
+        )
         : '';
 
     // ── Apply visibility bindings BEFORE tree split + render ──────────
@@ -5848,6 +5863,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
+        // Right of withdrawal: the line while a deadline is known, its note
+        // while the deadline is estimated, and once the deadline has passed.
+        'has_withdrawal_deadline'       => $withdrawal_date !== '',
+        'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
+        'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
@@ -6084,6 +6104,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // carry. Empty when the order has no copy of that document.
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
+        '__withdrawal_deadline'     => h($withdrawal_date),
     );
 
     if ($static_html === '') {
