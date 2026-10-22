@@ -63,7 +63,47 @@ function designer_image_size_test_cases()
 			array('width' => '50%', 'aspectRatio' => '1x1', 'objectPosition' => 'top'),
 			'<div class="ratio ratio-1x1" style="width:50%"><img src="' . $src . '" alt="A" style="object-position:top"></div>',
 		),
+		'the other Sizing lengths, z-index and overflow' => array(
+			array('width' => '48', 'height' => '48', 'minWidth' => '24', 'maxWidth' => '100%', 'top' => '4', 'zIndex' => '2', 'overflow' => 'hidden'),
+			'<img src="' . $src . '" alt="A" width="48" height="48" style="z-index:2;min-width:24px;max-width:100%;overflow:hidden;top:4px">',
+		),
+		'the Sizing panel classes' => array(
+			array('cssClass' => 'rounded-circle', 'srOnly' => true, 'focusRing' => true),
+			'<img src="' . $src . '" alt="A" class="rounded-circle visually-hidden focus-ring">',
+		),
+		'in a ratio box the image keeps its id, attributes and style' => array(
+			array('width' => '200', 'aspectRatio' => '16x9', 'id' => 'hero', 'objectPosition' => 'top', 'minHeight' => '100', 'overflow' => 'hidden',
+				'_attrs' => array(array('name' => 'data-x', 'value' => '1'), array('name' => 'style', 'value' => 'opacity:.9'))),
+			'<div class="ratio ratio-16x9" style="width:200px;min-height:100px;overflow:hidden"><img src="' . $src . '" alt="A" width="200" style="object-position:top;opacity:.9" id="hero" data-x="1"></div>',
+		),
+		'in a ratio box the image keeps the Sizing panel classes' => array(
+			array('aspectRatio' => '1x1', 'srOnly' => true),
+			'<div class="ratio ratio-1x1"><img src="' . $src . '" alt="A" class="visually-hidden"></div>',
+		),
+		'the Sizing panel\'s custom ratio is a box' => array(
+			array('width' => '120', 'aspectRatio' => 'custom', 'aspectRatioEnabled' => true, 'aspectRatioCustom' => '75%'),
+			'<div class="ratio" style="width:120px;--bs-aspect-ratio:75%"><img src="' . $src . '" alt="A" width="120" class="ratio"></div>',
+		),
+		'a custom ratio switched off is no box' => array(
+			array('width' => '120', 'aspectRatio' => 'custom'),
+			'<img src="' . $src . '" alt="A" width="120">',
+		),
 	);
+}
+
+// The markup with each tag's attributes in name order: the page and the
+// editor write them in different orders, which means nothing to a browser.
+function designer_image_size_test_canon($html)
+{
+	return preg_replace_callback('/<([a-z][a-z0-9]*)((?:\s+[^\s=>]+(?:="[^"]*")?)*)\s*>/i', function ($m) {
+		preg_match_all('/\s+([^\s=>]+)(?:="([^"]*)")?/', $m[2], $attrs, PREG_SET_ORDER);
+		$list = array();
+		foreach ($attrs as $a) {
+			$list[] = ' ' . $a[1] . (isset($a[2]) ? '="' . $a[2] . '"' : '');
+		}
+		sort($list);
+		return '<' . $m[1] . implode('', $list) . '>';
+	}, (string) $html);
 }
 
 // One line, without the no-image fallback handler and the indentation.
@@ -106,14 +146,14 @@ function test_designer_image_size_page_markup()
 	}
 }
 
-// Nothing the page writes for an image has a width or height without a unit
+// Nothing the page writes for an image has a length without a unit
 // in a style: the browser drops such a declaration.
 function test_designer_image_size_no_unitless_style()
 {
 	foreach (array('48', '0.5', '48.5', '120px', '50%', '12rem') as $value) {
 		foreach (array('', '1x1') as $ratio) {
-			$html = designer_image_size_test_page(array('width' => $value, 'height' => $value, 'aspectRatio' => $ratio));
-			pg_assert_false((bool) preg_match('/style="[^"]*(?:^|[";])\s*(?:width|height)\s*:\s*[0-9.]+\s*(?:;|")/', $html), $value . ' ' . ($ratio !== '' ? 'in a ratio box' : 'alone') . ': ' . $html);
+			$html = designer_image_size_test_page(array('width' => $value, 'height' => $value, 'minWidth' => $value, 'maxHeight' => $value, 'top' => $value, 'aspectRatio' => $ratio));
+			pg_assert_false((bool) preg_match('/style="[^"]*(?:^|[";])\s*(?:width|height|min-width|max-height|top)\s*:\s*[0-9.]+\s*(?:;|")/', $html), $value . ' ' . ($ratio !== '' ? 'in a ratio box' : 'alone') . ': ' . $html);
 			pg_assert_same(1, preg_match_all('/<img\b/', $html), 'one image');
 		}
 	}
@@ -167,7 +207,7 @@ function designer_image_size_test_js($body)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code_js = '';
 
-	foreach (array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'function addGlobalAttrs(') as $start) {
+	foreach (array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'function addGlobalAttrs(') as $start) {
 		$found = designer_image_size_test_cut($source, $start);
 		pg_assert_true($found !== '', $start . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -236,7 +276,7 @@ function test_designer_image_size_editor_matches_page()
 	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
 
 	foreach ($cases as $label => $props) {
-		pg_assert_same(designer_image_size_test_page($props), designer_image_size_test_flat($result[$label]), $label);
+		pg_assert_same(designer_image_size_test_canon(designer_image_size_test_page($props)), designer_image_size_test_canon(designer_image_size_test_flat($result[$label])), $label);
 
 		foreach (array(0 => 'width', 1 => 'height') as $i => $prop) {
 			$value = isset($props[$prop]) ? $props[$prop] : '';

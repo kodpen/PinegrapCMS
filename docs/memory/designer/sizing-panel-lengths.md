@@ -9,7 +9,7 @@ description: Display & Sizing panel lengths (width, height, min/max, top/right/b
 
 ## Who writes it?
 - `pg_designer_css_length()` (`includes/fn/designer.php`) and its twin `_sdCssLen()`: a bare number gets `px` (`0` too), anything else stays as typed, trimmed.
-- The page: `_pg_node_sizing_decls()` builds the declarations, `_build_node_sizing_attrs()` escapes them for container, area, row, col and semantic. An image's width/height: image-size-props.md.
+- The page: `_pg_node_sizing_decls()` builds the declarations, `_build_node_sizing_attrs()` escapes them for container, area, row, col and semantic; the image case uses the same list (image-size-props.md).
 - The editor's HTML and the canvas: `getNodeExtraStyle()`. Both lists have the same order (z-index, width, min-width, max-width, height, min-height, max-height, overflow, overflow-x, overflow-y, top, right, bottom, left, `--bs-aspect-ratio`), so the page and the editor write the same bytes. A prop `'0'` counts on both sides (PHP's `empty('0')` dropped `right:0` before).
 - `tests/designer_image_size_test.php` (`test_designer_sizing_length_*`) compares `getNodeExtraStyle()` under Node with `_build_node_sizing_attrs()`.
 
@@ -17,7 +17,7 @@ description: Display & Sizing panel lengths (width, height, min/max, top/right/b
 - Both sides wrote the value as typed: `width:48`, `min-height:200`, `top:-8`, which the browser ignored, so a container, row, column or semantic element kept its natural size. The PHP order differed from the editor's.
 
 ## What does not take the Sizing panel on the page?
-- Content elements (heading, paragraph, link, image, icon, spacer…) and components: the editor and the canvas apply the panel's style to them, the page renderer (`_render_content_html()`, `_render_component_html()`) does not. Known gap, not changed here.
+- Content elements other than the Image (heading, paragraph, link, icon, spacer…) and components: the editor and the canvas apply the panel's style to them, the page renderer (`_render_content_html()`, `_render_component_html()`) does not. A known gap.
 
 ## What about pages already saved?
 - `page.page_tree_code` keeps the HTML drawn at its last save; the tree is unchanged. A page gets the units when it is saved again or by Rebuild Page HTML (docs/memory/designer/page-html-rebuild.md). Shared components and widgets are drawn per request and follow at once. No migration.

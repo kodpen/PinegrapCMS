@@ -4961,25 +4961,41 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
             $img_w_raw = !empty($props['width'])  ? (string)$props['width']  : '';
             $img_h_raw = !empty($props['height']) ? (string)$props['height'] : '';
-            $_ar       = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-            $_in_ratio = ($_ar !== '' && preg_match('/^[0-9]+x[0-9]+$/', $_ar));
+            $_ar       = isset($props['aspectRatio']) ? (string)$props['aspectRatio'] : '';
+            // The image stands in its own .ratio box for a preset ratio
+            // ('16x9'), or for the Sizing panel's custom ratio when it is
+            // switched on with a value (its --bs-aspect-ratio comes with the
+            // sizing style, on the box). The editor and the canvas use the
+            // same test (_sdImgInRatio()).
+            $_ar_preset = (bool)preg_match('/^[0-9]+x[0-9]+$/', $_ar);
+            $_in_ratio  = $_ar_preset || ($_ar === 'custom' && !empty($props['aspectRatioEnabled']) && !empty($props['aspectRatioCustom']));
             // A whole number is the width / height attribute, a value with a
             // unit is CSS (pg_img_dimension()). In a ratio box the box takes
-            // the size (below) and the image fills it, so it carries no
-            // width / height of its own in its style.
+            // the size, a whole number in pixels, and the image fills it.
             $_dim_w  = pg_img_dimension($img_w_raw);
             $_dim_h  = pg_img_dimension($img_h_raw);
             $w_attr  = $_dim_w['attr'] !== '' ? ' width="'  . h($_dim_w['attr']) . '"' : '';
             $h_attr  = $_dim_h['attr'] !== '' ? ' height="' . h($_dim_h['attr']) . '"' : '';
-            // Image's case-specific style: object-position and a size with a
-            // unit. Everything else (fontFamily — rare on <img> but possible,
-            // inlineStyle, user style) and the escaping are the helper's.
+            $_size   = $_in_ratio
+                ? array('width'  => $_dim_w['attr'] !== '' ? $_dim_w['attr'] . 'px' : $_dim_w['css'],
+                        'height' => $_dim_h['attr'] !== '' ? $_dim_h['attr'] . 'px' : $_dim_h['css'])
+                : array('width' => $_dim_w['css'], 'height' => $_dim_h['css']);
+            // The Sizing panel's style (lengths, z-index, overflow, offsets),
+            // as the editor's getNodeExtraStyle(): on the <img>, or in a
+            // ratio box on the box, the element that takes the layout.
+            $_sizing = _pg_node_sizing_decls($props, $_size);
+            // The <img> - the element the operator selected - keeps its own
+            // attributes and style in a ratio box too: object-position, the
+            // font, the inline style, the Attributes panel's entries, and
+            // the Sizing panel's classes (visually-hidden, focus ring, …).
+            // The composing and the escaping are the helpers'.
             $_img_style = array();
             if (!empty($props['objectPosition'])) $_img_style[] = 'object-position:' . $props['objectPosition'];
-            if (!$_in_ratio && $_dim_w['css'] !== '') $_img_style[] = 'width:' . $_dim_w['css'];
-            if (!$_in_ratio && $_dim_h['css'] !== '') $_img_style[] = 'height:' . $_dim_h['css'];
+            if (!$_in_ratio) $_img_style = array_merge($_img_style, $_sizing);
             $obj_pos     = _compose_inline_style($props, implode(';', $_img_style));
             $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'));
+            $_sz_img     = _build_node_sizing_attrs($props);
+            if ($_sz_img['class'] !== '') $cls .= ($cls ? ' ' : '') . $_sz_img['class'];
 
             // A file of this site gets its derivatives (pg_img_responsive()):
             // a srcset in its own format on the <img>, and AVIF / WebP
@@ -5021,34 +5037,20 @@ function _render_content_html($props, $pad, $kids = '')
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
             // Aspect Ratio wrapper: Bootstrap's .ratio class only works on a parent div.
-            // When width/height are set on the image, ALSO mirror them as inline-style on
-            // the wrapper so the ratio applies to a fixed size (instead of the default 100%
-            // width). Whole numbers ("100") get a 'px' suffix; values with units pass through
-            // ("50%", "200px", "20rem", etc.).
-            //
-            // Overflow on a ratio'd image must apply to the WRAPPER, not the
-            // <img> itself — the wrapper is the box .ratio sizes, so clipping
+            // The wrapper is the box .ratio sizes, so it takes the Sizing
+            // panel's style ($_sizing): the image's width / height (a fixed
+            // size instead of the default 100% width), their minimum and
+            // maximum, the offsets, z-index, and the overflow - clipping
             // (object-fit:cover edges, scale-up, etc.) only works when the
-            // wrapper has overflow:hidden. We pull `overflow*` props out of
-            // the image's inline style and onto the wrapper when ratio is on.
+            // wrapper has overflow:hidden.
             $ar = $_ar;
             if ($_in_ratio) {
-                $wrapper_style_parts = array();
-                if ($img_w_raw !== '') {
-                    $wrapper_style_parts[] = 'width:' . ($_dim_w['attr'] !== '' ? $_dim_w['attr'] . 'px' : h($_dim_w['css']));
-                }
-                if ($img_h_raw !== '') {
-                    $wrapper_style_parts[] = 'height:' . ($_dim_h['attr'] !== '' ? $_dim_h['attr'] . 'px' : h($_dim_h['css']));
-                }
-                // Hoist overflow / overflow-x / overflow-y to the wrapper.
-                if (!empty($props['overflow']))  $wrapper_style_parts[] = 'overflow:'   . h($props['overflow']);
-                if (!empty($props['overflowX'])) $wrapper_style_parts[] = 'overflow-x:' . h($props['overflowX']);
-                if (!empty($props['overflowY'])) $wrapper_style_parts[] = 'overflow-y:' . h($props['overflowY']);
+                $wrapper_style_parts = array_map('h', $_sizing);
                 // border-radius classes on the IMG would round just the img,
                 // but with overflow:hidden on the wrapper the rounded corners
                 // need to be on the wrapper too. Mirror the image's rounded
                 // utility classes to the wrapper so the clip respects them.
-                $wrapper_class = 'ratio ratio-' . h($ar);
+                $wrapper_class = $_ar_preset ? 'ratio ratio-' . h($ar) : 'ratio';
                 $img_cls_arr = preg_split('/\s+/', $cls);
                 foreach ($img_cls_arr as $_ic) {
                     if ($_ic !== '' && (strpos($_ic, 'rounded') === 0)) {
