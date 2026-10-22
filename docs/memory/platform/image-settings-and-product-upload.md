@@ -15,7 +15,7 @@ description: Image config keys and defaults, product upload pipeline (image_prof
 ## How does the product upload path work?
 - `add_file.php` runs the pipeline only with the opt-in field `image_profile=product`, sent ONLY by the product and variant-set screens. Every other upload (file manager, picker dropzone, `editor_select_image.php`) is stored byte-for-byte.
 - The record row is written at upload time with `optimized = 1` + `image_width/height`, so the Files screen shows no badge promising a gain already taken.
-- An image picked from the library is never touched (it may be used on a dozen other pages). The only warning point is the product's SEO Detail panel (`pg_seo_render_catalog_image_note()`), and it does NOT affect the score (Merchant Center is not mandatory).
+- An image picked from the library is never touched (it may be used on a dozen other pages) and gets no size warning. Only a product-screen upload is checked: `add_file.php` answers `too_small` when the shortest edge is under `image_product_min_dimension`, and `product_builder.js` lists those files (`image_too_small`); the upload is still accepted (Merchant Center is not mandatory).
 
 ## What is the rule for files.image_width / image_height?
 - They are a cache, filled only when empty (`pg_file_image_dimensions()`).

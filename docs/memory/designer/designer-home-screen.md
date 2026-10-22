@@ -10,9 +10,10 @@ description: Visual Page Editor home (view_system_styles.php): drawn start cards
 
 ## Where is the data from?
 - `pg_designer_list_designs()` as before; `pg_designer_list_pages()` (home first, then page_id; `pg_designer_page_access()` hides 'hidden' pages and marks 'locked' ones for content roles); `pg_designer_list_folder_counts()` (folders using it as default, for the delete warning).
-- `pg_designer_list_status_cell($d)` is the status block (badge + one line + data-pages/drafts/home/offable); `designer/design_publish` answers it as `cell`.
+- `pg_designer_list_status_cell($d)` is the status block (badge + one line + data-pages/drafts/home/offable); `designer/design_publish` answers it as `cell`. Counts from `pg_designer_design_draft_counts()`, state from `pg_designer_design_state()` (`empty` / `live` / `draft` / `mixed`; `offable` = pages that can go off: not drafts, not home).
+- Put on / take off the site: `designer/design_publish` → `pg_designer_design_set_draft()` moves every page (the home page stays); refused while the design is open in the editor, whose next save would put its tabs' state back (`page-drafts.md`). The shared components panel above the list: `shared-components-panel.md`.
 
-## How does the menu work? (assets/js/designer_home.js)
+## How does the menu work (`assets/js/designer_home.js`)?
 - Right click on a card or a page chip, the card's ⋯ button, a 550 ms long press, the menu key or Shift+F10. A focused card: Enter opens, F2 renames, Delete deletes.
 - Design: edit, new tab, add page (`&new_page=1`), view on site, put on / take off the site, rename, turn into a template (`designer/template_from_design`, the panel dialog `pg_designer_home_template_dialog()`), delete. Page: edit (`&page=`), new tab, view, copy address.
 - "Take off the site" is in the menu only; the large card shows "Put on the site" while there are drafts.

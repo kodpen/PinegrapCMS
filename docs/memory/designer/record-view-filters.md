@@ -12,9 +12,11 @@ description: form_item_view filters (opt-in record visibility, e.g. Status = Pub
 - Renderer: an outside `?r=` takes the not-found path (404 + noindex).
 - `pg_sw_record_comment_context()['visible']`: title, description, OG, canonical, JSON-LD, comments, watchers, `seo.php` breadcrumbs.
 - `pg_sw_route_record_address()`: a filtered-out name leaves `?r=` empty; no 301 from a list page to it.
+- A list page's `/<list>/<name>` 301s only into a public record view (`pg_sw_form_widget_public()`) on a page whose private/membership folder the visitor may open (`check_view_access(…, true)`: registration and guest folders pass, anyone may sign up; it runs before `get_page.php`'s folder check). Otherwise it answers like an unknown name, else the 301 leaks draft names.
 - Feeds: the record page applies its own; a list's feed, the sitemap and the search index (`designer-records-site-search.md`) use `pg_sw_list_record_filter_clause()` (detail page's filters, then the list's).
 - Canvas preview and the SEO pass (`pg_seo_widget_record_query()`): the newest record that passes; none → preview shows not-found, SEO skips the page.
 - Editor: Filters section in the record-view panel (`_swFormListFiltersHtml()` with a note, same `.sd-sw-filter` handlers). An unknown field or operator shows "(incompatible — choose again)".
+- The `url parameter` dynamic value is list-only (`form-list-url-filters.md`): not offered here; a record view carrying one is closed (`address`).
 
 ## What must the operator do?
 - Filters belong to the widget, not the form. Every public list and every other public record view of the form, on any page, needs the same filter: a pretty name resolves on any page whose first record view shows the form, and head/feed read only that widget. E-mail pages can carry it (the bypass below).

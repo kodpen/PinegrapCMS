@@ -4,7 +4,7 @@ description: Remaining outside-account connections (calendar, notes, cloud picke
 ---
 
 ## What is done and what is left?
-- Done: shared connection layer (model A, #282), e-mail through Gmail / Microsoft 365 (#294), Search Console (#310), Microsoft and Apple sign-in (#306) and Google sign-in (#318), backups to Drive / OneDrive / Dropbox (#312), carrier REST APIs UPS / FedEx / USPS with `client_credentials` (#302, #308, #314), Workspace MCP client and remote agent (#347–#361). Rules: `.claude/skills/pinegrap-dis-api/SKILL.md` → connected accounts.
+- Done: shared connection layer (model A, #282), e-mail through Gmail / Microsoft 365 (#294), Search Console (#310), Microsoft and Apple sign-in (#306) and Google sign-in (#318), backups to Drive / OneDrive / Dropbox (#312), carrier REST APIs UPS / FedEx / USPS with `client_credentials` (#302, #308, #314), Workspace MCP client and remote agent (#347–#361). Rules: `api/api-connected-accounts.md`, `api/api-connected-accounts-usage.md`.
 - Nothing below starts until the owner picks it; each picked item is its own thread and PR.
 
 | Item | What | Effort |

@@ -12,7 +12,7 @@ description: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap
 - Raising the minimum is always the owner's decision; a library choice may never raise it as a side effect (the dompdf chain behind the ERP invoice PDF needs 7.1; on older PHP only the PDF button would fail).
 
 ## Where is the code?
-- This repo holds the product only, under `pinegrap/`. Paths in memory files and skills are relative to that root: `includes/fn/core.php` means `pinegrap/includes/fn/core.php`.
+- This repo holds the product only, under `pinegrap/`. Paths in memory files are relative to that root: `includes/fn/core.php` means `pinegrap/includes/fn/core.php`.
 - Strings: `includes/local/tr.json`. Config: `data/config.php` (runtime constant `CONFIG_FILE_PATH`); the real config is never committed, the repo copy is an empty template, sample values are in `data/config(default).php`.
 - Third-party libraries are embedded under `includes/`; Composer is not used.
 

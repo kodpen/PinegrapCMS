@@ -1,11 +1,12 @@
 ---
 name: slug-generation
-description: Which function builds address/slug names for forms, products, files and pages, the single transliteration point, the lowercase-order rule, and the files.name invariant.
+description: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
 ---
 
 ## Where is Turkish/accented text converted to ASCII?
-- Only `pg_transliterate_to_ascii()` (functions.php). Never write a new accent table or "extend" an existing one; route through it.
-- Do not restore the old accent table (until 2026.4.4): it had collapsed to U+FFFD in a broken encoding conversion, 66 keys identical, dead.
+- A name the software builds for a URL (an address name, a file name) is brought down to ASCII: IIS hands PHP the request path re-encoded in the server's ANSI code page, so a stored UTF-8 name is never matched and the visitor gets a 404. Page and short-link names stay as typed (table below).
+- Two tables, no third: `pg_transliterate_to_ascii()` (`includes/fn/content.php`) for address names, and the map inside `pg_ascii_file_name()` (`includes/fn/files.php`, called by `prepare_file_name()`) for file names, which turns anything left outside `A-Za-z0-9._-[]` into `_`. A new name goes through one of them (a file: `prepare_file_name()`); never write a new accent table.
+- Do not restore the old accent table of `create_address_name()` (until 2026.4.4): it had collapsed to U+FFFD in a broken encoding conversion, 66 keys identical, dead.
 
 ## Which function for which name?
 | What | Function | Format |
