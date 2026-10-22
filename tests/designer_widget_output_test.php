@@ -84,6 +84,17 @@ function test_designer_widget_output_fluid_alias_leaves_the_rest()
 		pg_img_fluid_alias('<img class="img-responsive" src="/a.jpg"><img src="/b.jpg" class="x img-responsive">'), 'every image');
 }
 
+// -- starter layouts -----------------------------------------------------------
+
+// A product's long description is rich text with its own paragraphs: the
+// catalog detail starter binds it to a div, never to a paragraph.
+function test_designer_widget_output_description_in_a_div()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_true(preg_match("/createNode\('semantic', \{ tag: 'div'[^}]*\n\s*customName: _sdT\('Description'\),\n\s*_bindings: \{ text: '__description' \} \}\)/", $source) === 1, 'a div');
+	pg_assert_true(preg_match("/contentType: 'paragraph',[^}]*\n[^}]*_bindings: \{ text: '__description' \}/", $source) === 0, 'no paragraph');
+}
+
 // Every widget's finished output goes through the alias before its srcset
 // pass, outside an e-mail.
 function test_designer_widget_output_fluid_alias_on_widgets()

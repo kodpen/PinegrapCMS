@@ -49099,9 +49099,12 @@ const StyleDesigner = (function () {
                             _bindings: { text: '__price_formatted' } }),
                         // Description → __description (the long text — full_description).
                         // short_description is already used as the heading above, so the
-                        // long description is the sensible binding here.
-                        createNode('content', { contentType: 'paragraph',
-                            text: _sdT('Description'), cssClass: 'text-body-secondary mb-4',
+                        // long description is the sensible binding here. The value is
+                        // rich text with paragraphs, lists and images of its own, so
+                        // it goes into a div: a <p> around it is closed by the browser
+                        // before the first inner <p> and the classes miss the text.
+                        createNode('semantic', { tag: 'div', cssClass: 'text-body-secondary mb-4',
+                            customName: _sdT('Description'),
                             _bindings: { text: '__description' } }),
                         // Out-of-stock notice — the operator's own wording from
                         // the product editor (products.out_of_stock_message).
