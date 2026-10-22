@@ -25,5 +25,5 @@ description: A form's auto-registered account gets a signed single-use set passw
 
 ## What is still open?
 - Orders (`submit_order.php` → `$_SESSION['software']['auto_registration']['password']`, `get_order_receipt*.php`, `get_view_order_screen_content.php`, `templates/order_receipt.php`) still print the password: separate fix.
-- `add_user.php` mails the random password an administrator's new account gets: out of scope.
+- `add_user.php` ("Notify User"): the owner gets the same link through `pg_new_user_email_body()`, never the password (PR #1217). Without a notice the administrator still sees the password in the panel notice, to hand it over.
 - Tests: `tests/auto_registration_set_password_test.php`.
