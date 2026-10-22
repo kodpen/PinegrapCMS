@@ -3481,14 +3481,22 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
 //
 // Returns array('style' => 'width:100px;...', 'class' => 'ratio ratio-16x9 ...').
 // Both can be empty strings; caller appends them to its own style/class concatenations.
+// The style is not escaped here: every caller escapes the style attribute it
+// builds from it, as the editor's emitter does.
 function _build_node_sizing_attrs($props)
 {
     $style_parts = array();
     $cls_parts   = array();
     if (!is_array($props)) return array('style' => '', 'class' => '');
 
-    // Inline-style props — pass user-entered CSS values through h() for attribute safety.
-    // (Designer/admin role is required to save trees; values are still escaped defensively.)
+    // A typed value, 0 included (`top: 0` for a sticky bar); '' and a
+    // missing prop are none.
+    $value = function ($key) use ($props) {
+        if (!isset($props[$key])) return '';
+        $v = $props[$key];
+        return (is_string($v) || is_int($v) || is_float($v)) ? trim((string)$v) : '';
+    };
+
     $style_props_map = array(
         'width'      => 'width',
         'height'     => 'height',
@@ -3505,27 +3513,28 @@ function _build_node_sizing_attrs($props)
         'left'       => 'left',
     );
     foreach ($style_props_map as $prop_key => $css_key) {
-        if (!empty($props[$prop_key])) {
-            $style_parts[] = $css_key . ':' . h($props[$prop_key]);
+        if ($value($prop_key) !== '') {
+            $style_parts[] = $css_key . ':' . $value($prop_key);
         }
     }
     // z-index is unitless integer — sanitize to digits + 'auto'
-    if (!empty($props['zIndex'])) {
-        $zi = (string)$props['zIndex'];
-        if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
-            $style_parts[] = 'z-index:' . $zi;
-        }
+    $zi = $value('zIndex');
+    if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
+        $style_parts[] = 'z-index:' . $zi;
     }
     // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
-    if (!empty($props['aspectRatioEnabled']) && (isset($props['aspectRatio']) ? $props['aspectRatio'] : '') === 'custom' && !empty($props['aspectRatioCustom'])) {
-        $style_parts[] = '--bs-aspect-ratio:' . h($props['aspectRatioCustom']);
+    $ar = $value('aspectRatio');
+    if (!empty($props['aspectRatioEnabled']) && $ar === 'custom' && $value('aspectRatioCustom') !== '') {
+        $style_parts[] = '--bs-aspect-ratio:' . $value('aspectRatioCustom');
     }
 
-    // Class-based utilities + Bootstrap .ratio
+    // Class-based utilities + Bootstrap .ratio. A ratio switched on with no
+    // preset picked is 16:9, the preset the options show for it; a bare
+    // .ratio has no --bs-aspect-ratio and collapses to no height.
     if (!empty($props['aspectRatioEnabled'])) {
         $cls_parts[] = 'ratio';
-        $ar = isset($props['aspectRatio']) ? $props['aspectRatio'] : '';
-        if ($ar !== '' && $ar !== 'custom' && preg_match('/^\d+x\d+$/', $ar)) {
+        if ($ar === '') $ar = '16x9';
+        if ($ar !== 'custom' && preg_match('/^\d+x\d+$/', $ar)) {
             $cls_parts[] = 'ratio-' . $ar;
         }
     }

@@ -23006,25 +23006,30 @@ const StyleDesigner = (function () {
 
     // ── Sizing / Tooltip / A11y helpers ──
     // Returns extra inline style string from prop-based sizing inputs.
+    // Twin of _build_node_sizing_attrs() (includes/fn/designer.php), which
+    // writes the saved page: the same order, 0 is a value, z-index only as
+    // an integer or auto.
+    function _sdSizingValue(v) {
+        return (typeof v === 'string' || (typeof v === 'number' && isFinite(v))) ? String(v).trim() : '';
+    }
+    var _SD_SIZING_STYLE_PROPS = [
+        ['width', 'width'], ['height', 'height'], ['minWidth', 'min-width'], ['maxWidth', 'max-width'],
+        ['minHeight', 'min-height'], ['maxHeight', 'max-height'], ['overflow', 'overflow'],
+        ['overflowX', 'overflow-x'], ['overflowY', 'overflow-y'],
+        ['top', 'top'], ['right', 'right'], ['bottom', 'bottom'], ['left', 'left']
+    ];
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
-        if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
-        if (p.width)     parts.push('width:'       + p.width);
-        if (p.minWidth)  parts.push('min-width:'   + p.minWidth);
-        if (p.maxWidth)  parts.push('max-width:'   + p.maxWidth);
-        if (p.height)    parts.push('height:'      + p.height);
-        if (p.minHeight) parts.push('min-height:'  + p.minHeight);
-        if (p.maxHeight) parts.push('max-height:'  + p.maxHeight);
-        if (p.overflow)  parts.push('overflow:'    + p.overflow);
-        if (p.overflowX) parts.push('overflow-x:'  + p.overflowX);
-        if (p.overflowY) parts.push('overflow-y:'  + p.overflowY);
-        if (p.top)       parts.push('top:'         + p.top);
-        if (p.right)     parts.push('right:'       + p.right);
-        if (p.bottom)    parts.push('bottom:'      + p.bottom);
-        if (p.left)      parts.push('left:'        + p.left);
-        if (p.aspectRatioEnabled && p.aspectRatio === 'custom' && p.aspectRatioCustom) {
-            parts.push('--bs-aspect-ratio:' + p.aspectRatioCustom);
+        _SD_SIZING_STYLE_PROPS.forEach(function (m) {
+            var v = _sdSizingValue(p[m[0]]);
+            if (v !== '') parts.push(m[1] + ':' + v);
+        });
+        var zi = _sdSizingValue(p.zIndex);
+        if (zi === 'auto' || /^-?\d+$/.test(zi)) parts.push('z-index:' + zi);
+        var arc = _sdSizingValue(p.aspectRatioCustom);
+        if (p.aspectRatioEnabled && _sdSizingValue(p.aspectRatio) === 'custom' && arc !== '') {
+            parts.push('--bs-aspect-ratio:' + arc);
         }
         return parts.join(';');
     }
@@ -23069,8 +23074,8 @@ const StyleDesigner = (function () {
             classes.push('ratio');
             // Default to 16x9 when toggle is enabled but no preset has been chosen yet —
             // matches the dropdown's UI default so the visual effect is immediate.
-            var _arVal = p.aspectRatio || '16x9';
-            if (_arVal && _arVal !== 'custom') classes.push('ratio-' + _arVal);
+            var _arVal = _sdSizingValue(p.aspectRatio) || '16x9';
+            if (_arVal !== 'custom' && /^\d+x\d+$/.test(_arVal)) classes.push('ratio-' + _arVal);
         }
         // Loading-skeleton mode: puts a .placeholder class on the element itself. Bootstrap's
         // animation classes (.placeholder-glow / .placeholder-wave) are traditionally set on the
