@@ -1,6 +1,6 @@
 ---
 name: payment-unclear-answers
-description: The 'unclear' flag of a payment driver's answer (no answer in time, unreadable body, a thrown driver), how the iyzico refund sets it, and why a return's refund stays refunded on it (#970, PR #PRNUM)
+description: The 'unclear' flag of a payment driver's answer (no answer in time, unreadable body, a thrown driver), how the iyzico refund sets it, and why a return's refund stays refunded on it (#970, PR #1260)
 ---
 
 ## What is an unclear answer?
