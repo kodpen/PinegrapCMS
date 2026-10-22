@@ -17,7 +17,7 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 - Signature = md5 of recipe `1`, source mtime, size and quality. Optimize, rotate, replace or a new quality give a new name; the next derivative of that width and format prunes the old one.
 
 ## What does get_file.php send when there is no derivative?
-- `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated GIF, too large, unreadable), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`. A missing library is not remembered.
+- `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated, too large, unreadable), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`. A missing library is not remembered.
 - `busy` (`Cache-Control: no-store`): another request holds `<name>.lock` (non-blocking flock) or the folder cannot be written (checked before decoding).
 - Made after the session and DB connection are closed, with `ignore_user_abort` and a 120 s limit; sent with `readfile()`, never X-Sendfile.
 
