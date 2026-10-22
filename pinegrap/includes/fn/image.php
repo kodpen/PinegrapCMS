@@ -646,14 +646,16 @@ function pg_img_sizes($width, $natural_width, $auto = false)
  * ('50%', '12rem', '120px', 'auto'); a bare decimal is taken as pixels
  * (pg_designer_css_length()), so a style never carries a number without a
  * unit (a browser drops that).
+ * A prop the editor takes as false (the number 0, false, no value) is no
+ * size; the string '0' is one (pg_designer_prop_text()).
  * The editor writes the same (_sdImgDim() in style_designer.js).
  *
- * @param string $value the node's width or height prop
+ * @param mixed $value the node's width or height prop
  * @return array{attr: string, css: string} at most one of them is not ''
  */
 function pg_img_dimension($value)
 {
-    $value = trim((string) $value);
+    $value = pg_designer_prop_text($value);
 
     if ($value === '') {
         return array('attr' => '', 'css' => '');

@@ -3491,11 +3491,30 @@ function pg_designer_css_length($value)
 {
     $value = trim((string) $value);
 
-    if (preg_match('/^[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)$/', $value)) {
+    if (preg_match('/^[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/', $value)) {
         return $value . 'px';
     }
 
     return $value;
+}
+
+/**
+ * A designer prop as the editor reads it, trimmed: '' for what JavaScript
+ * takes as false (no value, false, the number 0, '') and for a list. The
+ * string '0' is a value, as in the editor's `if (p.width)`, so the page and
+ * the editor write a prop in the same cases (_sdImgDim(), getNodeExtraStyle()
+ * in style_designer.js). empty() is not that test: it drops the string '0'.
+ *
+ * @param mixed $value the prop as stored
+ * @return string
+ */
+function pg_designer_prop_text($value)
+{
+    if ($value === null || $value === false || $value === 0 || $value === 0.0 || is_array($value) || is_object($value)) {
+        return '';
+    }
+
+    return trim((string) $value);
 }
 
 // The Sizing panel's declarations of a node ('width:48px', …), not escaped,
@@ -3509,10 +3528,7 @@ function _pg_node_sizing_decls($props, $size = null)
     if (!is_array($props)) return $out;
 
     $val = function ($key) use ($props) {
-        if (!isset($props[$key])) return '';
-        $v = $props[$key];
-        if ($v === false || $v === 0 || $v === 0.0 || is_array($v)) return '';
-        return trim((string)$v);
+        return isset($props[$key]) ? pg_designer_prop_text($props[$key]) : '';
     };
     $len = function ($key, $css) use (&$out, $val, $size) {
         $v = ($size !== null && ($key === 'width' || $key === 'height'))
@@ -4959,8 +4975,10 @@ function _render_content_html($props, $pad, $kids = '')
             if (!empty($props['fluid'])) $cls .= 'img-fluid';
             if (!empty($props['rounded'])) $cls .= ($cls ? ' ' : '') . 'rounded';
             if (!empty($props['cssClass'])) $cls .= ($cls ? ' ' : '') . h($props['cssClass']);
-            $img_w_raw = !empty($props['width'])  ? (string)$props['width']  : '';
-            $img_h_raw = !empty($props['height']) ? (string)$props['height'] : '';
+            // The editor's test of a prop (pg_designer_prop_text()): the
+            // string '0' is a size, the number 0 none, on both sides.
+            $img_w_raw = isset($props['width'])  ? pg_designer_prop_text($props['width'])  : '';
+            $img_h_raw = isset($props['height']) ? pg_designer_prop_text($props['height']) : '';
             $_ar       = isset($props['aspectRatio']) ? (string)$props['aspectRatio'] : '';
             // The image stands in its own .ratio box for a preset ratio
             // ('16x9'), or for the Sizing panel's custom ratio when it is
@@ -4968,7 +4986,7 @@ function _render_content_html($props, $pad, $kids = '')
             // sizing style, on the box). The editor and the canvas use the
             // same test (_sdImgInRatio()).
             $_ar_preset = (bool)preg_match('/^[0-9]+x[0-9]+$/', $_ar);
-            $_in_ratio  = $_ar_preset || ($_ar === 'custom' && !empty($props['aspectRatioEnabled']) && !empty($props['aspectRatioCustom']));
+            $_in_ratio  = $_ar_preset || ($_ar === 'custom' && !empty($props['aspectRatioEnabled']) && isset($props['aspectRatioCustom']) && pg_designer_prop_text($props['aspectRatioCustom']) !== '');
             // A whole number is the width / height attribute, a value with a
             // unit is CSS (pg_img_dimension()). In a ratio box the box takes
             // the size, a whole number in pixels, and the image fills it.
@@ -4990,7 +5008,8 @@ function _render_content_html($props, $pad, $kids = '')
             // the Sizing panel's classes (visually-hidden, focus ring, …).
             // The composing and the escaping are the helpers'.
             $_img_style = array();
-            if (!empty($props['objectPosition'])) $_img_style[] = 'object-position:' . $props['objectPosition'];
+            $_obj_pos_v = isset($props['objectPosition']) ? pg_designer_prop_text($props['objectPosition']) : '';
+            if ($_obj_pos_v !== '') $_img_style[] = 'object-position:' . $_obj_pos_v;
             if (!$_in_ratio) $_img_style = array_merge($_img_style, $_sizing);
             $obj_pos     = _compose_inline_style($props, implode(';', $_img_style));
             $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'));

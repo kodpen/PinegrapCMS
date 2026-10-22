@@ -23063,7 +23063,7 @@ const StyleDesigner = (function () {
     // same (pg_designer_css_length(), includes/fn/designer.php).
     function _sdCssLen(v) {
         var s = (v === undefined || v === null) ? '' : String(v).trim();
-        if (/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(s)) return s + 'px';
+        if (/^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(s)) return s + 'px';
         return s;
     }
     // How an image's width or height prop is written: a whole number as the
@@ -23071,8 +23071,10 @@ const StyleDesigner = (function () {
     // file arrives), anything else as CSS with its own unit ('50%', '12rem',
     // '120px', 'auto'); a bare decimal is pixels (_sdCssLen()). The page's
     // renderer writes the same (pg_img_dimension(), includes/fn/image.php).
+    // A prop JavaScript takes as false (the number 0, '', no value) is no
+    // size; the string '0' is one, as on the page (pg_designer_prop_text()).
     function _sdImgDim(v) {
-        var s = (v === undefined || v === null) ? '' : String(v).trim();
+        var s = (!v || typeof v === 'object') ? '' : String(v).trim();
         if (s === '') return { attr: '', css: '' };
         if (/^\d+$/.test(s)) return { attr: s, css: '' };
         return { attr: '', css: _sdCssLen(s) };

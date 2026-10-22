@@ -88,6 +88,28 @@ function designer_image_size_test_cases()
 			array('width' => '120', 'aspectRatio' => 'custom'),
 			'<img src="' . $src . '" alt="A" width="120">',
 		),
+		// The editor's test of a prop: the string '0' is a size, the number
+		// 0 is none (pg_designer_prop_text()).
+		'the string 0 is a size' => array(
+			array('width' => '0', 'height' => '0'),
+			'<img src="' . $src . '" alt="A" width="0" height="0">',
+		),
+		'the number 0 is no size' => array(
+			array('width' => 0, 'height' => 0, 'minWidth' => 0),
+			'<img src="' . $src . '" alt="A">',
+		),
+		'the string 0 in a ratio box' => array(
+			array('width' => '0', 'aspectRatio' => '1x1'),
+			'<div class="ratio ratio-1x1" style="width:0px"><img src="' . $src . '" alt="A" width="0"></div>',
+		),
+		'a custom ratio of the string 0 is a box' => array(
+			array('aspectRatio' => 'custom', 'aspectRatioEnabled' => true, 'aspectRatioCustom' => '0', 'objectPosition' => '0'),
+			'<div class="ratio" style="--bs-aspect-ratio:0"><img src="' . $src . '" alt="A" class="ratio" style="object-position:0"></div>',
+		),
+		'an exponent is pixels' => array(
+			array('width' => '1e2', 'height' => '48'),
+			'<img src="' . $src . '" alt="A" height="48" style="width:1e2px">',
+		),
 	);
 }
 
@@ -134,6 +156,28 @@ function test_img_dimension_splits_attribute_and_css()
 	pg_assert_same(array('attr' => '', 'css' => '48.5px'), pg_img_dimension('48.5'), 'a bare decimal is pixels');
 	pg_assert_same(array('attr' => '', 'css' => '.5px'), pg_img_dimension('.5'), 'no leading zero');
 	pg_assert_same(array('attr' => '', 'css' => ''), pg_img_dimension(''), 'empty');
+	pg_assert_same(array('attr' => '0', 'css' => ''), pg_img_dimension('0'), 'the string 0 is a size, as in the editor');
+	pg_assert_same(array('attr' => '', 'css' => ''), pg_img_dimension(0), 'the number 0 is none, as in the editor');
+	pg_assert_same(array('attr' => '', 'css' => ''), pg_img_dimension(null), 'no value');
+	pg_assert_same(array('attr' => '', 'css' => ''), pg_img_dimension(false), 'false');
+	pg_assert_same(array('attr' => '48', 'css' => ''), pg_img_dimension(48), 'a whole number stored as a number');
+	pg_assert_same(array('attr' => '', 'css' => '1e2px'), pg_img_dimension('1e2'), 'an exponent is pixels');
+}
+
+// A prop as the editor's `if (p.x)` reads it: JavaScript's false values are
+// no value, the string '0' is one.
+function test_designer_prop_text_reads_as_the_editor()
+{
+	pg_assert_same('0', pg_designer_prop_text('0'), 'the string 0');
+	pg_assert_same('', pg_designer_prop_text(0), 'the number 0');
+	pg_assert_same('', pg_designer_prop_text(0.0), 'the number 0.0');
+	pg_assert_same('', pg_designer_prop_text(null), 'null');
+	pg_assert_same('', pg_designer_prop_text(false), 'false');
+	pg_assert_same('', pg_designer_prop_text(''), 'empty');
+	pg_assert_same('', pg_designer_prop_text(array('48')), 'a list');
+	pg_assert_same('48', pg_designer_prop_text(' 48 '), 'trimmed');
+	pg_assert_same('48', pg_designer_prop_text(48), 'a number');
+	pg_assert_same('1', pg_designer_prop_text(true), 'true');
 }
 
 function test_designer_image_size_page_markup()
@@ -295,6 +339,8 @@ function designer_image_size_test_sizing_cases()
 		'units kept' => array('width' => '50%', 'minWidth' => '12rem', 'maxHeight' => '80vh', 'height' => 'auto'),
 		'with z-index and overflow' => array('zIndex' => '10', 'width' => ' 320 ', 'overflow' => 'hidden', 'overflowY' => 'auto'),
 		'an expression' => array('width' => 'calc(100% - 2rem)', 'maxWidth' => 'min(100%, 40rem)'),
+		'zero as a string and as a number' => array('width' => '0', 'height' => 0, 'top' => '0', 'left' => 0, 'zIndex' => 0),
+		'exponents' => array('width' => '1e2', 'minHeight' => '2E1', 'maxWidth' => '1em'),
 	);
 }
 
@@ -306,6 +352,9 @@ function test_designer_sizing_length_bare_number_is_pixels()
 	pg_assert_same('.5px', pg_designer_css_length('.5'), 'no leading zero');
 	pg_assert_same('-8px', pg_designer_css_length('-8'), 'negative');
 	pg_assert_same('0px', pg_designer_css_length('0'), 'zero');
+	pg_assert_same('1e2px', pg_designer_css_length('1e2'), 'an exponent');
+	pg_assert_same('-1.5E-1px', pg_designer_css_length('-1.5E-1'), 'a negative exponent');
+	pg_assert_same('1em', pg_designer_css_length('1em'), 'em is a unit, not an exponent');
 	pg_assert_same('50%', pg_designer_css_length('50%'), 'percent');
 	pg_assert_same('12rem', pg_designer_css_length('12rem'), 'rem');
 	pg_assert_same('auto', pg_designer_css_length('auto'), 'a keyword');
