@@ -3862,14 +3862,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $form_editor = true;
                 }
                 
+                // The search index stores what an anonymous visitor reads of
+                // a record on a visual page, even when an editor's click on
+                // the panel button runs it.
+                $comments_for_search_index = ($comments_record !== null)
+                    && defined('UPDATE_SEARCH_INDEX') && (UPDATE_SEARCH_INDEX === true);
+
                 // If the visitor does not have edit access to this page,
                 // and the visitor is not the form editor,
                 // then prepare sql to restrict which comments should appear
-                if (!$edit_access && !$form_editor) {
+                if ((!$edit_access && !$form_editor) || $comments_for_search_index) {
                     $sql_added_comments = "";
                     
                     // if session array is set then loop through comments and add them to sql statement
-                    if (isset($_SESSION['software']['added_comments']) == TRUE) {
+                    if (!$comments_for_search_index && (isset($_SESSION['software']['added_comments']) == TRUE)) {
                         // loop through added comments and add each comment id to the sql statement
                         foreach ($_SESSION['software']['added_comments'] as $added_comment) {
                             if ($sql_added_comments != '') {
@@ -5612,7 +5618,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // widget's access setting lets this visitor see it.
     $pg_sw_form_item = null;
     if (($page_type == 'standard') && function_exists('pg_sw_record_comment_context')) {
-        $pg_sw_form_item_context = pg_sw_record_comment_context($page_id, !empty($dynamic_properties['form_id']) ? (int) $dynamic_properties['form_id'] : 0);
+        $pg_sw_form_item_record_id = !empty($dynamic_properties['form_id']) ? (int) $dynamic_properties['form_id'] : 0;
+        // The record view's filters are lifted only for an e-mail drawn for
+        // the record the server named, never for ?email=true on an address.
+        $pg_sw_form_item_context = pg_sw_record_comment_context($page_id, $pg_sw_form_item_record_id, (bool) $email && ($pg_sw_form_item_record_id > 0));
         if (is_array($pg_sw_form_item_context) && !empty($pg_sw_form_item_context['visible'])) {
             $pg_sw_form_item = $pg_sw_form_item_context['form'];
         }
