@@ -1,21 +1,31 @@
 ---
 name: api-webhook-stock-events
-description: What a stock change announces: pg_product_stock_changed() (stamp, inventory.changed, stock.low on the crossing, marketplace queue) behind every site writer, its pure rules, which writers stay quiet
+description: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 ---
 
-## What must a stock write do for the outside?
-- Move `products.timestamp` (a system syncing with `GET /products?updated_since=` lists the product), announce `inventory.changed`, announce `stock.low` once when the level crosses `ECOMMERCE_LOW_STOCK_THRESHOLD` on the way down, and queue the marketplace (`pg_marketplace_product_changed()`).
-- One call does all four: `pg_product_stock_changed($product_id, $before, $after, $source)` in `includes/fn/ecommerce.php`, called once per product after the row is written. `$before` is the stock the caller read before its write, `null` when the product did not track stock until now; `$after` is what the write left, `null` reads the row back (the checkout's decrement happens in SQL). It returns the stock left, so a loop that meets the same product twice (two recipients of one order) carries it on as the next row's `$before`.
-- The rules are pure and tested (`tests/product_stock_events_test.php`): `pg_product_stock_events()` gives the events with their payloads; `pg_product_stock_delta()` decides whether a save of the whole row moved the stock (same count again: nothing; tracking switched on with a count: a change from no level; tracking switched off: nothing).
+## What must a stock write do?
+- `pg_product_stock_changed($product_id, $before, $after, $source)` (`includes/fn/ecommerce.php`), once per product after the write: stamps `products.timestamp` (`GET /products?updated_since=`), announces `inventory.changed`, `stock.low` once on crossing `ECOMMERCE_LOW_STOCK_THRESHOLD` downward, queues the marketplace (`pg_marketplace_product_changed()`).
+- `$before`: prior stock (checkout, local sale: read just before the decrement), `null`: untracked so far; `$after`: stock left, `null` reads it back (checkout decrements in SQL). Returns it (next `$before` for a product met twice: two recipients).
+- Pure, tested (`tests/product_stock_events_test.php`): `pg_product_stock_events()` (events, payloads); `pg_product_stock_delta()`: whether a whole-row save moved stock (same count or tracking off: no; tracking on with a count: from no level).
 
 ## What do the payloads carry?
-- `inventory.changed`: `product_id`, `quantity`, `out_of_stock` (the keys the stock API's writer sends) and `source`: `checkout`, `local_sale`, `panel` (product screen and the list's quick edit), `barcode`, `bulk_edit`. The API, the Workspace and the ERP keep their own writers and payloads (no `source`).
-- `stock.low`: `product_id`, `name`, `quantity`, `threshold`. Only on the crossing (`before > threshold`, or no level before) and only where the site set the threshold; a product that does not track stock announces nothing.
+- `inventory.changed`: `product_id`, `quantity`, `out_of_stock` (stock API keys), `source` (below).
+- `stock.low`: `product_id`, `name`, `quantity`, `threshold`; only on the crossing (`before > threshold` or no level before), threshold set, product tracked.
 
-## Who calls it, and who stays quiet?
-- Calls it: the checkout (`submit_order.php`), a local sale (`includes/local_sale.php`), the product screen's save and the product list's stock cell (`product_builder.php`), the barcode screens, the bulk edit of selected products (`edit_products.php`, only the rows whose stock really moved). A selection on the list is a few rows changed on purpose, not an import.
-- Keep their own: the stock API (`includes/api/resources/inventory.php`), the Workspace (`includes/workspace/changes.php`) and an ERP document (`includes/erp/stock.php`) stamp and announce inside their own statements already.
-- Quiet by the catalogue's bulk rule: the product import, a marketplace order import and an ERP stock count. The catalogue line in `api_webhook_events()` says so.
+## Who calls it, who stays quiet?
+- Calls it, by `source`: `checkout` (`submit_order.php`); `local_sale` (`includes/local_sale.php`); `panel`: product screen save, list stock cell (`product_builder.php`), file manager `explorer_catalog_quick_edit` (count changed); `barcode`: barcode screens (moves only; else marketplace queue only); `bulk_edit`: `edit_products.php`, file manager `explorer_products_bulk_edit` (moved rows; deliberate selection, not import). File manager: `view_folder_and_files_f.php`.
+- Announce themselves (own payloads, no `source`): stock API (`includes/api/resources/inventory.php`), Workspace (`includes/workspace/changes.php`), ERP document (`includes/erp/stock.php`).
+- Quiet (catalogue bulk rule: no `inventory.changed`/`stock.low`): product import, marketplace order import/cancellation (`mp_order_take_stock()`/`mp_order_return_stock()`, `includes/api/outbound/orders.php`; keep the priority-1 marketplace queue), ERP stock count (`erp_stock_count_apply()`). Each still stamps `timestamp` in its stock statement (see `api_webhook_events()`; tested).
+
+## Which panel writers announce `product.updated`?
+- `pg_announce('product.updated', {id, name})` (as `api_products_update()`, Workspace), plus `inventory.changed` on a stock change: product screen save (`pg_pb_update_product()`, every write), list quick edit (`pg_pb_quick_update()`, changed cell only), file manager quick edit (price, count or short description differs). Bulk edits: quiet. Test: `tests/product_updated_event_test.php`.
+
+## When is `out_of_stock` set?
+- Tracked, none left: `out_of_stock = '1'`, `out_of_stock_timestamp` only on the way in; else `'0'`. Product screen: `pg_pb_apply_stock_flag()`; file manager quick edit: `pg_product_out_of_stock_sql()` (pure, tested); bulk edits only clear it; checkout, local sale set it from the stock left, `out_stock` bell once (`commerce/order-completion-stock-and-spots.md`).
 
 ## What was wrong before?
-- A sale through the checkout or a local sale did not move the stamp and announced nothing (only the marketplace queue), so a system syncing with `updated_since` or `inventory.changed` kept selling the old stock; the product screen moved the stamp but announced nothing; the bulk edit and the barcode screens announced nothing. Issue #871, fixed in PR #1141.
+- #871, PR #1141: checkout, local sale only queued the marketplace (`updated_since`/`inventory.changed` syncs sold old stock); product screen only stamped; bulk edit, barcode silent.
+- #1161, PR #1186: marketplace order import/cancellation, ERP stock count: unstamped, unannounced.
+- #1163, PR #1188: checkout (read before payment), local sale had a stale `$before` (parallel sales: `stock.low` twice; restock meanwhile: none); local sale flagged by one line's quantity (a product on two lines); a no-op barcode scan announced.
+- #1164, PR #1190: product screen save, list quick edit announced no `product.updated` (subscribers, Workspace rules missed name/price/description saves).
+- #1162: file manager quick/bulk edit silent; a quick edit to 0 kept the old `out_of_stock`.

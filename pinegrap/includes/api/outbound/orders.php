@@ -97,6 +97,33 @@ function mp_import_order($account, $package) {
 
 	if ($existing) {
 
+		// A package refused before any order was written - most often a line
+		// no product here matched - is taken again, so matching the product
+		// and letting the feed hand the package back is enough to bring it in.
+		// The UPDATE is the claim: only a row still 'failed' with no order, and
+		// a pass that loses the race to it changes nothing. An 'importing' row
+		// with no order is left alone; it may be a write in progress, or one
+		// that stopped half-way and left an order behind.
+		if (($existing['status'] === 'failed') && !(int)$existing['order_id']) {
+
+			db("UPDATE marketplace_order_map
+				SET status = 'importing',
+					remote_order_id = '" . e(mb_substr((string)$package['remote_order_id'], 0, 64)) . "',
+					remote_status = '" . e(mb_substr((string)$package['remote_status'], 0, 40)) . "',
+					lines_json = '" . e(json_encode($package['lines'])) . "',
+					remote_timestamp = '" . e((int)$package['placed_at']) . "',
+					last_error = '',
+					updated_timestamp = UNIX_TIMESTAMP()
+				WHERE (id = '" . e((int)$existing['id']) . "') AND (status = 'failed') AND (order_id = 0)");
+
+			if (mysqli_affected_rows(db::$con) === 1) {
+
+				return mp_import_claimed($account, $package, (int)$existing['id']);
+
+			}
+
+		}
+
 		// Already here, so the order is not written again - but what has
 		// happened to it since is. The feed is queried on the modification
 		// time, so a package that shipped, arrived or was cancelled comes back
@@ -150,7 +177,32 @@ function mp_import_order($account, $package) {
 
 	}
 
-	$map_id = (int) mysqli_insert_id(db::$con);
+	return mp_import_claimed($account, $package, (int) mysqli_insert_id(db::$con));
+
+}
+
+// Write the order of a package whose map row this pass holds ('importing').
+// Answers the same shape as mp_import_order().
+function mp_import_claimed($account, $package, $map_id) {
+
+	// Cancelled before an order was written for it - between two pulls, before
+	// the first one, or while a refused package waited for its product to be
+	// matched. Nothing is written: there is nothing to pick, and writing the
+	// order only to cancel it would take the stock and give it back, which is
+	// not a round trip when the stock was short (the take stops at zero, the
+	// return adds the whole quantity). The map row stays, so the package is
+	// never imported later, and says why there is no order.
+	if (mp_order_stage($account, $package) === 'cancelled') {
+
+		db("UPDATE marketplace_order_map
+			SET status = 'imported',
+				last_error = '" . e(lang('Cancelled on the marketplace before it was imported. No order was written.')) . "',
+				updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id = '" . e($map_id) . "'");
+
+		return array('ok' => true, 'order_id' => 0, 'skipped' => true, 'error' => '');
+
+	}
 
 	// Cancelled before this shop ever saw it - between two pulls, or before the
 	// first one. Nothing is written: there is nothing to pick, and writing the
@@ -426,8 +478,11 @@ function mp_order_return_stock($order_id) {
 
 		$product_id = (int) $item['product_id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . "
+			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		db("UPDATE products SET out_of_stock = '0'
@@ -897,8 +952,11 @@ function mp_order_take_stock($matched) {
 
 		$product_id = (int) $product['id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . ")
+			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . "),
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");

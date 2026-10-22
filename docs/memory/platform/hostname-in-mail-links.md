@@ -18,3 +18,4 @@ description: HOSTNAME (request Host header) for redirects back to the visitor, H
 ## What still uses the request host outside a redirect?
 - `includes/erp/order_bridge.php` `web_address` falls back to `URL_SCHEME . HOSTNAME` when `ERP_WEB_ADDRESS` is empty, and that value is stored on the sales invoice (`erp/erp-vuk-509-fields.md`); open question in `plans/security-findings-low-2026-10.md`.
 - The "retrieve order" link (`get_shopping_cart.php`, `get_express_order.php`) is printed on the visitor's own screen: fine.
+- The registration and membership staff notices (`includes/fn/auth.php` `pg_member_register()` / `pg_member_activate()`) draw `get_registration_confirmation_screen_content.php` / `get_membership_confirmation_screen_content.php`, whose "Continue" link is on `HOSTNAME`: a forged Host header on the anonymous sign-up post points the staff e-mail's link anywhere. Open; to be fixed like #558.

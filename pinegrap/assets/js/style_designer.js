@@ -9856,6 +9856,7 @@ const StyleDesigner = (function () {
                     address_book:         _sdT('Address Book'),
                     account_security:     _sdT('Account Security'),
                     account_invoices:     _sdT('My Invoices'),
+                    account_email:        _sdT('Account E-mail'),
                     error_page:           _sdT('Error Page (404)'),
                     login_region:         _sdT('Login Region'),
                     cart_link:            _sdT('Cart Link'),
@@ -13418,6 +13419,10 @@ const StyleDesigner = (function () {
                                      'menu-tabs', 'menu-list', 'menu-cards', 'menu-board', 'menu-specials',
                                      'events-list', 'notice-bar', 'team-profiles', 'testimonial-ratings',
                                      'menu-legend', 'menu-origins', 'catering-packages', 'loyalty-stamps',
+                                     'maintenance-centered', 'maintenance-split', 'maintenance-status', 'maintenance-dark', 'coming-soon-launch', 'coming-soon-split',
+                                     'news-ticker', 'news-ticker-rotator', 'news-trending', 'news-weather-card', 'news-weather-strip', 'news-weather-forecast', 'news-markets',
+                                     'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
+                                     'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
                 var _ct = (dragData.extra || {}).componentType || '';
                 if (_noWrapCtypes.indexOf(_ct) === -1) {
@@ -16253,8 +16258,9 @@ const StyleDesigner = (function () {
                 // branches, menus, events, an urgent notice, profile cards and
                 // a rating summary. Bootstrap utilities only, so a block looks
                 // the same in any design. One family, one set of helpers; the
-                // legal blocks at the end of the branch share them.
-                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
+                // legal blocks at the end of the branch share them, and so do
+                // the maintenance/launch, news and creative blocks after them.
+                if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
                     var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
                     var _bkDiv = function (cls, name, kids, attrs) {
                         var p = { tag: 'div', cssClass: cls, customName: name };
@@ -16282,6 +16288,42 @@ const StyleDesigner = (function () {
                     var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
                     var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
                     var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+                    var _bkTime = function (datetime, text, cls, name) {
+                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+                    };
+                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+                    var _bkRegion = function (label) {
+                        return [
+                            { name: 'role',       value: 'region' },
+                            { name: 'aria-label', value: label },
+                            { name: 'tabindex',   value: '0' }
+                        ];
+                    };
+                    // An icon-only link (social, share, email), named by its aria-label.
+                    var _bkIconLink = function (icon, label, cls, href) {
+                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
+                    };
+                    // Pause control of a pg-marquee block: one wrapper (hidden
+                    // under reduced motion) around a btn-check and its label.
+                    // The label must follow the input: Bootstrap styles it
+                    // through .btn-check:checked + .btn.
+                    var _bkMarqueePause = function (idPrefix, label, labelCls, wrapCls) {
+                        var id = _bkUid(idPrefix);
+                        return _bkDiv((wrapCls ? wrapCls + ' ' : '') + 'pg-marquee-toggle', _sdT('Marquee Controls'), [
+                            _bkTag('input', 'btn-check pg-marquee-pause', _sdT('Pause Checkbox'), [], [
+                                { name: 'type',         value: 'checkbox' },
+                                { name: 'id',           value: id },
+                                { name: 'autocomplete', value: 'off' }
+                            ]),
+                            _bkTag('label', 'btn btn-sm' + (labelCls ? ' ' + labelCls : ''), _sdT('Pause Button'), [
+                                _bkIcon('bi-pause-fill'),
+                                _bkIcon('bi-play-fill'),
+                                _bkH('span', label, 'visually-hidden')
+                            ], [{ name: 'for', value: id }])
+                        ]);
+                    };
                     var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
                     var _bkIntro = function (title, lead) {
                         return _bkDiv('text-center mb-5', _sdT('Section Header'), [
@@ -17128,6 +17170,1224 @@ const StyleDesigner = (function () {
                             ])
                         ]);
                     }
+
+                    // ── Maintenance and launch blocks ──
+                    // Pages shown while the site is closed for work or before it
+                    // opens: no links into the site, only contact and social links.
+
+                    if (/^(maintenance|coming-soon)-/.test(ctype)) {
+                        var _mnSocial = function (cls) {
+                            return _bkDiv('d-flex gap-3 ' + cls, _sdT('Social Links'), [
+                                _bkIconLink('bi-linkedin',  _sdT('ACME on LinkedIn'),  'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-instagram', _sdT('ACME on Instagram'), 'fs-5 text-body-secondary'),
+                                _bkIconLink('bi-twitter-x', _sdT('ACME on X'),         'fs-5 text-body-secondary')
+                            ]);
+                        };
+                        // Email-only notify form: a visually hidden label, the field and a submit
+                        // button, either side by side in an input group or stacked on phones.
+                        var _mnNotify = function (cls, grouped) {
+                            var id = _bkUid('mt_email');
+                            var label = createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
+                                _attrs: [{ name: 'for', value: id }] }, [ _bkH('span', _sdT('Email address')) ]);
+                            var input = createNode('semantic', { tag: 'input', cssClass: grouped ? 'form-control' : 'form-control flex-grow-1', customName: _sdT('Email Input'),
+                                _attrs: [
+                                    { name: 'type',         value: 'email' },
+                                    { name: 'id',           value: id },
+                                    { name: 'name',         value: 'email' },
+                                    { name: 'placeholder',  value: _sdT('Your email address') },
+                                    { name: 'autocomplete', value: 'email' },
+                                    { name: 'required',     value: 'required' }
+                                ] });
+                            var btn = createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary text-nowrap', text: _sdT('Notify me'),
+                                customName: _sdT('Submit Button'), _attrs: [{ name: 'type', value: 'submit' }] });
+                            if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ]);
+                            return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ]);
+                        };
+                    }
+
+                    // Maintenance: Centered — a full-height page: icon, when the site is back, progress, a contact address and social links
+                    if (ctype === 'maintenance-centered') {
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Maintenance (Centered)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Maintenance Body'), [
+                                    _bkDiv('mb-4', _sdT('Maintenance Icon'), [
+                                        _bkDiv('d-inline-flex p-4 bg-primary-subtle text-primary-emphasis rounded-4', _sdT('Icon Tile'), [ _bkIcon('bi-tools', 'fs-1') ])
+                                    ]),
+                                    _bkH('span', _sdT('Scheduled maintenance'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We\'ll be back soon'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('We are giving the site a scheduled upgrade to make it faster and easier to use. Thank you for your patience.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 mb-4', _sdT('Return Time'), [
+                                        _bkIcon('bi-clock', 'text-primary'),
+                                        _bkH('span', _sdT('Expected back:'), 'fw-semibold'),
+                                        _bkTime('2026-11-14T09:00+03:00', _sdT('Saturday, 14 November 2026, 09:00'), '', _sdT('Return Date'))
+                                    ]),
+                                    _bkDiv('mb-4 text-start', _sdT('Upgrade Progress'), [
+                                        _bkDiv('d-flex justify-content-between mb-1 small', _sdT('Progress Label'), [
+                                            _bkH('span', _sdT('Upgrade progress'), 'text-body-secondary'),
+                                            _bkH('span', _sdT('75%'), 'fw-semibold')
+                                        ]),
+                                        _bkDiv('progress', _sdT('Progress'), [ _bkDiv('progress-bar w-75', _sdT('Progress Bar')) ], [
+                                            { name: 'role',          value: 'progressbar' },
+                                            { name: 'aria-label',    value: _sdT('Upgrade progress') },
+                                            { name: 'aria-valuenow', value: '75' },
+                                            { name: 'aria-valuemin', value: '0' },
+                                            { name: 'aria-valuemax', value: '100' }
+                                        ])
+                                    ]),
+                                    _bkDiv('mb-4 text-body-secondary', _sdT('Contact Line'), [
+                                        _bkH('span', _sdT('Need help in the meantime? Write to us at'), 'me-1'),
+                                        _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary fw-semibold', _sdT('Email Link'))
+                                    ]),
+                                    _mnSocial('justify-content-center')
+                                ], '7', '9', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Split — what the work is and where it stands (done / in progress / next), help contacts, a picture beside it
+                    if (ctype === 'maintenance-split') {
+                        var _mnStep = function (n, icon, iconCls, text, status, badgeCls) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Step {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 fs-5 ' + iconCls),
+                                _bkH('span', text, 'flex-grow-1'),
+                                _bkH('span', status, 'badge text-wrap ' + badgeCls + ' rounded-pill')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Maintenance (Split)'), [
+                            _bkRow(_sdT('Maintenance Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkH('span', _sdT('Maintenance in progress'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h1', _sdT('We are upgrading our systems'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('The site is closed for a few hours while we move to faster servers. Here is where the work stands.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm overflow-hidden', _sdT('Work Card'), [
+                                        _bkTag('ul', 'list-group list-group-flush', _sdT('Work List'), [
+                                            _mnStep(1, 'bi-check-circle-fill', 'text-success',        _sdT('Back up all data'),           _sdT('Done'),        'bg-success-subtle text-success-emphasis'),
+                                            _mnStep(2, 'bi-arrow-repeat',      'text-primary',        _sdT('Move to the new servers'),    _sdT('In progress'), 'bg-primary-subtle text-primary-emphasis'),
+                                            _mnStep(3, 'bi-hourglass-split',   'text-body-secondary', _sdT('Final checks and reopening'), _sdT('Up next'),     'bg-body-tertiary text-body-secondary border')
+                                        ])
+                                    ]),
+                                    _bkP(_sdT('Need help in the meantime?'), 'fw-semibold mb-2'),
+                                    _bkTag('ul', 'list-unstyled d-flex flex-column flex-sm-row gap-2 gap-sm-4 mb-0', _sdT('Contact List'), [
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Email Item'), [
+                                            _bkIcon('bi-envelope', 'text-primary'),
+                                            _bkLink(_sdT('support@example.com'), 'mailto:support@example.com', 'link-primary', _sdT('Email Link'))
+                                        ]),
+                                        _bkTag('li', 'd-flex align-items-center gap-2', _sdT('Phone Item'), [
+                                            _bkIcon('bi-telephone', 'text-primary'),
+                                            _bkLink('+90 212 555 0100', 'tel:+902125550100', 'link-primary', _sdT('Phone Link'))
+                                        ])
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkImg('maintenance-split', 900, 1000, '', 'img-fluid w-100 h-100 rounded-4 shadow object-fit-cover')
+                                ], '6', '', '', 'd-none d-lg-block')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Maintenance: Status Board — the maintenance window, each service's state, a timed update log and a notify-me form
+                    if (ctype === 'maintenance-status') {
+                        var _mnService = function (name, up) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center justify-content-between gap-2 px-0', name, [
+                                _bkH('span', name),
+                                _bkTag('span', 'badge text-wrap ' + (up ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis') + ' rounded-pill', _sdT('Status Badge'), [
+                                    _bkIcon(up ? 'bi-check-circle-fill' : 'bi-tools', 'me-1'),
+                                    _bkH('span', up ? _sdT('Operational') : _sdT('Under maintenance'))
+                                ])
+                            ]);
+                        };
+                        var _mnUpdate = function (n, datetime, time, text, cls) {
+                            return _bkTag('li', 'd-flex gap-3' + (cls ? ' ' + cls : ''), _sdT('Update {var}', n), [
+                                _bkTime(datetime, time, 'small fw-semibold text-body-secondary text-nowrap', _sdT('Update Time')),
+                                _bkP(text, 'small mb-0')
+                            ]);
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Maintenance (Status Board)'), [
+                            _bkRow(_sdT('Status Row'), [
+                                _bkCol(_sdT('Status Column'), [
+                                    _bkDiv('mb-4', _sdT('Section Header'), [
+                                        _bkH('h1', _sdT('Maintenance status'), 'display-6 fw-bold mb-2'),
+                                        _bkP(_sdT('Follow the work as it happens. This page is updated every half hour.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkDiv('alert alert-warning d-flex align-items-start gap-3 mb-4', _sdT('Status Alert'), [
+                                        _bkIcon('bi-exclamation-triangle-fill', 'flex-shrink-0 fs-5'),
+                                        _bkDiv('', _sdT('Alert Body'), [
+                                            _bkH('h2', _sdT('The site is closed for maintenance'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Orders placed before the work began are safe and will ship as usual.'), 'small mb-0')
+                                        ])
+                                    ], [{ name: 'role', value: 'status' }]),
+                                    _bkRow(_sdT('Status Cards'), [
+                                        _bkCol(_sdT('Window Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Window Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Maintenance window'), 'h5 fw-bold mb-3'),
+                                                    _bkTag('dl', 'mb-0', _sdT('Window Times'), [
+                                                        _bkH('dt', _sdT('Start'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('Start Time'), [
+                                                            _bkTime('2026-11-14T09:00+03:00', _sdT('14 November 2026, 09:00'), '', _sdT('Start Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('End'), 'small fw-normal text-body-secondary'),
+                                                        _bkTag('dd', 'fw-semibold mb-3', _sdT('End Time'), [
+                                                            _bkTime('2026-11-14T15:00+03:00', _sdT('14 November 2026, 15:00'), '', _sdT('End Date'))
+                                                        ]),
+                                                        _bkH('dt', _sdT('Time zone'), 'small fw-normal text-body-secondary'),
+                                                        _bkH('dd', _sdT('Istanbul (UTC+3)'), 'fw-semibold mb-0')
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6'),
+                                        _bkCol(_sdT('Services Column'), [
+                                            _bkDiv('card h-100 border-0 shadow-sm', _sdT('Services Card'), [
+                                                _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                                    _bkH('h2', _sdT('Our services'), 'h5 fw-bold mb-2'),
+                                                    _bkTag('ul', 'list-group list-group-flush', _sdT('Service List'), [
+                                                        _mnService(_sdT('Website'), false),
+                                                        _mnService(_sdT('Mobile app'), false),
+                                                        _mnService(_sdT('Phone support'), true)
+                                                    ])
+                                                ])
+                                            ])
+                                        ], '', '6')
+                                    ], 'mb-4'),
+                                    _bkDiv('card mb-4 border-0 shadow-sm', _sdT('Updates Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Latest updates'), 'h5 fw-bold mb-3'),
+                                            _bkTag('ol', 'list-unstyled mb-0', _sdT('Update Log'), [
+                                                _mnUpdate(1, '2026-11-14T11:20+03:00', '11:20', _sdT('The new servers are running; we are testing the shop and the customer accounts.'), 'mb-3'),
+                                                _mnUpdate(2, '2026-11-14T10:05+03:00', '10:05', _sdT('All data has been copied to the new servers and checked.'), 'mb-3'),
+                                                _mnUpdate(3, '2026-11-14T09:00+03:00', '09:00', _sdT('Maintenance started. The site is closed to visitors.'), '')
+                                            ])
+                                        ])
+                                    ]),
+                                    _bkDiv('card border-0 shadow-sm', _sdT('Notify Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Card Body'), [
+                                            _bkH('h2', _sdT('Get an email when we are back'), 'h5 fw-bold mb-1'),
+                                            _bkP(_sdT('One email when the site reopens, nothing else.'), 'small text-body-secondary mb-3'),
+                                            _mnNotify('', true)
+                                        ])
+                                    ])
+                                ], '8', '10', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // Maintenance: Dark — a dark full-height band: a soft pulse, the brand, a short promise, three reassurances and an email button
+                    if (ctype === 'maintenance-dark') {
+                        var _mnPill = function (icon, text) {
+                            return _bkTag('span', 'badge d-inline-flex align-items-center gap-2 px-3 py-2 fw-normal text-wrap bg-body-tertiary text-body border rounded-pill', text, [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', text)
+                            ]);
+                        };
+                        return createNode('semantic', { tag: 'section', cssClass: 'd-flex flex-column justify-content-center min-vh-100 py-5 bg-body text-body', customName: _sdT('Maintenance (Dark)'),
+                            _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
+                            createNode('container', { fluid: false, cssClass: '' }, [
+                                _bkRow(_sdT('Maintenance Row'), [
+                                    _bkCol(_sdT('Maintenance Body'), [
+                                        _bkDiv('spinner-grow mb-4 text-primary pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                        _bkP(_sdT('ACME'), 'mb-3 fs-5 fw-bold text-uppercase pg-tracking'),
+                                        _bkH('h1', _sdT('Down for a quick tune-up'), 'display-4 fw-bold mb-3'),
+                                        _bkP(_sdT('We are making a few improvements behind the scenes and will be back online shortly.'), 'lead text-body-secondary mb-4'),
+                                        _bkDiv('d-flex flex-wrap justify-content-center gap-2 mb-5', _sdT('Assurances'), [
+                                            _mnPill('bi-shield-check',  _sdT('Your data is safe')),
+                                            _mnPill('bi-truck',         _sdT('Orders keep shipping')),
+                                            _mnPill('bi-clock-history', _sdT('Back within hours'))
+                                        ]),
+                                        createNode('component', { componentType: 'btn', text: _sdT('Write to support'), variant: 'primary', size: 'lg', href: 'mailto:support@example.com', cssClass: '' })
+                                    ], '7', '9', '', 'mx-auto text-center')
+                                ])
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Launch Date — badge, h1, the launch date as day / month / year tiles, a notify form and social links
+                    if (ctype === 'coming-soon-launch') {
+                        var _mnTile = function (value, label) {
+                            return _bkTag('span', 'd-flex flex-column align-items-center px-3 px-sm-4 py-3 bg-body-tertiary border rounded-4', label, [
+                                _bkH('span', value, 'display-6 fw-bold lh-1'),
+                                _bkH('span', label, 'mt-2 small text-uppercase text-body-secondary')
+                            ]);
+                        };
+                        return _bkSection('d-flex flex-column justify-content-center min-vh-100 py-5', _sdT('Coming Soon (Launch Date)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Launch Body'), [
+                                    _bkH('span', _sdT('Coming soon'), 'badge mb-3 text-bg-primary rounded-pill'),
+                                    _bkH('h1', _sdT('Something new is on its way'), 'display-4 fw-bold mb-3'),
+                                    _bkP(_sdT('ACME is building a new home for everything you like about us. The doors open on launch day.'), 'lead text-body-secondary mb-4'),
+                                    _bkP(_sdT('Launch day'), 'mb-2 small fw-semibold text-uppercase text-body-secondary pg-tracking'),
+                                    _bkTag('time', 'd-flex flex-wrap justify-content-center gap-3 mb-5', _sdT('Launch Date'), [
+                                        _mnTile('01',   _sdT('Day')),
+                                        _mnTile('12',   _sdT('Month')),
+                                        _mnTile('2026', _sdT('Year'))
+                                    ], [{ name: 'datetime', value: '2026-12-01' }]),
+                                    _bkP(_sdT('Be the first to know when we open.'), 'fw-semibold mb-2'),
+                                    _mnNotify('mb-2', false),
+                                    _bkP(_sdT('We only use your email to tell you about the launch. Unsubscribe at any time.'), 'mb-4 small text-body-secondary'),
+                                    _mnSocial('justify-content-center')
+                                ], '6', '8', '', 'mx-auto text-center')
+                            ])
+                        ]);
+                    }
+
+                    // Coming Soon: Split — brand, h1, three promises and a notify form beside a picture with one offer card on it
+                    if (ctype === 'coming-soon-split') {
+                        var _mnFeature = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Coming Soon (Split)'), [
+                            _bkRow(_sdT('Launch Row'), [
+                                _bkCol(_sdT('Text Col'), [
+                                    _bkDiv('d-flex align-items-center gap-2 mb-4', _sdT('Brand'), [
+                                        _bkIcon('bi-rocket-takeoff', 'fs-4 text-primary'),
+                                        _bkH('span', _sdT('ACME'), 'fs-5 fw-bold')
+                                    ]),
+                                    _bkH('h1', _sdT('Our new online shop opens in December'), 'display-5 fw-bold mb-3'),
+                                    _bkP(_sdT('A faster shop, a simpler checkout and a few surprises. Leave your email and we will tell you the moment it opens.'), 'lead text-body-secondary mb-4'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _mnFeature(_sdT('Free delivery on your first order')),
+                                        _mnFeature(_sdT('Checkout in three steps')),
+                                        _mnFeature(_sdT('Early access for everyone on the list'))
+                                    ]),
+                                    _mnNotify('mb-2', true),
+                                    _bkP(_sdT('One email on launch day, nothing else.'), 'small text-body-secondary mb-0')
+                                ], '6'),
+                                _bkCol(_sdT('Image Col'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('coming-soon-split', 900, 700, _sdT('A first look at the new shop'), 'img-fluid w-100 rounded-4 shadow object-fit-cover'),
+                                        _bkDiv('card m-3 border-0 shadow position-absolute bottom-0 start-0', _sdT('Offer Card'), [
+                                            _bkDiv('card-body d-flex align-items-center gap-3 p-3', _sdT('Card Body'), [
+                                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Offer Icon'), [ _bkIcon('bi-gift', 'fs-5') ]),
+                                                _bkDiv('', _sdT('Offer Text'), [
+                                                    _bkP(_sdT('20% off on opening day'), 'mb-0 fw-bold'),
+                                                    _bkP(_sdT('For everyone on the list'), 'mb-0 small text-body-secondary')
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // ── News: bands and widgets ──
+                    // Thin bands and small widgets of a news site: ticker, rotating
+                    // headlines, trending topics, weather and market strips.
+                    // A full-width band: the outer box carries the colour, the
+                    // container inside lays its pieces out in one line.
+                    var _nbBand = function (cls, name, flexCls, kids) {
+                        return _bkDiv(cls, name, [createNode('container', { fluid: false, cssClass: flexCls }, kids)]);
+                    };
+                    // A column that takes its width from the row's row-cols-* classes.
+                    var _nbCol = function (name, kids, cls) {
+                        return createNode('col', { xs: 'col', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+                    };
+
+                    // News: Ticker — a Breaking badge and five headlines sliding past, paused by hover, focus or the pause button
+                    if (ctype === 'news-ticker') {
+                        var _nbTkHeads = [
+                            _sdT('London opens three new cycle lanes along the river'),
+                            _sdT('Istanbul adds late-night ferry crossings for the weekend'),
+                            _sdT('Berlin tech fair welcomes a record 80,000 visitors'),
+                            _sdT('Tokyo city fun run places sell out in under an hour'),
+                            _sdT('New York libraries extend opening hours through December')
+                        ];
+                        // The second group repeats the first so the loop is
+                        // seamless; it is hidden from screen readers and its
+                        // links are out of the tab order.
+                        var _nbTkGroup = function (copy) {
+                            var kids = [];
+                            _nbTkHeads.forEach(function (t) {
+                                var a = _bkLink(t, '#', 'small fw-semibold text-nowrap text-reset text-decoration-none', _sdT('Headline Link'));
+                                if (copy) a.props._attrs = [{ name: 'tabindex', value: '-1' }];
+                                kids.push(a);
+                                kids.push(_bkIcon('bi-dot', 'text-body-secondary'));
+                            });
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _nbBand('pg-marquee bg-body-tertiary border-bottom', _sdT('News (Ticker)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-danger', _sdT('Breaking Badge'), [
+                                _bkIcon('bi-lightning-charge-fill'),
+                                _bkH('span', _sdT('Breaking'))
+                            ]),
+                            _bkDiv('pg-marquee-viewport flex-grow-1', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [_nbTkGroup(false), _nbTkGroup(true)])
+                            ], _bkRegion(_sdT('Latest headlines'))),
+                            _bkMarqueePause('ticker_pause', _sdT('Pause the ticker'), 'btn-outline-secondary', 'flex-shrink-0')
+                        ]);
+                    }
+
+                    // News: Headline Rotator — a Latest news badge, four headlines that fade in turn with small previous/next buttons
+                    if (ctype === 'news-ticker-rotator') {
+                        var _nbRtId = _bkUid('headlines');
+                        var _nbRtSlide = function (n, active, title, datetime, clock) {
+                            return _bkDiv('carousel-item' + (active ? ' active' : ''), _sdT('Carousel Item {var}', n), [
+                                _bkDiv('d-flex flex-column flex-sm-row align-items-sm-baseline gap-1 gap-sm-3', _sdT('Headline Line'), [
+                                    _bkLink(title, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link')),
+                                    _bkTime(datetime, clock, 'small text-nowrap text-body-secondary', _sdT('Publish Time'))
+                                ])
+                            ]);
+                        };
+                        var _nbRtControl = function (dir, icon, label) {
+                            return _bkTag('button', 'btn btn-sm btn-outline-secondary', dir === 'prev' ? _sdT('Previous control') : _sdT('Next control'), [_bkIcon(icon)], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'data-bs-target', value: '#' + _nbRtId },
+                                { name: 'data-bs-slide',  value: dir },
+                                { name: 'aria-label',     value: label }
+                            ]);
+                        };
+                        // Phones: badge and buttons on the first line, the headline below
+                        // (order-last); from 576 px all three share one line. The
+                        // carousel does not play by itself, it moves with the
+                        // previous/next buttons only: autoplay would need a pause
+                        // control (WCAG 2.2.2). An operator can still switch it on
+                        // with data-bs-ride="carousel" in Attributes.
+                        return _nbBand('bg-body border-bottom', _sdT('News (Headline Rotator)'), 'd-flex flex-wrap flex-sm-nowrap align-items-center gap-2 gap-sm-3 py-2', [
+                            _bkTag('span', 'badge d-inline-flex align-items-center gap-1 flex-shrink-0 text-bg-primary', _sdT('Latest Badge'), [
+                                _bkIcon('bi-clock-history'),
+                                _bkH('span', _sdT('Latest news'))
+                            ]),
+                            _bkDiv('carousel slide carousel-fade flex-grow-1 order-last order-sm-0', _sdT('Headline Carousel'), [
+                                _bkDiv('carousel-inner', _sdT('Carousel Inner'), [
+                                    _nbRtSlide(1, true,  _sdT('Winter markets open in Berlin with 200 stalls'),                 '2026-11-27T09:40', '09:40'),
+                                    _nbRtSlide(2, false, _sdT('Istanbul\'s new coastal tram line opens next month'),          '2026-11-27T10:15', '10:15'),
+                                    _nbRtSlide(3, false, _sdT('Vertex opens a London office with 50 new jobs'),                '2026-11-27T11:05', '11:05'),
+                                    _nbRtSlide(4, false, _sdT('Tokyo robotics show draws families for a hands-on weekend'),    '2026-11-27T11:30', '11:30')
+                                ])
+                            ], [
+                                { name: 'id',         value: _nbRtId },
+                                { name: 'role',       value: 'region' },
+                                { name: 'aria-label', value: _sdT('Latest headlines') }
+                            ]),
+                            _bkDiv('d-flex gap-1 flex-shrink-0 ms-auto', _sdT('Carousel Controls'), [
+                                _nbRtControl('prev', 'bi-chevron-left',  _sdT('Previous headline')),
+                                _nbRtControl('next', 'bi-chevron-right', _sdT('Next headline'))
+                            ])
+                        ]);
+                    }
+
+                    // News: Trending Topics — a Trending label and topic pills that scroll sideways when they do not fit
+                    if (ctype === 'news-trending') {
+                        var _nbTrTopic = function (text) {
+                            return _bkLink(text, '#', 'btn btn-sm btn-outline-secondary rounded-pill text-nowrap', _sdT('Topic Link'));
+                        };
+                        return _nbBand('bg-body border-bottom', _sdT('News (Trending Topics)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 small fw-bold text-primary', _sdT('Trending Label'), [
+                                _bkIcon('bi-hash'),
+                                _bkH('span', _sdT('Trending'))
+                            ]),
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1', _sdT('Topics'), [
+                                _nbTrTopic(_sdT('Autumn Festival')),
+                                _nbTrTopic(_sdT('City Marathon')),
+                                _nbTrTopic(_sdT('Tech Week')),
+                                _nbTrTopic(_sdT('Electric Buses')),
+                                _nbTrTopic(_sdT('Film Nights')),
+                                _nbTrTopic(_sdT('Startup Awards')),
+                                _nbTrTopic(_sdT('Winter Markets')),
+                                _nbTrTopic(_sdT('Book Fair'))
+                            ], _bkRegion(_sdT('Trending topics')))
+                        ]);
+                    }
+
+                    // News: Weather Card — one city: date, big temperature, condition, high/low, humidity, wind, rain and four hourly slots
+                    if (ctype === 'news-weather-card') {
+                        var _nbWcDetail = function (n, icon, value, label) {
+                            return _bkDiv('col', _sdT('Detail {var}', n), [
+                                _bkIcon(icon, 'd-block fs-5 mb-1 text-primary'),
+                                _bkH('span', value, 'd-block fw-semibold'),
+                                _bkH('span', label, 'd-block small text-body-secondary')
+                            ]);
+                        };
+                        // The icon shows the sky; the hidden text says it for screen readers.
+                        var _nbWcHour = function (n, datetime, clock, icon, sky, temp) {
+                            return _bkDiv('col', _sdT('Hour {var}', n), [
+                                _bkDiv('h-100 py-2 rounded-3 bg-body-tertiary', _sdT('Hour Tile'), [
+                                    _bkTime(datetime, clock, 'd-block small text-body-secondary', _sdT('Hour')),
+                                    _bkIcon(icon, 'd-block fs-5 my-1 text-primary'),
+                                    _bkH('span', sky, 'visually-hidden'),
+                                    _bkH('span', temp, 'd-block fw-semibold')
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weather Card)'), [
+                            _bkRow(_sdT('Weather Row'), [
+                                _bkCol(_sdT('Weather Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm', _sdT('Weather Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Weather Body'), [
+                                            _bkDiv('d-flex align-items-start justify-content-between gap-3 mb-3', _sdT('Card Head'), [
+                                                _bkDiv('', _sdT('Weather Place'), [
+                                                    _bkH('h2', _sdT('London'), 'h5 fw-bold mb-1'),
+                                                    _bkTime('2026-10-21T09:00', _sdT('Wednesday, 21 October · 09:00'), 'small text-body-secondary', _sdT('Date'))
+                                                ]),
+                                                _bkIcon('bi-cloud-sun', 'fs-1 lh-1 text-primary')
+                                            ]),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-2', _sdT('Temperature'), [
+                                                _bkH('span', '14°', 'display-3 fw-bold lh-1'),
+                                                _bkDiv('', _sdT('Weather Summary'), [
+                                                    _bkP(_sdT('Partly cloudy'), 'fw-semibold mb-0'),
+                                                    _bkP(_sdT('Feels like 12°'), 'small text-body-secondary mb-0')
+                                                ])
+                                            ]),
+                                            _bkP(_sdT('High 16° · Low 9°'), 'small text-body-secondary mb-4'),
+                                            _bkDiv('row row-cols-3 g-2 text-center', _sdT('Weather Details'), [
+                                                _nbWcDetail(1, 'bi-droplet',  _sdT('72%'),     _sdT('Humidity')),
+                                                _nbWcDetail(2, 'bi-wind',     _sdT('14 km/h'), _sdT('Wind')),
+                                                _nbWcDetail(3, 'bi-umbrella', _sdT('20%'),     _sdT('Chance of rain'))
+                                            ]),
+                                            _bkH('h3', _sdT('Next hours'), 'h6 fw-semibold mt-4 mb-2'),
+                                            _bkDiv('row row-cols-4 g-2 text-center', _sdT('Hourly Forecast'), [
+                                                _nbWcHour(1, '2026-10-21T10:00', '10:00', 'bi-cloud-sun',     _sdT('Partly cloudy'), '15°'),
+                                                _nbWcHour(2, '2026-10-21T12:00', '12:00', 'bi-sun',           _sdT('Sunny'),         '16°'),
+                                                _nbWcHour(3, '2026-10-21T14:00', '14:00', 'bi-cloud',         _sdT('Cloudy'),        '16°'),
+                                                _nbWcHour(4, '2026-10-21T16:00', '16:00', 'bi-cloud-drizzle', _sdT('Light rain'),    '13°')
+                                            ])
+                                        ])
+                                    ])
+                                ], '4', '6')
+                            ], 'justify-content-center')
+                        ]);
+                    }
+
+                    // News: Weather Strip — a thin header band: five cities with sky and temperature, the date and a forecast link
+                    if (ctype === 'news-weather-strip') {
+                        var _nbWsCity = function (n, icon, city, sky, temp) {
+                            return _bkDiv('d-flex align-items-center gap-1 text-nowrap', _sdT('City {var}', n), [
+                                _bkIcon(icon, 'text-primary'),
+                                _bkH('span', city),
+                                _bkH('span', sky, 'visually-hidden'),
+                                _bkH('span', temp, 'fw-semibold')
+                            ]);
+                        };
+                        return _nbBand('small bg-body border-bottom', _sdT('News (Weather Strip)'), 'd-flex align-items-center gap-3 py-2', [
+                            _bkDiv('d-flex align-items-center gap-1 flex-shrink-0 fw-semibold', _sdT('Weather Label'), [
+                                _bkIcon('bi-thermometer-half', 'text-primary'),
+                                _bkH('span', _sdT('Weather'))
+                            ]),
+                            // position-relative: the visually hidden sky texts are
+                            // absolutely placed and must be clipped by this scroller.
+                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
+                                _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
+                                // Raw on purpose: the 'New York' key is the sample billing
+                                // city and reads İstanbul in Turkish, a city already listed.
+                                _nbWsCity(2, 'bi-sun',           'New York',            _sdT('Sunny'),         '15°'),
+                                _nbWsCity(3, 'bi-cloud-sun',     _sdT('Istanbul'),      _sdT('Partly cloudy'), '18°'),
+                                _nbWsCity(4, 'bi-cloud',         _sdT('Berlin'),        _sdT('Cloudy'),        '9°'),
+                                _nbWsCity(5, 'bi-sun',           _sdT('Tokyo'),         _sdT('Sunny'),         '20°')
+                            ], _bkRegion(_sdT('Weather in five cities'))),
+                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October 2026'), 'd-none d-xl-inline flex-shrink-0 text-nowrap text-body-secondary', _sdT('Date')),
+                            _bkLink(_sdT('Full forecast'), '#', 'flex-shrink-0 fw-semibold text-nowrap link-primary text-decoration-none', _sdT('Forecast Link'))
+                        ]);
+                    }
+
+                    // News: Weekly Forecast — today in a primary card beside a seven-day list with sky, low–high and a range bar
+                    if (ctype === 'news-weather-forecast') {
+                        // The bar only draws the day's high against the week; it
+                        // repeats the numbers beside it, so it is hidden from screen readers.
+                        var _nbWfDay = function (n, datetime, day, icon, sky, range, width) {
+                            return _bkTag('li', 'list-group-item d-flex align-items-center gap-3 py-3', _sdT('Day {var}', n), [
+                                _bkIcon(icon, 'flex-shrink-0 fs-3 text-primary'),
+                                _bkDiv('flex-grow-1', _sdT('Day Copy'), [
+                                    _bkTime(datetime, day, 'd-block fw-semibold', _sdT('Date')),
+                                    _bkH('span', sky, 'd-block small text-body-secondary'),
+                                    _bkDiv('progress pg-progress-8 mt-2', _sdT('Range Bar'), [
+                                        _bkDiv('progress-bar ' + width, _sdT('Range Fill'))
+                                    ], [{ name: 'aria-hidden', value: 'true' }])
+                                ]),
+                                _bkH('span', range, 'flex-shrink-0 fw-semibold text-nowrap')
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Weekly Forecast)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-2 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Istanbul This Week'), 'fw-bold mb-0'),
+                                _bkP(_sdT('The forecast is updated every morning at 06:00.'), 'small text-body-secondary mb-0')
+                            ]),
+                            _bkRow(_sdT('Forecast Row'), [
+                                _bkCol(_sdT('Today Column'), [
+                                    _bkDiv('card h-100 border-0 rounded-4 shadow-sm text-bg-primary', _sdT('Today Card'), [
+                                        _bkDiv('card-body p-4', _sdT('Today Body'), [
+                                            _bkH('span', _sdT('Today'), 'd-block small fw-semibold text-uppercase mb-1'),
+                                            _bkTime('2026-10-21', _sdT('Wednesday, 21 October'), 'd-block mb-4', _sdT('Date')),
+                                            _bkDiv('d-flex align-items-center gap-3 mb-3', _sdT('Temperature'), [
+                                                _bkIcon('bi-sun', 'fs-1 lh-1'),
+                                                _bkH('span', '18°', 'display-3 fw-bold lh-1')
+                                            ]),
+                                            _bkP(_sdT('Sunny spells'), 'fs-5 fw-semibold mb-1'),
+                                            _bkP(_sdT('High 19° · Low 11°'), 'mb-3'),
+                                            _bkP(_sdT('Humidity 64% · Wind 12 km/h'), 'small mb-0')
+                                        ])
+                                    ])
+                                ], '4'),
+                                _bkCol(_sdT('Week Column'), [
+                                    _bkTag('ul', 'list-group shadow-sm', _sdT('Week List'), [
+                                        _nbWfDay(1, '2026-10-22', _sdT('Thursday'),  'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 19°', 'w-75'),
+                                        _nbWfDay(2, '2026-10-23', _sdT('Friday'),    'bi-cloud-drizzle', _sdT('Light rain'),    '11° – 16°', 'w-50'),
+                                        _nbWfDay(3, '2026-10-24', _sdT('Saturday'),  'bi-cloud-rain',    _sdT('Showers'),       '10° – 14°', 'w-25'),
+                                        _nbWfDay(4, '2026-10-25', _sdT('Sunday'),    'bi-cloud',         _sdT('Cloudy'),        '10° – 15°', 'w-50'),
+                                        _nbWfDay(5, '2026-10-26', _sdT('Monday'),    'bi-sun',           _sdT('Sunny'),         '12° – 20°', 'w-75'),
+                                        _nbWfDay(6, '2026-10-27', _sdT('Tuesday'),   'bi-sun',           _sdT('Sunny'),         '13° – 21°', 'w-100'),
+                                        _nbWfDay(7, '2026-10-28', _sdT('Wednesday'), 'bi-cloud-sun',     _sdT('Partly cloudy'), '12° – 18°', 'w-75')
+                                    ])
+                                ], '8')
+                            ])
+                        ]);
+                    }
+
+                    // News: Markets Strip — six market tiles; each change has an arrow, a sign and a percent besides its colour
+                    if (ctype === 'news-markets') {
+                        var _nbMkTile = function (n, name, value, change, up) {
+                            return _nbCol(_sdT('Market {var}', n), [
+                                _bkDiv('h-100 p-3 rounded-3 bg-body-tertiary', _sdT('Market Tile'), [
+                                    _bkH('span', name, 'd-block small text-truncate text-body-secondary'),
+                                    _bkH('span', value, 'd-block fs-5 fw-bold'),
+                                    _bkDiv('d-inline-flex align-items-center gap-1 small fw-semibold ' + (up ? 'text-success-emphasis' : 'text-danger-emphasis'), _sdT('Market Change'), [
+                                        _bkIcon(up ? 'bi-caret-up-fill' : 'bi-caret-down-fill'),
+                                        _bkH('span', change)
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-4 border-bottom', _sdT('News (Markets Strip)'), [
+                            _bkDiv('d-flex flex-wrap align-items-baseline justify-content-between gap-2 pt-2 mb-3 border-top border-2 border-primary', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Markets'), 'h5 fw-bold mb-0'),
+                                _bkDiv('d-flex align-items-center gap-1 small text-body-secondary', _sdT('Update Line'), [
+                                    _bkIcon('bi-clock'),
+                                    _bkH('span', _sdT('Last updated')),
+                                    _bkTime('2026-10-21T17:45', _sdT('21 October, 17:45'), '', _sdT('Update Time'))
+                                ])
+                            ]),
+                            _bkRow(_sdT('Markets Row'), [
+                                _nbMkTile(1, _sdT('USD/TRY'),     _sdT('41.85'),     _sdT('+0.42%'), true),
+                                _nbMkTile(2, _sdT('EUR/TRY'),     _sdT('48.62'),     _sdT('+0.18%'), true),
+                                _nbMkTile(3, _sdT('GBP/TRY'),     _sdT('55.30'),     _sdT('−0.11%'), false),
+                                _nbMkTile(4, _sdT('Gold (gram)'), _sdT('4,215.40'),  _sdT('+0.65%'), true),
+                                _nbMkTile(5, 'BIST 100',          _sdT('10,482.57'), _sdT('−0.37%'), false),
+                                _nbMkTile(6, 'Bitcoin',           _sdT('$108,350'),  _sdT('+1.24%'), true)
+                            ], 'row-cols-2 row-cols-md-3 row-cols-lg-6'),
+                            _bkP(_sdT('Delayed by 15 minutes. For information only.'), 'small text-body-secondary mt-3 mb-0')
+                        ]);
+                    }
+
+                    // ── News: stories and articles ──
+                    // Story layouts of a news or magazine site: lead grid, latest
+                    // lists, category columns, live coverage, article header, author box.
+
+                    // A story heading whose link covers its whole story card (the card is position-relative)
+                    var _nsHeadline = function (tag, cls, text) {
+                        return _bkTag(tag, cls, _sdT('Headline'), [
+                            _bkLink(text, '#', 'text-reset text-decoration-none stretched-link', _sdT('Headline Link'))
+                        ]);
+                    };
+
+                    // News: Lead Story Grid — a lead photo story with its text on a dark scrim, beside a 2×2 grid of small stories
+                    if (ctype === 'news-lead-grid') {
+                        var _nsSmall = function (n, seed, alt, cat, title, datetime, time) {
+                            return _bkCol(_sdT('Story {var}', n), [
+                                _bkTag('article', 'position-relative', _sdT('News Story Card'), [
+                                    _bkImg(seed, 600, 338, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _bkH('span', cat, 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
+                                ])
+                            ], '', '', '6');
+                        };
+                        return _bkSection('py-5', _sdT('News (Lead Story Grid)'), [
+                            _bkRow(_sdT('Stories Row'), [
+                                _bkCol(_sdT('Lead Story'), [
+                                    _bkTag('article', 'card border-0 rounded-4 shadow-sm overflow-hidden', _sdT('Lead Card'), [
+                                        _bkDiv('ratio pg-ratio-lead', _sdT('Story Picture'), [
+                                            _bkImg('ns-lead-lab', 1200, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'object-fit-cover')
+                                        ]),
+                                        _bkDiv('card-img-overlay d-flex flex-column justify-content-end p-4 p-lg-5 text-body pg-shade-bottom', _sdT('Story Overlay'), [
+                                            _bkH('span', _sdT('Technology'), 'badge text-bg-primary align-self-start mb-3'),
+                                            _nsHeadline('h2', 'h3 fw-bold mb-2', _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'd-none d-sm-block mb-3'),
+                                            _bkDiv('d-flex flex-wrap align-items-center gap-2 small text-body-secondary', _sdT('Byline'), [
+                                                _bkH('span', _sdT('By {var}', _sdT('Jane Cooper')), 'fw-semibold'),
+                                                _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time'))
+                                            ])
+                                        ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                    ])
+                                ], '7'),
+                                _bkCol(_sdT('More Stories'), [
+                                    _bkRow(_sdT('Small Stories Row'), [
+                                        _nsSmall(1, 'ns-small-store',  _sdT('A shop front with a green awning on a London street'), _sdT('Economy'), _sdT('Northwind opens its first London store with a rooftop café'), '2026-11-14T10:45', '10:45'),
+                                        _nsSmall(2, 'ns-small-run',    _sdT('Runners crossing a city bridge in the morning sun'),   _sdT('Sport'),   _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners'),      '2026-11-14T08:20', '08:20'),
+                                        _nsSmall(3, 'ns-small-library', _sdT('Reading tables by the tall windows of a library'),     _sdT('Culture'), _sdT('Tokyo\'s new riverside library stays open until midnight'),      '2026-11-13T19:10', '19:10'),
+                                        _nsSmall(4, 'ns-small-garden', _sdT('Volunteers carrying crates of pumpkins in a garden'),  _sdT('Local'),   _sdT('New York\'s community gardens share a record autumn harvest'),   '2026-11-13T16:30', '16:30')
+                                    ])
+                                ], '5')
+                            ])
+                        ]);
+                    }
+
+                    // News: Latest + Most Read — five latest stories with thumbnails, and a numbered most-read list beside them
+                    if (ctype === 'news-latest-mostread') {
+                        var _nsLatest = function (n, seed, cat, datetime, time, title, excerpt) {
+                            return _bkTag('article', 'd-flex gap-3 position-relative', _sdT('Story {var}', n), [
+                                _bkImg(seed, 200, 200, '', 'rounded-3 object-fit-cover flex-shrink-0 pg-thumb-100'),
+                                _bkDiv('flex-grow-1', _sdT('Story Copy'), [
+                                    _bkDiv('d-flex flex-wrap align-items-center gap-2 small mb-1', _sdT('Story Meta'), [
+                                        _bkH('span', cat, 'fw-semibold text-primary'),
+                                        _bkTime(datetime, time, 'text-body-secondary', _sdT('Publish Time'))
+                                    ]),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkP(excerpt, 'd-none d-md-block small text-body-secondary mb-0')
+                                ])
+                            ]);
+                        };
+                        var _nsRead = function (n, title, last) {
+                            return _bkTag('li', 'd-flex align-items-start gap-3 py-3 position-relative' + (last ? '' : ' border-bottom'), _sdT('Most Read Item'), [
+                                _bkH('span', String(n), 'display-6 fw-bold lh-1 text-primary flex-shrink-0'),
+                                _nsHeadline('h3', 'h6 fw-semibold mb-0', title)
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('News (Latest + Most Read)'), [
+                            _bkRow(_sdT('News Row'), [
+                                _bkCol(_sdT('Latest Column'), [
+                                    _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-4 border-bottom', _sdT('Section Header'), [
+                                        _bkH('h2', _sdT('Latest news'), 'h4 fw-bold mb-0'),
+                                        _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                    ]),
+                                    _bkDiv('d-flex flex-column gap-4', _sdT('Story List'), [
+                                        _nsLatest(1, 'ns-latest-ferry',  _sdT('City'),       '2026-11-14T11:20', '11:20', _sdT('Electric ferries start sailing between Istanbul\'s two shores'), _sdT('The first four boats carry up to 300 passengers each and charge at the piers in ten minutes.')),
+                                        _nsLatest(2, 'ns-latest-studio', _sdT('Technology'), '2026-11-14T10:05', '10:05', _sdT('ByteWave opens a free coding studio for teenagers in Berlin'), _sdT('Weekend classes cover web pages, small games and robots; laptops are provided.')),
+                                        _nsLatest(3, 'ns-latest-market', _sdT('Economy'),    '2026-11-14T09:15', '09:15', _sdT('Winter market adds sixty stalls of local makers in London'), _sdT('Ceramics, knitwear and street food fill the square every weekend until the new year.')),
+                                        _nsLatest(4, 'ns-latest-pool',   _sdT('Sport'),      '2026-11-13T18:40', '18:40', _sdT('Tokyo swim club wins the youth relay cup for the third time'), _sdT('The team of four sixteen-year-olds finished almost two seconds ahead of the field.')),
+                                        _nsLatest(5, 'ns-latest-cinema', _sdT('Culture'),    '2026-11-13T15:00', '15:00', _sdT('Open-air cinema in New York moves indoors for the winter'), _sdT('Classic films now play in a restored warehouse, with blankets and hot cider at the door.'))
+                                    ])
+                                ], '8'),
+                                _bkCol(_sdT('Most Read Column'), [
+                                    _bkTag('aside', 'p-4 rounded-4 bg-body-tertiary', _sdT('Most Read Box'), [
+                                        _bkH('h2', _sdT('Most read'), 'h5 fw-bold mb-2'),
+                                        _bkTag('ol', 'list-unstyled mb-0', _sdT('Most Read List'), [
+                                            _nsRead(1, _sdT('Helios and Quanta open a shared robotics lab in Istanbul')),
+                                            _nsRead(2, _sdT('Berlin\'s autumn fun run welcomes a record 12,000 runners')),
+                                            _nsRead(3, _sdT('Northwind opens its first London store with a rooftop café')),
+                                            _nsRead(4, _sdT('Tokyo\'s new riverside library stays open until midnight')),
+                                            _nsRead(5, _sdT('Electric ferries start sailing between Istanbul\'s two shores'), true)
+                                        ])
+                                    ])
+                                ], '4')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // News: Category Columns — Economy, Sport and Technology, each with a lead story and three headlines
+                    if (ctype === 'news-category-columns') {
+                        var _nsColumn = function (cat, seed, alt, title, datetime, time, links) {
+                            return _bkCol(_sdT('Category Column'), [
+                                _bkDiv('d-flex align-items-center justify-content-between gap-3 pb-2 mb-3 border-bottom border-2 border-primary', _sdT('Column Header'), [
+                                    _bkH('h2', cat, 'h5 fw-bold mb-0'),
+                                    _bkLink(_sdT('See all'), '#', 'small fw-semibold link-primary text-decoration-none text-nowrap', _sdT('See All Link'))
+                                ]),
+                                _bkTag('article', 'position-relative mb-3', _sdT('Column Lead'), [
+                                    _bkImg(seed, 800, 450, alt, 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9 mb-2'),
+                                    _nsHeadline('h3', 'h6 fw-bold mb-1', title),
+                                    _bkTime(datetime, time, 'small text-body-secondary', _sdT('Publish Time'))
+                                ]),
+                                _bkTag('ul', 'list-unstyled mb-0', _sdT('Headline List'), links.map(function (t) {
+                                    return _bkTag('li', 'py-2 border-top', _sdT('Headline Item'), [
+                                        _bkLink(t, '#', 'small fw-semibold text-reset text-decoration-none', _sdT('Headline Link'))
+                                    ]);
+                                }))
+                            ], '4');
+                        };
+                        return _bkSection('py-5', _sdT('News (Category Columns)'), [
+                            _bkRow(_sdT('Columns Row'), [
+                                _nsColumn(_sdT('Economy'), 'ns-col-port', _sdT('Cranes and containers at a harbour at dusk'),
+                                    _sdT('PineWorks hires 200 people for its new Istanbul workshop'), '2026-11-14T10:30', '10:30',
+                                    [_sdT('Small shops report a strong start to the holiday season'), _sdT('Vertex opens its booking app to independent hotels'), _sdT('Weekend farmers\' markets double in Berlin')]),
+                                _nsColumn(_sdT('Sport'), 'ns-col-stadium', _sdT('A football pitch under floodlights in the evening'),
+                                    _sdT('London youth league adds a girls\' division of twelve teams'), '2026-11-14T09:00', '09:00',
+                                    [_sdT('New cycle lanes link three Tokyo parks'), _sdT('Local climbing gym hosts its first open championship'), _sdT('Swim school offers free lessons for beginners in December')]),
+                                _nsColumn(_sdT('Technology'), 'ns-col-chip', _sdT('A close-up of a circuit board with glowing lights'),
+                                    _sdT('OrbitSoft releases a free app that reads bus times aloud'), '2026-11-13T17:45', '17:45',
+                                    [_sdT('StartMate launches a mentoring week for first-time founders'), _sdT('Libraries in New York lend laptops for a month'), _sdT('TechBase turns an old factory into a start-up campus')])
+                            ])
+                        ]);
+                    }
+
+                    // News: Live Coverage — a live badge, the last update time and five timestamped updates on a line, newest first
+                    if (ctype === 'news-live-blog') {
+                        var _nsUpdate = function (n, datetime, time, kids) {
+                            return _bkTag('li', 'mb-4', _sdT('Update {var}', n), [
+                                _bkTime(datetime, time, 'd-block small fw-bold text-primary mb-1', _sdT('Update Time'))
+                            ].concat(kids));
+                        };
+                        return _bkSection('py-5', _sdT('News (Live Coverage)'), [
+                            _bkRow(_sdT('Live Row'), [
+                                _bkCol(_sdT('Live Column'), [
+                                    _bkDiv('mb-4', _sdT('Live Header'), [
+                                        _bkDiv('d-flex flex-wrap align-items-center gap-2 mb-3', _sdT('Live Status'), [
+                                            _bkDiv('badge d-inline-flex align-items-center gap-2 text-bg-danger', _sdT('Live Badge'), [
+                                                _bkDiv('spinner-grow spinner-grow-sm pg-pulse-still', _sdT('Pulse'), [], [{ name: 'aria-hidden', value: 'true' }]),
+                                                _bkH('span', _sdT('Live'))
+                                            ]),
+                                            _bkH('span', _sdT('Last updated'), 'small text-body-secondary'),
+                                            _bkTime('2026-11-14T21:40', '21:40', 'small fw-semibold', _sdT('Update Time'))
+                                        ]),
+                                        _bkH('h2', _sdT('Riverside Lights Festival opens in London'), 'fw-bold mb-2'),
+                                        _bkP(_sdT('Lanterns, street food and music along the river all weekend. Follow the opening night here.'), 'lead text-body-secondary mb-0')
+                                    ]),
+                                    _bkTag('ol', 'list-unstyled ps-4 mb-4 border-start border-2 border-primary-subtle', _sdT('Live Updates'), [
+                                        _nsUpdate(1, '2026-11-14T21:40', '21:40', [
+                                            _bkDiv('p-3 rounded-3 bg-primary-subtle text-primary-emphasis', _sdT('Key Moment Box'), [
+                                                _bkDiv('d-flex align-items-center gap-2 small fw-semibold mb-1', _sdT('Key Moment Label'), [
+                                                    _bkIcon('bi-pin-angle-fill'),
+                                                    _bkH('span', _sdT('Key moment'))
+                                                ]),
+                                                _bkH('h3', _sdT('The lantern parade reaches the old bridge'), 'h6 fw-bold mb-1'),
+                                                _bkP(_sdT('More than 2,000 lanterns cross the river while a brass band plays from the boats.'), 'mb-0')
+                                            ])
+                                        ]),
+                                        _nsUpdate(2, '2026-11-14T21:05', '21:05', [
+                                            _bkH('h3', _sdT('The food market stays open late'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Forty stalls serve street food from five continents until midnight.'), 'mb-2'),
+                                            _bkImg('ns-live-market', 1200, 675, _sdT('Food stalls lit with string lights by the river'), 'img-fluid w-100 rounded-3 object-fit-cover pg-ratio-16x9')
+                                        ]),
+                                        _nsUpdate(3, '2026-11-14T20:30', '20:30', [
+                                            _bkH('h3', _sdT('Organisers thank the volunteers'), 'h6 fw-bold mb-2'),
+                                            _bkTag('figure', 'mb-0', _sdT('Quote Figure'), [
+                                                _bkTag('blockquote', 'blockquote fs-6 ps-3 mb-2 border-start border-3 border-primary', _sdT('Quote'), [
+                                                    _bkP(_sdT('We started with ten volunteers three years ago. Tonight more than three hundred are helping out.'), 'fst-italic mb-0')
+                                                ]),
+                                                _bkTag('figcaption', 'blockquote-footer ps-3 mt-0 mb-0 text-body-secondary', _sdT('Quote Source'), [
+                                                    _bkH('span', _sdT('{var}, festival director', _sdT('Emily Turner')))
+                                                ])
+                                            ])
+                                        ]),
+                                        _nsUpdate(4, '2026-11-14T19:50', '19:50', [
+                                            _bkH('h3', _sdT('Extra trains run all evening'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Riverside line trains run every five minutes until the last lanterns go out.'), 'mb-0')
+                                        ]),
+                                        _nsUpdate(5, '2026-11-14T19:00', '19:00', [
+                                            _bkH('h3', _sdT('The festival opens'), 'h6 fw-bold mb-1'),
+                                            _bkP(_sdT('Children from local schools switch on the first lights at the riverside steps.'), 'mb-0')
+                                        ])
+                                    ]),
+                                    _bkLink(_sdT('See the full timeline'), '#', 'fw-semibold link-primary text-decoration-none', _sdT('Timeline Link'))
+                                ], '8', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Article Header — breadcrumb, category, headline, standfirst, byline with share links and the lead picture
+                    if (ctype === 'news-article-header') {
+                        var _nsCrumb = function (label, active) {
+                            if (active) {
+                                return _bkTag('li', 'breadcrumb-item active', _sdT('{var} Item', label), [ _bkH('span', label) ],
+                                    [{ name: 'aria-current', value: 'page' }]);
+                            }
+                            return _bkTag('li', 'breadcrumb-item', _sdT('{var} Item', label), [
+                                _bkLink(label, '#', 'link-primary text-decoration-none', _sdT('{var} Link', label))
+                            ]);
+                        };
+                        var _nsShare = function (icon, label) {
+                            return _bkIconLink(icon, label, 'btn btn-sm btn-outline-secondary rounded-circle');
+                        };
+                        return _bkSection('pt-5 pb-4', _sdT('News (Article Header)'), [
+                            _bkRow(_sdT('Article Row'), [
+                                _bkCol(_sdT('Article Column'), [
+                                    _bkTag('nav', 'mb-4', _sdT('Breadcrumbs Nav'), [
+                                        _bkTag('ol', 'breadcrumb small mb-0', _sdT('Breadcrumb List'), [
+                                            _nsCrumb(_sdT('Homepage'), false),
+                                            _nsCrumb(_sdT('Technology'), false),
+                                            _nsCrumb(_sdT('Robotics lab'), true)
+                                        ])
+                                    ], [{ name: 'aria-label', value: _sdT('Breadcrumb trail') }]),
+                                    _bkH('span', _sdT('Technology'), 'badge bg-primary-subtle text-primary-emphasis mb-3'),
+                                    _bkH('h1', _sdT('Helios and Quanta open a shared robotics lab in Istanbul'), 'display-6 fw-bold mb-3'),
+                                    _bkP(_sdT('Forty young teams get free workshop space, test robots and weekly mentoring from engineers.'), 'lead text-body-secondary mb-4'),
+                                    _bkDiv('d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 mb-4 border-top border-bottom', _sdT('Article Meta'), [
+                                        _bkDiv('d-flex align-items-center gap-3', _sdT('Byline'), [
+                                            _bkImg('ns-author-jane', 96, 96, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-circle-40'),
+                                            _bkDiv('small', _sdT('Author Info'), [
+                                                _bkLink(_sdT('Jane Cooper'), '#', 'd-block fw-semibold link-primary text-decoration-none', _sdT('Author Link')),
+                                                _bkH('span', _sdT('Technology Editor'), 'd-block text-body-secondary'),
+                                                _bkDiv('d-flex flex-wrap gap-2 text-body-secondary', _sdT('Article Dates'), [
+                                                    _bkTime('2026-11-14T09:30', _sdT('14 November 2026, 09:30'), '', _sdT('Publish Time')),
+                                                    _bkH('span', _sdT('{var} min read', '6'))
+                                                ])
+                                            ])
+                                        ]),
+                                        _bkDiv('d-flex align-items-center gap-2', _sdT('Share Links'), [
+                                            _bkH('span', _sdT('Share'), 'small text-body-secondary me-1'),
+                                            _nsShare('bi-facebook',  _sdT('Share on Facebook')),
+                                            _nsShare('bi-twitter-x', _sdT('Share on X')),
+                                            _nsShare('bi-linkedin',  _sdT('Share on LinkedIn')),
+                                            _nsShare('bi-envelope',  _sdT('Share by email'))
+                                        ])
+                                    ]),
+                                    _bkTag('figure', 'mb-0', _sdT('Article Figure'), [
+                                        _bkImg('ns-article-lab', 1600, 900, _sdT('Engineers testing a small delivery robot in a bright workshop'), 'img-fluid w-100 rounded-4 object-fit-cover pg-ratio-16x9'),
+                                        _bkTag('figcaption', 'small text-body-secondary mt-2', _sdT('Figure Caption'), [
+                                            _bkH('span', _sdT('A delivery robot on its first test run in the new lab.')),
+                                            _bkH('span', _sdT('Photo: {var}', _sdT('Michael Brooks')), 'ms-1 fst-italic')
+                                        ])
+                                    ])
+                                ], '10', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // News: Author Box — the writer under a story: photo, name link, role, bio, social links and more stories
+                    if (ctype === 'news-author-box') {
+                        return _bkSection('py-5', _sdT('News (Author Box)'), [
+                            _bkRow(_sdT('Author Row'), [
+                                _bkCol(_sdT('Author Column'), [
+                                    _bkTag('aside', 'card border rounded-4 bg-body', _sdT('Author Card'), [
+                                        _bkDiv('card-body d-flex flex-column flex-sm-row gap-4 p-4 p-lg-5', _sdT('Author Body'), [
+                                            _bkImg('ns-author-jane', 224, 224, '', 'rounded-circle object-fit-cover flex-shrink-0 pg-thumb-100'),
+                                            _bkDiv('flex-grow-1', _sdT('Author Info'), [
+                                                _bkH('span', _sdT('About the author'), 'd-block small fw-semibold text-uppercase text-primary mb-1'),
+                                                _bkTag('h2', 'h4 fw-bold mb-1', _sdT('Author Name'), [
+                                                    _bkLink(_sdT('Jane Cooper'), '#', 'text-reset text-decoration-none', _sdT('Author Link'))
+                                                ]),
+                                                _bkP(_sdT('Technology Editor'), 'small text-body-secondary mb-3'),
+                                                _bkP(_sdT('Jane writes about start-ups, robots and the apps that make city life easier. Before ACME she spent ten years reporting from London and Tokyo.'), 'mb-4'),
+                                                _bkDiv('d-flex flex-wrap align-items-center justify-content-between gap-3', _sdT('Author Actions'), [
+                                                    _bkDiv('d-flex gap-3', _sdT('Social Links'), [
+                                                        _bkIconLink('bi-twitter-x', _sdT('{var} on X', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-linkedin',  _sdT('{var} on LinkedIn', _sdT('Jane Cooper')), 'link-primary fs-5'),
+                                                        _bkIconLink('bi-envelope',  _sdT('Email {var}', _sdT('Jane Cooper')), 'link-primary fs-5', 'mailto:jane@example.com')
+                                                    ]),
+                                                    createNode('component', { componentType: 'btn', text: _sdT('More from {var}', _sdT('Jane Cooper')), variant: 'outline-primary', size: 'sm', href: '#', cssClass: '' })
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // ── Creative blocks ──
+                    // Eye-catching layouts for any site: bento grids, marquees,
+                    // showcases, quotes, a polaroid gallery and a snap scroller.
+
+                    // Bento: Features — one wide primary tile and a stat tile, then an icon, a picture and a dark tile
+                    if (ctype === 'bento-features') {
+                        return _bkSection('py-5', _sdT('Bento (Features)'), [
+                            _bkIntro(_sdT('Everything Your Team Needs'), _sdT('Plans, files and conversations in one workspace that stays out of your way.')),
+                            _bkRow(_sdT('Bento Row'), [
+                                _bkCol(_sdT('Wide Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 p-4 p-lg-5 text-bg-primary rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-lightning-charge-fill', 'fs-2 mb-3'),
+                                        _bkH('h3', _sdT('Plan, share and ship in one place'), 'h4 fw-bold mb-2'),
+                                        _bkP(_sdT('Boards, documents and chat stay in sync, so nobody has to ask where the latest version is.'), 'mb-4'),
+                                        _bkLink(_sdT('See how it works'), '#', 'align-self-start mt-auto fw-semibold text-reset', _sdT('Tile Link'))
+                                    ])
+                                ], '8', '7'),
+                                _bkCol(_sdT('Stat Tile'), [
+                                    _bkDiv('d-flex flex-column justify-content-between h-100 p-4 bg-body-tertiary rounded-4', _sdT('Tile Body'), [
+                                        _bkH('span', _sdT('Teams on board'), 'mb-3 small fw-semibold text-uppercase text-body-secondary'),
+                                        _bkDiv('', _sdT('Stat'), [
+                                            _bkH('span', _sdT('12,000+'), 'd-block mb-2 display-4 fw-bold lh-1 text-primary'),
+                                            _bkP(_sdT('From two-person studios to companies with offices in five cities.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '5'),
+                                _bkCol(_sdT('Icon Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body border rounded-4', _sdT('Tile Body'), [
+                                        _bkDiv('d-inline-flex p-3 mb-3 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Tile Icon'), [ _bkIcon('bi-shield-check', 'fs-4') ]),
+                                        _bkH('h3', _sdT('Secure by default'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('Single sign-on, two-step login and daily backups on every plan.'), 'mb-0 text-body-secondary')
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Picture Tile'), [
+                                    _bkDiv('d-flex flex-column h-100 bg-body border rounded-4 overflow-hidden', _sdT('Tile Body'), [
+                                        _bkImg('cr-bento-desk', 800, 450, _sdT('A team planning a project around a laptop'), 'd-block w-100 object-fit-cover pg-ratio-16x9'),
+                                        _bkDiv('p-4', _sdT('Tile Copy'), [
+                                            _bkH('h3', _sdT('Works where you work'), 'h5 fw-bold mb-2'),
+                                            _bkP(_sdT('On the desktop, in the browser and on your phone, always in sync.'), 'mb-0 text-body-secondary')
+                                        ])
+                                    ])
+                                ], '4', '6'),
+                                _bkCol(_sdT('Dark Tile'), [
+                                    _bkDiv('h-100 p-4 bg-body text-body border rounded-4', _sdT('Tile Body'), [
+                                        _bkIcon('bi-graph-up-arrow', 'd-block mb-3 fs-2 text-primary'),
+                                        _bkH('h3', _sdT('Reports that write themselves'), 'h5 fw-bold mb-2'),
+                                        _bkP(_sdT('A summary of the week lands in every inbox on Monday morning.'), 'mb-0 text-body-secondary')
+                                    ], [{ name: 'data-bs-theme', value: 'dark' }])
+                                ], '4')
+                            ])
+                        ]);
+                    }
+
+                    // Bento: Gallery — a photo mosaic (one tall, two square, one wide picture), each with a caption chip on the photo
+                    if (ctype === 'bento-gallery') {
+                        var _crBgShot = function (seed, w, h, alt, caption, imgCls, figCls) {
+                            return _bkTag('figure', 'position-relative mb-0 rounded-4 overflow-hidden' + (figCls ? ' ' + figCls : ''), _sdT('Figure'), [
+                                _bkImg(seed, w, h, alt, 'd-block w-100 object-fit-cover ' + imgCls),
+                                _bkTag('figcaption', 'badge m-3 text-wrap text-start bg-primary-subtle text-primary-emphasis rounded-pill shadow-sm position-absolute bottom-0 start-0', _sdT('Caption'), [ _bkH('span', caption) ])
+                            ]);
+                        };
+                        var _crBgCol = function (n, kids) {
+                            return createNode('col', { xs: n === 4 ? '12' : '6', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Picture {var}', n) }, kids);
+                        };
+                        return _bkSection('py-5', _sdT('Bento (Gallery)'), [
+                            _bkIntro(_sdT('Inside the Studio'), _sdT('Where ideas turn into finished work, one coffee at a time.')),
+                            _bkRow(_sdT('Gallery Row'), [
+                                _bkCol(_sdT('Picture {var}', 1), [
+                                    _crBgShot('cr-bento-studio', 800, 960, _sdT('Morning light over the desks of a studio'), _sdT('The studio'), 'h-100', 'h-100')
+                                ], '5'),
+                                _bkCol(_sdT('Right Column'), [
+                                    _bkRow(_sdT('Pictures Row'), [
+                                        _crBgCol(2, [ _crBgShot('cr-bento-sketch', 600, 600, _sdT('Sketches pinned to a wall'), _sdT('Sketch wall'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(3, [ _crBgShot('cr-bento-print', 600, 600, _sdT('Fresh prints laid out on a table'), _sdT('Print day'), 'pg-ratio-1x1') ]),
+                                        _crBgCol(4, [ _crBgShot('cr-bento-team', 1200, 675, _sdT('The team on a retreat in Istanbul'), _sdT('Team retreat, Istanbul'), 'pg-ratio-16x9') ])
+                                    ])
+                                ], '7')
+                            ])
+                        ]);
+                    }
+
+                    // Marquee: Big Words — a primary band of large words sliding sideways; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-words') {
+                        var _crMwGroup = function (copy) {
+                            var words = [_sdT('Branding'), _sdT('Web Design'), _sdT('Motion Design'), _sdT('Photography'), _sdT('Strategy'), _sdT('Packaging')];
+                            var kids = [];
+                            words.forEach(function (w) {
+                                kids.push(_bkH('span', w, 'display-6 fw-bold text-uppercase text-nowrap'));
+                                kids.push(_bkIcon('bi-asterisk', 'fs-3'));
+                            });
+                            return _bkDiv('gap-4 pe-4 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), kids,
+                                copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-4 text-bg-primary', _sdT('Marquee (Big Words)'), [
+                            _bkDiv('pg-marquee-viewport', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMwGroup(false), _crMwGroup(true) ])
+                            ], _bkRegion(_sdT('What we do'))),
+                            _bkMarqueePause('mqw', _sdT('Pause the animation'), 'text-reset', 'mt-2 text-end')
+                        ]);
+                    }
+
+                    // Marquee: Logos — customer logos sliding sideways under soft faded edges; it stops on hover, on focus and with its pause button
+                    if (ctype === 'marquee-logos') {
+                        var _crMlGroup = function (copy) {
+                            var brands = [_sdT('Vertex'), _sdT('TechBase'), _sdT('StartMate'), _sdT('LaunchLab'), _sdT('Northwind'),
+                                          _sdT('PineWorks'), _sdT('OrbitSoft'), _sdT('Quanta'), _sdT('ByteWave'), _sdT('Helios')];
+                            return _bkDiv('gap-5 pe-5 pg-marquee-group' + (copy ? ' pg-marquee-copy' : ''), copy ? _sdT('Marquee Copy') : _sdT('Marquee Group'), brands.map(function (b) {
+                                return createNode('content', { contentType: 'image', src: 'https://placehold.co/200x80/9ca3af/ffffff?text=' + encodeURIComponent(b), alt: copy ? '' : b, cssClass: 'pg-logo-44' });
+                            }), copy ? [{ name: 'aria-hidden', value: 'true' }] : null);
+                        };
+                        return _bkSection('pg-marquee py-5', _sdT('Marquee (Logos)'), [
+                            _bkDiv('d-flex align-items-center justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkH('h2', _sdT('Trusted by teams at'), 'h6 mb-0 fw-semibold text-uppercase text-body-secondary'),
+                                _bkMarqueePause('mql', _sdT('Pause the animation'), 'btn-outline-secondary')
+                            ]),
+                            _bkDiv('pg-marquee-viewport pg-marquee-fade', _sdT('Marquee Viewport'), [
+                                _bkDiv('pg-marquee-track', _sdT('Marquee Track'), [ _crMlGroup(false), _crMlGroup(true) ])
+                            ], _bkRegion(_sdT('Customer logos')))
+                        ]);
+                    }
+
+                    // Showcase: Floating Badges — copy beside a picture; from 992 px three small cards float over the picture, below that they stack under it
+                    if (ctype === 'showcase-floating') {
+                        var _crSfCard = function (n, icon, value, label, place) {
+                            // Not a .card: Bootstrap gives .card position: relative,
+                            // which would compete with the pg-float rule.
+                            return _bkDiv('d-flex align-items-center gap-3 p-3 m-lg-3 bg-body text-body rounded-4 shadow pg-float ' + place, _sdT('Floating Card {var}', n), [
+                                _bkDiv('d-inline-flex flex-shrink-0 p-2 bg-primary-subtle text-primary-emphasis rounded-3', _sdT('Card Icon'), [ _bkIcon(icon, 'fs-5') ]),
+                                _bkDiv('', _sdT('Card Copy'), [
+                                    _bkH('strong', value, 'd-block lh-sm'),
+                                    _bkH('span', label, 'small text-body-secondary')
+                                ])
+                            ]);
+                        };
+                        var _crSfPoint = function (text) {
+                            return _bkTag('li', 'd-flex gap-2 mb-2', _sdT('Feature'), [ _bkIcon('bi-check2-circle', 'text-primary'), _bkH('span', text) ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Floating Badges)'), [
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Showcase Copy'), [
+                                    _bkH('span', _sdT('All in one place'), 'badge mb-3 text-wrap bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                    _bkH('h2', _sdT('See your whole business at a glance'), 'mb-3 display-6 fw-bold'),
+                                    _bkP(_sdT('Bookings, payments and reviews meet on one screen, so the morning goes to customers instead of spreadsheets.'), 'mb-4 lead text-body-secondary'),
+                                    _bkTag('ul', 'list-unstyled mb-4', _sdT('Feature List'), [
+                                        _crSfPoint(_sdT('Every booking and payment in one calendar')),
+                                        _crSfPoint(_sdT('Reviews collected after each visit')),
+                                        _crSfPoint(_sdT('A weekly report in your inbox'))
+                                    ]),
+                                    _bkDiv('d-flex flex-wrap gap-2', _sdT('Buttons'), [
+                                        _bkBtn(_sdT('Start free trial'), 'primary', 'lg'),
+                                        _bkBtn(_sdT('Book a demo'), 'outline-secondary', 'lg')
+                                    ])
+                                ], '6'),
+                                _bkCol(_sdT('Showcase Picture'), [
+                                    _bkDiv('position-relative', _sdT('Picture Frame'), [
+                                        _bkImg('cr-showcase-desk', 900, 800, _sdT('A shop owner checking the day on a tablet'), 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm'),
+                                        _bkDiv('d-flex flex-column gap-3 mt-3 mt-lg-0', _sdT('Floating Cards'), [
+                                            _crSfCard(1, 'bi-graph-up-arrow', _sdT('+38%'), _sdT('more bookings this quarter'), 'top-0 start-0'),
+                                            _crSfCard(2, 'bi-star-fill', _sdT('4.9 out of 5'), _sdT('from 2,400 reviews'), 'top-50 end-0'),
+                                            _crSfCard(3, 'bi-people-fill', _sdT('12,000+'), _sdT('teams use it every day'), 'bottom-0 start-0')
+                                        ])
+                                    ])
+                                ], '6')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Showcase: Vertical Tabs — four pill tabs down the side (icon, title, one line each) and a picture pane for each tab
+                    if (ctype === 'showcase-tabs') {
+                        var _crStPfx = _bkUid('st');
+                        var _crStTab = function (i, icon, title, desc) {
+                            return _bkTag('button', 'nav-link d-flex align-items-start gap-3 p-3 text-start' + (i === 0 ? ' active' : ''), _sdT('Tab {var}', i + 1), [
+                                _bkIcon(icon, 'fs-4 lh-1'),
+                                _bkTag('span', 'd-block', _sdT('Tab Text'), [
+                                    _bkH('span', title, 'd-block fw-semibold'),
+                                    _bkH('span', desc, 'd-block small')
+                                ])
+                            ], [
+                                { name: 'type',           value: 'button' },
+                                { name: 'id',             value: _crStPfx + '_tab' + i },
+                                { name: 'data-bs-toggle', value: 'pill' },
+                                { name: 'data-bs-target', value: '#' + _crStPfx + '_' + i },
+                                { name: 'role',           value: 'tab' },
+                                { name: 'aria-controls',  value: _crStPfx + '_' + i },
+                                { name: 'aria-selected',  value: i === 0 ? 'true' : 'false' }
+                            ]);
+                        };
+                        var _crStPane = function (i, seed, alt, caption) {
+                            return createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade' + (i === 0 ? ' show active' : ''), id: _crStPfx + '_' + i, customName: _sdT('Tab Pane {var}', i + 1),
+                                _attrs: [{ name: 'role', value: 'tabpanel' }, { name: 'aria-labelledby', value: _crStPfx + '_tab' + i }, { name: 'tabindex', value: '0' }] }, [
+                                _bkTag('figure', 'mb-0', _sdT('Figure'), [
+                                    _bkImg(seed, 1200, 675, alt, 'img-fluid w-100 object-fit-cover rounded-4 shadow-sm pg-ratio-16x9'),
+                                    _bkTag('figcaption', 'mt-3 small text-body-secondary', _sdT('Caption'), [ _bkH('span', caption) ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Showcase (Vertical Tabs)'), [
+                            _bkIntro(_sdT('One Workspace, Four Ways to Work'), _sdT('Pick a part of the day and see how ACME handles it.')),
+                            _bkRow(_sdT('Showcase Row'), [
+                                _bkCol(_sdT('Tabs Column'), [
+                                    _bkDiv('nav flex-column nav-pills gap-2', _sdT('Showcase Tabs'), [
+                                        _crStTab(0, 'bi-kanban',          _sdT('Planning'),    _sdT('Boards and timelines for every project.')),
+                                        _crStTab(1, 'bi-chat-dots',       _sdT('Teamwork'),    _sdT('Comments and files right where the work is.')),
+                                        _crStTab(2, 'bi-lightning-charge', _sdT('Automation'), _sdT('Rules that move work forward on their own.')),
+                                        _crStTab(3, 'bi-bar-chart-line',  _sdT('Reporting'),   _sdT('Progress at a glance, every Monday.'))
+                                    ], [{ name: 'role', value: 'tablist' }, { name: 'aria-orientation', value: 'vertical' }])
+                                ], '4'),
+                                _bkCol(_sdT('Panes Column'), [
+                                    _bkDiv('tab-content', _sdT('Showcase Panes'), [
+                                        _crStPane(0, 'cr-tabs-plan',   _sdT('A project board with cards in three columns'), _sdT('Drag a card to a new column and everyone sees the change at once.')),
+                                        _crStPane(1, 'cr-tabs-team',   _sdT('Two colleagues discussing a design on screen'), _sdT('Comment on the work itself, not in a separate email thread.')),
+                                        _crStPane(2, 'cr-tabs-auto',   _sdT('A list of rules that run on their own'), _sdT('When a task is done, the next one is assigned and the client is told.')),
+                                        _crStPane(3, 'cr-tabs-report', _sdT('Charts of a team\'s weekly progress'), _sdT('Every Monday at 9:00 the week\'s summary is waiting for you.'))
+                                    ])
+                                ], '8')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Quote: Pull Quote — one large centred quote under a quote mark, with the speaker and the source
+                    if (ctype === 'quote-pull') {
+                        return _bkSection('py-5', _sdT('Quote (Pull Quote)'), [
+                            _bkRow(_sdT('Quote Row'), [
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center', _sdT('Pull Quote'), [
+                                        _bkIcon('bi-quote', 'd-block mb-2 display-1 lh-1 text-primary'),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Good design is not decoration. It is the shortest path between what people need and what they get.'), 'mb-0 fs-2 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'blockquote-footer mb-0 text-body-secondary', _sdT('Attribution'), [
+                                            _bkH('span', _sdT('Jane Cooper'), 'fw-semibold text-body-emphasis'),
+                                            _bkH('span', _sdT('Creative Director at Vertex'), 'd-block mt-1'),
+                                            _bkTag('cite', 'd-block mt-1', _sdT('Publication'), [ _bkH('span', _sdT('Northwind Design Review')) ])
+                                        ])
+                                    ])
+                                ], '9', '', '', 'mx-auto')
+                            ])
+                        ]);
+                    }
+
+                    // Quote: Spotlight — a primary band with a round portrait, five stars, a large quote and the speaker
+                    if (ctype === 'quote-spotlight') {
+                        var _crQsStars = [];
+                        for (var _crQsI = 0; _crQsI < 5; _crQsI++) _crQsStars.push(_bkIcon('bi-star-fill'));
+                        _crQsStars.push(_bkH('span', _sdT('Rated 5 out of 5'), 'visually-hidden'));
+                        return _bkSection('py-5 text-bg-primary', _sdT('Quote (Spotlight)'), [
+                            _bkRow(_sdT('Spotlight Row'), [
+                                _bkCol(_sdT('Portrait Column'), [
+                                    _bkImg('cr-spotlight-michael', 320, 320, '', 'object-fit-cover rounded-circle shadow pg-circle-160')
+                                ], '3', '', '', 'text-center'),
+                                _bkCol(_sdT('Quote Column'), [
+                                    _bkTag('figure', 'mb-0 text-center text-lg-start', _sdT('Spotlight Quote'), [
+                                        _bkDiv('d-flex justify-content-center justify-content-lg-start gap-1 mb-3', _sdT('Star Rating'), _crQsStars),
+                                        _bkTag('blockquote', 'blockquote mb-4', _sdT('Quote'), [
+                                            _bkP(_sdT('Since we moved to ACME our launches take half the time, and the whole team knows what comes next.'), 'mb-0 fs-3 fw-semibold lh-sm')
+                                        ]),
+                                        _bkTag('figcaption', 'mb-0', _sdT('Attribution'), [
+                                            _bkH('strong', _sdT('Michael Brooks'), 'd-block'),
+                                            _bkH('span', _sdT('Head of Product, TechBase'), 'small')
+                                        ])
+                                    ])
+                                ], '9')
+                            ], 'align-items-center g-lg-5')
+                        ]);
+                    }
+
+                    // Gallery: Polaroid — four instant-photo cards with a caption and a date; from 768 px they lean and straighten on hover
+                    if (ctype === 'gallery-polaroid') {
+                        var _crGpCard = function (n, seed, alt, caption, datetime, date, tilt) {
+                            return _bkCol(_sdT('Photo {var}', n), [
+                                _bkTag('figure', 'mb-0 p-3 pb-4 bg-body shadow ' + tilt, _sdT('Polaroid'), [
+                                    _bkImg(seed, 600, 600, alt, 'd-block w-100 object-fit-cover pg-ratio-1x1'),
+                                    _bkTag('figcaption', 'mt-3 text-center', _sdT('Caption'), [
+                                        _bkH('span', caption, 'd-block fw-semibold'),
+                                        _bkTime(datetime, date, 'd-block small fw-semibold text-primary', _sdT('Date'))
+                                    ])
+                                ])
+                            ], '3', '', '6');
+                        };
+                        return _bkSection('py-5 bg-body-tertiary', _sdT('Gallery (Polaroid)'), [
+                            _bkIntro(_sdT('Moments From the Road'), _sdT('Snapshots from our workshops in London, Berlin, Istanbul and Tokyo.')),
+                            _bkRow(_sdT('Photos Row'), [
+                                _crGpCard(1, 'cr-polaroid-london',   _sdT('People around a table covered in sketches'), _sdT('Workshop day in London'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-left'),
+                                _crGpCard(2, 'cr-polaroid-berlin',   _sdT('A wall of notes and drawings'),              _sdT('Sketch night in Berlin'),  '2026-10', _sdT('October 2026'),  'pg-tilt pg-tilt-right'),
+                                _crGpCard(3, 'cr-polaroid-istanbul', _sdT('A sunny studio with plants by the window'),   _sdT('Studio visit in Istanbul'), '2026-11', _sdT('November 2026'), 'pg-tilt pg-tilt-left'),
+                                _crGpCard(4, 'cr-polaroid-tokyo',    _sdT('Posters hanging at a print fair'),            _sdT('Print fair in Tokyo'),     '2026-12', _sdT('December 2026'), 'pg-tilt pg-tilt-right')
+                            ], 'g-lg-5')
+                        ]);
+                    }
+
+                    // Scroller: Snap Cards — a sideways row of six story cards that snaps card by card, with a scroll hint in the header
+                    if (ctype === 'scroller-cards') {
+                        var _crScCard = function (n, seed, tag, title, body) {
+                            return _bkDiv('col-10 col-sm-6 col-lg-4 pg-snap-item', _sdT('Card {var}', n), [
+                                _bkTag('article', 'card h-100 border-0 shadow-sm overflow-hidden', _sdT('Story Card'), [
+                                    _bkImg(seed, 800, 450, '', 'card-img-top object-fit-cover pg-ratio-16x9'),
+                                    _bkDiv('card-body d-flex flex-column p-4', _sdT('Card Body'), [
+                                        _bkH('span', tag, 'badge align-self-start mb-2 bg-primary-subtle text-primary-emphasis rounded-pill'),
+                                        _bkH('h3', title, 'h5 fw-bold mb-2'),
+                                        _bkP(body, 'mb-3 small text-body-secondary'),
+                                        _bkLink(_sdT('Read the story'), '#', 'align-self-start mt-auto fw-semibold link-primary text-decoration-none stretched-link', _sdT('Card Link'))
+                                    ])
+                                ])
+                            ]);
+                        };
+                        return _bkSection('py-5', _sdT('Scroller (Snap Cards)'), [
+                            _bkDiv('d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', _sdT('Section Header'), [
+                                _bkDiv('', _sdT('Header Copy'), [
+                                    _bkH('h2', _sdT('Stories From Our Customers'), 'fw-bold mb-2'),
+                                    _bkP(_sdT('How teams of every size use ACME to get more done.'), 'mb-0 lead text-body-secondary')
+                                ]),
+                                _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
+                                    _bkH('span', _sdT('Scroll sideways')),
+                                    _bkIcon('bi-arrow-right')
+                                ])
+                            ]),
+                            _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
+                                _crScCard(1, 'cr-scroller-vertex',    _sdT('Design'),      _sdT('Vertex halved its review rounds'),        _sdT('Comments on the work itself replaced long email threads.')),
+                                _crScCard(2, 'cr-scroller-techbase',  _sdT('Engineering'), _sdT('TechBase ships every Friday'),            _sdT('Boards and automations keep forty engineers in step.')),
+                                _crScCard(3, 'cr-scroller-startmate', _sdT('Startup'),     _sdT('StartMate launched in six weeks'),        _sdT('From the first sketch to the first customer on one board.')),
+                                _crScCard(4, 'cr-scroller-launchlab', _sdT('Marketing'),   _sdT('LaunchLab plans a campaign a week'),      _sdT('Briefs, drafts and approvals in one place, on one calendar.')),
+                                _crScCard(5, 'cr-scroller-northwind', _sdT('Operations'),  _sdT('Northwind runs five offices from one board'), _sdT('Every office sees the same plan, in London and in Tokyo.')),
+                                _crScCard(6, 'cr-scroller-pineworks', _sdT('Retail'),      _sdT('PineWorks keeps every store in step'),    _sdT('Opening checklists and stock counts done before ten.'))
+                            ], _bkRegion(_sdT('Customer stories')))
+                        ]);
+                    }
+
                 }
 
                 // Accordion Explosion
@@ -27267,6 +28527,7 @@ const StyleDesigner = (function () {
             var _isCartLink        = (_regionType === 'cart_link');
             var _isLanguageSwitcher = (_regionType === 'language_switcher');
             var _isAccountInvoices = (_regionType === 'account_invoices');
+            var _isAccountEmail    = (_regionType === 'account_email');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
             var _curFormId = parseInt(_cfg.custom_form_page_id || _cfg.form_page_id || 0, 10);
@@ -27310,6 +28571,8 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Place it wherever the way to the cart belongs — beside the login region in the header, in a footer, on a product page. The count is read on every page, so after an add the next page already shows it. The badge is shown while the cart has something in it.');
             } else if (_isAccountInvoices) {
                 _sourceInfoHtml = _sdT('The signed-in customer\'s issued invoices and returns from the ERP, with the balance and the statement to download. It is drawn only while the ERP is on and the customer\'s contact is linked to an ERP account; for every other visitor it prints nothing, so it can sit on the My Account page of any site.');
+            } else if (_isAccountEmail) {
+                _sourceInfoHtml = _sdT('Choose this page as the welcome e-mail in a Registration Entrance or Membership Entrance widget, or as the reset e-mail in a Forgot Password widget. The member\'s name, address and links are filled in only when the e-mail is sent; a visitor who opens the page sees them empty. E-mail programs drop stylesheets: give the elements their look with inline styles too.');
             } else if (_isLoginRegion) {
                 _sourceInfoHtml = _sdT('Place it in the header of every page. It has two parts: what a visitor who is not signed in sees and what a signed-in member sees — switch between them on the band above it on the canvas. A link whose page the site does not have is left out.');
             } else if (_isMyAccount) {
@@ -28186,6 +29449,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
+
+                // ── Filters (form_item_view): which records the page shows ──
+                // Same rows and handlers as the list's filters; a record
+                // outside them is not found, in its feed and sitemap too.
+                systemSection += sect('bi-funnel', _sdT('Filters'),
+                    _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _fivFields || [], _fivFields === null,
+                        _sdT('The page shows a record only when it matches every filter; any other address gets the not-found state, and the record stays out of the page\'s RSS feed and the sitemap. For example, Status is equal to Published keeps drafts off this page. The filters belong to this widget, not to the form: give every other public list and record view of the same form, on any page, the same filter, because a record\'s pretty address opens on every page that shows its form. If a filtered field is renamed or deleted, or the widget is pointed at another form, the page shows no record. E-mails still show the record they were sent for.')));
             }
 
             // ── Records in the translation (form list / detail) ───────────
@@ -28341,7 +29611,8 @@ const StyleDesigner = (function () {
                     row(_sdT('Sign-in page'),
                         '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
-                    )
+                    ) +
+                    _swAccountEmailRow(sid, _cfg, 'reset')
                 );
             }
 
@@ -28370,6 +29641,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
@@ -28847,6 +30119,7 @@ const StyleDesigner = (function () {
                         '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
+                    _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
                         '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
@@ -30578,6 +31851,8 @@ const StyleDesigner = (function () {
         //   data-sw-cfg-kind      text (default) | int (clamped to min/max) |
         //                         choice (one of data-sw-cfg-choices) | page
         //   data-sw-cfg-list="key" checkboxes that together write an id list
+        //   data-sw-cfg-repaint   the panel is redrawn once saved (a hint
+        //                         under the control depends on the value)
         document.querySelectorAll('#sd-properties [data-sw-cfg]').forEach(function (el) {
             el.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
@@ -30608,7 +31883,8 @@ const StyleDesigner = (function () {
                 // type radios), so the canvas repaints after it.
                 _patchSysCfg(sid, function (cfg) { cfg[key] = v; },
                     (kind === 'choice') ? { afterSave: function () { renderProperties(); render(); } }
-                        : ((kind === 'bool') ? { afterSave: function () { render(); } } : undefined));
+                        : ((kind === 'bool') ? { afterSave: function () { render(); } }
+                            : (this.dataset.swCfgRepaint ? { afterSave: function () { renderProperties(); } } : undefined)));
             });
         });
         document.querySelectorAll('#sd-properties [data-sw-cfg-list]').forEach(function (el) {
@@ -31925,6 +33201,27 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // account_email token palette — mirrors _render_system_widget_account_email()
+    // in widgets_account.php. Filled only when the page is sent as a welcome
+    // or password reset e-mail; anywhere else the values are empty and the
+    // links drop.
+    var SW_ACCOUNT_EMAIL_TOKEN_GROUPS = [
+        { label: _sdT('Member'), tokens: [
+            ['__user_name',        _sdT('Name (full name, else the user name)')],
+            ['__user_first_name',  _sdT('First name (else the user name)')],
+            ['__user_email',       _sdT('Email')],
+            ['__username',         _sdT('User name')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__set_password_url', _sdT('Set password link (password reset e-mail only)')],
+            ['__login_url',        _sdT('Sign-in page address (the link drops when there is none)')],
+            ['__my_account_url',   _sdT('My account page address (the link drops when there is none)')]
+        ]},
+        { label: _sdT('Site'), tokens: [
+            ['__site_name',        _sdT('Site name')]
+        ]}
+    ];
+
     var SW_ACCOUNT_TOKEN_PALETTES = {
         login_region:      SW_LOGIN_REGION_TOKEN_GROUPS,
         cart_link:         SW_CART_LINK_TOKEN_GROUPS,
@@ -31936,7 +33233,8 @@ const StyleDesigner = (function () {
         email_preferences: SW_EMAIL_PREFERENCES_TOKEN_GROUPS,
         address_book:      SW_ADDRESS_BOOK_TOKEN_GROUPS,
         account_security:  SW_ACCOUNT_SECURITY_TOKEN_GROUPS,
-        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS
+        account_invoices:  SW_ACCOUNT_INVOICES_TOKEN_GROUPS,
+        account_email:     SW_ACCOUNT_EMAIL_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -32854,6 +34152,10 @@ const StyleDesigner = (function () {
             ['has_badge',        _sdT('The member has a badge')],
             ['is_staff',         _sdT('The visitor may open the staff page')],
             ['has_panel_access', _sdT('The user has work in the control panel')]
+        ],
+        account_email: [
+            ['is_welcome',        _sdT('The e-mail welcomes a new account')],
+            ['is_password_reset', _sdT('The e-mail carries a password reset link')]
         ],
         error_page: [
             ['is_not_found',   _sdT('The page was not found (404)')],
@@ -44157,6 +45459,7 @@ const StyleDesigner = (function () {
         { type: 'address_book',      label: _sdT('Address Book'),      slug: _sdT('address-book'),      icon: 'bi-journal-bookmark' },
         { type: 'account_security',  label: _sdT('Account Security'),  slug: _sdT('security'),          icon: 'bi-shield-check' },
         { type: 'account_invoices',  label: _sdT('My Invoices'),       slug: _sdT('invoices'),          icon: 'bi-receipt-cutoff' },
+        { type: 'account_email',     label: _sdT('Account E-mail'),    slug: _sdT('account-email'),     icon: 'bi-envelope-check' },
         { type: 'logout',            label: _sdT('Logout'),            slug: _sdT('logout'),            icon: 'bi-box-arrow-right' },
         { type: 'error_page',        label: _sdT('Error Page (404)'),  slug: _sdT('error'),             icon: 'bi-exclamation-octagon' },
         { type: 'language_switcher', label: _sdT('Language Switcher'), slug: _sdT('language'),          icon: 'bi-translate' }
@@ -44166,7 +45469,7 @@ const StyleDesigner = (function () {
     var _SW_ACCOUNT_TYPES  = { logout: 1, change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1, account_security: 1 };
     var _SW_ACCOUNT_SINGLE = { logout: 1, change_password: 1, set_password: 1, account_profile: 1 };
     // Other widgets that show one screen and never repeat their loop_area.
-    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1 };
+    var _SW_ONE_SCREEN = { error_page: 1, login_region: 1, cart_link: 1, account_email: 1 };
     function _swTypeInfo(type) {
         for (var i = 0; i < SW_TYPES.length; i++) if (SW_TYPES[i].type === type) return SW_TYPES[i];
         return null;
@@ -44633,7 +45936,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -44663,10 +45966,17 @@ const StyleDesigner = (function () {
             // so the filter is not rewritten behind the designer's back.
             if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
 
-            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var rawOp = String(f.operator == null ? '' : f.operator);
+            var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
+            // An operator outside the list (a hand-written config) is skipped
+            // by a list and closes a record view, so on a row with a field it
+            // stays visible here instead of reading as "is equal to".
+            var opBad = !opKnown && field !== '';
+            var op = opKnown ? rawOp : 'is equal to';
             var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
-                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
+            if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -44695,7 +46005,7 @@ const StyleDesigner = (function () {
         });
         html +=
             '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
-            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
 
@@ -44806,6 +46116,56 @@ const StyleDesigner = (function () {
             if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
         }
         return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+    }
+
+    // The setting row of an account e-mail: the page sent as the welcome
+    // e-mail of a registration or membership widget (kind 'welcome') or as
+    // the reset e-mail of a forgot password widget (kind 'reset'), its
+    // subject, and a line saying what goes out - or what is missing for the
+    // page to be sent. The keys are the ones pg_account_email_keys() reads.
+    // The page is picked before its Account E-mail widget is added
+    // (otherTabs), so a page that still lacks one is named in the hint.
+    function _swAccountEmailRow(sid, cfg, kind) {
+        var reset   = (kind === 'reset');
+        var pageKey = reset ? 'reset_email_page_id' : 'welcome_email_page_id';
+        var subjKey = reset ? 'reset_email_subject' : 'welcome_email_subject';
+        var cur     = (cfg[pageKey] == null) ? '' : String(cfg[pageKey]);
+        var opts    = _swPageOptions(cur, _allPagesCache, {
+            types: ['account_email'],
+            otherTabs: _sdT('This design — no Account E-mail widget yet'),
+            none: reset ? _sdT('— Built-in text e-mail —') : _sdT('— No welcome e-mail —')
+        });
+        var note = function (text, warn) {
+            return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                       (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+        };
+        var tab = null, server = null;
+        ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (_swPageRef(p) === cur) tab = p; });
+        if (/^\d+$/.test(cur) && cur !== '0' && _allPagesCache) {
+            _allPagesCache.forEach(function (p) { if (String(p.page_id) === cur) server = p; });
+        }
+        var name = tab ? (tab.page_name || _sdT('New Page')) : (server ? (server.page_name || ('#' + cur)) : '');
+        // A tab not opened yet has its widgets outside the cache: the saved
+        // page's widget list (list_all_pages) answers for it too.
+        var serverHas = !!(server && Array.isArray(server.widgets) && server.widgets.indexOf('account_email') !== -1);
+        var hint;
+        if ((tab && !_swTabHasWidget(tab, ['account_email']) && !serverHas) ||
+            (!tab && server && Array.isArray(server.widgets) && !serverHas)) {
+            hint = note(_sdT('"{var}" has no Account E-mail widget yet, so the e-mail cannot show the member\'s name or links. Add one to that page.', name), true);
+        } else if (tab && _pgDraftsReady() && tab.page_draft) {
+            hint = note(_sdT('"{var}" is a draft. A draft page is not sent: publish it.', name), true);
+        } else if (reset) {
+            hint = note(_sdT('Sent to the account\'s address when the page shows a link bound to "{var}"; otherwise the built-in text e-mail goes out.', _swBindLabel('account_email', '__set_password_url')), false);
+        } else {
+            hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
+        }
+        return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
+            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
+                ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
+            hint +
+            note(_sdT('The subject is plain text: no data can be bound into it.'), false)
+        );
     }
 
     function _swPageOptions(cur, serverPages, o) {
@@ -47649,6 +49009,59 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'account_email': {
+                // The member part of a welcome and a password reset e-mail;
+                // the server keeps the part of the e-mail being sent
+                // (is_welcome / is_password_reset). E-mail programs drop
+                // linked stylesheets, so the texts and the button also carry
+                // inline styles. A colour fallback sits inside var(): a
+                // client that reads var() but blocks the linked stylesheet
+                // would otherwise drop the button's background. The name stands in an element of its own: a
+                // translated page matches whole texts, and a sentence with
+                // the name inside it would no longer match. Mirrors
+                // _render_system_widget_account_email().
+                var aeStyle = function (css) { return [{ name: 'style', value: css }]; };
+                var aeGreeting = function () {
+                    return createNode('semantic', { tag: 'h1', cssClass: 'h4 fw-bold mb-3', customName: _sdT('Greeting'),
+                        _attrs: aeStyle('font-size:22px;font-weight:700;margin:0 0 16px;color:#111827') }, [
+                        createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Hello,'), customName: _sdT('Label'),
+                            _attrs: aeStyle('margin-right:4px') }),
+                        createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('Jane'), customName: _sdT('First Name'),
+                            _bindings: { text: '__user_first_name' } })
+                    ]);
+                };
+                var aePara = function (text, extraCss) {
+                    return createNode('content', { contentType: 'paragraph', text: text, cssClass: 'mb-3',
+                        _attrs: aeStyle('margin:0 0 16px' + (extraCss || '')) });
+                };
+                var aeButton = function (text, token) {
+                    return createNode('semantic', { tag: 'p', cssClass: 'my-4', customName: _sdT('Button'),
+                        _attrs: aeStyle('margin:24px 0') }, [
+                        createNode('content', { contentType: 'link', text: text, href: '#', cssClass: 'btn btn-primary px-4',
+                            _attrs: aeStyle('display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;' +
+                                'background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff)'),
+                            _bindings: { href: token } })
+                    ]);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Welcome E-mail'),
+                        _bindings: { eo_visible_if: 'is_welcome' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('Your account is ready.')),
+                        aeButton(_sdT('Go to my account'), '__my_account_url')
+                    ]),
+                    createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Reset E-mail'),
+                        _bindings: { eo_visible_if: 'is_password_reset' } }, [
+                        aeGreeting(),
+                        aePara(_sdT('We received a request to reset your password.')),
+                        aeButton(_sdT('Set a new password'), '__set_password_url'),
+                        aePara(_sdT('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'),
+                            ';font-size:13px;color:#6b7280')
+                    ]),
+                    createNode('loop_area', {}, [])
+                ]);
+            }
+
             case 'error_page': {
                 // The site's error screen: one block for "not found", one for
                 // maintenance mode, one for every other error; the server
@@ -48349,7 +49762,8 @@ const StyleDesigner = (function () {
     // step. Their layouts get no Messages block, and one an older layout still
     // carries is dropped on load (prefetchShared()): on the canvas it was a
     // "PHP Messages" box in the middle of the header that the page never shows.
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1 };
+    // An e-mail shows no alerts either (_render_system_widget_account_email()).
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -55988,6 +57402,35 @@ const StyleDesigner = (function () {
             { label: _sdT('Loyalty: Stamp Card'),         type: 'component', icon: 'bi-cup-hot',               extra: { componentType: 'loyalty-stamps' } },
             { label: _sdT('Events: Cards'),               type: 'component', icon: 'bi-calendar2-event',       extra: { componentType: 'events-cards' } },
             { label: _sdT('Notice: Announcement'),        type: 'component', icon: 'bi-megaphone',             extra: { componentType: 'notice-promo' } },
+            { label: _sdT('Maintenance: Centered'),        type: 'component', icon: 'bi-tools',                  extra: { componentType: 'maintenance-centered' } },
+            { label: _sdT('Maintenance: Split'),           type: 'component', icon: 'bi-layout-split',           extra: { componentType: 'maintenance-split' } },
+            { label: _sdT('Maintenance: Status Board'),    type: 'component', icon: 'bi-activity',               extra: { componentType: 'maintenance-status' } },
+            { label: _sdT('Maintenance: Dark'),            type: 'component', icon: 'bi-moon-stars',             extra: { componentType: 'maintenance-dark' } },
+            { label: _sdT('Coming Soon: Launch Date'),     type: 'component', icon: 'bi-rocket-takeoff',         extra: { componentType: 'coming-soon-launch' } },
+            { label: _sdT('Coming Soon: Split'),           type: 'component', icon: 'bi-hourglass-split',        extra: { componentType: 'coming-soon-split' } },
+            { label: _sdT('News: Ticker'),                 type: 'component', icon: 'bi-broadcast',              extra: { componentType: 'news-ticker' } },
+            { label: _sdT('News: Headline Rotator'),       type: 'component', icon: 'bi-arrow-repeat',           extra: { componentType: 'news-ticker-rotator' } },
+            { label: _sdT('News: Trending Topics'),        type: 'component', icon: 'bi-hash',                   extra: { componentType: 'news-trending' } },
+            { label: _sdT('News: Weather Card'),           type: 'component', icon: 'bi-cloud-sun',              extra: { componentType: 'news-weather-card' } },
+            { label: _sdT('News: Weather Strip'),          type: 'component', icon: 'bi-thermometer-half',       extra: { componentType: 'news-weather-strip' } },
+            { label: _sdT('News: Weekly Forecast'),        type: 'component', icon: 'bi-calendar-week',          extra: { componentType: 'news-weather-forecast' } },
+            { label: _sdT('News: Markets Strip'),          type: 'component', icon: 'bi-graph-up-arrow',         extra: { componentType: 'news-markets' } },
+            { label: _sdT('News: Lead Story Grid'),        type: 'component', icon: 'bi-grid-1x2',               extra: { componentType: 'news-lead-grid' } },
+            { label: _sdT('News: Latest + Most Read'),     type: 'component', icon: 'bi-list-ol',                extra: { componentType: 'news-latest-mostread' } },
+            { label: _sdT('News: Category Columns'),       type: 'component', icon: 'bi-layout-three-columns',   extra: { componentType: 'news-category-columns' } },
+            { label: _sdT('News: Live Coverage'),          type: 'component', icon: 'bi-record-circle',          extra: { componentType: 'news-live-blog' } },
+            { label: _sdT('News: Article Header'),         type: 'component', icon: 'bi-file-earmark-text',      extra: { componentType: 'news-article-header' } },
+            { label: _sdT('News: Author Box'),             type: 'component', icon: 'bi-person-vcard',           extra: { componentType: 'news-author-box' } },
+            { label: _sdT('Bento: Features'),              type: 'component', icon: 'bi-grid-1x2-fill',          extra: { componentType: 'bento-features' } },
+            { label: _sdT('Bento: Gallery'),               type: 'component', icon: 'bi-images',                 extra: { componentType: 'bento-gallery' } },
+            { label: _sdT('Marquee: Big Words'),           type: 'component', icon: 'bi-type',                   extra: { componentType: 'marquee-words' } },
+            { label: _sdT('Marquee: Logos'),               type: 'component', icon: 'bi-buildings',              extra: { componentType: 'marquee-logos' } },
+            { label: _sdT('Showcase: Floating Badges'),    type: 'component', icon: 'bi-window-stack',           extra: { componentType: 'showcase-floating' } },
+            { label: _sdT('Showcase: Vertical Tabs'),      type: 'component', icon: 'bi-segmented-nav',          extra: { componentType: 'showcase-tabs' } },
+            { label: _sdT('Quote: Pull Quote'),            type: 'component', icon: 'bi-quote',                  extra: { componentType: 'quote-pull' } },
+            { label: _sdT('Quote: Spotlight'),             type: 'component', icon: 'bi-chat-quote',             extra: { componentType: 'quote-spotlight' } },
+            { label: _sdT('Gallery: Polaroid'),            type: 'component', icon: 'bi-camera',                 extra: { componentType: 'gallery-polaroid' } },
+            { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
     }
@@ -55998,14 +57441,17 @@ const StyleDesigner = (function () {
         var groups = [
             { title: _sdT('Page Header'),      icon: 'bi-window-sidebar',     match: ['navbar-', 'hero-', 'breadcrumbs-'] },
             { title: _sdT('Marketing'),        icon: 'bi-megaphone',          match: ['cta-', 'features-', 'stats-', 'pricing-', 'compare-', 'logos-'] },
+            { title: _sdT('Creative'),         icon: 'bi-magic',              match: ['bento-', 'marquee-', 'showcase-', 'quote-', 'gallery-', 'scroller-'] },
             { title: _sdT('Social Proof'),     icon: 'bi-patch-check',        match: ['testimonial-', 'team-'] },
             { title: _sdT('Services & Booking'), icon: 'bi-calendar-check',   match: ['services-', 'steps-', 'booking-'] },
             { title: _sdT('Hours & Locations'), icon: 'bi-geo-alt',           match: ['hours-', 'locations-'] },
             { title: _sdT('Food & Drink'),     icon: 'bi-cup-hot',            match: ['menu-', 'catering-', 'loyalty-'] },
             { title: _sdT('Content Lists'),    icon: 'bi-collection',         match: ['blog-', 'faq-', 'timeline-', 'image-', 'events-'] },
+            { title: _sdT('News & Magazine'),  icon: 'bi-newspaper',          match: ['news-'] },
             { title: _sdT('Forms & Access'),   icon: 'bi-envelope-paper',     match: ['contact-', 'newsletter-', 'login-'] },
             { title: _sdT('Page Footer'),      icon: 'bi-window-dock',        match: ['footer-'] },
             { title: _sdT('Status & Utility'), icon: 'bi-shield-exclamation', match: ['error-', 'alert-', 'notice-', 'theme-switcher-'] },
+            { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
@@ -56058,6 +57504,59 @@ const StyleDesigner = (function () {
         'pg-logo-44':      '.pg-logo-44 { max-height: 44px; filter: grayscale(100%); opacity: .7; }',
         'pg-logo-48':      '.pg-logo-48 { max-height: 48px; filter: grayscale(100%); }',
         'pg-logo-60':      '.pg-logo-60 { max-height: 60px; }',
+        // Shared by the news ticker and the creative marquees: a track of two
+        // identical groups slides by half its width, so the loop is seamless.
+        // Hover, keyboard focus and the pause checkbox stop it; reduced motion
+        // turns it into a plain scrollable strip without the duplicate group.
+        // The groups take their flex layout from .pg-marquee-group, not from
+        // d-flex: a display utility outranks any block rule and would keep
+        // the copy visible.
+        // The pause label draws its border, focus ring and checked tint in
+        // currentColor, so it stays visible on any surface; when checked it
+        // shows its play icon instead of the pause icon.
+        'pg-marquee':      '.pg-marquee-viewport { overflow: hidden; }\n' +
+                           '.pg-marquee-track { display: flex; flex-wrap: nowrap; width: max-content; animation: pg-marquee 40s linear infinite; }\n' +
+                           '.pg-marquee-group { display: flex; align-items: center; }\n' +
+                           '.pg-marquee-reverse .pg-marquee-track { animation-direction: reverse; }\n' +
+                           '[dir="rtl"] .pg-marquee-track { animation-name: pg-marquee-rtl; }\n' +
+                           '.pg-marquee:hover .pg-marquee-track, .pg-marquee:focus-within .pg-marquee-track, .pg-marquee:has(.pg-marquee-pause:checked) .pg-marquee-track { animation-play-state: paused; }\n' +
+                           '.pg-marquee-toggle .btn { --bs-btn-border-color: currentColor; --bs-btn-hover-border-color: currentColor; --bs-btn-focus-box-shadow: 0 0 0 .2rem currentColor; --bs-btn-active-color: var(--bs-btn-color); --bs-btn-active-bg: color-mix(in srgb, currentColor 20%, transparent); --bs-btn-active-border-color: currentColor; }\n' +
+                           '.pg-marquee-toggle .bi-play-fill, .pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-pause-fill { display: none; }\n' +
+                           '.pg-marquee-toggle:has(.pg-marquee-pause:checked) .bi-play-fill { display: inline-block; }\n' +
+                           '@keyframes pg-marquee { to { transform: translateX(-50%); } }\n' +
+                           '@keyframes pg-marquee-rtl { to { transform: translateX(50%); } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-marquee-viewport { overflow-x: auto; } .pg-marquee-track, [dir="rtl"] .pg-marquee-track { animation: none; } .pg-marquee .pg-marquee-copy, .pg-marquee .pg-marquee-toggle { display: none; } }',
+        // Dark scrim under text placed on a photo; the box also carries
+        // data-bs-theme="dark", so the text colour never depends on the photo.
+        'pg-shade-bottom': '.pg-shade-bottom { background-image: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .45) 50%, rgba(0, 0, 0, 0)); }',
+        // A spinner-grow used as a decorative pulse (dark maintenance band,
+        // live badge): under reduced motion it stands still and stays
+        // visible (a resting .spinner-grow is transparent).
+        'pg-pulse-still':  '@media (prefers-reduced-motion: reduce) { .pg-pulse-still { animation: none; opacity: 1; } }',
+        // News: stories and articles
+        // Lead photo of the news lead grid, on a Bootstrap .ratio box: square
+        // on phones, wide on tablets, 4:3 beside the small stories from 992 px.
+        'pg-ratio-lead':   '.pg-ratio-lead { --bs-aspect-ratio: 100%; }\n' +
+                           '@media (min-width: 768px) { .pg-ratio-lead { --bs-aspect-ratio: 56.25%; } }\n' +
+                           '@media (min-width: 992px) { .pg-ratio-lead { --bs-aspect-ratio: 75%; } }',
+
+        // Creative blocks
+        // Soft edges for a logo marquee: a mask only, so no colour is added.
+        'pg-marquee-fade': '.pg-marquee-fade { -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); }',
+        // A small card that floats over a picture from 992 px; below that it
+        // stays in the flow. Bootstrap top-*/start-*/end-*/bottom-* place it.
+        'pg-float':        '@media (min-width: 992px) { .pg-float { position: absolute; z-index: 1; max-width: 16rem; } }',
+        // Polaroid tilt from 768 px (a card carries pg-tilt plus
+        // pg-tilt-left or pg-tilt-right); hover straightens the card.
+        'pg-tilt':         '@media (min-width: 768px) { .pg-tilt { transition: transform .3s ease; } .pg-tilt-left { transform: rotate(-3deg); } .pg-tilt-right { transform: rotate(2deg); } .pg-tilt:hover { transform: none; } }\n' +
+                           '@media (prefers-reduced-motion: reduce) { .pg-tilt { transition: none; } }',
+        // Large round portrait (the image's own width/height props are
+        // not a size the browser applies).
+        'pg-circle-160':   '.pg-circle-160 { width: 160px; height: 160px; }',
+        // A sideways card row that stops on a card edge after each swipe.
+        'pg-snap':         '.pg-snap { scroll-snap-type: x mandatory; }',
+        'pg-snap-item':    '.pg-snap-item { scroll-snap-align: start; }',
+
         'pg-brand-center': '@media (min-width: 992px) { .pg-brand-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 1; } }'
     };
     // ctype -> the rules that block needs. Kept next to the rules so adding a
@@ -56083,6 +57582,33 @@ const StyleDesigner = (function () {
         'services-image-cards': ['pg-ratio-16x9'],
         'locations-cards':      ['pg-ratio-16x9'],
         'menu-cards':           ['pg-ratio-1x1'],
+        // Maintenance and launch blocks
+        'maintenance-dark':     ['pg-pulse-still', 'pg-tracking'],
+        'coming-soon-launch':   ['pg-tracking'],
+
+        // News: bands and widgets
+        'news-ticker':          ['pg-marquee'],
+        'news-weather-forecast': ['pg-progress-8'],
+
+        // News: stories and articles
+        'news-lead-grid':        ['pg-ratio-lead', 'pg-shade-bottom', 'pg-ratio-16x9'],
+        'news-latest-mostread':  ['pg-thumb-100'],
+        'news-category-columns': ['pg-ratio-16x9'],
+        'news-live-blog':        ['pg-ratio-16x9', 'pg-pulse-still'],
+        'news-article-header':   ['pg-ratio-16x9', 'pg-circle-40'],
+        'news-author-box':       ['pg-thumb-100'],
+
+        // Creative blocks
+        'bento-features':       ['pg-ratio-16x9'],
+        'bento-gallery':        ['pg-ratio-1x1', 'pg-ratio-16x9'],
+        'marquee-words':        ['pg-marquee'],
+        'marquee-logos':        ['pg-marquee', 'pg-marquee-fade', 'pg-logo-44'],
+        'showcase-floating':    ['pg-float'],
+        'showcase-tabs':        ['pg-ratio-16x9'],
+        'quote-spotlight':      ['pg-circle-160'],
+        'gallery-polaroid':     ['pg-ratio-1x1', 'pg-tilt'],
+        'scroller-cards':       ['pg-ratio-16x9', 'pg-snap', 'pg-snap-item'],
+
         'events-cards':         ['pg-ratio-16x9']
     };
 

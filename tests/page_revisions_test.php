@@ -4,7 +4,9 @@
  *
  * Tests for the pure parts of includes/fn/page_revisions.php: the retention
  * rule (which revisions expire), the settings snapshot read from a page row,
- * the source labels and the identity check that spares a duplicate row.
+ * the source labels, the identity check that spares a duplicate row, and the
+ * first revision of a page that has none (its values, the style's tree as
+ * fallback, and where the save calls it).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -167,6 +169,97 @@ function test_page_revisions_seed_values()
 	unset($row['page_tree_json']);
 	pg_assert_same(null, pg_page_revision_seed_values($row, 1800000000));
 	pg_assert_same(null, pg_page_revision_seed_values(null, 1800000000));
+}
+
+// A page saved before the per-page tree (no page_tree_json; the editor opens
+// it with its style's tree) is recorded with the style's tree and body, so
+// its first changing save still leaves a way back. A page with a tree of its
+// own keeps it; a page with no tree anywhere still gives nothing to record.
+function test_page_revisions_seed_row_takes_the_style_tree()
+{
+	$row = array(
+		'page_id'        => 9,
+		'page_style'     => 4,
+		'page_name'      => 'contact',
+		'page_tree_json' => null,
+		'page_tree_code' => null,
+		'page_user'      => 2,
+		'page_timestamp' => 1700000000,
+	);
+
+	$values = pg_page_revision_seed_values(
+		pg_page_revision_seed_row($row, '{"type":"root","from":"style"}', '<div>Style</div>'), 1800000000);
+
+	pg_assert_true(is_array($values), 'an empty page tree is seeded from the style');
+	pg_assert_same('{"type":"root","from":"style"}', $values['tree_json']);
+	pg_assert_same(sha1('{"type":"root","from":"style"}'), $values['tree_hash']);
+	pg_assert_same(sha1('<div>Style</div>'), $values['code_hash']);
+	pg_assert_same(4, $values['style_id']);
+	pg_assert_same(1700000000, $values['created_at']);
+
+	// An empty string is as empty as NULL.
+	$row['page_tree_json'] = " \n";
+	pg_assert_same('{"type":"root","from":"style"}',
+		pg_page_revision_seed_row($row, '{"type":"root","from":"style"}', '')['page_tree_json']);
+
+	// The page's own tree wins over the style's, and so does its own body.
+	$own = $row;
+	$own['page_tree_json'] = '{"type":"root","from":"page"}';
+	$own['page_tree_code'] = '<div>Page</div>';
+	pg_assert_same($own, pg_page_revision_seed_row($own, '{"type":"root","from":"style"}', '<div>Style</div>'));
+
+	// A page body already there is kept when only the tree is missing.
+	$body = $row;
+	$body['page_tree_code'] = '<div>Page</div>';
+	pg_assert_same('<div>Page</div>', pg_page_revision_seed_row($body, '{"type":"root"}', '<div>Style</div>')['page_tree_code']);
+
+	// No tree on the page or on the style: still nothing to record.
+	pg_assert_same(null, pg_page_revision_seed_values(pg_page_revision_seed_row($row, '', '<div>Style</div>'), 1800000000));
+	pg_assert_same(null, pg_page_revision_seed_row(null, '{"type":"root"}', ''));
+}
+
+// The first revision is written from the row as stored, so the seed must run
+// before the save's UPDATE and the publish's revision after it; the other way
+// round revision 1 would be the new state and History would have no way back.
+function test_page_revisions_seed_written_before_the_update()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	$from = strpos($source, 'function pg_designer_save_page(');
+	$end = ($from === false) ? false : strpos($source, "\nfunction ", $from + 1);
+	$body = ($from === false) ? '' : (($end === false) ? substr($source, $from) : substr($source, $from, $end - $from));
+
+	$seed = strpos($body, 'pg_page_revision_seed($page_id)');
+	$update = strpos($body, 'db("UPDATE page SET');
+	$record = strpos($body, '$revision_no = pg_page_revision_record(');
+
+	pg_assert_true(($seed !== false) && ($update !== false) && ($record !== false), 'seed, update and record are there');
+	pg_assert_true($seed < $update, 'the seed reads the row before the save writes over it');
+	pg_assert_true($update < $record, 'the publish is recorded after the save');
+}
+
+// The seed and the publish that follows encode the settings the same way: a
+// save that changes neither the tree nor the settings finds the seed equal and
+// writes no second row; a changed tree does.
+function test_page_revisions_seed_then_identical_save()
+{
+	$row = array(
+		'page_id'        => 7,
+		'page_style'     => 3,
+		'page_name'      => 'about',
+		'page_folder'    => 1,
+		'page_title'     => 'Über uns / About',
+		'page_tree_json' => '{"type":"root"}',
+		'page_tree_code' => '<div>About</div>',
+		'page_user'      => 5,
+		'page_timestamp' => 1700000000,
+	);
+
+	$values = pg_page_revision_seed_values($row, 1800000000);
+	$latest = array('tree_hash' => $values['tree_hash'], 'settings_json' => $values['settings_json']);
+	$settings_json = (string) json_encode(pg_page_revision_settings_from_row($row), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+	pg_assert_same(true, pg_page_revision_identical($latest, sha1('{"type":"root"}'), $settings_json));
+	pg_assert_same(false, pg_page_revision_identical($latest, sha1('{"type":"root","x":1}'), $settings_json));
 }
 
 // History › Compare draws the revision with the shared components and
