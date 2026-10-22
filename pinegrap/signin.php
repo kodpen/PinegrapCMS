@@ -151,13 +151,26 @@ if (!$user_id && !$identity['email_verified']) {
 
 // The verified address belongs to an account here that is tied to another
 // person at this provider: it is not taken over, and a second account with
-// the same address is not opened beside it.
-if (!$user_id && pg_signin_address_user($email)) {
+// the same address is not opened beside it. An account whose address only
+// folds to it (accents) is neither tied nor doubled either: the sign-up
+// forms count it as the same address too.
+$address_refusal = $user_id ? '' : pg_signin_address_refusal($email, pg_signin_address_accounts($email));
+
+if ($address_refusal === 'connected') {
     log_activity(lang(array(
         'string' => '{var:1} sign-in refused: the account with the address {var:2} is connected to another {var:1} account',
         'vars'   => array($label, $email))), '');
     pg_signin_fail(lang(array(
         'string' => 'You signed in to {var:1} as {var:2}. The account on this site with that address is already connected to another {var:1} account, so this one cannot sign in to it. Please sign in with your password, or ask the site owner to disconnect the other {var:1} account from yours.',
+        'vars'   => array($label, $email))), $identity);
+}
+
+if ($address_refusal === 'in_use') {
+    log_activity(lang(array(
+        'string' => '{var:1} sign-in refused: {var:2} differs from the address of an existing account only in accents or similar letters, so it was not tied to that account',
+        'vars'   => array($label, $email))), '');
+    pg_signin_fail(lang(array(
+        'string' => 'You signed in to {var:1} as {var:2}, but an account on this site already uses an e-mail address written almost the same way, so this {var:1} account cannot sign in to it or open a new one. If that account is yours, sign in with your password and connect {var:1} from your account page.',
         'vars'   => array($label, $email))), $identity);
 }
 

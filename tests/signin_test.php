@@ -7,8 +7,9 @@
  * screen may do with an unknown identity, when an e-mail address counts as
  * verified, who the person is, the names for the address book, the pasted
  * Apple key and the client secret JWT signed with it, the badges of the
- * user and session lists, and when a "Connect" button may start and what
- * its answer does.
+ * user and session lists, when a "Connect" button may start and what its
+ * answer does, and which account a verified address may be tied to (the
+ * stored address, letter case aside; never an accent-folded look-alike).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -411,4 +412,72 @@ function test_signin_connect_outcome()
 	pg_assert_same('signed_out', pg_signin_connect_outcome(7, 8, false, 0, false), 'another account signed in meanwhile');
 	pg_assert_same('signed_out', pg_signin_connect_outcome(0, 0, false, 0, false), 'no account named');
 	pg_assert_same('impersonated', pg_signin_connect_outcome(7, 7, true, 0, false), 'an operator signed in as the person');
+}
+
+// An address the provider vouches for is an account's address only when the
+// stored one is the same apart from letter case: user.user_email's collation
+// also folds accents, and "jane@sirket.com" is not "jane@şirket.com".
+function test_signin_same_address_user_needs_the_stored_address()
+{
+	$rows = array(
+		array('user_id' => '4', 'user_email' => 'jane@şirket.com'),
+		array('user_id' => '9', 'user_email' => 'Jane@Sirket.com'),
+	);
+	pg_assert_same(9, pg_signin_same_address_user($rows, 'jane@sirket.com'), 'the exact address, letter case aside, even after a look-alike');
+	pg_assert_same(4, pg_signin_same_address_user($rows, 'JANE@ŞIRKET.COM'), 'letter case aside in any script');
+	pg_assert_same(0, pg_signin_same_address_user(array($rows[0]), 'jane@sirket.com'), 'an accent-folded look-alike is not found');
+	pg_assert_same(0, pg_signin_same_address_user(array(array('user_id' => '5', 'user_email' => 'jane@example.com')), 'jäne@example.com'), 'accent in the name');
+	pg_assert_same(0, pg_signin_same_address_user(array(), 'jane@sirket.com'), 'no rows');
+	pg_assert_same(0, pg_signin_same_address_user($rows, ''), 'no address');
+	pg_assert_same(0, pg_signin_same_address_user(array('x', array('user_id' => '3')), 'jane@sirket.com'), 'malformed rows');
+}
+
+// Why a verified address nobody matched is refused: the same account tied to
+// another person at the provider, or only a look-alike in use.
+function test_signin_address_refusal()
+{
+	$exact = array('user_id' => '9', 'user_email' => 'jane@sirket.com');
+	$alike = array('user_id' => '4', 'user_email' => 'jane@şirket.com');
+	pg_assert_same('', pg_signin_address_refusal('jane@sirket.com', array()), 'nobody uses it');
+	pg_assert_same('connected', pg_signin_address_refusal('jane@sirket.com', array($exact)), 'the address is an account\'s');
+	pg_assert_same('connected', pg_signin_address_refusal('Jane@Sirket.com', array($alike, $exact)), 'the exact one decides over a look-alike');
+	pg_assert_same('in_use', pg_signin_address_refusal('jane@sirket.com', array($alike)), 'only a look-alike');
+}
+
+// The shared rule: letter case aside, never an accent-folded look-alike; the
+// forgot password name answers the same.
+function test_signin_email_address_matches()
+{
+	pg_assert_true(pg_email_address_matches('Jane@Example.COM', 'jane@example.com'), 'case only');
+	pg_assert_true(pg_email_address_matches(' jane@example.com ', 'jane@example.com'), 'spaces');
+	pg_assert_false(pg_email_address_matches('jane@sirket.com', 'jane@şirket.com'), 'accent in the stored domain');
+	pg_assert_false(pg_email_address_matches('jane@exámple.com', 'jane@example.com'), 'accent in the given domain');
+	pg_assert_false(pg_email_address_matches('', ''), 'empty');
+	pg_assert_false(pg_email_address_matches(array('a@b.c'), 'a@b.c'), 'not a string');
+	pg_assert_same(pg_email_address_matches('jane@sirket.com', 'jane@şirket.com'), pg_password_reset_address_matches('jane@sirket.com', 'jane@şirket.com'), 'reset name is the same rule');
+}
+
+// pg_signin_match_user() ties an identity only to a row whose stored address
+// passes the exact-match rule, and the callback refuses a look-alike before
+// anything is opened.
+function test_signin_match_user_source_uses_the_exact_match()
+{
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/signin.php');
+	$start = strpos($fn, 'function pg_signin_match_user(');
+	$end = ($start === false) ? false : strpos($fn, "\n}\n", $start);
+	$body = ($end === false) ? '' : substr($fn, $start, $end - $start);
+	pg_assert_true(strpos($body, 'pg_signin_same_address_user(db_items(') !== false, 'the lookup goes through the exact-match rule');
+	pg_assert_true(strpos($body, 'SELECT user.user_id, user.user_email') !== false, 'the lookup reads the stored address');
+	pg_assert_same(0, preg_match('/\$match_id\s*=\s*\(int\)\s*db_value\(/', $body), 'no first row taken as is');
+
+	$same = strpos($fn, 'function pg_signin_same_address_user(');
+	pg_assert_true($same !== false && strpos(substr($fn, $same, 600), 'pg_email_address_matches(') !== false, 'the rule is pg_email_address_matches()');
+
+	$cb = (string) file_get_contents(PG_FUNCTIONS_DIR . '/signin.php');
+	$refusal = strpos($cb, 'pg_signin_address_refusal($email, pg_signin_address_accounts($email))');
+	$in_use = strpos($cb, "if (\$address_refusal === 'in_use')");
+	$membership = strpos($cb, '$_SESSION[\'software\'][\'google_membership_pending\'] = array(');
+	$create = strpos($cb, 'pg_signin_create_member($identity)');
+	pg_assert_true($refusal !== false && $in_use !== false && $membership !== false && $create !== false
+		&& $refusal < $in_use && $in_use < $membership && $in_use < $create, 'a look-alike is refused before an account is handed over or opened');
 }
