@@ -250,6 +250,10 @@ if (!$_POST) {
         // if an error does not exist
         if ($registered['ok']) {
 
+            // The welcome e-mail, when the registration widget names a page
+            // for it (the posted widget, else the site's live one).
+            pg_account_email_send_welcome($registered['user_id'], 'registration', ($return_to !== '') ? (int) ($_POST['pg_widget_id'] ?? 0) : 0);
+
             $query_string = '';
 
             // if there is a send to, then add send to to query string

@@ -198,6 +198,10 @@ if (!$user_id) {
         log_activity(lang(array(
             'string' => 'member account opened with {var:1} ({var:2})',
             'vars'   => array($label, $email))), '');
+
+        // The welcome e-mail of the site's live registration widget, as
+        // for a sign-up through the form.
+        pg_account_email_send_welcome($user_id, 'registration', 0);
     }
 }
 
