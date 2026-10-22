@@ -11,7 +11,7 @@ description: Express order widget totals (designer pages) as submit_order() char
 - The widget read the discount and the gift card from those columns (always 0 at checkout) and summed every line, a subscription that starts later included. The visitor saw and confirmed ₺30,00 while ₺27,00 (10% off) or ₺22,00 (with a ₺5 gift card) was charged, or ₺60,00 for a cart charging ₺10,00 today. `submit_order()` refuses only a higher posted total, so nothing complained.
 - Checked on the sandbox by rendering the widget from the command line: 3 × ₺14,95 with a ₺5 gift card posted ₺52,92 before and ₺47,92 now; with a subscription starting in 30 days ₺147,26 before, ₺52,92 now.
 
-## How does the widget show a shipping charged a kurus lower?
+## How does the widget show a shipping charged a kurus lower? (#1211)
 - `pg_express_order_charged_totals()`'s `$settle_rates` lowers the shipping and the surcharge where a rate's total is out of reach (`pg_order_charges_reachable()`, erp/erp-order-charges-vat.md). The shipping script gets the stored shipping, the charged one and the total shown (`_eo_render_widget_js()`'s `$totals`): while the methods the page was drawn with stay picked it shows the charged shipping, and another pick moves the total by the shipping's difference. It used to add the displayed subtotal, tax and shipping on load, which dropped the order discount (52.92 after 5.00 off showed 57.93) and put 9.99 back.
 
 ## What is not shared?

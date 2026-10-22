@@ -3,7 +3,7 @@ name: erp-order-charges-vat
 description: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum) and the checkout's kurus-lower shipping for an out-of-reach rate total (9.99 shows 9.98)
 ---
 
-## How does an order's invoice tax its charges?
+## How does an order's invoice tax its charges? (#1211)
 - `erp_order_charge_lines()` (includes/erp/order_bridge.php): the shipping, the surcharge and the instalment charge hold their VAT inside, since the checkout adds none (`erp_shipping_taxed()` = `pg_order_charges_taxed()`: `config.erp_shipping_tax`, else untaxed only in a US store). A charge is shared between the goods' rates in proportion to what each rate's goods come to after the discount (`pg_order_charge_shares()`), one line per rate.
 - The VAT is taken with the goods of the rate, on the sum of all the rate's lines, as Paraşüt takes it: the charges' net is the amount `erp_rate_amount()` (includes/erp/money.php) finds for the rate's total, less the goods' net; the change from splitting each charge alone (`erp_split_gross()`) goes on the rate's largest charge line. 1.03 (VAT 0.21) and shipping 1.00 at 20%: alone 0.83 + 0.17, VAT 0.38 on 1.86; now 0.84 + 0.16, VAT 0.37 on 1.87, total 2.24 either way.
 

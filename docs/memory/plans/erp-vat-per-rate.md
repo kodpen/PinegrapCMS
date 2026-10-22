@@ -17,13 +17,13 @@ description: Plan (owner's decisions 2026-10-21; steps 1-4 done): the ERP takes 
 - `erp_rate_vat()` (includes/erp/money.php, #1001): lines in (net after discount, VAT rate, withholding rate, second tax rate); line VAT, second tax and withholding, the groups and the totals out. `tests/erp_money_test.php` reproduces Paraşüt's live figures and checks 2,000 random documents.
 - Typed documents (#1004): `erp_manual_lines_build()` takes the discounts per line, then the taxes from `erp_rate_vat()`; the editor's `rateTaxes()` / `allocate()` (assets/js/erp_invoice_editor.js) copy it to the kurus, ties to the first line as PHP 8's stable `arsort()`.
 - Orders (#1168): `pg_tax_by_rate()` / `pg_tax_spread()` (includes/fn/ecommerce.php) copy `erp_rate_vat()` / `erp_allocate()` for lines without withholding, so the checkout needs no ERP; `tests/order_tax_by_rate_test.php` holds them equal on random orders. Details: erp-discounted-order-vat.md.
-- Order charges (#PRNUM): VAT with the goods on the rate's sum; the checkout charges the shipping a kurus lower where a rate's total is out of reach: erp-order-charges-vat.md.
+- Order charges (#1211): VAT with the goods on the rate's sum; the checkout charges the shipping a kurus lower where a rate's total is out of reach: erp-order-charges-vat.md.
 
 ## What remains?
 1. Done: `erp_rate_vat()` and its tests (#1001).
 2. Done: typed documents and the editor preview (#1004).
 3. Done: returns per group of the return, capped by what is left; the card refund dialog asks the server (#1020).
-4. Orders, claim #1037: a) done, the rate on the line (#1055); b) done, the checkout's VAT per group and after a discount, `erp_order_lines()`, the till, the old buttons' rate check (#1168); c) done, the charges and the kurus-below rule (#PRNUM).
+4. Orders, claim #1037: a) done, the rate on the line (#1055); b) done, the checkout's VAT per group and after a discount, `erp_order_lines()`, the till, the old buttons' rate check (#1168); c) done, the charges and the kurus-below rule (#1211).
 5. The old order buttons (`parasut_create_invoice()`, includes/fn/parasut.php; stores without the ERP or its provider, erp-parasut-legacy-order-buttons.md) issue at once and only report the variance: the driver's shift there too until they go (erp-edocument-leftovers.md) (M).
 6. Memory: the rule into erp-money-and-currency.md and erp-discounted-order-vat.md as steps ship; this file goes when done.
 
