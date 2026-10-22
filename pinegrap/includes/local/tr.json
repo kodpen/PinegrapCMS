@@ -25360,5 +25360,6 @@
     "Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.": "Ziyaretçi yayındaki sayfada zengin metin editörüyle yazar (bu editörde ve önizlemesinde değil); yanıt betikleri ayıklanmış HTML olarak saklanır.",
     "Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).": "Yanıttaki sınıflar ve stiller kalır: yanıtları sitede ancak incelendikten sonra gösterin (kayıt görünümünde bir filtreyle).",
     "Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.": "Önceden verilmiş yanıtların metni kalır ama satır sonları kaybolur; kapatılırsa saklanan biçimlendirme kod olarak görünür.",
-    "rich text": "zengin metin"
+    "rich text": "zengin metin",
+    "The invoice is dated inside the books locked up to {var:1}, so it cannot be cancelled; a return invoice takes it back.": "Defterler {var:1} dahil kilitli ve fatura bu dönemde; iptal edilemez, bir iade faturasıyla geri alınır."
 }
