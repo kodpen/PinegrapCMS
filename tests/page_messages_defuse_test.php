@@ -259,3 +259,23 @@ function test_page_message_reserved_request_keys_are_not_fields()
 		}
 	});
 }
+
+// A message is HTML: a value it carries that came from a request, a stored
+// record or a database server goes in through h(). One fragment per call.
+function test_page_message_carried_values_are_escaped()
+{
+	$calls = array(
+		'add_erp_account.php'    => "'vars' => h(\$other['title'])",
+		'add_order.php'          => "\$liveform->mark_error('error', h(\$res['message']));",
+		'add_to_cart.php'        => "\$form->add_notice(h(\$notice));",
+		'edit_erp_account.php'   => "\$liveform->mark_error('contact_id', h(\$linked['error']));",
+		'email_preferences.php'  => "'vars' => array(h(\$liveform->get_field_value('email_address')))",
+		'install/index.php'      => "h(mysqli_connect_error())",
+	);
+
+	foreach ($calls as $file => $fragment) {
+		pg_assert_contains($fragment, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+
+	pg_assert_contains("h(mysqli_error(db::\$con))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), 'install/index.php');
+}
