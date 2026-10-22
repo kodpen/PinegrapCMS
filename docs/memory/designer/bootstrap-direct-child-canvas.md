@@ -17,6 +17,7 @@ The canvas needs BOTH:
 2. `X > .sd-wrap > * { …the rule itself… }`: re-apply the style to the real child.
 
 - In (2) do NOT copy Bootstrap's size rules (`width`/`max-width`/`flex`): `X > .sd-wrap > *` is more specific than `.col-md-6` and copying would override column widths. Carry only padding/margin.
+- A size taken from the parent (`h-100`, an inline `height:100%`) breaks the same way: the wrapper has no height, so the percentage resolves to auto (round panels in a square box collapsed to ovals on the canvas). The canvas passes the height on with `.sd-wrap:has(> .h-100) { height:100% }` (an `_SD_BX` rule in `style_designer.js`); the front end is never changed for it.
 - NEVER give a `<td>`/`<th>` `display:flex`: the cell leaves table layout and `colspan` is cancelled. Put the flexbox on a `<div>` inside the cell.
 
 Related: docs/memory/designer/designer-canvas-style-designer.md

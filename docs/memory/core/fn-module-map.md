@@ -3,7 +3,7 @@ name: fn-module-map
 description: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 ---
 
-## Which module holds what? (`includes/fn/`)
+## Which module in `includes/fn/` holds what?
 - `core`: db*, escape/h/e, JSON, date-time, `lang()`, `truncate`, mime, HTTP responses, `array_key_last` polyfill. LOADED FIRST.
 - `auth`: login, password, remember-me/device limit, bridge (`pg_code_version`...), CAPTCHA, login throttling, `validate_*_access`, `initialize_user`, access checks.
 - `forms`: `select_*` builders, option lists, form-data preparation, reference codes, front-end screen loaders.
@@ -15,6 +15,10 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - Widgets: `widgets_catalog` (catalog), `widgets_cart` (cart), `widgets_express_order` (`_eo_*` + order view), `widgets` (the others).
 - `custom_form` (`pg_cf_*` + form submission), `files` (file name/upload limits), `cron` (scheduled jobs), `tour` (tours; `PG_TOUR_SHELL_KEY` lives here).
 - `output`: `output_header/footer/menu/toolbar`, `pg_page_shell`, licence, asset versioning.
+- Sign-in and identity: `mfa` (two-step sign-in), `signin` (social sign-in), `connect` (connected accounts, the site as an OAuth client), `geo` (IP to country), `qr` (QR codes as inline SVG).
+- Store: `payments` (payment drivers), `carrier_api` (carriers' REST APIs), `returns` (customer returns), `price_history`, `product_feeds`, `currency_rates`, `legal_documents` (checkout legal documents).
+- Pages and designer: `meta_tags`, `design_templates_custom`, `design_themes`, `widgets_account`, `widgets_error`, `widgets_language`, `signature`, `page_revisions`, `page_schedule`, `maintenance_mode`, `language_redirect`, `translate` (front-end translation), `ai_crawlers` (robots.txt AI section), `ai_write`, `short_link_redirects`, `office` / `office_edit` (Word/Excel preview and cell edits).
+- System and visitors: `events` (`pg_announce()`), `backup_cloud`, `backup_restore`, `innodb`, `db_maintenance`, `ops_alerts`, `sms`, `visitor_retention`, `visitor_texts`, `visitor_partitions`, `visitor_ip`. Loaded only where needed: `search_console` (`seo_search_job.php`).
 - `system_status`: system-status card and checks, cache clearing, file integrity, write permissions, changelog reading, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
 - Added in 2026.4.8: `errors`, `mail_queue`, `backup`, `consent` (see `docs/memory/core/fn-module-errors-mail-backup-consent.md`).

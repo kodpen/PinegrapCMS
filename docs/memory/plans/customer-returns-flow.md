@@ -26,4 +26,4 @@ description: Plan (approved 2026-10-19, in progress: model, My Account, panel, r
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
 
 ## Where to start?
-- Step 5: `order.return.*` webhooks from the moves (`pg_return_move()`, `pg_return_refund()`), `GET/POST /orders/{id}/returns`, the `order.return.requested` trigger. Read `commerce/order-returns-refund.md` and the `pinegrap-dis-api` rules.
+- Step 5: `order.return.*` webhooks from the moves (`pg_return_move()`, `pg_return_refund()`), `GET/POST /orders/{id}/returns`, the `order.return.requested` trigger. Read `commerce/order-returns-refund.md` and `api/api-webhook-events.md`.

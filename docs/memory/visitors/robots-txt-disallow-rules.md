@@ -19,7 +19,7 @@ description: How noindex pages are written into robots.txt: anchored lines, whic
 - With no noindex page, `robots.txt` is byte-for-byte what it was before the feature.
 - The file is assembled by `pg_robots_txt_content()` (includes/fn/ai_crawlers.php); the AI section's Content-Signal line takes the same catch-all route as these rules: docs/memory/visitors/ai-crawlers-llms-txt.md.
 
-## Related gotchas
+## Which related traps should I know?
 - Splice `</head>` caveat for non-HTML pages: see docs/memory/visitors/seo-structure-non-html-output.md.
 - The WAF never blocks `/robots.txt`: see docs/memory/waf/waf-path-exemption-and-robots.md.
 

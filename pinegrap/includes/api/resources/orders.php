@@ -412,6 +412,53 @@ function api_orders_has_notes() {
 
 }
 
+// What a status change asks of an order, from the status it has ($from) to the
+// one sent ($to):
+//  'none'    nothing (the same status);
+//  'set'     a plain write (complete and exported, either way);
+//  'cancel'  the store's cancellation path (process_order_cancellation());
+//  'restore' the order screen's Restore (pg_order_restore_cancelled()): out of
+//            cancelled, the cancellation's bookkeeping and refund flag are
+//            cleared and the gift cards it expired come back;
+//  'refuse'  a move the store has no path for. incomplete is the cart's
+//            status: a placed order is never turned back into a cart (which
+//            the abandoned cart mail would then pick up), and a cart becomes
+//            an order only through the checkout, which numbers it, takes the
+//            payment and moves the stock. The order screen offers neither,
+//            nor a cancel for a cart.
+function api_orders_status_move($from, $to) {
+
+	$from = (string)$from;
+	$to   = (string)$to;
+
+	if ($from === $to) {
+
+		return 'none';
+
+	}
+
+	if (($from === 'incomplete') || ($to === 'incomplete')) {
+
+		return 'refuse';
+
+	}
+
+	if ($to === 'cancelled') {
+
+		return 'cancel';
+
+	}
+
+	if ($from === 'cancelled') {
+
+		return 'restore';
+
+	}
+
+	return 'set';
+
+}
+
 function api_orders_update($params) {
 
 	$id = (int)$params['id'];
@@ -435,7 +482,21 @@ function api_orders_update($params) {
 	// refused a few lines later over a notes column this installation does not
 	// have. It is also what lets a dry run mean something on this endpoint - the
 	// checks are above the first write, so X-Dry-Run answers after all of them.
-	$cancelling = (isset($params['status']) && ($params['status'] === 'cancelled'));
+	$move = isset($params['status'])
+		? api_orders_status_move($existing['status'], $params['status'])
+		: 'none';
+
+	if ($move === 'refuse') {
+
+		api_fail_validation(lang(array(
+			'string' => 'An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.',
+			'vars'   => array($existing['status'], $params['status'])
+		)), 'status');
+
+	}
+
+	$cancelling = ($move === 'cancel');
+	$restoring  = ($move === 'restore');
 
 	if (isset($params['notes'])) {
 
@@ -455,7 +516,7 @@ function api_orders_update($params) {
 
 	}
 
-	if (isset($params['status']) && !$cancelling) {
+	if ($move === 'set') {
 
 		$set[] = "status = '" . escape($params['status']) . "'";
 
@@ -470,7 +531,8 @@ function api_orders_update($params) {
 	api_dry_run_stop('updated', 'order', array(
 		'id'        => $id,
 		'status'    => isset($params['status']) ? $params['status'] : null,
-		'cancelling' => $cancelling
+		'cancelling' => $cancelling,
+		'restoring' => $restoring
 	));
 
 	$audit_before = pg_audit_fetch('orders', $id);
@@ -488,7 +550,7 @@ function api_orders_update($params) {
 	// endpoint when its owner deliberately granted orders:write, and the
 	// pre-shipment guard exists to stop a CUSTOMER cancelling behind the
 	// operator's back - not the operator's own integration.
-	if ($cancelling && ($existing['status'] !== 'cancelled')) {
+	if ($cancelling) {
 
 		$reason = isset($params['cancellation_reason'])
 			? $params['cancellation_reason']
@@ -516,6 +578,16 @@ function api_orders_update($params) {
 
 	}
 
+	// Out of cancelled the order goes the way the order screen's Restore
+	// takes it. A plain status write left cancelled_at, the reason and a
+	// manual_required refund flag on a completed order, and its gift cards
+	// expired. False: another request moved it out of cancelled meanwhile.
+	if ($restoring && !pg_order_restore_cancelled($id, $params['status'])) {
+
+		api_fail_validation(lang('Only cancelled orders can be restored.'), 'status');
+
+	}
+
 	if (!empty($set)) {
 
 		api_exec("UPDATE orders SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
@@ -527,7 +599,7 @@ function api_orders_update($params) {
 		'vars'   => array($existing['order_number'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	pg_audit_record(($cancelling && ($existing['status'] !== 'cancelled')) ? 'cancel' : 'update', 'orders', $id, $audit_before);
+	pg_audit_record($cancelling ? 'cancel' : ($restoring ? 'restore' : 'update'), 'orders', $id, $audit_before);
 
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 
@@ -634,10 +706,11 @@ function api_orders_ship($params) {
 
 	}
 
-	// The list replaces what the address has, which is what the order screen
-	// does with the same field: a shipment that lost a parcel has to be able to
-	// go back to one number, and a caller that sends what it knows every time
-	// can repeat the call without collecting duplicates.
+	// The list, when sent, replaces what the address has, which is what the
+	// order screen does with the same field: a shipment that lost a parcel has
+	// to be able to go back to one number, and a caller that sends what it
+	// knows every time can repeat the call without collecting duplicates. Left
+	// out, the numbers are not touched (api_orders_ship_recipient()).
 	$numbers = array();
 
 	if (isset($params['tracking_numbers'])) {
@@ -674,6 +747,90 @@ function api_orders_ship($params) {
 
 	}
 
+	if (!isset($params['tracking_numbers']) && !isset($params['ship_date']) && !isset($params['delivery_date'])) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	// Above: the order exists, it was not cancelled, the address belongs to it,
+	// every tracking number is a line of text of a sane length, and the body
+	// asks for something. Below: the first write.
+	$request = api_orders_ship_recipient($recipient, $params, $numbers);
+
+	$detail = array(
+		'order_id'   => $id,
+		'ship_to_id' => (int)$recipient['id']
+	);
+
+	// Only a list that was sent replaces anything, and the rehearsal says so
+	// the same way.
+	if (array_key_exists('tracking_numbers', $request)) {
+
+		$detail['tracking_numbers'] = $request['tracking_numbers'];
+
+	}
+
+	api_dry_run_stop('updated', 'shipment', $detail);
+
+	// The carrier is written only into an empty slot. The code beside it is the
+	// shipping method the customer chose and paid for; a fulfilment system
+	// naming the carrier it happened to use must not overwrite that.
+	if (isset($params['carrier'])) {
+
+		$carrier = trim((string)$params['carrier']);
+
+		if (($carrier !== '') && ($recipient['shipping_method_code'] === '')) {
+
+			api_exec("UPDATE ship_tos SET shipping_method_code = '" . escape(mb_substr($carrier, 0, 50)) . "'
+				WHERE id = '" . (int)$recipient['id'] . "' LIMIT 1");
+
+		}
+
+	}
+
+	require_once(dirname(__FILE__) . '/../../../update_order.php');
+
+	$outcome = update_order(array('source' => 'api', 'order' => array(
+		'id'         => $id,
+		'recipients' => array($request)
+	)));
+
+	if (!is_array($outcome) || !isset($outcome['status']) || ($outcome['status'] !== 'success')) {
+
+		api_fail_server();
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'A shipment for order ({var:1}) was recorded through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array($order['order_number'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	// order.shipped is announced from inside update_order(), where the order
+	// screen's own save passes as well, so the event means the same thing
+	// wherever the shipment was recorded.
+
+	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
+
+	api_ok(api_order_present($row, null, api_order_shipments($id)));
+
+}
+
+// The address's part of the update_order() request behind
+// POST /orders/{id}/shipment. $recipient is the ship_tos row (id, ship_date,
+// delivery_date), $numbers the cleaned list read from tracking_numbers.
+//
+// tracking_numbers is passed only when the caller sent the field.
+// update_order() reads the key as "this is the address's whole list" and
+// removes every row not in it, so an empty list built for a call that only
+// reports a delivery date would remove the numbers the address has: the order
+// would stop counting as shipped (customer cancellation, the unpaid-transfer
+// job) and the delivery record kept on those rows would go with them, so the
+// next date correction announced order.delivered again. An empty list sent on
+// purpose still removes them, as documented.
+function api_orders_ship_recipient($recipient, $params, $numbers) {
+
 	// Both dates travel on every call. update_order() writes the pair whenever
 	// either one is sent, so sending one alone would blank the other.
 	//
@@ -699,72 +856,24 @@ function api_orders_ship($params) {
 
 	}
 
-	if (!isset($params['tracking_numbers']) && !isset($params['ship_date']) && !isset($params['delivery_date'])) {
+	$request = array(
+		'id'            => (int)$recipient['id'],
+		// Whether the customer is told. Set either way rather than left out:
+		// update_order() reads a missing key as "work it out", and what it
+		// works out is that a new number means mail.
+		'shipped'       => (isset($params['notify']) && $params['notify']),
+		'ship_date'     => $ship_date,
+		'delivery_date' => $delivery_date,
+		'items'         => array()
+	);
 
-		api_fail_validation(lang('No writable field was sent.'));
+	if (isset($params['tracking_numbers'])) {
 
-	}
-
-	// Above: the order exists, it was not cancelled, the address belongs to it,
-	// every tracking number is a line of text of a sane length, and the body
-	// asks for something. Below: the first write.
-	api_dry_run_stop('updated', 'shipment', array(
-		'order_id'         => $id,
-		'ship_to_id'       => (int)$recipient['id'],
-		'tracking_numbers' => $numbers
-	));
-
-	// The carrier is written only into an empty slot. The code beside it is the
-	// shipping method the customer chose and paid for; a fulfilment system
-	// naming the carrier it happened to use must not overwrite that.
-	if (isset($params['carrier'])) {
-
-		$carrier = trim((string)$params['carrier']);
-
-		if (($carrier !== '') && ($recipient['shipping_method_code'] === '')) {
-
-			api_exec("UPDATE ship_tos SET shipping_method_code = '" . escape(mb_substr($carrier, 0, 50)) . "'
-				WHERE id = '" . (int)$recipient['id'] . "' LIMIT 1");
-
-		}
+		$request['tracking_numbers'] = array_values((array)$numbers);
 
 	}
 
-	require_once(dirname(__FILE__) . '/../../../update_order.php');
-
-	$outcome = update_order(array('source' => 'api', 'order' => array(
-		'id'         => $id,
-		'recipients' => array(array(
-			'id'               => (int)$recipient['id'],
-			// Whether the customer is told. Set either way rather than left
-			// out: update_order() reads a missing key as "work it out", and
-			// what it works out is that a new number means mail.
-			'shipped'          => (isset($params['notify']) && $params['notify']),
-			'ship_date'        => $ship_date,
-			'delivery_date'    => $delivery_date,
-			'tracking_numbers' => $numbers,
-			'items'            => array()
-		))
-	)));
-
-	if (!is_array($outcome) || !isset($outcome['status']) || ($outcome['status'] !== 'success')) {
-
-		api_fail_server();
-
-	}
-
-	log_activity(lang(array(
-		'string' => 'A shipment for order ({var:1}) was recorded through the API by the application {var:2} (key {var:3}).',
-		'vars'   => array($order['order_number'], $app['name'], $app['api_key'])
-	)), $app['owner']['username']);
-
-	// order.shipped is announced from inside update_order(), where the order
-	// screen's own save passes as well, so the event means the same thing
-	// wherever the shipment was recorded.
-
-	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
-
-	api_ok(api_order_present($row, null, api_order_shipments($id)));
+	return $request;
 
 }
 

@@ -14,5 +14,5 @@ description: What a checkout writes on the contact card: the "Update my contact 
 - Since #943 the handlers' "not updated" branch calls `pg_checkout_fill_contact_tax()` (`includes/fn/contacts.php`): a card with an empty `tax_number` takes the typed number and, when one was typed, the tax office; a card that already names a number keeps it. The decision is the pure `pg_checkout_contact_tax_fill()` (separators removed as on the express order screen, values cut to the column widths 20 / 100); the UPDATE repeats `tax_number = ''`.
 - Owner decision (2026-10-20): fill an empty card rather than add tax columns to `orders` (a schema step).
 
-## Tests
+## Which test covers it?
 - `tests/checkout_contact_tax_test.php`.

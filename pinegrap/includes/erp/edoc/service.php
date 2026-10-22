@@ -1003,6 +1003,11 @@ function erp_edoc_invoice_cancellable($invoice)
  * operator has done it on the provider's screen. Nothing changes on the row
  * unless the provider agrees.
  *
+ * An invoice dated inside the locked period cannot be cancelled here
+ * (erp_invoice_cancel()), so it is refused before the provider is asked:
+ * otherwise the draft there is deleted or the e-Archive document cancelled
+ * at the tax office while the invoice stays issued here.
+ *
  * @param int    $invoice_id
  * @param string $reason
  * @param int    $user_id
@@ -1015,6 +1020,10 @@ function erp_edoc_invoice_provider_cancel($invoice_id, $reason = '', $user_id = 
 
     if (!is_array($invoice)) {
         return array('success' => false, 'message' => '', 'error' => lang('The invoice could not be found.'));
+    }
+
+    if (function_exists('erp_lock_refusal') && (($refusal = erp_lock_refusal((string) $invoice['issue_date'])) !== '')) {
+        return array('success' => false, 'message' => '', 'error' => $refusal);
     }
 
     $external_id = trim((string) $invoice['edoc_external_id']);

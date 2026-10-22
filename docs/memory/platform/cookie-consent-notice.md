@@ -27,3 +27,5 @@ description: Cookie notice: Settings, Reject all and Accept all drawn alike, not
 
 ## Where are the tests?
 - `tests/consent_test.php`: first view and settings buttons, no `checked` switch, Consent Mode states, the default script, its position, insertion, and the state names in `pg_consent.js`.
+
+Related: docs/memory/platform/cookie-consent-new-cookies.md
