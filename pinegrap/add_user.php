@@ -698,6 +698,9 @@ if (!$_POST) {
 
         // The e-mail never carries the password: the user sets their own
         // through a single-use set password link (pg_set_password_link()).
+        // The link works for whoever reads it, so the e-mail is 'secret':
+        // a failed delivery keeps its body out of the activity log and the
+        // delivery-failed notice.
         $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
 
         email(array(
@@ -705,7 +708,8 @@ if (!$_POST) {
             'from_name' => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
             'subject' => lang('New Account'),
-            'body' => pg_new_user_email_body($_POST['email'], $set_password_url, $login)));
+            'body' => pg_new_user_email_body($_POST['email'], $set_password_url, $login),
+            'secret' => true));
         
     }
 

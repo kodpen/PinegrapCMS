@@ -4517,10 +4517,10 @@ function pg_set_password_link($user_id)
 }
 
 /**
- * The body of the e-mail add_user.php sends when an administrator opens an
- * account and notifies its owner: the address, the link to set a password
- * (or, without one, where to get one) and the sign-in address. The password
- * the account was created with is never written.
+ * The body of the e-mail add_user.php and import_users.php send when an
+ * administrator opens an account and notifies its owner: the address, the
+ * link to set a password (or, without one, where to get one) and the sign-in
+ * address. The password the account was created with is never written.
  *
  * @param string $email_address
  * @param string $set_password_url '' when no link could be issued
