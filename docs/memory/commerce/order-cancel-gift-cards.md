@@ -16,7 +16,7 @@ description: Gift cards on cancel and restore: issued cards keep their old date 
 ## What about gift cards that paid the order?
 - Their amount does not go back to the card by itself. `pg_order_gift_card_refund_line()` writes a translated "REFUND ACTION REQUIRED" site log line (masked codes, the shop card's id, Givex marked, amounts).
 - `refund_status` keeps what the payment step reported: a successful card void stays `refunded` (customer email, `order.cancelled`, `refunded_at` and the restore keep it) and the gift card part is then reported only by the log line and the cancel notice. `manual_required` is set by the gift cards only when the payment step left no outcome (gift-card-only order, or no auto refund and nothing else flagged).
-- view_order.php: the Refund Pending banner shows total plus gift card part; the provider sentence only when `orders.total > 0`, the gift card sentence when `gift_card_discount > 0`. The cancel notice follows the same rule.
+- view_order.php: the Refund Pending banner shows the payment money left (`total - refunded_amount`) plus the gift card part; the provider sentence only when that money is left, the gift card sentence when `gift_card_discount > 0`. The cancel notice follows the same rule.
 - `orders.total` has the gift card part taken off already, so an order paid by gift card alone raised no flag before (#733). Crediting the card automatically would need restore to take it again from a balance that may be spent; not done.
 
 Related: docs/memory/commerce/order-cancellation-flow.md, docs/memory/commerce/givex-gift-card.md

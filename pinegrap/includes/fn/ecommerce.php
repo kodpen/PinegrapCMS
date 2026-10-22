@@ -9108,8 +9108,11 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     }
 
     // Minimal selection — enough for cancel gating + email + refund.
+    // refunded_amount: what the order screen or a return gave back already,
+    // which the cancellation must not return a second time.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
+                " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date
          FROM orders
@@ -9226,13 +9229,21 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } else {
         $auto_refund = (bool) $attempt_refund;
     }
-    $has_txn     = !empty($order['transaction_id']);
-    $order_total = (int) $order['total']; // cents
-    $cancel_driver = ($auto_refund && $has_txn && $order_total > 0)
-        ? pg_payment_cancel_driver((string) $order['payment_method'])
-        : '';
+    // The money left on the order decides (pg_order_cancel_payment_plan()):
+    // an order refunded in full is not voided and not flagged, and one partly
+    // refunded is not voided either (a void reverses the whole payment); its
+    // remaining amount is flagged. The cancel window asks the same.
+    $cancel_driver = pg_payment_cancel_driver((string) $order['payment_method']);
+    $payment_plan  = pg_order_cancel_payment_plan(
+        $order['total'],
+        $order['refunded_amount'],
+        $order['payment_method'],
+        !empty($order['transaction_id']),
+        $cancel_driver,
+        $auto_refund
+    );
 
-    if ($cancel_driver !== '') {
+    if ($payment_plan['action'] === 'void') {
         // The driver is given the orders row as the cancellation left it, so
         // the reason just typed goes to the service as the description.
         $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1");
@@ -9256,12 +9267,17 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
         $refund_status_outcome = $cancel_outcome['refund_status'];
         $refund_reference      = $cancel_outcome['refund_reference'];
-    } elseif ($order_total > 0 && (string) $order['payment_method'] !== '' && (string) $order['payment_method'] !== 'Offline Payment') {
+    } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
         log_activity(lang(array(
             'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
-            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($order_total / 100, 2, '.', ',')))));
+            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($payment_plan['remaining'] / 100, 2, '.', ',')))));
+        if ($payment_plan['refunded'] > 0) {
+            log_activity(lang(array(
+                'string' => 'Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.',
+                'vars'   => array((int) $order_id, number_format($payment_plan['refunded'] / 100, 2, '.', ',')))));
+        }
     }
 
     // What gift cards paid of the order does not go back to them by itself,
@@ -9322,6 +9338,41 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         'refund_status' => $refund_status_outcome,
         'order_id'      => $order_id,
     );
+}
+
+// What cancelling an order does to the money its payment took. The order
+// screen's cancel window and process_order_cancellation() both decide by it,
+// so the window says what the cancellation then does.
+// 'remaining' is the money still on the order (total less what was refunded
+// already, never below 0), 'refunded' what was refunded, and 'action' one of:
+//  'void'   the payment driver cancels the payment: the auto refund is on, a
+//           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
+//           the order has a transaction and nothing was refunded yet;
+//  'manual' money is left and a payment method took it, but it is not voided:
+//           the operator returns it (REFUND ACTION REQUIRED, manual_required);
+//  'none'   nothing is left (refunded in full, a free order), or no method
+//           took the money (Offline Payment, none).
+// A void takes no amount and reverses the whole payment, so a payment partly
+// refunded already (the order screen's or a return's refund) is not voided:
+// what is left goes to the operator. Amounts are minor units.
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+{
+    $total_cents    = (int) $total_cents;
+    $refunded_cents = max(0, (int) $refunded_cents);
+    $remaining      = max(0, $total_cents - $refunded_cents);
+    $payment_method = (string) $payment_method;
+
+    if ($remaining <= 0) {
+        $action = 'none';
+    } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
+        $action = 'void';
+    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+        $action = 'manual';
+    } else {
+        $action = 'none';
+    }
+
+    return array('action' => $action, 'remaining' => $remaining, 'refunded' => $refunded_cents);
 }
 
 // The site log line that tells the operator what a cancelled order took off

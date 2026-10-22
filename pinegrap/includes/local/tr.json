@@ -25360,5 +25360,8 @@
     "Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.": "Ziyaretçi yayındaki sayfada zengin metin editörüyle yazar (bu editörde ve önizlemesinde değil); yanıt betikleri ayıklanmış HTML olarak saklanır.",
     "Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).": "Yanıttaki sınıflar ve stiller kalır: yanıtları sitede ancak incelendikten sonra gösterin (kayıt görünümünde bir filtreyle).",
     "Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.": "Önceden verilmiş yanıtların metni kalır ama satır sonları kaybolur; kapatılırsa saklanan biçimlendirme kod olarak görünür.",
-    "rich text": "zengin metin"
+    "rich text": "zengin metin",
+    "Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.": "#{var:1} numaralı sipariş: ödemenin {var:2} tutarı iptalden önce iade edilmişti, bu yüzden ödeme iptal edilmedi; yalnız yukarıdaki tutar iade edilecek.",
+    "{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.": "Ödemenin {var:1} tutarı zaten iade edildi. Kalan {var:2} otomatik olarak iade EDİLMEYECEK. İadeyi ödeme sağlayıcınızın panelinden yapın.",
+    "The payment was already refunded in full. Cancelling the order does not touch it.": "Ödeme zaten tamamen iade edildi. Siparişin iptali ödemeye dokunmaz."
 }
