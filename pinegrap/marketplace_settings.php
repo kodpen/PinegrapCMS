@@ -1198,6 +1198,10 @@ if ($selected) {
 
 			}
 
+			// The figure the marketplace gets; marked when it carries tax the
+			// product's stored price does not, so it is not read as a typo.
+			$map_price = mp_product_price($map);
+
 			echo '
 			<div class="mp-row">
 				<span>
@@ -1208,7 +1212,8 @@ if ($selected) {
 					. ($map['status'] === 'error'
 						? '<div class="mp-err">' . h(mb_substr((string)$map['last_error'], 0, 90)) . '</div>'
 						: '') . '</span>
-				<span>' . prepare_price_for_output(mp_product_price($map), false, 0, 'html', false) . '</span>
+				<span>' . prepare_price_for_output($map_price, false, 0, 'html', false)
+					. ($map_price !== (int)$map['price'] ? ' <span class="small opacity-50">' . lang('VAT included') . '</span>' : '') . '</span>
 				<span>' . pg_format_number($quantity, 0)
 					. ($tracked ? '' : ' <span class="small opacity-50">' . lang('untracked') . '</span>') . '</span>
 				<span class="small opacity-75">'

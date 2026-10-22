@@ -18,7 +18,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
-- api-webhook-stock-events.md: What a stock change announces: pg_product_stock_changed() (stamp, inventory.changed, stock.low on the crossing, marketplace queue) behind every site writer, its pure rules, which writers stay quiet
+- api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
@@ -59,6 +59,7 @@ Code rules, file layout, translation, roles and access, security, api.php, reque
 - security-helpers-and-secret-storage.md: CSRF/escape helpers (get_token_field, validate_token_field, h) and how secret config fields are stored encrypted as one blob, never exposed as constants.
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
+- social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - translation-rules.md: Rule that every user-visible string goes through lang() with a matching tr.json key (English source key, Turkish value), and the same rule for designer JS.
