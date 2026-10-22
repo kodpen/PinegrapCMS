@@ -1,6 +1,6 @@
 ---
 name: social-sign-in-address-match
-description: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened
+description: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 ---
 
 ## Which account does a verified provider address tie to?
