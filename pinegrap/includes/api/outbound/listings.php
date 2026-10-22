@@ -400,6 +400,8 @@ function mp_listing_items($account, $group_id) {
 			'quantity'    => $quantity,
 			'taxable'     => !empty($product['taxable']),
 			'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate'],
+			// The rate inside price_major, which the drivers declare.
+			'vat_rate'    => mp_product_vat_rate($product),
 			'images'      => $images,
 			'attributes'  => $attributes
 		);
