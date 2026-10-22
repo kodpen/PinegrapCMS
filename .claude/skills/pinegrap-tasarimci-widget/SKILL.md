@@ -568,6 +568,12 @@ legacy'dir ve değişiklikler oraya yansımaz. Dolu sepet: `/c?r=<reference_code
   (ikisi de `render()`/`saveState()`'ten geçmez). Pencere kapalıyken kanca tek özellik okur; önizlemeye
   giren yeni bir durumu bu kancalardan birinden geçmeyen yolla
   değiştiriyorsan çağrıyı ekle.
+- İşaretle gelen platform betiği (tema seçici, tooltip/popover
+  `pg_bs_tips.js`) iki yerde yazılır: sayfada `pg_*_inject()`
+  (`get_page_content.php`), önizlemede `_SD_PAGE_SCRIPTS` satırı. Önizleme
+  çatı betiğini yalnız `bootstrap-js` satırı yoksa ekler; `#` bağlantıları ve
+  koyu görünüm `_sdPreviewHarness()`'te
+  (`docs/memory/designer/designer-preview-page-scripts.md`).
 - Tuvaldeki hayalet kayıtlar (`_sdAppendGhosts`, `designer/widget_ghosts`)
   yalnız DOM'dur: `data-sd-id` taşımaz, `inert`, ağaca girmez. Yeni bir liste
   türü eklenecekse sunucuda `pg_designer_widget_ghosts()` tür listesine ve JS'te
