@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: step 1 done, #1192): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1-2 done, #1192, #1194): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (owner decisions 2026-10-22, in progress: step 1 done, #1192):
 ## What remains?
 1. Done (#1192): welcome and password-reset e-mails as designable pages (`account_email` widget, chosen in the member widgets' settings).
 1b. The 7 built-in templates carry a welcome and a reset e-mail page.
-2. Record visibility: a record page shows only records its filters allow; its RSS feed and SEO output follow the same filters (drafts leaked).
+2. Done (#1194): record visibility: a record page shows only records its filters allow; its RSS feed and SEO output follow the same filters (drafts leaked).
 3. Rich text in designer form textareas (verify; fix if broken).
 4. Site search finds designer form records (verify after an index update; fix if needed).
 5. List filter value read from a URL parameter (author, tag, section archives).
