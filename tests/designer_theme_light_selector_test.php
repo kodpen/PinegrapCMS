@@ -111,7 +111,7 @@ function test_designer_theme_light_selector_block_per_variable()
 {
 	$answer = designer_theme_light_selector_test_run(<<<'JS'
 console.log(JSON.stringify([
-	THEME_DARK_OWN_VARS,
+	_themeDarkOwnVars(),
 	['--bs-body-bg', '--bs-body-color', '--bs-link-color', '--bs-border-color', '--bs-secondary-bg',
 	 '--bs-body-font-family', '--bs-body-font-size', '--bs-border-radius', '--bs-border-width',
 	 '--bs-link-decoration', '--bs-focus-ring-width', '--bs-primary', '--brand'].map(function (n) { return _themeBlockFor('light', n); }),
@@ -306,4 +306,12 @@ function test_designer_theme_light_selector_call_sites()
 	pg_assert_contains("if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');", $body, 'the value leaves the other light block');
 	pg_assert_contains('content = _themeSetDecl(content, kind, varName, value);', $body, 'the value goes to its own block');
 	pg_assert_false(strpos($body, ':root') !== false, 'no light selector spelt out in the writer');
+
+	// The load-time split runs before the setup reaches the theme helpers,
+	// so they hold no value in a `var` of the setup scope (it would still be
+	// undefined then).
+	$from = strpos($source, 'function _findRuleBlock(');
+	$to = ($from !== false) ? strpos($source, '// Read the current value of a single theme var', $from) : false;
+	pg_assert_true(($from !== false) && ($to !== false), 'the designer has the theme rule-block helpers');
+	pg_assert_same(0, preg_match_all('/^        (?:var|let|const) /m', (string) substr($source, $from, $to - $from)), 'no setup-scope variable among the helpers');
 }

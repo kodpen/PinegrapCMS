@@ -44046,24 +44046,28 @@ const StyleDesigner = (function () {
         // variable (fonts, sizes, radii, link decoration, focus ring, the
         // eight theme colours) has one Bootstrap value for both modes, so a
         // light value of it is the design's value in dark mode too.
-        var THEME_DARK_OWN_VARS = [
-            '--bs-body-color', '--bs-body-color-rgb', '--bs-body-bg', '--bs-body-bg-rgb',
-            '--bs-emphasis-color', '--bs-emphasis-color-rgb',
-            '--bs-secondary-color', '--bs-secondary-color-rgb', '--bs-secondary-bg', '--bs-secondary-bg-rgb',
-            '--bs-tertiary-color', '--bs-tertiary-color-rgb', '--bs-tertiary-bg', '--bs-tertiary-bg-rgb',
-            '--bs-primary-text-emphasis', '--bs-secondary-text-emphasis', '--bs-success-text-emphasis', '--bs-info-text-emphasis',
-            '--bs-warning-text-emphasis', '--bs-danger-text-emphasis', '--bs-light-text-emphasis', '--bs-dark-text-emphasis',
-            '--bs-primary-bg-subtle', '--bs-secondary-bg-subtle', '--bs-success-bg-subtle', '--bs-info-bg-subtle',
-            '--bs-warning-bg-subtle', '--bs-danger-bg-subtle', '--bs-light-bg-subtle', '--bs-dark-bg-subtle',
-            '--bs-primary-border-subtle', '--bs-secondary-border-subtle', '--bs-success-border-subtle', '--bs-info-border-subtle',
-            '--bs-warning-border-subtle', '--bs-danger-border-subtle', '--bs-light-border-subtle', '--bs-dark-border-subtle',
-            '--bs-heading-color', '--bs-link-color', '--bs-link-hover-color', '--bs-link-color-rgb', '--bs-link-hover-color-rgb',
-            '--bs-code-color', '--bs-highlight-color', '--bs-highlight-bg',
-            '--bs-border-color', '--bs-border-color-translucent',
-            '--bs-form-valid-color', '--bs-form-valid-border-color', '--bs-form-invalid-color', '--bs-form-invalid-border-color'
-        ];
+        // A function, not a `var`: _ensureBootstrapSentinels() splits the
+        // old light block at load, before this part of the setup has run.
+        function _themeDarkOwnVars() {
+            return _themeDarkOwnVars.list || (_themeDarkOwnVars.list = [
+                '--bs-body-color', '--bs-body-color-rgb', '--bs-body-bg', '--bs-body-bg-rgb',
+                '--bs-emphasis-color', '--bs-emphasis-color-rgb',
+                '--bs-secondary-color', '--bs-secondary-color-rgb', '--bs-secondary-bg', '--bs-secondary-bg-rgb',
+                '--bs-tertiary-color', '--bs-tertiary-color-rgb', '--bs-tertiary-bg', '--bs-tertiary-bg-rgb',
+                '--bs-primary-text-emphasis', '--bs-secondary-text-emphasis', '--bs-success-text-emphasis', '--bs-info-text-emphasis',
+                '--bs-warning-text-emphasis', '--bs-danger-text-emphasis', '--bs-light-text-emphasis', '--bs-dark-text-emphasis',
+                '--bs-primary-bg-subtle', '--bs-secondary-bg-subtle', '--bs-success-bg-subtle', '--bs-info-bg-subtle',
+                '--bs-warning-bg-subtle', '--bs-danger-bg-subtle', '--bs-light-bg-subtle', '--bs-dark-bg-subtle',
+                '--bs-primary-border-subtle', '--bs-secondary-border-subtle', '--bs-success-border-subtle', '--bs-info-border-subtle',
+                '--bs-warning-border-subtle', '--bs-danger-border-subtle', '--bs-light-border-subtle', '--bs-dark-border-subtle',
+                '--bs-heading-color', '--bs-link-color', '--bs-link-hover-color', '--bs-link-color-rgb', '--bs-link-hover-color-rgb',
+                '--bs-code-color', '--bs-highlight-color', '--bs-highlight-bg',
+                '--bs-border-color', '--bs-border-color-translucent',
+                '--bs-form-valid-color', '--bs-form-valid-border-color', '--bs-form-invalid-color', '--bs-form-invalid-border-color'
+            ]);
+        }
         function _themeVarHasDarkDefault(name) {
-            return THEME_DARK_OWN_VARS.indexOf(name) !== -1;
+            return _themeDarkOwnVars().indexOf(name) !== -1;
         }
 
         // The block a value is written to:
