@@ -214,7 +214,9 @@ function test_designer_grid_escaped_once()
 
 // The editor's HTML (code view, preview, revision compare) opens every grid
 // node as the page does. h() writes a single quote as &#039;, the editor's
-// esc() leaves it; both read the same.
+// esc() leaves it; both read the same. The search section mark is the
+// page's alone: the switch in the options sets it, so the code view does
+// not show an attribute that typing could not change.
 function test_designer_grid_editor_writes_the_same()
 {
 	$cases = _test_designer_grid_cases();
@@ -225,8 +227,22 @@ function test_designer_grid_editor_writes_the_same()
 	}
 
 	foreach ($cases as $name => $node) {
-		pg_assert_same(str_replace('&#039;', "'", _test_designer_grid_php($node)), $js[$name], $name);
+		$php = str_replace(array('&#039;', ' data-pg-search-section'), array("'", ''), _test_designer_grid_php($node));
+		pg_assert_same($php, $js[$name], $name);
 	}
+
+	pg_assert_same('<div class="col-12" id="faq">', $js['col search section'], 'no search section mark in the editor');
+}
+
+// A search section mark typed into the Attributes panel is not written a
+// second time beside the switch's.
+function test_designer_grid_search_mark_once()
+{
+	$node = _test_designer_grid_node('col', array('xs' => '12', 'id' => 'faq', 'searchSection' => true, '_attrs' => array(array('name' => 'data-pg-search-section', 'value' => ''))));
+	pg_assert_same('<div class="col-12" id="faq" data-pg-search-section>', _test_designer_grid_php($node));
+
+	$node = array('type' => 'semantic', 'props' => array('tag' => 'section', 'id' => 'faq', 'searchSection' => true, '_attrs' => array(array('name' => 'Data-Pg-Search-Section', 'value' => ''))), 'children' => array());
+	pg_assert_same('<section id="faq" data-pg-search-section></section>', trim(_render_tree_node($node, 0, 0)));
 }
 
 // The three cases of the emitter open their tag in one place.

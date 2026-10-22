@@ -82,6 +82,8 @@ function _test_designer_attrs_cases()
 		'semantic sizing once' => _test_designer_attrs_semantic(array('tag' => 'div', 'srOnly' => true, 'cssClass' => 'p-2 visually-hidden')),
 		'semantic link' => _test_designer_attrs_semantic(array('tag' => 'a', 'href' => '/y', 'rel' => 'noopener', 'text' => 'Go', '_attrs' => $a(array('href' => '/stale', 'title' => 'Typed')))),
 		'semantic image' => _test_designer_attrs_semantic(array('tag' => 'img', 'src' => 'https://example.com/b.png', 'alt' => 'B', '_attrs' => $a(array('src' => '/stale')))),
+		'semantic search section' => _test_designer_attrs_semantic(array('tag' => 'section', 'id' => 'faq', 'searchSection' => true, 'cssClass' => 'py-5')),
+		'heading search section' => _test_designer_attrs_content('heading', array('tag' => 'h2', 'text' => 'Q', 'id' => 'q1', 'searchSection' => true)),
 	);
 }
 
@@ -203,8 +205,8 @@ function test_designer_attrs_panel_entries()
 
 // The editor's HTML (code view, preview, revision compare) writes the same
 // attributes in the same order. h() writes a single quote as &#039;, the
-// editor's esc() leaves it; an image's srcset, loading and onerror are the
-// server's.
+// editor's esc() leaves it; an image's onerror and the search section mark
+// (set by the Search section switch) are the page's alone.
 function test_designer_attrs_editor_writes_the_same()
 {
 	$cases = _test_designer_attrs_cases();
@@ -216,7 +218,19 @@ function test_designer_attrs_editor_writes_the_same()
 
 	foreach ($cases as $name => $node) {
 		$php = str_replace('&#039;', "'", _test_designer_attrs_php($node));
-		$php = preg_replace('~ onerror="[^"]*"~', '', $php);
+		$php = preg_replace('~ onerror="[^"]*"| data-pg-search-section~', '', $php);
 		pg_assert_same($php, $js[$name], $name);
 	}
+
+	pg_assert_same('<section id="faq" class="py-5">', $js['semantic search section']);
+	pg_assert_same('<h2 id="q1">', $js['heading search section']);
+}
+
+// The page marks a search section after its id, for the structured data.
+function test_designer_attrs_search_mark_on_the_page()
+{
+	$cases = _test_designer_attrs_cases();
+
+	pg_assert_same('<section id="faq" data-pg-search-section class="py-5">', _test_designer_attrs_php($cases['semantic search section']));
+	pg_assert_same('<h2 id="q1" data-pg-search-section>', _test_designer_attrs_php($cases['heading search section']));
 }

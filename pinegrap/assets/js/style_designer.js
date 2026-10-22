@@ -50271,18 +50271,17 @@ const StyleDesigner = (function () {
     // _pg_grid_open_tag() in includes/fn/designer.php, which writes the
     // saved page: the classes once each (the Display & Sizing toggles are
     // in cssClass as well), the style as on any other node, then the id,
-    // the search section mark, the title or tooltip and the panel's other
-    // attributes (class, style and id are never printed from the list).
+    // the title or tooltip and the panel's other attributes (class, style
+    // and id are never printed from the list). The page's search section
+    // mark (data-pg-search-section) is the Search section switch's and is
+    // left out here as on every other node: typed or removed in the code
+    // view it would change nothing.
     function _sdGridOpenTag(n, classes) {
         var p = n.props || {};
         var style = _sdNodeStyle(p, '', getNodeExtraStyle(n));
         var out = '<div class="' + esc(_sdUniqueClasses(classes + ' ' + getNodeExtraClasses(n))) + '"';
         if (style) out += ' style="' + esc(style) + '"';
-        if (p.id) {
-            out += ' id="' + esc(p.id) + '"';
-            if (p.searchSection) out += ' data-pg-search-section';
-        }
-        return out + _sdNodeExtraAttrs(p, p._attrs, ['id']) + '>';
+        return out + _sdNodeExtraAttrs(p, p._attrs, []) + '>';
     }
 
     // A class attribute's value with each class once, in the order first
@@ -50360,8 +50359,8 @@ const StyleDesigner = (function () {
     // (`list`, the node's _attrs) of a content, semantic or grid node.
     // `skip`: lower-case names the caller wrote itself; 'id' in it leaves
     // the id out. class, style and id are never written from the list.
-    // Twin of _render_extra_attrs($props, $skip, true) without the search
-    // section mark.
+    // Twin of _render_extra_attrs($props, $skip, true), less the search
+    // section mark the page adds after the id.
     function _sdNodeExtraAttrs(p, list, skip) {
         var out = '';
         if (skip.indexOf('id') === -1 && p.id) out += ' id="' + esc(p.id) + '"';

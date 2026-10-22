@@ -4282,6 +4282,7 @@ function _pg_content_sizing($props, $ct)
 // _sdGridOpenTag() writes it: the classes once each and escaped once, the
 // style as on any other node (_compose_inline_style(), the sizing props in
 // it), then the id, the title or tooltip and the panel's other attributes.
+// The search section mark after the id is the page's alone.
 function _pg_grid_open_tag($classes, $props, $sz)
 {
     return '<div class="' . h(_pg_unique_classes($classes . ' ' . $sz['class'])) . '"'
@@ -4398,6 +4399,9 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
             $lname = strtolower($name);
             if ($lname === 'class' || $lname === 'style' || $lname === 'id') continue;
             if (isset($skip_map[$lname])) continue;
+            // The search section mark is the Search section switch's,
+            // written once after the id (here or by the semantic case).
+            if ($lname === 'data-pg-search-section' && !empty($props['id']) && !empty($props['searchSection'])) continue;
             $val = isset($a['value']) ? (string)$a['value'] : '';
             $out .= ' ' . h($name) . '="' . h($val) . '"';
         }
