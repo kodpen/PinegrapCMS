@@ -66,6 +66,8 @@ function test_designer_turkish_terms_shared_values()
 		'Disabled'         => 'Devre dışı',
 		'Success'          => 'Başarılı',
 		'Footer'           => 'Alt Bilgi',
+		'Table Head'       => 'Tablo Başlığı',
+		'Select the Body'  => 'Gövdeyi Seç',
 	);
 	foreach ($expected as $key => $turkish) {
 		pg_assert_same($turkish, isset($language[$key]) ? $language[$key] : null, $key);
@@ -109,14 +111,20 @@ function test_designer_turkish_terms_no_english_halves()
 
 // The flex-wrap select and the carousel's wrap switch both said 'Wrap',
 // which is 'Döngü' (loop) for the carousel; the flex value has a key of
-// its own so it reads 'Satır Kaydırma' next to 'Satır Kaydırma Yok'.
+// its own so it reads 'Satır Kaydırma' next to 'Satır Kaydırma Yok'. The
+// row label above those options says the same, like 'Satır Hizalama'
+// (Align Content) beside it.
 function test_designer_turkish_terms_flex_wrap_has_own_key()
 {
 	$language = _test_tt_language();
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	pg_assert_contains("['wrap',_sdT('Wrap Lines')]", $source);
 	pg_assert_contains("row(_sdT('Wrap'),", $source);
+	pg_assert_contains("mkRespRow(_sdT('Flex Wrap'),", $source);
 	pg_assert_same('Satır Kaydırma', $language['Wrap Lines']);
+	pg_assert_same('Satır Kaydırma', $language['Flex Wrap']);
+	pg_assert_same('Satır Kaydırma Yok', $language['No Wrap']);
+	pg_assert_same('Ters Satır Kaydırma', $language['Wrap Reverse']);
 	pg_assert_same('Döngü', $language['Wrap']);
 }
 

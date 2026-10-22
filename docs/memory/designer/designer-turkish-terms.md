@@ -21,7 +21,8 @@ One English key serves every caller: `_sdT()` in `style_designer.js`, `lang()` i
 - Radio input: `Radyo düğmesi` (`Aylık Radyo Düğmesi`, `Radyo listesi`).
 - Table header cell of a plan: `<Plan> Başlığı` (`Pro Başlığı`).
 - Menu legend block (`Diet Key`): `Beslenme Simgeleri`; "key" there is a legend, not `Anahtar`.
-- Parent element: `Üst Öğe` (`Üst Öğeyi Seç`). External file: `Harici`. Stylesheet: `Stil Dosyası`.
+- Flex wrap: row `Flex Wrap` and option `Wrap Lines` = `Satır Kaydırma` (`Satır Kaydırma Yok`, `Ters Satır Kaydırma`).
+- Parent element: `Üst Öğe` (`Üst Öğeyi Seç`); page body: `Gövde` (`Gövdeyi Seç`). External file: `Harici`. Stylesheet: `Stil Dosyası`.
 - Snapshot stays `Snapshot` and product attribute stays `Attribute`: both are used the same way across the designer.
 - News blocks: Story = `Haber` (`Haber Listesi`, `Haber Kartı`), Lead = `Manşet` (`Manşet Haberi`), Headline = `Haber Başlığı` and its containers `Haber Başlığı Satırı` / `Listesi` / `Öğesi`. `Headline Link` = `Başlık Bağlantısı` (always right under a `Haber Başlığı …` node) and `Headline Carousel` = `Başlık Karuseli`: with `Haber` they were cut in the 250 px layer tree. `Başlık Satırı` alone is a table `Header Row`; a headline part must not share a value with it.
 - Shipping state: `Shipped` = `Sevk edildi`, `Unshipped` = `Sevk edilmemiş` (same select), `Not shipped yet` = `Henüz sevk edilmedi` (dashboard order list). Documents: `Belgeler`, `My Documents` = `Belgelerim`; `Döküman` (with ö) is a misspelling, `Doküman` is a correct word.
