@@ -11,7 +11,7 @@ description: When an ERP invoice can be cancelled, what cancel does to ledger an
 
 ## What does the period lock do to a cancel?
 - An invoice dated on or before the lock date cannot be cancelled; it is taken back with a return dated in the open period.
-- The lock is asked before any side effect (PR #1070): `erp_edoc_invoice_provider_cancel()` refuses first, so the provider's draft is not deleted and an e-Archive document is not cancelled there; the order card's step offers the return instead of "Cancel the invoice" and its run never removes the allocations; `edit_erp_invoice.php` shows the cancel button disabled with the reason.
+- The lock is asked before any side effect (PR #1225, #1070): `erp_edoc_invoice_provider_cancel()` refuses first, so the provider's draft is not deleted and an e-Archive document is not cancelled there; the order card's step offers the return instead of "Cancel the invoice" and its run never removes the allocations; `edit_erp_invoice.php` shows the cancel button disabled with the reason.
 - Before, the provider was taken back and the order card's allocations removed, and only `erp_invoice_cancel()` refused: the invoice stayed issued, unpaid, with nothing at the provider.
 
 ## How do open amount and paid status treat returns?
