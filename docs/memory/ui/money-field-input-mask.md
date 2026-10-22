@@ -17,7 +17,7 @@ description: Panel money boxes with the currency input mask: panel-language sepa
 - `pg_normalize_amount()` (or `pg_pb_price_to_cents()` on the product screen) takes either way of typing, then `(int) round($value * 100)`. An empty value has to be refused first (`validate_required_field()`): `'' * 100` is a TypeError on PHP 8.
 
 ## What were the symptoms?
-- #728 (PR #925): the gift card balance was filled as `pg_format_number()` text the mask read as "." decimal; ₺50,00 saved as ₺5.000. Fixed then by machine-format filling.
+- #728 (PR #925): the gift card balance was filled as `pg_format_number()` text the mask read as "." decimal, so saving only the notes or the expiry date turned ₺50,00 into ₺5.000; an empty balance gave a 500 (now required).
 - #986 (PR #1263): the mask read "." as the decimal point in every language, so on a Turkish panel `12.500` saved ₺12,50 and `1.234,56` ₺1,56 (gift cards, product prices, zone and shipping rates). The variable base rates stripped every comma (`1.234,56` → 1.23456). The product screen also put the extra shipping cost in its box in minor units (500 for ₺5,00), so every save multiplied it by 100.
 
 ## What was checked?

@@ -4,7 +4,7 @@ description: Which classes keep a ready-made designer block in step with the des
 ---
 
 ## Why does a block need theme-driven classes?
-- A design wears a **look** (`--pg-*` tokens: radius, shadow, type) and a **colour palette** (`--bs-primary`, `--pg-on-primary`, `--pg-primary-fg`), bridged into Bootstrap by `assets/css/themes/bridge.css` and `base.css` (see `docs/memory/designer/designer-import-validation-theme.md` and the theme section of the designer skill). A block restyles with them only through classes that read those variables.
+- A design wears a **look** (`--pg-*` tokens: radius, shadow, type) and a **colour palette** (`--bs-primary`, `--pg-on-primary`, `--pg-primary-fg`), bridged into Bootstrap by `assets/css/themes/bridge.css` and `base.css` (see `docs/memory/designer/designer-import-validation-theme.md` and `docs/memory/designer/design-theme-look-and-palette.md`). A block restyles with them only through classes that read those variables.
 
 ## Which classes follow the palette and the look?
 - Colour: `text-bg-primary` / `text-bg-secondary` (text colour is `--pg-on-primary`), `bg-primary-subtle text-primary-emphasis`, `text-primary`, `link-primary`, `btn-primary`, `btn-outline-primary`, `btn-outline-secondary`, `bg-body`, `bg-body-secondary`, `bg-body-tertiary`, `text-body`, `text-body-secondary`, `text-body-emphasis`, `text-reset`, `border`, `border-primary`.

@@ -145,13 +145,26 @@ function erp_order_charged_items($order, $items, $clearcommerce = null)
  * Returned as plain arrays rather than written, so the caller can show them
  * before anything is saved and so this can be tested without a transaction.
  *
- * @param array     $order          Order row
- * @param array     $items          order_items rows (saved_for_later already excluded)
- * @param bool|null $charges_taxed  The shipping and the surcharges hold tax; null asks the
- *                                  store (erp_shipping_taxed())
+ * The order's invoice asks for $settle_charges: a charge - the shipping, the
+ * surcharge, the instalment charge - that leaves the total of a rate one the
+ * VAT, taken on the whole, never reaches goes on the invoice the fewest kurus
+ * lower that reach it (erp_order_charge_lines()). The checkout keeps what it
+ * charges reachable (pg_order_charges_reachable(), the iyzico card's
+ * instalment charge); this settles an order placed before that rule and an
+ * instalment charge a payment service set itself (Pay with iyzico). The
+ * invoice then comes to that much less than the customer paid
+ * (totals['charges_left']); the kurus stays with the payment, on the
+ * customer's account. A refund of the order's lines leaves it off and gives
+ * back what was paid.
+ *
+ * @param array     $order           Order row
+ * @param array     $items           order_items rows (saved_for_later already excluded)
+ * @param bool|null $charges_taxed   The shipping and the surcharges hold tax; null asks the
+ *                                   store (erp_shipping_taxed())
+ * @param bool      $settle_charges  Lower a charge that leaves a rate out of reach
  * @return array  ['lines' => array, 'totals' => array]
  */
-function erp_order_lines($order, $items, $charges_taxed = null)
+function erp_order_lines($order, $items, $charges_taxed = null, $settle_charges = false)
 {
     $lines = array();
     $weights = array();
@@ -262,11 +275,22 @@ function erp_order_lines($order, $items, $charges_taxed = null)
     // well; without its line the invoice fell short of every installment
     // order and was refused. The document has no column of its own for it,
     // so surcharge_total counts it with the surcharge.
-    $charges = erp_order_charge_lines($lines, array(
+    $charged = array(
         'shipping' => array(lang('Shipping'), (int) ($order['shipping'] ?? 0)),
         'surcharge' => array(lang('Surcharge'), (int) ($order['surcharge'] ?? 0)),
         'installment' => array(lang('Installment Charge'), (int) ($order['installment_charges'] ?? 0)),
-    ), $charges_taxed);
+    );
+    $charges = erp_order_charge_lines($lines, $charged, $charges_taxed, $settle_charges ? array_keys($charged) : array());
+
+    // What of the charges the invoice leaves to the payment.
+    $charges_left = 0;
+    foreach ($charged as $name => $charge) {
+        $charges_left += max(0, (int) $charge[1]);
+
+        foreach ($charges[$name] as $line) {
+            $charges_left -= (int) $line['line_total'] + (int) $line['tax_total'];
+        }
+    }
 
     $shipping_lines = $charges['shipping'];
     $surcharge_lines = array_merge($charges['surcharge'], $charges['installment']);
@@ -306,7 +330,9 @@ function erp_order_lines($order, $items, $charges_taxed = null)
     // two lines account for; they are informational and are NOT added again.
     // A reader that sums subtotal + shipping_total + tax_total counts the
     // shipping twice. gift_card_total is not part of the sale at all - it is
-    // how part of the grand total was paid.
+    // how part of the grand total was paid. charges_left is the part of the
+    // charges the invoice leaves to the payment (above): the order's total
+    // and gift card come to the grand total plus it.
     $totals = array(
         'subtotal' => $subtotal,
         'discount_total' => $discount_total,
@@ -315,6 +341,7 @@ function erp_order_lines($order, $items, $charges_taxed = null)
         'gift_card_total' => (int) ($order['gift_card_discount'] ?? 0),
         'tax_total' => $tax_total,
         'grand_total' => $subtotal - $discount_total + $tax_total,
+        'charges_left' => max(0, $charges_left),
     );
 
     return array('lines' => $lines, 'totals' => $totals);
@@ -349,14 +376,18 @@ function erp_order_lines($order, $items, $charges_taxed = null)
  * order placed before the checkout settled its charges
  * (pg_order_charges_reachable()) or an installment charge the payment added.
  * So does one that would move a charge further than its lines' roundings
- * explain (a kurus a line, and one).
+ * explain (a kurus a line, and one). A charge named in $lower is taken
+ * instead the fewest kurus lower (at most ten) that leave every rate it is
+ * shared by reachable, as the checkout lowers the shipping: its lines then
+ * come to that much less than was charged.
  *
  * @param array     $item_lines  The order's goods lines, discount applied, their tax final
  * @param array     $charges     name => [label, int kurus charged], in the order they are placed
  * @param bool|null $taxed       The charges hold tax; null asks the store (erp_shipping_taxed())
+ * @param string[]  $lower       The charges that may go lower to keep the rates reachable
  * @return array  name => lines in erp_order_lines() shape
  */
-function erp_order_charge_lines($item_lines, $charges, $taxed = null)
+function erp_order_charge_lines($item_lines, $charges, $taxed = null, $lower = array())
 {
     $out = array();
     $any = false;
@@ -412,6 +443,27 @@ function erp_order_charge_lines($item_lines, $charges, $taxed = null)
         }
 
         $shares = ($taxed && !empty($shared)) ? pg_order_charge_shares($gross, $shared) : array('0.000' => $gross);
+
+        if ($taxed && !empty($shared) && in_array($name, (array) $lower, true)) {
+            for ($less = 0; ($less <= 10) && ($less < $gross); $less++) {
+                $tried = pg_order_charge_shares($gross - $less, $shared);
+                $reached = true;
+
+                foreach ($tried as $key => $share) {
+                    if (((int) $share > 0) && ($shared[$key]['rate'] > 0)
+                        && (erp_rate_amount($shared[$key]['total'] + (int) $share, $shared[$key]['rate']) === null)) {
+                        $reached = false;
+                        break;
+                    }
+                }
+
+                if ($reached) {
+                    $shares = $tried;
+                    break;
+                }
+            }
+        }
+
         $several = (count(array_filter($shares)) > 1);
 
         foreach ($shares as $key => $share) {
@@ -686,6 +738,66 @@ function erp_order_payment_date($order)
 }
 
 /**
+ * Whether an order is an internet sale, and the address it was made at.
+ *
+ * A sale over the counter is not an internet sale, whatever else the order
+ * carries. Everything that came in over the wire (web checkout,
+ * marketplace, or the default type of an older row) is one, and only an
+ * internet sale states the address it was made at: the ERP setting, or
+ * failing that the site's own address.
+ *
+ * @param array $order  The orders row (type)
+ * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
+ */
+function erp_order_internet_sale($order)
+{
+    return _erp_order_internet_sale(
+        (string) ($order['type'] ?? ''),
+        defined('ERP_WEB_ADDRESS') ? (string) ERP_WEB_ADDRESS : '',
+        (defined('URL_SCHEME') && defined('HOSTNAME')) ? URL_SCHEME . HOSTNAME : ''
+    );
+}
+
+/**
+ * erp_order_internet_sale() with the setting and the site's address passed
+ * in.
+ *
+ * @param string $type     orders.type
+ * @param string $setting  ERP_WEB_ADDRESS
+ * @param string $site     The site's own address (URL_SCHEME . HOSTNAME)
+ * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
+ */
+function _erp_order_internet_sale($type, $setting, $site)
+{
+    if ((string) $type === 'local') {
+        return array('is_internet_sale' => 0, 'web_address' => '');
+    }
+
+    $web_address = trim((string) $setting);
+
+    return array('is_internet_sale' => 1, 'web_address' => ($web_address !== '') ? $web_address : trim((string) $site));
+}
+
+/**
+ * The VUK 509 fields of an order's sale, as an e-Arşiv invoice states them:
+ * whether it is an internet sale and its address, how and when it was paid,
+ * when the goods left and who carried them. The order's ERP invoice stores
+ * them (erp_invoice_from_order_locked()); the order screen's own Paraşüt
+ * button sends them with its e-Arşiv (parasut_create_invoice()).
+ *
+ * @param array $order  The orders row
+ * @return array is_internet_sale, web_address, payment_method, payment_date,
+ *               shipment_date, carrier_title, carrier_vkn
+ */
+function erp_order_sale_fields($order)
+{
+    return erp_order_internet_sale($order) + array(
+        'payment_method' => erp_order_payment_method_code($order),
+        'payment_date' => erp_order_payment_date($order),
+    ) + erp_order_shipment((int) ($order['id'] ?? 0));
+}
+
+/**
  * The name of an order's invoicing lock, as SQL.
  *
  * GET_LOCK names belong to the whole MySQL server, so the database is part of
@@ -830,12 +942,14 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             : lang('This order is not linked to a contact, so there is no account to bill.'));
     }
 
-    $built = erp_order_lines($order, $items);
+    $built = erp_order_lines($order, $items, null, true);
 
     // What the customer was actually charged. A gift card is a means of
     // payment, so it is added back: the invoice states the whole sale, and the
-    // gift card settles its share of it once the document exists.
-    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0);
+    // gift card settles its share of it once the document exists. A charge
+    // that left a rate's total out of reach is invoiced the kurus lower that
+    // reaches it (erp_order_lines()); that kurus stays with the payment.
+    $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'];
 
     if ($built['totals']['grand_total'] !== $expected) {
         return $fail(lang(array(
@@ -873,21 +987,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
     }
 
     $totals = $built['totals'];
-
-    // A sale over the counter is not an internet sale, whatever else the order
-    // carries. Everything that came in over the wire (web checkout,
-    // marketplace, or the default type of an older row) is one, and only an
-    // internet sale states the address it was made at: the ERP setting, or
-    // failing that the site's own address.
-    $is_internet_sale = (($order['type'] ?? '') === 'local') ? 0 : 1;
-    $web_address = '';
-    if ($is_internet_sale === 1) {
-        $web_address = trim((string) (defined('ERP_WEB_ADDRESS') ? ERP_WEB_ADDRESS : ''));
-        if ($web_address === '' && defined('URL_SCHEME') && defined('HOSTNAME')) {
-            $web_address = URL_SCHEME . HOSTNAME;
-        }
-    }
-    $shipment = erp_order_shipment($order_id);
+    $sale = erp_order_sale_fields($order);
 
     $ok = erp_query("INSERT INTO erp_invoices SET
             direction = 'sales',
@@ -914,13 +1014,13 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             grand_total = '" . (int) $totals['grand_total'] . "',
             grand_total_base = '" . (int) $totals['grand_total'] . "',
             status = 'issued',
-            is_internet_sale = '" . $is_internet_sale . "',
-            payment_method = '" . escape(erp_order_payment_method_code($order)) . "',
-            payment_date = '" . escape(erp_order_payment_date($order)) . "',
-            shipment_date = '" . escape($shipment['shipment_date']) . "',
-            carrier_title = '" . escape($shipment['carrier_title']) . "',
-            carrier_vkn = '" . escape($shipment['carrier_vkn']) . "',
-            web_address = '" . escape($web_address) . "',
+            is_internet_sale = '" . (int) $sale['is_internet_sale'] . "',
+            payment_method = '" . escape($sale['payment_method']) . "',
+            payment_date = '" . escape($sale['payment_date']) . "',
+            shipment_date = '" . escape($sale['shipment_date']) . "',
+            carrier_title = '" . escape($sale['carrier_title']) . "',
+            carrier_vkn = '" . escape($sale['carrier_vkn']) . "',
+            web_address = '" . escape($sale['web_address']) . "',
             created_by = '" . (int) ($options['created_by'] ?? 0) . "',
             created_at = '" . time() . "',
             updated_at = '" . time() . "'");

@@ -1,16 +1,14 @@
 ---
 name: sortable-init-pitfall
-description: Pitfall installing jQuery UI .sortable() on a panel screen: backend.src.js overrides options of every ui-sortable; init in $(function(){}) with all options.
+description: jQuery UI .sortable() on a panel screen: backend.src.js now sets up only lists marked .pg-sortable; before, its ready handler rewrote the options of every sortable on the page.
 ---
 
-## What does `backend.src.js` do to every sortable?
-- At `backend.src.js:446` the ready handler runs `$(".ui-sortable").sortable({items:"a", handle:this, axis:'y', delay:300, containment:"parent", helper:'clone'})`.
-- `ui-sortable` is a class jQuery UI itself adds. The line finds EVERY installed sortable on the page, not lists marked in markup. On a live widget `.sortable({...})` does not create a second widget, it OVERWRITES the options. No hand-written `class="ui-sortable"` exists in the codebase.
+## Does `backend.src.js` touch a sortable a screen sets up itself?
+- No longer. Its ready handler sets up only lists that opt in with the class `pg-sortable`, with its own defaults (`items: "a"`, `axis: 'y'`, `delay: 300`, `containment: "parent"`, `helper: 'clone'`, `scroll: false`...). A list a screen makes sortable itself keeps the options it was given. No screen uses `pg-sortable` today.
+- Before, the handler ran `$(".ui-sortable").sortable({...})`. `ui-sortable` is the class jQuery UI itself adds to every sortable it has built, and `.sortable({...})` on a live widget does not build a second one, it OVERWRITES the options. Symptoms: nothing could be dragged (`items: "a"` matched nothing) or an interrupted drag left a COPY in the list (`helper: 'clone'`).
 
-## How do you install a sortable on a new screen?
-1. Install inside `$(function(){...})`. Ready callbacks run in registration order; `backend.src.js` loads first, so its handler runs first and yours writes last. Installing immediately (at parse time) gets you overridden.
-2. Write EVERY option that line touches explicitly: `items`, `handle`, `axis`, `delay`, `containment`, `helper`, `scroll`, `dropOnEmpty`, `revert`, `tolerance`. An option you omit keeps the value it gave.
+## What is left from that time?
+- `assets/js/product_builder.js` still installs its image tiles inside `$(function(){...})` with every option spelled out, and its comment still describes the old handler; harmless.
+- Never add a global `.sortable()` call on `.ui-sortable` (or any class jQuery UI sets) again: it reaches lists other screens configured (dashboard widgets, product images, menu items).
 
-## Why do legacy product/group screens survive?
-- They install inline with `$(".sortable-list").sortable({...})`, saved by accident (registered later in the ready queue).
-- Symptoms of falling into the trap: dragging does NOT work at all (`items:"a"` matches nothing), or an interrupted drag leaves a COPY in the list because of `helper:'clone'`.
+Related: docs/memory/ui/panel-layout-pitfalls.md

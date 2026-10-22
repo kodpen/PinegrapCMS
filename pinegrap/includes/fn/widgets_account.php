@@ -280,7 +280,7 @@ function _pg_acct_timezone_options()
 {
     $site = (defined('TIMEZONE') && TIMEZONE != '') ? TIMEZONE : (defined('SERVER_TIMEZONE') ? SERVER_TIMEZONE : '');
     $zones = get_timezones();
-    $label = array_search($site, $zones);
+    $label = array_search(pg_timezone_list_value($site), $zones);
     $out = array(array('', lang('Default') . ': ' . ($label ? $label : $site)));
     foreach ($zones as $zone_label => $zone) $out[] = array((string)$zone, (string)$zone_label);
     return $out;
@@ -675,7 +675,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
         if ($submitted) {
             $values[$f] = (string)$lf->get_field_value($f);
         } elseif ($f === 'timezone') {
-            $values[$f] = is_array($user) ? (string)$user['timezone'] : '';
+            $values[$f] = is_array($user) ? pg_timezone_list_value((string)$user['timezone']) : '';
         } else {
             $values[$f] = isset($contact[$f]) ? (string)$contact[$f] : '';
         }
