@@ -6323,6 +6323,14 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The language of the page's text, as <html lang> carries it in the
+    // HTML export, the code view and so the preview: the panel's. The
+    // canvas carries the same, or text-transform: uppercase draws a Turkish
+    // "i" as "I" there while the page shows "İ".
+    function _sdDocLang() {
+        return (document.documentElement && document.documentElement.lang) || 'en';
+    }
+
     // The canvas document: written into the iframe, its listeners, the
     // framework bundle and the assets. Runs once when the canvas is built and
     // again for every fresh document (_sdCanvasRealmReset()).
@@ -6350,7 +6358,7 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
-        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
+        doc.write('<!DOCTYPE html><html lang="' + esc(_sdDocLang()) + '"><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
@@ -6446,6 +6454,11 @@ const StyleDesigner = (function () {
         }
         canvasDoc.addEventListener('click', function(e) {
             var t = e.target;
+            // A label of a colour, date or file input: its click would open
+            // the browser's chooser, which takes the keyboard from the label
+            // being edited in place (_sdLabelOpensChooser()).
+            var _cLab = (t && t.closest) ? t.closest('label') : null;
+            if (_cLab && _sdLabelOpensChooser(_cLab)) e.preventDefault();
             if (t && t.tagName) {
                 var ttn = t.tagName.toLowerCase();
                 // Form controls — bail early; never touch their native click behavior except for
@@ -11363,6 +11376,66 @@ const StyleDesigner = (function () {
                '</div>';
     }
 
+    // ── In-place text editing helpers ─────────────────────────────────
+    // A space typed into an in-place edit inside a <button> (its label, a
+    // tab or an accordion header): the button takes the key as its own
+    // activation, so the editor writes the space itself. A plain U+0020
+    // written at the caret ends its text node, and the browser collapses it
+    // on the next character: "Hemen Ara" came out "HemenAra" in the tree and
+    // on the page. The editing command writes it the way typing does
+    // (U+00A0 where a plain space would collapse); without the command a
+    // U+00A0 goes in by hand. The text is read back through
+    // _sdInlinePlainText().
+    function _sdInsertEditSpace(el) {
+        var doc = el.ownerDocument;
+        try {
+            if (doc.execCommand && doc.execCommand('insertText', false, ' ')) return;
+        } catch (e) {}
+        var win = doc.defaultView;
+        var sel = (win && win.getSelection) ? win.getSelection() : null;
+        var sp = doc.createTextNode(' ');
+        if (sel && sel.rangeCount) {
+            var rg = sel.getRangeAt(0);
+            rg.deleteContents();
+            rg.insertNode(sp);
+            rg.setStartAfter(sp);
+            rg.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(rg);
+        } else {
+            el.appendChild(sp);
+        }
+    }
+
+    // Text typed in place, with the spaces written as U+00A0 (by the
+    // editor above or by the browser) turned back into plain ones: the
+    // saved label is the one that was typed.
+    function _sdInlinePlainText(s) {
+        return String(s == null ? '' : s).replace(/ /g, ' ');
+    }
+
+    // Inputs whose activation opens a chooser of the browser's own: the
+    // colour and date/time pickers, the file dialog. A click on a label of
+    // one opens it, and the chooser keeps the keyboard, so the double-click
+    // that starts editing the label lost every typed character. On the
+    // canvas such a label's click does not activate its control; a checkbox
+    // or radio label keeps its native toggle (the theme switch needs it).
+    var _SD_CHOOSER_INPUTS = { color: 1, date: 1, time: 1, 'datetime-local': 1, month: 1, week: 1, file: 1 };
+    function _sdLabelOpensChooser(label) {
+        var c = label && label.control;
+        if (!c || String(c.tagName || '').toLowerCase() !== 'input') return false;
+        return _SD_CHOOSER_INPUTS[String(c.type || '').toLowerCase()] === 1;
+    }
+
+    // The "double-click to edit" hint of an element edited in place, '' for
+    // none: bound text refuses the edit (the binding rewrites it), and an
+    // element with a tooltip or title of its own keeps that one.
+    function _sdInlineEditHint(node, rich) {
+        if (_sdTextIsBound(node)) return '';
+        if ((node.props.tooltipEnabled && node.props.tooltipTitle) || node.props.title) return '';
+        return rich ? _sdT('Double-click to edit (rich text)') : _sdT('Double-click to edit');
+    }
+
     function _createVirtualText(doc, node) {
         var s = doc.createElement('span');
         s.className = 'sd-virtual-text';
@@ -11395,7 +11468,7 @@ const StyleDesigner = (function () {
             } catch (err) {}
         });
         s.addEventListener('blur', function() {
-            var t = s.textContent;
+            var t = _sdInlinePlainText(s.textContent);
             s.removeAttribute('contenteditable');
             if (node.props.text !== t) {
                 saveState();
@@ -11409,25 +11482,13 @@ const StyleDesigner = (function () {
             if (e.key === 'Enter') { e.preventDefault(); s.blur(); }
             else if (e.key === 'Escape') { e.preventDefault(); s.textContent = node.props.text || ''; s.blur(); }
             // Native <button> ancestors activate on Space → swallows the keystroke
-            // before the contenteditable can insert a space character. Detect that
-            // case and inject the space manually at the caret.
+            // before the contenteditable can insert a space character, so the
+            // editor writes it (_sdInsertEditSpace()).
             else if (e.key === ' ' || e.key === 'Spacebar') {
                 var _btnAnc = s.closest && s.closest('button');
                 if (_btnAnc) {
                     e.preventDefault(); e.stopPropagation();
-                    var _doc2 = s.ownerDocument;
-                    var _win2 = _doc2.defaultView || window;
-                    var _sel2 = _win2.getSelection && _win2.getSelection();
-                    if (_sel2 && _sel2.rangeCount) {
-                        var _rg2 = _sel2.getRangeAt(0);
-                        _rg2.deleteContents();
-                        _rg2.insertNode(_doc2.createTextNode(' '));
-                        _rg2.collapse(false);
-                        _sel2.removeAllRanges();
-                        _sel2.addRange(_rg2);
-                    } else {
-                        s.textContent = (s.textContent || '') + ' ';
-                    }
+                    _sdInsertEditSpace(s);
                 } else {
                     e.stopPropagation();
                 }
@@ -12541,7 +12602,7 @@ const StyleDesigner = (function () {
         if (markup && src.querySelector('*')) {
             return src.innerHTML.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '').trim();
         }
-        return src.textContent.replace(/\u00a0/g, ' ').trim();
+        return _sdInlinePlainText(src.textContent).trim();
     }
 
     // The Bootstrap icon an element draws through its classes ("bi-alarm"),
@@ -12983,19 +13044,7 @@ const StyleDesigner = (function () {
                         if (_ieIsBtn) {
                             ke.preventDefault();
                             ke.stopPropagation();
-                            var _ieDoc = item.el.ownerDocument;
-                            var _ieWin = _ieDoc.defaultView || window;
-                            var _ieSel = _ieWin.getSelection && _ieWin.getSelection();
-                            if (_ieSel && _ieSel.rangeCount) {
-                                var _ieRg = _ieSel.getRangeAt(0);
-                                _ieRg.deleteContents();
-                                _ieRg.insertNode(_ieDoc.createTextNode(' '));
-                                _ieRg.collapse(false);
-                                _ieSel.removeAllRanges();
-                                _ieSel.addRange(_ieRg);
-                            } else {
-                                item.el.appendChild(_ieDoc.createTextNode(' '));
-                            }
+                            _sdInsertEditSpace(item.el);
                         } else {
                             ke.stopPropagation();
                         }
@@ -13021,14 +13070,14 @@ const StyleDesigner = (function () {
                 });
             });
 
-            // Visual cursor hint
+            // Visual cursor hint, not on bound text: its double-click
+            // refuses the edit. The title stays off an element with a
+            // tooltip or title of its own; the check reads the node's props,
+            // not item.el (which may be a nested child like .card-title).
+            if (_sdTextIsBound(node)) return;
             item.el.style.cursor = 'text';
-            // Only set designer hint if user hasn't defined their own tooltip/title on this node
-            // (avoid clobbering Bootstrap tooltip title or plain title attribute). The check uses
-            // the parent node's props, not item.el (which may be a nested child like .card-title).
-            if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title) {
-                item.el.title = isRichText ? _sdT('Double-click to edit (rich text)') : _sdT('Double-click to edit');
-            }
+            var _hint = _sdInlineEditHint(node, isRichText);
+            if (_hint) item.el.title = _hint;
         });
     }
 
@@ -24968,7 +25017,7 @@ const StyleDesigner = (function () {
         var text = '';
         var entries = [];
         var locks = [];
-        var lang = document.documentElement.lang || 'en';
+        var lang = _sdDocLang();
         var frame = _sdPageFrameRows();
         var addRow = function (r, indent, role) {
             var line = '    '.repeat(indent) + _sdFrameRowText(r);
@@ -51647,7 +51696,7 @@ const StyleDesigner = (function () {
                    '        <link rel="stylesheet" href="' + googleFontUrl(f) + '">\n';
         }).join('');
 
-        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(document.documentElement.lang || 'en') + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
+        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(_sdDocLang()) + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
             '        <meta name="viewport" content="width=device-width, initial-scale=1">\n\n' +
             '        <meta_tags></meta_tags>\n\n        <stylesheet></stylesheet>\n\n' +
             (fontImports ? fontImports + '\n' : '') +
