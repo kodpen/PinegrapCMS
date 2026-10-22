@@ -27,6 +27,6 @@ description: The 'unclear' flag of a payment driver's answer, how the iyzico ref
 - A timeout or a 502 reopened the return to `received`; the next click sent a second AmountBaseRefund (three clicks, three requests, one log line).
 
 ## Tests?
-- `tests/payment_unclear_answer_test.php` (stand-in HTTP client returning raw bodies or throwing `\Error` / `RuntimeException`). On PHP 8.5 load the iyzico SDK classes with deprecations masked before the runner.
+- `tests/payment_unclear_answer_test.php` (stand-in HTTP client returning raw bodies or throwing `\Error` / `RuntimeException`), the screen text never carrying `.php` or the driver's nested sentence.
 
 Related: docs/memory/commerce/order-returns-refund.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/payment-drivers.md
