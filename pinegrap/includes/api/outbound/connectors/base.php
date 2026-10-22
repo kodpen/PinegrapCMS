@@ -587,7 +587,8 @@ function mp_product_row($account, $map) {
 		'quantity'    => $quantity,
 		'tracked'     => $tracked,
 		'taxable'     => !empty($product['taxable']),
-		'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate']
+		'tax_rate'    => ($product['tax_rate'] === null) ? null : (float)$product['tax_rate'],
+		'vat_rate'    => mp_product_vat_rate($product)
 	);
 
 }
@@ -605,21 +606,80 @@ function mp_product_row($account, $map) {
 // price is one number for every buyer. Nothing is added when the checkout
 // would add nothing - tax off, product not taxable, country in no zone.
 //
+// The zone is the country's (get_default_tax_rate()), not the ERP store's
+// zone the till uses (local_sale_line_rate()): it is the same source the
+// declared VAT rate is read from (mp_product_vat_rate()), so the price and
+// the rate a listing states always agree.
+//
 // Takes any row that carries price, taxable and tax_rate from products: the
 // queue's product, a listing's product, the mapping screen's row.
 function mp_product_price($product) {
 
-	$tax_enabled = defined('ECOMMERCE_TAX') && ECOMMERCE_TAX == true;
-
-	$zone_rate = ($tax_enabled && function_exists('get_default_tax_rate')) ? get_default_tax_rate() : false;
+	$tax = mp_shop_tax_state();
 
 	return get_tax_inclusive_price(
 		isset($product['price']) ? $product['price'] : 0,
 		isset($product['taxable']) ? $product['taxable'] : 0,
 		isset($product['tax_rate']) ? $product['tax_rate'] : null,
-		$zone_rate,
-		$tax_enabled
+		$tax['zone_rate'],
+		$tax['enabled']
 	);
+
+}
+
+// The VAT rate inside mp_product_price()'s figure, from the same inputs, or
+// null when the shop does not tax (see mp_applied_vat_rate()).
+function mp_product_vat_rate($product) {
+
+	$tax = mp_shop_tax_state();
+
+	return mp_applied_vat_rate(
+		isset($product['taxable']) ? $product['taxable'] : 0,
+		isset($product['tax_rate']) ? $product['tax_rate'] : null,
+		$tax['zone_rate'],
+		$tax['enabled']
+	);
+
+}
+
+// Whether the shop charges tax and its country's zone rate (false in no
+// zone, or when tax is off): the inputs both the price and the VAT rate a
+// marketplace is told are built from.
+function mp_shop_tax_state() {
+
+	$enabled = defined('ECOMMERCE_TAX') && ECOMMERCE_TAX == true;
+
+	return array(
+		'enabled'   => $enabled,
+		'zone_rate' => ($enabled && function_exists('get_default_tax_rate')) ? get_default_tax_rate() : false
+	);
+
+}
+
+// The rate get_tax_inclusive_price() adds on top of the stored price, for the
+// same arguments: the rate a marketplace has to be told, because Trendyol and
+// n11 work the VAT back out of the sale price.
+//
+// null when tax is off: the shop then charges the stored price as it is, so
+// that price is final with any VAT already inside, and the drivers declare
+// the product's own or the zone's rate as they always did. 0 when the price
+// carries no tax - product not taxable, or the country in no zone, whatever
+// rate the product has of its own. Otherwise get_effective_tax_rate().
+function mp_applied_vat_rate($taxable, $product_rate, $zone_rate, $tax_enabled) {
+
+	if (!$tax_enabled) {
+
+		return null;
+
+	}
+
+	if (!((int)$taxable) || $zone_rate === false || $zone_rate === null) {
+
+		return 0.0;
+
+	}
+
+	return (float)get_effective_tax_rate($product_rate, $zone_rate);
 
 }
 

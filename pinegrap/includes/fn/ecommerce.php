@@ -2264,6 +2264,12 @@ function get_effective_tax_rate($product_rate, $zone_rate)
  * country is in no tax zone (a zone rate of false, as get_default_tax_rate()
  * answers it).
  *
+ * It is the no-buyer twin of local_sale_line_rate(): with the ERP on the
+ * till takes the ERP store's zone (state included), while a marketplace
+ * always takes the shop country's zone, the same source its declared VAT
+ * rate comes from (mp_applied_vat_rate()), so the price and the rate stated
+ * beside it agree.
+ *
  * @param  int|string   $price        minor units as stored in products.price
  * @param  int|string   $taxable      products.taxable
  * @param  mixed        $product_rate products.tax_rate (NULL = the zone's rate)
