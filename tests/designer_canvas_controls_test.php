@@ -185,3 +185,187 @@ function test_designer_canvas_controls_dropdown_guard_on_window()
 	pg_assert_contains('isContentEditable', $keys, 'a text written in place keeps its own key handling');
 	pg_assert_contains('_sdShortcutKeydown(e)', $keys, 'the editor shortcuts still see the other keys');
 }
+
+// A click inside a control the canvas runs is let through to it, on its icon
+// or its label too: the theme toggle's moon icon did nothing (the icon's
+// wrapper stopped the click before the button's own listener), and the
+// Popover button never opened (its label span stopped the click Bootstrap's
+// Popover listens for on the element itself).
+function test_designer_canvas_controls_inner_clicks_reach_the_control()
+{
+	$js = _test_canvas_controls_js();
+	pg_assert_true(preg_match("/var _SD_CANVAS_CONTROLS = ((?:'[^']*'\\s*\\+?\\s*)+);/", $js, $m) === 1, 'the designer names the controls the canvas runs');
+	preg_match_all("/'([^']*)'/", $m[1], $parts);
+	$controls = array_map('trim', explode(',', implode('', $parts[1])));
+	foreach (array('[data-bs-toggle]', '[data-bs-target]', '[data-bs-dismiss]', '[data-bs-slide]', '[data-bs-slide-to]', '[data-bs-theme-value]', '[data-pg-theme-switcher] button') as $control) {
+		pg_assert_true(in_array($control, $controls, true), $control . ' is a control the canvas runs');
+	}
+
+	// The element wrapper and the shared component wrapper treat a click in
+	// one as interactive: they select without stopping it.
+	pg_assert_true(preg_match('/var isInteractive = !!e\.target\.closest\([^;]*_SD_CANVAS_CONTROLS/s', $js) === 1, 'a click inside a control is interactive for the element wrapper');
+	pg_assert_true(preg_match('/_tgt\.closest\(_SD_CANVAS_CONTROLS\)\)\s*\{\s*return;\s*\}\s*e\.stopPropagation\(\);/', $js) === 1, 'the shared component wrapper leaves a click inside a control alone');
+
+	// The label of a button: a control's label lets the click go on, a plain
+	// button's label still keeps it.
+	$from = strpos($js, 'function _createVirtualText(');
+	pg_assert_true($from !== false, 'the designer draws button labels as virtual text');
+	$body = substr($js, (int) $from, 3000);
+	$at = strpos($body, "s.addEventListener('click', function(e) {");
+	pg_assert_true($at !== false, 'the label has a click listener');
+	$click = substr($body, (int) $at, (int) strpos($body, '});', (int) $at) - (int) $at);
+	pg_assert_contains('closest(_SD_CANVAS_CONTROLS)', $click, 'the label knows the controls');
+	pg_assert_true(strpos($click, 'return;') < strpos($click, 'e.stopPropagation()'), 'a control gets the click before the label would stop it');
+	pg_assert_contains('e._sdHandled = true', $click, 'the wrappers around a control do not select its parent instead');
+}
+
+// assets/js/pg_theme_switcher.js run under Node on a small stand-in for the
+// DOM: $markup is a list of switchers ({kind, editor}: editor puts the
+// editor's toolbar, with its .bi drag handle, in front of the toggle's
+// icon), $setup runs before the file (window, document, root and storage in
+// scope) and $steps after it; the script's JSON output is returned. null
+// without Node.
+function _test_canvas_controls_engine($markup, $setup, $steps)
+{
+	$engine = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js');
+	$dom = <<<'JS'
+function El(tag, attrs, kids) {
+	this.tagName = tag.toUpperCase(); this.attrs = Object.assign({}, attrs || {});
+	this.children = []; this.parentElement = null; this.listeners = {}; this.checked = false;
+	var self = this; (kids || []).forEach(function (k) { k.parentElement = self; self.children.push(k); });
+}
+Object.defineProperty(El.prototype, 'className', {
+	get: function () { return this.attrs['class'] || ''; },
+	set: function (v) { this.attrs['class'] = String(v); }
+});
+Object.defineProperty(El.prototype, 'classList', { get: function () {
+	var el = this, list = function () { return el.className.split(/\s+/).filter(Boolean); };
+	return {
+		contains: function (c) { return list().indexOf(c) !== -1; },
+		toggle: function (c, on) { var l = list().filter(function (x) { return x !== c; }); if (on) l.push(c); el.className = l.join(' '); }
+	};
+} });
+El.prototype.getAttribute = function (n) { return (n in this.attrs) ? this.attrs[n] : null; };
+El.prototype.setAttribute = function (n, v) { this.attrs[n] = String(v); };
+El.prototype.addEventListener = function (t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); };
+El.prototype.fire = function (t) { var self = this; (this.listeners[t] || []).forEach(function (f) { f.call(self, { type: t, preventDefault: function () {} }); }); };
+El.prototype.is = function (simple) {
+	var el = this, m = simple.match(/^([a-z]*)((?:\.[\w-]+|\[[^\]]+\])*)$/);
+	if (!m) throw new Error('selector ' + simple);
+	if (m[1] && el.tagName !== m[1].toUpperCase()) return false;
+	return (m[2].match(/\.[\w-]+|\[[^\]]+\]/g) || []).every(function (a) {
+		if (a.charAt(0) === '.') return el.classList.contains(a.slice(1));
+		var p = a.slice(1, -1).match(/^([\w-]+)(?:="([^"]*)")?$/);
+		return p[2] === undefined ? el.getAttribute(p[1]) !== null : el.getAttribute(p[1]) === p[2];
+	});
+};
+// Simple selectors, lists and the descendant combinator.
+El.prototype.matches = function (sel) {
+	var el = this;
+	return sel.split(',').some(function (one) {
+		var parts = one.trim().split(/\s+/);
+		if (!el.is(parts.pop())) return false;
+		for (var e = el.parentElement; parts.length && e; e = e.parentElement) {
+			if (e.is(parts[parts.length - 1])) parts.pop();
+		}
+		return !parts.length;
+	});
+};
+El.prototype.querySelectorAll = function (sel) {
+	var out = [];
+	(function walk(e) { e.children.forEach(function (k) { if (k.matches(sel)) out.push(k); walk(k); }); })(this);
+	return out;
+};
+El.prototype.querySelector = function (sel) { return this.querySelectorAll(sel)[0] || null; };
+El.prototype.closest = function (sel) { for (var e = this; e; e = e.parentElement) { if (e.matches(sel)) return e; } return null; };
+El.prototype.contains = function (x) { for (var e = x; e; e = e.parentElement) { if (e === this) return true; } return false; };
+function h(tag, attrs, kids) { return new El(tag, attrs, kids); }
+
+var store = {};
+var storage = {
+	getItem: function (k) { return (k in store) ? store[k] : null; },
+	setItem: function (k, v) { store[k] = String(v); }
+};
+var docListeners = {};
+var body = h('body', {}, MARKUP.map(function (sw) {
+	if (sw.kind === 'toggle') {
+		var icon = h('i', { 'class': 'bi bi-moon-stars-fill' });
+		var inner = sw.editor ? h('div', { 'class': 'sd-wrap' }, [h('div', { 'class': 'sd-tb' }, [h('span', { 'class': 'bi bi-arrows-move' })]), icon]) : icon;
+		return h('div', { 'data-pg-theme-switcher': 'toggle' }, [h('button', { type: 'button' }, [inner])]);
+	}
+	if (sw.kind === 'switch') {
+		return h('div', { 'data-pg-theme-switcher': 'switch' }, [h('input', { type: 'checkbox' })]);
+	}
+	return h('div', { 'data-pg-theme-switcher': 'dropdown' }, [h('i', { 'class': 'bi pg-active-icon' })].concat(['light', 'dark', 'auto'].map(function (v) {
+		return h('button', { type: 'button', 'data-bs-theme-value': v }, [h('i', { 'class': 'pg-check d-none' })]);
+	})));
+}));
+var root = h('html', {}, [body]);
+var changes = 0;
+var document = {
+	documentElement: root, readyState: 'complete',
+	addEventListener: function (t, f) { (docListeners[t] = docListeners[t] || []).push(f); },
+	dispatchEvent: function (ev) { (docListeners[ev.type] || []).forEach(function (f) { f(ev); }); },
+	querySelectorAll: function (sel) { return root.querySelectorAll(sel); }
+};
+document.addEventListener('pg-theme-change', function () { changes++; });
+var window = {
+	localStorage: storage,
+	matchMedia: function () { return { matches: false, addEventListener: function () {} }; }
+};
+window.window = window;
+window.document = document;
+function view() {
+	var t = root.querySelector('[data-pg-theme-switcher="toggle"] button');
+	var s = root.querySelector('[data-pg-theme-switcher="switch"] input');
+	var d = root.querySelector('[data-pg-theme-switcher="dropdown"] [data-bs-theme-value].active');
+	return {
+		html: root.getAttribute('data-bs-theme'), stored: storage.getItem('pg-theme'), changes: changes,
+		toggleIcon: t ? t.querySelectorAll('i').pop().className : null,
+		handle: t && t.querySelector('.sd-tb .bi') ? t.querySelector('.sd-tb .bi').className : null,
+		pressed: t ? t.getAttribute('aria-pressed') : null,
+		switchOn: s ? s.checked : null,
+		menu: d ? d.getAttribute('data-bs-theme-value') : null
+	};
+}
+var out = [];
+JS;
+	$script = str_replace('MARKUP', json_encode($markup), $dom)
+		. $setup . "\n"
+		. "(function (window, document) {\n" . $engine . "\n}).call(window, window, document);\n"
+		. "var pgSetTheme = window.pgSetTheme;\n"
+		. $steps . "\n"
+		. 'process.stdout.write(JSON.stringify(out));';
+	return _test_canvas_controls_node($script);
+}
+
+// The theme toggle on the canvas: the editor's toolbar sits in the button in
+// front of the icon, and its drag handle is a .bi too. The toggle drew the
+// sun on that handle and kept the moon on its own icon.
+function test_designer_canvas_controls_theme_toggle_icon_beside_editor_chrome()
+{
+	$out = _test_canvas_controls_engine(
+		array(array('kind' => 'toggle', 'editor' => true)),
+		'',
+		"var b = root.querySelector('[data-pg-theme-switcher=\"toggle\"] button');\n"
+		. "b.fire('click'); out.push(view());\n"
+		. "b.fire('click'); out.push(view());"
+	);
+	if ($out === null) {
+		return;
+	}
+	pg_assert_same('dark', $out[0]['html'], 'a click on the toggle turns the page dark');
+	pg_assert_same('bi bi-sun-fill', $out[0]['toggleIcon'], 'the toggle\'s own icon shows the sun');
+	pg_assert_same('bi bi-arrows-move', $out[0]['handle'], 'the editor\'s drag handle keeps its icon');
+	pg_assert_same('light', $out[1]['html'], 'a second click turns it light again');
+	pg_assert_same('bi bi-moon-stars-fill', $out[1]['toggleIcon'], 'and the moon comes back');
+
+	// On the page (no editor toolbar) the toggle is unchanged.
+	$out = _test_canvas_controls_engine(
+		array(array('kind' => 'toggle', 'editor' => false)),
+		'',
+		"root.querySelector('[data-pg-theme-switcher=\"toggle\"] button').fire('click'); out.push(view());"
+	);
+	pg_assert_same('bi bi-sun-fill', $out[0]['toggleIcon'], 'the page\'s toggle shows the sun when dark');
+	pg_assert_same('true', $out[0]['pressed'], 'and is pressed');
+}

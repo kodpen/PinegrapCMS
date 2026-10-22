@@ -169,9 +169,25 @@
             return;
         }
 
+        // The button's own icon. On the editor's canvas the icon is wrapped
+        // with the editor's toolbar, whose drag handle is a .bi too and
+        // comes first: that one is skipped, or the toggle drew its sun on
+        // the handle and kept the moon.
+        function icon() {
+            var all = button.querySelectorAll('i, .bi');
+
+            for (var n = 0; n < all.length; n++) {
+                if (!all[n].closest || !all[n].closest('.sd-tb')) {
+                    return all[n];
+                }
+            }
+
+            return null;
+        }
+
         function sync() {
             var dark = window.pgResolvedTheme() === 'dark';
-            var i    = button.querySelector('i, .bi');
+            var i    = icon();
 
             if (i) {
                 i.className = 'bi ' + (dark ? 'bi-sun-fill' : 'bi-moon-stars-fill');

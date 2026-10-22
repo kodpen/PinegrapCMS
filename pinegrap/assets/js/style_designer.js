@@ -6343,6 +6343,15 @@ const StyleDesigner = (function () {
         });
     }
 
+    // Controls that run on the canvas as on the page: Bootstrap's data-api
+    // hooks and the platform scripts' own controls (the theme toggle's
+    // button; the theme switch is an input and the theme menu's items carry
+    // data-bs-theme-value). A click inside one, on an icon or a label too,
+    // is let through to it: the wrappers select without stopping the click.
+    var _SD_CANVAS_CONTROLS = '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
+        '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value], ' +
+        '[data-pg-theme-switcher] button';
+
     // The canvas document: written into the iframe, its listeners, the
     // framework bundle and the assets. Runs once when the canvas is built and
     // again for every fresh document (_sdCanvasRealmReset()).
@@ -10352,10 +10361,7 @@ const StyleDesigner = (function () {
                     return;
                 }
             }
-            if (_tgt && _tgt.closest && _tgt.closest(
-                '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
-                '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value]'
-            )) {
+            if (_tgt && _tgt.closest && _tgt.closest(_SD_CANVAS_CONTROLS)) {
                 return;
             }
             e.stopPropagation();
@@ -11323,8 +11329,7 @@ const StyleDesigner = (function () {
             var isInteractive = !!e.target.closest(
                 'input, select, textarea, label, ' +
                 '[contenteditable="true"], ' +
-                '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
-                '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value], ' +
+                _SD_CANVAS_CONTROLS + ', ' +
                 '.accordion-button, ' +
                 '.carousel-control-prev, .carousel-control-next, .carousel-indicators button'
             );
@@ -11430,7 +11435,15 @@ const StyleDesigner = (function () {
         s.textContent = _vtText;
         // Don't let wrapper click-select the parent button on a mousedown inside the virtual.
         s.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        s.addEventListener('click', function(e) { e.stopPropagation(); });
+        // A click on the label of a control the canvas runs (a popover or
+        // collapse button, the theme toggle) has to reach the control:
+        // Bootstrap's Popover and Tooltip listen on the element itself, not
+        // by delegation, and stopping the click here starved them. The
+        // wrappers still leave the selection alone, as for a plain label.
+        s.addEventListener('click', function(e) {
+            if (s.parentElement && s.parentElement.closest(_SD_CANVAS_CONTROLS)) { e._sdHandled = true; return; }
+            e.stopPropagation();
+        });
         // Double-click → contenteditable
         s.addEventListener('dblclick', function(e) {
             e.preventDefault(); e.stopPropagation();
