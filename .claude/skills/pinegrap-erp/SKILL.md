@@ -273,8 +273,9 @@ Faz -1 – 9 bitti. Kalanlar (e-belge sürücüleri, mali müşavir onayı, elle
   `erp.expense.created|paid|cancelled`, `erp_event_expense()` ile yazanın
   işlemi içinde; yeni bir yazma yolu açarsan duyurusunu da koy.
 - Tarih kuralı: gider tarihi ve ödeme tarihi bugünden ileri olamaz; ödeme
-  gider tarihinden önce olamaz. Ödeme kasası giderin para biriminde olmalı
-  (ekran kasaları buna göre süzer).
+  gider tarihinden önce olamaz. Ödeme kasası giderin para biriminde ve etkin
+  olmalı (ekran kasaları buna göre süzer; tekrar koşusu ve ekstre de aynı
+  kapıdan geçer: `erp_expense_till_refusal()`).
 - Tekrar (4.96) `includes/erp/expense_recurring.php`: gider her zaman
   `erp_expense_save()` ile yazılır (kilit, KDV, kasa aynı kapıdan geçer).
   Tarih `UPDATE … WHERE next_date = <tarih>` ile sahiplenilir (iki koşu aynı

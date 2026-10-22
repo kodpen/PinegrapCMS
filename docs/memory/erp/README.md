@@ -51,4 +51,5 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, line VAT rate, returned_qty and parent_line_id.
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
+- erp-till-inactive-payments.md: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, and the carrier columns.
