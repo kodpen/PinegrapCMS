@@ -4006,7 +4006,7 @@ function pg_scroller_pattern()
  */
 function pg_scroller_on_page($content)
 {
-    return strpos($content, 'data-pg-scroller') !== false
+    return stripos($content, 'data-pg-scroller') !== false
         && (bool) preg_match(pg_scroller_pattern(), $content);
 }
 

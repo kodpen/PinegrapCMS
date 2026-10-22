@@ -538,7 +538,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // The previous / next buttons of a row marked data-pg-scroller carry no
     // script either; the row brings it (pg_scroller_inject()), checked once
     // everything is drawn in. Not in an e-mail.
-    if (!$email && strpos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
+    if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
         $content = pg_scroller_inject($content);
     }
 
