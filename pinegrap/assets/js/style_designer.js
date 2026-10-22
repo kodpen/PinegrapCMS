@@ -23007,18 +23007,28 @@ const StyleDesigner = (function () {
 
 
     // ── Sizing / Tooltip / A11y helpers ──
+    // A length typed into the Sizing panel (width, height, their minimum and
+    // maximum, the position offsets) as CSS. The panel takes CSS values
+    // ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a unit
+    // ('48', '-8', '1.5') is taken as pixels, the unit of the panel's
+    // examples and of an image's width / height attributes: a browser drops
+    // a declaration whose length has no unit. The page's renderer writes the
+    // same (pg_designer_css_length(), includes/fn/designer.php).
+    function _sdCssLen(v) {
+        var s = (v === undefined || v === null) ? '' : String(v).trim();
+        if (/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(s)) return s + 'px';
+        return s;
+    }
     // How an image's width or height prop is written: a whole number as the
     // width / height attribute (pixels; it keeps the layout box before the
     // file arrives), anything else as CSS with its own unit ('50%', '12rem',
-    // '120px', 'auto'). A bare decimal is taken as pixels, so a style never
-    // carries a number without a unit, which a browser drops. The page's
+    // '120px', 'auto'); a bare decimal is pixels (_sdCssLen()). The page's
     // renderer writes the same (pg_img_dimension(), includes/fn/image.php).
     function _sdImgDim(v) {
         var s = (v === undefined || v === null) ? '' : String(v).trim();
         if (s === '') return { attr: '', css: '' };
         if (/^\d+$/.test(s)) return { attr: s, css: '' };
-        if (/^\d*\.\d+$/.test(s)) return { attr: '', css: s + 'px' };
-        return { attr: '', css: s };
+        return { attr: '', css: _sdCssLen(s) };
     }
     // The CSS an image's width or height ('width' | 'height') is drawn with.
     // In its ratio box the box takes the size, a whole number in pixels, and
@@ -23030,27 +23040,31 @@ const StyleDesigner = (function () {
         return d.css;
     }
     // Returns extra inline style string from prop-based sizing inputs.
+    // The page writes the same declarations in the same order
+    // (_pg_node_sizing_decls(), includes/fn/designer.php).
     function getNodeExtraStyle(n) {
         var p = n.props;
         var parts = [];
-        // An image's own width / height go through _sdImgSizeCss().
+        // An image's own width / height go through _sdImgSizeCss(); every
+        // other length through _sdCssLen() (a bare number is pixels).
         var _isImg = n.type === 'content' && p.contentType === 'image';
-        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : p.width;
-        var _h = _isImg ? _sdImgSizeCss(p, 'height') : p.height;
+        var _w = _isImg ? _sdImgSizeCss(p, 'width')  : (p.width  ? _sdCssLen(p.width)  : '');
+        var _h = _isImg ? _sdImgSizeCss(p, 'height') : (p.height ? _sdCssLen(p.height) : '');
+        var _len = function (css, v) { var c = v ? _sdCssLen(v) : ''; if (c) parts.push(css + ':' + c); };
         if (p.zIndex)    parts.push('z-index:'     + p.zIndex);
         if (_w)          parts.push('width:'       + _w);
-        if (p.minWidth)  parts.push('min-width:'   + p.minWidth);
-        if (p.maxWidth)  parts.push('max-width:'   + p.maxWidth);
+        _len('min-width',  p.minWidth);
+        _len('max-width',  p.maxWidth);
         if (_h)          parts.push('height:'      + _h);
-        if (p.minHeight) parts.push('min-height:'  + p.minHeight);
-        if (p.maxHeight) parts.push('max-height:'  + p.maxHeight);
+        _len('min-height', p.minHeight);
+        _len('max-height', p.maxHeight);
         if (p.overflow)  parts.push('overflow:'    + p.overflow);
         if (p.overflowX) parts.push('overflow-x:'  + p.overflowX);
         if (p.overflowY) parts.push('overflow-y:'  + p.overflowY);
-        if (p.top)       parts.push('top:'         + p.top);
-        if (p.right)     parts.push('right:'       + p.right);
-        if (p.bottom)    parts.push('bottom:'      + p.bottom);
-        if (p.left)      parts.push('left:'        + p.left);
+        _len('top',    p.top);
+        _len('right',  p.right);
+        _len('bottom', p.bottom);
+        _len('left',   p.left);
         if (p.aspectRatioEnabled && p.aspectRatio === 'custom' && p.aspectRatioCustom) {
             parts.push('--bs-aspect-ratio:' + p.aspectRatioCustom);
         }

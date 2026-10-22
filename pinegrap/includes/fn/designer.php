@@ -3475,6 +3475,79 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
 // of `shared_components.tree_json` at page-render time. This means style_code in the DB never
 // contains a baked-in copy of shared content, so editing a shared component instantly reflects
 // on every page that references it (no style_code rebuild required).
+/**
+ * A length typed into the designer's Sizing panel (width, height, their
+ * minimum and maximum, the position offsets) as CSS. The panel takes CSS
+ * values ('50%', '12rem', '200px', 'auto', 'calc(…)'); a number without a
+ * unit ('48', '-8', '1.5') is taken as pixels, the unit the panel's examples
+ * and the image's width / height attributes use: a browser drops a
+ * declaration whose length has no unit. The editor writes the same
+ * (_sdCssLen() in style_designer.js).
+ *
+ * @param string $value the prop as stored
+ * @return string the CSS value, '' when the prop is empty
+ */
+function pg_designer_css_length($value)
+{
+    $value = trim((string) $value);
+
+    if (preg_match('/^[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)$/', $value)) {
+        return $value . 'px';
+    }
+
+    return $value;
+}
+
+// The Sizing panel's declarations of a node ('width:48px', …), not escaped,
+// in the editor's order (getNodeExtraStyle()), so the page and the editor
+// write the same style. $size replaces the node's own width / height (an
+// image works them out itself, pg_img_dimension()). A prop is written when
+// the editor's test of it is true: the string '0' counts, the number 0 not.
+function _pg_node_sizing_decls($props, $size = null)
+{
+    $out = array();
+    if (!is_array($props)) return $out;
+
+    $val = function ($key) use ($props) {
+        if (!isset($props[$key])) return '';
+        $v = $props[$key];
+        if ($v === false || $v === 0 || $v === 0.0 || is_array($v)) return '';
+        return trim((string)$v);
+    };
+    $len = function ($key, $css) use (&$out, $val, $size) {
+        $v = ($size !== null && ($key === 'width' || $key === 'height'))
+            ? (isset($size[$key]) ? (string)$size[$key] : '')
+            : pg_designer_css_length($val($key));
+        if ($v !== '') $out[] = $css . ':' . $v;
+    };
+    $raw = function ($key, $css) use (&$out, $val) {
+        if ($val($key) !== '') $out[] = $css . ':' . $val($key);
+    };
+
+    // z-index is a unitless integer: digits or 'auto' only.
+    $zi = $val('zIndex');
+    if ($zi !== '' && ($zi === 'auto' || preg_match('/^-?\d+$/', $zi))) $out[] = 'z-index:' . $zi;
+    $len('width', 'width');
+    $len('minWidth', 'min-width');
+    $len('maxWidth', 'max-width');
+    $len('height', 'height');
+    $len('minHeight', 'min-height');
+    $len('maxHeight', 'max-height');
+    $raw('overflow', 'overflow');
+    $raw('overflowX', 'overflow-x');
+    $raw('overflowY', 'overflow-y');
+    $len('top', 'top');
+    $len('right', 'right');
+    $len('bottom', 'bottom');
+    $len('left', 'left');
+    // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
+    if (!empty($props['aspectRatioEnabled']) && $val('aspectRatio') === 'custom' && $val('aspectRatioCustom') !== '') {
+        $out[] = '--bs-aspect-ratio:' . $val('aspectRatioCustom');
+    }
+
+    return $out;
+}
+
 // Build inline style + class strings from sizing/positioning/aspect-ratio props on a node.
 // Mirrors getNodeExtraStyle + getNodeExtraClasses on the JS side so the canvas preview and
 // the saved frontend HTML stay visually identical.
@@ -3483,43 +3556,12 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
 // Both can be empty strings; caller appends them to its own style/class concatenations.
 function _build_node_sizing_attrs($props)
 {
-    $style_parts = array();
     $cls_parts   = array();
     if (!is_array($props)) return array('style' => '', 'class' => '');
 
     // Inline-style props — pass user-entered CSS values through h() for attribute safety.
     // (Designer/admin role is required to save trees; values are still escaped defensively.)
-    $style_props_map = array(
-        'width'      => 'width',
-        'height'     => 'height',
-        'minWidth'   => 'min-width',
-        'maxWidth'   => 'max-width',
-        'minHeight'  => 'min-height',
-        'maxHeight'  => 'max-height',
-        'overflow'   => 'overflow',
-        'overflowX'  => 'overflow-x',
-        'overflowY'  => 'overflow-y',
-        'top'        => 'top',
-        'right'      => 'right',
-        'bottom'     => 'bottom',
-        'left'       => 'left',
-    );
-    foreach ($style_props_map as $prop_key => $css_key) {
-        if (!empty($props[$prop_key])) {
-            $style_parts[] = $css_key . ':' . h($props[$prop_key]);
-        }
-    }
-    // z-index is unitless integer — sanitize to digits + 'auto'
-    if (!empty($props['zIndex'])) {
-        $zi = (string)$props['zIndex'];
-        if ($zi === 'auto' || preg_match('/^-?\d+$/', $zi)) {
-            $style_parts[] = 'z-index:' . $zi;
-        }
-    }
-    // Aspect ratio custom value (CSS variable used by Bootstrap .ratio rule)
-    if (!empty($props['aspectRatioEnabled']) && (isset($props['aspectRatio']) ? $props['aspectRatio'] : '') === 'custom' && !empty($props['aspectRatioCustom'])) {
-        $style_parts[] = '--bs-aspect-ratio:' . h($props['aspectRatioCustom']);
-    }
+    $style_parts = array_map('h', _pg_node_sizing_decls($props));
 
     // Class-based utilities + Bootstrap .ratio
     if (!empty($props['aspectRatioEnabled'])) {
