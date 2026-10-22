@@ -4,7 +4,7 @@ description: An account an order's auto-registration opens gets the set password
 ---
 
 ## What changed for orders?
-- `submit_order.php` used to keep the random password in `$_SESSION['software']['auto_registration']['password']` and print it in the receipt e-mail (plain text and HTML), on the receipt and view order screens and in old layouts. The receipt e-mail was BCC'd to `ECOMMERCE_EMAIL_ADDRESS` and to each product's `order_receipt_bcc_email_address`, so the store got the customer's password too. Fixed in PR #PRNUM.
+- `submit_order.php` used to keep the random password in `$_SESSION['software']['auto_registration']['password']` and print it in the receipt e-mail (plain text and HTML), on the receipt and view order screens and in old layouts. The receipt e-mail was BCC'd to `ECOMMERCE_EMAIL_ADDRESS` and to each product's `order_receipt_bcc_email_address`, so the store got the customer's password too. Fixed in PR #1220.
 - The account now gets a random password nobody is told, `pg_set_password_link_issue()` issues the link (mechanism: `core/auto-registration-set-password-link.md`), and the session keeps `email_address`, `user_id` and `ghost`.
 
 ## How is the receipt e-mail split?
