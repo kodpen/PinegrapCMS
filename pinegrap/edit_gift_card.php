@@ -59,10 +59,9 @@ if (!$_POST) {
 
     // If the form has not been submitted yet, then pre-populate fields with data.
     if ($liveform->field_in_session('id') == false) {
-        // The field's input mask reads "." as the decimal point and "," as
-        // the thousands separator, whatever the panel language, so it is
-        // filled the way the mask reads it; a "50,00" written for a Turkish
-        // panel would show as 5,000.00 and be saved as such.
+        // The money mask takes the panel language's separators
+        // (pg_money_mask_attributes()), so the balance is filled with
+        // pg_format_input_amount() and read back with pg_normalize_amount().
         $liveform->assign_field_value('balance', pg_format_input_amount($gift_card['balance'] / 100));
 
         // The balance the screen opened with, so a save that leaves the

@@ -328,18 +328,6 @@ function pg_pb_decimal_from_input($value)
     return (float) (($whole === '' ? '0' : $whole) . '.' . ($fraction === '' ? '0' : $fraction));
 }
 
-
-/**
- * Format integer cents back into the input format the price fields expect.
- *
- * @param int $cents
- * @return string
- */
-function pg_pb_cents_to_price($cents)
-{
-    return number_format(((int) $cents) / 100, 2, '.', '');
-}
-
 /**
  * A compare-at price an operator typed (the product screen, the product
  * list's cell, a product import file), as products.compare_at_price stores
