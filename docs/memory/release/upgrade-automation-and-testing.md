@@ -13,7 +13,7 @@ description: Cron/automated upgrade entry points (AUTOMATED_UPGRADE_SECRET), adm
 - An administrator session (redirect from `software_update.php`) needs no key and lands on the screen: the loop starts by itself; if no version is pending it returns to `welcome.php`.
 
 ## How is the upgrade system tested?
-- Test protocol: `docs/_plan_upgrade_sistemi.md` "Test protokolü".
+- Every schema step: run it twice on a dev DB; the second run finds every statement already in place (`how-to-add-migration.md`).
 - A fake-MySQL harness (old/new equivalence, double run, mid-run interruption) is in the development records: the old code failed in 26 of 41 versions on a double run, at 84 interruption points; the new code failed in none.
 - On real MySQL and MariaDB servers: `tools/check_install.sh` and the CI workflow install-check.yml, see docs/memory/release/database-server-compatibility.md
 - Every new version also needs the bridge test (previous released DB + new files): see docs/memory/release/upgrade-bridge-rule.md

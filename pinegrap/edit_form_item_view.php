@@ -146,39 +146,41 @@ if (!$_POST) {
 
     }
 
-    // get standard fields
-    $standard_fields = get_standard_fields_for_view();
+    // The form's fields, the standard fields and a sample line per format.
+    // Every entry is a button that types its token in at the layout's cursor.
+    $variables_help = pg_cf_variables_help($custom_form_page_id);
 
-    $output_available_standard_fields = '';
+    $output_variable_items = function ($items) {
+        $output = '';
+        foreach ($items as $item) {
+            $detail = h($item['label']) . (($item['type_label'] !== '') ? ' · ' . h($item['type_label']) : '');
+            $output .= '<li class="list-group-item py-1 px-2 d-flex align-items-center gap-2">'
+                . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none flex-grow-1 text-break" data-pg-insert="' . h($item['token']) . '">'
+                . '<code>' . h($item['token']) . '</code><span class="d-block small text-body-secondary">' . $detail . '</span></button>';
+            if ($item['example'] !== '') {
+                $output .= '<button type="button" class="btn btn-sm btn-outline-secondary no-popover" data-bs-toggle="tooltip" data-pg-insert="' . h($item['example']) . '" title="' . h($item['example']) . '"><i class="bi bi-braces" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Insert with format')) . '</span></button>';
+            }
+            $output .= '</li>';
+        }
+        return $output;
+    };
 
-    // loop through all standard fields
-    foreach ($standard_fields as $standard_field) {
-        $output_available_standard_fields .= '<li class="list-group-item py-1" >^^' . h($standard_field['value']) . '^^</li>';
+    $output_available_standard_fields = $output_variable_items($variables_help['standard']);
+    $output_available_custom_fields = $output_variable_items($variables_help['fields']);
+
+    if ($output_available_custom_fields === '') {
+        $output_available_custom_fields = '<li class="list-group-item py-1 px-2 small text-body-secondary">' . h(lang('This form has no fields yet.')) . '</li>';
     }
 
-    // get custom fields
-    $query = "SELECT
-                id,
-                name
-             FROM form_fields
-             WHERE
-                (page_id = '$custom_form_page_id')
-                AND (type != 'information')
-                AND (name != '')
-             ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    $custom_fields = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $custom_fields[] = $row;
-    }
-
-    $output_available_custom_fields = '';
-
-    // loop through all custom fields
-    foreach ($custom_fields as $custom_field) {
-        $output_available_custom_fields .= '<li class="list-group-item py-1">^^' . h($custom_field['name']) . '^^</li>';
+    $output_available_formats = '';
+    foreach (array(
+        'conditional' => lang('Only when there is a value'),
+        'date' => lang('Date format'),
+        'checkbox' => lang('Check box as text'),
+    ) as $format => $format_label) {
+        $output_available_formats .= '<li class="list-group-item py-1 px-2">'
+            . '<button type="button" class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 text-break" data-pg-insert="' . h($variables_help['syntax'][$format]) . '">'
+            . '<code>' . h($variables_help['syntax'][$format]) . '</code><span class="d-block small text-body-secondary">' . h($format_label) . '</span></button></li>';
     }
 
     // These two are only ever produced by the form list view screen this block
@@ -229,7 +231,7 @@ if (!$_POST) {
                             <div class="modal-body ">
                                 <div class="row">
                                     <div class="col-12 my-3">
-                                        <p>' . lang('Copy tags from Fields and paste in the layout below.') . '</p>
+                                        <p>' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
                                         <p>' . lang('Use the following URL format to link to files and embed images') . ':</p>
                                         <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{path}^^example^^</p>
                                         <p>' . lang('Use the following format to output different content depending on whether there is a value or not') . ':</p>
@@ -238,6 +240,8 @@ if (!$_POST) {
                                         <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {else} ' . lang('Not Equal') . ' {endif}<br/>{if ^^example^^ == \'VALUE\'} ' . lang('Equal') . ' {endif}</p>
                                         <p>' . lang(array('string'=>'Use the following format to customize the date format for date and date & time fields. The format can either be a {var:1} or "relative" for a relative time (e.g. "2 minutes ago", "2 minutes from now").','vars'=>lang('<a href="http://php.net/manual/en/function.date.php" target="_blank">PHP date format</a>'))) . '</p>
                                         <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">^^submitted_date_and_time^^%%l, F j, Y \a\t g:i A%%<br />^^submitted_date_and_time^^%%relative%%</p>
+                                        <p>' . lang('Use the following format to print one text for a ticked check box and another for an empty one; either text may be left empty.') . '</p>
+                                        <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">' . h('^^example^^%%' . lang('Yes') . '|' . lang('No') . '%%') . '</p>
                                         <p>' . lang('Use the following URL format to link directly to the newest comment') . ':</p>
                                         <p class="mt-2 mb-4 p-3 bg-dark rounded text-light">#c-^^newest_comment_id^^</p>
                                     </div>
@@ -260,25 +264,31 @@ if (!$_POST) {
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-auto col-lg my-2 ">
-                                                    <p class="mb-0 text-primary ">' . lang('System Fields') . '</p>
-                                                    <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
-                                                        ' . $output_available_standard_fields . '
-                                                    </ul>
-                                                </div>
-                                                <div class="col-12 col-md my-2">
-                                                    <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
-                                                    <ul class="list-group overflow-auto pe-1" style="min-height:100px;height:150px;max-height:500px;resize: vertical;">
-                                                        ' . $output_available_custom_fields . '
-                                                    </ul>
-                                                </div>
-                                                <div class="col-12 text-end my-2">
-                                                    <button type="button" class="btn btn-link link-secondary" data-bs-toggle="modal" data-bs-target="#hints"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
-                                                </div>
-                                                <div class="col mt-3">
+                                                <div class="col-12 col-lg-8 col-xxl-9 order-1 my-2">
                                                     <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
                                                     <textarea id="layout" name="layout">' . h($layout) . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
+                                                </div>
+                                                <div class="col-12 col-lg-4 col-xxl-3 order-2 my-2" id="pg_fiv_variables">
+                                                    <div class="d-flex align-items-center justify-content-between gap-2">
+                                                        <button type="button" class="btn btn-sm btn-ghost px-1 fw-bold text-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
+                                                        <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="modal" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
+                                                    </div>
+                                                    <div class="collapse show" id="pg_fiv_variables_list">
+                                                        <p class="form-text mt-1 mb-2">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
+                                                        <p class="mb-0 forms-color">' . lang('Form Fields') . '</p>
+                                                        <ul class="list-group overflow-auto pe-1 mb-3" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                                            ' . $output_available_custom_fields . '
+                                                        </ul>
+                                                        <p class="mb-0 text-primary">' . lang('System Fields') . '</p>
+                                                        <ul class="list-group overflow-auto pe-1 mb-3" style="min-height:100px;height:220px;max-height:600px;resize:vertical;">
+                                                            ' . $output_available_standard_fields . '
+                                                        </ul>
+                                                        <p class="mb-0">' . lang('Formats') . '</p>
+                                                        <ul class="list-group">
+                                                            ' . $output_available_formats . '
+                                                        </ul>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -298,6 +308,38 @@ if (!$_POST) {
             </div>
         </div>
     
+<script>
+    (function () {
+        var panel = document.getElementById("pg_fiv_variables");
+        if (!panel) return;
+        panel.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-pg-insert]");
+            if (!button) return;
+            var text = button.getAttribute("data-pg-insert");
+            if (window.bootstrap && bootstrap.Tooltip) {
+                var tip = bootstrap.Tooltip.getInstance(button);
+                if (tip) tip.hide();
+            }
+            var editor = window.pgCodeEditors && window.pgCodeEditors.layout;
+            if (editor && typeof editor.insertAtCursor === "function") {
+                editor.insertAtCursor(text);
+                return;
+            }
+            var field = document.getElementById("layout");
+            if (field && field.offsetParent !== null && typeof field.setRangeText === "function") {
+                field.setRangeText(text, field.selectionStart, field.selectionEnd, "end");
+                field.dispatchEvent(new Event("input", { bubbles: true }));
+                field.focus();
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    if (typeof window.pgToast === "function") window.pgToast({ message: ' . json_encode(lang('Copied to clipboard'), JSON_HEX_TAG | JSON_HEX_AMP) . ', variant: "success" });
+                });
+            }
+        });
+    })();
+</script>
 </main>' .
     output_footer();
 

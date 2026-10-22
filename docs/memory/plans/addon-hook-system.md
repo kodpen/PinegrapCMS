@@ -24,4 +24,4 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - Should add-ons be allowed to add panel menu items and settings cards? Yes, through the manifest, rendered by core templates only.
 
 ## Where to start?
-- After `payment-driver-layer.md` step 4; read `includes/fn/events.php` and the `pinegrap-yeni-dosya` skill (gate constants, header block).
+- After `payment-driver-layer.md` step 4; read `includes/fn/events.php` and `core/file-placement-rules.md`, `core/file-header-and-embedded-libraries.md` (gate constants, header block).

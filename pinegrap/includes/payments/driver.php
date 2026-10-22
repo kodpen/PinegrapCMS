@@ -70,6 +70,9 @@
  *   installments      int     how many instalments the payment was taken in,
  *                             0 when the service does not say
  *   card_brand        string  the card's scheme as the service names it
+ *   card_last4        string  the card's last four digits, '' when not given
+ *   card_exp_month    string  the card's expiry month (1-12), '' when not given
+ *   card_exp_year     string  the card's expiry year (four digits), ''
  *   refund_reference  string  the service's id of a refund
  *   order_reference   string  notify(): which order the message is about
  *   reply             string  notify(): the body the service expects back
@@ -126,6 +129,9 @@ function pg_payment_capability_names()
         'saved_cards',    // a customer's card is kept as the service's token
         'partial_refund', // refund() takes less than the whole payment
         'threeds',        // 3-D Secure; complete() finishes the payment
+        'hosted_fields',  // the card is typed into the service's own fields in
+                          // the page (prepare() gives what they need); no card
+                          // number reaches the site, authorize() gets a token
     );
 }
 
@@ -311,6 +317,9 @@ function pg_payment_answer($operation, $answer)
         'amount'           => null,
         'installments'     => 0,
         'card_brand'       => '',
+        'card_last4'       => '',
+        'card_exp_month'   => '',
+        'card_exp_year'    => '',
         'redirect_url'     => '',
         'html'             => '',
         'client'           => array(),
@@ -342,6 +351,16 @@ function pg_payment_answer($operation, $answer)
 
     if (isset($answer['log']) && is_array($answer['log'])) {
         $shape['log'] = array_values(array_map('strval', array_filter($answer['log'], 'is_scalar')));
+    }
+
+    // The card's details are kept on the order only in a shape that can be
+    // nothing else: four digits, a month, a four-digit year.
+    $card_patterns = array('card_last4' => '/^[0-9]{4}$/', 'card_exp_month' => '/^(0?[1-9]|1[0-2])$/', 'card_exp_year' => '/^[0-9]{4}$/');
+
+    foreach ($card_patterns as $card_key => $card_pattern) {
+        if (isset($answer[$card_key]) && is_scalar($answer[$card_key]) && (preg_match($card_pattern, trim((string) $answer[$card_key])) === 1)) {
+            $shape[$card_key] = trim((string) $answer[$card_key]);
+        }
     }
 
     if (isset($answer['installments']) && is_int($answer['installments']) && ($answer['installments'] > 0)) {

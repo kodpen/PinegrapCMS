@@ -1,25 +1,21 @@
 ---
 name: functions-php-split-rules
-description: Why functions.php became a manifest over includes/fn/ modules and the rules for adding functions, paths, PHPMailer use, get_file.php copies and line references.
+description: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
 ---
 
 ## What is functions.php now?
-- It had reached 3 MB / 63,000 lines / 782 functions: not openable in an FTP editor, unreadable diffs, a half-finished upload took the site down. Plan: `docs/_plan_functions_bolme.md` (Step 2a, eager manifest).
+- It had reached 3 MB / 63,000 lines / 782 functions: not openable in an FTP editor, unreadable diffs, a half-finished upload took the site down. Split on 2026-09-12 (plan `docs/_plan_functions_bolme.md`, Step 2a, eager manifest; the plan is not in the repository).
 - The split was MECHANICAL: a tokenizer cut every top-level function (with its preceding comment) verbatim into a module, order kept, no body changed.
-- `functions.php` is now a ~70-line manifest: two old `require`s, the `PG_FUNCTIONS_DIR` constant and 24 `require_once`. No classes, no namespaces, no lazy loading; none of the 313 entry points was touched.
+- `functions.php` is now a manifest: the `PG_FUNCTIONS_DIR` constant, three files shared with other entry points (`includes/authentication.php`, `includes/server_config.php`, `includes/image_engine.php`; `get-file-shared-code.md`) and one `require_once` per module. No classes, no namespaces, no lazy loading.
+- A module may instead be loaded by the few places that need it: `includes/fn/search_console.php` (its screen, its job, widget 31, `welcome.php`).
 - Module list: `docs/memory/core/fn-module-map.md`.
 
-## Rules for writing code in modules
-- `dirname(__FILE__)` / `__DIR__` in a module is NOT the software directory; moved code uses `PG_FUNCTIONS_DIR` (106 places). For a path in a new module function use `PG_FUNCTIONS_DIR . '/data/temp/...'`. Root files and `init.php` keep `dirname(__FILE__)`.
-- A new function is written into the module matching its topic, NOT into `functions.php` (code added there works but regrows the file). Module gate: `if (!defined('PG_FUNCTIONS_DIR')) { exit; }`.
-- `use PHPMailer\...` is valid only in `mail.php`. It used to be file-scoped, so every unqualified `Exception` after line 49,558 resolved to `PHPMailer\PHPMailer\Exception`; after the split `pg_purge_caches()`'s `catch (Exception)` catches global `\Exception` for the first time (behaviour fix; other places already wrote `\Exception`).
-- Module order matters only for non-function statements (polyfill, PHPMailer `require` + `use`, tour constant, image-id global); functions are hoisted at compile time so they call each other in any order.
-- `functions.php:NNNNN` line references in docs predate the split; search by function name.
-
-## What about get_file.php copies?
-- `get_file.php` does not load `functions.php`, so it keeps copies of functions (18 before 2026.4.8; the split did not change that).
-- Since 2026.4.8 the folder access functions (`get_access_control_type`, `check_view_access`, `check_edit_access`, `pg_folder_edit_access`, `check_private_access`) live as a single copy in `includes/authentication.php`; `get_file.php` has 14 functions left, 11 of them deliberate copies. List and reason: `docs/_get_file_kopyalar.md`; `tools/check_copies.php` (in CI) `FAIL`s on a new copy not on the list.
-- When touching shared code obey the contract in the `includes/authentication.php` header: only `db/db_value/db_item/db_items/escape` + PHP; no `lang()` and no `output_error()`; a `get_file.php`-specific function is called via `function_exists()`.
+## How is code written in a module?
+- A new function goes into the module matching its topic, NOT into `functions.php` (code added there works but regrows the file). A new module gets its line in the manifest (or a `require_once` where it is needed) and the gate `if (!defined('PG_FUNCTIONS_DIR')) { exit; }`.
+- `dirname(__FILE__)` / `__DIR__` in a module is NOT the software directory; moved code says `PG_FUNCTIONS_DIR` wherever it said either. For a path in a new module function use `PG_FUNCTIONS_DIR . '/data/temp/...'`. Root files and `init.php` keep `dirname(__FILE__)`.
+- `use PHPMailer\...` is valid only in `mail.php`. It used to be file-scoped, so every unqualified `Exception` after line 49,558 resolved to `PHPMailer\PHPMailer\Exception`; in any other module an unqualified `Exception` is the global `\Exception` (after the split `pg_purge_caches()`'s `catch (Exception)` caught it for the first time).
+- Module order matters only for non-function statements (`core.php` the `array_key_last()` polyfill, `mail.php` the PHPMailer `require` + `use`, `tour.php` its version constant, `content.php` the image-id global); functions are hoisted at compile time and call each other in any order.
+- `functions.php:NNNNN` line references in older notes predate the split; search by function name.
 
 ## How was the split verified?
-- Three gates of `docs/_plan_functions_bolme.md` section 5 passed: function inventory (801 user functions, signature-exact), `php -l` (25 files), byte count. The fourth gate (smoke test of the 313 entry points) must be run on the dev site.
+- Three gates of the plan's section 5 passed: function inventory (801 user functions, signature-exact), `php -l` (25 files), byte count. The fourth gate (smoke test of the 313 entry points) was left to the dev site.

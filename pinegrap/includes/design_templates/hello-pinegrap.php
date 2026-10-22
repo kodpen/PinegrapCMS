@@ -18,8 +18,10 @@
  *
  * The e-mails the site sends are pages too, in the private folder: the
  * contact form's notification and its reply to the sender, the e-mail about
- * a new reply or comment, the order receipt. The contact form, the pages
- * with comments and the checkout are set to send them.
+ * a new reply or comment, the order receipt, the welcome e-mail after a
+ * sign-up and the password reset e-mail. The contact form, the pages with
+ * comments, the checkout, the registration widget and the forgot password
+ * widget are set to send them.
  *
  * Placeholders, filled when the template is opened (pg_design_template_prepare()):
  *   {{page:<key>}}    address of the template page with that key
@@ -1371,7 +1373,8 @@ $pages[] = array(
 // ── E-mail pages ────────────────────────────────────────────────────────
 // Sent as the body of an e-mail, never visited: the contact form's
 // notification to the staff and its reply to the sender, the e-mail about a
-// new reply or comment, the order receipt. E-mail programs drop linked
+// new reply or comment, the order receipt, the welcome e-mail after a
+// sign-up and the password reset e-mail. E-mail programs drop linked
 // stylesheets, so the few rules that shape them are written on the elements
 // (inline style) next to the Bootstrap classes an e-mail program that does
 // read the site's styles uses. Colours fall back to plain values first and
@@ -1393,14 +1396,14 @@ $mail_page = function ($children) use ($el, $shared, $mail_style) {
 $mail_heading = function ($text) use ($heading) {
     return $heading('h1', $text, 'h4 fw-bold mb-3', array('_attrs' => array(array('name' => 'style', 'value' => 'font-size:22px;font-weight:700;margin:0 0 16px;color:#111827'))));
 };
-$mail_para = function ($text, $class = 'mb-3') use ($para) {
-    return $para($text, $class, array('_attrs' => array(array('name' => 'style', 'value' => 'margin:0 0 16px'))));
+$mail_para = function ($text, $class = 'mb-3', $style = 'margin:0 0 16px') use ($para) {
+    return $para($text, $class, array('_attrs' => array(array('name' => 'style', 'value' => $style))));
 };
-$mail_button = function ($text, $href) use ($el, $link, $mail_style) {
+$mail_button = function ($text, $href, $extra = array()) use ($el, $link, $mail_style) {
     return $el('p', 'my-4', lang('Button'), array(
         $link($text, $href, 'btn btn-primary px-4', array(array('name' => 'style', 'value' =>
             'display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;'
-            . 'background-color:#0d6efd;background-color:var(--bs-primary);color:#ffffff;color:var(--pg-on-primary,#ffffff)'))),
+            . 'background-color:#0d6efd;background-color:var(--bs-primary,#0d6efd);color:#ffffff;color:var(--pg-on-primary,#ffffff)')), $extra),
     ), $mail_style('margin:24px 0'));
 };
 // A label and a value on one line; the line leaves when the value is empty.
@@ -1466,6 +1469,37 @@ $pages[] = array(
     'noindex'  => true,
     'tree'     => $mail_page(array($widget('email_order'))),
 );
+
+// The account e-mails: the welcome after a sign-up and the password reset
+// link. Their Account E-mail widgets fill in the member's name and links.
+$pages[] = array(
+    'key'     => 'email_account_welcome',
+    'name'    => lang('email-account-welcome'),
+    'folder'  => 'private',
+    'title'   => lang('Account Welcome E-mail'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'tree'    => $mail_page(array($widget('account_email_welcome'))),
+);
+$pages[] = array(
+    'key'     => 'email_password_reset',
+    'name'    => lang('email-password-reset'),
+    'folder'  => 'private',
+    'title'   => lang('Password Reset E-mail'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'tree'    => $mail_page(array($widget('account_email_reset'))),
+);
+// The member's first name after "Hello,", in an element of its own: a
+// translated page matches whole texts.
+$mail_account_greeting = function () use ($el, $span, $bind, $mail_style) {
+    return $el('p', 'mb-3', lang('Greeting'), array(
+        $span(lang('Hello,'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+        $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
+    ), $mail_style('margin:0 0 16px'));
+};
 
 // ── Widgets ─────────────────────────────────────────────────────────────
 
@@ -1906,18 +1940,52 @@ $widgets = array(
         'page'   => 'register',
         'slug'   => lang('registration'),
         'config' => array(
-            'regionType'       => 'registration',
-            'show_remember_me' => true,
-            'login_page_id'    => '{{tab:login}}',
-            'redirect_page_id' => '{{tab:my_account}}',
+            'regionType'            => 'registration',
+            'show_remember_me'      => true,
+            'login_page_id'         => '{{tab:login}}',
+            'redirect_page_id'      => '{{tab:my_account}}',
+            'welcome_email_page_id' => '{{tab:email_account_welcome}}',
+            'welcome_email_subject' => lang('Welcome! Your account is ready'),
         ),
         'tree'   => 'starter',
     ),
     'forgot_password' => array(
         'page'   => 'forgot_password',
         'slug'   => lang('forgot-password'),
-        'config' => array('regionType' => 'forgot_password', 'login_page_id' => '{{tab:login}}'),
+        'config' => array(
+            'regionType'          => 'forgot_password',
+            'login_page_id'       => '{{tab:login}}',
+            'reset_email_page_id' => '{{tab:email_password_reset}}',
+            'reset_email_subject' => lang('Reset your password'),
+        ),
         'tree'   => 'starter',
+    ),
+    // The account e-mails' widgets, drawn for the member the e-mail is
+    // sent to. The reset e-mail's button carries the set password link: a
+    // page without it is not sent (the built-in e-mail goes instead).
+    'account_email_welcome' => array(
+        'page'   => 'email_account_welcome',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Welcome!')),
+            $mail_account_greeting(),
+            $mail_para(lang('Your account is ready.')),
+            $mail_button(lang('Go to my account'), '#', array('_bindings' => array('href' => '__my_account_url'))),
+            $mail_para(lang('We are glad to have you with us.'), 'small text-body-secondary mb-0', 'font-size:13px;color:#6b7280;margin:0'),
+        )),
+    ),
+    'account_email_reset' => array(
+        'page'   => 'email_password_reset',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Reset your password')),
+            $mail_account_greeting(),
+            $mail_para(lang('We received a request to reset your password.')),
+            $mail_button(lang('Set a new password'), '#', array('_bindings' => array('href' => '__set_password_url'))),
+            $mail_para(lang('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'), 'small text-body-secondary mb-0', 'font-size:13px;color:#6b7280;margin:0'),
+        )),
     ),
     'set_password' => array(
         'page'   => 'set_password',
@@ -2301,7 +2369,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.10',
+    'version'     => '2.4.11',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

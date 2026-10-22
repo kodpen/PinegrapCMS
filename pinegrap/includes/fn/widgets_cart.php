@@ -1928,7 +1928,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // on; if not present, prepend to the form body as a last resort.
         $body = preg_replace(
             '/(<div[^>]*class="[^"]*pg-cart-upsell-auto[^"]*"[^>]*>.*?<\/div>)/s',
-            '$1' . str_replace('$', '\\$', $applied_offers_html),
+            '$1' . pg_regex_replacement($applied_offers_html),
             $body,
             1,
             $_replaced
@@ -1951,7 +1951,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * their subtotal (pg_order_charged_discount()) with the tax taken again per
  * rate on what it leaves of the lines (pg_order_charged_tax()), the
  * shipping, the applied gift cards at most the total (none on an order of
- * gift cards alone), and the card surcharge on what is left. The express
+ * gift cards alone), and the card surcharge on what is left. Where the
+ * shipping and the surcharge hold tax on the order's invoice, each is a minor
+ * unit lower when it would leave a rate's total no amount reaches
+ * (pg_order_charges_reachable()), as submit_order() charges it. The express
  * order widget shows and posts these.
  *
  * @param array  $lines             per line, in the order of their ids: price, quantity, tax_total (the
@@ -1963,9 +1966,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * @param float  $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE
  * @param string $today             Y-m-d
  * @param bool   $clearcommerce     the gateway charges recurring lines itself
+ * @param bool   $settle_rates      keep each rate's total reachable (pg_order_charges_settle_rates())
  * @return array subtotal, discount, tax, shipping, gift_card_discount, total, surcharge, total_with_surcharge
  */
-function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gift_card_balance, $surcharge_percent, $today, $clearcommerce)
+function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gift_card_balance, $surcharge_percent, $today, $clearcommerce, $settle_rates = false)
 {
     $subtotal = 0;
     $tax = 0;
@@ -1999,6 +2003,11 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     }
 
     $shipping = (int) $shipping;
+
+    if ($settle_rates && ($shipping > 0)) {
+        $shipping = pg_order_charges_reachable($charged, $discount, array('shipping' => $shipping))['shipping'];
+    }
+
     $total = $subtotal - $discount + $tax + $shipping;
     $gift_card_discount = 0;
 
@@ -2008,6 +2017,10 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
 
     $total = max(0, $total - $gift_card_discount);
     $surcharge = ((float) $surcharge_percent > 0) ? (int) round((float) $surcharge_percent / 100 * $total) : 0;
+
+    if ($settle_rates && ($surcharge > 0)) {
+        $surcharge = pg_order_charges_reachable($charged, $discount, array('shipping' => $shipping, 'surcharge' => $surcharge))['surcharge'];
+    }
 
     return array(
         'subtotal'             => $subtotal,
@@ -2066,7 +2079,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // We exit() afterward so nothing else on the page gets rendered (the
     // handler emits its own redirect / receipt).
     $_eo_mode = isset($_GET['mode']) ? (string)($_GET['mode'] ?? '') : '';
-    if (in_array($_eo_mode, array('paypal_express_checkout_return', 'iyzipay_threedsecure_return', 'pay_with_iyzico_return'), true)) {
+    if (pg_payment_is_return_mode($_eo_mode)) {
         // The handler reads $_POST['page_id'] for express_order_pages lookup.
         // Callbacks usually arrive as GET (after gateway redirect) — synthesize
         // page_id from the current page so the lookup finds something (even
@@ -2356,17 +2369,22 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int)$order_id . "'"
         );
     }
+    // The recipients' shipping as stored; the totals may charge it a minor
+    // unit lower (pg_order_charges_reachable()), and the shipping script
+    // keeps that while the methods picked are the stored ones.
+    $_eo_shipping_drawn = ($order_id > 0 && $needs_shipping)
+        ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
+        : 0;
     $_eo_totals = pg_express_order_charged_totals(
         $_eo_lines,
         isset($_SESSION['ecommerce']['order_discount']) ? $_SESSION['ecommerce']['order_discount'] : 0,
-        ($order_id > 0 && $needs_shipping)
-            ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
-            : 0,
+        $_eo_shipping_drawn,
         $_eo_gift_card_balance,
         defined('ECOMMERCE_SURCHARGE_PERCENTAGE') ? (float)ECOMMERCE_SURCHARGE_PERCENTAGE : 0,
         date('Y-m-d'),
         (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
-            && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce')
+            && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'),
+        pg_order_charges_settle_rates()
     );
     $sub_cents      = $_eo_totals['subtotal'];
     $discount_cents = $_eo_totals['discount'];
@@ -2505,8 +2523,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $billing_html = _eo_render_billing_address($_eo_lf, $totals, $cfg);
 
     // ── Section: Payment methods (conditional on settings + total > 0) ───────
+    // A card gateway whose driver takes the card in the service's own fields
+    // draws them instead of the card inputs, for the total the card pays.
+    $_eo_hosted_card_html = ($total_cents > 0) ? _eo_hosted_card_html($total_with_surcharge_cents) : '';
     $payment_html = ($total_cents > 0)
-        ? _eo_render_payment_methods($_eo_lf, $cfg)
+        ? _eo_render_payment_methods($_eo_lf, $cfg, $_eo_hosted_card_html)
         : '<div class="alert alert-info mb-3">' . h(lang('No payment is required for this order.')) . '</div>';
 
     // ── Section: Order totals sidebar ────────────────────────────────────────
@@ -2536,7 +2557,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         'billing'                => $billing_html,            // legacy full block
         'billing_country_select' => _eo_render_billing_country_select($_eo_lf),
         'payment'                => $payment_html,            // legacy full block
-        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf),
+        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf, $_eo_hosted_card_html),
         'installment'            => _eo_render_installment_box($_eo_lf),
         'terms'                  => _eo_render_terms_section($_eo_lf),
         'totals'                 => $totals_html,
@@ -2598,7 +2619,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // .modal out of the EO form to <body> so Bootstrap's backdrop manager
     // works. All helpers guard themselves with one-shot constants so multiple
     // express_order widgets on the same page emit the script ONCE total.
-    $widget_js = _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients, $base_path)
+    $widget_js = _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients, $base_path, array(
+                   'shipping_drawn' => $_eo_shipping_drawn,
+                   'shipping'       => $ship_cents,
+                   'total'          => $total_with_surcharge_cents,
+               ))
                . _pg_qty_stepper_inline_js()
                . _pg_eo_modal_relocate_inline_js()
                . _pg_eo_terms_accept_inline_js()

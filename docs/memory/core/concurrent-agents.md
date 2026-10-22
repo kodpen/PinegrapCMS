@@ -9,6 +9,6 @@ description: Several agents or threads on the repo at once: own branch and area,
 - Avoid two threads on the same plan file, note or code area at once.
 
 ## How are migration sub-step numbers kept unique?
-- Take the number right before pushing, from the open version's file on `origin/development` (`includes/migrations/<open version>.php`), never from notes. If two PRs got the same number, renumber before merging.
+- Take the number right before pushing, from the open version's file on `origin/development` (`includes/migrations/<open version>.php`), never from notes. If two PRs got the same number, renumber before merging. Labels held by open PRs count as taken (`release/version-numbering.md`, "Which label is free?").
 - Labels are comment labels only and may shift when the chain is fixed; the call order in `upgrade_to_<version>()` is what runs.
-- Ranges per area: docs/memory/release/release-status.md.
+- Ranges per area (general, ERP, API, Workspace): docs/memory/release/version-numbering.md.
