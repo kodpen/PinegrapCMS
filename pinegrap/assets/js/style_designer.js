@@ -5316,10 +5316,17 @@ const StyleDesigner = (function () {
         // Label badge (hidden — replaced by sd-tb-name)
         '.sd-lbl { display:none; }',
         // Toolbar bar — default: above the element (top:-20px). When the element sits too close to the
-        // top of the iframe, the .sd-tb-inside class moves the toolbar inside it (top:2px); JS decides.
+        // top of the iframe, the .sd-tb-below class moves the toolbar under it, outside its box, and
+        // .sd-tb-inside inside it (top:2px) when there is no room below either; JS decides (_sdTbSpot()).
         '.sd-tb { position:absolute; top:-20px; left:0; height:20px; display:none; align-items:center; gap:0; z-index:1100; border-radius:4px 4px 4px 0; overflow:hidden; pointer-events:none; max-width:180px; white-space:nowrap; }',
-        // Toolbar flip: pull the toolbar inside (top:2px) when the element is near the top of the iframe
+        // Toolbar flip: under the element when it is near the top of the iframe, inside it (top:2px)
+        // when it also reaches the bottom.
+        '.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important; border-radius:0 4px 4px 4px; }',
         '.sd-wrap.sd-tb-inside > .sd-tb { top:2px !important; border-radius:0 0 4px 4px; }',
+        // The page root's (<body>) name tag and toolbar sit at the bottom-left corner of the canvas
+        // viewport: at the top-left of the page they lay over whatever starts there (a switch, a
+        // brand) and took its clicks whenever the pointer was over the page between elements.
+        'body > .sd-wrap[data-sd-type="root"] > .sd-tb { position:fixed; top:auto !important; bottom:0; left:0; border-radius:0 4px 0 0; }',
         // HOVER MODE (innermost only): show name tag + drag handle — use :has() to avoid cascade
         '.sd-wrap:hover:not(:has(.sd-wrap:hover)) > .sd-tb { display:flex; background:rgba(13,110,253,.82); pointer-events:auto; }',
         '.sd-wrap:hover:not(:has(.sd-wrap:hover)) > .sd-tb .sd-tb-name { display:flex; }',
@@ -8687,8 +8694,10 @@ const StyleDesigner = (function () {
                 }
                 var top, left;
                 if (p.classList.contains('sd-tb')) {
-                    // Above the element; inside it when there is no room above.
-                    top = er.top - by + (er.top < 22 ? 2 : -20);
+                    // Above the element; below it when there is no room
+                    // above, inside it with no room below either.
+                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight);
+                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'inside' ? 2 : -20)) - by;
                     left = er.left - bx;
                 } else if (p.classList.contains('sd-persistent-note')) {
                     top = er.top - by + 2;
@@ -8731,10 +8740,44 @@ const StyleDesigner = (function () {
     // The wrapper under the pointer (the canvas mouseover handler).
     var _sdHoverWrap = null;
 
-    // A wrapper's toolbar sits above it; with no room above (the top of the
-    // canvas) it is drawn inside instead.
+    // Where a wrapper's toolbar goes, from its box's top and bottom and the
+    // canvas viewport's height: 'above' it; with no room above (the top of
+    // the canvas) 'below' it, outside the box; 'inside' only when there is no
+    // room below either. Inside, it lay over the first line of the element:
+    // a navbar brand or the first breadcrumb at the top of the page could not
+    // be double-clicked for editing, the second click hit a toolbar button
+    // (Duplicate) instead.
+    function _sdTbSpot(top, bottom, viewH) {
+        if (top >= 22) return 'above';
+        if (bottom + 22 <= viewH) return 'below';
+        return 'inside';
+    }
+
+    // Writes a spot as the wrapper's classes; only what changes is written.
+    function _sdTbSpotWrite(w, spot) {
+        var inside = spot === 'inside', below = spot === 'below';
+        if (w.classList.contains('sd-tb-inside') !== inside) w.classList.toggle('sd-tb-inside', inside);
+        if (w.classList.contains('sd-tb-below') !== below) w.classList.toggle('sd-tb-below', below);
+    }
+
+    // The canvas viewport's height, for _sdTbSpot().
+    function _sdCanvasViewH() {
+        var win = canvasDoc && canvasDoc.defaultView;
+        return win ? win.innerHeight : 0;
+    }
+
+    // Places one wrapper's toolbar (the hovered one).
     function _sdTbFlip(w) {
-        if (w && w.tagName === 'DIV') w.classList.toggle('sd-tb-inside', _sdBoxRect(w).top < 22);
+        if (!w || w.tagName !== 'DIV') return;
+        var r = _sdBoxRect(w);
+        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH()));
+    }
+
+    // The same for several wrappers: all measured, then all written.
+    function _sdTbFlipAll(ws) {
+        var vh = _sdCanvasViewH();
+        var rs = ws.map(function (w) { return _sdBoxRect(w); });
+        ws.forEach(function (w, i) { _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh)); });
     }
 
     // What a scroll changes: nothing in the page, only where the viewport
@@ -8746,8 +8789,7 @@ const StyleDesigner = (function () {
         var ws = Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap.sd-selected'));
         var hw = _sdHoverWrap;
         if (hw && hw.isConnected && hw.tagName === 'DIV' && ws.indexOf(hw) === -1) ws.push(hw);
-        var tops = ws.map(function (w) { return _sdBoxRect(w).top; });
-        ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
+        _sdTbFlipAll(ws);
         _sdPlaceChromeOf(ws);
         if (selectedNode) _positionSizeBadge();
     }
@@ -9709,8 +9751,9 @@ const StyleDesigner = (function () {
      * Position every .sd-wrap in the canvas against the iframe viewport.
      *
      * When an element sits closer than 22px to the top of the iframe the toolbar
-     * would overflow above it, so the sd-tb-inside class moves it inside (top:2px).
-     * getBoundingClientRect() on an element inside an iframe returns coordinates
+     * would overflow above it, so the sd-tb-below class moves it under the
+     * element (sd-tb-inside, inside it, when there is no room below either;
+     * _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
      * relative to that iframe's viewport, which is exactly the frame of reference
      * this test needs.
      */
@@ -9722,10 +9765,7 @@ const StyleDesigner = (function () {
         // don't have toolbars that could overflow the viewport, so skip them.
         // All measured, then all written: one layout instead of one per wrapper.
         // A see-through wrapper is measured by its element.
-        var ws = canvasDoc.querySelectorAll('div.sd-wrap');
-        var tops = [];
-        ws.forEach(function (w) { tops.push(_sdBoxRect(w).top); });
-        ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
+        _sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap')));
         _sdPlaceSelectedChrome();
     }
 
@@ -42433,7 +42473,15 @@ const StyleDesigner = (function () {
             var wrapperRect = (document.querySelector('.sd-canvas-wrapper') || document.body).getBoundingClientRect();
             var z = (typeof canvasZoom === 'number' && canvasZoom > 0) ? canvasZoom : 1;
 
-            var left = (iframeRect.left - wrapperRect.left) + (elRect.right * z);
+            // A toolbar drawn under the element (sd-tb-below) shares that
+            // corner's row: the badge goes after it, not over its buttons.
+            var right = elRect.right;
+            var tbEl = wrap.classList.contains('sd-tb-below') ? wrap.querySelector(':scope > .sd-tb') : null;
+            if (tbEl) {
+                var tbRect = tbEl.getBoundingClientRect();
+                if (tbRect.width) right = Math.max(right, tbRect.right + 4);
+            }
+            var left = (iframeRect.left - wrapperRect.left) + (right * z);
             var top  = (iframeRect.top  - wrapperRect.top)  + (elRect.bottom * z);
 
             // Clamp so badge stays within wrapper
