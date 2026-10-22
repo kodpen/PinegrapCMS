@@ -15,9 +15,10 @@
  * builder writes a fixed colour class that ignores the colour palette and
  * dark mode; no builder carousel plays by itself; every component type a
  * builder writes exists; every block form can be submitted; every field a
- * builder writes is named by a label (or, outside a form, an aria-label); and
- * no button, label, span or heading a builder writes holds a paragraph or a
- * block.
+ * builder writes is named by a label (or, outside a form, an aria-label); no
+ * button, label, span or heading a builder writes holds a paragraph or a
+ * block; no block skips a heading level; and image-carousel's controls stay
+ * light over its photos in a dark design.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -140,11 +141,17 @@ function _test_blocks_block($at)
 	return $scan['end'] < 0 ? null : array($open, $scan['end']);
 }
 
-// array(start, end) of the body of createFromPalette(), or null.
+// array(start, end) of the body of createFromPalette(), or null. Cached like
+// the source: walking the whole body takes about 0.06 s, and the per-block
+// checks ask for it once per palette entry.
 function _test_blocks_cfp_range()
 {
-	$at = strpos(_test_blocks_js(), 'function createFromPalette(');
-	return $at === false ? null : _test_blocks_block($at);
+	static $range = false;
+	if ($range === false) {
+		$at = strpos(_test_blocks_js(), 'function createFromPalette(');
+		$range = $at === false ? null : _test_blocks_block($at);
+	}
+	return $range;
 }
 
 // The local-business family branch of createFromPalette(): the prefixes of
@@ -707,15 +714,133 @@ function test_designer_blocks_phrasing_holds_no_blocks()
 		}
 	}
 	pg_assert_same(array(), $found, 'inline nodes of createFromPalette() holding a paragraph or a block');
+}
 
-	// image-carousel's controls and indicators stay white over its photos and
-	// caption scrim in a dark design (Bootstrap paints them black there),
-	// unless Carousel Options > Dark asks for .carousel-dark.
+// image-carousel's controls and indicators stay white over its photos and
+// caption scrim in a dark design (Bootstrap paints them black there, about
+// 1.2:1 on the scrim), unless Carousel Options > Dark asks for .carousel-dark.
+function test_designer_blocks_photo_carousel_controls_stay_light()
+{
 	$rules = _test_blocks_css_rules();
 	$needs = _test_blocks_css_needs();
 	pg_assert_true(in_array('pg-carousel-photo', _test_blocks_builder_classes('image-carousel'), true), 'image-carousel writes pg-carousel-photo');
 	pg_assert_true(isset($needs['image-carousel']) && in_array('pg-carousel-photo', $needs['image-carousel'], true), 'image-carousel needs the pg-carousel-photo rule');
-	pg_assert_contains('.pg-carousel-photo:not(.carousel-dark)', isset($rules['pg-carousel-photo']) ? $rules['pg-carousel-photo'] : '', 'pg-carousel-photo yields to Carousel Options > Dark');
+	$rule = isset($rules['pg-carousel-photo']) ? $rules['pg-carousel-photo'] : '';
+	pg_assert_contains('.pg-carousel-photo:not(.carousel-dark)', $rule, 'pg-carousel-photo yields to Carousel Options > Dark');
+	pg_assert_contains('--bs-carousel-indicator-active-bg: var(--bs-white)', $rule, 'pg-carousel-photo keeps the indicators white');
+	pg_assert_contains('--bs-carousel-control-icon-filter: none', $rule, 'pg-carousel-photo keeps the control icons white');
+}
+
+// The 'h1'…'h6' literals of $code that are not a cssClass value: a tag prop,
+// a _bkH() tag, a tag handed to a helper or its default (tag || 'h4').
+function _test_blocks_heading_literals($code)
+{
+	$levels = array();
+	preg_match_all("/(cssClass:\\s*)?'h([1-6])'/", $code, $m);
+	foreach ($m[2] as $i => $level) {
+		if ($m[1][$i] === '') {
+			$levels[] = (int) $level;
+		}
+	}
+	return $levels;
+}
+
+// Helpers declared inside createFromPalette() as `var _name = function`:
+// name => list of array('at', 'levels', 'scope'), 'scope' being the range of
+// the innermost builder test holding the declaration (null for a helper
+// shared by a whole family, such as _bkIntro() or _bkMenuItem()).
+function _test_blocks_helpers()
+{
+	static $helpers = null;
+	if ($helpers !== null) {
+		return $helpers;
+	}
+	$helpers = array();
+	$js = _test_blocks_js();
+	$range = _test_blocks_cfp_range();
+	if (!$range) {
+		return $helpers;
+	}
+	$cfp = substr($js, $range[0], $range[1] - $range[0]);
+	$builders = array();
+	preg_match_all("/if \\(ctype === '[a-z0-9-]+'\\)[^{\\n]*\\{/", $cfp, $tests, PREG_OFFSET_CAPTURE);
+	foreach ($tests[0] as $test) {
+		$block = _test_blocks_block($range[0] + $test[1]);
+		if ($block) {
+			$builders[] = $block;
+		}
+	}
+	preg_match_all('/var (_[A-Za-z0-9]+) = function\\s*\\(/', $cfp, $defs, PREG_OFFSET_CAPTURE);
+	foreach ($defs[0] as $i => $def) {
+		$at = $range[0] + $def[1];
+		$body = _test_blocks_block($at);
+		if (!$body) {
+			continue;
+		}
+		$scope = null;
+		foreach ($builders as $builder) {
+			if ($builder[0] < $at && $builder[1] > $at && ($scope === null || $builder[0] > $scope[0])) {
+				$scope = $builder;
+			}
+		}
+		$helpers[$defs[1][$i][0]][] = array(
+			'at'     => $at,
+			'levels' => _test_blocks_heading_literals(substr($js, $body[0], $body[1] - $body[0])),
+			'scope'  => $scope,
+		);
+	}
+	return $helpers;
+}
+
+// Heading levels a builder writes: the heading literals of its body and of
+// the helpers it calls that are declared outside it, in a scope holding it
+// (_bkIntro()'s h2, _bkMenuItem()'s default h4). Sorted, unique.
+function _test_blocks_heading_levels($block)
+{
+	$src = substr(_test_blocks_js(), $block[0], $block[1] - $block[0]);
+	$levels = _test_blocks_heading_literals($src);
+	$helpers = _test_blocks_helpers();
+	preg_match_all('/\\b(_[A-Za-z0-9]+)\\(/', $src, $calls);
+	foreach (array_unique($calls[1]) as $name) {
+		foreach (isset($helpers[$name]) ? $helpers[$name] : array() as $helper) {
+			$outside = $helper['at'] < $block[0] || $helper['at'] > $block[1];
+			$visible = $helper['scope'] === null || ($helper['scope'][0] <= $block[0] && $helper['scope'][1] >= $block[1]);
+			if ($outside && $visible) {
+				$levels = array_merge($levels, $helper['levels']);
+			}
+		}
+	}
+	$levels = array_values(array_unique($levels));
+	sort($levels);
+	return $levels;
+}
+
+// A heading level a block jumps over is read aloud as a missing section
+// (WCAG 1.3.1) and the editor's audit reports it (heading_skip): the item
+// titles of a block sit one level below its title and take their size from
+// an h-class (tag 'h3', cssClass 'h5 …'), never from a smaller tag.
+function test_designer_blocks_heading_levels_are_not_skipped()
+{
+	pg_assert_same(array(2, 3, 4), _test_blocks_heading_levels(_test_blocks_block(_test_blocks_builder_at('menu-tabs'))), 'menu-tabs: the h2 of _bkIntro(), the h3 it hands to _bkMenuItem() and that helper\'s default h4 are read');
+	$checked = 0;
+	$skips = array();
+	foreach (array_unique(_test_blocks_palette_ctypes()) as $ctype) {
+		$at = _test_blocks_builder_at($ctype);
+		$block = $at === false ? null : _test_blocks_block($at);
+		if (!$block) {
+			continue;
+		}
+		$levels = _test_blocks_heading_levels($block);
+		$checked += count($levels) > 1 ? 1 : 0;
+		for ($i = 1, $n = count($levels); $i < $n; $i++) {
+			if ($levels[$i] > $levels[$i - 1] + 1) {
+				$skips[] = $ctype . ': h' . implode(' h', $levels);
+				break;
+			}
+		}
+	}
+	pg_assert_true($checked > 40, 'the heading levels of the builders are read');
+	pg_assert_same(array(), $skips, 'blocks whose heading levels skip one');
 }
 
 // Offset in a createNode(…) call's source just after its props object (the

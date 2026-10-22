@@ -15,4 +15,5 @@ description: Heading levels and inline content in ready-made designer blocks: no
 
 ## What keeps this from coming back?
 - `tests/designer_blocks_test.php` fails when a `createNode('semantic', …)` button, label, span, small, strong, em or heading in `createFromPalette()` holds a paragraph, a `div`/`p`/list/section/form/table node or a grid node. Nodes built through `_bkTag()` are not read there.
-- Heading order is not in the test (a builder's helpers are written before the title that precedes them on the page): the editor's audit and a render of the block's HTML check it.
+- The same test reads each palette builder's heading levels: every `'h1'`…`'h6'` literal that is not a `cssClass` value (tag props, `_bkH()` tags, a tag handed to a helper), plus those of the shared helpers it calls (`_bkIntro()`'s `h2`, `_bkMenuItem()`'s default `h4`). The set must have no gap; before the fix it listed exactly the 18 blocks above.
+- It reads a set, not the order: two items of which one loses its tag, a block that starts below `h2`, or a dropped h-class (the size) pass. The editor's audit and a render of the block's HTML check those.
