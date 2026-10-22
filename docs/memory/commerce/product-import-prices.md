@@ -14,7 +14,7 @@ description: Product import price cells (price, extra shipping, compare-at): one
 - The whole row is left out (not created, not updated) and its row number in the file (header is row 1) is listed in an error on the product list after the import ("These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: …", up to 50 numbers). The rest of the file is imported.
 - An empty cell (or spaces) leaves the column as it is, as for every column. A compare-at price starting with `-` still leaves the stored one alone (docs/memory/commerce/product-compare-at-price.md); `0` takes it off; the read amount is judged by `pg_compare_at_price_value()`.
 
-## What was wrong before?
+## What was wrong before? (#749, PR #1262)
 - `price` and `extra_shipping_cost` were `str_replace(',', '', $v) * 100`: `12,50` became 125000, and `₺15,00` stopped the import with a TypeError (PHP 8) after earlier rows were written.
 - `compare_at_price` went through `pg_pb_compare_at_price_from_input()`, so a stored `1799.988` read as thousands (179998800) and the 17-digit form was skipped.
 - New products warned `Undefined variable $address_name_key` / `$short_description_key` / `$submit_form_key` for every row when those columns were missing; those cells are now read with `pg_products_import_row_value()` (`''` for a missing column or a short row).
