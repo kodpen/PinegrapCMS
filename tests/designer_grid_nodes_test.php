@@ -49,6 +49,8 @@ function _test_designer_grid_cases()
 		'col with classes' => _test_designer_grid_node('col', array('xs' => '12', 'lg' => '8', 'cssClass' => 'mx-auto text-center')),
 		'col offsets' => _test_designer_grid_node('col', array('xs' => 'col', 'offsetXs' => '1', 'offsetMd' => '2', 'order' => 'last')),
 		'col auto' => _test_designer_grid_node('col', array('xs' => 'auto', 'md' => '6', 'lg' => 'auto')),
+		'col without widths' => _test_designer_grid_node('col', array('xs' => '', 'sm' => '', 'md' => '', 'lg' => '', 'xl' => '', 'xxl' => '')),
+		'col equal at breakpoints' => _test_designer_grid_node('col', array('xs' => '12', 'md' => 'col', 'xxl' => 'col')),
 		'col width class in cssClass' => _test_designer_grid_node('col', array('xs' => '12', 'cssClass' => 'col-12 py-3')),
 		'col id and attributes' => _test_designer_grid_node('col', array('xs' => '6', 'id' => 'side', '_attrs' => $attrs(array('data-x' => '1', 'aria-label' => 'Side "a"', 'style' => 'color:red')))),
 		'col search section' => _test_designer_grid_node('col', array('xs' => '12', 'id' => 'faq', 'searchSection' => true)),
@@ -122,6 +124,17 @@ function test_designer_grid_col_css_class_once()
 	pg_assert_same('<div class="col-12 col-lg-8 mx-auto text-center">', _test_designer_grid_php($cases['col with classes']));
 	pg_assert_same('<div class="col-12 py-3">', _test_designer_grid_php($cases['col width class in cssClass']), 'a width class also typed into cssClass');
 	pg_assert_same('<div class="col offset-1 offset-md-2 order-last">', _test_designer_grid_php($cases['col offsets']));
+}
+
+// A column without a width is a full row, the 12 its Column options show;
+// Equal at a breakpoint is Bootstrap's col-<bp>.
+function test_designer_grid_col_widths()
+{
+	$cases = _test_designer_grid_cases();
+
+	pg_assert_same('<div class="col-12">', _test_designer_grid_php($cases['col without widths']));
+	pg_assert_same('<div class="col-12 col-md col-xxl">', _test_designer_grid_php($cases['col equal at breakpoints']));
+	pg_assert_same('<div class="col-auto col-md-6 col-lg-auto">', _test_designer_grid_php($cases['col auto']));
 }
 
 // A Display & Sizing toggle's class is in cssClass as well: written once.

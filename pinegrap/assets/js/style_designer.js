@@ -3945,16 +3945,20 @@ const StyleDesigner = (function () {
     var _myAccountDetailPagesCache = null;
 
     // ========================= COL CLASSES =========================
+    // Twin of _build_col_classes() (includes/fn/designer.php), which writes
+    // the saved page. A column with no width is a full row (col-12), the
+    // width the Column options show for it; 'col' (Equal) at a breakpoint
+    // is Bootstrap's col-<bp>.
     function buildColClasses(p) {
         var c = [];
         if (p.xs && p.xs !== '' && p.xs !== 'none') {
             if (p.xs === 'auto') c.push('col-auto');
             else if (p.xs === 'col') c.push('col');
             else c.push('col-' + p.xs);
-        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col');
+        } else if (!p.sm && !p.md && !p.lg && !p.xl && !p.xxl) c.push('col-12');
         ['sm','md','lg','xl','xxl'].forEach(function(bp) {
             if (p[bp] && p[bp] !== '' && p[bp] !== 'none')
-                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : 'col-' + bp + '-' + p[bp]);
+                c.push(p[bp] === 'auto' ? 'col-' + bp + '-auto' : (p[bp] === 'col' ? 'col-' + bp : 'col-' + bp + '-' + p[bp]));
         });
         if (p.offsetXs && p.offsetXs !== '' && p.offsetXs !== 'none') c.push('offset-' + p.offsetXs);
         if (p.offsetMd && p.offsetMd !== '' && p.offsetMd !== 'none') c.push('offset-md-' + p.offsetMd);

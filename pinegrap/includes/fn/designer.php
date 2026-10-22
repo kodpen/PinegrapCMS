@@ -4307,10 +4307,14 @@ function _build_col_classes($props)
     } else if (!$sm && !$md && !$lg && !$xl && !$xxl) {
         $classes[] = 'col-12';
     }
+    // 'col' (Equal) at a breakpoint is Bootstrap's bare `col-<bp>`; there
+    // is no `col-md-col`.
     $bps = array('sm' => $sm, 'md' => $md, 'lg' => $lg, 'xl' => $xl, 'xxl' => $xxl);
     foreach ($bps as $bp => $val) {
         if ($val && $val !== '' && $val !== 'none') {
-            $classes[] = ($val === 'auto') ? 'col-' . $bp . '-auto' : 'col-' . $bp . '-' . $val;
+            if ($val === 'auto')    $classes[] = 'col-' . $bp . '-auto';
+            else if ($val === 'col') $classes[] = 'col-' . $bp;
+            else                    $classes[] = 'col-' . $bp . '-' . $val;
         }
     }
     if (!empty($props['offsetXs']) && $props['offsetXs'] !== 'none') $classes[] = 'offset-' . $props['offsetXs'];
