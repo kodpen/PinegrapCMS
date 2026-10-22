@@ -6,7 +6,8 @@
  * (includes/erp/returns.php): the lines given back in part take their taxes
  * per group of one VAT rate and one withholding rate of the return
  * (erp_rate_vat()), capped by what is left on each line; the piece that
- * empties a line takes exactly what is left; and the order's lines, which
+ * empties a line takes exactly what is left of its amount, discount and
+ * taxes; and the order's lines, which
  * have no earlier returns to cap them, take the group taxes alone.
  *
  * @author      Erdal Güral (Kodpen)
@@ -22,8 +23,9 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/returns.php');
 
 // An invoice line as erp_returnable_lines() reads it. $returned is what earlier
-// returns gave back: [quantity, tax, withholding, second tax]; null leaves the
-// keys out, the way an order's lines come (erp_order_refund_lines()).
+// returns gave back: [quantity, tax, withholding, second tax, line total,
+// discount], the last two worked out from the quantity when left out; null
+// leaves the keys out, the way an order's lines come (erp_order_refund_lines()).
 function pg_test_erp_return_line($id, $quantity, $unit_price, $tax_rate, $tax_total, $extra = array(), $returned = array(0, 0, 0, 0))
 {
 	$line = array_merge(array(
@@ -45,12 +47,19 @@ function pg_test_erp_return_line($id, $quantity, $unit_price, $tax_rate, $tax_to
 		'returned_qty' => ($returned === null) ? 0 : $returned[0],
 	), $extra);
 
+	if (!isset($line['line_total'])) {
+		$line['line_total'] = (int) round($line['unit_price'] * $line['quantity']);
+	}
+
 	$line['remaining_qty'] = (float) $line['quantity'] - (float) $line['returned_qty'];
 
 	if ($returned !== null) {
+		$share = ($line['quantity'] > 0) ? ($returned[0] / $line['quantity']) : 0;
 		$line['returned_tax'] = $returned[1];
 		$line['returned_withholding'] = $returned[2];
 		$line['returned_tax2'] = $returned[3];
+		$line['returned_line_total'] = $returned[4] ?? (int) round($line['unit_price'] * $returned[0]);
+		$line['returned_discount'] = $returned[5] ?? (int) round($line['discount_amount'] * $share);
 	}
 
 	return $line;
@@ -155,6 +164,67 @@ function test_erp_return_of_order_lines_takes_the_group()
 
 	pg_assert_same(array(21, 20), pg_test_erp_return_taxes($built, 'tax_total'));
 	pg_assert_same(41, $built['totals']['tax_total']);
+}
+
+// Pieces of a line, summed, are the line. 2 x 50.00 with 10.01 off at 20%
+// (107.99): the first unit takes 5.01 of the discount, the second the 5.00
+// left, not 5.01 again; the two returns give back the invoice to the kurus.
+function test_erp_return_last_piece_takes_the_rest_of_the_discount()
+{
+	$parent = pg_test_erp_return_line(1, 2, 5000, 20, 1800, array('discount_amount' => 1001));
+	$first = erp_return_build(array($parent), array(1 => 1));
+
+	pg_assert_same(array(501), pg_test_erp_return_taxes($first, 'discount_amount'));
+	pg_assert_same(5399, $first['totals']['grand_total']);
+
+	$parent = pg_test_erp_return_line(1, 2, 5000, 20, 1800, array('discount_amount' => 1001),
+		array(1, $first['totals']['tax_total'], 0, 0, $first['totals']['subtotal'], $first['totals']['discount_total']));
+	$last = erp_return_build(array($parent), array(1 => 1));
+
+	pg_assert_same(array(500), pg_test_erp_return_taxes($last, 'discount_amount'));
+	pg_assert_same(array(900), pg_test_erp_return_taxes($last, 'tax_total'));
+	pg_assert_same(10799, $first['totals']['grand_total'] + $last['totals']['grand_total']);
+}
+
+// The other way round: 3 x 50.00 with 10.00 off. Three single units took
+// 3.33 each before and gave back a kurus more than the invoice; the third
+// takes the 3.34 left.
+function test_erp_return_last_piece_takes_the_rest_of_a_small_discount()
+{
+	$parent = pg_test_erp_return_line(1, 3, 5000, 20, 2800, array('discount_amount' => 1000), array(2, 1867, 0, 0, 10000, 666));
+	$built = erp_return_build(array($parent), array(1 => 1));
+
+	pg_assert_same(array(334), pg_test_erp_return_taxes($built, 'discount_amount'));
+	pg_assert_same(array(933), pg_test_erp_return_taxes($built, 'tax_total'));
+	pg_assert_same(5000 - 334 + 933, $built['totals']['grand_total']);
+}
+
+// A fractional quantity: 2.5 x 3.33 is a line of 8.33 (8.325 rounded); two
+// halves of 4.16 (4.1625) left a kurus of it behind. The second half takes
+// the 4.17 left.
+function test_erp_return_last_piece_takes_the_rest_of_the_line()
+{
+	$parent = pg_test_erp_return_line(1, 2.5, 333, 20, 167);
+	$first = erp_return_build(array($parent), array(1 => 1.25));
+
+	pg_assert_same(array(416), pg_test_erp_return_taxes($first, 'line_total'));
+
+	$parent = pg_test_erp_return_line(1, 2.5, 333, 20, 167, array(),
+		array(1.25, $first['totals']['tax_total'], 0, 0, $first['totals']['subtotal'], 0));
+	$last = erp_return_build(array($parent), array(1 => 1.25));
+
+	pg_assert_same(array(417), pg_test_erp_return_taxes($last, 'line_total'));
+	pg_assert_same(1000, $first['totals']['grand_total'] + $last['totals']['grand_total']);
+}
+
+// A piece that does not empty the line is capped by what is left of it.
+function test_erp_return_caps_a_part_at_what_is_left_of_the_discount()
+{
+	$parent = pg_test_erp_return_line(1, 4, 100, 0, 0, array('discount_amount' => 2), array(2, 0, 0, 0, 200, 2));
+	$built = erp_return_build(array($parent), array(1 => 1));
+
+	pg_assert_same(array(0), pg_test_erp_return_taxes($built, 'discount_amount'));
+	pg_assert_same(100, $built['totals']['grand_total']);
 }
 
 // More than is left is refused, nothing chosen is refused.

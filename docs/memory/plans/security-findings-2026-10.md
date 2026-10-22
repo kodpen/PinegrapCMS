@@ -4,7 +4,7 @@ description: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-
 ---
 
 ## Where does this come from?
-- Read-only code audit of 2026-10-19 (`development` @ `fd9de204`). SQL injection: none in ~8,800 query sites. Check `pinegrap-verilmis-kararlar` before each item; none below is on it.
+- Read-only code audit of 2026-10-19 (`development` @ `fd9de204`). SQL injection: none in ~8,800 query sites. Check `workflow/decisions-made.md` before each item; none below is on it.
 
 ## What was fixed?
 - #541 notice escaping; #550 content-level `<?` defused, importer SSRF/CSRF, `url_to_absolute()`; #551 session bound to its token, remember-me MFA gate; #552 backup extract/upload names and sizes, zip bomb caps; #554 form labels and file names escaped, Cancel targets, download names, `random_int()`, `dregion` hidden from designers; #556 SameSite/strict mode, token renewed at sign-in, mail links from `HOSTNAME_SETTING`, install unlock lockout, int casts, `sql_device_type()`, API `escape_like()`; #713 (item 8) the installer loads `waf.php`, so that lockout counts. Memory: `core/php-regions-eval-and-content.md`, `core/session-token-binding.md`, `core/security-helpers-and-secret-storage.md`, `platform/backup-upload-extraction.md`.

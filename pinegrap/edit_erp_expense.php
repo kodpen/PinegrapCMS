@@ -383,9 +383,23 @@ if (erp_expense_recurring_ready()) {
     }
 
     if (!is_array($recurrence) || !empty($can_restart)) {
+        // Started again, the repeat goes on from where it stopped, at the
+        // period it had unless another is chosen.
+        $repeat_every = is_array($recurrence) ? (int) $recurrence['every_months'] : 1;
+        $repeat_note = lang('The next one is written on the same day of the month, with this amount and tax.');
+
+        if (is_array($recurrence)) {
+            $repeat_from = erp_expense_recurring_first_date((string) $expense['expense_date'], $repeat_every,
+                (int) $recurrence['day_of_month'], erp_expense_recurrence_resume_date($recurrence), date('Y-m-d'));
+            $repeat_note = h(lang(array(
+                'string' => 'Started again, it goes on from {var:1}: the dates it wrote and those that passed while it was stopped are not written.',
+                'vars' => prepare_form_data_for_output($repeat_from, 'date', false),
+            )));
+        }
+
         $period_options = '';
         foreach ($periods as $months => $label) {
-            $period_options .= '<option value="' . (int) $months . '">' . h($label) . '</option>';
+            $period_options .= '<option value="' . (int) $months . '"' . (((int) $months === $repeat_every) ? ' selected' : '') . '>' . h($label) . '</option>';
         }
 
         $output_repeat .= (($output_repeat !== '') ? '<hr />' : '') . '
@@ -414,7 +428,7 @@ if (erp_expense_recurring_ready()) {
                         <label class="form-check-label small" for="repeat_pay">' . h(lang(array('string' => 'Write the next ones as paid from {var:1}', 'vars' => (string) $expense['till_name']))) . '</label>
                     </div>
                 </div>' : '') . '
-                <div class="col-12 form-text mt-0">' . lang('The next one is written on the same day of the month, with this amount and tax.') . '</div>
+                <div class="col-12 form-text mt-0">' . $repeat_note . '</div>
             </form>';
     }
 }

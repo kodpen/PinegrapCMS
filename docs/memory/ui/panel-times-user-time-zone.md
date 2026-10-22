@@ -1,6 +1,6 @@
 ---
 name: panel-times-user-time-zone
-description: Which time zone get_relative_time() and get_absolute_time() draw in: the signed-in person's own zone unless the caller asks for the site's, decided by pg_time_in_user_zone()
+description: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 ---
 
 ## Which zone does a time on a panel screen use?
@@ -12,3 +12,8 @@ description: Which time zone get_relative_time() and get_absolute_time() draw in
 
 ## Why the defined() checks?
 - An error screen or a command line job can draw a time before `init.php` has defined `USER_LOGGED_IN` / `USER_TIMEZONE`; the test runner never defines them. Read through `defined()`, nobody signed in means the site's zone instead of an undefined constant error.
+
+## Why can a stored zone name not be passed to DateTimeZone as it is?
+- Debian and Ubuntu moved the IANA "backward" links (`US/Eastern`, `Canada/Atlantic`, `Asia/Katmandu`, `America/Godthab` …) to the `tzdata-legacy` package; a PHP that reads the system's database (`php -i`: "0.system") throws `DateInvalidTimeZoneException` for them. A person with such a zone got HTTP 500 on every panel list once relative times followed their zone (issue #966, PR #1266).
+- `get_timezones()` offers current names only (16 replaced; `Etc/Greenwich` stays, the one fixed GMT zone). `pg_timezone_legacy_names()` maps old → current; `pg_timezone_canonical($name)` reads a stored name as this PHP knows it (old → current, and current → old where an older database lacks it: `America/Nuuk` is tzdata 2020a, newer than PHP 7.1's), '' when unknown. `USER_TIMEZONE` (auth.php) and `TIMEZONE` (init.php) are defined through it, so an unknown name means the site's or the server's zone; no data step rewrites the stored values.
+- The time helpers build zones with `pg_timezone_object()`, which never throws (default zone, then UTC). The pickers select an old stored name as its current option (`pg_timezone_list_value()`). `get_file.php` has no core.php: it only skips a `TIMEZONE` that `date_default_timezone_set()` refuses.

@@ -19,7 +19,7 @@ description: What a completed order or local sale does to stock and event spots:
 ## What does the sale tell the outside?
 - After each row's decrement, `pg_product_stock_changed($product_id, $before, null, 'checkout')`: the product's `timestamp` moves (so `GET /products?updated_since=` lists it), `inventory.changed` is announced, `stock.low` once on the crossing, and the marketplace is queued. `$before` is the fresh read (first row) or `$stock_left` (later rows); the stock left is read back. A local sale does the same with source `local_sale`, also from a fresh read.
 - Before issue #1163 `$before` was the stock read before payment: with a line at 5 and stock 6, two parallel checkouts both announced `stock.low` (6 -> 5, then stale 6 -> 4), and a restock to 10 during payment followed by a sale of 6 announced none.
-- Before PR #1141 (issue #871) the checkout and the local sale only queued the marketplace. The helper and the other writers: `docs/memory/core/api-webhook-stock-events.md`.
+- Before PR #1141 (issue #871) the checkout and the local sale only queued the marketplace. The helper and the other writers: `docs/memory/api/api-webhook-stock-events.md`.
 - A barcode scan that leaves the stock unchanged (a decrease at 0) calls only `pg_marketplace_product_changed()`, no `inventory.changed` (issue #1163).
 
 ## How are event spots counted?

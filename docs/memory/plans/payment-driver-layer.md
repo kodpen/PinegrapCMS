@@ -26,7 +26,7 @@ description: Plan (approved 2026-10-19; 1, 2, 3a, 5 done: #740, #812, #937, #873
 3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M).
 4. PayTR driver (M); PayPal v2 driver (M).
 5. ~~Refund in `view_order.php` / `order_refund.php` and the cancel refund in `process_order_cancellation()` through the driver (S).~~ Done (PR #873, `commerce/payment-refunds.md`).
-6. Memory: keep `commerce/payment-drivers.md` current; the decisions skill entry (legacy gateways frozen on purpose) is the owner's to add.
+6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.

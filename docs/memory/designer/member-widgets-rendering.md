@@ -5,7 +5,7 @@ description: Membership widget render rules: closed feature = no output, canvas 
 
 ## What happens to a disabled feature?
 - Closed feature = no output. With `REMEMBER_ME` / `cfg.show_remember_me` off, the `remember_me` control drops WITH its label and emptied wrapper (`_pg_member_drop_controls`: `<label for>` matched by id; a `<div>` holding only the dropped one goes too). A link whose `href` is bound to an empty token drops (`_pg_member_drop_empty_links`). Empty section containers already drop via `pg_cf_apply_section_bindings`. No dead `href=""`, inert control or hidden `display:none`: absence.
-- Canvas twin `_sdMemberBindingOff(node, cfg)` (style_designer.js) fades everything the renderer drops and says why with a badge (`data-sd-off-reason`: "Kapalı — site ayarı" / "Kapalı — ayarlar panelinden açın"). Site flags come in `sdDesign.siteFlags` (`includes/designer_screen.php`: remember_me, forgot_password_link, password_hint, captcha, strong_password, google). A new drop rule in the renderer goes here too, lockstep with `_sdCatalogBindingDisabled`.
+- Canvas twin `_sdMemberBindingOff(node, cfg)` (style_designer.js) fades everything the renderer drops and says why with a badge (`data-sd-off-reason`: `_sdT('Off — site setting')` / `_sdT('Off — turn it on in the settings panel')`). Site flags come in `sdDesign.siteFlags` (`includes/designer_screen.php`: remember_me, forgot_password_link, password_hint, captcha, strong_password, google). A new drop rule in the renderer goes here too, lockstep with `_sdCatalogBindingDisabled`.
 - The label follows its control via `for`; a wrapper whose every child drops fades too; a wrapper with one remaining child stays plain.
 
 ## How are errors and notices shown?
@@ -16,6 +16,6 @@ description: Membership widget render rules: closed feature = no output, canvas 
 
 ## Does the widget ever skip its own tree?
 - Never. Signed-in visitor, confirmation screen, "closed feature" are all PRUNINGS of the tree (`_pg_member_render_signed_in`: controls, links, sections drop; the text goes to the liveform via `add_notice` and appears in the widget's Messages node inside the designer's container). A renderer returning a plain `<div class="alert">` instead prints the message container-less, glued to the page edge (done once; a user caught it). New state: tree stays, content changes.
-- A signed-in visitor on the login widget sees an "already logged in" notice + Devam Et / Güvenli Çıkış, not the form; `$mode === 'edit'` shows the form so the page can be worked on. Dispatch (`_expand_system_widgets`) passes `$mode` to these two renderers.
+- A signed-in visitor on the login widget sees the notice "You are already signed in." with Continue and Logout links, not the form; `$mode === 'edit'` shows the form so the page can be worked on. Dispatch (`_expand_system_widgets`) passes `$mode` to these two renderers.
 
-Related: docs/memory/designer/member-widgets-handlers-and-forms.md
+Related: docs/memory/designer/member-widgets-handlers-and-forms.md, docs/memory/designer/system-widget-render-rules.md

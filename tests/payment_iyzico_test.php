@@ -582,6 +582,58 @@ function test_payment_iyzico_installment_without_a_higher_price_adds_nothing()
 		pg_payment_checkout_totals($answer, 10714));
 }
 
+// Where the quoted instalment charge would leave a rate's total one the VAT,
+// taken on the whole, never reaches, the card is charged the fewest kurus
+// less (pg_order_installment_charge()): 57.92 at 20% with the bank's 59.97 is
+// charged 59.96, and the 3-D Secure row and the order keep 2.04.
+function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
+{
+	$quote = array('installmentDetails' => array(array('installmentPrices' => array(
+		array('installmentNumber' => 3, 'totalPrice' => '59.97'),
+	))));
+	$settle = array(
+		'subtotal' => 3995,
+		'discount' => 0,
+		'installment' => 3,
+		'settle_rates' => true,
+		'charged_lines' => array(442 => array('amount' => 3995, 'rate' => '20.000', 'tax' => 799)),
+		'charges' => array('shipping' => 998, 'surcharge' => 0),
+	);
+
+	$http = payment_iyzico_test_http(array(
+		'/payment/iyzipos/installment' => payment_iyzico_test_success($quote),
+		'/payment/auth'                => payment_iyzico_test_success(array('paymentId' => '777', 'fraudStatus' => 1, 'installment' => 3)),
+	));
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment($settle), $kept, 5792);
+
+	pg_assert_same('59.96', $http->posts[1]['body']['paidPrice']);
+	pg_assert_same(5996, $answer['amount']);
+	pg_assert_same(
+		array('total' => 5996, 'installment_charge' => 204, 'total_without_installment_charge' => 5792, 'payment_installment' => 3),
+		pg_payment_checkout_totals($answer, 5792));
+
+	// The 3-D Secure start keeps the same figure for the return to check.
+	$http = payment_iyzico_test_http(array(
+		'/payment/iyzipos/installment'  => payment_iyzico_test_success($quote),
+		'/payment/3dsecure/initialize' => payment_iyzico_test_success(array('threeDSHtmlContent' => base64_encode('<form></form>'))),
+	));
+	payment_iyzico_test_authorize(payment_iyzico_test_settings(array('threeds' => true)), payment_iyzico_test_payment($settle), $kept, 5792);
+
+	pg_assert_same('59.96', $http->posts[1]['body']['paidPrice']);
+	pg_assert_same(204, $kept[0]['installment_charge_cents']);
+	pg_assert_same(5792, $kept[0]['base_total_cents']);
+
+	// Where the checkout does not settle its rates, the bank's figure stands.
+	$http = payment_iyzico_test_http(array(
+		'/payment/iyzipos/installment' => payment_iyzico_test_success($quote),
+		'/payment/auth'                => payment_iyzico_test_success(array('paymentId' => '778', 'fraudStatus' => 1, 'installment' => 3)),
+	));
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment(array_merge($settle, array('settle_rates' => false))), $kept, 5792);
+
+	pg_assert_same('59.97', $http->posts[1]['body']['paidPrice']);
+	pg_assert_same(5997, $answer['amount']);
+}
+
 function test_payment_iyzico_installment_above_the_limit_is_refused_before_iyzico()
 {
 	$http = payment_iyzico_test_http();

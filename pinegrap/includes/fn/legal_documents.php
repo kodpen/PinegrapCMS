@@ -321,11 +321,13 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  *
  * A cart row has no totals until the order is placed. Subtotal, tax and
  * shipping are the sums of its item and recipient rows (the same sums the
- * placed order stores). The total is the one the checkout page showed and
- * submit_order.php compares against, so offers, gift cards and rounding are
- * the checkout's own; the difference to the row sums is placed below. The
- * cart's order discount ($seen['order_discount']) is taken first and the tax
- * taken again per rate on what it leaves of the lines
+ * placed order stores); a recurring line that starts later is charged on its
+ * own once it starts and counts in none of them, as at the checkout
+ * (pg_order_line_charged_today()). The total is the one the checkout page
+ * showed and submit_order.php compares against, so offers, gift cards and
+ * rounding are the checkout's own; the difference to the row sums is placed
+ * below. The cart's order discount ($seen['order_discount']) is taken first
+ * and the tax taken again per rate on what it leaves of the lines
  * (pg_order_charged_tax()), so the discount and the tax read as the
  * checkout's.
  * Billing fields the visitor has typed or the page filled in replace the
@@ -335,10 +337,12 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
  * the visitor cleared, and clears it.
  *
  * @param array $order     orders row fields
- * @param array $lines     each with line_total and tax (minor units) and rate (the line's tax rate,
- *                         null when not kept), in the order of their ids
+ * @param array $lines     each with line_total and tax (minor units), rate (the line's tax rate,
+ *                         null when not kept) and charged (false for a line charged later; true
+ *                         when missing), in the order of their ids
  * @param array $ship_tos  each with cost (minor units)
- * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool)
+ * @param array $seen      total (minor units or null), order_discount (minor units), billing (field => value), payment_method, typed (bool),
+ *                         settle_rates (bool, pg_order_charges_settle_rates())
  * @return array  the order fields with amounts, billing and payment method filled
  */
 function pg_legal_document_cart_order(array $order, array $lines, array $ship_tos, array $seen)
@@ -349,6 +353,10 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     $charged = array();
 
     foreach ($lines as $line) {
+        if (isset($line['charged']) && !$line['charged']) {
+            continue;
+        }
+
         $subtotal += (int) round($line['line_total'] ?? 0);
         $tax += (int) round($line['tax'] ?? 0);
         $charged[] = array(
@@ -371,6 +379,14 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
 
     if (($order_discount > 0) && ($subtotal > 0)) {
         $tax = pg_order_charged_tax($charged, $order_discount);
+    }
+
+    // Where the shipping holds tax on the order's invoice it is a minor unit
+    // lower when it would leave a rate's total no amount reaches, as the
+    // checkout shows and submit_order.php charges it
+    // (pg_order_charges_reachable()).
+    if (!empty($seen['settle_rates']) && ($shipping > 0)) {
+        $shipping = pg_order_charges_reachable($charged, $order_discount, array('shipping' => $shipping))['shipping'];
     }
 
     $goods = $subtotal - $order_discount + $tax;
@@ -815,18 +831,27 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
     }
 
     $lines = array();
+    // A cart's totals count the lines the order charges when it is placed, as
+    // the checkout's do (submit_order.php); a placed order's are stored.
+    $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+        && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+    $today = date('Y-m-d');
 
+    // A line saved for later is no part of the order.
     foreach ((array) db_items(
         "SELECT
             order_items.product_name,
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total" . (pg_schema_has('order_items', 'tax_rate') ? ",
+            order_items.tax_total,
+            order_items.recurring_start_date,
+            products.recurring,
+            products.start" . (pg_schema_has('order_items', 'tax_rate') ? ",
             order_items.tax_rate" : "") . "
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
-        WHERE order_items.order_id = '" . $order_id . "'
+        WHERE order_items.order_id = '" . $order_id . "'" . pg_order_item_active_sql() . "
         ORDER BY order_items.id"
     ) as $item) {
         $quantity = (int) $item['quantity'];
@@ -837,6 +862,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             'line_total' => (int) round($item['price'] * $quantity),
             'tax'        => (int) round((float) $item['tax_total']),
             'rate'       => $item['tax_rate'] ?? null,
+            'charged'    => pg_order_line_charged_today($item['recurring'], $item['recurring_start_date'], $item['start'], $today, $clearcommerce),
         );
     }
 
@@ -879,6 +905,10 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
     }
 
     if ($order['status'] === 'incomplete') {
+        if (!array_key_exists('settle_rates', $seen)) {
+            $seen['settle_rates'] = pg_order_charges_settle_rates();
+        }
+
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
         // The checkout posts a country code; the documents name the country.

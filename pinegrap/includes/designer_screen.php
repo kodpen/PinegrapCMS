@@ -240,6 +240,9 @@ function pg_designer_screen_render($ctx)
         // when that id is this one, the holder is another tab of the same
         // person and the editor may offer to take the page over.
         'userId'        => (int)$user['id'],
+        // The site's own address (Settings → e-mail): a custom form new to
+        // its page starts with it as the notification address.
+        'siteEmail'     => defined('EMAIL_ADDRESS') ? trim((string)EMAIL_ADDRESS) : '',
         // Site settings the member widgets follow. The front end drops a
         // control whose feature is off; the canvas fades the same control
         // so the designer sees what the visitor will get.

@@ -88,6 +88,50 @@ function test_express_order_totals_discounted_tax_per_rate()
 	pg_assert_same(228 - 100 + 18, $totals['total'], 'the total with it');
 }
 
+// Where the shipping holds tax on the order's invoice, a shipping that would
+// leave the rate's total out of reach is a minor unit lower, as submit_order()
+// charges it: 39.95 with 7.99 of tax and shipping 9.99 would come to 57.93,
+// which no amount at 20% reaches, so the shipping shows 9.98 and the total
+// 57.92. Without the rule the shipping is the recipients' sum.
+function test_express_order_totals_settle_the_shipping()
+{
+	$lines = array(express_order_totals_test_line(3995, 1, 799, array('tax_rate' => '20.000')));
+
+	$totals = pg_express_order_charged_totals($lines, 0, 999, 0, 0, '2026-10-21', false, true);
+	pg_assert_same(998, $totals['shipping']);
+	pg_assert_same(5792, $totals['total']);
+
+	$totals = pg_express_order_charged_totals($lines, 0, 999, 0, 0, '2026-10-21', false);
+	pg_assert_same(999, $totals['shipping']);
+	pg_assert_same(5793, $totals['total']);
+
+	// The card surcharge is settled the same way, after the shipping.
+	$totals = pg_express_order_charged_totals($lines, 0, 998, 0, 2, '2026-10-21', false, true);
+	pg_assert_same(116, $totals['surcharge'], '2% of 57.92 is 1.16; 57.92 + 1.16 = 59.08 is reached');
+	pg_assert_same(5792 + 116, $totals['total_with_surcharge']);
+}
+
+// The shipping script carries what the totals were drawn with. On a page drawn
+// with the shipping a minor unit lower (9.99 stored, 9.98 charged) it keeps
+// the lower figure while the methods the page was drawn with stay picked, and
+// moves the total by the difference in shipping instead of adding up the
+// subtotal, tax and shipping it reads, which left an order discount out.
+function test_express_order_widget_script_carries_the_drawn_totals()
+{
+	$js = _eo_render_widget_js(7, 'pg-eo-form-w7', true, array(array('id' => 377)), '/',
+		array('shipping_drawn' => 999, 'shipping' => 998, 'total' => 5792));
+
+	pg_assert_true(strpos($js, 'var SHIP_DRAWN   = 999;') !== false, 'the stored shipping');
+	pg_assert_true(strpos($js, 'var SHIP_CHARGED = 998;') !== false, 'the shipping charged');
+	pg_assert_true(strpos($js, 'var TOTAL_SHOWN  = 5792;') !== false, 'the total shown');
+	pg_assert_true(strpos($js, 'if (shipCents === SHIP_DRAWN) shipCents = SHIP_CHARGED;') !== false, 'the lower figure kept');
+	pg_assert_true(strpos($js, 'TOTAL_SHOWN + shipCents - SHIP_CHARGED') !== false, 'the total moved by the shipping');
+
+	$js = _eo_render_widget_js(7, 'pg-eo-form-w7', false, array(), '/');
+	pg_assert_true(strpos($js, 'var SHIP_DRAWN   = 0;') !== false, 'nothing given');
+	pg_assert_true(strpos($js, 'var TOTAL_SHOWN  = 0;') !== false, 'nothing given');
+}
+
 // Only the lines charged today count: a recurring line starting later does
 // not, nor any recurring line on ClearCommerce.
 function test_express_order_totals_lines_charged_today()

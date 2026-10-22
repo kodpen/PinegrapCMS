@@ -141,7 +141,7 @@ function get_my_account($properties) {
 
         // Check to see if the user's timezone is one of the timezones in our pick list
         // and use our label for the timezone instead of the standard timezone name if so.
-        $timezone_label = array_search($timezone, get_timezones());
+        $timezone_label = array_search(pg_timezone_list_value($timezone), get_timezones());
 
         if ($timezone_label) {
             $timezone = $timezone_label;
