@@ -47,7 +47,7 @@ type `short_link`; since #1017, before it offered them and the link put in
 the content answered 404) leave binned links out; `edit_short_link.php`
 answers 409 "This short link is in the recycle bin…" for one. Restore
 renames a taken name (`pg_short_link_free_name()`) and refuses a link that
-would close a loop with links saved meanwhile (it stays binned; #833's PR).
+would close a loop with links saved meanwhile (it stays binned; #1235).
 Before the
 2026.4.4 upgrade, delete is still permanent.
 
@@ -64,4 +64,4 @@ Before #1024 a name of 189-191 characters lost the suffix on INSERT: two
 links with one name.
 
 Tests: `tests/short_link_requests_test.php`, `short_link_redirects_test.php`.
-PRs: #482, #487, #1024.
+PRs: #482, #487, #1024, #1235.

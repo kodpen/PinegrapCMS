@@ -27,8 +27,8 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 
 ## What is refused on save?
 - `pg_short_link_redirect_columns()` -> `pg_short_link_redirect_problem()` on every entry point: a `$n` beyond the stars (`to_references`), a `$n` in the host of a full address (`to_host`, an open redirect), an address that leads to the link itself (`to_self`), back to it through other links (`to_loop`) or on through more than 10 (`to_chain`). A page, file or the home page ends a chain.
-- A pattern is walked from a sample request and from every stored link whose address it answers (its `$n` filled with what the stars matched there); coming back counts only where the router would hand the path to the pattern (no exact name, no pattern tried before it). Before #833's PR a pattern saved after `q/z -> /p/z` as `p/* -> /q/$1` was kept and looped.
-- Restore from the File Manager's bin runs the same check; a link that would loop stays in the bin and the restore names it and why.
+- A pattern is walked from a sample request and from every stored link whose address it answers (its `$n` filled with what the stars matched there); coming back counts only where the router would hand the path to the pattern (no exact name, no pattern tried before it). Before #1235 (issue #833) a pattern saved after `q/z -> /p/z` as `p/* -> /q/$1` was kept and looped.
+- Restore from the File Manager's bin runs the same check (#1235); a link that would loop stays in the bin and the restore names it and why.
 - Before the step nothing is written or checked and names stay at 100 characters.
 
-CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799.
+CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799, #1235.
