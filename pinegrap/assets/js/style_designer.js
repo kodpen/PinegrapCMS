@@ -8398,64 +8398,80 @@ const StyleDesigner = (function () {
     // (sd-fx-unpos), put at that box. A positioned wrapper with a box of its
     // own keeps the stylesheet positions.
     function _sdPlaceWrapChrome(w) {
-        if (!w || !canvasDoc) return;
+        if (w) _sdPlaceChromeOf([w]);
+    }
+
+    // The same for several wrappers: every position is measured first and
+    // written after, so the canvas is laid out once, not once per wrapper.
+    function _sdPlaceChromeOf(ws) {
+        if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
-        var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
-        if (!parts.length) return;
-        var wcs = win.getComputedStyle(w);
-        var flat = wcs.display === 'contents';
-        if (!flat && wcs.position !== 'static') {
+        var writes = [];
+        ws.forEach(function (w) {
+            if (!w || !w.isConnected) return;
+            var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
+            if (!parts.length) return;
+            var wcs = win.getComputedStyle(w);
+            var flat = wcs.display === 'contents';
+            if (!flat && wcs.position !== 'static') {
+                parts.forEach(function (p) { if (p._sdPlaced) writes.push({ p: p }); });
+                return;
+            }
+            var el = flat ? _sdWrapEl(w) : w;
+            if (!el) return;
+            var er = el.getBoundingClientRect();
+            if (!er.width && !er.height) return;
             parts.forEach(function (p) {
-                if (!p._sdPlaced) return;
+                if (win.getComputedStyle(p).display === 'none') return;
+                // The containing block's padding-box origin, in viewport terms.
+                var op = p.offsetParent, bx, by;
+                if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
+                    var r = op.getBoundingClientRect();
+                    bx = r.left + op.clientLeft - op.scrollLeft;
+                    by = r.top + op.clientTop - op.scrollTop;
+                } else {
+                    bx = -win.scrollX;
+                    by = -win.scrollY;
+                }
+                var top, left;
+                if (p.classList.contains('sd-tb')) {
+                    // Above the element; inside it when there is no room above.
+                    top = er.top - by + (er.top < 22 ? 2 : -20);
+                    left = er.left - bx;
+                } else if (p.classList.contains('sd-persistent-note')) {
+                    top = er.top - by + 2;
+                    left = er.right - bx - 18;
+                } else {
+                    top = er.top - by - 7;
+                    left = er.left - bx - 7;
+                }
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left) });
+            });
+        });
+        writes.forEach(function (x) {
+            var p = x.p;
+            if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
                 p._sdPlaced = false;
-            });
-            return;
-        }
-        var el = flat ? _sdWrapEl(w) : w;
-        if (!el) return;
-        var er = el.getBoundingClientRect();
-        if (!er.width && !er.height) return;
-        parts.forEach(function (p) {
-            if (win.getComputedStyle(p).display === 'none') return;
-            // The containing block's padding-box origin, in viewport terms.
-            var op = p.offsetParent, bx, by;
-            if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
-                var r = op.getBoundingClientRect();
-                bx = r.left + op.clientLeft - op.scrollLeft;
-                by = r.top + op.clientTop - op.scrollTop;
-            } else {
-                bx = -win.scrollX;
-                by = -win.scrollY;
+                return;
             }
-            var top, left;
-            if (p.classList.contains('sd-tb')) {
-                // Above the element; inside it when there is no room above.
-                top = er.top - by + (er.top < 22 ? 2 : -20);
-                left = er.left - bx;
-            } else if (p.classList.contains('sd-persistent-note')) {
-                top = er.top - by + 2;
-                left = er.right - bx - 18;
-            } else {
-                top = er.top - by - 7;
-                left = er.left - bx - 7;
-            }
-            p.style.setProperty('top', Math.round(top) + 'px', 'important');
-            p.style.setProperty('left', Math.round(left) + 'px', 'important');
+            p.style.setProperty('top', x.top + 'px', 'important');
+            p.style.setProperty('left', x.left + 'px', 'important');
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
     }
 
     // The chrome that shows without a hover: the selection's toolbar, note
-    // dots, issue badges.
+    // dots, issue badges. Runs after every fidelity pass (adjustCanvasToolbars(),
+    // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
-        canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')
-            .forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(Array.prototype.slice.call(
+            canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')));
         // The size badge sits at the selection's corner: placed again once
         // the fidelity pass has moved things.
         if (selectedNode) _positionSizeBadge();
@@ -8481,7 +8497,7 @@ const StyleDesigner = (function () {
         if (hw && hw.isConnected && hw.tagName === 'DIV' && ws.indexOf(hw) === -1) ws.push(hw);
         var tops = ws.map(function (w) { return _sdBoxRect(w).top; });
         ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
-        ws.forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(ws);
         if (selectedNode) _positionSizeBadge();
     }
 
@@ -8560,7 +8576,9 @@ const StyleDesigner = (function () {
         // flow, instead of by the frame that places it on the page. Its
         // wrapper is drawn see-through, and the wrappers between it and that
         // ancestor are not positioned, so the page's ancestor places it here
-        // too; their toolbars are put by _sdPlaceWrapChrome(). The element's
+        // too; their toolbars, note dots and issue badges are put by
+        // _sdPlaceSelectedChrome() after this pass, on hover and when the
+        // validation puts its badges on (_sdPlaceChromeOf()). The element's
         // own position is measured (a media query can make it absolute), not
         // its classes. An element clipped to nothing (visually hidden text,
         // the input of a .btn-check toggle) shows nowhere either way and keeps
@@ -58894,6 +58912,7 @@ const StyleDesigner = (function () {
         });
         canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
         canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
+        var badged = [];
         Object.keys(byId).forEach(function (id) {
             var wrap = canvasDoc.querySelector('.sd-wrap[data-sd-id="' + id + '"]');
             if (!wrap) return;
@@ -58909,7 +58928,12 @@ const StyleDesigner = (function () {
                 openValidationPanel(true);
             });
             wrap.appendChild(b);
+            badged.push(wrap);
         });
+        // New elements, put on after the fidelity pass placed the old ones
+        // (the validation runs debounced): the badges of see-through and
+        // sd-fx-unpos wrappers are placed now, not on the first hover.
+        _sdPlaceChromeOf(badged);
     }
 
     function scheduleValidation() {
