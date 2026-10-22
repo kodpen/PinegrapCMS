@@ -418,7 +418,8 @@ function optimize_this_image($file_path)
  *
  * Only a file of this site's file manager is described: its address is read
  * back to a files row and its pixel width from the file. Anything else (an
- * external picture, a bound ^^token^^, an SVG, a GIF) is left as it was.
+ * external picture, a bound ^^token^^, an SVG, a GIF, an animated PNG or
+ * WebP) is left as it was.
  *
  * The page's first image is fetched first (fetchpriority="high") and every
  * later one waits until it is near the viewport (loading="lazy"), unless the
@@ -710,7 +711,8 @@ function pg_img_file_name($src)
     $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
 
     // ERP documents and attachments get no derivatives (get_file.php); a GIF
-    // may be animated, which the engine leaves as it is.
+    // may be animated, which the engine leaves as it is. An animated PNG or
+    // WebP is told by its bytes in pg_img_responsive().
     if (!in_array($extension, array('jpg', 'jpeg', 'png', 'webp'), true) || (strncasecmp($name, 'erp-', 4) === 0)) {
         return '';
     }
@@ -833,6 +835,13 @@ function pg_img_responsive($src)
     $row = $rows[$name];
 
     if (!$row || !empty($row['attachment'])) {
+        return null;
+    }
+
+    // An APNG or animated WebP: every derivative would be one still frame
+    // (the engine refuses to make them), and a <source> or srcset would send
+    // the browser after it instead of the animation.
+    if (pg_image_is_animated(FILE_DIRECTORY_PATH . '/' . $name)) {
         return null;
     }
 
