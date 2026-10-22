@@ -128,14 +128,23 @@ function test_parasut_order_invoice_lines_carry_the_shipping_at_the_goods_rate()
 }
 
 // Dev order #1176, placed before the checkout settled its shipping: 57.93 at
-// 20%, a total no amount reaches. It is refused before anything is sent.
-function test_parasut_order_invoice_refuses_an_unreachable_total()
+// 20%, a total no amount reaches. The invoice takes the shipping a kurus
+// lower, 9.98 (57.92, Paraşüt's 48.27 + 9.65), and the kurus stays with the
+// payment; the lines as charged would be refused before anything is sent.
+function test_parasut_order_invoice_lines_settle_an_unreachable_shipping()
 {
 	$order = array('id' => 442, 'order_date' => mktime(12, 0, 0, 10, 21, 2026), 'discount' => 0, 'tax' => 799, 'shipping' => 999, 'surcharge' => 0, 'installment_charges' => 0, 'total' => 5793, 'gift_card_discount' => 0);
-	$built = parasut_order_invoice_lines($order, array(pg_test_parasut_order_item(3995, 1, 799, '20.000')), true, false);
+	$item = pg_test_parasut_order_item(3995, 1, 799, '20.000');
+	$built = parasut_order_invoice_lines($order, array($item), true, false);
 
-	pg_assert_same(5793, $built['totals']['grand_total']);
-	$refusal = erp_edoc_parasut_vat_shift($built['lines'])['refusal'];
+	pg_assert_same(5792, $built['expected']);
+	pg_assert_same(5792, $built['totals']['grand_total']);
+	pg_assert_same(1, $built['totals']['charges_left']);
+	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
+	pg_assert_same(5792, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
+
+	$charged = erp_order_lines($order, array($item), true);
+	$refusal = erp_edoc_parasut_vat_shift($charged['lines'])['refusal'];
 	pg_assert_same(5793, $refusal['total']);
 	pg_assert_same(5792, $refusal['below']);
 	pg_assert_same(5794, $refusal['above']);
@@ -219,6 +228,36 @@ function test_parasut_order_invoice_refusal_names_a_rate_parasut_does_not_take()
 	pg_assert_same('', parasut_order_invoice_refusal(array(array('tax_rate' => '1.000', 'line_total' => 1250, 'discount_amount' => 0, 'tax_total' => 13, 'product_id' => 0)), 'TRY', '9001'));
 }
 
+// An order line of a product priced below zero cannot go to Paraşüt (it
+// answers 422 for a negative unit price); the order is refused before
+// anything is sent, as the ERP's driver refuses its invoice.
+function test_parasut_order_invoice_refusal_names_a_line_below_zero()
+{
+	$goods = array('description' => 'Deri Kalem Kılıfı', 'tax_rate' => '20.000', 'unit_price' => 3995, 'line_total' => 3995, 'discount_amount' => 0, 'tax_total' => 799, 'product_id' => 0);
+	$credit = array('description' => 'Sadakat indirimi', 'tax_rate' => '20.000', 'unit_price' => -500, 'line_total' => -500, 'discount_amount' => 0, 'tax_total' => -100, 'product_id' => 0);
+
+	$refusal = parasut_order_invoice_refusal(array($goods, $credit), 'TRY', '9001');
+	pg_assert_same(erp_edoc_parasut_negative_line_refusal(array($goods, $credit)), $refusal);
+	pg_assert_contains('"Sadakat indirimi"', $refusal);
+
+	pg_assert_same('', parasut_order_invoice_refusal(array($goods), 'TRY', '9001'));
+}
+
+// Create Invoice asks for a line below zero before it compares the lines
+// with the order total: an order whose VAT the checkout held at zero would
+// otherwise be refused by its totals without the line being named.
+function test_parasut_create_invoice_names_a_line_below_zero_before_the_totals()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_create_invoice(');
+	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
+
+	$asked = strpos($source, 'erp_edoc_parasut_negative_line_refusal($built[\'lines\'])', $start);
+	$compared = strpos($source, '$built[\'totals\'][\'grand_total\'] !== $built[\'expected\']', $start);
+
+	pg_assert_true(($asked !== false) && ($compared !== false) && ($asked < $compared), 'the line is asked for before the totals are compared');
+}
+
 // On random orders as the checkout charges them - several rates, a discount,
 // shipping and a surcharge settled so that every rate's total is reachable,
 // sometimes a gift card - the lines as they go to Paraşüt come, by
@@ -285,7 +324,110 @@ function test_parasut_order_invoice_lines_settle_an_installment_out_of_reach()
 
 	pg_assert_same(5996, $built['expected']);
 	pg_assert_same(5996, $built['totals']['grand_total']);
-	pg_assert_same(1, $built['totals']['installment_left']);
+	pg_assert_same(1, $built['totals']['charges_left']);
 	pg_assert_same(array(), erp_edoc_parasut_vat_shift($built['lines'])['refusal']);
 	pg_assert_same(5996, pg_test_parasut_order_paid_total(pg_test_parasut_order_payload($built)));
+}
+
+// The sale an order's e-Archive states (erp_order_sale_fields()): dev order
+// #1180, paid by card, shipped with ABC Kargo.
+function pg_test_parasut_order_sale($overrides = array())
+{
+	return array_merge(array(
+		'is_internet_sale' => 1,
+		'web_address' => 'https://dev.pinegrap.com',
+		'payment_method' => 'KREDIKARTI/BANKAKARTI',
+		'payment_date' => '2026-10-22',
+		'shipment_date' => '2026-10-23',
+		'carrier_title' => 'ABC Kargo A.Ş.',
+		'carrier_vkn' => '1234567808',
+	), $overrides);
+}
+
+// A counter sale is not an internet sale and states no address; anything
+// else is one, at the ERP's web address or, without it, the site's own.
+function test_parasut_order_edoc_internet_sale_rule()
+{
+	pg_assert_same(array('is_internet_sale' => 0, 'web_address' => ''), _erp_order_internet_sale('local', 'https://shop.example', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => 'https://dev.pinegrap.com'), _erp_order_internet_sale('online', '', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => 'https://shop.example'), _erp_order_internet_sale('marketplace', ' https://shop.example ', 'https://dev.pinegrap.com'));
+	pg_assert_same(array('is_internet_sale' => 1, 'web_address' => ''), _erp_order_internet_sale('', '', ''), 'an older row without a type');
+}
+
+// An internet sale's e-Archive carries its address, payment and carrier, as
+// the ERP's invoice of the order does; before, the old button sent none.
+function test_parasut_order_edoc_attributes_of_an_internet_sale()
+{
+	$lines = array(array('tax_rate' => '20.000', 'vat_exemption_code' => ''));
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(), $lines, 'earchive', '', '2026-10-20');
+
+	pg_assert_same('', $edoc['error']);
+	pg_assert_same(array(
+		'internet_sale' => array(
+			'url' => 'https://dev.pinegrap.com',
+			'payment_type' => 'KREDIKARTI/BANKAKARTI',
+			'payment_platform' => erp_payment_method_labels()['KREDIKARTI/BANKAKARTI'],
+			'payment_date' => '2026-10-22',
+		),
+		'shipment' => array('title' => 'ABC Kargo A.Ş.', 'date' => '2026-10-23', 'vkn' => '1234567808'),
+	), $edoc['attributes']);
+
+	// A payment or a shipment the order does not date goes on the invoice's
+	// day; a carrier with a TCKN is named as a person.
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array(
+		'payment_method' => '',
+		'payment_date' => '0000-00-00',
+		'shipment_date' => '0000-00-00',
+		'carrier_title' => 'Ayşe Kaya',
+		'carrier_vkn' => '10000000146',
+	)), $lines, 'earchive', '', '2026-10-20');
+
+	pg_assert_same('DIGER', $edoc['attributes']['internet_sale']['payment_type']);
+	pg_assert_same('2026-10-20', $edoc['attributes']['internet_sale']['payment_date']);
+	pg_assert_same(array('title' => 'Ayşe Kaya', 'date' => '2026-10-20', 'tckn' => '10000000146', 'name' => 'Ayşe Kaya'), $edoc['attributes']['shipment']);
+}
+
+// An internet sale whose carrier the order does not give is refused before
+// anything is sent; an e-Invoice and a counter sale do not carry one.
+function test_parasut_order_edoc_refuses_an_internet_sale_without_its_carrier()
+{
+	$lines = array(array('tax_rate' => '20.000', 'vat_exemption_code' => ''));
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_same(array(), $edoc['attributes']);
+	pg_assert_contains(lang('Carrier VKN / TCKN'), $edoc['error']);
+	pg_assert_contains('Paraşüt', $edoc['error']);
+
+	// A download or a service: no shipping method, so no carrier at all.
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('shipment_date' => '0000-00-00', 'carrier_title' => '', 'carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_contains(lang('Carrier') . ', ' . lang('Carrier VKN / TCKN'), $edoc['error']);
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('carrier_vkn' => '')), $lines, 'einvoice', 'urn:mail:defaultpk@example.com', '2026-10-20');
+	pg_assert_same('', $edoc['error']);
+	pg_assert_same(array('scenario' => 'commercial', 'to' => 'urn:mail:defaultpk@example.com'), $edoc['attributes']);
+
+	$edoc = parasut_order_edoc_attributes(pg_test_parasut_order_sale(array('is_internet_sale' => 0, 'web_address' => '', 'carrier_title' => '', 'carrier_vkn' => '')), $lines, 'earchive', '', '2026-10-20');
+	pg_assert_same(array('attributes' => array(), 'error' => ''), $edoc);
+}
+
+// A zero-rated line names its exemption on either kind of document. Paraşüt
+// takes one reason per document, and an "other" exemption needs the words
+// an order cannot give.
+function test_parasut_order_edoc_names_the_exemption_of_a_zero_rated_line()
+{
+	$sale = pg_test_parasut_order_sale(array('is_internet_sale' => 0, 'web_address' => ''));
+	$lines = array(
+		array('tax_rate' => '0.000', 'vat_exemption_code' => '301'),
+		array('tax_rate' => '20.000', 'vat_exemption_code' => ''),
+	);
+
+	pg_assert_same(array('attributes' => array('vat_exemption_reason_code' => '301'), 'error' => ''), parasut_order_edoc_attributes($sale, $lines, 'earchive', '', '2026-10-20'));
+	pg_assert_same(array('vat_exemption_reason_code' => '301', 'scenario' => 'commercial', 'to' => 'urn:mail:defaultpk@example.com'), parasut_order_edoc_attributes($sale, $lines, 'einvoice', 'urn:mail:defaultpk@example.com', '2026-10-20')['attributes']);
+
+	$lines[1] = array('tax_rate' => '0.000', 'vat_exemption_code' => '302');
+	pg_assert_contains('one VAT exemption reason', parasut_order_edoc_attributes($sale, $lines, 'earchive', '', '2026-10-20')['error']);
+
+	$edoc = parasut_order_edoc_attributes($sale, array(array('tax_rate' => '0.000', 'vat_exemption_code' => '350')), 'earchive', '', '2026-10-20');
+	pg_assert_same(array(), $edoc['attributes']);
+	pg_assert_contains('350', $edoc['error']);
 }

@@ -19,7 +19,13 @@ description: Version numbers from 2026.11.0 on are year.month.patch (calendar ve
 - Once opened (`versions.php` row, changelog heading, possibly a migration file and dev databases that ran it) the number is kept even if the release moves to another month: `config.version` on those databases must stay a number from the list, or the upgrade screen closes.
 
 ## How are schema step labels written?
-- The comment labels beside the calls in `upgrade_to_<version>()` take month.patch as their prefix and keep the earlier ranges: for 2026.11.0 general work from `11.0.1`, ERP `11.0.58`-`11.0.69` and after `11.0.90`, API `11.0.70`-`11.0.79`, Workspace `11.0.80`-`11.0.89` and `11.0.110`-`11.0.119`. Labels are names only; the order of the calls is what runs.
+- The comment labels beside the calls in `upgrade_to_<version>()` take month.patch as their prefix and keep the earlier ranges: for 2026.11.0 general work from `11.0.1`, ERP `11.0.58`-`11.0.69` and from `11.0.90`, API `11.0.70`-`11.0.79`, Workspace `11.0.80`-`11.0.89` and `11.0.110`-`11.0.119`. Labels are names only; the order of the calls is what runs.
+- Each version repeats the ranges under its own prefix (2026.4.10: ERP `10.58`-, API `10.70`-, Workspace `10.80`-). 2026.4.4 still numbered its steps in sequence, so its `4.70`-`4.79` hold ERP steps, not API ones: an old label names a step only together with its version.
 
-## Tags
+## Which label is free?
+- Read the call list of `upgrade_to_<open version>()` as it is on `origin/development` (`git fetch origin development`, `git show origin/development:pinegrap/includes/migrations/2026.11.0.php`), right before pushing; never a list in notes or memory, which goes stale within days.
+- Labels of open PRs are taken too: list the open PRs and open `…/pulls/<n>/files` of those that change the open version's migration file (their titles often name the label, "şema 11.0.58"). A gap in the numbers is usually such a label, not a free one.
+- Take the next unused number of your area's range. Two PRs that end up with one label: the later renumbers before merging (`core/concurrent-agents.md`).
+
+## Which tags mark a release?
 - Stable `v<version>` (`v2026.11.0`), beta `v<version>-beta`, on the merge commit of the release pull request; the integrity check reads them (`pg_integrity_release_tags()`). Release flow: docs/memory/release/release-status.md.

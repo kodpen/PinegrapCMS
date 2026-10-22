@@ -197,7 +197,10 @@ function _parasut_extract_error($result)
     if (!empty($body['errors'])) {
         $msgs = [];
         foreach ((array) $body['errors'] as $err) {
-            $msgs[] = ($err['title'] ?? '') . ': ' . ($err['detail'] ?? '');
+            // Paraşüt often repeats the detail as the title ("X: X").
+            $title = is_array($err) ? trim((string) ($err['title'] ?? '')) : '';
+            $detail = is_array($err) ? trim((string) ($err['detail'] ?? '')) : trim((string) $err);
+            $msgs[] = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         }
         return implode(' | ', $msgs);
     }
@@ -1471,9 +1474,10 @@ function _parasut_order_invoice_load()
  * it leaves, the shipping, the surcharge and the instalment charge each with
  * its VAT inside, at the rate of the goods. What the invoice must come to is
  * what the customer was charged with the gift card added back: a gift card
- * is a means of payment, not a reduction of the sale. An instalment charge
- * that left a rate's total out of reach goes the kurus lower that reaches
- * it, and the invoice comes to that much less (erp_order_lines()).
+ * is a means of payment, not a reduction of the sale. A charge that left a
+ * rate's total out of reach (an order placed before the checkout settled
+ * its charges, Pay with iyzico's instalment charge) goes the kurus lower
+ * that reaches it, and the invoice comes to that much less (erp_order_lines()).
  *
  * @param array     $order          orders row
  * @param array     $items          order_items rows joined with the product (short_description,
@@ -1488,22 +1492,23 @@ function parasut_order_invoice_lines($order, $items, $charges_taxed = null, $cle
     $charged = erp_order_charged_items($order, (array) $items, $clearcommerce);
     $built = !empty($charged)
         ? erp_order_lines($order, $charged, $charges_taxed, true)
-        : array('lines' => array(), 'totals' => array('grand_total' => 0, 'installment_left' => 0));
+        : array('lines' => array(), 'totals' => array('grand_total' => 0, 'charges_left' => 0));
 
     return array(
         'lines' => $built['lines'],
         'totals' => $built['totals'],
-        'expected' => (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['installment_left'],
+        'expected' => (int) ($order['total'] ?? 0) + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'],
         'charged' => count($charged),
     );
 }
 
 /**
  * Why an order's lines (parasut_order_invoice_lines()) cannot go to Paraşüt,
- * or '' when they can: a rate Paraşüt does not take, a total its VAT cannot
- * come to (erp_edoc_parasut_total_refusal()), a line with no product to go
- * on. Asked before anything is sent, so that no buyer card is opened at
- * Paraşüt for an invoice that cannot follow.
+ * or '' when they can: a rate Paraşüt does not take, a line below zero
+ * (erp_edoc_parasut_negative_line_refusal()), a total its VAT cannot come to
+ * (erp_edoc_parasut_total_refusal()), a line with no product to go on. Asked
+ * before anything is sent, so that no buyer card is opened at Paraşüt for an
+ * invoice that cannot follow.
  *
  * @param array       $lines     erp_order_lines() lines
  * @param string      $currency  The order's currency, for the amounts in the reason
@@ -1533,6 +1538,12 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
         ));
     }
 
+    $refusal = erp_edoc_parasut_negative_line_refusal($lines);
+
+    if ($refusal !== '') {
+        return $refusal;
+    }
+
     $refusal = erp_edoc_parasut_total_refusal($lines, $currency);
 
     if ($refusal !== '') {
@@ -1540,6 +1551,50 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
     }
 
     return erp_edoc_parasut_product_refusal($lines, $default);
+}
+
+/**
+ * The attributes of an order's e-document, as the ERP's Paraşüt driver
+ * writes them for the order's invoice (erp_edoc_parasut_edoc_attributes()):
+ * the exemption behind a zero-rated line, the scenario and the buyer's
+ * mailbox of an e-Invoice, and for an internet sale's e-Archive the web
+ * address, the payment and the carrier (VUK 509). What such an e-Archive
+ * cannot go without is refused here, before anything is sent.
+ *
+ * @param array  $sale        erp_order_sale_fields()
+ * @param array  $lines       The order's invoice lines, each with its vat_exemption_code
+ * @param string $kind        'einvoice' | 'earchive'
+ * @param string $alias       The buyer's GİB mailbox (e-Invoice)
+ * @param string $issue_date  'Y-m-d': the sales invoice's day, which a payment or
+ *                            shipment date the order does not give falls back to
+ * @return array ['attributes' => array, 'error' => string]
+ */
+function parasut_order_edoc_attributes($sale, $lines, $kind, $alias, $issue_date)
+{
+    // These documents have always gone as commercial e-Invoices, and an order
+    // carries no invoice note to name an "other" exemption in words.
+    $invoice = array_merge((array) $sale, array(
+        'issue_date' => (string) $issue_date,
+        'edoc_scenario' => 'commercial',
+        'notes' => '',
+    ));
+
+    $missing = erp_edoc_parasut_document_missing($invoice, $kind);
+
+    if (!empty($missing)) {
+        return array('attributes' => array(), 'error' => lang(array(
+            'string' => 'An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order\'s shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.',
+            'vars' => implode(', ', $missing),
+        )));
+    }
+
+    $attributes = erp_edoc_parasut_edoc_attributes($invoice, $lines, $kind, $alias);
+
+    if (isset($attributes['error'])) {
+        return array('attributes' => array(), 'error' => (string) $attributes['error']);
+    }
+
+    return array('attributes' => $attributes, 'error' => '');
 }
 
 /**
@@ -1553,9 +1608,12 @@ function parasut_order_invoice_refusal($lines, $currency, $default = null)
  * out itself, once per rate on the whole amount of its lines; where that is
  * not the order's VAT the rate's amount there moves by a kurus or so, so
  * that the invoice still comes to what the customer paid
- * (erp_edoc_parasut_vat_shift()). Whatever can be refused from the order
- * alone is refused before anything is sent, and a sales invoice Paraşüt
- * totals differently is deleted before it becomes a document.
+ * (erp_edoc_parasut_vat_shift()). The e-document carries what the driver
+ * gives the order's invoice too (parasut_order_edoc_attributes()): a
+ * zero-rated line's exemption, an internet sale's address, payment and
+ * carrier. Whatever can be refused from the order alone is refused before
+ * anything is sent, and a sales invoice Paraşüt totals differently is
+ * deleted before it becomes a document.
  *
  * @param int $order_id  orders.id
  * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
@@ -1617,6 +1675,15 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('None of the lines of this order was charged when it was placed, so there is nothing to invoice yet.')];
     }
 
+    // A line below zero first: its order's VAT can be one the checkout held
+    // at zero, and the total check below would then name the totals, not
+    // the line Paraşüt refuses.
+    $refusal = erp_edoc_parasut_negative_line_refusal($built['lines']);
+
+    if ($refusal !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $refusal];
+    }
+
     // The lines must come to what the customer was charged. Only rounding is
     // absorbed on the way (erp_order_lines()); a wider gap means the order's
     // own figures disagree, and a legal document is not the place to find out.
@@ -1642,13 +1709,6 @@ function parasut_create_invoice($order_id)
     }
     $token = $token_result['token'];
 
-    // Sync (or retrieve) the Parasut contact.
-    $contact_result = parasut_sync_contact($order);
-    if (!$contact_result['success']) {
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $contact_result['error']];
-    }
-    $parasut_contact_id = $contact_result['parasut_contact_id'];
-
     // Which document this has to be is settled before anything is created: a
     // sales invoice raised here and then found to need the other kind cannot be
     // taken back.
@@ -1666,6 +1726,25 @@ function parasut_create_invoice($order_id)
     }
     $issue_date = date('Y-m-d', $ts);
     $order_number = trim((string) ($order['order_number'] ?? ''));
+
+    // What the e-document says besides the lines, as the order's ERP invoice
+    // would carry it: each zero-rated line's exemption, an internet sale's
+    // address, payment and carrier. Settled here too, so that an e-Archive
+    // that cannot go leaves no buyer card or sales invoice at Paraşüt.
+    foreach ($built['lines'] as $index => $line) {
+        $built['lines'][$index]['vat_exemption_code'] = erp_vat_line_exemption_code($line);
+    }
+    $edoc = parasut_order_edoc_attributes(erp_order_sale_fields($order), $built['lines'], $edoc_kind, $edoc_alias, $issue_date);
+    if ($edoc['error'] !== '') {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $edoc['error']];
+    }
+
+    // Sync (or retrieve) the Parasut contact.
+    $contact_result = parasut_sync_contact($order);
+    if (!$contact_result['success']) {
+        return ['success' => false, 'parasut_invoice_id' => null, 'error' => $contact_result['error']];
+    }
+    $parasut_contact_id = $contact_result['parasut_contact_id'];
 
     // The body the ERP's driver writes for an invoice of the order: its lines
     // with their products, the kurus each rate moves, the order's number and
@@ -1741,17 +1820,15 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => $gone ? null : $sales_invoice_id, 'error' => $message];
     }
 
-    // Now issue the e-invoice or e-archive document.
+    // Now issue the e-invoice or e-archive document. An e-invoice's attributes
+    // carry the buyer's GİB mailbox from the registration lookup (one with
+    // nowhere to go is rejected); the two requests name the sales invoice
+    // under different relationship keys.
     if ($edoc_kind === 'einvoice') {
         $doc_body = [
             'data' => [
                 'type' => 'e_invoices',
-                'attributes' => [
-                    'scenario' => 'commercial',
-                    // The buyer's GIB address, from the registration lookup. An
-                    // e-invoice with nowhere to go is rejected.
-                    'to' => $edoc_alias,
-                ],
+                'attributes' => $edoc['attributes'],
                 'relationships' => [
                     'invoice' => ['data' => ['type' => 'sales_invoices', 'id' => $sales_invoice_id]],
                 ],
@@ -1759,11 +1836,10 @@ function parasut_create_invoice($order_id)
         ];
         $doc_result = _parasut_request('POST', _parasut_prefix() . '/e_invoices', $doc_body, $token);
     } else {
-        // e_archive
         $doc_body = [
             'data' => [
                 'type' => 'e_archives',
-                'attributes' => [],
+                'attributes' => $edoc['attributes'],
                 'relationships' => [
                     'sales_invoice' => ['data' => ['type' => 'sales_invoices', 'id' => $sales_invoice_id]],
                 ],
