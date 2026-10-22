@@ -9,7 +9,7 @@ description: The day of the month a repeating invoice keeps: an invoice of the 3
 - The run and the cash forecast step with `erp_expense_recurring_step($date, $months, $day_of_month)`, which cuts the day to a shorter month's last day, so the stored day must be the uncut one.
 
 ## What was wrong before?
-- The day was taken from the first date (`substr($first, 8, 2)`). The invoice screen proposes the first date with the step, so an invoice of the 31st proposed 28.02 and the recurrence stayed on the 28th for good; 31.08 drifted to 30.09, 30.10… (#1074, PR #XXXX). Repeating expenses always took the expense's own day and were right.
+- The day was taken from the first date (`substr($first, 8, 2)`). The invoice screen proposes the first date with the step, so an invoice of the 31st proposed 28.02 and the recurrence stayed on the 28th for good; 31.08 drifted to 30.09, 30.10… (#1074, PR #1226). Repeating expenses always took the expense's own day and were right.
 - Recurrences written before the fix keep their stored day; the fix does not rewrite them (no data step). Stopping one and starting it again from the invoice stores the right day.
 
 ## Where is the first date proposed?
