@@ -2071,8 +2071,9 @@ $widgets = array(
                             $el('header', 'text-center mb-4', lang('Post Header'), array(
                                 $para(lang('Date'), 'small text-uppercase text-body-secondary mb-2', $bind('submitted_date_and_time')),
                                 $heading('h1', lang('How to care for silver jewellery'), 'display-6 mb-3', $bind('title')),
-                                $el('p', 'small text-body-secondary mb-0', lang('Author'), array(
-                                    $span(lang('Jane Cooper'), '', lang('Author'), $bind('submitter')),
+                                // The author line leaves when the record has no contact name.
+                                $el('p', 'pg-hide-if-empty small text-body-secondary mb-0', lang('Author'), array(
+                                    $span(lang('Jane Cooper'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
                                 )),
                             )),
                             $optional_image('cover_image', 'title', 'object-fit-cover', 'ratio ratio-16x9 bg-body-tertiary mb-4',
@@ -2767,7 +2768,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.0.9',
+    'version'     => '1.0.10',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

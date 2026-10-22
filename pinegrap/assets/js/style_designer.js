@@ -12075,6 +12075,7 @@ const StyleDesigner = (function () {
         affiliate_code:                'AFF-0042',
         referring_url:                 'https://example.com/',
         submitter:                     _sdT('Alex Morgan'),
+        submitter_name:                _sdT('Alex Morgan'),
         last_modifier:                 _sdT('Alex Morgan'),
         submitted_date_and_time:       _sdDatePlaceholder,
         last_modified_date_and_time:   _sdDatePlaceholder,
@@ -33532,6 +33533,9 @@ const StyleDesigner = (function () {
         ['reference_code',                _sdT('Reference Code')],
         ['submitted_date_and_time',       _sdT('Submitted Date & Time'), 'date'],
         ['submitter',                     _sdT('Submitter')],
+        // The contact's name (never the login username submitter prints):
+        // the one to bind on a public byline.
+        ['submitter_name',                _sdT('Author Name')],
         ['complete',                      _sdT('Complete')],
         ['address_name',                  _sdT('Address Name')],
         ['tracking_code',                 _sdT('Tracking Code')],
@@ -33559,6 +33563,34 @@ const StyleDesigner = (function () {
         ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
+
+    // Standard names a form's own field overrides on the server
+    // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
+    // list). The form decides: a field answering to the name by its name or
+    // by its label (pg_sw_form_field_identifiers()) takes it, and the
+    // dropdowns then do not offer the standard one.
+    var _SW_FORM_FIELD_WINS = ['submitter_name'];
+    // pg_sw_slugify(): "Yazar Adı" → "yazar_adi".
+    function _swFieldKeySlug(s) {
+        var map = { 'ı':'i','İ':'i','ş':'s','Ş':'s','ğ':'g','Ğ':'g','ü':'u','Ü':'u',
+                    'ö':'o','Ö':'o','ç':'c','Ç':'c','â':'a','î':'i','û':'u' };
+        return String(s || '').trim()
+            .replace(/[ıİşŞğĞüÜöÖçÇâîû]/g, function (ch) { return map[ch]; })
+            .toLowerCase()
+            .replace(/[^a-z0-9_]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+    }
+    function _swStandardYields(token, fields) {
+        var t = String(token || '').toLowerCase();
+        if (_SW_FORM_FIELD_WINS.indexOf(t) === -1) return false;
+        return (fields || []).some(function (ff) {
+            if (!ff) return false;
+            var name = String(ff.name || '').trim(), label = String(ff.label || '').trim();
+            return [name, name.replace(/[^a-z0-9_]/gi, ''), label, _swFieldKeySlug(label)].some(function (k) {
+                return k !== '' && k.toLowerCase() === t;
+            });
+        });
+    }
 
     // The detail view offers the same set plus its own not-found state, which is
     // a property of the widget rather than of a record.
@@ -36243,6 +36275,7 @@ const StyleDesigner = (function () {
             // depends on regionType — see _builtins resolution above.
             html += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
             _builtins.forEach(function (o) {
+                if (_swStandardYields(o[0], formFields)) return;
                 html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(_builtinLabel(o)) + '</option>';
             });
             html += '</optgroup>';
@@ -46905,7 +46938,8 @@ const StyleDesigner = (function () {
     // The classic form list view's filters (edit_form_list_view.php), kept in
     // system_region_config.filters and applied on the server by
     // pg_sw_form_list_filter_sql(). Standard fields mirror
-    // get_standard_fields_for_view(); the type decides which dynamic values
+    // get_standard_fields_for_view(), plus submitter_name (the contact's
+    // name, pg_sw_standard_fields()); the type decides which dynamic values
     // a filter offers, exactly as the classic screen decides it.
     var _SW_FILTER_STANDARD = [
         ['reference_code', _sdT('Reference Code'), ''],
@@ -46915,6 +46949,7 @@ const StyleDesigner = (function () {
         ['affiliate_code', _sdT('Affiliate Code'), ''],
         ['referring_url', _sdT('Referring URL'), ''],
         ['submitter', _sdT('Submitter'), 'username'],
+        ['submitter_name', _sdT('Author Name'), ''],
         ['submitted_date_and_time', _sdT('Submitted Date & Time'), 'date and time'],
         ['last_modifier', _sdT('Last Modifier'), 'username'],
         ['last_modified_date_and_time', _sdT('Last Modified Date & Time'), 'date and time'],
@@ -46948,7 +46983,8 @@ const StyleDesigner = (function () {
         });
     }
     function _swFilterFieldType(field, fields) {
-        for (var i = 0; i < _SW_FILTER_STANDARD.length; i++) {
+        var yields = _swStandardYields(field, fields);
+        for (var i = 0; i < _SW_FILTER_STANDARD.length && !yields; i++) {
             if (_SW_FILTER_STANDARD[i][0] === field) return _SW_FILTER_STANDARD[i][2];
         }
         var lc = String(field || '').toLowerCase();
@@ -47009,9 +47045,10 @@ const StyleDesigner = (function () {
             var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
                 '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
                 _SW_FILTER_STANDARD.map(function (sf) {
+                    if (_swStandardYields(sf[0], fields)) return '';
                     return '<option value="' + sf[0] + '"' + (sf[0] === field ? ' selected' : '') + '>' + esc(sf[1]) + '</option>';
                 }).join('') + '</optgroup>';
-            var known = !field || _SW_FILTER_STANDARD.some(function (sf) { return sf[0] === field; });
+            var known = !field || _SW_FILTER_STANDARD.some(function (sf) { return sf[0] === field && !_swStandardYields(sf[0], fields); });
             if (formFields.length) {
                 fieldOpts += '<optgroup label="' + esc(_sdT('Form Fields')) + '">' +
                     formFields.map(function (ff) {
@@ -47127,6 +47164,7 @@ const StyleDesigner = (function () {
                 (fields || []).forEach(function (ff) { out.push({ token: _swFormFieldToken(ff).toLowerCase() + '__label', label: fieldLabel(ff) }); });
             }
             (isItem ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS).forEach(function (o) {
+                if (_swStandardYields(o[0], fields)) return;
                 out.push({ token: o[0], label: _swBindLabel(type, o[0]) });
             });
             return out;
