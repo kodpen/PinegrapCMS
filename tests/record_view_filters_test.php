@@ -197,3 +197,44 @@ function test_record_view_filters_editor_flags_unknown_operator()
 	$rows = substr($js, $start, 6000);
 	pg_assert_contains("if (opBad) opOpts += '<option value=\"' + esc(rawOp) + '\" selected>'", $rows);
 }
+
+// -- the list page's pretty address -------------------------------------------
+
+// A list page's /<list>/<name> answers 301 only into a record view that every
+// visitor may open: a redirect into a submitter_only or logged_in view would
+// tell which names exist, drafts included. The list branch asks
+// pg_sw_form_widget_public() of the detail view before it looks the name up,
+// so the answer is the same as for an unknown name.
+function test_record_view_filters_list_redirect_needs_public_detail_view()
+{
+	$function = new ReflectionFunction('pg_sw_route_record_address');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	$list_branch = (string) substr($source, (int) strpos($source, 'foreach ($lists as $w)'));
+	pg_assert_contains('foreach ($lists as $w)', $list_branch, 'the list branch is found');
+	pg_assert_contains("if (!pg_sw_form_widget_public(\$detail_view['cfg'])) continue;", $list_branch, 'the detail view must be public');
+
+	$guard  = strpos($list_branch, "pg_sw_form_widget_public(\$detail_view['cfg'])");
+	$lookup = strpos($list_branch, 'pg_sw_record_by_address(');
+	pg_assert_true($guard !== false && $lookup !== false && $guard < $lookup, 'the guard comes before the record is looked up');
+}
+
+// The list branch runs before get_page.php's folder check, so a detail page in
+// a private or membership folder the visitor may not open gets no redirect
+// either, even with a public record view: the 301 would name what that page's
+// own sign-in answer keeps hidden. Registration and guest folders pass (the
+// second argument), since anyone may sign up or choose guest.
+function test_record_view_filters_list_redirect_needs_detail_folder_access()
+{
+	$function = new ReflectionFunction('pg_sw_route_record_address');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	$list_branch = (string) substr($source, (int) strpos($source, 'foreach ($lists as $w)'));
+	pg_assert_contains("if (!check_view_access(\$detail_page['page_folder'], true)) continue;", $list_branch, 'the detail page folder must be open to the visitor');
+
+	$guard  = strpos($list_branch, "check_view_access(\$detail_page['page_folder'], true)");
+	$lookup = strpos($list_branch, 'pg_sw_record_by_address(');
+	pg_assert_true($guard !== false && $lookup !== false && $guard < $lookup, 'the folder check comes before the record is looked up');
+}
