@@ -42606,6 +42606,8 @@ const StyleDesigner = (function () {
                 var val = this.value;
                 setNodeAttr(selectedNode, attrName, val);
                 renderCanvas(); renderAttrsPanel(); renderHtmlTree();
+                // An action written here answers the audit's form_no_action.
+                scheduleValidation();
             });
         });
 
@@ -60406,6 +60408,18 @@ const StyleDesigner = (function () {
         }));
     }
 
+    // Whether a form is sent nowhere: a semantic <form> with no action
+    // written (a blank one sends it back to the same page too) and no action
+    // bound for a system widget. Submitting it reloads the page and nothing
+    // keeps what the visitor typed. Where it sits is the caller's to judge:
+    // inside a system widget the widget wraps or binds it (custom_form puts
+    // its own <form action="custom_form.php"> around it).
+    function _sdAuditFormGoesNowhere(n) {
+        if (!n || n.type !== 'semantic' || String(n.props.tag || '').toLowerCase() !== 'form') return false;
+        if (n.props._bindings && n.props._bindings.action) return false;
+        return !_sdAuditAttr(n, 'action');
+    }
+
     var _validationRules = [
         { id: 'img_alt', label: _sdT('img alt is missing'),
             check: function(node, ctx) {
@@ -60579,7 +60593,8 @@ const StyleDesigner = (function () {
     function _pageLevelIssues(root) {
         var h1 = 0, main = 0, landmarks = 0, hasHeading = false, firstLevel = 0;
         var cfUnbound = [];
-        (function walk(n, inPageForm) {
+        var formsNowhere = [];
+        (function walk(n, inPageForm, inWidget) {
             if (!n) return;
             var tag = '';
             if (n.type === 'content' && n.props.contentType === 'heading') tag = n.props.tag || '';
@@ -60592,6 +60607,10 @@ const StyleDesigner = (function () {
             // there is no field for it, so nothing is stored. Silent data loss
             // is the worst kind, so it is said out loud, on the control.
             if (inPageForm && _cfIsFormControl(n) && !_cfControlName(n)) cfUnbound.push(n);
+            // A form outside every system widget with no action: the Form
+            // item, a block's sample form, imported markup. It is a hint, not
+            // a ban; an action or a Custom Form widget makes it go somewhere.
+            if (!inWidget && _sdAuditFormGoesNowhere(n)) formsNowhere.push(n);
             if (n.type === 'shared_ref') {
                 var sid = n.props && n.props.sharedId ? parseInt(n.props.sharedId, 10) : 0;
                 var c = sid > 0 ? _sharedCache[sid] : null;
@@ -60600,17 +60619,24 @@ const StyleDesigner = (function () {
                     var cfg = null;
                     try { cfg = c.system_region_config ? JSON.parse(c.system_region_config) : null; } catch (e) { cfg = null; }
                     _sdSharedOpen[sid] = true;
-                    try { walk(c.tree, _cfWidgetOwnsPageForm(cfg)); }
+                    try { walk(c.tree, _cfWidgetOwnsPageForm(cfg), inWidget || !!(cfg && _swIsType(cfg.regionType))); }
                     finally { delete _sdSharedOpen[sid]; }
                 }
             }
-            if (n.children) n.children.forEach(function (c2) { walk(c2, inPageForm); });
-        })(root, false);
+            if (n.children) n.children.forEach(function (c2) { walk(c2, inPageForm, inWidget); });
+        })(root, false, false);
         var out = [];
         cfUnbound.forEach(function (n) {
             out.push({
                 rule: 'cf_field_unnamed',
                 label: _sdT('This control has no field name — it is not saved even when submitted (Form Field → Field name)'),
+                seo: '', node: n, nodeLabel: getNodeLabel(n)
+            });
+        });
+        formsNowhere.forEach(function (n) {
+            out.push({
+                rule: 'form_no_action',
+                label: _sdT('This form has no action and is not in a Custom Form widget: what the visitor enters is neither stored nor sent (Form → Action)'),
                 seo: '', node: n, nodeLabel: getNodeLabel(n)
             });
         });

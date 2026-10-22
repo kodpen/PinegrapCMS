@@ -47,6 +47,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles.
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
+- designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
 - designer-audit-targets-entry.md: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exception) and redundant entry (3.3.7) hints: measured on the canvas, exemptions, the email_verify exemption left to drop
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
 - designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
