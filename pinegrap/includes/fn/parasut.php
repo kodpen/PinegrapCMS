@@ -197,7 +197,10 @@ function _parasut_extract_error($result)
     if (!empty($body['errors'])) {
         $msgs = [];
         foreach ((array) $body['errors'] as $err) {
-            $msgs[] = ($err['title'] ?? '') . ': ' . ($err['detail'] ?? '');
+            // Paraşüt often repeats the detail as the title ("X: X").
+            $title = is_array($err) ? trim((string) ($err['title'] ?? '')) : '';
+            $detail = is_array($err) ? trim((string) ($err['detail'] ?? '')) : trim((string) $err);
+            $msgs[] = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         }
         return implode(' | ', $msgs);
     }
