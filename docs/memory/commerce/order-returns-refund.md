@@ -1,6 +1,6 @@
 ---
 name: order-returns-refund
-description: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock and revert, what is written, the ERP return invoice hand-off, the refund mail
+description: Refund of a received return (PR #936): driver or recorded, suggested amount, the lock, revert on refusal, what is written, the ERP return invoice hand-off, the refund mail
 ---
 
 ## How is a return refunded?
@@ -14,7 +14,7 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 - Lines the order did not charge (a subscription starting later, `erp_order_charged_items()`) come in the source's `left_out` and get no map entry: always skipped on the order's lines, on an invoice only when the line at that position is not their product (older invoices still carry them). Before (#1156) such an order had no map: the estimate spread the discount onto the unpaid line (11200 instead of 10800) and no hand-off was offered.
 
 ## How is a double payment prevented?
-- Under `GET_LOCK(pg_return_lock_name(order))`: re-read, require `received`, move to `refunded`, then call the driver; a refusal puts it back to `received` (`refunded_at = 0`). A second click sees `refunded` and is refused.
+- Under `GET_LOCK(pg_return_lock_name(order))`: re-read, require `received`, move to `refunded`, then call the driver; a refusal puts it back to `received` (`refunded_at = 0`), an unclear answer (timeout, unreadable) keeps it `refunded` and books the amount: commerce/payment-unclear-answers.md. A second click sees `refunded` and is refused.
 
 ## What is written?
 - Money moved (amount > 0): `orders.refunded_amount += amount`, `order_refunds` row (`refund_type` `return` or `return_manual`, `transaction_id` = driver's `refund_reference` or the typed reference, `notes` "Return request #N"). Order status and totals stay (a return is not a cancellation; the order screen's full refund still cancels).

@@ -828,6 +828,7 @@ function pg_payment_iyzico_void($options, $payment_id, $conversation_id, $reason
  * @param int   $amount   hundredths to give back
  * @param array $settings pg_payment_iyzico_settings()
  * @return array an answer: refunded, with iyzico's id of the refund
+ *               (pg_payment_iyzico_refund_answer())
  */
 function pg_payment_iyzico_refund_with($order, $amount, $settings)
 {
@@ -840,20 +841,80 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
     $request->setPrice(pg_payment_decimal($amount));
     $request->setIp(pg_payment_iyzico_request_ip());
 
-    $result = \Iyzipay\Model\AmountBaseRefund::create($request, pg_payment_iyzico_options($settings));
-
-    if ($result->getStatus() != 'success') {
-        $message = (string) $result->getErrorMessage();
-
-        return pg_payment_failure($message, array('message' => $message));
+    try {
+        $result = \Iyzipay\Model\AmountBaseRefund::create($request, pg_payment_iyzico_options($settings));
+    } catch (\TypeError $exception) {
+        // The SDK's mapper takes only a decoded JSON object: a body that is
+        // not iyzico's JSON (a gateway's 502 page, nothing at all) fails
+        // there, after the request went out.
+        return pg_payment_iyzico_refund_answer($amount, false, '', '', $exception->getMessage(), '');
     }
 
-    return array(
-        'success'          => true,
-        'status'           => 'refunded',
-        'amount'           => (int) $amount,
-        'refund_reference' => (string) $result->getPaymentId(),
+    $status = (string) $result->getStatus();
+
+    return pg_payment_iyzico_refund_answer(
+        $amount,
+        true,
+        $status,
+        (string) $result->getErrorCode(),
+        (string) $result->getErrorMessage(),
+        ($status === 'success') ? (string) $result->getPaymentId() : ''
     );
+}
+
+/**
+ * Reads iyzico's answer to a refund. A refusal is iyzico saying no: a status
+ * other than success with iyzico's own error code. The rest is unclear - the
+ * money may have gone back - and must not reopen the refund for a second try:
+ * the body the SDK's cURL client makes of a timeout or a dropped connection
+ * (errorCode curl_<n>, Iyzipay\Curl::exec()), a body with no status, a body
+ * that is not iyzico's JSON ($readable false).
+ *
+ * @param int    $amount        hundredths asked back
+ * @param bool   $readable      the body was iyzico's JSON
+ * @param string $status        iyzico's status, '' when the body had none
+ * @param string $error_code    iyzico's errorCode
+ * @param string $error_message iyzico's errorMessage, or what failed to read the body
+ * @param string $refund_id     iyzico's id of the refund (on success)
+ * @return array an answer for pg_payment_answer()
+ */
+function pg_payment_iyzico_refund_answer($amount, $readable, $status, $error_code, $error_message, $refund_id)
+{
+    $status = (string) $status;
+    $error_code = (string) $error_code;
+    $error_message = (string) $error_message;
+    $raw = array('message' => $error_message, 'code' => $error_code);
+
+    if (!$readable) {
+        return array(
+            'success' => false,
+            'unclear' => true,
+            'error'   => lang('The payment service gave an answer that cannot be read. Check the payment on the service\'s own screen before trying again.'),
+            'raw'     => $raw,
+        );
+    }
+
+    if ($status === 'success') {
+        return array(
+            'success'          => true,
+            'status'           => 'refunded',
+            'amount'           => (int) $amount,
+            'refund_reference' => (string) $refund_id,
+        );
+    }
+
+    if (($status === '') || (strpos($error_code, 'curl_') === 0)) {
+        return array(
+            'success' => false,
+            'unclear' => true,
+            'error'   => lang(array(
+                'string' => 'No clear answer came from the payment service ({var:1}). Check the payment on the service\'s own screen before trying again.',
+                'vars'   => array(($error_message !== '') ? $error_message : lang('no answer')))),
+            'raw'     => $raw,
+        );
+    }
+
+    return array('success' => false, 'error' => $error_message, 'raw' => $raw);
 }
 
 /**
