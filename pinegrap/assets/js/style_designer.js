@@ -56586,14 +56586,15 @@ const StyleDesigner = (function () {
         // page's first form when there is none - the account menu's, the
         // search box - and puts its hint on a button once, while the main
         // button changes its word with the page on screen. The editor's form
-        // stays out of it (disable_shortcut); the two places with a Ctrl+S of
-        // their own keep theirs: a node's note and the settings modal.
+        // stays out of it (disable_shortcut); the places with a Ctrl+S of their
+        // own keep theirs: a node's note, the settings modal and the code
+        // dialog (codemirror_modal.js, whose editor presses its own Save).
         if (!window._sdSaveShortcutBound) {
             window._sdSaveShortcutBound = true;
             window.addEventListener('keydown', function (e) {
                 if (!(e.ctrlKey || e.metaKey) || e.altKey || String(e.key || '').toLowerCase() !== 's') return;
                 var ae = document.activeElement;
-                if (ae && ae.closest && ae.closest('.sd-note-overlay, #pg_settings_modal')) return;
+                if (ae && ae.closest && ae.closest('.sd-note-overlay, #pg_settings_modal, #pgCodeEditorModal')) return;
                 e.preventDefault();
                 e.stopPropagation();
                 _sdSaveShortcut();
