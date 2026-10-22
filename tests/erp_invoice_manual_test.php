@@ -23,6 +23,8 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/withholding.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/products.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/ubl.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/inbox.php');
 
 // Lines as erp_manual_lines_build() takes them: [unit price, VAT %, withholding
 // code], one of each.
@@ -126,4 +128,70 @@ function test_erp_invoice_manual_skips_empty_rows()
 
 	pg_assert_same(2, count($built['lines']));
 	pg_assert_same(41, $built['totals']['tax_total']);
+}
+
+// A quantity with more places than the four it is stored with is priced as
+// stored: 1.3333333333 x 1,500.00 is 1.3333 x 1,500.00 = 1,999.95, and the
+// lines rebuilt from what was stored, as an issue rebuilds them, come to the
+// same totals.
+function test_erp_invoice_manual_prices_the_stored_quantity()
+{
+	$cases = array(
+		array('1.3333333333', 150000, 199995, 239994),
+		array(0.33333, 30000, 9999, 11999),
+	);
+
+	foreach ($cases as $index => $case) {
+		$built = erp_manual_lines_build(array(
+			array('description' => 'Work', 'quantity' => $case[0], 'unit_price' => $case[1], 'tax_rate' => 20),
+		));
+
+		pg_assert_same('', $built['error'], 'error, case ' . $index);
+		pg_assert_same($case[2], $built['lines'][0]['line_total'], 'line total, case ' . $index);
+		pg_assert_same($case[3], $built['totals']['grand_total'], 'total, case ' . $index);
+
+		$stored = $built['lines'][0];
+		$stored['quantity'] = number_format($stored['quantity'], 4, '.', '');
+		$rebuilt = erp_manual_lines_build(array($stored));
+
+		pg_assert_same($built['totals'], $rebuilt['totals'], 'rebuilt, case ' . $index);
+	}
+}
+
+// A quantity that is nothing at four places is refused, not priced at zero.
+function test_erp_invoice_manual_refuses_a_quantity_below_the_stored_places()
+{
+	$built = erp_manual_lines_build(array(
+		array('description' => 'Dust', 'quantity' => 0.00004, 'unit_price' => 100, 'tax_rate' => 20),
+	));
+
+	pg_assert_same('lines[0][quantity]', $built['field']);
+}
+
+// An incoming line of 0.12345 t at 400,000.00 is 49,380.00. Stored at four
+// places, 0.1235 x 400,000.00 would be 49,400.00, so the line folds into one
+// unit of its amount with the supplier's figures in its text; one whose
+// quantity fits four places keeps its quantity and price.
+function test_erp_invoice_manual_inbox_line_checks_the_stored_quantity()
+{
+	$line = function ($no, $quantity, $price, $amount) {
+		return array('no' => $no, 'name' => 'Steel', 'description' => '', 'seller_code' => '', 'buyer_code' => '',
+			'quantity' => $quantity, 'unit_code' => 'TNE', 'price' => $price, 'line_extension' => $amount,
+			'allowances' => array(), 'withholdings' => array(),
+			'taxes' => array(array('code' => '0015', 'name' => 'KDV', 'rate' => 20, 'amount' => (int) round($amount / 5),
+				'exemption_code' => '', 'exemption_reason' => '')));
+	};
+
+	$read = erp_edoc_inbox_lines(array('lines' => array(
+		$line('1', 0.12345, '400000.00', 4938000),
+		$line('2', 0.125, '400000.00', 5000000),
+	)));
+
+	pg_assert_same(array('1'), $read['folded']);
+	pg_assert_same(array(1.0, 'C62', 4938000), array($read['lines'][0]['quantity'], $read['lines'][0]['unit_code'], $read['lines'][0]['unit_price']));
+	pg_assert_contains('0.12345', $read['lines'][0]['description']);
+	pg_assert_same(array(0.125, 'TNE', 40000000), array($read['lines'][1]['quantity'], $read['lines'][1]['unit_code'], $read['lines'][1]['unit_price']));
+
+	$built = erp_manual_lines_build($read['lines']);
+	pg_assert_same(array(4938000, 5000000), array($built['lines'][0]['line_total'], $built['lines'][1]['line_total']));
 }
