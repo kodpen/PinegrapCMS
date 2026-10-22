@@ -929,21 +929,40 @@ function pg_tr_invalidate_pages($language = '', $page_id = 0, $verdicts = true)
         $where[] = "page_id = '" . (int) $page_id . "'";
     }
 
-    if (!$verdicts && function_exists('pg_tr_page_verdict_ready') && pg_tr_page_verdict_ready()) {
-        $keep = array_merge($where, array('indexable = 1'));
-        $drop = array_merge($where, array('(indexable IS NULL OR indexable = 0)'));
+    $count = 0;
 
-        db("UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE " . implode(' AND ', $keep));
-        $count = (int) mysqli_affected_rows(db::$con);
-
-        db("DELETE FROM page_translations WHERE " . implode(' AND ', $drop));
-
-        return $count + (int) mysqli_affected_rows(db::$con);
+    foreach (pg_tr_invalidate_sql($where, $verdicts, function_exists('pg_tr_page_verdict_ready') && pg_tr_page_verdict_ready()) as $sql) {
+        db($sql);
+        $count += (int) mysqli_affected_rows(db::$con);
     }
 
-    db("DELETE FROM page_translations" . ($where ? ' WHERE ' . implode(' AND ', $where) : ''));
+    return $count;
+}
 
-    return (int) mysqli_affected_rows(db::$con);
+/**
+ * The statements pg_tr_invalidate_pages() runs. Dropping the answers deletes
+ * the rows. Keeping them (and only when the schema has the column) empties
+ * the body of a row that answered "index", so the body cache draws it again,
+ * and deletes the rest: a "noindex" or no answer is offered nowhere either
+ * way.
+ *
+ * @param array $where         SQL conditions on page_translations, escaped
+ * @param bool  $verdicts      whether the answers go as well
+ * @param bool  $verdict_ready whether page_translations.indexable exists
+ * @return array of SQL statements
+ */
+function pg_tr_invalidate_sql($where, $verdicts, $verdict_ready)
+{
+    $where = array_values((array) $where);
+
+    if ($verdicts || !$verdict_ready) {
+        return array("DELETE FROM page_translations" . ($where ? ' WHERE ' . implode(' AND ', $where) : ''));
+    }
+
+    return array(
+        "UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE " . implode(' AND ', array_merge($where, array('indexable = 1'))),
+        "DELETE FROM page_translations WHERE " . implode(' AND ', array_merge($where, array('(indexable IS NULL OR indexable = 0)'))),
+    );
 }
 
 /* ---------------------------------------------------------------------------

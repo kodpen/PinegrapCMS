@@ -152,12 +152,16 @@ function pg_tr_render_rules()
 }
 
 /**
- * Drops the drawn bodies and the kept robots answers of every language once
- * after the rules changed (an update), so the sitemap does not go on reading
- * answers given under the old ones for pages nobody has visited since. A
- * marker in data/temp says the rules in force were applied; when it cannot
- * be written nothing is dropped, rather than dropping on every request - the
- * bodies are still drawn again by their fingerprint.
+ * Drops the drawn bodies of every language once after the rules changed (an
+ * update). The kept robots answers that said "index" stay: with "no answer
+ * means not offered" (pg_tr_index_decide()), dropping them would take every
+ * language address out of sitemap.xml and the alternates until each page is
+ * visited in each language. An old "index" is corrected by the page's own
+ * robots meta on its next draw, and the search engines follow that meta; an
+ * old "noindex" gives the same answer as none. A marker in data/temp says
+ * the rules in force were applied; when it cannot be written nothing is
+ * dropped, rather than dropping on every request - the bodies are still
+ * drawn again by their fingerprint.
  */
 function pg_tr_render_rules_check()
 {
@@ -179,7 +183,7 @@ function pg_tr_render_rules_check()
         return;
     }
 
-    pg_tr_invalidate_pages();
+    pg_tr_invalidate_pages('', 0, false);
 }
 
 /**

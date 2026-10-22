@@ -8,7 +8,8 @@
  * alternate follow (pg_tr_index_decide()), the address to page mapping it
  * reads the kept answer by (pg_tr_page_id_of_path()) and the robots meta the
  * answer is taken from (pg_tr_robots_says_noindex()) in
- * includes/translate/seo.php.
+ * includes/translate/seo.php; the statements that drop the drawn bodies
+ * (pg_tr_invalidate_sql()) and the rules check that keeps the answers.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -123,4 +124,42 @@ function test_translate_index_write_keeps_verdicts()
 	pg_assert_true(pg_tr_write_keeps_verdicts('machine', false), 'machine, no row (false)');
 	pg_assert_false(pg_tr_write_keeps_verdicts('machine', 'machine'), 'machine over machine');
 	pg_assert_false(pg_tr_write_keeps_verdicts('machine', 'reviewed'), 'machine forced over reviewed');
+}
+
+// Dropping the answers deletes the rows, of one language or of all.
+function test_translate_index_invalidate_drops_rows()
+{
+	pg_assert_same(array('DELETE FROM page_translations'), pg_tr_invalidate_sql(array(), true, true), 'everything');
+	pg_assert_same(array("DELETE FROM page_translations WHERE language = 'en' AND page_id = '5'"), pg_tr_invalidate_sql(array("language = 'en'", "page_id = '5'"), true, true), 'one page in one language');
+}
+
+// Keeping them empties the body of a row that answered "index" and deletes
+// the rest; before the 2026.4.9 column there is nothing to keep.
+function test_translate_index_invalidate_keeps_index_answers()
+{
+	$sql = pg_tr_invalidate_sql(array("language = 'en'"), false, true);
+
+	pg_assert_same(2, count($sql), 'two statements');
+	pg_assert_same("UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE language = 'en' AND indexable = 1", $sql[0], 'the body goes, the answer stays');
+	pg_assert_same("DELETE FROM page_translations WHERE language = 'en' AND (indexable IS NULL OR indexable = 0)", $sql[1], 'noindex and no answer go');
+
+	$all = pg_tr_invalidate_sql(array(), false, true);
+	pg_assert_same("UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE indexable = 1", $all[0], 'every language');
+
+	pg_assert_same(array('DELETE FROM page_translations'), pg_tr_invalidate_sql(array(), false, false), 'no column yet');
+}
+
+// A change of the drawing rules (an update) drops the bodies and keeps the
+// answers: dropping them would take every language address out of
+// sitemap.xml and the alternates until each page is drawn again.
+function test_translate_index_rules_check_keeps_answers()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/render.php');
+	$start = strpos($source, 'function pg_tr_render_rules_check()');
+	$end = strpos($source, "\n}", $start);
+	$body = substr($source, $start, $end - $start);
+
+	pg_assert_true($start !== false, 'the rules check exists');
+	pg_assert_contains("pg_tr_invalidate_pages('', 0, false);", $body, 'drops bodies only');
+	pg_assert_same(1, substr_count($body, 'pg_tr_invalidate_pages('), 'one drop');
 }
