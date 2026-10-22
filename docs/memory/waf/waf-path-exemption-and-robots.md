@@ -1,12 +1,17 @@
 ---
 name: waf-path-exemption-and-robots
-description: waf_is_excluded() matches the path only; /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
+description: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 ---
 
 ## What does the exemption look at?
 - `waf_is_excluded()` DISCARDS the query string and matches only the path. Matching the whole `REQUEST_URI` made the entire firewall skippable: anyone can put the pattern in a parameter. With `api2` exempt, `/hesabim?x=1&foo=api2&q=' OR 1=1--` hit the exemption and signature scan, rate limit and IP list were all skipped.
 - Consequence: you cannot exempt a feed by query parameter (`?rss=true`), that is exactly the string an attacker would add. To exempt, exempt the path.
-- The path stops at the script it runs (`waf_path_to_script()`): PATH_INFO is the caller's too. With `iyzico_callback` excluded, `/index.php/iyzico_callback` ran the sign-in screen with no firewall and let a banned address in (fixed in the PR for plan `security-findings-2026-10-waf` item 3). A router address (no `.php` segment) is matched whole.
+- The path is the script the server runs (`waf_exclusion_path()`): `SCRIPT_NAME`, already decoded, dot segments resolved, PATH_INFO split off. PATH_INFO is the caller's too: with `iyzico_callback` excluded, `/index.php/iyzico_callback` ran the sign-in screen with no firewall and let a banned address in (#953). Cutting the written address at its first `.php` segment was not enough: `/index.ph%70/iyzico_callback`, `/index%2ephp/…`, `/index.php%2F…` and `/iyzico_callback/../index.php` still ran `index.php` exempt; since #1202 the match uses `SCRIPT_NAME`.
+- Only a `router.php` request (a page address, or the IIS rewrite) is matched by its request path: query removed, decoded once, `\` as `/`, cut at the first `.php` segment; a `.`/`..` segment matches nothing (`waf_request_path_decoded()`).
+- The API exemptions use the same rule (`waf_names_script_in()`): the path is read only for `router.php`, so `/index.ph%70/integration.php/x` is not an API call (#1202). Tests: `tests/waf_exclusion_test.php`.
+
+## What happens to an exclusion written after a script name?
+- It matches nothing any more: `integration.php/products` or `oauth.php/token` named PATH_INFO, which is no longer part of the path. Exclude the script name (`integration.php`) instead; a bare script name is still matched against the running script.
 
 ## Which paths are always served?
 - `waf_path_is_always_served()`: `/robots.txt` and `/.well-known/` are exempt from bot policy.

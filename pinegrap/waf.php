@@ -3423,12 +3423,15 @@ function waf_user_is_authenticated()
  * sends no user agent, or sends "python-requests", is what an integration looks
  * like, and the exemption that exists for it was never reached.
  *
- * Read from the path only, never the query string, and read as the first
- * segment that names a PHP file - the same thing the server resolves. That is
- * what makes it safe to trust: /index.php/integration.php/x answers index.php
- * here as well, so an exemption cannot be claimed by appending the endpoint's
- * name to some other request. See waf_is_excluded() for the same rule and the
- * bypass that taught it.
+ * So the script the server resolved answers first, and the request path is
+ * consulted only when that script is router.php - the rewrite above. The path
+ * is read without the query string, decoded once the way the server decodes
+ * it, refused when it holds a dot segment, and read as its first segment that
+ * names a PHP file. That is what makes it safe to trust: /index.php/
+ * integration.php/x and /index.ph%70/integration.php/x run index.php and
+ * answer index.php here as well, so an exemption cannot be claimed by
+ * appending the endpoint's name to some other request. See waf_is_excluded()
+ * for the same rule and the bypass that taught it.
  */
 function waf_is_api_request()
 {
@@ -3467,19 +3470,39 @@ function waf_is_site_api_request()
  */
 function waf_request_names_script($names)
 {
-    if (in_array(waf_script_name(), $names, true)) {
+    return waf_names_script_in(
+        isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '',
+        isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '',
+        $names);
+}
+
+/**
+ * Does a request for this script and this address name one of these scripts?
+ *
+ * The script the server resolved answers. Only when that is router.php - the
+ * IIS rewrite of an address with more than one segment after the endpoint -
+ * is the request path read (waf_request_path_decoded()), and then its first
+ * segment that names a PHP file answers. Anything else in the path is the
+ * caller's PATH_INFO and names nothing.
+ *
+ * @param string   $script_name SCRIPT_NAME
+ * @param string   $request_uri REQUEST_URI
+ * @param string[] $names       script file names
+ * @return bool
+ */
+function waf_names_script_in($script_name, $request_uri, $names)
+{
+    $script = basename((string) $script_name);
+
+    if (in_array($script, $names, true)) {
         return true;
     }
 
-    $url = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
-
-    $question = strpos($url, '?');
-
-    if ($question !== false) {
-        $url = substr($url, 0, $question);
+    if ($script !== 'router.php') {
+        return false;
     }
 
-    foreach (explode('/', $url) as $segment) {
+    foreach (explode('/', waf_request_path_decoded($request_uri)) as $segment) {
 
         if (substr($segment, -4) === '.php') {
             return in_array($segment, $names, true);
@@ -3490,13 +3513,73 @@ function waf_request_names_script($names)
 }
 
 /**
+ * The path of a request address the way the server reads it before choosing a
+ * script: without the query string, percent-decoded once (index.ph%70 is
+ * index.php, %2F is a slash) and with backslashes as slashes, as IIS reads
+ * them. A path with a "." or ".." segment returns '': the server resolves
+ * those before it chooses the script, so the written path is not the one
+ * that runs, and it is not matched at all.
+ *
+ * @param string $request_uri REQUEST_URI
+ * @return string
+ */
+function waf_request_path_decoded($request_uri)
+{
+    $path = (string) $request_uri;
+    $question = strpos($path, '?');
+
+    if ($question !== false) {
+        $path = substr($path, 0, $question);
+    }
+
+    $path = str_replace('\\', '/', rawurldecode($path));
+
+    foreach (explode('/', $path) as $segment) {
+
+        if ($segment === '.' || $segment === '..') {
+            return '';
+        }
+    }
+
+    return $path;
+}
+
+/**
+ * The path an operator's excluded path is matched against: the script the
+ * request runs, never what the caller wrote after it.
+ *
+ * For any script but router.php that is SCRIPT_NAME. The server has already
+ * decoded it, resolved its dot segments and split PATH_INFO off, so neither
+ * /index.ph%70/iyzico_callback nor /iyzico_callback/../index.php can put an
+ * excluded name into it. It is still cut at its first PHP segment, for a
+ * server set up to leave PATH_INFO in it. Only router.php - an address the
+ * router serves, or the IIS rewrite - is matched by the request path, read
+ * the way the server reads it (waf_request_path_decoded()) and cut at its
+ * first PHP segment; with a dot segment it is '' and matches nothing.
+ *
+ * @param string $script_name SCRIPT_NAME
+ * @param string $request_uri REQUEST_URI
+ * @return string
+ */
+function waf_exclusion_path($script_name, $request_uri)
+{
+    $script_name = (string) $script_name;
+    $base = basename($script_name);
+
+    if ($base !== '' && $base !== 'router.php') {
+        return waf_path_to_script($script_name);
+    }
+
+    return waf_path_to_script(waf_request_path_decoded($request_uri));
+}
+
+/**
  * A request path cut after the first segment that names a PHP file - the
  * script the server runs - so that PATH_INFO behind it is not part of it.
  * A path with no such segment (an address the router serves) is returned
- * whole. Case-insensitive, for IIS. The same reading of the path as
- * waf_request_names_script().
+ * whole. Case-insensitive, for IIS.
  *
- * @param string $path without the query string
+ * @param string $path decoded, without the query string
  * @return string
  */
 function waf_path_to_script($path)
@@ -3544,19 +3627,21 @@ function waf_is_excluded()
     // A consequence worth knowing: a feed cannot be excluded by its query
     // parameter (?rss=true), because that is exactly the string an attacker
     // would append. Excluding a feed means excluding its path.
-    $url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
-    $question = strpos($url, '?');
-
-    if ($question !== false) {
-        $url = substr($url, 0, $question);
-    }
-
-    // The path stops at the script it runs. What follows it is PATH_INFO,
-    // which the caller writes as freely as a query string: with
-    // "iyzico_callback" excluded, /index.php/iyzico_callback ran index.php
-    // with no firewall at all - the sign-in screen, a banned address, any
-    // payload.
-    $url = waf_path_to_script($url);
+    //
+    // The path matched is the script the server resolved, not the address
+    // as written. What follows the script is PATH_INFO, which the caller
+    // writes as freely as a query string: with "iyzico_callback" excluded,
+    // /index.php/iyzico_callback ran index.php with no firewall at all - the
+    // sign-in screen, a banned address, any payload. Cutting the written
+    // address at its first ".php" segment was not enough either, because the
+    // server decodes it and resolves its dot segments before it chooses the
+    // script: /index.ph%70/iyzico_callback, /index.php%2Fiyzico_callback and
+    // /iyzico_callback/../index.php all run index.php. The request path
+    // counts only for an address router.php serves, decoded the same way
+    // (waf_exclusion_path()).
+    $url = waf_exclusion_path(
+        isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '',
+        isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '');
 
     $script = waf_script_name();
 
