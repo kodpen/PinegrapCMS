@@ -1,6 +1,6 @@
 ---
 name: account-email-pages
-description: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail.
+description: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 ---
 
 ## Which account e-mails can be designed, and where is the page chosen?

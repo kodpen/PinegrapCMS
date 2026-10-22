@@ -4,7 +4,7 @@
 
 Visual designer, system widgets, data binding, designer forms, member widgets, content roles, HTML import.
 
-- account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail.
+- account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule) and the td display:flex ban.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults, group card behavior (browse/select), group scope rules, subtree helper and group price range rules.
