@@ -5175,6 +5175,17 @@ const StyleDesigner = (function () {
     var _SD_BX = '\u0001';
     // The element inside a wrapper: any child that is not editor chrome.
     var _SD_FX_EL = ':not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge)';
+    // A selected element inside a see-through container is lifted above its
+    // neighbours (position:relative + z-index) so its outline shows. An
+    // element its own classes place is left where it is: lifting the close
+    // button of a dismissible alert moved it out of its corner on mousedown,
+    // so the click landed on the alert and never dismissed it; a stretched
+    // link would stretch over itself only, a sticky or fixed bar would scroll
+    // away.
+    var _SD_SEL_LIFT = ':not(' + ['.btn-close', '.position-absolute', '.position-fixed', '.position-sticky',
+        '.fixed-top', '.fixed-bottom', '.stretched-link', '.sticky-top', '.sticky-bottom']
+        .concat(['sm', 'md', 'lg', 'xl', 'xxl'].map(function (b) { return '.sticky-' + b + '-top, .sticky-' + b + '-bottom'; }))
+        .join(', ') + ')';
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -5559,7 +5570,10 @@ const StyleDesigner = (function () {
         _SD_BX + '.btn-group > .sd-wrap.sd-selected > *, .btn-group-vertical > .sd-wrap.sd-selected > *, ' +
             '.input-group > .sd-wrap.sd-selected > *, .nav > .sd-wrap.sd-selected > *, ' +
             '.list-group > .sd-wrap.sd-selected > *, .accordion > .sd-wrap.sd-selected > * ' +
-            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
+            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + ['.btn-group', '.btn-group-vertical', '.input-group', '.nav', '.list-group', '.accordion'].map(function (c) {
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+        }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.btn-group > .sd-wrap:hover:not(.sd-selected) > *, .btn-group-vertical > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.input-group > .sd-wrap:hover:not(.sd-selected) > *, .nav > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.list-group > .sd-wrap:hover:not(.sd-selected) > *, .accordion > .sd-wrap:hover:not(.sd-selected) > * ' +
@@ -5631,7 +5645,13 @@ const StyleDesigner = (function () {
             '.navbar > .sd-wrap.sd-selected > *, .navbar-nav > .sd-wrap.sd-selected > *, .nav-item > .sd-wrap.sd-selected > *, ' +
             '.form-floating > .sd-wrap.sd-selected > *, .form-check > .sd-wrap.sd-selected > *, ' +
             '.figure > .sd-wrap.sd-selected > * ' +
-            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
+            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + ['.accordion-item', '.accordion-header', '.card-body', '.card-header', '.card-footer',
+            '.modal-content', '.modal-header', '.modal-body', '.modal-footer', '.offcanvas-header', '.offcanvas-body',
+            '.toast-header', '.toast-body', '.alert', '.breadcrumb', '.pagination', '.dropdown-menu',
+            '.navbar', '.navbar-nav', '.nav-item', '.form-floating', '.form-check', '.figure'].map(function (c) {
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+        }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.card-body > .sd-wrap:hover:not(.sd-selected) > *, .card-header > .sd-wrap:hover:not(.sd-selected) > *, .card-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.modal-content > .sd-wrap:hover:not(.sd-selected) > *, .modal-header > .sd-wrap:hover:not(.sd-selected) > *, .modal-body > .sd-wrap:hover:not(.sd-selected) > *, .modal-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
