@@ -5382,8 +5382,12 @@ const StyleDesigner = (function () {
         // no margin, baseline-aligned like the <span> it stands for.
         _SD_BX + '.sd-wrap[data-content-type="span"], .sd-wrap[data-content-type="text"] { display:inline; margin:0; width:auto; min-height:unset; max-width:100%; vertical-align:baseline; }',
         '.sd-wrap[data-content-type="span"] > .sd-lbl, .sd-wrap[data-content-type="text"] > .sd-lbl { display:none; }',
-        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width
-        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        // Inline semantic elements — span, a, button, strong, em and friends must not span the block width.
+        // No margin, like the span/text wrapper above: the 3px of a content
+        // wrapper grew the line box (and a block-drawn d-block wrapper) by
+        // 6px, so a caption under a strong title stood 12px taller than on
+        // the page.
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.
@@ -5959,6 +5963,13 @@ const StyleDesigner = (function () {
         // A wrapper drawn inline (span, link, button) around an element its own
         // classes make a block (span.d-block.ratio, a.btn.w-100).
         '.sd-wrap.sd-fx-block { display:block !important; width:auto !important; max-width:none !important; vertical-align:baseline; }',
+        // A wrapper between an absolutely placed element and the ancestor
+        // that places it on the page (its own wrapper is see-through,
+        // sd-fx-abs + sd-fx-flat): not positioned, so it does not place it,
+        // and no taller than its content (a holder of floating cards has no
+        // height on the page; the empty-wrapper minimum pushed the frame's
+        // bottom edge, and every bottom-0 card, below the picture).
+        '.sd-wrap.sd-fx-unpos { position:static !important; min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
         // carries an id, style or attribute keeps its box and fills the column.
@@ -8623,64 +8634,84 @@ const StyleDesigner = (function () {
     // A see-through wrapper's toolbar, note dot and issue badge are absolutely
     // positioned against whichever ancestor happens to be positioned, not
     // against the element; they are put at the element each time they show.
-    // A wrapper with a box of its own keeps the stylesheet positions.
+    // So are those of a wrapper that keeps its box but is not positioned
+    // (sd-fx-unpos), put at that box. A positioned wrapper with a box of its
+    // own keeps the stylesheet positions.
     function _sdPlaceWrapChrome(w) {
-        if (!w || !canvasDoc) return;
+        if (w) _sdPlaceChromeOf([w]);
+    }
+
+    // The same for several wrappers: every position is measured first and
+    // written after, so the canvas is laid out once, not once per wrapper.
+    function _sdPlaceChromeOf(ws) {
+        if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
-        var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
-        if (!parts.length) return;
-        if (win.getComputedStyle(w).display !== 'contents') {
+        var writes = [];
+        ws.forEach(function (w) {
+            if (!w || !w.isConnected) return;
+            var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
+            if (!parts.length) return;
+            var wcs = win.getComputedStyle(w);
+            var flat = wcs.display === 'contents';
+            if (!flat && wcs.position !== 'static') {
+                parts.forEach(function (p) { if (p._sdPlaced) writes.push({ p: p }); });
+                return;
+            }
+            var el = flat ? _sdWrapEl(w) : w;
+            if (!el) return;
+            var er = el.getBoundingClientRect();
+            if (!er.width && !er.height) return;
             parts.forEach(function (p) {
-                if (!p._sdPlaced) return;
+                if (win.getComputedStyle(p).display === 'none') return;
+                // The containing block's padding-box origin, in viewport terms.
+                var op = p.offsetParent, bx, by;
+                if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
+                    var r = op.getBoundingClientRect();
+                    bx = r.left + op.clientLeft - op.scrollLeft;
+                    by = r.top + op.clientTop - op.scrollTop;
+                } else {
+                    bx = -win.scrollX;
+                    by = -win.scrollY;
+                }
+                var top, left;
+                if (p.classList.contains('sd-tb')) {
+                    // Above the element; inside it when there is no room above.
+                    top = er.top - by + (er.top < 22 ? 2 : -20);
+                    left = er.left - bx;
+                } else if (p.classList.contains('sd-persistent-note')) {
+                    top = er.top - by + 2;
+                    left = er.right - bx - 18;
+                } else {
+                    top = er.top - by - 7;
+                    left = er.left - bx - 7;
+                }
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left) });
+            });
+        });
+        writes.forEach(function (x) {
+            var p = x.p;
+            if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
                 p._sdPlaced = false;
-            });
-            return;
-        }
-        var el = _sdWrapEl(w);
-        if (!el) return;
-        var er = el.getBoundingClientRect();
-        if (!er.width && !er.height) return;
-        parts.forEach(function (p) {
-            if (win.getComputedStyle(p).display === 'none') return;
-            // The containing block's padding-box origin, in viewport terms.
-            var op = p.offsetParent, bx, by;
-            if (op && (op !== canvasDoc.body || win.getComputedStyle(op).position !== 'static')) {
-                var r = op.getBoundingClientRect();
-                bx = r.left + op.clientLeft - op.scrollLeft;
-                by = r.top + op.clientTop - op.scrollTop;
-            } else {
-                bx = -win.scrollX;
-                by = -win.scrollY;
+                return;
             }
-            var top, left;
-            if (p.classList.contains('sd-tb')) {
-                // Above the element; inside it when there is no room above.
-                top = er.top - by + (er.top < 22 ? 2 : -20);
-                left = er.left - bx;
-            } else if (p.classList.contains('sd-persistent-note')) {
-                top = er.top - by + 2;
-                left = er.right - bx - 18;
-            } else {
-                top = er.top - by - 7;
-                left = er.left - bx - 7;
-            }
-            p.style.setProperty('top', Math.round(top) + 'px', 'important');
-            p.style.setProperty('left', Math.round(left) + 'px', 'important');
+            p.style.setProperty('top', x.top + 'px', 'important');
+            p.style.setProperty('left', x.left + 'px', 'important');
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
     }
 
     // The chrome that shows without a hover: the selection's toolbar, note
-    // dots, issue badges.
+    // dots, issue badges. Runs after every fidelity pass (adjustCanvasToolbars(),
+    // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
-        canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')
-            .forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(Array.prototype.slice.call(
+            canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')));
         // The size badge sits at the selection's corner: placed again once
         // the fidelity pass has moved things.
         if (selectedNode) _positionSizeBadge();
@@ -8706,7 +8737,7 @@ const StyleDesigner = (function () {
         if (hw && hw.isConnected && hw.tagName === 'DIV' && ws.indexOf(hw) === -1) ws.push(hw);
         var tops = ws.map(function (w) { return _sdBoxRect(w).top; });
         ws.forEach(function (w, i) { w.classList.toggle('sd-tb-inside', tops[i] < 22); });
-        ws.forEach(_sdPlaceWrapChrome);
+        _sdPlaceChromeOf(ws);
         if (selectedNode) _positionSizeBadge();
     }
 
@@ -8778,10 +8809,63 @@ const StyleDesigner = (function () {
                 else if (!want && had) dropInline.push(w);
             });
         }
+        // An absolutely placed element (an overlay, a card floating over a
+        // picture, a badge on a button) is placed by its nearest positioned
+        // ancestor, and every boxed wrapper is position:relative: on the
+        // canvas the element was placed by its own wrapper, a 28px box in the
+        // flow, instead of by the frame that places it on the page. Its
+        // wrapper is drawn see-through, and the wrappers between it and that
+        // ancestor are not positioned, so the page's ancestor places it here
+        // too; their toolbars, note dots and issue badges are put by
+        // _sdPlaceSelectedChrome() after this pass, on hover and when the
+        // validation puts its badges on (_sdPlaceChromeOf()). The element's
+        // own position is measured (a media query can make it absolute), not
+        // its classes. An element clipped to nothing (visually hidden text,
+        // the input of a .btn-check toggle) shows nowhere either way and keeps
+        // its wrapper box, the only place to pick it on the canvas.
+        var absWraps = [], unposWraps = [];
+        if (!_sdFxFlatOn()) {
+            canvasDoc.querySelectorAll('div.sd-wrap:not([data-sd-self])').forEach(function (w) {
+                if (w.style.display) return;
+                var el = _sdWrapEl(w);
+                if (!el) return;
+                var cs = win.getComputedStyle(el);
+                if (cs.position !== 'absolute' || cs.display === 'none' || cs.clip === 'rect(0px, 0px, 0px, 0px)') return;
+                absWraps.push(w);
+                for (var p = w.parentElement; p && p !== canvasDoc.body; p = p.parentElement) {
+                    if (p.matches('div.sd-wrap:not([data-sd-self])')) {
+                        // The page root keeps its box: it is the canvas-wide drop target.
+                        if (p.getAttribute('data-sd-type') === 'root') break;
+                        // A wrapper whose own marks the canvas stylesheet
+                        // places against it (the bound-off label, a system
+                        // widget's name band, a shared component's frame)
+                        // stays positioned: script does not place those. The
+                        // element is then placed by that wrapper, inside the
+                        // widget, as before this pass.
+                        if (p.classList.contains('sd-binding-off') || p.classList.contains('sd-shared-wrap')) break;
+                        if (unposWraps.indexOf(p) === -1) unposWraps.push(p);
+                        continue;
+                    }
+                    if (win.getComputedStyle(p).position !== 'static') break;
+                }
+            });
+        }
         addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
         dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
         addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
         dropInline.forEach(function (w) { w.classList.remove('sd-fx-inline', 'sd-fx-flat'); });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-abs').forEach(function (w) {
+            if (absWraps.indexOf(w) !== -1) return;
+            w.classList.remove('sd-fx-abs');
+            if (!w.classList.contains('sd-fx-inline')) w.classList.remove('sd-fx-flat');
+        });
+        absWraps.forEach(function (w) {
+            if (!w.classList.contains('sd-fx-abs') || !w.classList.contains('sd-fx-flat')) w.classList.add('sd-fx-abs', 'sd-fx-flat');
+        });
+        canvasDoc.querySelectorAll('.sd-wrap.sd-fx-unpos').forEach(function (w) {
+            if (unposWraps.indexOf(w) === -1) w.classList.remove('sd-fx-unpos');
+        });
+        unposWraps.forEach(function (w) { if (!w.classList.contains('sd-fx-unpos')) w.classList.add('sd-fx-unpos'); });
         canvasDoc.querySelectorAll('.sd-loop-area').forEach(function (la) {
             _sdFxLoopArea(la, win);
             _sdFxGhostImageSizes(la);
@@ -18198,8 +18282,11 @@ const StyleDesigner = (function () {
 
                     // News: Weather Strip — a thin header band: five cities with sky and temperature, the date and a forecast link
                     if (ctype === 'news-weather-strip') {
+                        // Each city is an outlined chip on the body colour: its
+                        // corners and border width come from the look (rounded,
+                        // border), its text keeps the band's contrast.
                         var _nbWsCity = function (n, icon, city, sky, temp) {
-                            return _bkDiv('d-flex align-items-center gap-1 text-nowrap', _sdT('City {var}', n), [
+                            return _bkDiv('d-flex align-items-center gap-1 px-2 py-1 lh-sm text-nowrap bg-body border rounded', _sdT('City {var}', n), [
                                 _bkIcon(icon, 'text-primary'),
                                 _bkH('span', city),
                                 _bkH('span', sky, 'visually-hidden'),
@@ -18213,7 +18300,7 @@ const StyleDesigner = (function () {
                             ]),
                             // position-relative: the visually hidden sky texts are
                             // absolutely placed and must be clipped by this scroller.
-                            _bkDiv('d-flex flex-nowrap gap-4 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
+                            _bkDiv('d-flex flex-nowrap gap-2 overflow-x-auto flex-grow-1 py-1 position-relative', _sdT('Cities'), [
                                 _nbWsCity(1, 'bi-cloud-drizzle', _sdT('London'),        _sdT('Light rain'),    '12°'),
                                 // Raw on purpose: the 'New York' key is the sample billing
                                 // city and reads İstanbul in Turkish, a city already listed.
@@ -18922,7 +19009,9 @@ const StyleDesigner = (function () {
                                 ]),
                                 _bkDiv('d-flex align-items-center gap-2 small text-body-secondary', _sdT('Scroll Hint'), [
                                     _bkH('span', _sdT('Scroll sideways')),
-                                    _bkIcon('bi-arrow-right')
+                                    // Two-headed: the row scrolls both ways, and a
+                                    // one-way arrow points the wrong way on RTL pages.
+                                    _bkIcon('bi-arrow-left-right')
                                 ])
                             ]),
                             _bkDiv('row g-4 flex-nowrap pb-3 overflow-x-auto pg-snap', _sdT('Cards Row'), [
@@ -60115,6 +60204,7 @@ const StyleDesigner = (function () {
         });
         canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
         canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
+        var badged = [];
         Object.keys(byId).forEach(function (id) {
             var wrap = canvasDoc.querySelector('.sd-wrap[data-sd-id="' + id + '"]');
             if (!wrap) return;
@@ -60130,7 +60220,12 @@ const StyleDesigner = (function () {
                 openValidationPanel(true);
             });
             wrap.appendChild(b);
+            badged.push(wrap);
         });
+        // New elements, put on after the fidelity pass placed the old ones
+        // (the validation runs debounced): the badges of see-through and
+        // sd-fx-unpos wrappers are placed now, not on the first hover.
+        _sdPlaceChromeOf(badged);
     }
 
     function scheduleValidation() {

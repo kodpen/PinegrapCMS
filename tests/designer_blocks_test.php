@@ -10,6 +10,8 @@
  * _sdEnsureBlockStyles() appends it again on every drop); every pg-* class a
  * builder writes is defined by a rule the block needs; and no block rule
  * uses !important (Bootstrap utilities would lose the override war silently).
+ * Two blocks keep a checked shape: scroller-cards' scroll hint points both
+ * ways, and the weather strip's cities are look-driven chips.
  *
  * The markup of every block and Components-tab item follows the design: no
  * builder writes a fixed colour class that ignores the colour palette and
@@ -187,8 +189,8 @@ function _test_blocks_builder_at($ctype)
 	return ($at === false || $at > $range[1]) ? false : $at;
 }
 
-// The pg-* classes written in the string literals of $ctype's builder body.
-function _test_blocks_builder_classes($ctype)
+// The string literals of $ctype's builder body, in source order.
+function _test_blocks_builder_strings($ctype)
 {
 	$at = _test_blocks_builder_at($ctype);
 	$block = $at === false ? null : _test_blocks_block($at);
@@ -196,8 +198,27 @@ function _test_blocks_builder_classes($ctype)
 		return array();
 	}
 	$scan = _test_blocks_scan(_test_blocks_js(), $block[0] + 1);
+	return $scan['strings'];
+}
+
+// True when one string literal of $ctype's builder carries every class in
+// $classes as a whole token.
+function _test_blocks_builder_has_classes($ctype, array $classes)
+{
+	foreach (_test_blocks_builder_strings($ctype) as $str) {
+		$tokens = preg_split('/\s+/', trim($str));
+		if (!array_diff($classes, $tokens)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// The pg-* classes written in the string literals of $ctype's builder body.
+function _test_blocks_builder_classes($ctype)
+{
 	$out = array();
-	foreach ($scan['strings'] as $str) {
+	foreach (_test_blocks_builder_strings($ctype) as $str) {
 		if (preg_match_all('/(?<![\\w-])pg-[a-z0-9-]*[a-z0-9]/', $str, $m)) {
 			$out = array_merge($out, $m[0]);
 		}
@@ -976,4 +997,103 @@ function test_designer_blocks_builder_classes_are_needed()
 	}
 	pg_assert_true($seen > 0, 'pg-* classes are found in the builders');
 	pg_assert_same(array(), $uncovered, 'pg-* classes a builder writes without a needed rule defining them');
+}
+
+// True when the Bootstrap Icons class $token is an arrow, chevron or caret
+// that points one way along the line (left or right, also diagonally,
+// doubled, short, filled or boxed); the two-headed bi-arrow-left-right and
+// the vertical ones are not.
+function _test_blocks_is_one_way_icon($token)
+{
+	if (strpos($token, 'left-right') !== false) {
+		return false;
+	}
+	return (bool) preg_match('/^bi-(?:[a-z0-9]+-)*(?:arrow|chevron|caret)(?:-[a-z0-9]+)*-(?:left|right)(?:-[a-z0-9]+)*$/', $token);
+}
+
+function test_designer_blocks_one_way_icon_matcher()
+{
+	foreach (array('bi-arrow-right', 'bi-arrow-left', 'bi-chevron-right', 'bi-chevron-left', 'bi-caret-right',
+		'bi-caret-left-fill', 'bi-arrow-right-short', 'bi-chevron-double-right', 'bi-arrow-up-right',
+		'bi-arrow-right-circle-fill', 'bi-box-arrow-right', 'bi-arrow-bar-left') as $icon) {
+		pg_assert_true(_test_blocks_is_one_way_icon($icon), $icon . ' points one way');
+	}
+	foreach (array('bi-arrow-left-right', 'bi-arrow-up', 'bi-chevron-down', 'bi-caret-up-fill', 'bi-cloud-drizzle',
+		'bi-arrow-repeat', 'arrow-right') as $icon) {
+		pg_assert_true(!_test_blocks_is_one_way_icon($icon), $icon . ' does not point left or right');
+	}
+}
+
+// The scroll hint of scroller-cards points both ways: the row scrolls both
+// ways, and a one-way arrow points against the reading direction on an RTL
+// page.
+function test_designer_blocks_scroll_hint_is_direction_neutral()
+{
+	$strings = _test_blocks_builder_strings('scroller-cards');
+	pg_assert_true(count($strings) > 0, 'the scroller-cards builder is found');
+	pg_assert_true(in_array('bi-arrow-left-right', $strings, true), 'scroller-cards draws the two-headed arrow');
+	$one_way = array();
+	foreach ($strings as $str) {
+		foreach (preg_split('/\s+/', trim($str)) as $token) {
+			if (_test_blocks_is_one_way_icon($token)) {
+				$one_way[] = $token;
+			}
+		}
+	}
+	pg_assert_same(array(), $one_way, 'one-way arrows in scroller-cards');
+}
+
+// The weather strip's city builder (_nbWsCity inside the news-weather-strip
+// builder): the class tokens of the element it returns (null when it does
+// not start by returning one _bkDiv) and how many times the strip calls it.
+function _test_blocks_weather_city()
+{
+	$out = array('classes' => null, 'calls' => 0);
+	$at = _test_blocks_builder_at('news-weather-strip');
+	$block = $at === false ? null : _test_blocks_block($at);
+	if (!$block) {
+		return $out;
+	}
+	$js = _test_blocks_js();
+	$def = strpos($js, 'var _nbWsCity = function', $block[0]);
+	$fn = ($def === false || $def > $block[1]) ? null : _test_blocks_block($def);
+	if (!$fn) {
+		return $out;
+	}
+	$body = substr($js, $fn[0], $fn[1] - $fn[0] + 1);
+	if (preg_match("/^\\{\\s*return _bkDiv\\('([^'\\\\]*)'/", $body, $m)) {
+		$out['classes'] = preg_split('/\s+/', trim($m[1]));
+	}
+	$out['calls'] = preg_match_all('/(?<![\w$])_nbWsCity\(/', substr($js, $fn[1], $block[1] - $fn[1]));
+	return $out;
+}
+
+// True when the class token $token overrides the look's corner radius or
+// border width with a fixed one (or removes a side's border or rounding).
+function _test_blocks_freezes_shape($token)
+{
+	return (bool) preg_match('/^(?:(?:rounded|border)(?:-(?:top|end|bottom|start))?-0|rounded-(?:pill|circle)|border-[1-5])$/', $token);
+}
+
+function test_designer_blocks_shape_override_matcher()
+{
+	foreach (array('rounded-0', 'border-0', 'border-top-0', 'rounded-end-0', 'rounded-pill', 'rounded-circle', 'border-2') as $token) {
+		pg_assert_true(_test_blocks_freezes_shape($token), $token . ' fixes the shape');
+	}
+	foreach (array('rounded', 'border', 'border-bottom', 'rounded-top', 'border-primary', 'border-opacity-50', 'bg-body') as $token) {
+		pg_assert_true(!_test_blocks_freezes_shape($token), $token . ' leaves the shape to the look');
+	}
+}
+
+// The weather strip's cities are outlined chips on the body colour, so the
+// look's radius and border width reach the band: the element each city is
+// built as carries them, and nothing on it fixes either.
+function test_designer_blocks_weather_cities_follow_the_look()
+{
+	$city = _test_blocks_weather_city();
+	pg_assert_true(is_array($city['classes']), 'the weather strip builds each city as one _bkDiv in _nbWsCity');
+	pg_assert_same(5, $city['calls'], 'cities the weather strip builds with _nbWsCity');
+	$classes = is_array($city['classes']) ? $city['classes'] : array();
+	pg_assert_same(array(), array_values(array_diff(array('bg-body', 'border', 'rounded', 'text-nowrap'), $classes)), 'chip classes a city lacks');
+	pg_assert_same(array(), array_values(array_filter($classes, '_test_blocks_freezes_shape')), 'classes on a city that fix its shape');
 }
