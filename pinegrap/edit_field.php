@@ -60,6 +60,9 @@ $field_name = $row['field_name'];
 // so address names need to be updated for submitted forms for pretty URL feature.
 $old_rss_field = $row['rss_field'];
 
+// A field of a form drawn in the visual designer: shown, never changed here.
+$designer_form = false;
+
 // if there is a page_id, this is a page form
 if ($page_id != 0) {
     validate_area_access($user, 'user');
@@ -108,6 +111,14 @@ if ($page_id != 0) {
             break;
     }
 
+    // A form drawn in the visual designer keeps its page's type ('standard').
+    // Its fields are custom form fields, derived from the canvas on every
+    // design save.
+    if (($form_type === '') && ($field_form_type == 'custom') && pg_page_has_designer_form($page_id)) {
+        $designer_form = true;
+        $form_type = 'custom';
+    }
+
     // Get the form type name that we will output to user
 
     $form_type_name = '';
@@ -149,7 +160,9 @@ if ($page_id != 0) {
     $quiz = '';
 
     // If this is a page and form type that supports a form name, then get it
-    if ($page_type != 'express order' or $form_type != 'shipping') {
+    $form_settings_table = pg_form_settings_table($page_type, $form_type);
+
+    if (($form_settings_table !== '') && ($page_type != 'express order' or $form_type != 'shipping')) {
     
         $sql_quiz = "";
         
@@ -159,12 +172,12 @@ if ($page_id != 0) {
         }
         
         // get form name and possibly quiz for page
-        $query = "SELECT form_name" . $sql_quiz . " FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($page_id) . "'";
+        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = '" . escape($page_id) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
-        $form_name = $row['form_name'];
-        $quiz = $row['quiz'];
+
+        $form_name = $row['form_name'] ?? '';
+        $quiz = $row['quiz'] ?? '';
     }
     
     // if form name is blank, use page name for form name
@@ -178,8 +191,13 @@ if ($page_id != 0) {
     $output_breadcrumb_first_level_item  = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
     $output_form_designer_content_heading = lang(array('string'=>'Edit {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
-    $output_form_designer_content_subheading = lang(array('string'=>'View or update this {var:1} field.','vars'=>$form_type_name ) ); 
-    
+    $output_form_designer_content_subheading = lang(array('string'=>'View or update this {var:1} field.','vars'=>$form_type_name ) );
+
+    // A designer form's field is only viewed here (see below).
+    if ($designer_form) {
+        $output_form_designer_content_heading = lang('Form Field');
+    }
+
 // Else if this row is a variant set's form template (2026.4). Checked before
 // the product branch because a template's product_id is 0 and would otherwise
 // fall out of the chain entirely.
@@ -277,6 +295,106 @@ $liveform = new liveform('edit_field');
 // The breadcrumb ends with this screen; the product group branch has two parents.
 $pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
 $pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
+
+// The canvas is the record of a designer form: every column of the field is
+// written from it on each design save (pg_cf_sync_page_form()), so a change
+// saved here would quietly come undone. The field is shown read-only with the
+// way to the editor, and a POST is refused.
+if ($designer_form) {
+    if ($_POST) {
+        $liveform->add_error(lang('The fields of this form are edited in the visual editor.'));
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_field.php?id=' . $id);
+    }
+
+    $field = db_item("SELECT * FROM form_fields WHERE id = '" . $id . "'");
+    $field_options = db_items(
+        "SELECT label, value
+        FROM form_field_options
+        WHERE form_field_id = '" . $id . "'
+        ORDER BY sort_order");
+
+    // The information text is rich text and is shown as markup; a label is
+    // plain text and is escaped.
+    if ($field['type'] == 'information') {
+        $output_label_or_information = pg_sanitize_rich_text($field['information']);
+    } else {
+        $output_label_or_information = h($field['label']);
+    }
+
+    $output_field_options = '';
+
+    foreach ((array) $field_options as $option) {
+        $output_field_options .= '<li>' . h($option['label']);
+
+        if ($option['value'] != $option['label']) {
+            $output_field_options .= ' <span class="text-body-secondary">(' . h($option['value']) . ')</span>';
+        }
+
+        $output_field_options .= '</li>';
+    }
+
+    $output_field_rows =
+        '<dt class="col-sm-3">' . lang('Name') . '</dt>
+        <dd class="col-sm-9">' . h($field['name']) . '</dd>
+        <dt class="col-sm-3">' . lang('Variable') . '</dt>
+        <dd class="col-sm-9"><code class="user-select-all">^^' . h($field['name']) . '^^</code></dd>
+        <dt class="col-sm-3">' . lang('Label / Information') . '</dt>
+        <dd class="col-sm-9">' . $output_label_or_information . '</dd>
+        <dt class="col-sm-3">' . lang('Field Type') . '</dt>
+        <dd class="col-sm-9">' . get_field_type_name($field['type']) . '</dd>
+        <dt class="col-sm-3">' . lang('Required') . '</dt>
+        <dd class="col-sm-9">' . ($field['required'] == 1 ? lang('Yes') : lang('No')) . '</dd>';
+
+    if ($output_field_options != '') {
+        $output_field_rows .=
+            '<dt class="col-sm-3">' . lang('Options') . '</dt>
+            <dd class="col-sm-9"><ul class="mb-0 ps-3">' . $output_field_options . '</ul></dd>';
+    }
+
+    if ($field['default_value'] != '') {
+        $output_field_rows .=
+            '<dt class="col-sm-3">' . lang('Default Value') . '</dt>
+            <dd class="col-sm-9">' . h($field['default_value']) . '</dd>';
+    }
+
+    echo
+    pg_page_shell([
+        'title' => $output_form_designer_content_heading,
+        'extra classes' => 'design',
+        'icon' => 'design',
+        'heading' => $output_form_designer_content_heading,
+        'heading_description' => lang('The fields of this form are edited in the visual editor.'),
+        'cancel' => array('enable' => 'true', 'url' => 'view_fields.php?page_id=' . (int) $page_id),
+        'breadcrumb' => $pg_breadcrumb_items,
+    ]) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        ' . $liveform->output_errors() . '
+        <div class="col-12">
+            <p class="p-0 m-0">' . $output_form_designer_subnav_subheading . '</p>
+            <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 mb-0" role="note">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                <span class="flex-grow-1">' . lang('This form was drawn in the visual editor. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field\'s variable (^^name^^) puts its value into the form\'s e-mails.') . '</span>
+                <a class="btn btn-sm btn-outline-secondary" href="' . h(pg_page_edit_url_by_id($page_id)) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in Visual Editor') . '</a>
+            </div>
+            <div class="card my-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Field') . '</span>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        ' . $output_field_rows . '
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+' . output_footer();
+
+    $liveform->remove_form();
+    exit;
+}
 
 if (!$_POST) {
     // get field data

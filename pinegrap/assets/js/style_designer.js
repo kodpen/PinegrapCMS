@@ -1282,6 +1282,25 @@ const StyleDesigner = (function () {
         }, force);
     }
 
+    // Refresh a form's cached rows once a save or a move has rewritten them, so
+    // every panel and canvas token that reads the form (its own page, and the
+    // list and detail pages bound to it) shows the stored state. The old rows
+    // stay until the new ones arrive: some panels read the cache without
+    // fetching (the list view's field pickers) and would otherwise sit on
+    // their loading text. The read-only copy of another page's form is
+    // dropped; its panels load it again when they draw.
+    function _cfDropFieldCache(formPageId) {
+        formPageId = parseInt(formPageId, 10) || 0;
+        if (!formPageId) return;
+        delete _cfForeign[formPageId];
+        delete _sdLabelFieldsAsked[formPageId];
+        if (!_formFieldsCache[formPageId]) return;
+        _fetchFormFields(formPageId, function () {
+            if (typeof renderCanvas === 'function') renderCanvas();
+            _sdSchedulePropsRefresh();
+        }, true);
+    }
+
     // Fetch the form_fields rows for a given custom form page_id. Caches per page_id.
     // Calls cb(items) on completion. Idempotent unless `force` is true.
     function _fetchFormFields(formPageId, cb, force) {
@@ -1363,6 +1382,9 @@ const StyleDesigner = (function () {
      *   office_use_only     staff see and fill it, the visitor never does
      *   validation_message  what the visitor reads when `pattern` refuses
      *   upload_folder_id, quiz_question, quiz_answer
+     *   wysiwyg             a text area visitors fill in with the rich-text
+     *                       editor; absent, the field row keeps its own flag
+     *                       (one set on the classic field screen survives)
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1702,6 +1724,7 @@ const StyleDesigner = (function () {
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
                     office_use_only: !!rec.office_use_only,
+                    rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
                 };
                 order.push(byKey[key]);
@@ -1718,6 +1741,41 @@ const StyleDesigner = (function () {
         var rec = (node.props && node.props._cf) || {};
         if (!pid || !rec.ids || typeof rec.ids !== 'object') return 0;
         return parseInt(rec.ids[String(pid)], 10) || 0;
+    }
+
+    // A field row's flag: a boolean from designer/form_fields, the string
+    // '1' / '0' from shared_component/list_form_fields.
+    function _cfFlagOn(v) {
+        return v === true || String(v) === '1';
+    }
+
+    // Whether a text area is filled in with the rich-text editor. Once the
+    // switch has been used the control's _cf.wysiwyg decides; before that the
+    // field row keeps its flag (pg_cf_rich_text_flag()), so the row is what
+    // the panel shows. null while the page's rows are being loaded.
+    var _cfRichRowsLoading = {};
+    function _cfRichOn(lead) {
+        if (_cfTagOf(lead) !== 'textarea') return false;
+        var rec = (lead.props && lead.props._cf) || {};
+        if (typeof rec.wysiwyg === 'boolean') return rec.wysiwyg;
+        var p   = _pgActivePage();
+        var pid = p ? (parseInt(p.page_id, 10) || 0) : 0;
+        if (!pid) return false;
+        var rows = _formFieldsCache[pid];
+        if (!rows) {
+            if (!_cfRichRowsLoading[pid]) {
+                _cfRichRowsLoading[pid] = true;
+                _fetchFormFields(pid, function () {
+                    delete _cfRichRowsLoading[pid];
+                    _sdSchedulePropsRefresh();
+                });
+            }
+            return null;
+        }
+        var id = _cfRowId(lead), key = String(_cfControlName(lead) || '').toLowerCase(), hit = null, i;
+        for (i = 0; id && !hit && i < rows.length; i++) if (parseInt(rows[i].id, 10) === id) hit = rows[i];
+        for (i = 0; key && !hit && i < rows.length; i++) if (String(rows[i].name || '').toLowerCase() === key) hit = rows[i];
+        return !!hit && hit.type === 'text area' && _cfFlagOn(hit.wysiwyg);
     }
 
     // The control whose record a panel edits: the first control of the group
@@ -1993,6 +2051,21 @@ const StyleDesigner = (function () {
         // Another page's form, shown here. Its fields are that page's to
         // change; this panel only says what they are.
         if (!w.owns) {
+            var fFormId = parseInt(w.cfg.form_id || w.cfg.custom_form_page_id || 0, 10) || 0;
+            var fForm = _cfForeign[fFormId];
+            // The widget panel is not the only way in: a control clicked
+            // first loads the form itself. _cfEnsureForeign() asks once and
+            // remembers a failure, so the redraw cannot loop.
+            if (!fForm && fFormId && c.tag === 'textarea') {
+                _cfEnsureForeign(fFormId, function () { _sdSchedulePropsRefresh(); });
+            }
+            var fRich = false;
+            if (c.tag === 'textarea' && fForm && Array.isArray(fForm.fields)) {
+                fForm.fields.forEach(function (f) {
+                    if (String(f.name || '').toLowerCase() === String(name).toLowerCase()
+                        && f.type === 'text area' && _cfFlagOn(f.wysiwyg)) fRich = true;
+                });
+            }
             return sect('bi-ui-checks', _sdT('Form Field'),
                 '<div class="sd-prop-row"><div class="sd-prop-control">' +
                     '<div style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45">' +
@@ -2001,7 +2074,8 @@ const StyleDesigner = (function () {
                 '</div></div>' +
                 row(_sdT('Label'),  '<span class="sd-prop-static">' + esc(src.text || name) + '</span>') +
                 row(_sdT('Field Name'), '<code class="small">' + esc(name) + '</code>') +
-                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>')
+                row(_sdT('Type'), '<span class="sd-prop-static">' + esc(_cfTypeLabel(type)) + '</span>') +
+                (fRich ? row(_sdT('Rich-text Editor'), '<span class="sd-prop-static">✓</span>') : '')
             );
         }
 
@@ -2035,6 +2109,23 @@ const StyleDesigner = (function () {
                     ? _cfHint(_sdT('Staff who open the page in edit mode see and fill this; on a visitor\'s submission the field\'s default value is saved (Input → Value).'))
                     : '') +
                 '</div></div>';
+
+        // A text area can take the rich-text editor; the published page
+        // loads it (pg_cf_rich_text_inject()), the canvas and the Preview
+        // show the plain control.
+        if (c.tag === 'textarea') {
+            var rich = _cfRichOn(lead) === true;
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-rich', rich, _sdT('Rich-text Editor')) +
+                    (rich
+                        ? _cfHint(esc(_sdT('Visitors write in the rich-text editor on the published page (not in this editor or its preview); the answer is stored as HTML without scripts.'))) +
+                          _cfHint(esc(_sdT('Classes and styles in an answer stay: show answers on the site only after review (a filter on the record view).')))
+                        : '') +
+                    (rowId > 0
+                        ? _cfHint(esc(_sdT('Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.')))
+                        : '') +
+                    '</div></div>';
+        }
 
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
@@ -2229,6 +2320,10 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-office', 'change', function (el) {
             _cfRec(lead).office_use_only = !!el.checked;
+            commit(true);
+        });
+        on('sd-cf-rich', 'change', function (el) {
+            _cfRec(lead).wysiwyg = !!el.checked;
             commit(true);
         });
         on('sd-cf-contact', 'change', function (el) {
@@ -2531,6 +2626,7 @@ const StyleDesigner = (function () {
             rec.upload_folder_id   = parseInt(f.upload_folder, 10) || 0;
             rec.quiz_question      = !!f.quiz_question;
             rec.quiz_answer        = f.quiz_answer || '';
+            if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -11560,6 +11656,7 @@ const StyleDesigner = (function () {
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
         '__arrival_date': _sdDateSample(false),
+        '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
         '__installment_per_month': _sdMoney(207.77),
@@ -11793,6 +11890,10 @@ const StyleDesigner = (function () {
     function _sdDatePlaceholder() {
         return _sdDateSample(true);
     }
+
+    // The record counters a form list can order by; the same list as
+    // pg_sw_form_order_counters() (includes/fn/widgets.php).
+    var _SW_FORM_ORDER_COUNTERS = ['number_of_views', 'number_of_comments', 'recent_views'];
 
     // Preview values for the system fields of a submitted form and for the
     // account fields beside them. Without these a reference code would fall
@@ -28930,10 +29031,18 @@ const StyleDesigner = (function () {
                     } else {
                         html += '<option value="submitted_date_and_time"' + (selected === 'submitted_date_and_time' ? ' selected' : '') + '>' + esc(_sdT('Submission Date (default)')) + '</option>';
                         html += '<option value="submitted_form_id"'        + (selected === 'submitted_form_id'        ? ' selected' : '') + '>' + esc(_sdT('Submitted Form ID')) + '</option>';
+                        // Counters of the detail page (pg_sw_counter_order_sql()).
+                        html += '<optgroup label="' + esc(_sdT('Statistics')) + '">';
+                        html += '<option value="number_of_views"'    + (selected === 'number_of_views'    ? ' selected' : '') + '>' + esc(_sdT('Number of Views')) + '</option>';
+                        html += '<option value="number_of_comments"' + (selected === 'number_of_comments' ? ' selected' : '') + '>' + esc(_sdT('Number of Comments')) + '</option>';
+                        html += '<option value="recent_views"'       + (selected === 'recent_views'       ? ' selected' : '') + '>' + esc(_sdT('Views in recent days')) + '</option>';
+                        html += '</optgroup>';
                         if (_ff.length) {
                             html += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
                             _ff.forEach(function (ff) {
                                 var token = (ff.name && ('' + ff.name).trim()) || ('field_' + ff.id);
+                                // A counter name orders by the counter on the server.
+                                if (_SW_FORM_ORDER_COUNTERS.indexOf(token) !== -1) return;
                                 var label = ff.label || ff.name || ('#' + ff.id);
                                 html += '<option value="' + esc(token) + '"' + (token === selected ? ' selected' : '') + '>' + esc(label) + '</option>';
                             });
@@ -28944,6 +29053,16 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                // Counter orders: the counters are kept per detail page, so
+                // without one the list keeps the date order (say so), and the
+                // recent-views window gets its Days box (1-180, 7 by default,
+                // as pg_sw_recent_views_days()).
+                var _orderCounter = !_isCatalogListing && (_SW_FORM_ORDER_COUNTERS.indexOf(_orderField) !== -1 || _SW_FORM_ORDER_COUNTERS.indexOf(_order2Field) !== -1);
+                var _orderNoDetail = _orderCounter && (_cfg.detail_page_id == null || String(_cfg.detail_page_id) === '' || String(_cfg.detail_page_id) === '0');
+                var _orderRecent = !_isCatalogListing && (_orderField === 'recent_views' || _order2Field === 'recent_views');
+                var _orderDays = parseInt(_cfg.order_recent_days, 10);
+                if (!(_orderDays >= 1)) _orderDays = 7;
+                if (_orderDays > 180) _orderDays = 180;
 
                 // Detail-page select options. The backing list differs by region:
                 //   form_list_view  → page_type='form item view' filtered to those
@@ -29018,7 +29137,8 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>'
+                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
                         '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
@@ -29034,6 +29154,10 @@ const StyleDesigner = (function () {
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
+                    ) : '') +
+                    (_orderRecent ? row(_sdT('Days counted'),
+                        '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
@@ -30280,6 +30404,7 @@ const StyleDesigner = (function () {
                             if (f.rss_field)       flags.push(_sdT('role: ') + (_cfMeta().rss[f.rss_field] || f.rss_field));
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
+                            if (f.rich)            flags.push(_sdT('rich text'));
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -30465,7 +30590,8 @@ const StyleDesigner = (function () {
                                 _cfF.fields.forEach(function (f) {
                                     _cfFL += '<li><span class="bi bi-dot"></span><strong>' + esc(f.label || f.name) + '</strong> ' +
                                              '<code>' + esc(f.name) + '</code> <span style="color:#888">' + esc(_cfTypeLabel(f.type)) +
-                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') + '</span></li>';
+                                             (f.required ? _sdT('· required') : '') + (f.office_use_only ? _sdT('  · staff') : '') +
+                                             (_cfFlagOn(f.wysiwyg) ? ' · ' + esc(_sdT('rich text')) : '') + '</span></li>';
                                 });
                                 _cfFL += '</ul>';
                             } else {
@@ -31081,7 +31207,10 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = _swPageVal(this);
-                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; });
+                // Re-render: the counter-order hint depends on it.
+                _patchSysCfg(sid, function (cfg) { cfg.detail_page_id = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
             });
         }
 
@@ -31160,7 +31289,24 @@ const StyleDesigner = (function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var v = this.value || 'submitted_date_and_time';
-                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; });
+                // Re-render to show/hide the Days row and the detail-page hint.
+                _patchSysCfg(sid, function (cfg) { cfg.order_by_field = v; }, {
+                    afterSave: function () { renderProperties(); }
+                });
+            });
+        }
+
+        // ── order_recent_days (number) — window of the recent_views order ──
+        var obdaysEl = document.getElementById('sd-sw-orderby-days');
+        if (obdaysEl) {
+            obdaysEl.addEventListener('change', function () {
+                var sid = parseInt(this.dataset.swId, 10);
+                if (!sid) return;
+                var n = parseInt(this.value, 10);
+                if (!(n >= 1)) n = 7;
+                if (n > 180) n = 180;
+                this.value = n;
+                _patchSysCfg(sid, function (cfg) { cfg.order_recent_days = n; });
             });
         }
 
@@ -32611,6 +32757,8 @@ const StyleDesigner = (function () {
                 // The rows moved page; the controls point at them under the
                 // new page's id from now on.
                 _cfAdoptIds(p, res.fields || []);
+                _cfDropFieldCache(from);
+                _cfDropFieldCache(p.page_id);
                 _patchSysCfg(sid, function (c) { c.form_source = 'page'; c.form_id = 0; c.custom_form_page_id = 0; }, {
                     silent: true,
                     afterSave: function () {
@@ -33599,7 +33747,8 @@ const StyleDesigner = (function () {
             ['__timeline',              _sdT('Order timeline (ready-made HTML)')],
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
-            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')]
+            ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')]
         ]},
         { label: _sdT('Order item (loop_area)'), tokens: [
             ['__item_id',                _sdT('Row ID (order_items.id)')],
@@ -34108,6 +34257,9 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
+            ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
@@ -45667,7 +45819,8 @@ const StyleDesigner = (function () {
     function _swTypeDefaults(cfg, newType) {
         cfg.regionType = newType;
         if (newType === 'catalog_listing') {
-            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined) {
+            if (cfg.order_by_field === 'submitted_date_and_time' || cfg.order_by_field === 'submitted_form_id' || cfg.order_by_field === undefined ||
+                _SW_FORM_ORDER_COUNTERS.indexOf(cfg.order_by_field) !== -1) {
                 cfg.order_by_field = 'sort_order';
             }
             // 'Kayıt bulunamadı.' is the pre-i18n default; widgets saved before the
@@ -48912,6 +49065,24 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        // Last day of the right of withdrawal: 14 days
+                                        // from the last delivery. One note says the
+                                        // date rests on planned dates, the other that
+                                        // the day has passed.
+                                        createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
+                                            customName: _sdT('Right of Withdrawal'),
+                                            _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Last day of the right of withdrawal:') }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
+                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('Estimated; the 14 days run from delivery.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
+                                                text: _sdT('The right of withdrawal has ended.'),
+                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),
@@ -56047,6 +56218,7 @@ const StyleDesigner = (function () {
                 var p = _pgPageByKey(f.key) || _pgPageByKey('p' + f.page_id);
                 if (!p || !(f.page_id > 0)) return;
                 _cfAdoptIds(p, Array.isArray(f.fields) ? f.fields : []);
+                _cfDropFieldCache(f.page_id);
                 p.formSettings = (f.settings && typeof f.settings === 'object') ? f.settings : {};
                 // A page form that e-mails nobody is published as asked; it
                 // is said once per page and editor session, not blocked.

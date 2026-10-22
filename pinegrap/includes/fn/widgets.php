@@ -309,10 +309,11 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
             $type = (string)$custom[$name]['type'];
             $data = (string)$custom[$name]['data'];
             // Markup from a WYSIWYG area was typed by the submitter, so it is
-            // filtered rather than escaped.
+            // filtered rather than escaped. It is printed raw, so PHP open
+            // tags are defused before the page's PHP_REGIONS eval.
             if (!empty($custom[$name]['wysiwyg'])) {
                 $prepare_for_html = false;
-                $data = pg_sanitize_rich_text($data);
+                $data = pg_defuse_php_tags(pg_sanitize_rich_text($data));
             }
         } else {
             // Not a field of this form. Left in place here and swept by the
@@ -788,6 +789,97 @@ function _pg_sw_current_page_id()
     return $page_id;
 }
 
+// The record counters a form_list_view can order by, beside the built-ins and
+// the form's own fields. They win over a form field of the same name, as a
+// standard field does in pg_sw_apply_tokens(). style_designer.js keeps the
+// same list in _SW_FORM_ORDER_COUNTERS.
+function pg_sw_form_order_counters()
+{
+    return array('number_of_views', 'number_of_comments', 'recent_views');
+}
+
+// The window of the recent_views order, in days: today and the days before
+// it. 1 to 180, 7 when unset or not a positive number. The daily view rows
+// are swept at six months, so a longer window would read rows that are gone.
+function pg_sw_recent_views_days($value)
+{
+    if (!is_numeric($value)) return 7;
+    $days = (int)$value;
+    if ($days < 1) return 7;
+    if ($days > 180) return 180;
+    return $days;
+}
+
+// The ORDER BY term of a counter order (pg_sw_form_order_counters()), or null
+// when $field is not one of them and '' when it is but the list names no
+// detail page: the counters are kept per detail page, so without one there is
+// nothing to order by and the list keeps its date order.
+//
+// Correlated scalar subqueries rather than joins: submitted_form_info has no
+// unique key, and a joined duplicate row would print a record twice. MAX()
+// picks one row; the daily rows are summed over the window, counted in
+// MySQL's clock (CURDATE(), as the writer stamps them). Without the daily
+// table, recent_views reads the all-time counter. Every value that reaches
+// the SQL is whitelisted or cast to int.
+function pg_sw_counter_order_sql($field, $direction, $detail_page_id, $recent_days, $stats_ready)
+{
+    $field = (string)$field;
+    if (!in_array($field, pg_sw_form_order_counters(), true)) return null;
+
+    $page = is_scalar($detail_page_id) ? (int)$detail_page_id : 0;
+    if ($page <= 0) return '';
+
+    $dir = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+
+    if ($field === 'recent_views' && $stats_ready) {
+        $back = pg_sw_recent_views_days($recent_days) - 1;
+        return "IFNULL((SELECT SUM(pg_ord_s.views) FROM submitted_form_view_stats pg_ord_s"
+             . " WHERE pg_ord_s.submitted_form_id = forms.id AND pg_ord_s.page_id = '$page'"
+             . " AND pg_ord_s.view_date >= DATE_SUB(CURDATE(), INTERVAL $back DAY)), 0) $dir";
+    }
+
+    $column = ($field === 'number_of_comments') ? 'number_of_comments' : 'number_of_views';
+    return "IFNULL((SELECT MAX(pg_ord_i.$column) FROM submitted_form_info pg_ord_i"
+         . " WHERE pg_ord_i.submitted_form_id = forms.id AND pg_ord_i.page_id = '$page'), 0) $dir";
+}
+
+// The record a form_item_view widget showed on this request, for
+// get_page.php to count once the page has been sent.
+//   null  — read: array() or array('form_id' => …, 'page_id' => …)
+//   false — clear
+//   ints  — register, when nothing is registered yet and both are positive;
+//           the first record wins, as in pg_track_content()
+function pg_sw_record_view_seen($form_id = null, $page_id = null)
+{
+    static $seen = array();
+
+    if ($form_id === false) {
+        $seen = array();
+        return $seen;
+    }
+
+    if ($form_id !== null) {
+        $form_id = (int)$form_id;
+        $page_id = (int)$page_id;
+        if (!$seen && $form_id > 0 && $page_id > 0) {
+            $seen = array('form_id' => $form_id, 'page_id' => $page_id);
+        }
+    }
+
+    return $seen;
+}
+
+// Whether a registered record view counts: a record and a page, a GET
+// (link checkers' HEAD and form posts are not reads) and a person, not an
+// automated client (pg_request_is_automated()).
+function pg_sw_should_count_record_view($seen, $method, $automated)
+{
+    if (!is_array($seen) || empty($seen['form_id']) || empty($seen['page_id'])) return false;
+    if ((int)$seen['form_id'] <= 0 || (int)$seen['page_id'] <= 0) return false;
+    if (strtoupper((string)$method) !== 'GET') return false;
+    return !$automated;
+}
+
 // The filters a form_list_view widget applies to its records: the classic
 // form list view's filters (edit_form_list_view.php, form_list_view_filters),
 // kept in the widget's system_region_config as `filters`, a list of
@@ -942,8 +1034,15 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters)
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
 //   empty_message       string         shown when no records match (default "Kayıt bulunamadı.")
-//   order_by_field      string  submitted_date_and_time | submitted_form_id | form_fields.name
+//   order_by_field      string  submitted_date_and_time | submitted_form_id |
+//                               number_of_views | number_of_comments |
+//                               recent_views | form_fields.name (the three
+//                               counters need detail_page_id, whose counters
+//                               they read: pg_sw_counter_order_sql())
 //   order_by_direction  ASC | DESC (default DESC)
+//   order_by_2_field, order_by_2_direction — the second order, same values
+//   order_recent_days   int 1-180 (default 7): the recent_views window,
+//                       today and the days before it
 //   filters             list  the classic form list view's filters, see
 //                             pg_sw_form_list_filter_sql()
 //
@@ -1050,7 +1149,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     //
     // Resolves a single token to {sql, join_alias} with optional secondary
     // sort-data join. Returns null for "no contribution" (empty/invalid input).
-    $_resolve_order = function ($field, $direction, $alias) use ($custom_form_page_id) {
+    $_resolve_order = function ($field, $direction, $alias) use ($custom_form_page_id, $cfg) {
         if ($field === '' || $field === null) return null;
         if ($field === 'submitted_form_id') {
             return array('sql' => "forms.id $direction", 'join' => '');
@@ -1058,6 +1157,17 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         if ($field === 'submitted_date_and_time') {
             return array('sql' => "forms.submitted_timestamp $direction", 'join' => '');
         }
+        // A record counter, read for the list's detail page. It wins over a
+        // form field of the same name; without a detail page it gives no
+        // order (the date order then applies) and no form field is tried.
+        $counter = pg_sw_counter_order_sql(
+            $field,
+            $direction,
+            isset($cfg['detail_page_id']) ? $cfg['detail_page_id'] : 0,
+            isset($cfg['order_recent_days']) ? $cfg['order_recent_days'] : null,
+            pg_sfv_stats_ready()
+        );
+        if ($counter !== null) return ($counter === '') ? null : array('sql' => $counter, 'join' => '');
         $fid = (int)db_value(
             "SELECT id FROM form_fields
              WHERE page_id = '" . e($custom_form_page_id) . "'
@@ -1962,6 +2072,8 @@ function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
 //   filters               — the list widget's filters: a record outside them
 //                           is not found (pg_sw_record_passes_filters());
 //                           an e-mail page shows its record regardless
+//   (no key)              — the record shown counts one view on this page,
+//                           in get_page.php (pg_sw_record_view_seen())
 //
 // URL params:
 //   r — reference_code (matches Pinegrap's classic form item view convention);
@@ -2095,6 +2207,17 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             }
         }
         if ($asked) pg_sw_item_missing(true);
+    }
+
+    // The record shown here counts one view on this page. Only registered:
+    // get_page.php does the counting once the page has been sent, so a
+    // background render (search index, SEO pass, canvas preview, e-mail)
+    // never counts, and the flags below only say so twice. A record not
+    // found, denied or outside the filters is never registered.
+    if ($found_and_allowed && $email_record_id === 0 && empty($sw_ctx['email'])
+        && !(function_exists('pg_seo_rendering') && pg_seo_rendering())
+        && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
+        pg_sw_record_view_seen((int)$form_row['id'], _pg_sw_current_page_id());
     }
 
     // No record to show: the record's layout would print as a column of
@@ -5036,6 +5159,11 @@ function pg_sw_item_summary($html, $max = 140)
 //     visibility flags: has_legal_documents, has_legal_preinfo, has_legal_contract
 //     Empty in the receipt e-mail (it attaches the copies). A layout that
 //     binds neither link gets a card listing them after the widget.
+//     __withdrawal_deadline    last day of the right of withdrawal (14 days
+//                              from the last delivery; date text)
+//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_estimated,
+//     withdrawal_ended. None in the receipt e-mail; the card after the widget
+//     carries the line when the layout does not bind the token.
 //
 //   Invoice print:
 //     __order_invoice_pdf_url  URL to customer-facing printable invoice endpoint
@@ -5731,12 +5859,21 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         empty($sw_ctx['email']) ? pg_legal_documents_of_order((int)$order['id']) : array(),
         (int)$order['id']
     );
+    // The last day of the right of withdrawal: 14 days from the last
+    // delivery, an estimate while the deliveries carry only planned dates.
+    // The receipt e-mail goes out before anything is shipped, so it gets none.
+    $withdrawal = empty($sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)$order['id']) : null;
+    $withdrawal_date = is_array($withdrawal) ? $fmt_gc_date($withdrawal['deadline']) : '';
     // A layout made before the links existed binds neither of them: the
     // kept copies are listed in a card after the widget instead, so every
-    // design shows them. A layout that binds a link places them itself.
+    // design shows them, with the withdrawal line under them unless the
+    // layout places that itself. A layout that binds a link places them.
     $legal_block = (strpos((string)$tree_json, '__legal_preinfo_url') === false
                     && strpos((string)$tree_json, '__legal_contract_url') === false)
-        ? pg_legal_documents_order_view_block($legal_urls)
+        ? pg_legal_documents_order_view_block(
+            $legal_urls,
+            (strpos((string)$tree_json, '__withdrawal_deadline') === false) ? pg_legal_withdrawal_text($withdrawal, $withdrawal_date) : ''
+        )
         : '';
 
     // ── Apply visibility bindings BEFORE tree split + render ──────────
@@ -5848,6 +5985,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
+        // Right of withdrawal: the line while a deadline is known, its note
+        // while the deadline is estimated, and once the deadline has passed.
+        'has_withdrawal_deadline'       => $withdrawal_date !== '',
+        'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
+        'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
@@ -6084,6 +6226,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // carry. Empty when the order has no copy of that document.
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
+        '__withdrawal_deadline'     => h($withdrawal_date),
     );
 
     if ($static_html === '') {

@@ -147,6 +147,7 @@ if (!$_POST) {
     $installment_charges = $row['installment_charges'] / 100;
     $total = $row['total'] / 100;
     $total_cents = (int)$row['total'];
+    $gift_card_discount_cents = (int) round((float) $row['gift_card_discount']);
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
 
     // Captured here with the rest of the order fields, and deliberately NOT
@@ -2287,8 +2288,23 @@ if (!$_POST) {
 
     // From the copy taken next to the main order query; see the note there.
     $refund_state = $order_refund_status;
-    $refund_amount_text = pg_format_number($total_cents / 100, 2)
-        . ($currency_code != '' ? ' ' . h($currency_code) : '');
+
+    // orders.total has the gift card part taken off, and that part does not
+    // go back to the cards by itself either, so the money still to return is
+    // both. Each part gets its own instruction: the provider sentence only
+    // when a payment was taken, the gift card one only when cards paid.
+    $refund_currency_text = ($currency_code != '' ? ' ' . h($currency_code) : '');
+    $refund_amount_text   = pg_format_number(($total_cents + $gift_card_discount_cents) / 100, 2) . $refund_currency_text;
+
+    $refund_instructions = '';
+    if ($total_cents > 0 || $gift_card_discount_cents <= 0) {
+        $refund_instructions .= '<div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>';
+    }
+    if ($gift_card_discount_cents > 0) {
+        $refund_instructions .= '<div class="small">' . lang(array(
+            'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
+            'vars'   => array(pg_format_number($gift_card_discount_cents / 100, 2) . $refund_currency_text))) . '</div>';
+    }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
 
@@ -2297,7 +2313,7 @@ if (!$_POST) {
                 <i class="bi bi-cash-coin"></i>
                 <div class="flex-grow-1">
                     <strong>' . lang('Refund Pending') . '</strong> · ' . $refund_amount_text . '
-                    <div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>
+                    ' . $refund_instructions . '
                 </div>
                 <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#order-refund-modal">
                     <i class="bi bi-check2 me-1"></i>' . lang('Mark refund as processed') . '
@@ -2915,11 +2931,25 @@ if (!$_POST) {
 
         $liveform->add_notice(lang('The order has been cancelled.'));
 
-        // Surface the refund outcome so a failed void is never silent.
+        // Surface the refund outcome so a failed void is never silent. The
+        // provider wording applies only to a payment that was taken; what gift
+        // cards paid is told apart, as it never goes back by itself.
+        $cancelled_amounts = db_item("SELECT total, gift_card_discount, currency_code FROM orders WHERE id = '" . e($order_id) . "'");
+        $cancelled_total_cents     = (int) ($cancelled_amounts['total'] ?? 0);
+        $cancelled_gift_card_cents = (int) round((float) ($cancelled_amounts['gift_card_discount'] ?? 0));
+
         if ($response['refund_status'] == 'refunded') {
             $liveform->add_notice(lang('The payment has been refunded.'));
-        } elseif ($response['refund_status'] == 'manual_required' || $response['refund_status'] == 'failed') {
+        } elseif (($response['refund_status'] == 'manual_required' || $response['refund_status'] == 'failed')
+            && ($cancelled_total_cents > 0 || $cancelled_gift_card_cents <= 0)) {
             $liveform->add_notice(lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.'));
+        }
+
+        if ($cancelled_gift_card_cents > 0) {
+            $liveform->add_notice(lang(array(
+                'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
+                'vars'   => array(pg_format_number($cancelled_gift_card_cents / 100, 2)
+                    . ((string) ($cancelled_amounts['currency_code'] ?? '') !== '' ? ' ' . h($cancelled_amounts['currency_code']) : '')))));
         }
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
@@ -3131,6 +3161,10 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
+        // Read before the cancellation bookkeeping is cleared below: the gift
+        // cards step needs the order number and the time of the cancellation.
+        $cancelled_order = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+
         // Clear the cancellation bookkeeping too. Leaving cancelled_at set
         // would keep an "Order Cancelled" entry on the order_view timeline
         // of an order that is complete again, and would keep the refund
@@ -3147,14 +3181,8 @@ if (!$_POST) {
                 WHERE id = '" . e($order_id) . "' AND refund_status != 'refunded'");
         }
 
-        // Re-enable gift cards that were expired when this order was cancelled.
-        // We restore expiration to 0000-00-00 (no expiration) since the original
-        // value was overwritten during cancellation.
-        db("UPDATE gift_cards
-            SET expiration_date = '0000-00-00'
-            WHERE order_id = '" . e($order_id) . "'
-              AND expiration_date != '0000-00-00'
-              AND expiration_date <= '" . date('Y-m-d') . "'");
+        // Gift cards the cancellation expired get back the date they had.
+        pg_order_restore_gift_cards($order_id, $cancelled_order['order_number'] ?? '', $cancelled_order['cancelled_at'] ?? 0);
 
         log_activity('Restored cancelled order #' . $order_id . ' to complete.');
 

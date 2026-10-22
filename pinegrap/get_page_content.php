@@ -541,6 +541,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_ai_summary_inject($content);
     }
 
+    // ── Rich-text editor for designed forms ─────────────────────────────────────
+    // A designed form's rich-text text areas carry data-pg-rich-text; one
+    // editor for all of them is loaded once everything is drawn in, so a
+    // second form and a form inside a shared component are covered
+    // (pg_cf_rich_text_inject()). Not in an e-mail, not in a background
+    // render (the SEO pass, the editor's Preview, the search index).
+    if (!$email && !pg_seo_rendering() && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
+        && strpos($content, 'data-pg-rich-text') !== false && function_exists('pg_cf_rich_text_inject')) {
+        $content = pg_cf_rich_text_inject($content);
+    }
+
     // ── Search marking ──────────────────────────────────────────────────────────
     // A site search result that matched a search section links here with
     // ?highlight= and the section's anchor: the words are marked in yellow
@@ -632,7 +643,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // messages region. Stripping the remaining markers prevents the same
         // alert from showing up multiple times when several widgets sit on
         // the same page.
-        $content = preg_replace('/<!--pg-messages-placeholder-->/', $pg_messages_html, $content, 1);
+        $content = preg_replace('/<!--pg-messages-placeholder-->/', pg_regex_replacement($pg_messages_html), $content, 1);
         $content = str_replace('<!--pg-messages-placeholder-->', '', $content);
     }
 
@@ -752,7 +763,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 eval(prepare_for_eval($row['dregion_code']));
                 $dregion_output = ob_get_contents();
                 ob_end_clean();
-                $content = preg_replace('/<dregion.*?>.*?<\/dregion>/i', addcslashes($dregion_output, '\\$'), $content, 1);
+                $content = preg_replace('/<dregion.*?>.*?<\/dregion>/i', pg_regex_replacement($dregion_output), $content, 1);
             }
         }
     }
@@ -1079,15 +1090,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // because JavaScript calls appear in the HTML code that is outputted before the </body>
         // (e.g. pop-up and accordion menus)
         if (preg_match('/<stylesheet><\/stylesheet>/i', $content) != 0) {
-            $content = preg_replace('/(<stylesheet><\/stylesheet>)/i', '$1' . $output_javascript_and_css, $content);
+            $content = preg_replace('/(<stylesheet><\/stylesheet>)/i', '$1' . pg_regex_replacement($output_javascript_and_css), $content);
         
         // else if there is a head tag, then add JavaScript and CSS after that tag
         } else if (preg_match('/<head\b.*?>/i', $content) != 0) {
-            $content = preg_replace('/(<head\b.*?>)/i', '$1' . $output_javascript_and_css, $content);
+            $content = preg_replace('/(<head\b.*?>)/i', '$1' . pg_regex_replacement($output_javascript_and_css), $content);
             
         // else if there is a body tag, then add JavaScript and CSS after that tag
         } else if (preg_match('/<body.*?>/i', $content) != 0) {
-            $content = preg_replace('/(<body.*?>)/i', '$1' . $output_javascript_and_css, $content);
+            $content = preg_replace('/(<body.*?>)/i', '$1' . pg_regex_replacement($output_javascript_and_css), $content);
 
         // else a stylesheet, head, or body tag was not found so if mode is edit
         // then add JavaScript and CSS to the beginning of the content
@@ -1214,15 +1225,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // if </head> is in the HTML, place Google Analytics code before </head> (this is recommended by Google)
             // we are not going to output Google Analytics code if there is no closing head, body, or html tag, because the page might contain some other type of data (e.g. XML)
             if (stristr($content, '</head>')) {
-                $content = preg_replace('/<\/head>/i', $output_google_analytics . '</head>', $content);
+                $content = preg_replace('/<\/head>/i', pg_regex_replacement($output_google_analytics) . '</head>', $content);
             
             // if </body> is in the HTML, place Google Analytics code before </body>
             } else if (stristr($content, '</body>')) {
-                $content = preg_replace('/<\/body>/i', $output_google_analytics . '</body>', $content);
+                $content = preg_replace('/<\/body>/i', pg_regex_replacement($output_google_analytics) . '</body>', $content);
                 
             // else if </html> is in the HTML, place Google Analytics code before </html>
             } elseif (stristr($content, '</html>')) {
-                $content = preg_replace('/<\/html>/i', $output_google_analytics . '</html>', $content);
+                $content = preg_replace('/<\/html>/i', pg_regex_replacement($output_google_analytics) . '</html>', $content);
             }
         }
         
@@ -1255,11 +1266,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             
             // if </body> is in the HTML, place rich-text editor before </body>
             if (stristr($content, '</body>')) {
-                $content = preg_replace('/<\/body>/i', $output_text_editor_content . '</body>', $content);
+                $content = preg_replace('/<\/body>/i', pg_regex_replacement($output_text_editor_content) . '</body>', $content);
                 
             // else if </html> is in the HTML, place rich-text editor before </html>
             } elseif (stristr($content, '</html>')) {
-                $content = preg_replace('/<\/html>/i', $output_text_editor_content . '</html>', $content);
+                $content = preg_replace('/<\/html>/i', pg_regex_replacement($output_text_editor_content) . '</html>', $content);
                 
             // else HTML does not contain </body> or </html>, so just place rich-text editor at the end of the content
             } else {
@@ -1555,7 +1566,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
             
             // replace the ad region tag with the ad region content
-            $content = preg_replace('/<ad>.*?<\/ad>/i', addcslashes($ad_region_content, '\\$'), $content, 1);
+            $content = preg_replace('/<ad>.*?<\/ad>/i', pg_regex_replacement($ad_region_content), $content, 1);
         }
 
         // if we need to include dynamic ad region javascript files, then do so
@@ -1564,7 +1575,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 '<script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.scrollTo-1.4.2.min.js"></script>
                 <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.serialScroll-1.2.3b.min.js"></script>' . "\n";
             
-            $content = preg_replace('/(<\/head>)/i', $dynamic_ad_region_javascript_includes . '$1', $content);
+            $content = preg_replace('/(<\/head>)/i', pg_regex_replacement($dynamic_ad_region_javascript_includes) . '$1', $content);
         }
     }
     
@@ -1637,7 +1648,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // replace cart region tag with cart region content
-        $content = preg_replace('/<cart><\/cart>/i', addcslashes($cart_region_content, '\\$'), $content);
+        $content = preg_replace('/<cart><\/cart>/i', pg_regex_replacement($cart_region_content), $content);
     }
     
     // replace login region with login form
@@ -1659,7 +1670,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // replace the login tags with the software login form
-        $content = preg_replace('/<login>.*?<\/login>/i', addcslashes($login_region_content, '\\$'), $content, 1);
+        $content = preg_replace('/<login>.*?<\/login>/i', pg_regex_replacement($login_region_content), $content, 1);
     }
     
     // replace code with menus
@@ -1732,7 +1743,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // replace the menu tag with the menu content
-        $content = preg_replace('/<menu>.*?<\/menu>/i', addcslashes($menu_content, '\\$'), $content, 1);
+        $content = preg_replace('/<menu>.*?<\/menu>/i', pg_regex_replacement($menu_content), $content, 1);
     }
     
     // replace code with menu sequence region
@@ -1789,7 +1800,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // replace the menu tag with the menu content
-        $content = preg_replace('/<menu_sequence>.*?<\/menu_sequence>/i', addcslashes($menu_sequence_content, '\\$'), $content, 1);
+        $content = preg_replace('/<menu_sequence>.*?<\/menu_sequence>/i', pg_regex_replacement($menu_sequence_content), $content, 1);
     }
 
     // If there is a mobile switch region, then determine if we should output mobile switch.
@@ -1827,7 +1838,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $output_mobile_switch = '';
         }
        
-        $content = preg_replace('/<mobile_switch><\/mobile_switch>/i', addcslashes($output_mobile_switch, '\\$'), $content);
+        $content = preg_replace('/<mobile_switch><\/mobile_switch>/i', pg_regex_replacement($output_mobile_switch), $content);
     }
     
     // replace tag cloud region with a tag cloud
@@ -1976,7 +1987,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         // replace the tag cloud tags with the tag cloud
-        $content = preg_replace('/<tcloud>.*?<\/tcloud>/i', addcslashes($tag_cloud_content, '\\$'), $content, 1);
+        $content = preg_replace('/<tcloud>.*?<\/tcloud>/i', pg_regex_replacement($tag_cloud_content), $content, 1);
     }
     
     // if there is a PDF region, then prepare PDF link
@@ -1995,7 +2006,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         
         $pdf_link = '<div class="software_pdf_link"><a href="' . URL_SCHEME . HOSTNAME . h($parsed_url['path'] . $query_string) . '" target="_blank"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_pdf.gif" width="55" height="20" alt="' . lang('PDF Version') . '" title="' . lang('PDF Version') . '" border="0" /></a></div>';
         
-        $content = preg_replace('/<pdf><\/pdf>/i', addcslashes($pdf_link, '\\$'), $content);
+        $content = preg_replace('/<pdf><\/pdf>/i', pg_regex_replacement($pdf_link), $content);
     }
 
     // Create an array to store data about RSS feeds, so that when we loop through system regions
@@ -2065,7 +2076,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $_pg_sw_jsonld = _pg_build_catalog_listing_jsonld($_pg_sw_products, $page_name, $_pg_sw_detail_page_name);
                         $content = preg_replace(
                             '/<\/head>/i',
-                            "\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n</head>",
+                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
                             $content,
                             1
                         );
@@ -2093,7 +2104,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $_pg_sw_jsonld = _pg_build_product_jsonld($_pg_sw_product, $_pg_sw_canonical_url);
                         $content = preg_replace(
                             '/<\/head>/i',
-                            "\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n</head>",
+                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
                             $content,
                             1
                         );
@@ -2450,11 +2461,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                                 $content = preg_replace(
                                     '/<\/head>/i',
-                                    addcslashes(
+                                    pg_regex_replacement(
                                         "\n<!-- Start Structured Data -->\n"
                                         . '<script type="application/ld+json">' . json_encode($jsonld, JSON_UNESCAPED_UNICODE) . '</script>'
-                                        . "\n<!-- End Structured Data -->\n",
-                                        '\\$') . '</head>',
+                                        . "\n<!-- End Structured Data -->\n") . '</head>',
                                     $content,
                                     1);
                                 unset($jsonld);
@@ -2626,7 +2636,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         if (($strutured_data_feeds != '')
                             && ((defined('STRUTURED_DATA') == FALSE) || (STRUTURED_DATA == TRUE))
                         ) {
-                            $content = preg_replace('/<\/head>/i', addcslashes($strutured_data_feeds, '\\$') . '</head>', $content, 1);
+                            $content = preg_replace('/<\/head>/i', pg_regex_replacement($strutured_data_feeds) . '</head>', $content, 1);
                         }
                         
                     break;
@@ -2820,7 +2830,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // and replace RSS URL.
                         if ($output_rss_url != '') {
                             $social_networking_code = preg_replace('/<rss>(.*?)<\/rss>/si', '$1', $social_networking_code);
-                            $social_networking_code = preg_replace('/{rss_url}/i', addcslashes($output_rss_url, '\\$'), $social_networking_code);
+                            $social_networking_code = preg_replace('/{rss_url}/i', pg_regex_replacement($output_rss_url), $social_networking_code);
 
                         // Otherwise there is not an RSS feed, so replace RSS tags with empty string.
                         } else {
@@ -2828,7 +2838,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         }
 
                         // Replace URL placeholder with URL.
-                        $social_networking_code = preg_replace('/{url}/i', addcslashes(h($canonical_url), '\\$'), $social_networking_code);
+                        $social_networking_code = preg_replace('/{url}/i', pg_regex_replacement(h($canonical_url)), $social_networking_code);
 
                         $output_social_networking_buttons =
                             '<div class="software_social_networking" style="float: ' . $output_float . '; margin-top: 1em; margin-bottom: 1em">
@@ -5343,7 +5353,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
         
-        $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', addcslashes($system_output, '\\$'), $content);
+        $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', pg_regex_replacement($system_output), $content);
     }
 
     // If a comments_block placeholder was used, replace it with the collected comments HTML.
@@ -5518,7 +5528,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
             }
             
-            $content = preg_replace('/<pregion><\/pregion>/i', addcslashes($pregion_content, '\\$'), $content, 1);
+            $content = preg_replace('/<pregion><\/pregion>/i', pg_regex_replacement($pregion_content), $content, 1);
         }
     }
 
@@ -5778,7 +5788,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // If this page has a title then use that for title tag. Escaped for the
     // replacement string as well: "$1" in a title is text, not a back reference.
     if ($page_title != '') {
-        $content = preg_replace('/<title>.*?<\/title>/i', addcslashes('<title>' . h($page_title) . '</title>', '\\$'), $content);
+        $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h($page_title) . '</title>'), $content);
 
     // else page does not have a title set, so let's look elsewhere for a title
     } else {
@@ -5788,7 +5798,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if title in style for page does not contain a title, add default title
         // We store the title so we can include it in the open graph tag.
         if (empty($matches[1])) {
-            $content = preg_replace('/<title>.*?<\/title>/i', addcslashes('<title>' . h(TITLE) . '</title>', '\\$'), $content);
+            $content = preg_replace('/<title>.*?<\/title>/i', pg_regex_replacement('<title>' . h(TITLE) . '</title>'), $content);
             $page_title = TITLE;
         } else {
             $page_title = unhtmlspecialchars(trim($matches[1]));
@@ -6036,12 +6046,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // embed meta tags in code. The block is a replacement string, where $1
     // or \1 in a title, a description or a tag's content would be read as
     // a back reference.
-    $content = preg_replace('/<meta_tags><\/meta_tags>/i', addcslashes($meta_tags, '\\$'), $content);
+    $content = preg_replace('/<meta_tags><\/meta_tags>/i', pg_regex_replacement($meta_tags), $content);
 
     if (($robots_content != '') && ($meta_tags_placeholder_found == FALSE)) {
         $content = preg_replace(
             '/<\/head>/i',
-            '        <meta name="robots" content="' . $robots_content . '">' . "\n" . '</head>',
+            pg_regex_replacement('        <meta name="robots" content="' . $robots_content . '">' . "\n") . '</head>',
             $content,
             1);
     }
@@ -6049,7 +6059,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (($site_verification_tag !== '') && ($meta_tags_placeholder_found == FALSE)) {
         $content = preg_replace(
             '/<\/head>/i',
-            '        ' . $site_verification_tag . "\n" . '</head>',
+            pg_regex_replacement('        ' . $site_verification_tag . "\n") . '</head>',
             $content,
             1);
     }
@@ -6059,7 +6069,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if ($custom_meta_tags && ($meta_tags_placeholder_found == FALSE)) {
         $content = preg_replace(
             '/<\/head>/i',
-            addcslashes('        ' . pg_meta_tags_html($custom_meta_tags, '') . '</head>', '\\$'),
+            pg_regex_replacement('        ' . pg_meta_tags_html($custom_meta_tags, '') . '</head>'),
             $content,
             1);
     }
@@ -6134,7 +6144,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
 
         if ($pg_jsonld_out != '') {
-            $content = preg_replace('/<\/head>/i', addcslashes($pg_jsonld_out, '\\$') . "\n" . '</head>', $content, 1);
+            $content = preg_replace('/<\/head>/i', pg_regex_replacement($pg_jsonld_out) . "\n" . '</head>', $content, 1);
         }
     }
 
@@ -6261,13 +6271,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // embed link to stylesheet
     // Check before replacing so we know whether a fallback injection is needed.
     $has_stylesheet_placeholder = (stripos($content, '<stylesheet></stylesheet>') !== false);
-    $content = preg_replace('/<stylesheet><\/stylesheet>/i', $stylesheet, $content);
+    $content = preg_replace('/<stylesheet><\/stylesheet>/i', pg_regex_replacement($stylesheet), $content);
 
     // Fallback: if no <stylesheet> placeholder was present (e.g. Visual Pinegrap Editor system
     // styles — the placeholder was intentionally removed) but we still have CSS links to
     // inject (Bootstrap, theme override, etc.), insert them before </head>.
     if (!$has_stylesheet_placeholder && $stylesheet !== '') {
-        $content = preg_replace('/(<\/head>)/i', $stylesheet . "\n" . '$1', $content, 1);
+        $content = preg_replace('/(<\/head>)/i', pg_regex_replacement($stylesheet) . "\n" . '$1', $content, 1);
     }
 
     // If this page is not being prepared for an email, then add JS to bottom of page.
@@ -6429,14 +6439,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
 
         // Add link tags to head.
-        $content = preg_replace('/<\/head>/i', $output_rss_link_tags . '</head>', $content);
+        $content = preg_replace('/<\/head>/i', pg_regex_replacement($output_rss_link_tags) . '</head>', $content);
     }
     
     // replace path placeholders
-    $content = preg_replace('/{path}/i', OUTPUT_PATH, $content);
+    $content = preg_replace('/{path}/i', pg_regex_replacement(OUTPUT_PATH), $content);
 
     // Replace software directory placeholders.
-    $content = preg_replace('/{software_directory}/i', OUTPUT_SOFTWARE_DIRECTORY, $content);
+    $content = preg_replace('/{software_directory}/i', pg_regex_replacement(OUTPUT_SOFTWARE_DIRECTORY), $content);
 
     // If email protection is enabled and this page is not being emailed,
     // and we are not in edit mode, then protect email addresses in email links.
