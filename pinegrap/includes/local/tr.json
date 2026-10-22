@@ -25427,5 +25427,7 @@
     "Account Welcome E-mail": "Hesap Hoş Geldin E-postası",
     "Search Label": "Arama Etiketi",
     "Previous page": "Önceki sayfa",
-    "Wrap Lines": "Satır Kaydırma"
+    "Wrap Lines": "Satır Kaydırma",
+    "This page has no form.": "Bu sayfada form yok.",
+    "At least one field could not be deleted, because its form is edited in the visual editor.": "En az bir alan silinemedi, çünkü formu görsel editörde düzenleniyor."
 }

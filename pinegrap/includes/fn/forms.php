@@ -5066,6 +5066,23 @@ function pg_page_has_designer_form($page_id)
             AND (page.page_type <> 'custom form')
             AND " . pg_form_page_sql('page')) > 0;
 }
+/**
+ * Stop a field screen that would add or delete fields on a page that has no
+ * form it may change: a designer form (its fields come from the canvas, so a
+ * change made here would be undone by the next design save) or a page with no
+ * form at all. Does not return.
+ */
+function pg_form_fields_refuse_page($page_id)
+{
+    if (pg_page_has_designer_form($page_id)) {
+        output_error(
+            lang('The fields of this form are edited in the visual editor.')
+            . ' <a href="' . h(pg_page_edit_url_by_id($page_id)) . '">' . lang('Open in Visual Editor') . '</a>');
+    }
+
+    output_error(lang('This page has no form.'), 404);
+}
+
 // The name of a form field type, as the field screens show it.
 function get_field_type_name($field_type)
 {
