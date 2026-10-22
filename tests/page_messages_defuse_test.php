@@ -174,6 +174,23 @@ function test_page_message_text_for_inline_feedback()
 	pg_assert_same('', pg_liveform_message_text(''));
 }
 
+// The inline text is what the alert shows of the same message: a "<" that is
+// not the start of a tag is text there and stays (strip_tags() dropped the
+// rest of the sentence after it), what a browser hides goes, and a line break
+// reads as a space instead of joining two words.
+function test_page_message_text_keeps_what_the_alert_shows()
+{
+	pg_assert_same('Quantity must be <5 and >0', pg_liveform_message_text('Quantity must be <5 and >0'));
+	pg_assert_same('Use 1 < 2 always', pg_liveform_message_text('Use 1 < 2 always'));
+	pg_assert_same('a <= b, c <- d', pg_liveform_message_text('a <= b, c <- d'));
+	pg_assert_same('2 line(s) could not be used: line 1: x line 2: y', pg_liveform_message_text('2 line(s) could not be used:<br>line 1: x<br />line 2: y'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- note --> <a class="alert-link" href="e.php?id=1&amp;x=2" onclick="return a > b;">Open the expense</a>'));
+	pg_assert_same('Sorry, x was not accepted.', pg_liveform_message_text('Sorry, <?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Sorry, <?php echo 1; ?>x was not accepted.', pg_liveform_message_text('Sorry, &lt;?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Mail rejected', pg_liveform_message_text('Mail <info@example.com> rejected'));
+	pg_assert_same('Footer', pg_liveform_message_text('<cregion>Footer</cregion>'));
+}
+
 // The two inline-feedback consumers (output_field and the per-field JS map)
 // take the message through pg_liveform_message_text(), not the raw stored
 // string, so an escaped file name is not escaped a second time.

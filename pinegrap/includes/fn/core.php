@@ -758,17 +758,28 @@ function pg_defuse_page_message($html)
 //
 // A message is HTML: the alerts print it as it is, some carry a link, and a
 // value it names (a refused file name) is escaped before it goes in. Shown in
-// a text node its tags must not appear and its entities must be read once, so
-// the markup is dropped and the entities are resolved; the caller escapes the
-// result for its own context. Reading the HTML as text here also means a byte
-// the HTML escape replaced survives instead of emptying the whole sentence.
+// a text node it must read as the alert reads: what a browser hides is
+// dropped (tags, comments, <!...> and <?...>), a line break or a block
+// boundary becomes a space, and the entities are resolved once; the caller
+// escapes the result for its own context. A "<" that does not start a tag
+// ("must be <5", "a <= b") is text in HTML and stays; strip_tags() dropped
+// everything after it. Reading the HTML as text here also means a byte the
+// HTML escape replaced survives instead of emptying the whole sentence.
 function pg_liveform_message_text($message)
 {
     if ($message === null || $message === '') {
         return '';
     }
 
-    return trim(html_entity_decode(strip_tags((string) $message), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    // The rest of a tag: attribute text, where a quoted ">" does not end it.
+    // Possessive, so an unclosed quote fails at once instead of backtracking.
+    $tag_rest = '(?:[^>"\']++|"[^"]*+"|\'[^\']*+\')*+(?:>|\z)';
+
+    $text = preg_replace('/<\/?(?:br|p|div|li|ul|ol|h[1-6]|hr|tr|td|th|table)\b' . $tag_rest . '/i', ' ', (string) $message);
+    $text = preg_replace('/<!--.*?(?:-->|\z)|<[!?][^>]*+(?:>|\z)|<\/?[a-z]' . $tag_rest . '/is', '', $text);
+    $text = preg_replace('/[ \t\n\r\f\x0B]+/', ' ', $text);
+
+    return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
 function escape($string)

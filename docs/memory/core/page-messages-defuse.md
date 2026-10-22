@@ -19,7 +19,8 @@ description: Liveform messages (errors, notices, warnings) are HTML printed into
 - A new place that prints session messages before the eval calls `pg_defuse_page_message()` per line.
 
 ## Where is a message shown as text, not as the alert HTML?
-- A field's inline feedback: `liveform::output_field()` and the `window.__pgFieldErrors` JS map. Both read `pg_liveform_message_text()` (`core.php`: drop tags, resolve entities once), then escape for their own context, so the HTML of a message is shown as its text and an escaped name is not escaped twice.
+- A field's inline feedback: `liveform::output_field()` and the `window.__pgFieldErrors` JS map. Both read `pg_liveform_message_text()` (`core.php`), then escape for their own context, so the HTML of a message is shown as its text and an escaped name is not escaped twice.
+- `pg_liveform_message_text()` gives what the alert shows: tags, comments, `<!…>` and `<?…>` go, `<br>` and block tags become a space, entities are resolved once. A `<` that starts no tag ("must be <5", "a <= b") stays; `strip_tags()` dropped the rest of the sentence after it.
 
 ## Why does add_fields_to_session() skip some keys?
 - It copies every `$_REQUEST` key into the form's session entry as a field value. `notices`, `warnings`, `__prefill` and `_form_error_*` name that entry's own buckets, so a posted field by one of those names would sit in a message list without `add_notice()`/`add_warning()`'s defuse; those keys are skipped.
