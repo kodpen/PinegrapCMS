@@ -14472,7 +14472,7 @@ const StyleDesigner = (function () {
                                 // switches it on. pg-carousel-ink draws the indicators in the
                                 // text colour: Bootstrap's white (black in dark mode) assumes
                                 // a photo behind them.
-                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: 'Carousel',
+                                createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-ink', customName: _sdT('Carousel'),
                                     _attrs: [
                                         { name: 'id',              value: carId }
                                     ] }, [
@@ -14536,7 +14536,7 @@ const StyleDesigner = (function () {
                             // Carousel Options > Autoplay switches it on. pg-carousel-photo
                             // keeps the controls and indicators white over the photos and
                             // the caption scrim in a dark design too.
-                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: 'Carousel',
+                            createNode('semantic', { tag: 'div', cssClass: 'carousel slide pg-carousel-photo', customName: _sdT('Carousel'),
                                 _attrs: [
                                     { name: 'id',               value: imgCarId }
                                 ] }, [
@@ -19442,7 +19442,7 @@ const StyleDesigner = (function () {
                     // No autoplay: Bootstrap's carousel keeps cycling under keyboard
                     // focus and reduced motion and has no pause button (WCAG 2.2.2).
                     // Carousel Options > Autoplay switches it on.
-                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: 'Carousel' }, [
+                    return createNode('semantic', { tag: 'div', cssClass: 'carousel carousel-dark slide', id: crId, customName: _sdT('Carousel') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'carousel-indicators', customName: _sdT('Indicators') }, [
                             createNode('content', { contentType: 'heading', tag: 'button', text: '', cssClass: 'active',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-target', value: '#' + crId }, { name: 'data-bs-slide-to', value: '0' }, { name: 'aria-current', value: 'true' }, { name: 'aria-label', value: _sdT('Slide 1') }] }),

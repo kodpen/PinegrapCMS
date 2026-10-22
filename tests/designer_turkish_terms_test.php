@@ -109,6 +109,17 @@ function test_designer_turkish_terms_no_english_halves()
 	pg_assert_same(array(), $found);
 }
 
+// A carousel block's root layer is named through _sdT(), so it reads
+// 'Karusel' above its translated 'Karusel …' children; a plain literal
+// would stay English in the layer tree.
+function test_designer_turkish_terms_carousel_layer_name_translated()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_same(0, preg_match_all("/customName:\\s*'Carousel'/", $source));
+	pg_assert_true(preg_match_all("/customName:\\s*_sdT\\('Carousel'\\)/", $source) >= 3, 'carousel blocks do not name their root through _sdT()');
+	pg_assert_same('Karusel', _test_tt_language()['Carousel']);
+}
+
 // The flex-wrap select and the carousel's wrap switch both said 'Wrap',
 // which is 'Döngü' (loop) for the carousel; the flex value has a key of
 // its own so it reads 'Satır Kaydırma' next to 'Satır Kaydırma Yok'. The
@@ -136,7 +147,7 @@ function test_designer_turkish_terms_shipping_and_documents()
 {
 	$language = _test_tt_language();
 	pg_assert_same('Sevk edildi', $language['Shipped']);
-	pg_assert_same('Sevk edilmemiş', $language['Unshipped']);
+	pg_assert_same('Sevk edilmedi', $language['Unshipped']);
 	pg_assert_same('Henüz sevk edilmedi', $language['Not shipped yet']);
 	pg_assert_same('Belgeler', $language['Documents']);
 	pg_assert_same('Belgelerim', $language['My Documents']);
