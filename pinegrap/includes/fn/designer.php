@@ -8103,7 +8103,18 @@ function pg_designer_preview_widgets($page_id, $widgets)
 
             if ($type === 'form_item_view') {
                 $form_pid = (int)(isset($cfg['custom_form_page_id']) ? $cfg['custom_form_page_id'] : (isset($cfg['form_page_id']) ? $cfg['form_page_id'] : 0));
-                $code = ($form_pid > 0) ? (string)db_value("SELECT reference_code FROM forms WHERE page_id = '" . $form_pid . "' ORDER BY id DESC LIMIT 1") : '';
+                // The newest record the widget's filters let through.
+                $code = '';
+                if ($form_pid > 0) {
+                    $clause = pg_sw_record_filter_clause($form_pid, pg_sw_record_view_filters($cfg), $page_id, true);
+                    $code = (string)db_value(
+                        "SELECT forms.reference_code FROM forms
+                         {$clause['join']}
+                         WHERE forms.page_id = '" . $form_pid . "'
+                           {$clause['where']}
+                         ORDER BY forms.id DESC
+                         LIMIT 1");
+                }
                 if ($code !== '') $_GET['r'] = $code;
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {
                 $group = (int)(isset($cfg['product_group_id']) ? $cfg['product_group_id'] : 0);

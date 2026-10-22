@@ -29449,6 +29449,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The links bound to the ChatGPT, Claude, Perplexity and Google AI addresses open the assistant with this question typed in; {url} is the record\'s address. Empty: the software\'s wording, in the page\'s language.')) + '</div>'
                     )
                 );
+
+                // ── Filters (form_item_view): which records the page shows ──
+                // Same rows and handlers as the list's filters; a record
+                // outside them is not found, in its feed and sitemap too.
+                systemSection += sect('bi-funnel', _sdT('Filters'),
+                    _swFormListFiltersHtml(sid, Array.isArray(_cfg.filters) ? _cfg.filters : [], _fivFields || [], _fivFields === null,
+                        _sdT('The page shows a record only when it matches every filter; any other address gets the not-found state, and the record stays out of the page\'s RSS feed and the sitemap. For example, Status is equal to Published keeps drafts off this page. The filters belong to this widget, not to the form: give every other public list and record view of the same form, on any page, the same filter, because a record\'s pretty address opens on every page that shows its form. If a filtered field is renamed or deleted, or the widget is pointed at another form, the page shows no record. E-mails still show the record they were sent for.')));
             }
 
             // ── Records in the translation (form list / detail) ───────────
@@ -45929,7 +45936,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         return o;
     }
-    function _swFormListFiltersHtml(sid, filters, fields, loading) {
+    function _swFormListFiltersHtml(sid, filters, fields, loading, note) {
         var formFields = _swFilterFormFields(fields);
         var html = '';
         (filters || []).forEach(function (f, i) {
@@ -45959,10 +45966,17 @@ const StyleDesigner = (function () {
             // so the filter is not rewritten behind the designer's back.
             if (!known) fieldOpts += '<option value="' + esc(field) + '" selected>' + esc(field) + (loading ? '' : ' ' + esc(_sdT('(incompatible — choose again)'))) + '</option>';
 
-            var op = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === f.operator; }) ? f.operator : 'is equal to';
+            var rawOp = String(f.operator == null ? '' : f.operator);
+            var opKnown = _SW_FILTER_OPERATORS.some(function (o) { return o[0] === rawOp; });
+            // An operator outside the list (a hand-written config) is skipped
+            // by a list and closes a record view, so on a row with a field it
+            // stays visible here instead of reading as "is equal to".
+            var opBad = !opKnown && field !== '';
+            var op = opKnown ? rawOp : 'is equal to';
             var opOpts = _SW_FILTER_OPERATORS.map(function (o) {
-                return '<option value="' + o[0] + '"' + (o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                return '<option value="' + o[0] + '"' + (!opBad && o[0] === op ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('');
+            if (opBad) opOpts += '<option value="' + esc(rawOp) + '" selected>' + esc(rawOp) + ' ' + esc(_sdT('(incompatible — choose again)')) + '</option>';
 
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
@@ -45991,7 +46005,7 @@ const StyleDesigner = (function () {
         });
         html +=
             '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
-            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(_sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
+            '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
 
