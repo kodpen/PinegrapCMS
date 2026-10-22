@@ -2279,7 +2279,9 @@ function pg_sw_record_by_address($form_page_id, $address_name)
  *
  *   /<list page>/<name>, the classic shape: a list widget whose detail page
  *   shows the same form sends the visitor on to the record's own address,
- *   when that page's filters let the record through.
+ *   when that page's record view is public, the visitor may open that
+ *   page's private or membership folder and its filters let the record
+ *   through.
  *
  * A page with a catalog widget keeps its segment (a product, a product
  * group), and an explicit ?r= wins over the segment.
@@ -2324,13 +2326,26 @@ function pg_sw_route_record_address($page_id, $segment)
             return pg_sw_form_widget_form_page_id($c) === $form_page_id;
         });
         if (!$detail_view) continue;
+        // A record view not open to every visitor (submitter_only,
+        // logged_in) gets no redirect either: the 301 would tell a signed-out
+        // visitor which names exist, drafts included. The answer is the one
+        // an unknown name gets.
+        if (!pg_sw_form_widget_public($detail_view['cfg'])) continue;
+        // Nor does a detail page in a private or membership folder this
+        // visitor may not open: this runs before any folder check, and the
+        // 301 would name what the detail page's own sign-in answer keeps
+        // hidden. A visitor with access keeps the redirect. Registration and
+        // guest folders pass (second argument): anyone gets in by signing up
+        // or choosing guest, and the 301 lets the detail page ask for that.
+        $detail_page = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+        $detail_page_name = is_array($detail_page) ? (string)$detail_page['page_name'] : '';
+        if ($detail_page_name === '') continue;
+        if (!check_view_access($detail_page['page_folder'], true)) continue;
         $record = pg_sw_record_by_address($form_page_id, $segment);
         if (!$record) continue;
         // A record the detail page's filters keep out gets no redirect: the
         // answer would tell which names exist.
         if (!pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($detail_view['cfg']), $record['id'], $detail_page_id)) continue;
-        $detail_page_name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
-        if ($detail_page_name === '') continue;
         return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true);
     }
     return '';

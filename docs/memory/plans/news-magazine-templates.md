@@ -22,6 +22,8 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4
 5. Done (#1272): list filter value read from a URL parameter (author, tag, section archives); 5b (link with parameter) stays open.
 6. Done (#1241): designed record pages count views; lists order by views, comments or views in recent days (most read).
 7a. Done (#1199): templates ship User Styles (block rules read from the editor); the installer preview prints template CSS.
+7p. Record-page privacy guards before the news template: the BlogPosting author never falls back to the login username; a list never redirects into a closed record page.
+7q. Follow-up: the 7 built-in templates print `submitter` (the login username) as the visible author of a blog post; a contact-name token and those bylines.
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
 
