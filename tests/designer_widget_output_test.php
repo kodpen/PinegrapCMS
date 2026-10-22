@@ -95,6 +95,31 @@ function test_designer_widget_output_description_in_a_div()
 	pg_assert_true(preg_match("/contentType: 'paragraph',[^}]*\n[^}]*_bindings: \{ text: '__description' \}/", $source) === 0, 'no paragraph');
 }
 
+// -- calendar empty state ------------------------------------------------------
+
+// One setting serves the month, the week and the upcoming list: the default
+// names no period, and the month sentence the editor used to store reads as
+// that default in either language.
+function test_designer_widget_output_calendar_empty_message()
+{
+	$default = lang('There are no events to show.');
+	pg_assert_same($default, pg_sw_calendar_empty_message(''), 'nothing set');
+	pg_assert_same($default, pg_sw_calendar_empty_message(null), 'no setting');
+	pg_assert_same($default, pg_sw_calendar_empty_message('There are no events this month.'), 'the old default');
+	pg_assert_same($default, pg_sw_calendar_empty_message('Bu ay etkinlik yok.'), 'the old default, in Turkish');
+	pg_assert_same('Nothing on the agenda.', pg_sw_calendar_empty_message('Nothing on the agenda.'), 'the operator\'s own');
+}
+
+// The editor writes and shows the same default, through its twin.
+function test_designer_widget_output_calendar_empty_message_editor()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_same(0, substr_count($source, "_sdT('There are no events this month.')"), 'the month sentence is not written any more');
+	pg_assert_contains("if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events to show.');", $source);
+	pg_assert_contains("var _cvNoEvents   = _swCalendarEmptyMessage(_cfg.empty_message);", $source);
+	pg_assert_contains("stored === 'There are no events this month.' || stored === 'Bu ay etkinlik yok.'", $source);
+}
+
 // Every widget's finished output goes through the alias before its srcset
 // pass, outside an e-mail.
 function test_designer_widget_output_fluid_alias_on_widgets()

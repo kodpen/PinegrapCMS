@@ -31612,7 +31612,7 @@ const StyleDesigner = (function () {
                 var _cvUpcoming   = parseInt(_cfg.number_of_upcoming_events, 10);
                 if (!(_cvUpcoming > 0)) _cvUpcoming = 10;
                 var _cvDateFormat = (typeof _cfg.date_format === 'string' && ['d.m.Y','Y-m-d','d M Y'].indexOf(_cfg.date_format) !== -1) ? _cfg.date_format : '';
-                var _cvNoEvents   = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('There are no events this month.');
+                var _cvNoEvents   = _swCalendarEmptyMessage(_cfg.empty_message);
                 var _cvEventPages = _swListCache.list_calendar_event_pages || null;
                 if (!_cvEventPages) _swFetchList('list_calendar_event_pages', 'pages', function () { renderProperties(); });
 
@@ -47073,6 +47073,18 @@ const StyleDesigner = (function () {
         return /^[a-z0-9-]+-widget( \[\d+\])?$/.test(String(name || ''));
     }
 
+    // The calendar's empty-state sentence as the settings show it. One
+    // setting serves every view (month, week, upcoming), so the default names
+    // no period; the month sentence the editor used to write, in either
+    // language, reads as that default. Twin of pg_sw_calendar_empty_message()
+    // (the server also turns an empty setting into the default).
+    function _swCalendarEmptyMessage(stored) {
+        if (typeof stored !== 'string' || stored === 'There are no events this month.' || stored === 'Bu ay etkinlik yok.') {
+            return _sdT('There are no events to show.');
+        }
+        return stored;
+    }
+
     // The config keys a kind starts with. Shared by "create a widget of this
     // kind" and "switch this widget to that kind" — one list of defaults,
     // not two that drift. Only keys the config does not already have are
@@ -47105,7 +47117,7 @@ const StyleDesigner = (function () {
         } else if (newType === 'order_view') {
             if (cfg.date_format === undefined) cfg.date_format = '';
         } else if (newType === 'calendar_view') {
-            if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events this month.');
+            if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events to show.');
             if (cfg.date_format === undefined) cfg.date_format = '';
             if (cfg.default_view === undefined) cfg.default_view = 'monthly';
             if (cfg.week_start === undefined) cfg.week_start = 'monday';
@@ -50609,7 +50621,7 @@ const StyleDesigner = (function () {
                             customName: _sdT('Month Grid'),
                             _bindings: { section: 'month_grid' } }),
                         createNode('content', { contentType: 'paragraph',
-                            text: _sdT('There are no events this month.'), cssClass: 'text-body-secondary',
+                            text: _sdT('There are no events to show.'), cssClass: 'text-body-secondary',
                             customName: _sdT('No Events Message'),
                             _bindings: { text: '__empty_message' } }),
                         loopArea

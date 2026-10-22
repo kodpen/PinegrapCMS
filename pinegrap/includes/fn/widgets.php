@@ -7346,6 +7346,20 @@ function _pg_sw_calendar_grid_html($range_start, $range_end, $focus_month, $even
     return $html . '</tbody></table></div>';
 }
 
+// The calendar's empty-state sentence. One setting serves every view the
+// visitor can switch to (a month, a week, the upcoming list), so the default
+// names no period. The editor wrote "There are no events this month." into
+// every new widget's settings, in the panel's language; that stored default
+// reads as the default too. The editor's twin is _swCalendarEmptyMessage().
+function pg_sw_calendar_empty_message($stored)
+{
+    $stored = is_string($stored) ? $stored : '';
+    if ($stored === '' || in_array($stored, array('There are no events this month.', 'Bu ay etkinlik yok.'), true)) {
+        return lang('There are no events to show.');
+    }
+    return $stored;
+}
+
 // Render a 'calendar_view' system widget: the events of the widget's
 // calendars, monthly, weekly or upcoming, one loop row per occurrence —
 // recurring events and their exceptions expanded exactly as the legacy
@@ -7549,8 +7563,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
         }
     }
 
-    $empty_message = (!empty($cfg['empty_message']) && is_string($cfg['empty_message']))
-        ? $cfg['empty_message'] : lang('There are no events this month.');
+    $empty_message = pg_sw_calendar_empty_message(isset($cfg['empty_message']) ? $cfg['empty_message'] : '');
     $static_values = pg_sw_escape_token_values(array(
         '__period_label'  => $period,
         '__month_name'    => pg_widget_month_name((int)date('n', $range_start)),
