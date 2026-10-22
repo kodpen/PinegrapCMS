@@ -8,9 +8,9 @@ description: Dashboard sales map widget 1 data side: files, map assets, adding a
 - The card's base is the world map. A country's own map is a second layer on top and exists only if we bundled a border file for that country (today TR). The right-hand list is region (province/state) level in BOTH views: the map gives scale, the list gives breakdown.
 
 ## How is a new country added?
-- Three things: generate the SVG (`docs/_tools/build_map_svg.js`, modes `world` and `regions <ADM0_A3>`), add a row to `pg_sales_map_region_maps()`, write the region-name table. `api.php` knows nothing country-specific; everything country-specific goes through that registry.
+- Three things: generate the SVG (`docs/_tools/build_map_svg.js`, modes `world` and `regions <ADM0_A3>`; not in the repository, ask the owner), add a row to `pg_sales_map_region_maps()`, write the region-name table. `api.php` knows nothing country-specific; everything country-specific goes through that registry.
 
-## Map files and region names
+## Where are the map files, and how is a region named and matched?
 - Maps in `assets/maps/`: `world-countries.svg` (path id = ISO 3166-1 alpha-2), `tr-regions.svg` (ISO 3166-2). Source Natural Earth (public domain). Natural Earth's own region names are NOT used (spellings like "Zinguldak", "Kinkkale", "K. Maras"); only geometry and ISO code are taken.
 - Region name from three sources, in this order: the country's map table -> the store's `states` table ("TX" -> "Texas") -> the raw order value.
 - Country name goes through `lang()`; **the value sent to the filter is the raw stored name**.

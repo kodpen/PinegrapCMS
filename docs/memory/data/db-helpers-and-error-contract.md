@@ -1,14 +1,23 @@
 ---
 name: db-helpers-and-error-contract
-description: db()/db_items()/db_value()/e()/escape()/escape_like() helpers, singular table names, and why queries return false instead of throwing (mysqli_report OFF).
+description: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() returns false (mysqli_report OFF).
 ---
 
 ## Which DB helpers exist?
-- `db('SQL')` runs a query. `db_items('SQL')` returns a result array. `db_value('SQL')` returns a single value.
-- `e($val)` = SQL escape (`mysqli_real_escape_string`); `escape($val)` = same (old alias); `escape_like($val)` = escape for LIKE queries.
-- Table names are SINGULAR: `page` (not pages!), `style`, `pregion`, `cregion`, `dregion`, `forms`, `form_data`.
-- `products_images_xref` has NO `id` column: `ORDER BY id` is a fatal error.
+- In `includes/fn/core.php`: `db_value('SQL')` one value, `db_values()` one column as a list, `db_item()` one row, `db_items('SQL', $key_column = '')` all rows as an array: walk it with `foreach`, never `mysqli_fetch_assoc()`. `get_file.php` keeps its own copies of `db()`, `db_value()`, `db_item()`, `db_items()` and `escape()` (`core/get-file-shared-code.md`).
+- `db('SQL')` runs anything and shapes its answer by the result: `true` for a write, `''` for no row, the value for one row of one column, the row for one row, a list for more. A loop over `db("SELECT ...")` breaks when exactly one row comes back; read with a helper of one shape.
+- `e($val)` escapes a quoted SQL value (`mysqli_real_escape_string`; `escape()` is the older name; null gives `''`): `WHERE name = '" . e($name) . "'`.
+- LIKE: `e(escape_like($val))`. `escape_like()` only puts a backslash before `%` and `_` and escapes no quote, so alone it is an SQL injection: the translation search (`translate_api_strings_list()`, `translations.php`) shipped that way in 2026.4.6 and was fixed in 2026.4.7. The other callers build the pattern with it and pass the whole pattern through `escape()`.
 
-## Does a failed query throw?
-- No: a query error returns `false`, it does not throw. `mysqli_report(MYSQLI_REPORT_OFF)` is set in `install/index.php`, `router.php` and `init.php`, so front end, panel, `api.php` and scheduled jobs share one contract. THESE LINES MUST NOT BE REMOVED. To see an error read `mysqli_error(db::$con)`.
-- Why: the codebase is written to this contract: 96 places use `mysqli_query(...) or exit(...)`, others `if (!$result)` or a leading `@`. Since PHP 8.1 the mysqli default reports errors as EXCEPTIONS; none of those checks sees an exception, so every SQL error became an uncaught fatal: an empty-body 500, cause only in error.log.
+## What does a failed query do?
+- A raw `mysqli_query()` returns `false` and never throws: `init.php`, `router.php` and `install/index.php` call `mysqli_report(MYSQLI_REPORT_OFF)`. NEVER remove those lines. The code is written to that contract (2026-10-21: about 2,430 raw calls, about 2,040 with `or output_error(...)`, 108 with `or exit(mysqli_error(...))`, the rest `if (!$result)` or a leading `@`). Since PHP 8.1 mysqli throws by default; none of those checks sees an exception, so every SQL error became an empty-body 500 with the cause only in error.log.
+- The helpers never return `false`: `pg_db_run()` writes the MySQL text to the error log and ends the request with `output_error('Query failed.')`. `output_error()` shows the text only with `DEBUG` (Verbose Database Errors) or during install/upgrade, otherwise a hint to turn that setting on (#951; before it the text was in every visitor's message). Under `pg_error_throws(true)` (JSON endpoints such as `settings_pane.php`) or in the SEO pass (`pg_seo_rendering()`) `output_error()` throws a `RuntimeException` instead.
+- While the upgrade runner runs, `install_query_failed()` decides first: "already applied" errors (1050, 1060, 1061, 1091, 1146 on DROP) make the helpers answer empty, any other error throws `InstallQueryException` (`release/upgrade-runner-behavior.md`).
+- So a query that may fail on purpose never goes through a helper to find out: probe a table or column a migration adds first (`release/schema-probe-rules.md`). Code that must live through a failure (`includes/fn/innodb.php`, `includes/fn/db_maintenance.php`) calls `mysqli_query()` and reads `mysqli_errno()` / `mysqli_error(db::$con)`.
+
+## Which table names?
+- Singular: `page` (there is no `pages`), `style`, `pregion`, `cregion`, `dregion`, `forms`, `form_data`. A plural name is a failed query, so the "Query failed." screen.
+
+Changing the schema: `release/how-to-add-migration.md`.
+
+Related: docs/memory/data/sql-silent-wrong-results.md, docs/memory/data/table-engines-and-row-size.md

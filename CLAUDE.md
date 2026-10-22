@@ -1,12 +1,15 @@
 # Pinegrap CMS — Claude context
 
 Loaded in every session, so it holds only the rules that apply to every task.
-Everything else is in memory files and skills, opened only when needed.
+Everything else is in memory files, opened only when needed.
 
 ## Memory
 
-- Index: `docs/memory/README.md` — one line per file. Read it, then open only
-  the files the task needs. It also lists the other documents under `docs/`.
+- Index: `docs/memory/README.md` lists the memory folders and the other
+  documents under `docs/`. Each folder's `README.md` starts with the area's
+  key rules, then lists its files one line each. Read the folder README the
+  task needs (table below), follow its key rules, then open only the files
+  the task needs.
 - Changes are kept as memory; there is no change log. When something must be
   remembered, or a PR changes behaviour (what it does now, why, the symptom it
   fixed, the PR number), add or update a file under
@@ -17,38 +20,40 @@ Everything else is in memory files and skills, opened only when needed.
 - Plans are memory files in `docs/memory/plans/`: remaining work, decisions
   made, open questions, where to start. When a plan is finished, its lasting
   decisions move to the topic folder and the plan file is deleted.
-- The index is generated: run `php tools/memory_index.php` after adding,
-  renaming or deleting a file and commit the result. Never edit or merge it
-  by hand; CI runs `--check`.
+- The indexes are generated: run `php tools/memory_index.php` after adding,
+  renaming or deleting a file and commit the result. Never edit or merge a
+  file list by hand; CI runs `--check`. Only a folder's key rules are written
+  by hand, between its `key-rules:start` / `key-rules:end` marker lines; the
+  tool keeps them. After a merge conflict in an index, run the tool again.
 
-## Skills — load before the matching work
+## Memory folders — read before the matching work
 
-Load with the `Skill` tool, or read `.claude/skills/<name>/SKILL.md`. When you
-start a sub-agent, write the path into its task.
+Read `docs/memory/<folder>/README.md` first. When you start a sub-agent,
+write that path into its task.
 
-| Work | Skill |
+| Work | Folder |
 |---|---|
-| SQL, reading tables/columns, counters, reports | `pinegrap-veritabani` |
-| A migration step that changes the schema | `pinegrap-sema-adimi` |
-| A new file, function, folder or library | `pinegrap-yeni-dosya` |
-| User-facing text (`lang()`, `_sdT()`, `tr.json`) | `pinegrap-ceviri` |
-| JavaScript (`.src.js`/`.min.js`, panel, front end) | `pinegrap-js-varliklari` |
-| CSRF, escaping, redirects, secrets, file integrity, server rules | `pinegrap-guvenlik` |
-| `waf.php`, rate limits, IP lists, security headers | `pinegrap-waf` |
-| Panel screen, toolbar, form, settings modal | `pinegrap-ui-deseni` |
-| Role gates, permission columns, designer content roles | `pinegrap-roller-yetki` |
-| Visual designer, system widget, data binding, palette component | `pinegrap-tasarimci-widget` |
-| External API, webhook, connector, marketplace, e-document | `pinegrap-dis-api` |
-| ERP (accounting) module | `pinegrap-erp` |
-| An audit, or proposing "dead code / cleanup" | `pinegrap-verilmis-kararlar` |
+| SQL, reading tables/columns, SQL traps | `data/` |
+| High-volume counters, rollups, visitor statistics, sitemap/noindex | `visitors/` |
+| A migration step that changes the schema, versions, changelog | `release/` |
+| New file, function, folder or library; user-facing text (`lang()`, `_sdT()`, `tr.json`); JavaScript twins and bundles; CSRF, escaping, secrets, file integrity; roles and permission columns | `core/` |
+| Redirects, server rules, update/TLS, uploads, images, cookie consent | `platform/` |
+| `waf.php`, rate limits, IP lists, security headers | `waf/` |
+| Panel screen, toolbar, form, settings modal, panel JavaScript | `ui/` |
+| Visual designer, system widget, data binding, palette component, designer content roles | `designer/` |
+| External API, webhooks, OAuth, MCP, connected accounts | `api/` |
+| Orders, cart, checkout, products, marketplaces | `commerce/` |
+| ERP (accounting) module, e-documents | `erp/` |
+| Workspace module and its endpoints | `workspace/` |
+| An audit, or proposing "dead code / cleanup" | `workflow/` (`decisions-made.md`) |
 
-Read the last one **before** writing any audit finding: it lists decisions
-already made.
+Read `docs/memory/workflow/decisions-made.md` **before** writing any audit
+finding: it lists decisions already made.
 
 ## Project in two lines
 
 PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 5 + jQuery). Code
-lives under `pinegrap/`; paths in memory and skills are relative to it. Open
+lives under `pinegrap/`; paths in memory are relative to it. Open
 version **2026.11.0**; details in `docs/memory/release/release-status.md`.
 Version numbers are `YYYY.M.PATCH` from 2026.11.0 on (2026.11.0, 2026.11.1,
 2026.12.0; month without a leading zero, three parts always):
@@ -114,8 +119,9 @@ the search API are blocked in cloud sessions.
    the idempotent helpers (`install_add_column()` family); never
    `db("ALTER TABLE …")`. Ask before any ADD/CREATE/DROP/MODIFY/CHANGE.
 6. **Owner decisions bind.** Places repeatedly reported as "dead code",
-   "unused field" or "missing check" are listed in `pinegrap-verilmis-kararlar`;
-   leave them. If you think one is wrong, ask before changing it.
+   "unused field" or "missing check" are listed in
+   `docs/memory/workflow/decisions-made.md`; leave them. If you think one is
+   wrong, ask before changing it.
 7. **Four silent traps:** table names are singular (`page`, `style`,
    `pregion`, `forms`) and a failed query returns `false` without throwing
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,

@@ -3487,7 +3487,7 @@ function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $d
                         // then get date & time in user's timezone.
                         if ((USER_LOGGED_IN) && (USER_TIMEZONE != '') && ((preg_match("/[^\\\]T/", $date_format) == 1) || (preg_match("/[^\\\]e/", $date_format) == 1))) {
                             $date = new DateTime('@' . strtotime($data));
-                            $date->setTimezone(new DateTimeZone(USER_TIMEZONE));
+                            $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
                             $output = $date->format($date_format);
                             // Otherwise get date & time in site's timezone.
                         } else {

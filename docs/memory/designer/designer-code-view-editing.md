@@ -5,7 +5,7 @@ description: How a change typed in the designer's code view reaches the tree: di
 
 ## How does typing reach the tree?
 - `onChange` grows `_sdCode.dirty` (mapped through later changes) and arms a 400 ms timer; `_sdCodeApply()` runs then, or at once from `_sdCodeFlush()` (before `saveAjax()` and `_pgTabsSwitch()`). The facade's own writes are `busy`, not typing.
-- Scope (`_sdCodeScopeOf`): the innermost tracked range holding the whole span: a node, the `<body>` tag (attributes go to the root node) or `content` (what lies between the body tag and the scripts). The element is read from the syntax tree (`ed.syntaxTree()`, Lezer HTML); an error node or a mismatched/incomplete close tag in the scope means nothing is applied until the text parses (lint marks it). When the element no longer covers the span, `_sdCodeApplyOuter()` widens to the parent.
+- Scope (`_sdCodeScopeOf`): the innermost tracked range holding the whole span: a node, the `<body>` tag (attributes go to the root node) or `content` (between the body tag and the scripts). The element is read from the syntax tree (`ed.syntaxTree()`, Lezer HTML); an error node or a mismatched/incomplete close tag in the scope means nothing is applied until the text parses (lint marks it). If the element no longer covers the span, `_sdCodeApplyOuter()` widens to the parent.
 - Owner rule (`_sdCodeOwnerOf`): an element whose `<` is where a node's range starts is that node (ranges are tight, `<` to the last character, grow false: a tag typed just before a node is new). An element with no owner but owned elements inside becomes a `semantic` wrapper (`_sdCodeNewSemantic`); one with none inside becomes a Custom HTML holder with the typed markup and goes to `designer/import_fragment` (`_sdCodeImport`); the answer replaces the holder, no answer leaves it. Text beside elements at body level or in a mixed plain element becomes `span` content nodes, as the converter does.
 
 ## What changes in place?
@@ -14,10 +14,10 @@ description: How a change typed in the designer's code view reaches the tree: di
 - `_sdCodeApplyText` by `_sdCodeTextKind()`: `plain` (semantic text node, entities decoded, pre/textarea/code untrimmed, `textPosition` of a button or link), `inner` (content innerHTML minus its owned children, which stay nodes and go when removed), `outer` (Custom HTML = its markup), `none`.
 - Children (`_sdCodeReconcileChildren`) are rebuilt only for a free node whose children the emitter placed (`entry.atomic` false) and whose text is not `inner`/`outer`; a half-locked node keeps its children. A shared component's or widget's elements inside a page node keep its `shared_ref` in place (`_sdCodeSharedRefFor`); their own changes arrive with the node as scope and mark `_sharedDirty`.
 
-## File tabs and the dialog
+## What do file tabs and the dialog do?
 - A CSS/JS/JSON entry of the assets panel opens as a tab beside the page (`_sdCodeTabOpen(spec)`: `load`, `save`, `url` of an external link, `readOnly`). Ctrl+S in a file tab saves that file (`_sdCodeSaveShortcut()`), elsewhere the design. The props panel's code fields use `window.openCodeEditor()` (`codemirror_modal.js`, on the facade); no CodeMirror 5 is loaded.
 
-## Undo, selection, locks
-- `saveState('run:code')` once per apply, then `render()`; the refresh writes back the tree's spelling of the text (quotes, entities, indentation) with a cursor-preserving diff. Ctrl+Z in the editor undoes typed text and applies again; Ctrl+Z outside restores the tree and the text follows.
+## How do undo, selection and locks work?
+- `saveState('run:code')` once per apply, then `render()`; the refresh writes back the tree's spelling (quotes, entities, indentation) with a cursor-preserving diff. Ctrl+Z in the editor undoes typed text and applies again; outside it restores the tree and the text follows.
 - `selectedNode` is dropped when its node left every tree (`_sdCodeNodeExists`). A refused keystroke shows one toast per 2.5 s naming the lock (`_sdCodeOnLockHit`).
-- Read-only follows `_collab.mayEdit` (`_sdCodeSyncMode()`); the switch reads Edit when typing is allowed, Code otherwise.
+- Read-only follows `_collab.mayEdit` (`_sdCodeSyncMode()`); the switch reads Edit when typing is allowed, else Code.

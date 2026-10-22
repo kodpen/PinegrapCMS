@@ -901,13 +901,12 @@ if ($liveform->check_form_errors() == false) {
             $username = strtok($submitter_email_address, '@');
             $username = get_unique_username($username);
 
-            // Auto-registration: create the member with a modern password hash.
-            // The password is random and nobody is told it: the visitor sets
-            // their own through the set password link issued below.
+            // Created without a password (algo 3, which no password matches):
+            // the visitor sets one through the set password link issued below,
+            // or on the change password screen while still signed in.
             $user_id = create_member_user(array(
                 'username' => $username,
                 'email'    => $submitter_email_address,
-                'password' => bin2hex(random_bytes(16)),
             ));
 
             pg_set_password_link_issue($user_id);
@@ -1406,6 +1405,9 @@ if ($liveform->check_form_errors() == false) {
                     'subject' => $submitter_email_subject,
                     'format' => $submitter_email_format,
                     'body' => $body,
+                    // The sender's copy may carry the set password link, which must
+                    // stay out of the failure log and the delivery-failed notice.
+                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== '')),
                     'queue' => true));
 
             }

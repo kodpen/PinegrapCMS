@@ -82,7 +82,7 @@ if (isset($_POST['parasut_action'])) {
                 $liveform->add_notice(lang(array(
                     'string' => '{var:1} created in Parasut.',
                     'vars' => $kind_label,
-                )) . ' (ID: ' . h($result['parasut_invoice_id']) . ')' . $state_note . _parasut_variance_notice($result));
+                )) . ' (ID: ' . h($result['parasut_invoice_id']) . ')' . $state_note);
             } else {
                 $liveform->mark_error('_error', lang('Parasut Invoice Error') . ': ' . h($result['error']));
             }
@@ -2436,11 +2436,7 @@ if (!$_POST) {
     $output_parasut_buttons      = '';
     $output_parasut_forms        = '';
     $output_parasut_status_rows  = '';
-    if (
-        defined('ENABLE_PARASUT') && ENABLE_PARASUT
-        && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== ''
-        && defined('PARASUT_CLIENT_ID') && PARASUT_CLIENT_ID !== ''
-    ) {
+    if (parasut_order_buttons_on()) {
         $parasut_order_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int)$_GET['id'];
 
         // Determine shippable vs non-shippable line composition.

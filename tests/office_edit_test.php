@@ -189,6 +189,49 @@ function test_office_edit_typed_values()
 	pg_assert_same(null, pg_office_xlsx_clean_text("\xC3\x28"), 'not UTF-8');
 }
 
+function test_office_edit_text_format_is_its_first_section()
+{
+	pg_assert_true(pg_office_xlsx_text_format('@'), 'the Text format');
+	pg_assert_true(pg_office_xlsx_text_format('"No: "@'), 'text with a label');
+	pg_assert_true(pg_office_xlsx_text_format('"a;b"@'), 'a semicolon inside quotes does not start a section');
+	pg_assert_true(pg_office_xlsx_text_format('\;@'), 'nor an escaped one');
+	pg_assert_true(pg_office_xlsx_text_format('[Red]@'), 'a colour before the text');
+	pg_assert_false(pg_office_xlsx_text_format('_-* #,##0.00 "₺"_-;\-* #,##0.00 "₺"_-;_-* "-"?? "₺"_-;_-@_-'), 'the Turkish accounting format shows numbers');
+	pg_assert_false(pg_office_xlsx_text_format('_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)'), 'and the US one');
+	pg_assert_false(pg_office_xlsx_text_format('d/m/yy;@'), 'a date with a text section');
+	pg_assert_false(pg_office_xlsx_text_format('[$-409]mmmm\ d\,\ yyyy;@'), 'a locale date with a text section');
+	pg_assert_false(pg_office_xlsx_text_format('"@";@'), 'an @ in quotes is a letter');
+	pg_assert_false(pg_office_xlsx_text_format('\@0'), 'an escaped @ too');
+	pg_assert_false(pg_office_xlsx_text_format('_@0'), 'a padding the width of @');
+	pg_assert_false(pg_office_xlsx_text_format('[@]0'), 'an @ in brackets');
+	pg_assert_false(pg_office_xlsx_text_format('0.00'), 'a plain number');
+	pg_assert_false(pg_office_xlsx_text_format(';;;@'), 'numbers hidden, text shown');
+	pg_assert_false(pg_office_xlsx_text_format(''), 'no format');
+}
+
+function test_office_edit_style_kinds_read_sectioned_formats()
+{
+	$ns = office_edit_test_ns();
+	$path = office_edit_test_package(array(
+		'xl/styles.xml' => '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="' . $ns . '"><numFmts count="4">'
+			. '<numFmt numFmtId="164" formatCode="' . htmlspecialchars('_-* #,##0.00 "₺"_-;\-* #,##0.00 "₺"_-;_-* "-"?? "₺"_-;_-@_-', ENT_QUOTES, 'UTF-8') . '"/>'
+			. '<numFmt numFmtId="165" formatCode="d/m/yy;@"/>'
+			. '<numFmt numFmtId="166" formatCode="' . htmlspecialchars('"No: "@', ENT_QUOTES, 'UTF-8') . '"/>'
+			. '<numFmt numFmtId="167" formatCode="0.00"/>'
+			. '</numFmts><cellXfs count="5"><xf numFmtId="164"/><xf numFmtId="165"/><xf numFmtId="166"/><xf numFmtId="49"/><xf numFmtId="167"/></cellXfs></styleSheet>',
+	));
+	$zip = new ZipArchive();
+	$zip->open($path);
+	$kinds = pg_office_xlsx_style_kinds($zip);
+	$zip->close();
+	@unlink($path);
+
+	pg_assert_same(array(2 => true, 3 => true), $kinds['text'], 'only the Text format and a format whose numbers are text');
+	pg_assert_same('date', isset($kinds['date'][1]) ? $kinds['date'][1] : '', 'd/m/yy;@ is a date');
+	pg_assert_same(array('kind' => 'number', 'value' => '45.5'), pg_office_xlsx_typed('45,5', 'number', '', false), 'a number typed in an accounting cell');
+	pg_assert_same(array('kind' => 'number', 'value' => '39046'), pg_office_xlsx_typed('2006-11-25', 'number', 'date', false), 'a date typed in a d/m/yy;@ cell');
+}
+
 function test_office_edit_patch_sheet_rewrites_only_changed_rows()
 {
 	$row1 = '<row r="1" spans="1:3"><c r="A1" t="s"><v>0</v></c><c r="C1"><v>7</v></c></row>';

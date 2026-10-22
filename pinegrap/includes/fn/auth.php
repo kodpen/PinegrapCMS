@@ -3675,8 +3675,10 @@ function initialize_user()
         // If the user has a timezone set that is not the default,
         // and the PHP version is high enough to support a user timezone,
         // then set user timezone.
+        // An old zone name is read as its current one, and one this PHP does
+        // not know as none (the site's zone): new DateTimeZone() throws for it.
         if (($user['timezone'] != '') && (version_compare(PHP_VERSION, '5.2.0', '>=') == true)) {
-            define('USER_TIMEZONE', $user['timezone']);
+            define('USER_TIMEZONE', pg_timezone_canonical($user['timezone']));
         } else {
             define('USER_TIMEZONE', '');
         }

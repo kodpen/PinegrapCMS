@@ -11,12 +11,12 @@ description: Cart widget row types (donation, offer gift, normal), pending offer
 | normal | qty stepper | none |
 - Donation amount in `cart_action.php`: thousands separator stripped, divided by the rate, converted to kuruş with `round()`; a line <= 0 is deleted.
 
-## Pending offers (campaign gifts)
+## How are pending offers (campaign gifts) drawn?
 - `_pg_render_pending_offers()`, section binding `pending_offers`, token `__pending_offers`.
 - It has its OWN `<form>`: inside the cart update form the HTML parser drops the inner form and "Ekle" submits the wrong form.
 - Field names must match legacy exactly (`add_pending_offers()` parses with substr/explode).
 
-## Tax/shipping notice
+## What does the tax/shipping notice say?
 - `_pg_cart_tax_shipping_notice()` -> `__tax_shipping_notice`. It states only what is truly unknown; returns empty when neither applies.
 
 ## How are group heading bands built?
