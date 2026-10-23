@@ -412,9 +412,12 @@ function ws_events_record_of($event, $payload)
 }
 
 /**
- * Is this event written into the channels that watch its record? The orders'
- * events, a changed contact, a changed product and a product low in stock. A
- * submitted form is not: nobody can have tagged it before it existed.
+ * Is this event written into the channels that watch its record? An order
+ * placed, moved to another status, shipped, delivered or cancelled, a changed
+ * contact, a changed product and a product low in stock. A submitted form is
+ * not: nobody can have tagged it before it existed. A return requested
+ * (order.return.requested) is not either: it only starts scheduled actions,
+ * and ws_watch_line() has no line for it.
  *
  * @param string $event
  * @return bool
