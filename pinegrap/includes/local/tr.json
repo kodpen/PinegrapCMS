@@ -26142,5 +26142,12 @@
     "An article taken off the site can still show in the site search until the editors update the search index.": "Siteden kaldırılan bir haber, editörler arama dizinini güncelleyene kadar site aramasında görünmeye devam edebilir.",
     "bridge-photo.jpg": "kopru-fotografi.jpg",
     "To change your article or take it back, write to the desk below; an editor makes the change.": "Haberinizi değiştirmek ya da geri çekmek için aşağıdan masaya yazın; değişikliği bir editör yapar.",
-    "jane.cooper": "ayse.yilmaz"
+    "jane.cooper": "ayse.yilmaz",
+    "Only an active repeat can change its till.": "Yalnız süren bir tekrarın hesabı değiştirilebilir.",
+    "Only a repeat written as paid takes money from a till.": "Yalnız ödenmiş olarak yazılan bir tekrar bir hesaptan para çıkarır.",
+    "The repeat could not be found.": "Tekrar bulunamadı.",
+    "erp expense repeat till was changed": "erp gider tekrarının hesabı değiştirildi",
+    "The next ones are paid from the chosen till. A date still waiting is written on the next run.": "Sonrakiler seçilen hesaptan ödenecek. Bekleyen bir tarih bir sonraki çalışmada yazılır.",
+    "Change the till": "Hesabı değiştir",
+    "Only the next ones change; the expenses it wrote keep their till.": "Yalnız sonrakiler değişir; tekrarın yazdığı giderler kendi hesaplarında kalır."
 }
