@@ -1905,12 +1905,12 @@ $widgets = array(
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-outline-primary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('a', 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/3f6212/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '24', 'height' => '24', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),
-                ), array('href' => '#', '_attrs' => array(
-                    $attr('role', 'button'),
+                ), array('_attrs' => array(
+                    $attr('type', 'button'),
                     $attr('data-bs-toggle', 'dropdown'),
                     $attr('aria-expanded', 'false'),
                 ))),
@@ -2911,7 +2911,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.0.10',
+    'version'     => '1.0.11',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

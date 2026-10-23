@@ -1536,12 +1536,12 @@ $widgets = array(
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('a', 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/4f6bed/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '32', 'height' => '32', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold small', lang('First Name'), $bind('__user_first_name')),
-                ), array('href' => '#', '_attrs' => array(
-                    array('name' => 'role', 'value' => 'button'),
+                ), array('_attrs' => array(
+                    array('name' => 'type', 'value' => 'button'),
                     array('name' => 'data-bs-toggle', 'value' => 'dropdown'),
                     array('name' => 'aria-expanded', 'value' => 'false'),
                 ))),
@@ -2372,7 +2372,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.12',
+    'version'     => '2.4.13',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

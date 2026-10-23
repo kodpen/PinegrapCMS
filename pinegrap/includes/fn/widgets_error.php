@@ -109,6 +109,18 @@ function _pg_err_back_url()
     return ($path === $here) ? '' : $path;
 }
 
+// The address the error page names as the one asked for. A background
+// render (the editor's Preview, the search index pass) runs inside another
+// request - an api.php call, the editor's save - whose address is not the
+// page's: there the page's own address stands in, the address a visitor who
+// opens the page directly sees.
+function pg_sw_error_requested_url($background, $page_name, $request_url, $path = '/')
+{
+    if (!$background) return (string)$request_url;
+    $page_name = trim((string)$page_name, '/');
+    return (string)$path . ($page_name === '' ? '' : encode_url_path($page_name));
+}
+
 // ============================================================================
 // error_page
 // ============================================================================
@@ -174,7 +186,11 @@ function _render_system_widget_error_page($tree_json, $widget_id, $cfg = array()
     return _pg_member_apply_tokens($rendered, array(
         '__error_code'    => ($code >= 400) ? (string)$code : '',
         '__error_message' => h($message),
-        '__requested_url' => h(defined('REQUEST_URL') ? (string)REQUEST_URL : ''),
+        '__requested_url' => h(pg_sw_error_requested_url(
+            function_exists('pg_seo_rendering') && pg_seo_rendering(),
+            (isset($_GET['page']) && is_string($_GET['page'])) ? $_GET['page'] : '',
+            defined('REQUEST_URL') ? (string)REQUEST_URL : '',
+            defined('PATH') ? PATH : '/')),
         '__site_name'     => h(_pg_member_site_name()),
         '__home_url'      => h($home_url),
         '__back_url'      => h($back_url),

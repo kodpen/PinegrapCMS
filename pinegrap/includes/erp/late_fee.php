@@ -131,8 +131,8 @@ function erp_late_fee_settings_save($rate_text, $tax_rate_text)
  * charged, when that is later - to the day a payment or a return took its
  * part off, and on what is still open to the as-of date. A payment on or
  * before the starting day earns nothing; one after the as-of date is not
- * known yet. A month is thirty days. Rounded once, at the end, as
- * erp_apply_rate() rounds.
+ * known yet. A month is thirty days. Rounded once, at the end, half away
+ * from zero.
  *
  * @param int    $total       What the invoice claims, kurus
  * @param string $due_date    Y-m-d

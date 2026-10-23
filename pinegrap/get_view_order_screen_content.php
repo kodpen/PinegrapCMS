@@ -2523,15 +2523,15 @@ function get_view_order_screen_content($properties)
 
         }
 
-        $auto_registration = false;
-        $auto_registration_email_address = '';
-        $auto_registration_password = '';
-
-        if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
-            $auto_registration = true;
-            $auto_registration_email_address = ($_SESSION['software']['auto_registration']['email_address'] ?? '');
-            $auto_registration_password = ($_SESSION['software']['auto_registration']['password'] ?? '');
-        }
+        // An account the order's auto-registration opened. No password is
+        // handed out: $auto_registration_password, which layouts written
+        // before print under a "Password" label, carries a sentence with
+        // the set password link (see pg_cf_new_account_password_note()).
+        $auto_registration_email_address = pg_order_new_account_email();
+        $auto_registration = ($auto_registration_email_address !== '');
+        $auto_registration_for_customer = pg_order_new_account_drawn_for_customer();
+        $auto_registration_set_password_url = $auto_registration ? pg_order_new_account_link() : '';
+        $auto_registration_password = $auto_registration ? pg_cf_new_account_password_note($auto_registration_set_password_url, $auto_registration_for_customer) : '';
 
         $currency = false;
         $currency_attributes = '';
@@ -2661,6 +2661,8 @@ function get_view_order_screen_content($properties)
             'auto_registration' => $auto_registration,
             'auto_registration_email_address' => $auto_registration_email_address,
             'auto_registration_password' => $auto_registration_password,
+            'auto_registration_set_password_url' => $auto_registration_set_password_url,
+            'auto_registration_for_customer' => $auto_registration_for_customer,
             'currency_symbol' => VISITOR_CURRENCY_SYMBOL,
             'currency_code' => VISITOR_CURRENCY_CODE_FOR_OUTPUT,
             'currency' => $currency,

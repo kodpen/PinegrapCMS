@@ -4595,6 +4595,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'labels'            => array(
                 'no_match'           => lang('No products match this selection.'),
                 'cross_sell_heading' => lang('Frequently bought together'),
+                // The words of pg_carousel_image_label(), numbers filled in
+                // by the script when it rebuilds the gallery.
+                'image_of'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),
             ),
         );
     }
@@ -5272,7 +5275,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '3';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '4';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

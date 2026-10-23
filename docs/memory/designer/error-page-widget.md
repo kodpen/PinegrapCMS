@@ -15,7 +15,7 @@ description: The error page system widget: when it is shown, which block shows f
 - `get_page_content.php` asks `pg_sw_error_title()` before it writes `<title>`: "Down for Maintenance" for a 503, otherwise the page's own title, on the designed and the legacy error page alike. The starter sites title their error page "Page Not Found", which the maintenance screen showed before. 403 and 410 keep the page's title.
 
 ## Which tokens does it fill?
-- `__error_code`, `__error_message` (plain text, markup dropped), `__requested_url`, `__site_name`, `__home_url`, `__back_url` (the link drops without a same-site referrer).
+- `__error_code`, `__error_message` (plain text, markup dropped), `__requested_url` (the visitor's address; in the editor's Preview and the search index pass the page's own, `pg_sw_error_requested_url()`), `__site_name`, `__home_url`, `__back_url` (the link drops without a same-site referrer).
 - Tests: `tests/error_page_test.php`.
 
 Related: docs/memory/designer/account-widget-forms.md
