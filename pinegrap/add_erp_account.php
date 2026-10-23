@@ -62,7 +62,16 @@ if (!$_POST) {
                 go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $existing_id);
             }
 
-            $prefill = erp_account_data_from_contact($from_contact);
+            // Opened from an order's documents card: what the card leaves
+            // empty comes from that order's billing block, as the order's
+            // first invoice would open the account (erp_account_data_for_contact()).
+            // Only an order of this contact counts.
+            $from_order = is_scalar($_GET['order_id'] ?? null) ? (int) $_GET['order_id'] : 0;
+            $order = ($from_order > 0)
+                ? db_item("SELECT * FROM orders WHERE id = '" . $from_order . "' AND contact_id = '" . $from_contact . "' LIMIT 1")
+                : null;
+
+            $prefill = erp_account_data_for_contact($from_contact, is_array($order) ? $order : null);
 
             if (is_array($prefill)) {
                 foreach (array('title', 'tax_number', 'tax_office', 'email', 'phone', 'address', 'district', 'city', 'state', 'postcode') as $field) {
