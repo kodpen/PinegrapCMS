@@ -18,6 +18,9 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/account_sync.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
 
 // A paid web order as the database hands it back: every value a string.
 function erp_auto_invoice_test_order($overrides = array())
@@ -240,4 +243,116 @@ function test_erp_auto_invoice_filters_before_the_step()
 	}
 
 	pg_assert_same(array('tax_number_only' => false, 'min_total' => 0), erp_auto_invoice_filters());
+}
+
+// The contact card's tax number against the account's, as tax numbers are
+// matched: letters and digits only, upper case, the final consumer's number
+// as none. Only a card that names a number can differ.
+function test_erp_tax_numbers_differ()
+{
+	pg_assert_same(false, erp_tax_numbers_differ('3130557669', '3130557669'));
+	pg_assert_same(false, erp_tax_numbers_differ('313 055 76-69', '3130557669'), 'separators');
+	pg_assert_same(false, erp_tax_numbers_differ('de 123 456 789', 'DE123456789'), 'letter case');
+	pg_assert_same(false, erp_tax_numbers_differ('', '3130557669'), 'an empty card');
+	pg_assert_same(false, erp_tax_numbers_differ('  ', ''), 'a blank card');
+	pg_assert_same(false, erp_tax_numbers_differ('11111111111', '3130557669'), 'the final consumer on the card');
+	pg_assert_same(false, erp_tax_numbers_differ('', ''));
+
+	pg_assert_same(true, erp_tax_numbers_differ('1234567808', '3130557669'), 'another number');
+	pg_assert_same(true, erp_tax_numbers_differ('3130557669', ''), 'an account without one');
+	pg_assert_same(true, erp_tax_numbers_differ('3130557669', '11111111111'), 'the final consumer on the account');
+	pg_assert_same(true, erp_tax_numbers_differ('0313055766', '313055766'), 'a lost leading zero');
+	pg_assert_same(true, erp_tax_numbers_differ('TR3130557669', '3130557669'), 'a prefix on one side');
+}
+
+// A card whose number differs from the account's holds the automatic
+// invoice, whichever moment the store chose; without it the order goes.
+function test_erp_auto_invoice_tax_number_differs_holds()
+{
+	$paid = erp_auto_invoice_test_order();
+	$unpaid = erp_auto_invoice_test_order(array('paid_at' => '0'));
+
+	pg_assert_same('tax_number_differs', erp_auto_invoice_decision('order_paid', 'order_paid', $paid, '', array(), '', true));
+	pg_assert_same('tax_number_differs', erp_auto_invoice_decision('order_shipped', 'order_shipped', $unpaid, '', array(), '', true));
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $paid, '', array(), '', false));
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $paid, ''), 'not asked');
+}
+
+// With "only buyers with a tax number" on, an account without one under a
+// card that names one is held, not filtered: the number is there, on the
+// card. The payment still comes first.
+function test_erp_auto_invoice_tax_number_differs_beats_the_filter()
+{
+	$only = array('tax_number_only' => true);
+
+	pg_assert_same('tax_number_differs', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(), '', $only, '', true));
+	pg_assert_same('unpaid', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('paid_at' => '0')), '', $only, '', true));
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(), '', $only, '', false));
+}
+
+// Every other reason is said first: the hold is the last word before an
+// invoice would be written.
+function test_erp_auto_invoice_tax_number_differs_comes_last()
+{
+	$order = erp_auto_invoice_test_order();
+
+	pg_assert_same('off', erp_auto_invoice_decision('off', 'order_paid', $order, '', array(), '', true));
+	pg_assert_same('trigger', erp_auto_invoice_decision('order_paid', 'order_shipped', $order, '', array(), '', true));
+	pg_assert_same('status', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('status' => 'cancelled')), '', array(), '', true));
+	pg_assert_same('counter_sale', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('type' => 'local')), '', array(), '', true));
+	pg_assert_same('marketplace', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('type' => 'marketplace')), '', array(), '', true));
+	pg_assert_same('invoiced', erp_auto_invoice_decision('order_paid', 'order_paid', $order, 'issued', array(), '', true));
+	pg_assert_same('cancelled_before', erp_auto_invoice_decision('order_paid', 'order_paid', $order, 'cancelled', array(), '', true));
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('min_total' => 99999), '', true));
+	pg_assert_same('unpaid', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('paid_at' => '0')), '', array(), '', true));
+}
+
+// The documents card names both numbers and the account; the log line and
+// the bell, which are kept and pushed to phones, name neither.
+function test_erp_auto_invoice_tax_number_difference_texts()
+{
+	$own = array('contact_tax_number' => '1234567808', 'account_tax_number' => '313 055 7669', 'account_title' => 'DSM Grup A.Ş.', 'own' => true);
+	$other = erp_order_tax_number_difference_text($own);
+	pg_assert_contains('1234567808', $other);
+	pg_assert_contains('313 055 7669', $other, 'as stored');
+	pg_assert_contains('DSM Grup A.Ş.', $other);
+
+	$none = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '', 'account_title' => 'Pg Testci', 'own' => true));
+	$final = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '11111111111', 'account_title' => 'Pg Testci', 'own' => true));
+	pg_assert_same($none, $final, 'the final consumer is no number');
+	pg_assert_true(strpos($none, '11111111111') === false);
+	pg_assert_true($none !== $other);
+
+	// An account the order is billed to may rightly hold another number; a
+	// store that invoices on its own is told it holds the order while the
+	// numbers differ; a later trigger runs the decision again, so the text
+	// never says it is not tried again. Neither is said otherwise.
+	$billed = erp_order_tax_number_difference_text(array_merge($own, array('own' => false)));
+	pg_assert_true((strpos($billed, $other) === 0) && (strlen($billed) > strlen($other)), 'billed to another account');
+	$automatic = erp_order_tax_number_difference_text($own, true);
+	pg_assert_contains('while the two differ', $automatic);
+	pg_assert_true(strpos($automatic, 'try again') === false, 'a later trigger can still issue it');
+	pg_assert_true(strpos($other, 'on its own') === false, 'nothing about the automatic invoice when it is off');
+
+	$bell = erp_auto_invoice_tax_number_reason();
+	pg_assert_true(preg_match('/\d/', $bell) === 0, 'no number in the log or the bell');
+	pg_assert_true(mb_strlen($bell) <= 250, 'within the bell title');
+}
+
+// The card warns on the invoice step and still offers it: issuing by hand
+// stays the operator's call. The reason is escaped.
+function test_erp_auto_invoice_card_warns_of_a_tax_number_difference()
+{
+	$step = array(
+		'label' => 'Invoice', 'state' => 'ready', 'warn' => true, 'title' => '', 'facts' => array(), 'action' => 'invoice',
+		'reason' => 'Card <b>1234567808</b>',
+		'links' => array(array('label' => 'Edit the account', 'url' => 'edit_erp_account.php?id=9')),
+	);
+	$html = erp_order_flow_card(17, array('steps' => array('invoice' => $step), 'next' => 'invoice'));
+
+	pg_assert_contains('&lt;b&gt;1234567808&lt;/b&gt;', $html);
+	pg_assert_contains('text-warning-emphasis', $html);
+	pg_assert_contains('bi-exclamation-triangle-fill', $html);
+	pg_assert_contains('value="invoice"', $html, 'still offered');
+	pg_assert_contains('edit_erp_account.php?id=9', $html);
 }
