@@ -67,7 +67,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-file-map-features.md: Where ERP work lives, part 2: stock, accountant pack, period lock, expenses, reports, rules, quotes, purchase orders, recurring documents, prices, cheques, bank statements, storefront, CSV.
 - erp-file-map.md: Where ERP work lives, part 1: the core (entry, money, ledger, accounts, settlement, orders, invoices, waybills, documents, aging, e-documents, API seam). Part 2: erp-file-map-features.md.
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
-- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, the period lock, and how open amount and paid status treat returns.
+- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what the screen asks before the provider, what cancel does to ledger, number, gift card, stock and order, the period lock, open amount and returns.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
 - erp-invoice-editor-catalog-offers.md: Invoice/waybill editor catalogue read (product name rule, erp_product_for_line shape), zone rate on a new account, product offers, two-discount order, field-level errors, barcode box.
 - erp-invoice-mail.md: E-mailing an issued ERP invoice (4.97): the attachment, erp_document_mails rows, the automatic send decided at the invoice's announcement and sent after the response, testing on dev.
