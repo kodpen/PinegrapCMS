@@ -6,7 +6,7 @@ description: ERP bell and device notices (4.91): money in, low stock, quotes run
 ## Which notices does the ERP send? (`includes/erp/alerts.php`, 2026.4.4 step 4.91)
 - `erp_money`: a collection at or above `config.erp_notify_collection_min` (base currency), from `erp_alert_event()` on `erp.receipt.created`.
 - `erp_low_stock` and `erp_quote_expiry`: hourly job `erp_stock_alert_job.php` (`erp_alert_low_stock()`, `erp_alert_quote_expiry()`).
-- `erp_auto_invoice`: an order that did not get its automatic invoice (erp-auto-invoice.md).
+- `erp_auto_invoice`: an order that did not get its automatic invoice, a tax number difference included (erp-auto-invoice.md).
 - Switches on Settings › Commerce › ERP: collections and low stock off by default, the quote notice on (8.58, days ahead 1-30).
 - Low stock is a job, not a hook: stock drops in too many places (shop, counter, marketplace, API). A product is told once per drop (`erp_stock_minimums.notified_at`, cleared when it is back above its minimum). A quote is told once (`erp_quotes.expiry_notified_at`, cleared when it is opened again or its date changes).
 
