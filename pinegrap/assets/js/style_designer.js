@@ -6680,6 +6680,25 @@ const StyleDesigner = (function () {
             canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
             canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
         }
+        // A text written in place inside a dropdown keeps its keys. Left to
+        // the document, Bootstrap's handler cancels the key first (the caret
+        // does not move) and then throws "Cannot read properties of
+        // undefined (reading 'parentNode')": the toggle it looks for beside
+        // the menu sits inside its own wrapper. The edit's key handler
+        // (stored on the editing element as _sdEditKeydown) runs here
+        // instead, before the document, and the event is stopped; what the
+        // handler would have let bubble goes on to the editor's shortcuts,
+        // as it does for any other text. The browser's default action is
+        // untouched, so the caret moves and Escape ends the edit.
+        function _sdDdEditKey(e, t) {
+            var host = t;
+            while (host && host !== canvasDoc && !host._sdEditKeydown) host = host.parentNode;
+            if (host && typeof host._sdEditKeydown === 'function') {
+                host._sdEditKeydown.call(host, e);
+                if (!e.cancelBubble) _sdShortcutKeydown(e);
+            }
+            e.stopPropagation();
+        }
         var _cvWin = canvasDoc.defaultView;
         if (_cvWin) {
             _cvWin.addEventListener('click', function (e) {
@@ -6700,15 +6719,14 @@ const StyleDesigner = (function () {
             // Bootstrap's keydown data-api (Escape, ArrowUp, ArrowDown on a
             // toggle or inside a menu) builds a Dropdown on the same missing
             // menu and throws as well. Escape closes the open menus here; the
-            // editor's own shortcuts still see the key. A text being written
-            // in place is left alone: its own key handling sits on the element
-            // and would not run once the event is stopped at the window.
+            // editor's own shortcuts still see the key.
             _cvWin.addEventListener('keydown', function (e) {
                 if (e.key !== 'Escape' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
                 var t = e.target;
-                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc || t.isContentEditable) return;
-                if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
+                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc) return;
+                if (!t.isContentEditable && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
                 if (!t.closest('[data-bs-toggle="dropdown"], .dropdown-menu')) return;
+                if (t.isContentEditable) { _sdDdEditKey(e, t); return; }
                 e.stopPropagation();
                 if (e.key === 'Escape' && canvasDoc.querySelector('.dropdown-menu.show')) {
                     e.preventDefault();
@@ -11783,7 +11801,7 @@ const StyleDesigner = (function () {
                 try { renderProperties(); } catch (e) {}
             }
         });
-        s.addEventListener('keydown', function(e) {
+        var _vtKeydown = function(e) {
             if (e.key === 'Enter') { e.preventDefault(); s.blur(); }
             else if (e.key === 'Escape') { e.preventDefault(); s.textContent = node.props.text || ''; s.blur(); }
             // Native <button> ancestors activate on Space → swallows the keystroke
@@ -11814,7 +11832,10 @@ const StyleDesigner = (function () {
                 }
             }
             else { e.stopPropagation(); } // don't let canvas Delete-key shortcut remove the parent
-        });
+        };
+        s.addEventListener('keydown', _vtKeydown);
+        // Inside a dropdown the canvas window calls it itself (_sdDdEditKey()).
+        s._sdEditKeydown = _vtKeydown;
         // Drag-over highlighting: left half → drop before text, right half → drop after text.
         s.addEventListener('dragover', function(e) {
             if (!dragData) return;
@@ -13301,7 +13322,12 @@ const StyleDesigner = (function () {
                 };
 
                 item.el.addEventListener('blur', commit, { once: true });
-                item.el.addEventListener('keydown', function (ke) {
+                var _ieKeydown = function (ke) {
+                    // The listener outlives the session: a link or button
+                    // keeps the focus once the edit ends, and stopping its
+                    // keys here would starve the canvas shortcuts (Ctrl+Z
+                    // after the edit) and replay an old Escape.
+                    if (isCommitted) return;
                     if (ke.key === 'Escape') {
                         isCommitted = true; // Prevent blur commit
                         liveTextObs.disconnect(); // Stop watching — user cancelled
@@ -13382,7 +13408,11 @@ const StyleDesigner = (function () {
                     } else {
                         ke.stopPropagation(); // Prevent Delete/Backspace from deleting the node while editing
                     }
-                });
+                };
+                item.el.addEventListener('keydown', _ieKeydown);
+                // Inside a dropdown the canvas window takes the key before
+                // the element and calls this handler itself (_sdDdEditKey()).
+                item.el._sdEditKeydown = _ieKeydown;
             });
 
             // Visual cursor hint, not on bound text: its double-click
