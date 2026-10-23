@@ -448,10 +448,16 @@ if ($form_protected && ($liveform->check_form_errors() == false)) {
     // service is asked once per request (pg_form_spam_check()).
     pg_form_spam_check($liveform);
 
+    // An office-use-only field a visitor cannot see is given its default
+    // further down; the address is worked out from that same value.
     $form_field_values = array();
 
     foreach ($fields as $field) {
-        $form_field_values[$field['id']] = $liveform->get_field_value($field['id']);
+        if (($field['office_use_only'] == 1) && ($office_use_only == FALSE)) {
+            $form_field_values[$field['id']] = ($field['use_folder_name_for_default_value'] == 1) ? '' : $field['default_value'];
+        } else {
+            $form_field_values[$field['id']] = $liveform->get_field_value($field['id']);
+        }
     }
 
     $form_throttle_email = pg_cf_form_writes_to_submitter(array(
@@ -461,14 +467,17 @@ if ($form_protected && ($liveform->check_form_errors() == false)) {
         ? pg_cf_submitter_address_guess($fields, $form_field_values, (defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : ''))
         : '';
 
-    // An address the server could not resolve would count every visitor as one.
+    // An address the server could not resolve, or a proxy's or the local
+    // network's, would count every visitor as one.
     $form_client_ip = waf_client_ip();
-    $form_ip_subject = (($form_client_ip !== '') && !waf_ip_is_infrastructure($form_client_ip)) ? waf_ip_subject($form_client_ip) : '';
+    $form_ip_subject = (pg_cf_visitor_address_counted($form_client_ip) && !waf_ip_is_infrastructure($form_client_ip)) ? waf_ip_subject($form_client_ip) : '';
 
     $form_throttle_rows = pg_cf_throttle_subjects($form_throttle_email, $form_ip_subject, pg_cf_throttle_limits());
 
+    // Counted and tested in one step, before the hook code, so parallel
+    // requests cannot all pass and a hook that ends the request is counted.
     if ($liveform->check_form_errors() == false) {
-        $form_full_row = pg_cf_throttle_full_row($form_throttle_rows);
+        $form_full_row = pg_cf_throttle_take($form_throttle_rows);
 
         if ($form_full_row) {
             pg_cf_throttle_log($form_full_row);
@@ -482,9 +491,10 @@ if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && ($hook_code != '')) {
     eval(prepare_for_eval($hook_code));
 }
 
-// Counted only when the submission is accepted, after the hook code had its say.
-if ($form_throttle_rows && ($liveform->check_form_errors() == false)) {
-    pg_cf_throttle_record($form_throttle_rows);
+// A visitor sent back with an error has spent the fill time once; the form
+// drawn for them next is signed accordingly (pg_cf_issued_time()).
+if ($form_protected && $liveform->check_form_errors()) {
+    $_SESSION['software']['pg_form_retry'] = time();
 }
 
 // if an error does not exist

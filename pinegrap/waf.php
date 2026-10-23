@@ -3518,16 +3518,24 @@ function waf_user_is_staff()
         return $cache[$user_id];
     }
 
-    $cache[$user_id] = false;
-
+    // Without a connection, or when the query fails, nothing is known yet:
+    // the answer is "no" for now but is not kept, so a later call can still
+    // find staff.
     if (!isset(db::$con) || !db::$con) {
         return false;
     }
 
     $result = @mysqli_query(db::$con, "SELECT * FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
-    $row = $result ? @mysqli_fetch_assoc($result) : null;
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = @mysqli_fetch_assoc($result);
 
     if (!is_array($row)) {
+        $cache[$user_id] = false;
+
         return false;
     }
 

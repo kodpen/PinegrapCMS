@@ -3278,7 +3278,7 @@ function pg_form_spam_ip_listed($ip)
 
     // A no-op since PHP 8.0 and deprecated in 8.5.
     if (PHP_VERSION_ID < 80000) {
-        curl_close($ch);
+        curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID above
     }
 
     $response = is_string($body) ? json_decode($body, true) : null;

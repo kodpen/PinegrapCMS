@@ -3371,6 +3371,30 @@ function pg_cf_issued_verdict($token, $now, $key, $min = 3, $max_age = 86400)
 }
 
 /**
+ * The time a form is signed at. A visitor sent back to the form with an error
+ * (custom_form.php keeps when in the session) has spent the time once
+ * already, so the form drawn for them is signed as if drawn the minimum time
+ * ago: correcting one field and submitting again within seconds is not
+ * refused as too fast. A note older than ten minutes is ignored.
+ *
+ * @param int $now
+ * @param int $retry_at When the visitor was last sent back, or 0
+ * @param int $min      The minimum fill time pg_cf_issued_verdict() checks
+ * @return int
+ */
+function pg_cf_issued_time($now, $retry_at, $min = 3)
+{
+    $now      = (int) $now;
+    $retry_at = (int) $retry_at;
+
+    if (($retry_at > 0) && ($retry_at <= $now) && ($now - $retry_at <= 600)) {
+        return $now - (int) $min;
+    }
+
+    return $now;
+}
+
+/**
  * The hidden field every form posting to custom_form.php carries. Empty on a
  * site without an encryption key.
  *
@@ -3378,7 +3402,14 @@ function pg_cf_issued_verdict($token, $now, $key, $min = 3, $max_age = 86400)
  */
 function pg_cf_issued_field()
 {
-    $token = pg_cf_issued_token(time(), pg_cf_issued_key());
+    $retry_at = isset($_SESSION['software']['pg_form_retry']) ? (int) $_SESSION['software']['pg_form_retry'] : 0;
+
+    // Used once: the next form drawn is the one the visitor was sent back to.
+    if ($retry_at) {
+        unset($_SESSION['software']['pg_form_retry']);
+    }
+
+    $token = pg_cf_issued_token(pg_cf_issued_time(time(), $retry_at), pg_cf_issued_key());
 
     if ($token === '') {
         return '';
@@ -3417,9 +3448,10 @@ function pg_cf_throttle_limits()
  *   cfr  the e-mail address the form writes to, per day (waf_rate_long_scopes())
  *   cfd  that address's domain, per hour
  *
- * The address is trimmed and lower-cased, so Foo@ and foo@ are one mailbox;
- * waf_rate_key() hashes every subject, so no address is stored. A limit of 0
- * drops its row, an empty subject too.
+ * The address is folded to the inbox it reaches (pg_cf_throttle_mailbox()),
+ * so Foo@, foo+1@ and, at Gmail, f.oo@ share one counter; waf_rate_key()
+ * hashes every subject, so no address is stored. A limit of 0 drops its row,
+ * an empty subject too.
  *
  * @param string $email      The address the form writes to, or ''
  * @param string $ip_subject waf_ip_subject() of the visitor, or ''
@@ -3436,7 +3468,7 @@ function pg_cf_throttle_subjects($email, $ip_subject, $limits)
         $rows[] = array('subject' => 'i|' . $ip_subject, 'scope' => 'cfi', 'window' => 3600, 'limit' => (int) $limits['ip_hour']);
     }
 
-    $email = mb_strtolower(trim((string) $email), 'UTF-8');
+    $email = pg_cf_throttle_mailbox($email);
     $at    = strrpos($email, '@');
 
     if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
@@ -3452,6 +3484,64 @@ function pg_cf_throttle_subjects($email, $ip_subject, $limits)
     }
 
     return $rows;
+}
+
+/**
+ * Whether the visitor's address gets a counter of its own. A private or
+ * reserved address (10/8, 172.16/12, 192.168/16, fc00::/7, loopback...) is
+ * the peer of a reverse proxy or load balancer not listed as a Trusted Proxy,
+ * or of a local network, and is shared by every visitor behind it: counting
+ * it would hold the whole site to one visitor's allowance.
+ *
+ * @param string $ip
+ * @return bool
+ */
+function pg_cf_visitor_address_counted($ip)
+{
+    return filter_var((string) $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
+/**
+ * An e-mail address folded to the inbox it reaches, for the counters only:
+ * trimmed and lower-cased, a "+tag" dropped from the name (plus addressing
+ * delivers name+anything@ to name@ at every large provider), and at Gmail the
+ * dots dropped too, googlemail.com being the same domain. Without this one
+ * inbox could be flooded through any number of counters of its own.
+ *
+ * @param string $email
+ * @return string The folded address, or the trimmed text when it is not one
+ */
+function pg_cf_throttle_mailbox($email)
+{
+    $email = mb_strtolower(trim((string) $email), 'UTF-8');
+    $at    = strrpos($email, '@');
+
+    if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
+        return $email;
+    }
+
+    $local  = substr($email, 0, $at);
+    $domain = substr($email, $at + 1);
+
+    // A quoted name is taken as it is.
+    if ($local[0] !== '"') {
+        $plus = strpos($local, '+');
+
+        if ($plus) {
+            $local = substr($local, 0, $plus);
+        }
+
+        if (($domain == 'gmail.com') || ($domain == 'googlemail.com')) {
+            $domain = 'gmail.com';
+            $bare   = str_replace('.', '', $local);
+
+            if ($bare !== '') {
+                $local = $bare;
+            }
+        }
+    }
+
+    return $local . '@' . $domain;
 }
 
 /**
@@ -3524,56 +3614,57 @@ function pg_cf_form_writes_to_submitter($settings)
 }
 
 /**
- * The scope of the first counter that is full, without counting anything:
- * a refused submission must not use up the allowance of the others. Fails
- * open like every waf_rate counter.
+ * Count one submission on its counters, in order, and return the first row
+ * the count took past its limit; the rows after it are not counted, so a
+ * refused submission uses up no one else's allowance. Counting and testing
+ * are one atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE
+ * KEY UPDATE), so parallel requests, each with a session of its own, cannot
+ * all read room under the limit and all pass. A refused submission is
+ * counted too. Fails open: a counter that cannot be written returns 0.
  *
- * @param array $rows pg_cf_throttle_subjects()
- * @return array The full row, or an empty array
+ * Runs before the form's hook code, so a hook that ends the request (go(),
+ * exit) cannot skip the count.
+ *
+ * @param array         $rows   pg_cf_throttle_subjects()
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return array The row over its limit, or an empty array
  */
-function pg_cf_throttle_full_row($rows)
+function pg_cf_throttle_take($rows, $record = null)
 {
-    if (!function_exists('waf_rate_hits')) {
-        return array();
-    }
+    $live = ($record === null);
 
-    foreach ($rows as $row) {
-        if (waf_rate_hits($row['subject'], $row['scope'], $row['window']) >= $row['limit']) {
-            return $row;
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return array();
         }
+
+        $record = 'waf_rate_record';
     }
 
-    return array();
-}
-
-/**
- * Count one accepted submission on every counter it was held against.
- *
- * @param array $rows pg_cf_throttle_subjects()
- * @return void
- */
-function pg_cf_throttle_record($rows)
-{
-    if (!function_exists('waf_rate_record')) {
-        return;
-    }
+    $full = array();
 
     foreach ($rows as $row) {
-        waf_rate_record($row['subject'], $row['scope'], $row['window']);
+        if ((int) call_user_func($record, $row['subject'], $row['scope'], $row['window']) > $row['limit']) {
+            $full = $row;
+            break;
+        }
     }
 
     // The firewall's sweep runs only while the firewall is on; these counters
     // work without it, so they bring their own, as the sign-in throttle does.
-    if (function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+    if ($live && $rows && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
         waf_rate_sweep();
     }
+
+    return $full;
 }
 
 /**
  * Log a refusal by a form limit in the firewall log and in data/firewall.log,
  * so a limit never refuses silently.
  *
- * @param array $row The full row from pg_cf_throttle_full_row()
+ * @param array $row The row over its limit, from pg_cf_throttle_take()
  * @return void
  */
 function pg_cf_throttle_log($row)

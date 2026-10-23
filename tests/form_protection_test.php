@@ -190,3 +190,73 @@ function test_form_protection_sweep_keeps_day_counters()
 		"DELETE FROM waf_rate WHERE window_start < 0 LIMIT 5000",
 	), waf_rate_sweep_queries(100000, 100000), 'retention past a day');
 }
+
+// A "+tag" reaches the same inbox, and Gmail ignores dots in the name, so
+// none of them opens a counter of its own.
+function test_form_protection_subjects_one_inbox()
+{
+	$limits = array('ip_hour' => 0, 'recipient_day' => 3, 'domain_hour' => 30);
+
+	foreach (array('victim+1@gmail.com', 'v.ic.tim@gmail.com', 'V.Ictim+news@GoogleMail.com', 'victim@gmail.com') as $email) {
+		pg_assert_same(array('r|victim@gmail.com', 'd|gmail.com'), array_column(pg_cf_throttle_subjects($email, '', $limits), 'subject'), $email);
+	}
+
+	pg_assert_same(array('r|first.last@outlook.com', 'd|outlook.com'), array_column(pg_cf_throttle_subjects('First.Last+shop@outlook.com', '', $limits), 'subject'), 'dots kept elsewhere');
+	pg_assert_same(array('r|+x@example.com', 'd|example.com'), array_column(pg_cf_throttle_subjects('+x@example.com', '', $limits), 'subject'), 'a name that is only a tag stays');
+}
+
+// Every counter is counted before anything is sent, in order; the first one
+// past its limit refuses and the ones after it are left alone. Counting and
+// testing are one atomic step, so parallel requests cannot all pass a read.
+function test_form_protection_throttle_take()
+{
+	$rows = pg_cf_throttle_subjects('a@b.example', '203.0.113.7', array('ip_hour' => 2, 'recipient_day' => 1, 'domain_hour' => 5));
+
+	$counts = array();
+	$record = function ($subject, $scope, $window) use (&$counts) {
+		$counts[$scope] = isset($counts[$scope]) ? $counts[$scope] + 1 : 1;
+		return $counts[$scope];
+	};
+
+	pg_assert_same(array(), pg_cf_throttle_take($rows, $record), 'first submission');
+	pg_assert_same(array('cfi' => 1, 'cfr' => 1, 'cfd' => 1), $counts, 'all counted');
+
+	$full = pg_cf_throttle_take($rows, $record);
+	pg_assert_same('cfr', isset($full['scope']) ? $full['scope'] : '', 'second to the same address');
+	pg_assert_same(array('cfi' => 2, 'cfr' => 2, 'cfd' => 1), $counts, 'the domain is not counted after a refusal');
+
+	$full = pg_cf_throttle_take($rows, $record);
+	pg_assert_same('cfi', isset($full['scope']) ? $full['scope'] : '', 'the visitor is over first');
+	pg_assert_same(array('cfi' => 3, 'cfr' => 2, 'cfd' => 1), $counts, 'nothing after the visitor counter');
+
+	// A counter that could not be written (0) fails open.
+	pg_assert_same(array(), pg_cf_throttle_take($rows, function () { return 0; }), 'fails open');
+	pg_assert_same(array(), pg_cf_throttle_take(array(), $record), 'no rows');
+}
+
+// A visitor sent back with an error gets a form signed the minimum time ago,
+// so a quick second submit is not refused as too fast; only a recent note
+// counts.
+function test_form_protection_issued_time_after_retry()
+{
+	pg_assert_same(1000, pg_cf_issued_time(1000, 0), 'first draw');
+	pg_assert_same(997, pg_cf_issued_time(1000, 995), 'sent back moments ago');
+	pg_assert_same(997, pg_cf_issued_time(1000, 400), 'ten minutes ago');
+	pg_assert_same(1000, pg_cf_issued_time(1000, 399), 'older than ten minutes');
+	pg_assert_same(1000, pg_cf_issued_time(1000, 1005), 'a note from the future');
+
+	$token = pg_cf_issued_token(pg_cf_issued_time(1000, 999), 'secret');
+	pg_assert_same('ok', pg_cf_issued_verdict($token, 1000, 'secret'), 'submitted again at once');
+}
+
+// A private or reserved address is a proxy's or the local network's, shared
+// by every visitor behind it; the visitor counter leaves it alone.
+function test_form_protection_visitor_address_counted()
+{
+	pg_assert_true(pg_cf_visitor_address_counted('8.8.8.8'), 'public IPv4');
+	pg_assert_true(pg_cf_visitor_address_counted('2a00:1450:4001:80b::200e'), 'public IPv6');
+
+	foreach (array('', '10.0.0.5', '172.16.3.4', '192.168.1.10', '127.0.0.1', '::1', 'fd12:3456::1', 'not an address') as $ip) {
+		pg_assert_false(pg_cf_visitor_address_counted($ip), 'not counted: ' . $ip);
+	}
+}
