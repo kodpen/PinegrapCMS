@@ -115,9 +115,11 @@ function pg_tr_node_fields($type, $props)
         $tag = isset($props['tag']) ? strtolower((string) $props['tag']) : '';
         $input_type = '';
 
+        // The first type attribute decides, as in a browser.
         foreach ($props['_attrs'] as $attr) {
             if (is_array($attr) && isset($attr['name']) && (strtolower((string) $attr['name']) === 'type')) {
                 $input_type = strtolower(trim((string) (isset($attr['value']) ? $attr['value'] : '')));
+                break;
             }
         }
 

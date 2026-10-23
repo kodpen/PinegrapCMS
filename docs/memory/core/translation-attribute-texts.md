@@ -4,7 +4,7 @@ description: Translating worded attributes (alt, title, placeholder, aria-label,
 ---
 
 ## Which attributes are texts?
-`pg_tr_worded_attrs()` (`includes/translate/content.php`): `alt`, `title`, `placeholder`, `aria-label`, `aria-description`, `data-bs-title`, `data-bs-content`. One list feeds a node's `_attrs` (`pg_tr_node_fields()`), the tags inside HTML (`pg_tr_html_attr_texts()`) and the drawing (`pg_tr_render_attrs()`). A `value` is a text only where it is the label: an input of type submit, button or reset (`pg_tr_input_value_is_label()`), in a node's `_attrs` and in HTML alike (HTML since #1216, PR #1218). Any other input's value is posted data and is left alone. So is a `<button>`'s value, on both paths (its label is its content); node `_attrs` took it as a label until PR #1218.
+`pg_tr_worded_attrs()` (`includes/translate/content.php`): `alt`, `title`, `placeholder`, `aria-label`, `aria-description`, `data-bs-title`, `data-bs-content`. One list for a node's `_attrs` (`pg_tr_node_fields()`), tags in HTML (`pg_tr_html_attr_texts()`) and drawing (`pg_tr_render_attrs()`). A `value` is a text only on an input of type submit, button or reset, read from its first `type` as a browser does (`pg_tr_input_value_is_label()`), on both paths (HTML since PR #1218, #1216). Any other value is posted data and is kept, a `<button>`'s too (its label is its content; node `_attrs` translated it until PR #1218).
 
 ## Where can one stand, and who extracts it?
 - A designer node's attributes panel: `_attrs:<name>` fields, drawn by the tree hook (`pg_tr_render_props()`). Since 2026.4.6.
@@ -21,16 +21,16 @@ All through `pg_tr_render_attrs()`, which looks each value up as a plain `text` 
 Before PR #1173 the last two left the source alt or title after a variant pick.
 
 ## Why was an aria-label left in the source language?
-The tree renderer draws an inline text whole. An engine translates the words of `<a aria-label="…">web çözümleri</a>` and keeps the attribute; nothing extracted the attribute, so the final pass had no translation to swap in. Custom HTML had the same gap for every attribute (render looked them up, extraction never stored them). Seen on kodpen.com `/en/` service cards (#1104, PR #1173).
+The tree renderer draws an inline text whole; an engine translated the words of `<a aria-label="…">web çözümleri</a>` and kept the attribute, which nothing extracted. Custom HTML had the same gap for every attribute. Seen on kodpen.com `/en/` service cards (#1104, PR #1173).
 
 ## How is the hash kept symmetric?
-Extraction and drawing both go through `pg_tr_html_attrs_map()`: same tag scan (comments and the content of script, style, textarea, pre and code skipped; an element with `translate="no"` or the class name `notranslate` skipped with its whole subtree, counting same-name tags to its close; never closed, the rest is left alone), values read whole in either quote style, entities resolved, then `pg_tr_normalize(value, 'text')`. The render pass used to read only double-quoted values of five names by regex.
+Extraction and drawing both go through `pg_tr_html_attrs_map()`: same tag scan (comments and the content of script, style, textarea, pre and code skipped; an element with `translate="no"` or the class name `notranslate` skipped with its whole subtree, counting same-name tags to its close; never closed, the rest is left alone), values read whole in either quote style, entities resolved, then `pg_tr_normalize(value, 'text')`.
 
 ## Why are attributes under translate="no" left alone?
 `translate` is inherited in HTML and the word walk (`pg_tr_html_text_segments()`) skips the subtree; checking only the tag itself sent marked brand logos and titles to the engine (PR #1173).
 
 ## When do existing sites get the texts?
-On the next extraction (starting a translation run on the Translations screen, for the page or the whole site): the attribute values appear as pending texts. Before that the page still shows them in the source language. A block with one word text and new attributes keeps its `html` field name, so no hash or use of an existing text changes.
+On the next extraction (a translation run on the Translations screen): the values appear as pending texts; until then the page shows the source. Bodies drawn before PR #1218 are drawn again once (`pg_tr_render_rules()` 2026.11.0), so no translated `<button value>` is posted. A block with one word text and new attributes keeps its `html` field name, so no hash or use of an existing text changes.
 
 ## Where is it tested?
-`tests/translate_attribute_texts_test.php` (every path, marked subtrees, word-less rich text, variant data, render with a stub lookup, extraction/lookup hash symmetry); `tests/translate_inline_pieces_test.php` expects the alt after the texts.
+`tests/translate_attribute_texts_test.php` (every path, marked subtrees, button values, variant data, stub-lookup render, hash symmetry); `tests/translate_inline_pieces_test.php` expects the alt after the texts.
