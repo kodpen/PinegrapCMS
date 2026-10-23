@@ -431,3 +431,63 @@ function test_parasut_order_edoc_names_the_exemption_of_a_zero_rated_line()
 	pg_assert_same(array(), $edoc['attributes']);
 	pg_assert_contains('350', $edoc['error']);
 }
+
+// The buyer card the order's invoice goes on keeps the identity number in
+// tax_number, the one field Paraşüt has for a company's VKN and a person's
+// TCKN; contact_type says which. An 11-digit number is a TCKN, so a sole
+// proprietor who gave a trade name is a person too, as the ERP's driver
+// opens such a card (erp_edoc_parasut_contact_attributes()).
+function test_parasut_order_contact_attributes_keep_the_identity_in_tax_number()
+{
+	$order = array(
+		'billing_company' => '',
+		'billing_first_name' => 'Ayşe',
+		'billing_last_name' => 'Kaya',
+		'billing_email_address' => 'a@example.test',
+		'billing_phone_number' => '',
+		'billing_address_1' => 'Cad. 1',
+		'billing_city' => 'İstanbul',
+		'billing_country' => 'TR',
+	);
+
+	$person = parasut_order_contact_attributes($order, '10000000146');
+	pg_assert_same(array(
+		'account_type' => 'customer',
+		'contact_type' => 'person',
+		'name' => 'Ayşe Kaya',
+		'email' => 'a@example.test',
+		'phone' => '',
+		'tax_number' => '10000000146',
+		'address' => 'Cad. 1, İstanbul, TR',
+	), $person);
+	pg_assert_false(isset($person['tckn']), 'no attribute the documentation does not list');
+
+	$order['billing_company'] = 'Kaya Ticaret A.Ş.';
+	$company = parasut_order_contact_attributes($order, '1234567808');
+	pg_assert_same('company', $company['contact_type']);
+	pg_assert_same('Kaya Ticaret A.Ş.', $company['name']);
+	pg_assert_same('1234567808', $company['tax_number']);
+
+	$order['billing_company'] = 'Kaya Kırtasiye';
+	$proprietor = parasut_order_contact_attributes($order, '10000000146');
+	pg_assert_same('person', $proprietor['contact_type']);
+	pg_assert_same('Kaya Kırtasiye', $proprietor['name']);
+	pg_assert_same('10000000146', $proprietor['tax_number']);
+
+	// No number configured or filled in: the card is opened without one.
+	pg_assert_false(array_key_exists('tax_number', parasut_order_contact_attributes($order, '')));
+}
+
+// The order screen's buttons open the buyer card with those attributes.
+function test_parasut_sync_contact_writes_the_card_with_the_order_attributes()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_sync_contact(');
+	pg_assert_true($start !== false, 'parasut_sync_contact() is found');
+
+	$end = strpos($source, "\n}\n", $start);
+	$body = substr($source, $start, $end - $start);
+
+	pg_assert_contains('parasut_order_contact_attributes($order, _parasut_order_identity($order))', $body);
+	pg_assert_false(strpos($body, "'tckn'") !== false, 'no tckn attribute');
+}

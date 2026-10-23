@@ -4,7 +4,9 @@
  *
  * Tests for the pure helpers of the Paraşüt client (includes/fn/parasut.php):
  * the authorization page address, the owner stamp of the sealed token, the
- * reading of the /v4/me answer and the words of a refusal.
+ * reading of the /v4/me answer and the words of a refusal; and, read from
+ * the source, E-Shipment on an order whose shipment document is already in
+ * Paraşüt.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -195,4 +197,45 @@ function test_parasut_view_order_shipment_check_passes_the_order_and_the_contact
 	pg_assert_contains('_parasut_shipment_identity_refusal(', $handler);
 	pg_assert_contains('$parasut_order,', $handler);
 	pg_assert_contains('SELECT tax_number FROM contacts', $handler);
+
+	// An order already shipped skips the identity check, so
+	// parasut_create_shipment() refuses it as a second document.
+	pg_assert_contains("&& ((string) (\$parasut_order['parasut_shipment_id'] ?? '') === '')", $handler);
+}
+
+// E-Shipment on an order that already holds a Paraşüt shipment id is refused
+// before anything is asked of Paraşüt, the token included: every
+// shipment_documents create takes the goods out of Paraşüt's stock again.
+function test_parasut_create_shipment_refuses_an_order_already_sent()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_create_shipment(');
+	pg_assert_true($start !== false, 'parasut_create_shipment() is found');
+
+	$end = strpos($source, "\nfunction ", (int) $start + 1);
+	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
+
+	$guard = strpos($body, "\$order['parasut_shipment_id']");
+	pg_assert_true($guard !== false, 'the stored shipment id is read');
+	pg_assert_contains("'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.'", $body);
+
+	foreach (array('parasut_get_token()', 'parasut_sync_contact(', 'parasut_ensure_default_warehouse(', '_parasut_request(') as $call) {
+		$at = strpos($body, $call);
+		pg_assert_true(($guard !== false) && ($at !== false) && ($guard < $at), 'the stored id is checked before ' . $call);
+	}
+}
+
+// The order screen draws E-Shipment disabled once the order's shipment
+// document is in Paraşüt, as it does Create Invoice.
+function test_parasut_shipment_button_is_disabled_once_sent()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+	$start = strpos($source, "\$output_parasut_shipment_button = '';");
+	$end = ($start === false) ? false : strpos($source, '$output_parasut_invoice_action =', $start);
+	pg_assert_true(($start !== false) && ($end !== false), 'the E-Shipment button is found');
+
+	$block = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
+
+	pg_assert_contains("(\$parasut_shipment_id !== '')", $block);
+	pg_assert_contains("' disabled title=\"' . h(lang('This order already has a shipment document in Paraşüt.')) . '\"'", $block);
 }
