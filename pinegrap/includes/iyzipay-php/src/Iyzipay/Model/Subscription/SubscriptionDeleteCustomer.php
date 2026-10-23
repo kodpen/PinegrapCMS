@@ -9,7 +9,7 @@ use Iyzipay\Model\Mapper\Subscription\SubscriptionDeleteCustomerMapper;
 use Iyzipay\Request\Subscription\SubscriptionDeleteCustomerRequest;
 
 class SubscriptionDeleteCustomer extends IyzipayResource {
-    private string $customerReferenceCode;
+    private $customerReferenceCode;
 
     public static function delete(SubscriptionDeleteCustomerRequest $request, Options $options) {
         $uri = $options->getBaseUrl() . '/v2/subscription/customers/delete/' . $request->getCustomerReferenceCode() . RequestStringBuilder::requestToStringQuery($request);;

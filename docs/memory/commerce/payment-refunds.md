@@ -10,7 +10,7 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
 ## What does the order screen refund through?
 - `pg_payment_refund_driver($payment_method)`: the order's driver when it defines `refund`.
 - view_order.php shows the Refund button and `#payment-refund-modal` (post `submit_payment_refund`) when that driver exists, the order has a `transaction_id`, is not `cancelled`/`incomplete` and has money left (`total - refunded_amount`). The title and note name the driver's `label`.
-- The post: same checks and ERP line amounts as before, then `pg_payment_call($key, 'refund', [orders row (SELECT *), hundredths, order_items rows])`. The answer's `log` lines are written first; a failure shows `error` (iyzico's own sentence); success writes `refunded_amount`, `order_refunds.transaction_id` = `refund_reference`, the `Refunded … for order #N.` line and, with full refund, status `cancelled`.
+- The post: same checks and ERP line amounts as before, then `pg_payment_call($key, 'refund', [orders row (SELECT *), hundredths, order_items rows])`. The answer's `log` lines are written first; a failure shows `error` (the driver's sentence); success writes `refunded_amount`, `order_refunds.transaction_id` = `refund_reference`, the `Refunded … for order #N.` line and, with full refund, status `cancelled`.
 - The ERP line dialog (includes/erp/order_refund.php, `payment_refund_*` ids) only works out the amount.
 
 ## Which driver voids a cancelled order's payment?

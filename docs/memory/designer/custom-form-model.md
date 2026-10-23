@@ -18,6 +18,7 @@ description: custom_form widget model: controls are the fields (no field list), 
 | `validation_regex` | `pattern` attribute |
 | `multiple` | `select[multiple]` or checkbox |
 
+- An office-use-only pick list needs a real selected option as its default: an option with value `''` is not stored (`_pg_cf_controls()`), and the panel's submitted-form edit screen (`edit_submitted_form.php`), which prints only stored options, then saves the first option ([[design-template-magazine-issues]]).
 - What markup cannot say lives in the node's **`props._cf`**: `ids` (`{page_id: form_fields.id}`), `label` (if the label element was deleted), `rss_field`, `contact_field`, `office_use_only`, `validation_message`, `upload_folder_id`, `quiz_question` / `quiz_answer`, `wysiwyg` (text area with the rich-text editor; absent = the row keeps its flag, `custom-form-rich-text.md`).
 
 ## What does `form_source` mean?

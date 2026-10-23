@@ -243,6 +243,42 @@ function test_zip_entry_contents_empty_entries_of_any_writer()
 	zip_entry_contents_test_clean($dir);
 }
 
+// Data that does not match the checksum its archive declares is damaged on
+// every PHP version: ext/zip compares the checksum itself only in recent
+// releases, and warns there, while older ones hand the data over. An empty
+// file's checksum is that of nothing.
+function test_zip_entry_contents_compares_the_checksum()
+{
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
+
+	$dir = zip_entry_contents_test_dir();
+	$path = zip_entry_contents_test_raw_archive($dir . '/crc.zip', array(
+		'honest.txt' => array(8, gzdeflate('hello world'), 11, crc32('hello world')),
+		'deflated.txt' => array(8, gzdeflate('hello world'), 11, crc32('hello there')),
+		'stored.txt' => array(0, 'hello world', 11, crc32('hello there')),
+		'deflated-empty.css' => array(8, "\x03\x00", 0, crc32('x')),
+		'stored-empty.css' => array(0, '', 0, crc32('x')),
+	));
+
+	$zip = new ZipArchive();
+	pg_assert_true($zip->open($path) === true, 'archive opens');
+
+	$error = 'unset';
+	pg_assert_same('hello world', pg_zip_entry_contents($zip, 'honest.txt', 1000, $error), 'the checksum it declares');
+	pg_assert_same('', $error, 'no error for it');
+
+	foreach (array('deflated.txt', 'stored.txt', 'deflated-empty.css', 'stored-empty.css') as $name) {
+		$error = 'unset';
+		pg_assert_same(null, pg_zip_entry_contents($zip, $name, 1000, $error), $name);
+		pg_assert_same('damaged', $error, $name . ': damaged');
+	}
+
+	$zip->close();
+	zip_entry_contents_test_clean($dir);
+}
+
 // An archive to import entry by entry is measured from its directory: an
 // honest one opens, one that declares more than the byte ceiling or holds
 // more entries than the entry ceiling is refused, as is a file that is not

@@ -52,7 +52,7 @@ function pg_payment_iyzico_authorize($order, $amount, $payment)
 
 function pg_payment_iyzico_refund($order, $amount, $lines)
 {
-    return pg_payment_iyzico_refund_with($order, $amount, pg_payment_iyzico_settings());
+    return pg_payment_iyzico_card_refund_with($order, $amount, pg_payment_iyzico_settings());
 }
 
 function pg_payment_iyzico_cancel($order, $transaction_id)
@@ -881,6 +881,36 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
         (string) $result->getErrorMessage(),
         ($status === 'success') ? (string) $result->getPaymentId() : ''
     );
+}
+
+/**
+ * The card driver's refund. With a protected currency the card is charged in
+ * that currency at the day's rate, which the order does not keep, while the
+ * amount here is in the base currency and iyzico's amount-based refund reads
+ * its price in the payment's own currency: sent as it is, 20.00 TRY would
+ * give back 20.00 USD. Such a refund is refused before anything is sent; the
+ * operator refunds in the iyzico panel and records it on the order's return
+ * request as a refund made another way (view_return.php), since the order
+ * screen has nothing to record it with. Card orders charged in the base
+ * currency before the protected currency was turned on are refused too: the
+ * order does not keep the currency it was charged in.
+ *
+ * @param array $order    orders row (transaction_id)
+ * @param int   $amount   hundredths to give back, in the base currency
+ * @param array $settings pg_payment_iyzico_settings()
+ * @return array an answer (pg_payment_iyzico_refund_with()), or a refusal
+ */
+function pg_payment_iyzico_card_refund_with($order, $amount, $settings)
+{
+    $protected_currency = isset($settings['protected_currency']) ? (string) $settings['protected_currency'] : '';
+
+    if ($protected_currency !== '') {
+        return pg_payment_failure(lang(array(
+            'string' => 'Card payments are taken in the protected currency ({var:1}), so this refund cannot be sent from here. Refund it in the iyzico panel, then record it on the order\'s return request with "Record a refund made another way"; the order screen has no place to record it.',
+            'vars'   => array($protected_currency))));
+    }
+
+    return pg_payment_iyzico_refund_with($order, $amount, $settings);
 }
 
 /**
