@@ -20,7 +20,7 @@ description: The editor's shared component cache: prefetch keeps a changed entry
 - A structural change marks the component that holds it: `_sdSharedOwnerOf(target)`, `_findParentAnywhere(node)` (`{parent, sid}`).
 - Anything else: `_sdSharedCatchEdits()` at Save compares every snapshotted component with its tree.
 - At content level only a component opened to the operator is marked (`shared-component-content-editing.md`).
-- Symptom fixed (#1256): a button label of a system widget edited in place showed on the canvas but was never saved. The label span stops the click, so the button was never selected, and a widget added in the session (or re-read by a prefetch) had no snapshot for the save to compare with. On an existing widget it depended on where the first click landed.
+- Symptom fixed (#1321): a button label of a system widget edited in place showed on the canvas but was never saved. The label span stops the click, so the button was never selected, and a widget added in the session (or re-read by a prefetch) had no snapshot for the save to compare with. On an existing widget it depended on where the first click landed.
 
 ## What happens at Save?
 - `_sdSharedCatchEdits()`, then `_flushDirtyShared()` (a promise the page save awaits) sends `update` (`content_update` at content level) per dirty id, skips one equal to its snapshot, and on success keeps what it sent as the new snapshot. A refused push (a loop refusal is toasted) or an unanswered one stays dirty and keeps its old snapshot, so the next save still sends it. Tests: `tests/designer_shared_edit_test.php`.
