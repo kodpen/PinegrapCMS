@@ -7,7 +7,8 @@
  * derivative is kept and saved under, and - with GD, over pictures the test
  * draws itself - that a derivative is made once, found again, replaced when
  * its source changes, not made while another request holds the lock, and not
- * made for an animated GIF.
+ * made for an animated GIF; and that a phone photo's EXIF orientation is read
+ * without the exif extension too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -274,6 +275,152 @@ function image_derivatives_test_rotated_jpeg($path, $width, $height)
 	file_put_contents($path, substr($bytes, 0, 2) . $segment . substr($bytes, 2));
 }
 
+// A JPEG drawn by GD with $segments (whole marker segments) put straight
+// after its start-of-image marker.
+function image_derivatives_test_jpeg_with($path, $segments)
+{
+	image_derivatives_test_jpeg($path, 64, 32, 5);
+
+	$bytes = file_get_contents($path);
+
+	file_put_contents($path, substr($bytes, 0, 2) . $segments . substr($bytes, 2));
+}
+
+// An APP1 segment holding "Exif\0\0" and these TIFF bytes.
+function image_derivatives_test_exif_segment($tiff)
+{
+	$exif = "Exif\x00\x00" . $tiff;
+
+	return "\xFF\xE1" . pack('n', strlen($exif) + 2) . $exif;
+}
+
+// A TIFF block with one IFD0 entry, in either byte order.
+function image_derivatives_test_tiff($big_endian, $tag, $type, $value)
+{
+	$short = $big_endian ? 'n' : 'v';
+	$long = $big_endian ? 'N' : 'V';
+
+	return ($big_endian ? 'MM' : 'II') . pack($short, 42) . pack($long, 8)
+		. pack($short, 1)
+		. pack($short, $tag) . pack($short, $type) . pack($long, 1)
+		. (($type === 4) ? pack($long, $value) : (pack($short, $value) . pack($short, 0)))
+		. pack($long, 0);
+}
+
+// The orientation read from the file's own bytes, for a server without the
+// exif extension: 1 when there is nothing to read, 0 when there is an Exif
+// block that cannot be read.
+function test_image_jpeg_exif_orientation_read_by_hand()
+{
+	if (!image_derivatives_test_gd()) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = image_derivatives_test_folder();
+	$path = $folder . '/files/photo.jpg';
+
+	$app0 = "\xFF\xE0" . pack('n', 16) . "JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00";
+	$xmp_data = "http://ns.adobe.com/xap/1.0/\x00<x:xmpmeta/>";
+	$xmp = "\xFF\xE1" . pack('n', strlen($xmp_data) + 2) . $xmp_data;
+
+	$cases = array(
+		'little endian, 6'                   => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x0112, 3, 6)), 6),
+		'big endian after JFIF and XMP, 8'   => array($app0 . $xmp . image_derivatives_test_exif_segment(image_derivatives_test_tiff(true, 0x0112, 3, 8)), 8),
+		'as a LONG'                          => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(true, 0x0112, 4, 3)), 3),
+		'no Exif block'                      => array('', 1),
+		'Exif without an orientation'        => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x010F, 3, 6)), 1),
+		'a value outside 1-8 counts as none' => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x0112, 3, 9)), 1),
+		'unknown byte order'                 => array(image_derivatives_test_exif_segment('XX' . substr(image_derivatives_test_tiff(false, 0x0112, 3, 6), 2)), 0),
+		'IFD0 outside the block'             => array(image_derivatives_test_exif_segment('II' . pack('v', 42) . pack('V', 4000) . str_repeat("\x00", 20)), 0),
+		'entries running past the block'     => array(image_derivatives_test_exif_segment('II' . pack('v', 42) . pack('V', 8) . pack('v', 50) . str_repeat("\x00", 12)), 0),
+		'an orientation of an unknown type'  => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x0112, 7, 6)), 0),
+		'an empty Exif block'                => array(image_derivatives_test_exif_segment(''), 1),
+		'a TIFF header cut short'            => array(image_derivatives_test_exif_segment('II*'), 0),
+	);
+
+	// What pg_image_jpeg_orientation() gives with or without the exif
+	// extension; Imagick reads a broken block its own way.
+	$engine = array(
+		'little endian, 6'    => 6,
+		'no Exif block'       => 1,
+		'an empty Exif block' => 1,
+	);
+
+	if (!class_exists('Imagick')) {
+		$engine['unknown byte order'] = 0;
+	}
+
+	try {
+		foreach ($cases as $label => $case) {
+			image_derivatives_test_jpeg_with($path, $case[0]);
+
+			pg_assert_same($case[1], pg_image_jpeg_exif_orientation($path), $label);
+
+			if (isset($engine[$label])) {
+				pg_assert_same($engine[$label], pg_image_jpeg_orientation($path), 'engine: ' . $label);
+			}
+		}
+
+		// The Exif segment says it is longer than the file.
+		file_put_contents($path, "\xFF\xD8" . substr(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x0112, 3, 6)), 0, 20));
+		pg_assert_same(0, pg_image_jpeg_exif_orientation($path), 'cut short');
+
+		file_put_contents($path, "\x89PNG\r\n\x1A\n");
+		pg_assert_same(1, pg_image_jpeg_exif_orientation($path), 'not a JPEG');
+
+		pg_assert_same(1, pg_image_jpeg_exif_orientation($folder . '/files/missing.jpg'), 'no such file');
+
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
+}
+
+// An Exif block whose orientation cannot be read: which way up a browser
+// shows the photo is not known, so no derivative or srcset width is made
+// from it and the GD half does not write over it.
+function test_image_unreadable_orientation_left_alone()
+{
+	if (!image_derivatives_test_gd() || class_exists('Imagick')) {
+		pg_assert_true(true, 'GD alone is not what runs here; skipped');
+		return;
+	}
+
+	$folder = image_derivatives_test_folder();
+	$source = $folder . '/files/photo.jpg';
+
+	try {
+		image_derivatives_test_jpeg($source, 2000, 1000, 9);
+
+		$bytes = file_get_contents($source);
+		file_put_contents($source, substr($bytes, 0, 2) . image_derivatives_test_exif_segment('XX' . substr(image_derivatives_test_tiff(false, 0x0112, 3, 6), 2)) . substr($bytes, 2));
+
+		$before = md5_file($source);
+
+		pg_assert_same(0, pg_image_jpeg_orientation($source), 'not readable');
+		pg_assert_same(array(0, 0), pg_image_oriented_size($source), 'no displayed size');
+
+		$derivative = pg_image_derivative(4, $source, array('width' => 480, 'format' => ''), $folder . '/cache');
+
+		pg_assert_same('original', $derivative['status'], 'the original is sent');
+		pg_assert_false(is_dir($folder . '/cache/4'), 'nothing is made');
+
+		$optimized = pg_process_image_file($source);
+
+		pg_assert_same('skipped', $optimized['status'], 'optimize');
+		pg_assert_same('orientation_unreadable', $optimized['reason']);
+		pg_assert_false($optimized['changed']);
+
+		$turned = pg_process_image_file($source, array('rotate' => 90));
+
+		pg_assert_same('orientation_unreadable', $turned['reason'], 'rotate');
+		pg_assert_same($before, md5_file($source), 'the file is not touched');
+
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
+}
+
 function test_image_derivative_made_once_and_found_again()
 {
 	if (!image_derivatives_test_gd()) {
@@ -341,10 +488,12 @@ function test_image_derivative_made_once_and_found_again()
 	}
 }
 
+// Read with the exif extension where there is one, by hand where there is
+// none: the result is the same upright picture either way.
 function test_image_derivative_follows_exif_orientation()
 {
-	if (!image_derivatives_test_gd() || !function_exists('exif_read_data') || !function_exists('imagerotate')) {
-		pg_assert_true(true, 'GD with exif is not available; skipped');
+	if (!image_derivatives_test_gd() || !function_exists('imagerotate')) {
+		pg_assert_true(true, 'GD is not available; skipped');
 		return;
 	}
 
@@ -364,6 +513,11 @@ function test_image_derivative_follows_exif_orientation()
 
 		$size = getimagesize($derivative['path']);
 		pg_assert_same(array(480, 960), array($size[0], $size[1]), 'upright, 480 wide');
+
+		$processed = pg_process_image_file($source, array('write' => false));
+
+		pg_assert_same('success', $processed['status'], 'optimized');
+		pg_assert_same(array(1000, 2000), array($processed['width'], $processed['height']), 'optimized upright');
 
 	} finally {
 		image_derivatives_test_remove($folder);

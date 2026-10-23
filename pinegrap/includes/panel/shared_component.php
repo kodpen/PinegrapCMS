@@ -201,6 +201,9 @@ function pg_panel_shared_component($request, $action)
             db("UPDATE shared_components
                     SET tree_json = '" . e($sc_tree) . "'" . $sc_cfg_clause . ", updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            if (function_exists('pg_tr_owner_saved')) {
+                pg_tr_owner_saved('shared', $sc_id);
+            }
             respond(array('status' => 'success'));
             break;
 
@@ -232,6 +235,9 @@ function pg_panel_shared_component($request, $action)
             db("UPDATE shared_components
                     SET tree_json = '" . e($sc_merged) . "', updated_at = " . time() . "
                     WHERE id = '$sc_id' LIMIT 1");
+            if (function_exists('pg_tr_owner_saved')) {
+                pg_tr_owner_saved('shared', $sc_id);
+            }
             respond(array('status' => 'success', 'tree_json' => $sc_merged));
             break;
 

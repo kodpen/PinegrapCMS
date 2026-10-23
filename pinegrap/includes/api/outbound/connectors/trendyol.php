@@ -502,7 +502,10 @@ function mp_trendyol_value_page_size() {
 // "varianter" is Trendyol's word for the attribute that tells the variants of
 // one article apart; "allowCustom" lets the seller type a value of their own.
 // "slicer" (an attribute that splits one article into separate pages, usually
-// the colour) has no column here and is not needed to answer the attributes.
+// the colour) differs between the products of one article just the same - the
+// chair whose products are its colours - so both are is_variant: answered by
+// each product's own option, and by the article's value only for a product
+// that has none.
 function mp_trendyol_category_attributes($account, $category_id, $transport = null) {
 
 	$category_id = trim((string)$category_id);
@@ -577,7 +580,7 @@ function mp_trendyol_attribute_rows($decoded) {
 			'attribute_id'   => $id,
 			'name'           => isset($entry['attribute']['name']) ? trim((string)$entry['attribute']['name']) : '',
 			'mandatory'      => !empty($entry['required']) ? 1 : 0,
-			'is_variant'     => !empty($entry['varianter']) ? 1 : 0,
+			'is_variant'     => (!empty($entry['varianter']) || !empty($entry['slicer'])) ? 1 : 0,
 			'custom_allowed' => !empty($entry['allowCustom']) ? 1 : 0,
 			// Their list has no order of its own; the order they send it in is
 			// the order their panel shows.

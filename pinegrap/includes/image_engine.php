@@ -537,6 +537,16 @@ function pg_process_image_file($file_path, $options = array())
         $use_imagick = ($writer === 'imagick');
     }
 
+    // GD turns a JPEG upright from its EXIF orientation (Imagick reads the
+    // tag itself). When the file carries an Exif block whose orientation
+    // cannot be read, which way up a browser shows it is not known: a copy
+    // written without the tag could come out on its side, so the file is
+    // left as it is.
+    if (!$use_imagick && ($type == IMAGETYPE_JPEG) && (pg_image_jpeg_orientation($file_path) === 0)) {
+        $report['reason'] = 'orientation_unreadable';
+        return $report;
+    }
+
     $resize = (($max_dimension > 0) && (max($width, $height) > max(1, $resize_trigger)));
 
     list($target_width, $target_height) = $resize
@@ -1074,17 +1084,14 @@ function pg_image_gd_read($file_path, $type)
  */
 function pg_image_apply_gd_orientation($image, $file_path)
 {
-    if (!function_exists('exif_read_data') || !function_exists('imagerotate')) {
+    if (!function_exists('imagerotate')) {
         return $image;
     }
 
-    $exif = @exif_read_data($file_path);
-
-    if (!$exif || empty($exif['Orientation'])) {
-        return $image;
-    }
-
-    $orientation = (int) $exif['Orientation'];
+    // The exif extension when there is one, else the file's own bytes: a
+    // server without exif (Windows PHP and the upstream php Docker images
+    // leave it out) used to keep every phone photo on its side.
+    $orientation = pg_image_jpeg_orientation($file_path);
     $rotated     = null;
     $flip        = false;
 
@@ -1648,11 +1655,14 @@ function pg_image_format_probe($format, $directory)
 
 
 /**
- * The EXIF orientation of a JPEG, 1 to 8; 1 when it has none or it cannot be
- * read.
+ * The EXIF orientation of a JPEG, 1 to 8; 1 when it has none; 0 when it has
+ * an Exif block whose orientation cannot be read.
  *
- * Read with the exif extension, the same reader the GD half of the engine
- * uses; without it Imagick is asked, which is then also what the engine uses.
+ * Read with the exif extension when it is loaded and it read the first IFD;
+ * else from the file's own bytes (pg_image_jpeg_exif_orientation()). Imagick
+ * (a header ping) is asked only for a block those bytes cannot read, or when
+ * the exif extension is missing; it is then also what the engine uses. The
+ * GD half of the engine turns the pixels by this number.
  *
  * @param string $file_path
  * @return int
@@ -1662,9 +1672,24 @@ function pg_image_jpeg_orientation($file_path)
     if (function_exists('exif_read_data')) {
         $exif = @exif_read_data($file_path);
 
-        $orientation = (is_array($exif) && !empty($exif['Orientation'])) ? (int) $exif['Orientation'] : 1;
+        if (is_array($exif) && isset($exif['Orientation']) && is_numeric($exif['Orientation'])) {
+            $orientation = (int) $exif['Orientation'];
 
-        return (($orientation >= 1) && ($orientation <= 8)) ? $orientation : 1;
+            return (($orientation >= 1) && ($orientation <= 8)) ? $orientation : 1;
+        }
+
+        // IFD0 was read and holds no orientation.
+        if (is_array($exif) && isset($exif['SectionsFound']) && in_array('IFD0', explode(',', str_replace(' ', '', (string) $exif['SectionsFound'])), true)) {
+            return 1;
+        }
+
+        // exif read no IFD0: the file's own bytes tell "no Exif block" (1)
+        // from a broken one (0) without an Imagick ping on every page render.
+        $own = pg_image_jpeg_exif_orientation($file_path);
+
+        if (($own !== 0) || !class_exists('Imagick')) {
+            return $own;
+        }
     }
 
     if (class_exists('Imagick')) {
@@ -1686,6 +1711,189 @@ function pg_image_jpeg_orientation($file_path)
         }
     }
 
+    return pg_image_jpeg_exif_orientation($file_path);
+}
+
+
+/**
+ * The EXIF orientation of a JPEG read from its own bytes, for a server
+ * without the exif extension: 1 to 8; 1 when the file has no Exif block or
+ * the block has no orientation (or one outside 1 to 8, which browsers ignore
+ * too); 0 when there is an Exif block that cannot be read.
+ *
+ * The marker segments are walked from the start of the file to the Exif
+ * APP1 segment ("Exif\0\0"); every other segment's data is skipped with a
+ * seek. The walk ends at the start of the image data (SOS).
+ *
+ * @param string $file_path
+ * @return int
+ */
+function pg_image_jpeg_exif_orientation($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return 1;
+    }
+
+    $orientation = 1;
+
+    if (@fread($handle, 2) === "\xFF\xD8") {
+
+        while (true) {
+
+            $byte = @fread($handle, 1);
+
+            if (!is_string($byte) || ($byte !== "\xFF")) {
+                break;
+            }
+
+            // A marker may be preceded by any number of 0xFF fill bytes.
+            do {
+                $byte = @fread($handle, 1);
+            } while (is_string($byte) && ($byte === "\xFF"));
+
+            if (!is_string($byte) || ($byte === '')) {
+                break;
+            }
+
+            $marker = ord($byte);
+
+            // RSTn and TEM stand alone, without a length.
+            if ((($marker >= 0xD0) && ($marker <= 0xD7)) || ($marker === 0x01)) {
+                continue;
+            }
+
+            // Start of scan or end of image: no Exif block before the pixels.
+            if (($marker === 0xDA) || ($marker === 0xD9)) {
+                break;
+            }
+
+            $length = @fread($handle, 2);
+
+            if (!is_string($length) || (strlen($length) !== 2)) {
+                break;
+            }
+
+            $length = unpack('n', $length);
+            $length = $length[1] - 2;
+
+            if ($length < 0) {
+                break;
+            }
+
+            if (($marker === 0xE1) && ($length >= 6)) {
+
+                $data = (string) @fread($handle, $length);
+
+                // An APP1 segment is also where XMP lives; only the Exif one
+                // holds the orientation.
+                if (strncmp($data, "Exif\x00", 5) === 0) {
+                    $orientation = (strlen($data) === $length) ? pg_image_exif_tiff_orientation(substr($data, 6)) : 0;
+                    break;
+                }
+
+                if (strlen($data) !== $length) {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (@fseek($handle, $length, SEEK_CUR) !== 0) {
+                break;
+            }
+        }
+    }
+
+    fclose($handle);
+
+    return $orientation;
+}
+
+
+/**
+ * The orientation tag (0x0112) of the first IFD of an Exif TIFF block: 1 to
+ * 8; 1 when there is no such tag or its value is outside 1 to 8; 0 when the
+ * block cannot be read (unknown byte order, an offset or entry outside it,
+ * a tag of an unexpected type).
+ *
+ * @param string $tiff the bytes after "Exif\0\0"
+ * @return int
+ */
+function pg_image_exif_tiff_orientation($tiff)
+{
+    $tiff = (string) $tiff;
+    $length = strlen($tiff);
+
+    // An Exif header followed by no TIFF block holds no orientation, and
+    // browsers show the file as stored.
+    if ($length === 0) {
+        return 1;
+    }
+
+    if ($length < 8) {
+        return 0;
+    }
+
+    $order = substr($tiff, 0, 2);
+
+    if ($order === 'II') {
+        $short = 'v';
+        $long = 'V';
+    } elseif ($order === 'MM') {
+        $short = 'n';
+        $long = 'N';
+    } else {
+        return 0;
+    }
+
+    $magic = unpack($short, substr($tiff, 2, 2));
+
+    if ($magic[1] !== 42) {
+        return 0;
+    }
+
+    $offset = unpack($long, substr($tiff, 4, 4));
+    $offset = $offset[1];
+
+    // A negative offset is a value over 2 GB read on 32-bit PHP.
+    if (($offset < 8) || ($offset + 2 > $length)) {
+        return 0;
+    }
+
+    $count = unpack($short, substr($tiff, $offset, 2));
+    $count = $count[1];
+
+    if ($offset + 2 + ($count * 12) > $length) {
+        return 0;
+    }
+
+    for ($i = 0; $i < $count; $i++) {
+
+        $entry = substr($tiff, $offset + 2 + ($i * 12), 12);
+        $tag = unpack($short, substr($entry, 0, 2));
+
+        if ($tag[1] !== 0x0112) {
+            continue;
+        }
+
+        $type = unpack($short, substr($entry, 2, 2));
+
+        // SHORT as the specification says; LONG from some writers.
+        if ($type[1] === 3) {
+            $value = unpack($short, substr($entry, 8, 2));
+        } elseif ($type[1] === 4) {
+            $value = unpack($long, substr($entry, 8, 4));
+        } else {
+            return 0;
+        }
+
+        $value = (int) $value[1];
+
+        return (($value >= 1) && ($value <= 8)) ? $value : 1;
+    }
+
     return 1;
 }
 
@@ -1695,8 +1903,13 @@ function pg_image_jpeg_orientation($file_path)
  * its side with an orientation tag that turns it upright has its two edges
  * swapped here, because the engine turns the pixels upright before scaling.
  *
+ * A JPEG whose Exif orientation cannot be read has no size here: which way
+ * up a browser shows it is not known, so no derivative and no srcset width
+ * is made from it.
+ *
  * @param string $file_path
  * @return array width, height; zeros when the file is not a readable image
+ *               or its orientation cannot be read
  */
 function pg_image_oriented_size($file_path)
 {
@@ -1709,9 +1922,18 @@ function pg_image_oriented_size($file_path)
     $width = (int) $size[0];
     $height = (int) $size[1];
 
-    // Orientations 5 to 8 are the quarter turns.
-    if (isset($size[2]) && ((int) $size[2] === IMAGETYPE_JPEG) && (pg_image_jpeg_orientation($file_path) >= 5)) {
-        return array($height, $width);
+    if (isset($size[2]) && ((int) $size[2] === IMAGETYPE_JPEG)) {
+
+        $orientation = pg_image_jpeg_orientation($file_path);
+
+        if ($orientation === 0) {
+            return array(0, 0);
+        }
+
+        // Orientations 5 to 8 are the quarter turns.
+        if ($orientation >= 5) {
+            return array($height, $width);
+        }
     }
 
     return array($width, $height);

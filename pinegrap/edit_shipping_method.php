@@ -54,38 +54,38 @@ if (!$_POST) {
         $realtime_rate_checked = ' checked="checked"';
     }
 
-    $base_rate = sprintf("%01.2lf", $row['base_rate'] / 100);
+    $base_rate = pg_format_input_amount($row['base_rate'] / 100);
     $variable_base_rate = $row['variable_base_rate'];
 
     $base_rate_2 = '';
     $base_rate_2_subtotal = '';
 
     if ($row['base_rate_2_subtotal'] > 0) {
-        $base_rate_2 = sprintf("%01.2lf", $row['base_rate_2'] / 100);
-        $base_rate_2_subtotal = sprintf("%01.2lf", $row['base_rate_2_subtotal'] / 100);
+        $base_rate_2 = pg_format_input_amount($row['base_rate_2'] / 100);
+        $base_rate_2_subtotal = pg_format_input_amount($row['base_rate_2_subtotal'] / 100);
     }
 
     $base_rate_3 = '';
     $base_rate_3_subtotal = '';
 
     if ($row['base_rate_3_subtotal'] > 0) {
-        $base_rate_3 = sprintf("%01.2lf", $row['base_rate_3'] / 100);
-        $base_rate_3_subtotal = sprintf("%01.2lf", $row['base_rate_3_subtotal'] / 100);
+        $base_rate_3 = pg_format_input_amount($row['base_rate_3'] / 100);
+        $base_rate_3_subtotal = pg_format_input_amount($row['base_rate_3_subtotal'] / 100);
     }
 
     $base_rate_4 = '';
     $base_rate_4_subtotal = '';
 
     if ($row['base_rate_4_subtotal'] > 0) {
-        $base_rate_4 = sprintf("%01.2lf", $row['base_rate_4'] / 100);
-        $base_rate_4_subtotal = sprintf("%01.2lf", $row['base_rate_4_subtotal'] / 100);
+        $base_rate_4 = pg_format_input_amount($row['base_rate_4'] / 100);
+        $base_rate_4_subtotal = pg_format_input_amount($row['base_rate_4_subtotal'] / 100);
     }
 
-    $primary_weight_rate = sprintf("%01.2lf", $row['primary_weight_rate'] / 100);
+    $primary_weight_rate = pg_format_input_amount($row['primary_weight_rate'] / 100);
     $primary_weight_rate_first_item_excluded = $row['primary_weight_rate_first_item_excluded'];
-    $secondary_weight_rate = sprintf("%01.2lf", $row['secondary_weight_rate'] / 100);
+    $secondary_weight_rate = pg_format_input_amount($row['secondary_weight_rate'] / 100);
     $secondary_weight_rate_first_item_excluded = $row['secondary_weight_rate_first_item_excluded'];
-    $item_rate = sprintf("%01.2lf", $row['item_rate'] / 100);
+    $item_rate = pg_format_input_amount($row['item_rate'] / 100);
     $item_rate_first_item_excluded = $row['item_rate_first_item_excluded'];
     $base_transit_days = $row['base_transit_days'];
     $adjust_transit = $row['adjust_transit'];
@@ -504,7 +504,7 @@ if (!$_POST) {
                                                 <div class=" border-1 border rounded p-2 m-1">
                                                     <label class="form-label" for="base_rate">' . lang('Base Rate') . '</label>
                                                     <div class="input-group">
-                                                        <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                        <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                         <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                                     </div>
                                                     <div class="form-check form-switch  my-2 ms-3">
@@ -521,30 +521,30 @@ if (!$_POST) {
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="base_rate_2">' . lang('or') . '</label>
                                                             <div class="input-group">
-                                                                <input value="' . $base_rate_2 . '" style="min-width: 90px;" type="text" name="base_rate_2" id="base_rate_2" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_2 . '" style="min-width: 90px;" type="text" name="base_rate_2" id="base_rate_2" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text" for="base_rate_2">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 <label class="input-group-text text-wrap" for="base_rate_2_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                <input value="' . $base_rate_2_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_2_subtotal" id="base_rate_2_subtotal" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_2_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_2_subtotal" id="base_rate_2_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text" for="base_rate_2_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="base_rate_3">' . lang('or') . '</label>
                                                             <div class="input-group">
-                                                                <input value="' . $base_rate_3 . '" style="min-width: 90px;" type="text" name="base_rate_3" id="base_rate_3" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_3 . '" style="min-width: 90px;" type="text" name="base_rate_3" id="base_rate_3" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text " for="base_rate_3">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 <label class="input-group-text text-wrap" for="base_rate_3_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                <input value="' . $base_rate_3_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_3_subtotal" id="base_rate_3_subtotal" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_3_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_3_subtotal" id="base_rate_3_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text" for="base_rate_3_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="base_rate_4">' . lang('or') . '</label>
                                                             <div class="input-group">
-                                                                <input value="' . $base_rate_4 . '" style="min-width: 90px;" type="text" name="base_rate_4" id="base_rate_4" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_4 . '" style="min-width: 90px;" type="text" name="base_rate_4" id="base_rate_4" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text" for="base_rate_4">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 <label class="input-group-text text-wrap" for="base_rate_4_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                <input value="' . $base_rate_4_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_4_subtotal" id="base_rate_4_subtotal" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $base_rate_4_subtotal . '" style="min-width: 90px;" type="text" name="base_rate_4_subtotal" id="base_rate_4_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                                 <label class="input-group-text" for="base_rate_4_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
                                                             </div>
                                                         </div>
@@ -556,7 +556,7 @@ if (!$_POST) {
                                             <div class=" border-1 border rounded p-2 m-1">
                                                 <label class="form-label" for="primary_weight_rate">' . lang('Primary Weight Rate') . '</label>
                                                 <div class="input-group">
-                                                    <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                    <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                     <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                                 </div>
                                                 <div class="form-check form-switch my-2 ms-3">
@@ -569,7 +569,7 @@ if (!$_POST) {
                                             <div class=" border-1 border rounded p-2 m-1">
                                                 <label class="form-label" for="secondary_weight_rate">' . lang('Secondary Weight Rate') . '</label>
                                                 <div class="input-group">
-                                                    <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                    <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                     <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                                 </div>
                                                 <div class="form-check form-switch my-2 ms-3">
@@ -582,7 +582,7 @@ if (!$_POST) {
                                             <div class=" border-1 border rounded p-2 m-1">
                                                 <label class="form-label" for="item_rate">' . lang('Item Rate') . '</label>
                                                 <div class="input-group">
-                                                    <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                    <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                     <label class="input-group-text" for="item_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                                 </div>
                                                 <div class="form-check form-switch my-2 ms-3">
@@ -1047,10 +1047,10 @@ if (!$_POST) {
             // Loop through the different variable base rate fields
             // in order to add them to array if data was entered for them.
             for ($number = 2; $number <= 4; $number++) { 
-                // Remove commas and spaces before validating, so a rate typed with a
-                // thousands separator is accepted like the subtotal is.
-                $rate_value = str_replace(array(',', ' '), '', (string) ($_POST['base_rate_' . $number] ?? ''));
-                $subtotal_value = str_replace(array(',', ' '), '', (string) ($_POST['base_rate_' . $number . '_subtotal'] ?? ''));
+                // Read with either separator, as the money mask posts them in the
+                // panel language (1.234,56 or 1,234.56).
+                $rate_value = pg_normalize_amount((string) ($_POST['base_rate_' . $number] ?? ''));
+                $subtotal_value = pg_normalize_amount((string) ($_POST['base_rate_' . $number . '_subtotal'] ?? ''));
 
                 // If a valid base rate and subtotal was entered, then add this variable base rate.
                 if (
