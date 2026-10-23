@@ -895,11 +895,18 @@ if (!defined('PG_INIT_LOADED')) {
 <?php endif ?>
 <?php if ($auto_registration): ?>
 <h2><?=h(lang('New Account'))?></h2>
-<p><?=h(lang('We have created a new account for you so you can view your orders on our site. You can find your login info below.'))?></p>
+<?php if ($auto_registration_for_customer): ?>
+<p><?=h(lang('We have created a new account for you so you can view your orders on our site.'))?></p>
 <dl class="dl-horizontal">
 	<dt><?=h(lang('Email'))?></dt>
 	<dd><?=h($auto_registration_email_address)?></dd>
-	<dt><?=h(lang('Password'))?></dt>
-	<dd><?=h($auto_registration_password)?></dd>
 </dl>
+<?php if ($auto_registration_set_password_url): ?>
+<p><a href="<?=h($auto_registration_set_password_url)?>" class="btn btn-primary"><?=h(lang('Set your password'))?></a></p>
+<?php else: ?>
+<p><?=h(lang('You can set a password with "Forgot password" on the sign-in page.'))?></p>
+<?php endif ?>
+<?php else: ?>
+<p><?=h(lang(array('string' => 'A new account was created with this order: {var:1}', 'vars' => array($auto_registration_email_address))))?></p>
+<?php endif ?>
 <?php endif ?>
