@@ -38,6 +38,37 @@ function test_erp_allocate_hands_out_the_remainder()
 	pg_assert_same(array(34, 33, 33), erp_allocate(100, array(1, 1, 1)));
 }
 
+// Equal remainders take the left-over kurus in the lines' own order however
+// many lines there are: before PHP 8.0 sorting was not stable, and the equal
+// remainders of more than 16 lines went to other lines than on PHP 8.
+function test_erp_allocate_gives_equal_remainders_in_line_order()
+{
+	$weights = array_fill_keys(range(100, 119), 1);
+
+	pg_assert_same(array_fill_keys(range(100, 109), 1) + array_fill_keys(range(110, 119), 0), erp_allocate(10, $weights));
+}
+
+// The ERP and the checkout (pg_tax_spread()) split alike, so an order's line
+// taxes and its invoice's line VAT are the same figures on every PHP version;
+// weights from a short list make many equal remainders.
+function test_erp_allocate_splits_as_the_checkout()
+{
+	mt_srand(20261023);
+
+	for ($run = 0; $run < 500; $run++) {
+		$weights = array();
+		$count = mt_rand(1, 40);
+
+		for ($i = 0; $i < $count; $i++) {
+			$weights[200 + $i] = mt_rand(0, 3) * (mt_rand(0, 1) ? 1 : 250);
+		}
+
+		$total = mt_rand(0, 1) ? mt_rand(0, 60) : mt_rand(0, 100000);
+
+		pg_assert_same(pg_tax_spread($total, $weights), erp_allocate($total, $weights), 'run ' . $run);
+	}
+}
+
 // Two lines of 1.02 at 20% carry 0.41 of VAT, taken on 2.04, not 0.20 + 0.20;
 // the kurus of the spread goes to the first line.
 function test_erp_rate_vat_takes_vat_on_the_rate_total()

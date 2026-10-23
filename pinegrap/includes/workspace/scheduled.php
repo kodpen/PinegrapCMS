@@ -4401,7 +4401,7 @@ function ws_scheduled_change($viewer, $row, $action)
     // the note on a deleted offer) name this action instead (ws_change_source()).
     $GLOBALS['ws_change_log_quiet'] = true;
     ws_change_source(array('kind' => 'scheduled', 'name' => (string) $row['name']));
-    $done = call_user_func('ws_change_write_' . $type, $viewer, $change['action'], $record, $values);
+    $done = ws_change_write($viewer, $type, $change['action'], $record, $values, true);
     ws_change_source(false);
     $GLOBALS['ws_change_log_quiet'] = false;
 

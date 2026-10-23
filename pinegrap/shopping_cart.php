@@ -1447,7 +1447,7 @@ if ($express_order_name) {
                         $original_shipping_cost = $shipping_cost;
                         
                         // update shipping cost to contain discount
-                        $shipping_cost = (int) round($shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100)));
+                        $shipping_cost = pg_percent_off($shipping_cost, $offer['discount_shipping_percentage']);
                     }
                 }
                 

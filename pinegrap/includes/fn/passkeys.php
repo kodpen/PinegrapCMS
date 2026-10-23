@@ -39,7 +39,8 @@
  * credential belongs to which account.
  *
  * Endpoints: passkey.php (options and registration, JSON); mfa.php takes a
- * passkey at the second step of a sign-in.
+ * passkey at the second step of a sign-in; account_security.php renames and
+ * removes one. The account page lists them with pg_passkey_account_section().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -475,6 +476,73 @@ function pg_passkeys_forget($user_id)
     db("DELETE FROM user_passkeys WHERE user_id = '" . (int) $user_id . "'");
 }
 
+/**
+ * The name of one passkey of an account, or null when the account has no
+ * passkey by that id (another account's included).
+ *
+ * @param int $user_id
+ * @param int $passkey_id
+ * @return string|null
+ */
+function pg_passkey_name_of($user_id, $passkey_id)
+{
+    if (!pg_passkeys_table_exists() || ((int) $user_id <= 0) || ((int) $passkey_id <= 0)) {
+        return null;
+    }
+
+    $name = db_value("SELECT name FROM user_passkeys
+        WHERE id = '" . (int) $passkey_id . "' AND user_id = '" . (int) $user_id . "'");
+
+    return ($name !== null) ? (string) $name : null;
+}
+
+/**
+ * Gives one passkey of an account a new name, cleaned as a registration
+ * cleans it; nothing left gives "Passkey".
+ *
+ * @param int   $user_id
+ * @param int   $passkey_id
+ * @param mixed $name
+ * @return string|null the name kept; null when the account has no passkey by
+ *                     that id
+ */
+function pg_passkey_rename($user_id, $passkey_id, $name)
+{
+    if (pg_passkey_name_of($user_id, $passkey_id) === null) {
+        return null;
+    }
+
+    $name = pg_passkey_name($name);
+    $name = ($name !== '') ? $name : lang('Passkey');
+
+    db("UPDATE user_passkeys SET name = '" . e($name) . "'
+        WHERE id = '" . (int) $passkey_id . "' AND user_id = '" . (int) $user_id . "'");
+
+    return $name;
+}
+
+/**
+ * Removes one passkey of an account. The credential stays on the person's
+ * device; this site no longer accepts it.
+ *
+ * @param int $user_id
+ * @param int $passkey_id
+ * @return string|null the removed passkey's name; null when the account has
+ *                     no passkey by that id
+ */
+function pg_passkey_remove($user_id, $passkey_id)
+{
+    $name = pg_passkey_name_of($user_id, $passkey_id);
+
+    if ($name === null) {
+        return null;
+    }
+
+    db("DELETE FROM user_passkeys WHERE id = '" . (int) $passkey_id . "' AND user_id = '" . (int) $user_id . "'");
+
+    return (mysqli_affected_rows(db::$con) === 1) ? $name : null;
+}
+
 // ── Registration ────────────────────────────────────────────────────────────
 
 /**
@@ -828,4 +896,238 @@ function pg_passkey_refusal($error, $context)
     return ($context === 'register')
         ? lang('The passkey could not be added. Please try again.')
         : lang('The passkey was not accepted.');
+}
+
+// ── Account screen ──────────────────────────────────────────────────────────
+
+/**
+ * What a person proves before changing the passkeys of their account, by
+ * what the account has: its password (every account but a Google-only one,
+ * algo 3, which has none) and, while two-step verification is on, a code
+ * from the authenticator app or a recovery code. An account with neither
+ * proves nothing beyond its session. Adding a passkey is offered only while
+ * two-step verification is on, so adding always asks for the code.
+ *
+ * @param int  $password_algo user.user_password_algo
+ * @param bool $mfa_enabled   pg_mfa_enabled() of the account
+ * @return array password, code: whether each is asked for
+ */
+function pg_passkey_reauth_fields($password_algo, $mfa_enabled)
+{
+    return array(
+        'password' => ((int) $password_algo !== 3),
+        'code'     => (bool) $mfa_enabled,
+    );
+}
+
+/**
+ * The passkeys part of the account security section
+ * (pg_account_security_section()), in the plain style of
+ * pg_mfa_account_section(): the account's passkeys, each with a rename and a
+ * remove form that post to account_security.php, and the form that adds one
+ * through passkey.php (assets/js/pg_passkey.js). That form is hidden until
+ * its script finds a browser that can make passkeys.
+ *
+ * Adding is offered only while two-step verification is on: a passkey
+ * answers the second step of a sign-in in place of the code, and only an
+ * account with two-step verification is asked for one. The current password
+ * (none for a Google-only account) and a code are asked for before the
+ * browser makes the passkey, so a stolen session cannot plant one.
+ *
+ * @param int    $user_id
+ * @param int    $password_algo user.user_password_algo; 3 is a Google-only
+ *                              account, which has no password to ask for.
+ * @param string $action_url    account_security.php
+ * @param string $token         The CSRF field.
+ * @return string '' before the upgrade, and on a site where passkeys cannot
+ *                work while the account has none.
+ */
+function pg_passkey_account_section($user_id, $password_algo, $action_url, $token)
+{
+    if (!pg_passkeys_table_exists()) {
+        return '';
+    }
+
+    $user_id = (int) $user_id;
+    $passkeys = pg_passkeys_of_user($user_id);
+    $count = count($passkeys);
+    $ready = pg_passkey_ready();
+
+    // A site where passkeys never work (no OpenSSL with EC keys, an IP
+    // address, plain http) says nothing about them; one opened at another of
+    // its names says where they work.
+    if (!$ready['ok'] && ($count === 0) && ($ready['error'] !== 'host')) {
+        return '';
+    }
+
+    $heading = '<div class="heading" style="margin:1.5em 0 10px">' . h(lang('Passkeys')) . '</div>';
+
+    // An operator signed in as this person sees how many there are and
+    // nothing to press; account_security.php and passkey.php refuse the
+    // changes in that mode as well.
+    if (!empty($_SESSION['software']['logged_in_as_different_user'])) {
+        return $heading . '<p>' . h(lang(array(
+            'string' => 'This account has {var:1} passkey{suffix:1}.',
+            'vars'   => (string) $count,
+            'suffix' => ($count === 1) ? '' : 's'))) . '</p>';
+    }
+
+    $mfa = pg_mfa_table_exists() && pg_mfa_enabled($user_id);
+    $proofs = pg_passkey_reauth_fields($password_algo, $mfa);
+
+    $form = function ($action, $inner) use ($action_url, $token) {
+        return '<form method="post" action="' . h($action_url) . '" style="margin:.5em 0 1em" autocomplete="off">' . $token
+            . '<input type="hidden" name="pg_security_action" value="' . h($action) . '"/>' . $inner . '</form>';
+    };
+
+    $field = function ($id, $label, $input) {
+        return '<label for="' . h($id) . '" style="display:block;margin-bottom:.25em">' . h($label) . '</label>' . $input;
+    };
+
+    $password_input = function ($id) use ($field) {
+        return $field($id, lang('Current password'),
+            '<input type="password" id="' . h($id) . '" name="current_password" class="software_input_password" required="required" autocomplete="current-password" style="margin-bottom:.5em"/><br/>');
+    };
+
+    // Six digits or a recovery code, so no numeric keyboard is asked for.
+    $code_input = function ($id) use ($field) {
+        return $field($id, lang('Code from your authenticator app or a recovery code'),
+            '<input type="text" id="' . h($id) . '" name="code" class="software_input_text" required="required" autocomplete="one-time-code" maxlength="20" spellcheck="false" style="margin-bottom:.5em"/><br/>');
+    };
+
+    $html = $heading
+        . '<p>' . h(lang('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.')) . '</p>';
+
+    if ($count === 0) {
+        $html .= '<p>' . h(lang('This account has no passkey.')) . '</p>';
+    } else {
+        $rows_html = '';
+
+        foreach ($passkeys as $passkey) {
+            $id = (int) $passkey['id'];
+            $name = ($passkey['name'] !== '') ? $passkey['name'] : lang('Passkey');
+
+            // get_absolute_time() wraps the date in a <time> element; only
+            // the text is printed, escaped.
+            $added = strip_tags(get_absolute_time(array('timestamp' => $passkey['created_at'], 'type' => 'date')));
+
+            // get_relative_time() returns a <time> element, not plain text.
+            $last = ($passkey['last_used_at'] > 0)
+                ? get_relative_time(array('timestamp' => $passkey['last_used_at']))
+                : h(lang('Never'));
+
+            $synced = $passkey['backup_state']
+                ? ' <span class="badge bg-secondary fw-light" title="' . h(lang('Kept in a password manager or cloud account, so your other devices can use it too.')) . '">' . h(lang('Synced')) . '</span>'
+                : '';
+
+            $rename = $form('passkey_rename',
+                '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
+                . $field('pg_passkey_name_' . $id, lang('Name'),
+                    '<input type="text" id="pg_passkey_name_' . $id . '" name="name" class="software_input_text" maxlength="' . (int) PG_PASSKEY_NAME_MAX . '" value="' . h($name) . '" style="margin-bottom:.5em"/><br/>')
+                . '<button type="submit" class="software_input_submit_primary">' . h(lang('Save')) . '</button>');
+
+            $remove = $form('passkey_remove',
+                '<input type="hidden" name="passkey_id" value="' . $id . '"/>'
+                . '<p style="margin-bottom:.5em">' . h(lang('After removing it here, delete it from your device or password manager as well.')) . '</p>'
+                . ($proofs['password'] ? $password_input('pg_passkey_remove_password_' . $id) : '')
+                . ($proofs['code'] ? $code_input('pg_passkey_remove_code_' . $id) : '')
+                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('Remove')) . '</button>');
+
+            $rows_html .=
+                '<tr><td style="padding:.4em .6em">' . h($name) . $synced
+                . '<div style="margin-top:.25em">'
+                . '<details style="display:inline-block;vertical-align:top;margin-right:1.5em"><summary style="cursor:pointer">' . h(lang('Rename')) . '</summary>' . $rename . '</details>'
+                . '<details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer">' . h(lang('Remove')) . '</summary>' . $remove . '</details>'
+                . '</div></td>'
+                . '<td style="padding:.4em .6em">' . h($added) . '</td>'
+                . '<td style="padding:.4em .6em">' . $last . '</td></tr>';
+        }
+
+        $html .=
+            '<table style="width:100%;border-collapse:collapse" class="table">'
+            . '<thead><tr>'
+            . '<th style="text-align:left;padding:.4em .6em">' . h(lang('Name')) . '</th>'
+            . '<th style="text-align:left;padding:.4em .6em">' . h(lang('Added')) . '</th>'
+            . '<th style="text-align:left;padding:.4em .6em">' . h(lang('Last used')) . '</th>'
+            . '</tr></thead><tbody>' . $rows_html . '</tbody></table>';
+    }
+
+    if (!$ready['ok']) {
+        return $html . '<p>' . h(pg_passkey_refusal($ready['error'], 'register')) . '</p>';
+    }
+
+    if (!$mfa) {
+        return $html . '<p>' . h(lang('Turn on two-step verification first; a passkey then stands in for its code.')) . '</p>';
+    }
+
+    if ($count >= PG_PASSKEYS_MAX) {
+        return $html . '<p>' . h(pg_passkey_refusal('limit', 'register')) . '</p>';
+    }
+
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    // The add form posts nowhere itself: its script asks passkey.php for the
+    // options with the proofs, lets the browser make the passkey and sends it
+    // back. A browser that cannot make passkeys is told so instead.
+    return $html
+        . '<div id="pg_passkey_add_block" style="display:none">'
+        . '<p style="margin-bottom:.5em"><strong>' . h(lang('Add a passkey')) . '</strong></p>'
+        . '<form id="pg_passkey_add" method="post" action="' . h($action_url) . '" style="margin:0 0 1em" autocomplete="off">' . $token
+        . $field('pg_passkey_add_name', lang('Name'),
+            '<input type="text" id="pg_passkey_add_name" name="name" class="software_input_text" maxlength="' . (int) PG_PASSKEY_NAME_MAX . '" placeholder="' . h(lang('My phone')) . '" style="margin-bottom:.5em"/><br/>')
+        . ($proofs['password'] ? $password_input('pg_passkey_add_password') : '')
+        . $code_input('pg_passkey_add_code')
+        . '<button type="submit" class="software_input_submit_primary">' . h(lang('Add a passkey')) . '</button>'
+        . '<div id="pg_passkey_add_message" class="error" role="alert" style="margin-top:.5em"></div>'
+        . '</form></div>'
+        . '<p id="pg_passkey_add_unsupported" style="display:none">' . h(lang('This browser cannot create passkeys.')) . '</p>'
+        . '<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js') . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_passkey.js') . '"></script>
+        <script>
+        (function () {
+            var block = document.getElementById("pg_passkey_add_block");
+            var form = document.getElementById("pg_passkey_add");
+            if (!block || !form) {
+                return;
+            }
+            if (!window.PgPasskey || !window.PgPasskey.supported()) {
+                document.getElementById("pg_passkey_add_unsupported").style.display = "";
+                return;
+            }
+            var fields = form.elements;
+            var button = form.querySelector("button[type=submit]");
+            var notice = document.getElementById("pg_passkey_add_message");
+            var texts = ' . json_encode(array(
+                'cancelled' => lang('The passkey was not created. Please try again.'),
+                'duplicate' => pg_passkey_refusal('duplicate', 'register'),
+                'attempts'  => pg_mfa_reauth_message('attempts'),
+                'failed'    => lang('Your browser could not use a passkey here.'),
+            ), $json) . ';
+            block.style.display = "";
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                button.disabled = true;
+                notice.textContent = "";
+                window.PgPasskey.register({
+                    url: ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ',
+                    token: fields.namedItem("token").value,
+                    name: fields.namedItem("name").value,
+                    currentPassword: fields.namedItem("current_password") ? fields.namedItem("current_password").value : "",
+                    code: fields.namedItem("code").value
+                }).then(function () {
+                    window.location.reload();
+                }).catch(function (error) {
+                    var code = error && error.code;
+                    // A code is spent once passkey.php accepts it, so a
+                    // cancelled dialog needs the next one.
+                    fields.namedItem("code").value = "";
+                    button.disabled = false;
+                    notice.textContent = (error && error.message)
+                        || (((code === "NotAllowedError") || (code === "AbortError")) ? texts.cancelled
+                        : (code === "InvalidStateError") ? texts.duplicate
+                        : (code === "attempts") ? texts.attempts
+                        : texts.failed);
+                });
+            });
+        })();
+        </script>';
 }

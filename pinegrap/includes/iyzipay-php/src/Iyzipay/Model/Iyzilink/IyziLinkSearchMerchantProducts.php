@@ -9,8 +9,8 @@ use Iyzipay\Options;
 use Iyzipay\RequestStringBuilder;
 
 class IyziLinkSearchMerchantProducts extends IyzipayResource {
-    private int $page;
-    private int $count;
+    private $page;
+    private $count;
 
     public function getPage(): int {
         return $this->page;
