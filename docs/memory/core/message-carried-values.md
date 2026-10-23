@@ -5,7 +5,7 @@ description: Values a liveform message carries (records, panel input, service an
 
 ## Which values does a message escape?
 - Every value a liveform message carries that the software did not write: stored titles and names, panel input, a remote service's answer, `erp_db_error()` / `mysqli_error()`. `h()` goes around the value where it enters the message call, never around a variable that also reaches a log, JSON, SQL or an e-mail. Rule and printers: page-messages-defuse.md.
-- Done for the visitor-facing calls in `71d3f02d` and for the panel screens in #1288 (ERP), #1289 (products, orders, imports, content), #1290 (settings and system) and #1291 (Workspace); the custom form submit (`custom_form.php`), the membership entrance (`pg_member_activate()`), the page and marketplace settings followed. Each area has `tests/message_values_<area>_test.php` (`forms` for the first two): one line per escaped call with its exact count, so taking an escape back out fails the test.
+- Done for the visitor-facing calls in `71d3f02d` and for the panel screens in #1288 (ERP), #1289 (products, orders, imports, content), #1290 (settings and system) and #1291 (Workspace); the custom form submit (`custom_form.php`), the membership entrance (`pg_member_activate()`), the page and marketplace settings in #1368. Each area has `tests/message_values_<area>_test.php` (`forms` for the first two): one line per escaped call with its exact count, so taking an escape back out fails the test.
 
 ## Which cases need care?
 - The connect flash (`pg_connect_flash()`) is plain text, as `connect.php` writes it; the screen that shows it escapes it (`h($flash['text'])`). A writer that escapes would make a flash escaped twice when another screen takes it.
