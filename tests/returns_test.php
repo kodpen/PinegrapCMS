@@ -614,6 +614,10 @@ function test_returns_refund_estimate()
 	pg_assert_same(8400, pg_return_refund_estimate($credit, array(21 => 2, 22 => 2), 0), 'a credit line');
 	pg_assert_same(7560, pg_return_refund_estimate($credit, array(21 => 2, 22 => 2), 700), 'a credit line with the order discount');
 	pg_assert_same(3780, pg_return_refund_estimate($credit, array(21 => 1, 22 => 1), 700), 'half of it');
+
+	// The goods without it bring their share of it, as a discount comes back.
+	pg_assert_same(8400, pg_return_refund_estimate($credit, array(21 => 2), 0), 'the goods alone');
+	pg_assert_same(3780, pg_return_refund_estimate($credit, array(21 => 1), 700), 'a unit of the goods alone');
 }
 
 // Order lines against the ERP's refund lines: the same ids on the order's

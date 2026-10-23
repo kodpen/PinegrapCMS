@@ -132,9 +132,11 @@ function erp_order_refund_order_lines($built_lines, $items)
  * be chosen, so the screen can answer at once as the boxes change.
  *
  * Each line is worked out on its own by erp_return_build(): exact while it is
- * the only line chosen. With several lines the taxes of the pieces given back
- * in part are taken per group of the return, and the dialog takes the
- * figures for the whole choice from the server (erp_refund_preview).
+ * the only line chosen and the sale has no line below zero. With several
+ * lines the taxes of the pieces given back in part are taken per group of the
+ * return, and goods bring a credit line's share back with them
+ * (erp_return_credit_quantities()), so the dialog takes the figures for the
+ * whole choice from the server (erp_refund_preview).
  *
  * @param array $line  One line from erp_order_refund_lines()
  * @param int   $cap   Most counts to list; beyond it the screen scales
@@ -240,6 +242,7 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                     <tr>
                                         <td class="text-break">' . h((string) $refund_line['description']) . '
                                             ' . (((float) $refund_line['returned_qty'] > 0) ? '<div class="small text-body-secondary">' . lang(array('string' => '{var:1} of {var:2} already returned', 'vars' => array(erp_quantity_out($refund_line['returned_qty']), erp_quantity_out($refund_line['quantity'])))) . '</div>' : '') . '
+                                            ' . (((int) $refund_line['line_total'] < 0) ? '<div class="small text-body-secondary">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '') . '
                                         </td>
                                         <td class="text-end text-nowrap">' . erp_quantity_out($refund_line['remaining_qty']) . '</td>
                                         <td style="width:6.5rem"><input type="number" class="form-control form-control-sm text-end" name="refund_qty[' . $line_id . ']" data-refund-line="' . $line_id . '" min="0" max="' . $remaining . '" step="1" value="0" inputmode="numeric" aria-label="' . h(lang('Quantity to refund')) . '"></td>
@@ -298,9 +301,12 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                 var orderId = ' . (int) $order_id . ';
                                 var asked = 0;
                                 var timer = null;
+                                // A line below zero left at 0 still has an amount in
+                                // the server\'s answer: the share that comes back with
+                                // the goods.
                                 var show = function (total, amounts, counts) {
                                     Object.keys(counts).forEach(function (id) {
-                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = counts[id] ? money(amounts[id] || 0) : "-";
+                                        document.querySelector("[data-refund-line-total=\"" + id + "\"]").textContent = (counts[id] || amounts[id]) ? money(amounts[id] || 0) : "-";
                                     });
                                     document.getElementById("payment_refund_total").textContent = money(Math.min(total, max));
                                     document.getElementById("payment_refund_capped").classList.toggle("d-none", total <= max);

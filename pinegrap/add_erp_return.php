@@ -77,11 +77,13 @@ if (!$_POST) {
 
         foreach ($lines as $line) {
             // Each quantity is one number: an array (?qty[5][]=x) cast to 1
-            // and put one back; it counts as none refunded on that line.
+            // and put one back; it counts as none refunded on that line. A
+            // line below zero starts empty: it comes back with the goods in
+            // proportion (erp_return_credit_quantities()).
             $preset = $preset_qty[(int) $line['id']] ?? 0;
             $quantity = ($preset_qty !== null)
                 ? min((float) $line['remaining_qty'], max(0, is_scalar($preset) ? (float) $preset : 0))
-                : (float) $line['remaining_qty'];
+                : (((int) $line['line_total'] < 0) ? 0 : (float) $line['remaining_qty']);
             $liveform->assign_field_value('qty_' . (int) $line['id'],
                 ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') : '');
         }
@@ -110,6 +112,7 @@ if (!$_POST) {
                             'id' => 'qty_' . (int) $line['id'],
                             'class' => 'form-control form-control-sm text-end',
                             'inputmode' => 'decimal', 'maxlength' => '10', 'autocomplete' => 'off'))
+                            . (((int) $line['line_total'] < 0) ? '<div class="form-text">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '')
                         : '<span class="text-body-secondary">&mdash;</span>') . '</td>
             </tr>';
     }
