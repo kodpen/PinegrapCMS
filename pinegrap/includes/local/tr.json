@@ -26665,5 +26665,7 @@
     "address ({var:1}) was removed from the 404 log": "adres ({var:1}) 404 kaydından çıkarıldı",
     "cleared the 404 log": "404 kaydını temizledi",
     "general job removed {var:1} address(es) from the 404 log": "genel görev 404 kaydından {var:1} adresi sildi",
-    "{var:1} address(es), {var:2} request(s), {var:3} of them from search engines.": "{var:1} adres, {var:2} istek; bunların {var:3} tanesi arama motorlarından."
+    "{var:1} address(es), {var:2} request(s), {var:3} of them from search engines.": "{var:1} adres, {var:2} istek; bunların {var:3} tanesi arama motorlarından.",
+    "First asked for": "İlk istenme",
+    "Last asked for": "Son istenme"
 }

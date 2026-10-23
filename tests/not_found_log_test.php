@@ -127,6 +127,30 @@ function test_not_found_log_decides_who_is_logged()
 	pg_assert_same('visitor', pg_not_found_log_decide(array('name' => 'x')), 'missing keys are the plain request');
 }
 
+// /blog/live-post/ answers 404 where /blog/live-post answers: the stored form
+// drops the /, and a short link under it would take the live post over.
+function test_not_found_log_leaves_out_a_slash_variant_of_a_live_address()
+{
+	pg_assert_same('', pg_not_found_log_decide(not_found_log_test_request(array('name' => 'blog/canli-yazi', 'reshaped' => true, 'live_page' => true))), 'a page took part of the address');
+	pg_assert_same('', pg_not_found_log_decide(not_found_log_test_request(array('name' => 'sepet', 'reshaped' => true, 'page_answers' => true))), 'a page has the name');
+	pg_assert_same('visitor', pg_not_found_log_decide(not_found_log_test_request(array('name' => 'eski-sayfa', 'reshaped' => true))), 'an old address with a / at the end that nothing answers');
+	pg_assert_same('visitor', pg_not_found_log_decide(not_found_log_test_request(array('name' => 'magaza/eski-urun', 'live_page' => true))), 'an item under a live page, asked as it is stored');
+	pg_assert_same('visitor', pg_not_found_log_decide(not_found_log_test_request(array('page_answers' => true))), 'page_answers counts only for a reshaped name');
+}
+
+function test_not_found_log_ai_fetcher_is_no_search_engine()
+{
+	if (!function_exists('waf_ai_bots')) {
+		return;
+	}
+
+	pg_assert_true(pg_not_found_log_ai_fetcher('Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ChatGPT-User/1.0; +https://openai.com/bot)'), 'ChatGPT-User fetches for a person');
+	pg_assert_true(pg_not_found_log_ai_fetcher('Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)'), 'Claude-User too');
+	pg_assert_true(!pg_not_found_log_ai_fetcher('Mozilla/5.0 (compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot)'), 'an AI search crawler is a crawler');
+	pg_assert_true(!pg_not_found_log_ai_fetcher('Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'), 'Googlebot');
+	pg_assert_true(!pg_not_found_log_ai_fetcher('Mozilla/5.0 (X11; Linux x86_64) Chrome/130.0'), 'a person');
+}
+
 function test_not_found_log_where()
 {
 	not_found_log_test_db_stub();

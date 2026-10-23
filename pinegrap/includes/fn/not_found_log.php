@@ -166,11 +166,16 @@ function pg_not_found_log_is_prefetch($server)
  *   live_page  the request opened a page (pg_rendered_page()) and the name
  *              has no /: the 404 is about a record named in the query string
  *              (?r=, ?id=) of a page that is there, which no redirect fixes
+ *   reshaped   the name is not the address as asked (a / at the end or
+ *              doubled, which the stored form drops) and a page took part of
+ *              the address (live_page) or has the name (page_answers): the
+ *              slash variant of a live address failed, and a short link under
+ *              the name would take the live address over
  *   prefetch   pg_not_found_log_is_prefetch()
  *   waf_rule   the firewall logged this request (a signature, a rate, a bot)
  *   automated  pg_request_is_automated(); logged only as a verified crawler
  *
- * @param array $request method, rendering, name, live_page, prefetch, waf_rule, automated, verified_crawler
+ * @param array $request method, rendering, name, live_page, reshaped, page_answers, prefetch, waf_rule, automated, verified_crawler
  * @return string
  */
 function pg_not_found_log_decide($request)
@@ -187,6 +192,10 @@ function pg_not_found_log_decide($request)
         return '';
     }
 
+    if (!empty($request['reshaped']) && (!empty($request['live_page']) || !empty($request['page_answers']))) {
+        return '';
+    }
+
     if (!empty($request['prefetch']) || ((string) ($request['waf_rule'] ?? '') !== '')) {
         return '';
     }
@@ -196,6 +205,46 @@ function pg_not_found_log_decide($request)
     }
 
     return 'visitor';
+}
+
+/**
+ * True when a page has this name. Asked only for an address the stored form
+ * changed (pg_not_found_log_decide(), reshaped); a raw query, since this runs
+ * inside output_error().
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_not_found_log_page_named($name)
+{
+    $result = @mysqli_query(db::$con, "SELECT 1 FROM page WHERE page_name = '" . mysqli_real_escape_string(db::$con, (string) $name) . "' LIMIT 1");
+
+    return ($result !== false) && (mysqli_num_rows($result) > 0);
+}
+
+/**
+ * True for an AI assistant fetching a page a person asked it about
+ * (ChatGPT-User, Claude-User, Perplexity-User): the firewall verifies it like
+ * a crawler, but it is not one, so its 404 is not counted as a search
+ * engine's. The intent is read from the user agent's token, as the firewall
+ * reads it (waf_ai_bots()); the verification proved who sent it.
+ *
+ * @param string $user_agent
+ * @return bool
+ */
+function pg_not_found_log_ai_fetcher($user_agent)
+{
+    if (!function_exists('waf_ai_bots')) {
+        return false;
+    }
+
+    foreach (waf_ai_bots() as $token => $bot) {
+        if (($bot['setting'] === 'waf_allow_ai_fetchers') && (stripos((string) $user_agent, $token) !== false)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -241,22 +290,31 @@ function pg_not_found_log_mark()
         return;
     }
 
+    if (!isset(db::$con) || !db::$con) {
+        return;
+    }
+
     $context = function_exists('pg_sw_render_context') ? pg_sw_render_context() : array();
     $automated = function_exists('pg_request_is_automated') && pg_request_is_automated();
     $name = pg_not_found_log_name(PG_SHORT_LINK_PATH, defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '');
+    $live_page = function_exists('pg_rendered_page') && (pg_rendered_page() > 0);
+    $reshaped = ($name !== '') && ($name !== str_replace(' ', '_', (string) PG_SHORT_LINK_PATH));
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
 
     $class = pg_not_found_log_decide(array(
         'method'           => isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : 'GET',
         'rendering'        => (function_exists('pg_seo_rendering') && pg_seo_rendering()) || defined('UPDATE_SEARCH_INDEX') || !empty($context['email']),
         'name'             => $name,
-        'live_page'        => function_exists('pg_rendered_page') && (pg_rendered_page() > 0),
+        'live_page'        => $live_page,
+        'reshaped'         => $reshaped,
+        'page_answers'     => $reshaped && !$live_page && pg_not_found_log_page_named($name),
         'prefetch'         => pg_not_found_log_is_prefetch($_SERVER),
         'waf_rule'         => function_exists('waf_last_rule') ? waf_last_rule() : '',
         'automated'        => $automated,
-        'verified_crawler' => $automated && function_exists('waf_bot_verified') && waf_bot_verified(),
+        'verified_crawler' => $automated && function_exists('waf_bot_verified') && waf_bot_verified() && !pg_not_found_log_ai_fetcher($user_agent),
     ));
 
-    if (($class === '') || !isset(db::$con) || !db::$con || !pg_not_found_log_ready()) {
+    if (($class === '') || !pg_not_found_log_ready()) {
         return;
     }
 
@@ -296,13 +354,21 @@ function pg_not_found_log_write()
         return mysqli_real_escape_string(db::$con, (string) $value);
     };
 
+    // A row past the retention period (no cron, or the sweep not there yet)
+    // starts over, as if the sweep had removed it. last_seen is assigned last:
+    // the conditions before it read the stored value.
+    $since = pg_not_found_log_since($now);
+    $stale = "last_seen < '" . $since . "'";
+    $referrer_sql = $escape($referrer);
+
     $updated = @mysqli_query(db::$con,
         "UPDATE not_found_log
         SET
-            hit_count = hit_count + 1,
-            crawler_hits = crawler_hits + " . $crawler . ",
-            last_seen = '" . $now . "'" .
-            (($referrer !== '') ? ", referrer = IF(referrer = '', '" . $escape($referrer) . "', referrer)" : "") . "
+            hit_count = IF(" . $stale . ", 1, hit_count + 1),
+            crawler_hits = IF(" . $stale . ", " . $crawler . ", crawler_hits + " . $crawler . "),
+            first_seen = IF(" . $stale . ", '" . $now . "', first_seen),
+            referrer = IF(" . $stale . " OR referrer = '', '" . $referrer_sql . "', referrer),
+            last_seen = '" . $now . "'
         WHERE path_key = '" . $key . "'");
 
     if ($updated === false) {
@@ -317,7 +383,7 @@ function pg_not_found_log_write()
 
     $inserted = @mysqli_query(db::$con,
         "INSERT INTO not_found_log (path_key, path, referrer, hit_count, crawler_hits, first_seen, last_seen)
-        VALUES ('" . $key . "', '" . $escape($name) . "', '" . $escape($referrer) . "', 1, " . $crawler . ", '" . $now . "', '" . $now . "')
+        VALUES ('" . $key . "', '" . $escape($name) . "', '" . $referrer_sql . "', 1, " . $crawler . ", '" . $now . "', '" . $now . "')
         ON DUPLICATE KEY UPDATE
             hit_count = hit_count + 1,
             crawler_hits = crawler_hits + " . $crawler . ",
@@ -550,13 +616,13 @@ function pg_not_found_log_answers($names)
         return $out;
     }
 
-    $keys = array();
+    // Names the router finds for one another share a key, and all of them
+    // take the state.
+    $by_key = array();
 
-    foreach ($names as $name) {
-        $keys[$name] = pg_short_link_key($name);
+    foreach (pg_short_link_keys($names) as $name => $key) {
+        $by_key[$key][] = (string) $name;
     }
-
-    $by_key = array_flip($keys);
     $recycled = pg_schema_has('short_links', 'recycled');
 
     foreach (array_chunk($names, 200) as $chunk) {
@@ -577,19 +643,17 @@ function pg_not_found_log_answers($names)
                     continue;
                 }
 
-                $logged = $by_key[$key];
+                foreach ($by_key[$key] as $logged) {
+                    if ($type === 'short_link') {
+                        // A live link wins over one in the bin of the same name.
+                        if (isset($out[$logged]) && ($out[$logged]['state'] === 'redirect')) {
+                            continue;
+                        }
 
-                if ($type === 'short_link') {
-                    $state = !empty($row['recycled']) ? 'binned' : 'redirect';
-
-                    // A live link wins over one in the bin of the same name.
-                    if (isset($out[$logged]) && ($out[$logged]['state'] === 'redirect')) {
-                        continue;
+                        $out[$logged] = array('state' => !empty($row['recycled']) ? 'binned' : 'redirect', 'id' => (int) $row['id']);
+                    } elseif (!isset($out[$logged])) {
+                        $out[$logged] = array('state' => $type, 'id' => 0);
                     }
-
-                    $out[$logged] = array('state' => $state, 'id' => (int) $row['id']);
-                } elseif (!isset($out[$logged])) {
-                    $out[$logged] = array('state' => $type, 'id' => 0);
                 }
             }
         }

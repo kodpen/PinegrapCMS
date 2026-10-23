@@ -100,8 +100,8 @@ $sort_columns = array(
     'path'       => lang('Address'),
     'hits'       => lang('Requests'),
     'crawlers'   => lang('Search engines'),
-    'first_seen' => lang('First seen'),
-    'last_seen'  => lang('Last seen'),
+    'first_seen' => lang('First asked for'),
+    'last_seen'  => lang('Last asked for'),
 );
 
 $sort_default = array('sort' => 'hits', 'order' => 'desc');
@@ -210,8 +210,8 @@ $output_table = ($output_rows === '')
                 <th>' . get_column_heading(lang('Requests'), $sort_levels, '', $kept_extras, 'hits') . '</th>
                 <th>' . get_column_heading(lang('Search engines'), $sort_levels, '', $kept_extras, 'crawlers') . '</th>
                 <th>' . h(lang('Referrer')) . '</th>
-                <th>' . get_column_heading(lang('First seen'), $sort_levels, '', $kept_extras, 'first_seen') . '</th>
-                <th>' . get_column_heading(lang('Last seen'), $sort_levels, '', $kept_extras, 'last_seen') . '</th>
+                <th>' . get_column_heading(lang('First asked for'), $sort_levels, '', $kept_extras, 'first_seen') . '</th>
+                <th>' . get_column_heading(lang('Last asked for'), $sort_levels, '', $kept_extras, 'last_seen') . '</th>
             </tr>
         </thead>
         <tbody>
