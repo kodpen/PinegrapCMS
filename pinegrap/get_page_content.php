@@ -534,6 +534,23 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_theme_switcher_inject($content);
     }
 
+    // ── Sideways rows ───────────────────────────────────────────────────────────
+    // The previous / next buttons of a row marked data-pg-scroller carry no
+    // script either; the row brings it (pg_scroller_inject()), checked once
+    // everything is drawn in. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
+        $content = pg_scroller_inject($content);
+    }
+
+    // ── Tooltips and popovers ───────────────────────────────────────────────────
+    // Bootstrap starts neither by itself: a visual editor page holding a
+    // tooltip (the panel's Tooltip option) or a popover gets the small script
+    // that does (pg_bs_tips_inject()), checked once everything is drawn in.
+    // Classic pages start their own. Not in an e-mail.
+    if (!$email && $style_layout === 'visual_designer' && function_exists('pg_bs_tips_inject')) {
+        $content = pg_bs_tips_inject($content);
+    }
+
     // ── In-browser summary ──────────────────────────────────────────────────────
     // A form item view's button bound to the ai_summarize action brings the
     // script that summarizes the record with the browser's built-in AI
@@ -3156,6 +3173,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 'membership_days' => $properties['membership_days'],
                                 'confirmation_type' => $properties['confirmation_type'],
                                 'confirmation_message' => $properties['confirmation_message'],
+                                'confirmation_page_id' => $properties['confirmation_page_id'] ?? 0,
                                 'return_type' => $properties['return_type'],
                                 'return_message' => $properties['return_message'],
                                 'return_page_id' => $properties['return_page_id'],

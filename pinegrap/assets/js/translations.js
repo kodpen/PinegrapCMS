@@ -2,7 +2,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Translations screen: saving and reviewing a text, "update
- * translations", "clear translations", and the two browser engines, which
+ * translations", "clear translations", the selected texts kept as written
+ * in the source language, and the two browser engines, which
  * translate on the operator's own computer: the Chrome Translator API
  * (chrome), in runs of plain text, and the browser's built-in language
  * model, Gemini Nano through the Prompt API (chrome_ai), one whole text at a
@@ -872,6 +873,84 @@
                 toast(error.message, 'error');
             });
         });
+    }
+
+    // ── "keep as in the source and approve": the texts ticked in the list
+    //    get their source text as the translation, approved by hand; the
+    //    dialog names the count ──
+
+    var acceptButton = document.getElementById('pg_tr_accept_source');
+    var acceptModal = document.getElementById('pg_tr_accept_modal');
+    var pickAll = document.getElementById('pg_tr_pick_all');
+
+    if (acceptButton && acceptModal && window.bootstrap) {
+        var acceptGo = acceptModal.querySelector('.pg-tr-accept-go');
+        var acceptCount = acceptModal.querySelector('.pg-tr-accept-count');
+        var pickCount = acceptButton.querySelector('.pg-tr-pick-count');
+
+        function picks() {
+            return Array.prototype.slice.call(app.querySelectorAll('.pg-tr-pick'));
+        }
+
+        function picked() {
+            return picks().filter(function (box) { return box.checked; });
+        }
+
+        function syncPicks() {
+            var all = picks();
+            var count = picked().length;
+
+            pickCount.textContent = count;
+            acceptButton.disabled = (count === 0);
+
+            if (pickAll) {
+                pickAll.checked = (all.length > 0) && (count === all.length);
+                pickAll.indeterminate = (count > 0) && (count < all.length);
+            }
+        }
+
+        app.addEventListener('change', function (event) {
+            var target = event.target;
+
+            if (target === pickAll) {
+                picks().forEach(function (box) { box.checked = pickAll.checked; });
+                syncPicks();
+            } else if (target.classList && target.classList.contains('pg-tr-pick')) {
+                syncPicks();
+            }
+        });
+
+        acceptModal.addEventListener('show.bs.modal', function () {
+            var count = picked().length;
+            acceptCount.textContent = text('accept_count', count);
+            acceptGo.disabled = (count === 0);
+        });
+
+        acceptButton.addEventListener('click', function () {
+            if (!running && picked().length) {
+                window.bootstrap.Modal.getOrCreateInstance(acceptModal).show();
+            }
+        });
+
+        acceptGo.addEventListener('click', function () {
+            var ids = picked().map(function (box) { return parseInt(box.value, 10); });
+
+            if (running || !ids.length) {
+                return;
+            }
+
+            acceptGo.disabled = true;
+
+            call({ action: 'accept_source', string_ids: ids }).then(function (data) {
+                toast(data.message, 'success');
+                window.setTimeout(function () { window.location.reload(); }, 800);
+            }).catch(function (error) {
+                acceptGo.disabled = false;
+                toast(error.message, 'error');
+            });
+        });
+
+        syncPicks();
     }
 
     // ── the glossary modal: one form for a new term and for an existing one ──

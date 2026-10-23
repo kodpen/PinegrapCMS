@@ -178,7 +178,7 @@ if (!$_POST) {
 
     if (!$saved['success']) {
         erp_tx_rollback();
-        $liveform->mark_error($saved['field'] ?? '_error', $saved['error']);
+        $liveform->mark_error($saved['field'] ?? '_error', h($saved['error']));
         go($self_url);
     }
 
@@ -188,7 +188,7 @@ if (!$_POST) {
 
         if (!$issued['success'] || !erp_tx_commit()) {
             erp_tx_rollback();
-            $liveform->mark_error('_error', $issued['success'] ? erp_db_error() : $issued['error']);
+            $liveform->mark_error('_error', $issued['success'] ? erp_db_error() : h($issued['error']));
             go($self_url);
         }
 
@@ -196,7 +196,7 @@ if (!$_POST) {
 
         $liveform->remove_form();
         $liveform_document = new liveform('edit_erp_invoice');
-        $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $issued['full_number'])));
+        $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => h($issued['full_number']))));
 
         if (function_exists('erp_credit_issued_warning') && (($credit_warning = erp_credit_issued_warning($invoice_id)) !== '')) {
             $liveform_document->add_warning(h($credit_warning));

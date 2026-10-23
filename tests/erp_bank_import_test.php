@@ -8,7 +8,8 @@
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
  * erp_bank_read_file() over a small .xlsx and .ods written here. The older
  * .xls goes through PHPExcel, which is checked on the sandbox rather than
- * here.
+ * here. A CSV statement's separator (erp_bank_read_csv()) and the amounts
+ * erp_bank_amount() reads are checked too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -239,4 +240,205 @@ function test_erp_bank_read_file_refuses_other_documents()
 		pg_assert_contains('.xlsx', $read['error'], $name . ' says what to save it as');
 		pg_assert_contains('.ods', $read['error'], $name . ' names OpenDocument too');
 	}
+}
+
+// Write a CSV statement to a temporary file and read it back as rows.
+function erp_bank_test_read_csv($text)
+{
+	$path = tempnam(sys_get_temp_dir(), 'pg_bank_csv_');
+	file_put_contents($path, $text);
+
+	try {
+		return erp_bank_read_csv($path);
+	} finally {
+		unlink($path);
+	}
+}
+
+// The separator is the one that splits the lines into the same number of
+// columns, not the character seen most often: commas in the descriptions and
+// decimal commas outnumber the semicolons of a Turkish bank's export.
+function test_erp_bank_read_csv_separator_by_columns()
+{
+	$read = erp_bank_test_read_csv("Tarih;Açıklama;Tutar\n"
+		. "01.10.2026;FAST GELEN, ABC LTD, FATURA 12, EKIM;1.250,00\n"
+		. "02.10.2026;HAVALE, XYZ, ODEME;300,00\n");
+
+	pg_assert_same('', $read['error'], 'read');
+	pg_assert_same(array(
+		array('Tarih', 'Açıklama', 'Tutar'),
+		array('01.10.2026', 'FAST GELEN, ABC LTD, FATURA 12, EKIM', '1.250,00'),
+		array('02.10.2026', 'HAVALE, XYZ, ODEME', '300,00'),
+	), $read['rows'], 'three columns split on the semicolon');
+
+	// Two decimal commas on every line split as evenly as the semicolons do;
+	// the heading has none, so the semicolon still wins.
+	$read = erp_bank_test_read_csv("Tarih;Açıklama;Tutar;Bakiye\n"
+		. "01.10.2026;KIRA;-800,00;4.200,00\n"
+		. "02.10.2026;EFT;1.250,00;5.450,00\n");
+
+	pg_assert_same(4, count($read['rows'][1]), 'decimal commas do not decide');
+	pg_assert_same('-800,00', $read['rows'][1][2], 'amount kept whole');
+}
+
+// A comma file with the amounts quoted, a tab file and a file opening on the
+// bank's title block keep their own separators.
+function test_erp_bank_read_csv_other_separators()
+{
+	$read = erp_bank_test_read_csv("Date,Description,Amount\n"
+		. "2026-10-01,\"Rent; October\",\"-1,250.00\"\n"
+		. "2026-10-02,Invoice 1042,300.00\n");
+
+	pg_assert_same(array('2026-10-01', 'Rent; October', '-1,250.00'), $read['rows'][1], 'comma file, quoted cells');
+	pg_assert_same(array('2026-10-02', 'Invoice 1042', '300.00'), $read['rows'][2], 'comma file');
+
+	$read = erp_bank_test_read_csv("Date\tDescription\tAmount\n2026-10-01\tRent, October\t-1.250,00\n");
+
+	pg_assert_same(array('2026-10-01', 'Rent, October', '-1.250,00'), $read['rows'][1], 'tab file');
+
+	$read = erp_bank_test_read_csv("Örnek Bankası, Kadıköy Şubesi\n"
+		. "Hesap özeti, 01.10.2026 - 31.10.2026, TRY\n"
+		. "Tarih;Açıklama;Tutar\n"
+		. "01.10.2026;EFT GELEN;1.250,00\n"
+		. "02.10.2026;KIRA, EKIM;-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA, EKIM', '-800,00'), $read['rows'][4], 'title block with commas');
+
+	// A title block of comma lines splits as evenly on the decimal comma as
+	// the transactions below it do; the lines that read as dated amounts
+	// decide. No description here carries a comma of its own.
+	$title = "Örnek Bankası, Kadıköy Şubesi\nHesap özeti, Ekim 2026\n";
+
+	$read = erp_bank_test_read_csv($title . "Tarih;Açıklama;Tutar\n01.10.2026;EFT GELEN;1.250,00\n02.10.2026;KIRA;-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,00'), $read['rows'][4], 'semicolon file under a comma title block');
+
+	$read = erp_bank_test_read_csv($title . "Tarih\tAçıklama\tTutar\n01.10.2026\tEFT GELEN\t1.250,00\n02.10.2026\tKIRA\t-800,00\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,00'), $read['rows'][4], 'tab file under a comma title block');
+
+	// Kurus after the decimal comma read as an amount of their own on the
+	// comma split; the date cell holding the semicolons gives it away.
+	$read = erp_bank_test_read_csv($title . "Tarih;Açıklama;Tutar\n01.10.2026;EFT GELEN;1.250,50\n02.10.2026;KIRA;-800,25\n");
+
+	pg_assert_same(array('02.10.2026', 'KIRA', '-800,25'), $read['rows'][4], 'semicolon file under a title block, kurus');
+
+	$read = erp_bank_test_read_csv("01.10.2026\tKIRA\t-800,00\n02.10.2026\tEFT\t1.250,00\n");
+
+	pg_assert_same(array('02.10.2026', 'EFT', '1.250,00'), $read['rows'][1], 'tab file with no heading row');
+
+	$read = erp_bank_test_read_csv("01.10.2026\tKIRA\t-800,40\n02.10.2026\tEFT\t1.250,75\n");
+
+	pg_assert_same(array('02.10.2026', 'EFT', '1.250,75'), $read['rows'][1], 'tab file with no heading row, kurus');
+}
+
+// A row is a transaction when a date and a non-zero amount stand in cells of
+// their own; a date cell holding a whole line split on the wrong separator
+// is not one.
+function test_erp_bank_cells_are_movement()
+{
+	pg_assert_same(true, erp_bank_cells_are_movement(array('02.10.2026', 'KIRA', '-800,00')), 'date and amount');
+	pg_assert_same(true, erp_bank_cells_are_movement(array(' 2026-10-02 ', 'TL 1.250,00')), 'trimmed, code around the amount');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('02.10.2026', 'KIRA', '0,00')), 'zero amount');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('Tarih', 'Açıklama', 'Tutar')), 'heading');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('01.10.2026', '31.10.2026')), 'a period of two dates');
+	pg_assert_same(false, erp_bank_cells_are_movement(array('02.10.2026;KIRA;-800', '25')), 'semicolon line split on its decimal comma');
+	pg_assert_same(false, erp_bank_cells_are_movement(array("02.10.2026\tEFT\t1.250", '75')), 'tab line split on its decimal comma');
+	pg_assert_same(true, erp_bank_cells_are_movement(array('02.10.2026', '42.949.672,96')), 'an amount of 2^32 kurus, zero after an int cast on 32-bit PHP');
+}
+
+// A minus after a currency sign or code still makes the amount go out.
+function test_erp_bank_amount_minus_after_the_currency()
+{
+	pg_assert_same(-123456, erp_bank_amount('TL -1.234,56'), 'TL -');
+	pg_assert_same(-123456, erp_bank_amount('₺-1.234,56'), 'lira sign');
+	pg_assert_same(-123456, erp_bank_amount('TRY − 1.234,56'), 'minus sign');
+	pg_assert_same(-123456, erp_bank_amount('-1.234,56 TL'), 'minus first');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56-'), 'trailing minus');
+	pg_assert_same(-123456, erp_bank_amount('1,234.56 - USD'), 'trailing minus before the code');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56 TL-'), 'trailing minus after the code');
+	pg_assert_same(-123456, erp_bank_amount('1.234,56 TL -'), 'trailing minus after the code, spaced');
+	pg_assert_same(-123456, erp_bank_amount('1,234.56 USD-'), 'trailing minus after USD');
+	pg_assert_same(-123456, erp_bank_amount('(1.234,56)'), 'parentheses');
+	pg_assert_same(-123456, erp_bank_amount('TL (1.234,56)'), 'parentheses after the code');
+	pg_assert_same(123456, erp_bank_amount('₺1.234,56'), 'in');
+	pg_assert_same(123456, erp_bank_amount('1,234.56 USD'), 'in, code after');
+}
+
+// A decimal separator with no digit in front of it is still the decimals.
+function test_erp_bank_amount_leading_separator()
+{
+	pg_assert_same(50, erp_bank_amount('.50'), '.50');
+	pg_assert_same(-50, erp_bank_amount('-.50'), '-.50');
+	pg_assert_same(50, erp_bank_amount(',5'), ',5');
+	pg_assert_same(50, erp_bank_amount('0,50'), '0,50');
+	pg_assert_same(123400, erp_bank_amount('1.234'), 'thousands only');
+	pg_assert_same(123400, erp_bank_amount('1,234'), 'thousands only, comma');
+	pg_assert_same(1200, erp_bank_amount('12'), 'whole');
+	pg_assert_same(null, erp_bank_amount('TL'), 'no number');
+}
+
+// A line's first occurrence keeps the hash lines were stored under before, so
+// a statement taken in again still meets the lines already there.
+function test_erp_bank_line_hash_first_occurrence_unchanged()
+{
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ'), 'default occurrence');
+	pg_assert_same(erp_bank_line_hash(7, '2026-10-15', -850, 'EFT UCRETI'), erp_bank_line_hash(7, '2026-10-15', -850, 'eft ucreti', 1), 'letter case aside');
+}
+
+// The second real line of the same day, amount and words is a line of its own.
+function test_erp_bank_line_hash_repeated_line()
+{
+	$first = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 1);
+	$second = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2);
+	$third = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 3);
+
+	pg_assert_true($first !== $second, 'second differs from first');
+	pg_assert_true($second !== $third, 'third differs from second');
+	pg_assert_same($second, erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2), 'the same file gives the same hashes again');
+	pg_assert_true(erp_bank_line_hash(8, '2026-10-15', -850, 'EFT ÜCRETİ', 2) !== $second, 'another bank account');
+}
+
+// The statement's four lines, two of them the same fee: every line gets its
+// own hash, and reading the file again gives the same four.
+function test_erp_bank_line_hashes_count_repeats_per_file()
+{
+	$lines = array(
+		array('2026-10-15', -100000, 'EFT GİDEN ABC LTD'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+		array('2026-10-15', -200000, 'EFT GİDEN XYZ AŞ'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+	);
+
+	$hashes = function () use ($lines) {
+		$seen = array();
+		$out = array();
+
+		foreach ($lines as $line) {
+			$out[] = erp_bank_line_hash(7, $line[0], $line[1], $line[2], erp_bank_line_occurrence($seen, 7, $line[0], $line[1], $line[2]));
+		}
+
+		return $out;
+	};
+
+	$first = $hashes();
+
+	pg_assert_same(4, count(array_unique($first)), 'four lines, four hashes');
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), $first[1], 'the first fee keeps the old hash');
+	pg_assert_same($first, $hashes(), 'taken in again, the same hashes');
+}
+
+// An amount past 2^31 kurus is a float on 32-bit PHP. The hash takes it as the
+// statement build always wrote it into the key, without an (int) cast that
+// would wrap it, so a large line stored before still turns a re-upload away.
+function test_erp_bank_line_hash_large_amount()
+{
+	$amount = erp_bank_amount('-30.000.000,00');
+
+	pg_assert_same(sha1('7|2026-10-15|' . $amount . '|eft giden'), erp_bank_line_hash(7, '2026-10-15', $amount, 'EFT GIDEN'), 'first occurrence as before');
+	pg_assert_same('7|2026-10-15|-3000000000|eft giden', '7|2026-10-15|' . $amount . '|eft giden', 'the key holds the amount unwrapped');
+
+	$seen = array();
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', $amount, 'EFT GIDEN'), 'first');
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', erp_bank_amount('12.949.672,96'), 'EFT GIDEN'), 'an amount the cast would wrap onto is counted apart');
 }

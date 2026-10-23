@@ -1348,21 +1348,12 @@ function get_form_item_view($properties) {
             // If the layout type is system, then prepare system content.
             if ($layout_type == 'system') {
 
-                $output_auto_registration = '';
-
                 // If a user account was created via the auto-registration feature,
-                // then show user account info.
-                if (!empty($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address'])) {
-                    $output_auto_registration =
-                        '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>
-                        <div class="account data">
-                            <p>' . lang('We have created a new account for you on our site. You can find your login info below.') . '</p>
-                            <p>
-                                ' . lang('Email') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address']) . '<br>
-                                ' . lang('Password') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['password']) . '
-                            </p>
-                        </div>';
-                }
+                // then name it; the visitor also gets the link to set its password.
+                $output_auto_registration = pg_cf_new_account_html(
+                    pg_cf_new_account_email($submitted_form['id']),
+                    pg_cf_new_account_link($submitted_form['id']),
+                    pg_cf_new_account_for_submitter());
                 
                 $output_buttons = '';
                 
@@ -1424,13 +1415,15 @@ function get_form_item_view($properties) {
                     }
                 }
 
-                $auto_registration = false;
-
-                if ($_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address'] != '') {
-                    $auto_registration = true;
-                    $auto_registration_email_address = $_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['email_address'];
-                    $auto_registration_password = $_SESSION['software']['custom_form_auto_registration'][$submitted_form['id']]['password'];
-                }
+                // An account the form's auto-registration opened. No password is
+                // handed out: $auto_registration_password, which layouts written
+                // before print under a "Password" label, carries a sentence with
+                // the set password link (see pg_cf_new_account_password_note()).
+                $auto_registration_email_address = pg_cf_new_account_email($submitted_form['id']);
+                $auto_registration = ($auto_registration_email_address !== '');
+                $auto_registration_for_submitter = pg_cf_new_account_for_submitter();
+                $auto_registration_set_password_url = $auto_registration ? pg_cf_new_account_link($submitted_form['id']) : '';
+                $auto_registration_password = $auto_registration ? pg_cf_new_account_password_note($auto_registration_set_password_url, $auto_registration_for_submitter) : '';
 
                 $output = render_layout(array(
                     'page_id' => $page_id,
@@ -1441,6 +1434,8 @@ function get_form_item_view($properties) {
                     'auto_registration' => $auto_registration,
                     'auto_registration_email_address' => $auto_registration_email_address,
                     'auto_registration_password' => $auto_registration_password,
+                    'auto_registration_set_password_url' => $auto_registration_set_password_url,
+                    'auto_registration_for_submitter' => $auto_registration_for_submitter,
                     'back_button_url' => $back_button_url,
                     'edit_button_url' => $edit_button_url));
 

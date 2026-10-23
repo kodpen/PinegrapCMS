@@ -601,6 +601,134 @@ function pg_cf_default_email_body($fields)
 }
 
 /**
+ * The plain text body a submission e-mail goes out with.
+ *
+ * The mailer refuses an empty message, so an empty body sat in the mail
+ * queue until its retries ran out and nobody got the e-mail. A body left
+ * empty is replaced by the form's fields, the way the visual editor writes
+ * it; a form without a named field still names the submission. Labels come
+ * from the legacy field screen too, where they may be empty or end in a
+ * colon. $fields: rows with `name`, `label` and `office_use_only`. The
+ * submitter's copy ($for_submitter) leaves out the fields marked "Hide This
+ * Field from Submitter": the visitor never saw them, and the site fills
+ * their values in for the office.
+ */
+function pg_cf_email_body_fallback($body, $fields, $for_submitter = false)
+{
+    if (trim((string)$body) !== '') return (string)$body;
+
+    $rows = array();
+    foreach ((array)$fields as $f) {
+        $name = isset($f['name']) ? (string)$f['name'] : '';
+        if ($name === '') continue;
+        if ($for_submitter && !empty($f['office_use_only'])) continue;
+        $label = rtrim(trim(strip_tags(isset($f['label']) ? (string)$f['label'] : '')), ': ');
+        $rows[] = array('name' => $name, 'label' => ($label !== '') ? $label : $name);
+    }
+
+    $default = pg_cf_default_email_body($rows);
+    if ($default !== '') return $default;
+
+    return lang('Reference Code') . ': ^^reference_code^^' . "\n"
+        . lang('Date Submitted') . ': ^^submitted_date_and_time^^';
+}
+
+/**
+ * pg_cf_email_body_fallback() for a form page; the fields are read only when
+ * the body is empty. $for_submitter: the e-mail goes to the submitter.
+ */
+function pg_cf_email_body_or_default($page_id, $body, $for_submitter = false)
+{
+    if (trim((string)$body) !== '') return (string)$body;
+
+    $page_id = (int)$page_id;
+    $fields  = array();
+    if ($page_id > 0) {
+        $fields = db_items(
+            "SELECT name, label, office_use_only FROM form_fields
+             WHERE page_id = '$page_id' AND form_type = 'custom'
+                 AND name != '' AND type != 'information'
+             ORDER BY sort_order ASC, id ASC");
+    }
+    return pg_cf_email_body_fallback($body, is_array($fields) ? $fields : array(), $for_submitter);
+}
+
+/**
+ * Whether a submission ends on the form's confirmation message rather than
+ * on its next page.
+ *
+ * A next page that was never chosen, has been deleted since or is in the
+ * Recycle Bin used to send the visitor to the home page, or to a binned page
+ * in a private folder, without a word; the message is shown instead.
+ * Deleting a page in the panel keeps its row and moves it into the bin
+ * (pg_recycle_page()), so the row alone does not prove the page is on the
+ * site. The page is looked up only when a next page is chosen.
+ */
+function pg_cf_confirmation_shows_message($type, $page_id)
+{
+    if ((string)$type !== 'page') return true;
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return true;
+    if (!db_value("SELECT COUNT(*) FROM page WHERE page_id = '$page_id'")) return true;
+    return function_exists('pg_recycle_page_binned') && pg_recycle_page_binned($page_id);
+}
+
+/**
+ * The confirmation message as the visitor sees it: an empty one would leave
+ * the page blank where the form was, so it says thank you instead.
+ */
+function pg_cf_confirmation_message_or_default($message)
+{
+    $message = (string)$message;
+    $text = trim(str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags($message, '<img><iframe><video>'), ENT_QUOTES, 'UTF-8')));
+    return ($text !== '') ? $message : lang('Thank you. Your message has been received.');
+}
+
+/**
+ * What the legacy page screen refuses to save for a custom form: an e-mail
+ * that is switched on with nothing to send (plain text without a body, HTML
+ * without a page) and a "Next Page" confirmation without a page. Only the
+ * 'page' confirmation type needs a page: an empty or missing type is the
+ * message, as on submit (pg_cf_confirmation_shows_message()).
+ *
+ * $settings: the 'custom form' properties of
+ * pg_page_form_type_properties_from_post(). $page_exists: callable that
+ * answers whether a page id names a page on the site, neither deleted nor in
+ * the Recycle Bin. Returns the screen's
+ * field id => message, in the order of the screen.
+ */
+function pg_cf_legacy_settings_errors($settings, $page_exists)
+{
+    $errors = array();
+    $value = function ($key) use ($settings) {
+        return isset($settings[$key]) ? (string)$settings[$key] : '';
+    };
+
+    foreach (array('submitter' => lang('E-mail Submitter'), 'administrator' => lang('E-mail Administrator')) as $who => $label) {
+        if ($value($who . '_email') !== '1') continue;
+
+        // custom_form.php sends plain text only for 'plain_text'; anything else is the page.
+        if ($value($who . '_email_format') === 'plain_text') {
+            if (trim($value($who . '_email_body')) === '') {
+                $errors['custom_form_' . $who . '_email_body'] = lang(array(
+                    'string' => '{var:1} is on with the Plain Text format, but its Body is empty. Write the body of the e-mail, or choose HTML and select a page.',
+                    'vars' => array($label)));
+            }
+        } elseif (!call_user_func($page_exists, (int)$value($who . '_email_page_id'))) {
+            $errors['custom_form_' . $who . '_email_page_id'] = lang(array(
+                'string' => '{var:1} is on with the HTML format, but no page is selected. Select the page to send, or choose Plain Text and write a body.',
+                'vars' => array($label)));
+        }
+    }
+
+    if ($value('confirmation_type') === 'page' && !call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
+        $errors['custom_form_confirmation_page_id'] = lang('The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.');
+    }
+
+    return $errors;
+}
+
+/**
  * Settings the editor owns for a page's own form.
  *
  * Only keys the widget actually carries are written, and the e-mail bodies are
@@ -2988,4 +3116,174 @@ function pg_cf_variables_help($page_id)
     }
 
     return $help;
+}
+
+/**
+ * Who the form's output is being drawn for, within the request that handles
+ * a submission: true while the copy for the person who sent the form is
+ * drawn, false while a watcher's copy is. Pass a bool to set it, nothing to
+ * ask. Outside custom_form.php (the confirmation page) it stays true: the
+ * page is the visitor's own.
+ *
+ * @param bool|null $submitter
+ * @return bool
+ */
+function pg_cf_new_account_recipient($submitter = null)
+{
+    static $is_submitter = true;
+
+    if ($submitter !== null) {
+        $is_submitter = (bool) $submitter;
+    }
+
+    return $is_submitter;
+}
+
+/**
+ * Whether the account a form's auto-registration opened may be handed over
+ * in what is being drawn now: the copy for the person who sent the form and
+ * their confirmation page, never a watcher's copy or the administrator's
+ * e-mail (drawn while pg_tr_suspend() holds the request for the site's own
+ * people).
+ *
+ * @return bool
+ */
+function pg_cf_new_account_for_submitter()
+{
+    if (function_exists('pg_tr_suspend') && pg_tr_suspend()) {
+        return false;
+    }
+
+    return pg_cf_new_account_recipient();
+}
+
+/**
+ * The e-mail address of the account a form's auto-registration opened in
+ * this session for a submitted form, or ''.
+ *
+ * @param int $form_id the submitted form (forms.id)
+ * @return string
+ */
+function pg_cf_new_account_email($form_id)
+{
+    $entry = $_SESSION['software']['custom_form_auto_registration'][(int) $form_id] ?? null;
+
+    return (is_array($entry) && isset($entry['email_address'])) ? (string) $entry['email_address'] : '';
+}
+
+/**
+ * The set password link of that account for the person who sent the form,
+ * or '' (someone else's copy, no account, or the link was used or expired).
+ *
+ * @param int $form_id the submitted form (forms.id)
+ * @return string
+ */
+function pg_cf_new_account_link($form_id)
+{
+    $entry = $_SESSION['software']['custom_form_auto_registration'][(int) $form_id] ?? null;
+
+    if (!is_array($entry) || empty($entry['user_id']) || !pg_cf_new_account_for_submitter()) {
+        return '';
+    }
+
+    return pg_set_password_link((int) $entry['user_id']);
+}
+
+/**
+ * The "new account" block a plain-text form e-mail ends with. The person who
+ * sent the form gets the address and the link to set a password; anyone else
+ * only learns that an account was opened for the address. No password is
+ * ever written: the account's password is random and nobody is told it.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when there is no live link
+ * @param bool   $for_submitter
+ * @return string '' without an account
+ */
+function pg_cf_new_account_plain_text($email_address, $set_password_url, $for_submitter)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    $text = "\n\n" . lang('New Account') . ':' . "\n" . '------------' . "\n";
+
+    if (!$for_submitter) {
+        return $text . lang(array('string' => 'A new account was created with this submission: {var:1}', 'vars' => array($email_address)));
+    }
+
+    $text .=
+        lang('We have created a new account for you on our site.') . "\n" .
+        "\n" .
+        lang('Email') . ': ' . $email_address . "\n";
+
+    if ($set_password_url !== '') {
+        return $text . lang(array('string' => 'Set your password: {var:1}', 'vars' => array($set_password_url)));
+    }
+
+    return $text . lang('You can set a password with "Forgot password" on the sign-in page.');
+}
+
+/**
+ * The same block for the built-in (system) layouts of the form item view and
+ * the confirmation screen.
+ *
+ * @param string $email_address
+ * @param string $set_password_url
+ * @param bool   $for_submitter
+ * @return string HTML, '' without an account
+ */
+function pg_cf_new_account_html($email_address, $set_password_url, $for_submitter)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    $html = '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" . '<div class="account data">' . "\n";
+
+    if (!$for_submitter) {
+        return $html . '<p>' . lang(array('string' => 'A new account was created with this submission: {var:1}', 'vars' => array(h($email_address)))) . '</p>' . "\n" . '</div>';
+    }
+
+    $html .=
+        '<p>' . lang('We have created a new account for you on our site.') . '</p>' . "\n" .
+        '<p>' . lang('Email') . ': ' . h($email_address) . '</p>' . "\n";
+
+    if ($set_password_url !== '') {
+        $html .= '<p><a href="' . h($set_password_url) . '">' . lang('Set your password') . '</a></p>' . "\n";
+    } else {
+        $html .= '<p>' . h(lang('You can set a password with "Forgot password" on the sign-in page.')) . '</p>' . "\n";
+    }
+
+    return $html . '</div>';
+}
+
+/**
+ * What a layout's $auto_registration_password (and the designer's
+ * __new_account_password token) shows now that no password is handed out.
+ * Layouts written before - the ones in data/backups and every layout an
+ * operator modified from them - print it as text under a "Password" label,
+ * so it carries a sentence with the set password link instead of the secret.
+ *
+ * @param string $set_password_url
+ * @param bool   $for_submitter
+ * @return string plain text ('' for anyone but the person who sent the form)
+ */
+function pg_cf_new_account_password_note($set_password_url, $for_submitter)
+{
+    if (!$for_submitter) {
+        return '';
+    }
+
+    if ((string) $set_password_url !== '') {
+        return lang(array('string' => 'Set it with this link: {var:1}', 'vars' => array((string) $set_password_url)));
+    }
+
+    return lang('You can set a password with "Forgot password" on the sign-in page.');
 }

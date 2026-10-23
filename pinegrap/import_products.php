@@ -127,8 +127,9 @@ if (!$_POST) {
 
     require_once(dirname(__FILE__) . '/import_products_f.php');
 
-    // The compare_at_price column is read with the product screen's reader
-    // (pg_pb_compare_at_price_from_input()), so a figure means the same in a
+    // Price cells are read by pg_products_import_price_cents(), which hands a
+    // typed figure to the product screen's rule (pg_pb_price_figure(), the
+    // figure behind pg_pb_price_to_cents()), so a figure means the same in a
     // file as in the box.
     require_once(dirname(__FILE__) . '/product_builder.php');
 
@@ -221,10 +222,45 @@ if (!$_POST) {
 
     $update_existing_products = isset($_POST['update_existing_products']) ? $_POST['update_existing_products'] : '';
 
+    // The money columns, by position. A row whose cell in one of them is not
+    // an amount is left out whole and named in the result, rather than
+    // stored with a figure nobody wrote or stopping the file halfway. No
+    // variable here may end in _key: the loop above keeps each column's
+    // position in ${column}_key, and $price_key is the price column's.
+    $money_positions = array();
+
+    foreach (array('price', 'extra_shipping_cost', 'compare_at_price') as $money_column) {
+        $money_position = array_search($money_column, $column_names, true);
+
+        if ($money_position !== false) {
+            $money_positions[$money_column] = $money_position;
+        }
+    }
+
+    $rows_not_amounts = array();
+    $row_number = 1;
+
     // loops through all rows of data in CSV file
     while ($row = fgetcsv($handle, 100000, ",")) {
+        $row_number++;
+
         // If product name is not blank, do something with the rows data.
         if ($row[$name_key]) {
+            // The row's amounts in minor units. A compare-at price that
+            // starts with a minus sign stays out, which leaves the stored one
+            // as it is (see below).
+            $row_read = pg_products_import_row_prices($row, $money_positions);
+            $row_prices = $row_read['prices'];
+
+            // The row is named by its number among the rows read (the header
+            // is 1; a spreadsheet's empty rows are not written to the CSV, so
+            // they are not counted) and by its name, which finds it in any
+            // file. The message is HTML, so the name is escaped.
+            if ($row_read['refused']) {
+                $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
             // get product information if it exists
             $query =
                 "SELECT
@@ -272,21 +308,24 @@ if (!$_POST) {
                     foreach ($column_names as $column_name) {
                         $column_value = $row[${$column_name . '_key'}];
                         if ($column_value != '') {
-                            // If the column_name is price or extra_shipping_cost, convert the data to the correct format.
+                            // Price and extra shipping cost in minor units, read above
+                            // (a cell of spaces alone is none).
                             if (($column_name == 'price') || ($column_name == 'extra_shipping_cost')) {
-                                // remove commas
-                                $column_value = str_replace(',', '', $column_value);
-                                
-                                // convert dollars to cents
-                                $column_value = $column_value * 100;
+                                if (!isset($row_prices[$column_name])) {
+                                    continue;
+                                }
+
+                                $column_value = $row_prices[$column_name];
                             }
-                            
+
                             // The "was" price: 0 takes it off, as an empty cell
                             // leaves it as it is (the rule of every column here). A
-                            // negative figure, or one the column cannot hold, leaves
-                            // the stored one alone rather than being cut to fit.
+                            // figure starting with '-' is not in $row_prices and
+                            // leaves the stored one alone. A figure that is not an
+                            // amount, or is above the column's top, refused the
+                            // whole row above.
                             if ($column_name == 'compare_at_price') {
-                                $compare_at = (strpos(trim($column_value), '-') === 0) ? false : pg_pb_compare_at_price_from_input($column_value);
+                                $compare_at = isset($row_prices['compare_at_price']) ? pg_compare_at_price_value($row_prices['compare_at_price']) : false;
 
                                 if ($compare_at === false) {
                                     continue;
@@ -529,20 +568,23 @@ if (!$_POST) {
                     if ($column_name != 'address_name') {
                         $column_value = $row[${$column_name . '_key'}];
                         if ($column_value != '') {
-                            // If the column_name is price or extra_shipping_cost, convert the data to the correct format.
+                            // Price and extra shipping cost in minor units, read above
+                            // (a cell of spaces alone is none).
                             if (($column_name == 'price') || ($column_name == 'extra_shipping_cost')) {
-                                // remove commas
-                                $column_value = str_replace(',', '', $column_value);
-                                
-                                // convert dollars to cents
-                                $column_value = $column_value * 100;
+                                if (!isset($row_prices[$column_name])) {
+                                    continue;
+                                }
+
+                                $column_value = $row_prices[$column_name];
                             }
-                            
+
                             // The "was" price, read as on the update above. None (0)
-                            // and a figure that cannot be stored leave the column
-                            // out, which keeps its default: NULL, none.
+                            // and a figure starting with '-' leave the column out,
+                            // which keeps its default: NULL, none. A figure that is
+                            // not an amount, or is above the column's top, refused
+                            // the whole row above.
                             if ($column_name == 'compare_at_price') {
-                                $compare_at = (strpos(trim($column_value), '-') === 0) ? false : pg_pb_compare_at_price_from_input($column_value);
+                                $compare_at = isset($row_prices['compare_at_price']) ? pg_compare_at_price_value($row_prices['compare_at_price']) : false;
 
                                 if (!is_int($compare_at)) {
                                     continue;
@@ -603,19 +645,25 @@ if (!$_POST) {
                 pg_price_history_queue($product_id, 'import');
                 
                 $address_name = '';
-                
+
+                // A column the file does not have reads empty: its key
+                // variable is only set for the columns in the header.
+                $address_name_cell = pg_products_import_row_value($row, isset($address_name_key) ? $address_name_key : null);
+                $short_description_cell = pg_products_import_row_value($row, isset($short_description_key) ? $short_description_key : null);
+                $name_cell = pg_products_import_row_value($row, isset($name_key) ? $name_key : null);
+
                 // if the address name is NOT blank then use that value for the address name
-                if ($row[${'address_name_key'}] != '') {
-                    $address_name = $row[${'address_name_key'}];
-                    
+                if ($address_name_cell != '') {
+                    $address_name = $address_name_cell;
+
                 // else if the short description is NOT blank then use that value
-                } elseif ($row[${'short_description_key'}] != '') {
-                    $address_name = $row[${'short_description_key'}];
-                    
+                } elseif ($short_description_cell != '') {
+                    $address_name = $short_description_cell;
+
                 // else if the name is NOT blank then use that value
-                } elseif ($row[${'name_key'}] != '') {
-                    $address_name = $row[${'name_key'}];
-                    
+                } elseif ($name_cell != '') {
+                    $address_name = $name_cell;
+
                 // else use the product id
                 } else {
                     $address_name = $product_id;
@@ -680,18 +728,23 @@ if (!$_POST) {
                 // If submit form, and submit form update are enabled for this product,
                 // and the where field is set to reference code, and the where value is blank or contains carets
                 // then add product form field for the reference code and set that in the product property.
+                $submit_form_cell = pg_products_import_row_value($row, isset($submit_form_key) ? $submit_form_key : null);
+                $submit_form_update_cell = pg_products_import_row_value($row, isset($submit_form_update_key) ? $submit_form_update_key : null);
+                $where_field_cell = pg_products_import_row_value($row, isset($submit_form_update_where_field_key) ? $submit_form_update_where_field_key : null);
+                $where_value_cell = pg_products_import_row_value($row, isset($submit_form_update_where_value_key) ? $submit_form_update_where_value_key : null);
+
                 if (
-                    $row[${'submit_form_key'}]
-                    && $row[${'submit_form_update_key'}]
-                    && ($row[${'submit_form_update_where_field_key'}] == 'reference_code')
+                    $submit_form_cell
+                    && $submit_form_update_cell
+                    && ($where_field_cell == 'reference_code')
                     &&
                     (
-                        ($row[${'submit_form_update_where_value_key'}] == '')
-                        || (mb_strpos($row[${'submit_form_update_where_value_key'}], '^^') !== false)
+                        ($where_value_cell == '')
+                        || (mb_strpos($where_value_cell, '^^') !== false)
                     )
                 ) {
                     // Remove carets from where value, in order to get field name.
-                    $field_name = str_replace('^^', '', $row[${'submit_form_update_where_value_key'}]);
+                    $field_name = str_replace('^^', '', $where_value_cell);
 
                     if ($field_name == '') {
                         $field_name = 'reference_code';
@@ -745,6 +798,14 @@ if (!$_POST) {
     // directory eventually; a file of ten thousand products is worth not
     // leaving there until it does.
     if ($import_temp_path != '') { unlink($import_temp_path); }
+
+    // Rows left out because a money cell is not an amount, each as its number
+    // among the rows the importer reads (the header is 1; a spreadsheet's
+    // empty rows are not counted) and its name, which identifies the row.
+    if ($rows_not_amounts) {
+        $rows_listed = implode(', ', array_slice($rows_not_amounts, 0, 50)) . ((count($rows_not_amounts) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
+    }
 
     // Display notices to tell the user what has been done. Redirect them to proper page.
     if (($product_imported_count > 0) && ($product_updated_count > 0)) {

@@ -268,16 +268,16 @@ if ($action !== '') {
 
     // Without the script: back to the screen, or to the order once it is done.
     if (!$res['ok'] && ($res['message'] !== '')) {
-        $liveform->mark_error('error', $res['message']);
+        $liveform->mark_error('error', h($res['message']));
     }
 
     if (!empty($res['result'])) {
         $liveform_order = new liveform('view_order');
         if (!empty($res['result']['invoice'])) {
-            $liveform_order->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => array($res['result']['invoice']['number']))));
+            $liveform_order->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => array(h($res['result']['invoice']['number'])))));
         }
         foreach ($res['result']['warnings'] as $warning) {
-            $liveform_order->mark_error('_error', $warning);
+            $liveform_order->mark_error('_error', h($warning));
         }
         header('Location: ' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $res['result']['order_id']);
         exit();

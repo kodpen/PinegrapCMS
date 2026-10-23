@@ -14,8 +14,10 @@
  *
  * Banks export in their own layout, so the columns are chosen once per bank
  * account and remembered (erp_bank_statements.mapping). A line is known by a
- * hash of its day, amount and words, so a statement taken in twice, or two
- * that overlap, add each line once.
+ * hash of its day, amount and words, and of how many times the same day,
+ * amount and words came before it in the file, so a statement taken in twice,
+ * or two that overlap, add each line once, while two real lines that read
+ * alike (two transfer fees on one day) are both kept.
  *
  * The file is a CSV or the Excel workbook internet banking offers beside it
  * (.xlsx, or the older .xls), or an OpenDocument sheet (.ods) for a statement
@@ -69,8 +71,8 @@ function erp_bank_line_statuses()
 
 /**
  * Read an uploaded CSV into rows of cells: the separator is guessed from the
- * first lines, and a file that is not UTF-8 is read as Windows-1254, the way
- * Turkish banks save it.
+ * first lines (see erp_bank_csv_separator()), and a file that is not UTF-8 is
+ * read as Windows-1254, the way Turkish banks save it.
  *
  * @param string $path
  * @return array ['rows' => array, 'error' => string]
@@ -93,17 +95,7 @@ function erp_bank_read_csv($path)
     }
 
     $lines = preg_split('/\r\n|\r|\n/', $text);
-    $sample = implode("\n", array_slice($lines, 0, 10));
-    $separator = ';';
-    $best = -1;
-
-    foreach (array(';', ',', "\t", '|') as $candidate) {
-        $count = substr_count($sample, $candidate);
-        if ($count > $best) {
-            $best = $count;
-            $separator = $candidate;
-        }
-    }
+    $separator = erp_bank_csv_separator($lines);
 
     $rows = array();
     foreach ($lines as $line) {
@@ -111,7 +103,7 @@ function erp_bank_read_csv($path)
             continue;
         }
 
-        $rows[] = array_map('trim', str_getcsv($line, $separator, '"'));
+        $rows[] = array_map('trim', str_getcsv($line, $separator, '"', '\\'));
 
         if (count($rows) >= ERP_BANK_IMPORT_MAX_ROWS) {
             break;
@@ -123,6 +115,72 @@ function erp_bank_read_csv($path)
     }
 
     return array('rows' => $rows, 'error' => '');
+}
+
+/**
+ * The separator of a CSV statement: the candidate that reads the most of the
+ * first lines as transactions (erp_bank_cells_are_movement(), a date and a
+ * non-zero amount in cells of their own).
+ *
+ * Counting the character itself picks the wrong one in a Turkish bank's
+ * export: the commas in the descriptions and the decimal commas of the
+ * amounts outnumber the semicolons, and the file came apart on the commas.
+ * Counting columns alone is not enough either: a title block of lines with
+ * one comma each, or a tab file with no heading row, splits as evenly on the
+ * decimal comma. Movements decide; when they tie, the candidate whose most
+ * common column width (above one) covers more lines wins, and the earlier
+ * candidate after that. Lines are split as CSV (quotes respected), so a
+ * quoted cell does not count its separators. A file where no candidate
+ * finds anything is read with the semicolon.
+ *
+ * @param array $lines  The file's lines
+ * @return string
+ */
+function erp_bank_csv_separator($lines)
+{
+    $sample = array();
+
+    foreach ((array) $lines as $line) {
+        if (trim((string) $line) !== '') {
+            $sample[] = (string) $line;
+        }
+
+        if (count($sample) >= 50) {
+            break;
+        }
+    }
+
+    $separator = ';';
+    $bestMovements = 0;
+    $best = 0;
+
+    foreach (array(';', ',', "\t", '|') as $candidate) {
+        $widths = array();
+        $movements = 0;
+
+        foreach ($sample as $line) {
+            $cells = str_getcsv($line, $candidate, '"', '\\');
+            $width = count($cells);
+
+            if ($width > 1) {
+                $widths[$width] = ($widths[$width] ?? 0) + 1;
+
+                if (erp_bank_cells_are_movement($cells)) {
+                    $movements++;
+                }
+            }
+        }
+
+        $score = empty($widths) ? 0 : max($widths);
+
+        if (($movements > $bestMovements) || (($movements === $bestMovements) && ($score > $best))) {
+            $bestMovements = $movements;
+            $best = $score;
+            $separator = $candidate;
+        }
+    }
+
+    return $separator;
 }
 
 /**
@@ -403,7 +461,8 @@ function erp_bank_sheet_value($value, $kind = 'n')
  *
  * A transaction row has a date in one cell and an amount in another: digits
  * with no more than a currency code around them, and not a date itself, so
- * a period written as two dates is not one. Looked for in the first rows
+ * a period written as two dates is not one (erp_bank_cells_are_movement(),
+ * the same test the CSV separator is chosen by). Looked for in the first rows
  * only; a file where none is found is left as it is, and the lines that are
  * not dated amounts are skipped when the statement is built anyway.
  *
@@ -415,25 +474,50 @@ function erp_bank_rows_from_heading($rows)
     $rows = array_values((array) $rows);
 
     foreach (array_slice($rows, 0, 60) as $index => $cells) {
-        $dated = false;
-        $amount = false;
-
-        foreach ((array) $cells as $cell) {
-            $cell = (string) $cell;
-
-            if ((erp_bank_date($cell) !== '') || (erp_bank_date($cell, 'mdy') !== '')) {
-                $dated = true;
-            } elseif ((preg_match('/\d/', $cell) === 1) && (preg_match_all('/\pL/u', $cell) <= 3) && ((int) erp_bank_amount($cell) !== 0)) {
-                $amount = true;
-            }
-        }
-
-        if ($dated && $amount) {
+        if (erp_bank_cells_are_movement($cells)) {
             return array_slice($rows, max(0, $index - 1));
         }
     }
 
     return $rows;
+}
+
+/**
+ * Whether a row's cells read as a transaction: a date in one cell and a
+ * non-zero amount in another, digits with no more than a currency code
+ * around them and not a date itself.
+ *
+ * A date cell that holds a semicolon, a tab or a pipe is not taken as one:
+ * it is a whole line split on the wrong separator (02.10.2026;KIRA;-800 out
+ * of a semicolon file split on its decimal comma). The amount is compared
+ * without an (int) cast, which on 32-bit PHP wraps a large float and can
+ * make it zero.
+ *
+ * @param array $cells
+ * @return bool
+ */
+function erp_bank_cells_are_movement($cells)
+{
+    $dated = false;
+    $amount = false;
+
+    foreach ((array) $cells as $cell) {
+        $cell = trim((string) $cell);
+
+        if ((erp_bank_date($cell) !== '') || (erp_bank_date($cell, 'mdy') !== '')) {
+            if (strpbrk($cell, ";\t|") === false) {
+                $dated = true;
+            }
+        } elseif ((preg_match('/\d/', $cell) === 1) && (preg_match_all('/\pL/u', $cell) <= 3)) {
+            $value = erp_bank_amount($cell);
+
+            if (($value !== null) && ($value != 0)) {
+                $amount = true;
+            }
+        }
+    }
+
+    return $dated && $amount;
 }
 
 /**
@@ -467,7 +551,10 @@ function erp_bank_date($text, $order = 'dmy')
 
 /**
  * An amount as a bank writes it: 1.234,56 or 1,234.56, a minus in front or a
- * trailing one, in parentheses, with a currency word around it.
+ * trailing one, in parentheses, with a currency word or sign around it. The
+ * minus may stand after the currency (TL -1.234,56, ₺-1.234,56) or end the
+ * text behind it (1.234,56 TL-); a decimal separator with nothing in front
+ * of it (.50) is still the decimals.
  *
  * @param string $text
  * @return int|null  kurus, signed; null when it is not a number
@@ -480,15 +567,27 @@ function erp_bank_amount($text)
         return null;
     }
 
-    $negative = (bool) preg_match('/^\(.*\)$|^-|-$|^−/u', $text);
+    // The sign is read around the number, not only at the ends of the text:
+    // a currency word or sign often stands in front of the minus. After the
+    // number a minus counts right after the last digit (1.234,56- USD) and
+    // at the very end of the text (1.234,56 TL-).
+    $before = (string) preg_replace('/\d.*$/su', '', $text);
+    $after = (string) preg_replace('/^.*\d/su', '', $text);
+    $negative = (preg_match('/[-−]/u', $before) === 1)
+        || (preg_match('/^\s*[-−]|[-−]\s*$/u', $after) === 1)
+        || ((strpos($before, '(') !== false) && (strpos($after, ')') !== false));
     $digits = preg_replace('/[^0-9.,]/', '', $text);
 
     if ($digits === '') {
         return null;
     }
 
-    $at = max(strrpos($digits, ','), strrpos($digits, '.'));
-    if (($at !== false) && ((strlen($digits) - $at - 1) <= 2) && (strlen($digits) - $at - 1 > 0)) {
+    // strrpos() gives false for a separator that is not there, and
+    // max(false, 0) is false: a separator at position 0 (.50) was lost.
+    $comma = strrpos($digits, ',');
+    $point = strrpos($digits, '.');
+    $at = max(($comma === false) ? -1 : $comma, ($point === false) ? -1 : $point);
+    if (($at >= 0) && ((strlen($digits) - $at - 1) <= 2) && (strlen($digits) - $at - 1 > 0)) {
         $whole = preg_replace('/[.,]/', '', substr($digits, 0, $at));
         $fraction = str_pad(substr($digits, $at + 1), 2, '0');
     } else {
@@ -606,6 +705,7 @@ function erp_bank_statement_build($statement_id, $mapping)
     $skipped = 0;
     $line_no = 0;
     $till_id = (int) $statement['cash_account_id'];
+    $seen = array();
 
     foreach ($rows as $cells) {
         $cells = (array) $cells;
@@ -631,7 +731,7 @@ function erp_bank_statement_build($statement_id, $mapping)
         }
 
         $description = ($column('description') >= 0) ? mb_substr(trim((string) ($cells[$column('description')] ?? '')), 0, 255) : '';
-        $hash = sha1($till_id . '|' . $date . '|' . $amount . '|' . mb_strtolower($description));
+        $hash = erp_bank_line_hash($till_id, $date, $amount, $description, erp_bank_line_occurrence($seen, $till_id, $date, $amount, $description));
         $line_no++;
 
         $ok = db("INSERT IGNORE INTO erp_bank_statement_lines SET
@@ -659,6 +759,69 @@ function erp_bank_statement_build($statement_id, $mapping)
     $matched = erp_bank_statement_match((int) $statement['id']);
 
     return array('success' => true, 'added' => $added, 'skipped' => $skipped, 'matched' => $matched, 'error' => '');
+}
+
+/**
+ * The hash a statement line is known by: its bank account, day, amount and
+ * words, and which occurrence of those it is in the file.
+ *
+ * The first occurrence hashes as lines always have (no suffix), so lines
+ * taken in before this count existed still turn a re-upload away. A second
+ * real line of the same day, amount and words (two transfer fees) gets "|2"
+ * and is added; the same file, or an overlapping one that holds both, gives
+ * the same hashes again and adds nothing.
+ *
+ * @param int    $till_id
+ * @param string $date        Y-m-d
+ * @param int    $amount      kurus, signed
+ * @param string $description
+ * @param int    $occurrence  1 for the first line that reads so in the file
+ * @return string
+ */
+function erp_bank_line_hash($till_id, $date, $amount, $description, $occurrence = 1)
+{
+    $key = erp_bank_line_key($till_id, $date, $amount, $description);
+
+    return sha1(((int) $occurrence > 1) ? $key . '|' . (int) $occurrence : $key);
+}
+
+/**
+ * Count a line among the ones read from the same file so far: which
+ * occurrence of its day, amount and words (letter case aside) it is.
+ *
+ * @param array  $seen        Counts so far, kept by the caller across the file
+ * @param int    $till_id
+ * @param string $date
+ * @param int    $amount
+ * @param string $description
+ * @return int  1 for the first
+ */
+function erp_bank_line_occurrence(&$seen, $till_id, $date, $amount, $description)
+{
+    $key = erp_bank_line_key($till_id, $date, $amount, $description);
+    $seen[$key] = ($seen[$key] ?? 0) + 1;
+
+    return $seen[$key];
+}
+
+/**
+ * The text a statement line's hash and its occurrence count are built from:
+ * bank account, day, amount and lower-cased words, joined as the statement
+ * build always joined them.
+ *
+ * The amount is not cast to int: past 2^31 kurus it is a float on 32-bit PHP,
+ * and a cast would wrap it to another amount and change the hash of a line
+ * stored before.
+ *
+ * @param int       $till_id
+ * @param string    $date
+ * @param int|float $amount
+ * @param string    $description
+ * @return string
+ */
+function erp_bank_line_key($till_id, $date, $amount, $description)
+{
+    return (int) $till_id . '|' . $date . '|' . $amount . '|' . mb_strtolower((string) $description);
 }
 
 /**

@@ -11162,6 +11162,21 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                         }
                     }
 
+                    // Links saved while it sat here were checked without it,
+                    // so coming back it could close a loop or a chain too long
+                    // with them. Such a link stays in the bin and the reason
+                    // is reported.
+                    $restore_short_link_check = pg_short_link_redirect_columns(array(
+                        'id' => (int) $restore_short_link['id'],
+                        'name' => $restore_short_link_name,
+                        'destination_type' => $restore_short_link['destination_type'],
+                        'url' => $restore_short_link['url']), null, (int) ($restore_short_link['redirect_code'] ?? 0));
+
+                    if ($restore_short_link_check['problem'] !== null) {
+                        $errors[] = lang(array('string' => 'The short link {var:1} stays in the recycle bin: {var:2}', 'vars' => array($restore_short_link['name'], $restore_short_link_check['problem']['message'])));
+                        continue;
+                    }
+
                     db(
                         "UPDATE short_links
                         SET recycled = '0',
