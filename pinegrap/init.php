@@ -996,6 +996,12 @@ if (!empty($_SERVER['HTTP_HOST'])) {
     // shared code that reads it finds nothing rather than warning.
     if (!defined('PG_NO_SESSION')) {
         session_start();
+
+        // While the page cache is on, the pg_nc cookie follows the session
+        // (includes/fn/page_cache.php).
+        if (function_exists('pg_page_cache_watch_session')) {
+            pg_page_cache_watch_session();
+        }
     }
 }
 

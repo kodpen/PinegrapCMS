@@ -281,6 +281,12 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_LANGUAGE_COOKIE, true, lang('Remembers the language you chose for the site.'));
     }
 
+    // The page cache marks a session with a cart, a sign-in or a message
+    // (pg_page_cache_marker_hook()); it writes the cookie only when it is on.
+    if (function_exists('pg_page_cache_ttl') && (pg_page_cache_ttl() > 0)) {
+        $catalogue['necessary'][] = array(PG_PAGE_CACHE_MARKER, true, lang('Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.'));
+    }
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {
@@ -489,6 +495,7 @@ function pg_consent_ui_keys()
         'Remembers your cookie choices.',
         'For a signed-in user, remembers whether pages show their editing tools.',
         'Remembers the language you chose for the site.',
+        'Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',
@@ -529,7 +536,16 @@ function pg_consent_ui_keys()
  */
 function pg_consent_inject($content)
 {
-    if (!pg_consent_enabled() || (defined('IS_BOT') && IS_BOT)) {
+    if (!pg_consent_enabled()) {
+        return $content;
+    }
+
+    if (defined('IS_BOT') && IS_BOT) {
+        // A page without the notice must never be shared with people.
+        if (function_exists('pg_page_cache_personal')) {
+            pg_page_cache_personal('crawler');
+        }
+
         return $content;
     }
 

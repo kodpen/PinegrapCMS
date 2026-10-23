@@ -339,7 +339,11 @@ function pg_tr_define_from_request($body = null)
 
     // A script that answers a form with a redirect (to a confirmation page,
     // the next checkout step) sends the visitor to the page in this language.
-    if (!headers_sent() && function_exists('header_register_callback')) {
+    // Through the shared list: header_register_callback() keeps only one
+    // callback, and the page cache's marker cookie needs the slot too.
+    if (function_exists('pg_header_callback_add')) {
+        pg_header_callback_add('pg_tr_redirect_hook');
+    } elseif (!headers_sent() && function_exists('header_register_callback')) {
         header_register_callback('pg_tr_redirect_hook');
     }
 }
