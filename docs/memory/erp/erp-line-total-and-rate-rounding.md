@@ -26,4 +26,4 @@ description: Line totals and rates round half away from zero on the exact produc
 ## What still rounds a float product with round()?
 - The withholding total in `erp_rate_vat()` / `rateTaxes()`, `erp_to_base()`, the late fee (`erp_late_fee_for_invoice()`), and the checkout's discount share for lines without a stored rate (`pg_order_charged_tax()`, orders before 11.0.59): a ratio, not a rate.
 
-Related: docs/memory/erp/erp-money-and-currency.md, docs/memory/erp/erp-line-quantity-places.md
+Related: docs/memory/erp/erp-money-and-currency.md, docs/memory/erp/erp-line-quantity-places.md, docs/memory/commerce/offer-percent-rounding.md

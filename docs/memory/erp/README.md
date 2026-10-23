@@ -58,7 +58,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-edoc-driver-layer.md: ERP e-document driver layer (4.61): registry gate, adding a provider, contract and capabilities, credentials, the one active provider, the ERP without a provider, endpoints never guessed.
 - erp-edoc-incoming-invoices.md: Incoming e-invoices (4.67): reading the provider's list into erp_edoc_inbox, the UBL reader, taking a document in as a purchase draft, what is refused, decisions a read never overwrites.
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice's e-document columns, statuses and list views.
-- erp-edoc-send-and-cancel.md: How an ERP invoice goes through the e-document provider: the send gate, create then hand to GİB (autosend, 4.63), status read on request, and taking a document back before the local cancel.
+- erp-edoc-send-and-cancel.md: How an ERP invoice goes through the e-document provider: the send gate, a send that stopped, create then hand to GİB (autosend, 4.63), status on request, taking a document back before the cancel.
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.
@@ -67,7 +67,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-file-map-features.md: Where ERP work lives, part 2: stock, accountant pack, period lock, expenses, reports, rules, quotes, purchase orders, recurring documents, prices, cheques, bank statements, storefront, CSV.
 - erp-file-map.md: Where ERP work lives, part 1: the core (entry, money, ledger, accounts, settlement, orders, invoices, waybills, documents, aging, e-documents, API seam). Part 2: erp-file-map-features.md.
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
-- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, the period lock, and how open amount and paid status treat returns.
+- erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what the screen asks before the provider, what cancel does to ledger, number, gift card, stock and order, the period lock, open amount and returns.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
 - erp-invoice-editor-catalog-offers.md: Invoice/waybill editor catalogue read (product name rule, erp_product_for_line shape), zone rate on a new account, product offers, two-discount order, field-level errors, barcode box.
 - erp-invoice-mail.md: E-mailing an issued ERP invoice (4.97): the attachment, erp_document_mails rows, the automatic send decided at the invoice's announcement and sent after the response, testing on dev.
@@ -91,7 +91,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-order-cancel-and-refund.md: How a cancelled or refunded order reaches the ERP: the order card's two reverse steps, cancel or return invoice, the money owed per order (4.66), the card refund by line, orders writes.
 - erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
-- erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the total check that refuses a mismatch before a number is spent.
+- erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
 - erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
@@ -99,8 +99,10 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-connect-card.md: The Paraşüt card of the commerce settings: its status line, the three connect steps, what Connect answers (fill, status read with the token's owner), the company number on save
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect endpoint, company id discovery
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
+- erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, and what is still open
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live
-- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): Create Invoice sends the ERP's lines (#1268) and e-document attributes (#1278); when they give way to the ERP's documents card
+- erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: the ERP's lines and refusals (#1268), the buyer card (#1408), the e-document attributes (#1278)
+- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): when they give way to the ERP's documents card (#639), what they do on an order already sent (#1084, #1407)
 - erp-parasut-send-failures.md: What the ERP does when a step of a Paraşüt send goes wrong (no answer to the create, a record that would not be deleted, a failed conversion job) so that no second sales invoice is opened there
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
