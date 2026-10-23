@@ -617,7 +617,7 @@ function pg_member_activate($form, $opts = array())
 
     $form->validate_required_field('first_name', lang('First Name is required.'));
     $form->validate_required_field('last_name', lang('Last Name is required.'));
-    $form->validate_required_field('member_id', lang(array('string' => '{var:1} is required.', 'vars' => MEMBER_ID_LABEL)));
+    $form->validate_required_field('member_id', lang(array('string' => '{var:1} is required.', 'vars' => h(MEMBER_ID_LABEL))));
     if ($has_username) {
         $form->validate_required_field('username', lang('Username is required.'));
     }
@@ -653,7 +653,7 @@ function pg_member_activate($form, $opts = array())
         if ($contact_id <= 0) {
             $form->mark_error('member_id', lang(array(
                 'string' => 'The {var:1} and last name you entered do not match a membership that can be activated.',
-                'vars'   => MEMBER_ID_LABEL)));
+                'vars'   => h(MEMBER_ID_LABEL))));
             $form->mark_error('last_name');
         }
     }

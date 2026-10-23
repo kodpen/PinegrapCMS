@@ -1333,12 +1333,12 @@ if (!$_POST) {
             $max_snippet_check = pg_page_max_snippet_check($max_snippet_raw);
 
             if (!$canonical_check['ok']) {
-                $liveform->mark_error('canonical_url', pg_page_canonical_url_message($canonical_check['error'], $current_page_name));
+                $liveform->mark_error('canonical_url', pg_page_canonical_url_message($canonical_check['error'], h($current_page_name)));
                 $liveform->assign_field_value('canonical_url', trim($canonical_raw));
             }
 
             if (!$max_snippet_check['ok']) {
-                $liveform->mark_error('max_snippet', pg_page_max_snippet_message($current_page_name));
+                $liveform->mark_error('max_snippet', pg_page_max_snippet_message(h($current_page_name)));
                 $liveform->assign_field_value('max_snippet', is_string($max_snippet_raw) ? trim($max_snippet_raw) : '');
             }
 
