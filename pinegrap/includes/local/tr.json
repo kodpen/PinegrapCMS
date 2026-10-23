@@ -26142,5 +26142,6 @@
     "An article taken off the site can still show in the site search until the editors update the search index.": "Siteden kaldırılan bir haber, editörler arama dizinini güncelleyene kadar site aramasında görünmeye devam edebilir.",
     "bridge-photo.jpg": "kopru-fotografi.jpg",
     "To change your article or take it back, write to the desk below; an editor makes the change.": "Haberinizi değiştirmek ya da geri çekmek için aşağıdan masaya yazın; değişikliği bir editör yapar.",
-    "jane.cooper": "ayse.yilmaz"
+    "jane.cooper": "ayse.yilmaz",
+    "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı."
 }
