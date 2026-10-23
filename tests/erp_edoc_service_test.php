@@ -4,7 +4,8 @@
  *
  * Tests for the pure parts of the e-document service
  * (includes/erp/edoc/service.php): when a new send would duplicate a record
- * the provider already holds, and when the repair form's carrier is refused.
+ * the provider already holds, when the repair form's carrier is refused,
+ * and when a send that stopped may go again.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -36,6 +37,51 @@ function test_erp_edoc_invoice_held_refusal()
 	pg_assert_same('', erp_edoc_invoice_held_refusal(array('edoc_status' => 'error')), 'an old row without the column');
 	pg_assert_same('', erp_edoc_invoice_held_refusal(array('edoc_status' => 'none', 'edoc_external_id' => '')));
 	pg_assert_same('', erp_edoc_invoice_held_refusal(array('edoc_status' => 'rejected', 'edoc_external_id' => '5001')), 'a rejected document is answered with a new one');
+}
+
+// A send whose request ended inside the driver call leaves the row at
+// 'sending' with no provider id, and nothing else ever writes it again. Past
+// fifteen minutes it is taken for a send that stopped; a fresh one is a send
+// still in flight (a second click stops at the gate), and one with an id is
+// asked after at the provider.
+function test_erp_edoc_invoice_send_stalled()
+{
+	$now = 1790000000;
+	$row = array('edoc_status' => 'sending', 'edoc_external_id' => '', 'updated_at' => (string) ($now - 901));
+
+	pg_assert_true(erp_edoc_invoice_send_stalled($row, $now), 'a send that stopped more than fifteen minutes ago');
+	pg_assert_true(erp_edoc_invoice_send_stalled(array('edoc_status' => 'sending', 'edoc_external_id' => ' ', 'updated_at' => $now - 3600), $now), 'a blank id is no id');
+	pg_assert_false(erp_edoc_invoice_send_stalled(array('updated_at' => (string) ($now - 900)) + $row, $now), 'fifteen minutes to the second is still in flight');
+	pg_assert_false(erp_edoc_invoice_send_stalled(array('updated_at' => (string) ($now - 5)) + $row, $now), 'a send in flight');
+	pg_assert_false(erp_edoc_invoice_send_stalled(array('edoc_external_id' => '5001') + $row, $now), 'a row with an id is asked after');
+
+	foreach (array('none', 'error', 'created', 'sent', 'accepted', 'rejected', 'cancelled') as $status) {
+		pg_assert_false(erp_edoc_invoice_send_stalled(array('edoc_status' => $status) + $row, $now), $status);
+	}
+
+	pg_assert_true(erp_edoc_invoice_send_stalled($row), 'judged by the clock when no time is given');
+}
+
+// The doors that refuse a 'sending' row let a stalled one through: the send
+// gate (screen, order card, bulk send) and the order card's waiting step,
+// whose status question a row without an id can never answer. The invoice
+// screen and the order card say the stopped send may have reached the
+// provider.
+function test_erp_edoc_stalled_send_is_offered_again()
+{
+	$service = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
+	$from = strpos($service, 'function erp_edoc_invoice_can_send(');
+	$gate = substr($service, $from, strpos($service, "\n}\n", $from) - $from);
+	$note = "The last send stopped before {var:1} answered, so a draft of the document may already be there.";
+
+	pg_assert_true(strpos($gate, "array('queued', 'sending', 'sent', 'accepted'), true) && !erp_edoc_invoice_send_stalled(\$invoice)) {") !== false, 'the send gate');
+
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
+	pg_assert_true(strpos($flow, "elseif (in_array(\$status, array('queued', 'sending', 'sent'), true) && !erp_edoc_invoice_send_stalled(\$invoice)) {") !== false, 'the order card waits only for a send in flight');
+	pg_assert_true(strpos($flow, "if (erp_edoc_invoice_send_stalled(\$invoice)) {\n                \$step['facts'][] = array('text' => lang(array('string' => '" . $note) !== false, 'the order card says why');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice.php');
+	pg_assert_true(strpos($screen, "(erp_edoc_invoice_send_stalled(\$invoice)\n                            ? '<div class=\"col-12 my-2\"><div class=\"form-text\">' . h(lang(array('string' => '" . $note) !== false, 'the invoice screen says why');
 }
 
 // A number whose check digits do not add up is refused before the provider is
