@@ -16,7 +16,7 @@ description: Bindable image editor (Pintura): save endpoint contract, write rule
 - Temp file + `rename()`.
 - `files.image_width/height` are written on BOTH paths (columns probed with `SHOW COLUMNS`), `optimized = 0`.
 - A design file (`design = 1`) is rejected for EVERY role: `image_editor_edit.php` rejects it too; two entry points must not answer differently for one file.
-- An animated GIF is never overwritten; only a new file.
+- An animated GIF, APNG or animated WebP is never overwritten; only a new file. The check reads the file's bytes (`pg_image_is_animated()`), so the name does not matter (PR #NNNN).
 
 ## What is the designer-side contract?
 - The contract is the FIELD, not the node. The button uses the same contract as `sdOpenImagePicker` ("which input am I filling"). Every field carrying an image address gets the button; the tool knows no node. That is why an image node's `src` and a background image worked with one line each.
