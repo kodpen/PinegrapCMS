@@ -107,6 +107,7 @@ function test_payment_iyzico_threeds_return_takes_the_kept_figures()
 	$skip = ($limit !== false) ? strpos($block, '} elseif (!$iyzipay_threeds_return) {', $limit) : false;
 	$quote = strpos($block, 'new \Iyzipay\Request\RetrieveInstallmentInfoRequest()');
 	pg_assert_true(($selection !== false) && ($limit !== false), 'the instalment limit is checked on the return too');
+	pg_assert_contains("if (\$get_buyer_payment_installment_selection >= 1) { if (\$get_buyer_payment_installment_selection > \$accepted_payment_installments) {", $flat, 'the limit check has no return exception');
 	pg_assert_true(($skip !== false) && ($quote !== false) && ($skip < $quote), 'no instalment quote on the return');
 
 	$return = strpos($block, "} elseif ((\$_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') {");

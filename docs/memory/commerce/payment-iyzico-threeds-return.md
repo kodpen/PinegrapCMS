@@ -8,7 +8,7 @@ description: How the frozen Iyzipay block of submit_order.php finishes iyzico's 
 
 ## What does the order keep? (#1422)
 - The return posts no card: `$card_number` and the expiry are `''`. The instalment limit is still checked, but iyzico is not asked for a new quote.
-- After the amount check (the current total equals the row's base, iyzico's paid price equals base plus charge, else the payment is cancelled), the order takes the row's total and charge (`pg_payment_threeds_state_totals()`). `orders.installment_charges` is what the bank took, lowered by #1269 where a rate's total would be out of reach (erp/erp-order-charges-vat.md).
+- After the amount check (the current total equals the row's base, iyzico's paid price equals base plus charge, within 1% under a protected currency, else the payment is cancelled), the order takes the row's total and charge (`pg_payment_threeds_state_totals()`). `orders.installment_charges` is what the bank took, lowered by #1269 where a rate's total would be out of reach (erp/erp-order-charges-vat.md).
 - Before, the charge came from a new quote at an empty BIN (0, or another bank's figure), so the order's ERP invoice was refused as not matching the order total.
 
 ## Tests
