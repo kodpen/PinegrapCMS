@@ -160,6 +160,14 @@ The last one fetches the pinned PHPStan and PHPCompatibility once (no
 Composer); a newer API used behind a guard gets a `phpcs:ignore` with the
 reason, never a baseline entry: `docs/memory/workflow/static-analysis.md`.
 
+`git push` runs the fast ones on the pushed commit first and stops a push
+that fails them (`tools/pre_push.sh`: `docs/memory/workflow/pre-push-checks.md`).
+A cloud session that starts in this clone has the hook; if your context lacks
+the line "git push runs tools/pre_push.sh first", run
+`bash tools/install_git_hooks.sh` once before pushing. Change a branch only
+with `git push` (API and MCP file writes skip the check); fix a failing
+commit and push again, `--no-verify` is only for a broken script.
+
 Also: a test in `tests/<topic>_test.php` for a pure function you add or change
 (red first when behaviour changes); a schema step rerun twice on a dev DB;
 `node --check` after touching `style_designer.js`. The PR says what changed,
