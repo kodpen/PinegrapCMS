@@ -4,7 +4,7 @@ description: ERP money storage (integer minor units), the single rounding point 
 ---
 
 ## How is money stored and rounded in the ERP?
-- Integer minor units (kuruş), `BIGINT`, same as the rest of the codebase; no `bcmath`. Rates `DECIMAL(6,3)` / `DECIMAL(15,6)`, quantities `DECIMAL(15,4)`.
+- Integer minor units (kuruş), `BIGINT`, same as the rest of the codebase; no `bcmath`. Rates `DECIMAL(6,3)` / `DECIMAL(15,6)`, quantities `DECIMAL(15,4)`, priced at those four places (erp-line-quantity-places).
 - `includes/erp/money.php` is the single multiply/round point; do not open a second one. `erp_apply_rate()` is the only amount × rate, `erp_line_total()` the only amount × quantity, `erp_allocate()` splits one amount over lines (largest remainders, the parts always add up). Rounding is `round()` (half away from zero, as the order side does), never an `(int)` cut.
 - A tax-inclusive amount is split with `erp_split_gross($gross, $rate)` (net + tax = gross exactly, rate × net within a kuruş); never `/ (1 + rate)`. An order's VAT is taken per rate on the sum of the rate's lines (`erp_rate_vat()`, #1168), and a rate's gross total is split with `erp_rate_amount()` (#1211): erp-discounted-order-vat, erp-order-charges-vat.
 

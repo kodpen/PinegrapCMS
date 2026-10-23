@@ -15,7 +15,7 @@ description: Previous/next buttons of the scroller-cards block: the row marker, 
   - canvas: `_sdScrollers()` after every `renderCanvas()` loads the file once (sets `pgScrollerEditing` first) or calls `window.pgScrollerBind(canvasDoc)`.
 
 ## How does it behave?
-- Clicks are caught on `document` in the capture phase: on the canvas the icon inside the button is its own wrapper and stops the click. The canvas still selects what was clicked.
+- Clicks are caught on `document` in the capture phase: on the canvas the icon inside the button is its own wrapper and stops the click. `[data-pg-scroll]` is in `_SD_CANVAS_CONTROLS` (`designer-canvas-controls`): a click on the chevron moves the row and selects the chevron, and the click goes on to the button.
 - A button's row: the `[data-pg-scroller]` named by `aria-controls` among the nearest marked rows around the button, else the first of them (a copied block keeps the original id).
 - One step = distance between the first two items (width + gap; on the canvas a `display: contents` wrapper stands for its first child with a box). `scrollBy` smooth, `auto` under `prefers-reduced-motion`; snap aligns on the card.
 - RTL (`direction: rtl` on the row): "next" moves left (`scrollLeft` negative). The chevrons carry `pg-flip-rtl` (`_SD_BLOCK_CSS`, `[dir="rtl"]`, `scaleX(-1)` with `inline-block`), so they point the way the swapped buttons move.
