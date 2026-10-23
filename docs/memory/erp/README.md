@@ -7,7 +7,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 ## Key rules
 
 <!-- key-rules:start -->
-- Keep money in integer minor units and multiply or round only in `includes/erp/money.php` (half away from zero; line totals and rates exactly through `erp_multiply_units()`), never an `(int)` cut (`erp-money-and-currency.md`, `erp-line-total-and-rate-rounding.md`).
+- Keep money in integer minor units and multiply or round only in `includes/erp/money.php`, with `round()`, never an `(int)` cut (`erp-money-and-currency.md`).
 - Take a number only with `erp_next_number()` inside the document's transaction, after every refusal; store `$numbered['year']` as `issue_year` (`erp-document-numbering.md`).
 - Never edit an issued document: undo it with a return or a reversing cancel that keeps its number; a draft has no number and is deleted (`erp-manual-invoice-draft-issue.md`).
 - Subtract `withholding_total` in every new total: `grand_total = subtotal − discount + VAT − withholding` is what the account owes (`erp-vat-withholding.md`).
@@ -40,7 +40,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
-- erp-bank-statements.md: ERP bank statement import (4.102): formats and readers, the PHPExcel libxml trap, the title-block cut, each line once (line_hash), matching within 3 days, recording via receipt or expense.
+- erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals, each line once (line_hash), matching, recording.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
@@ -84,6 +84,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51, 4.64 district and postcode) and extra document data.
 - erp-module-basics.md: ERP module switch and gate areas, the four permission columns, defensive constants, why tables always install, step names, menu slot 22 and titles, naming traps, where open ERP work is tracked.
 - erp-money-and-currency.md: ERP money storage (integer minor units), the single rounding point in money.php, tax-inclusive splits, home-currency rule, *_base columns, opt-in FX switch, rate history and the fx_diff ledger line.
+- erp-negative-price-lines.md: An order line of a product priced below zero: how the checkout, the ERP invoice, ERP returns and Paraşüt treat it (Paraşüt refuses it, #1297), and where such a line can still come from
 - erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live.
 - erp-number-input-and-display.md: How the ERP reads typed quantities, amounts and rates and writes figures back: decimal comma by store country, separators by panel language, percent text, CSV delimiter, paper size.
 - erp-order-cancel-and-refund.md: How a cancelled or refunded order reaches the ERP: the order card's two reverse steps, cancel or return invoice, the money owed per order (4.66), the card refund by line, orders writes.

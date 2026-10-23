@@ -278,8 +278,8 @@ if ($_POST) {
 				WHERE id = '" . (int)$hook['id'] . "'");
 
 			$liveform->add_notice(($new_status === 'active')
-				? lang(array('string' => 'Deliveries to {var:1} were switched back on.', 'vars' => $hook['url']))
-				: lang(array('string' => 'Deliveries to {var:1} were stopped.', 'vars' => $hook['url'])));
+				? lang(array('string' => 'Deliveries to {var:1} were switched back on.', 'vars' => h($hook['url'])))
+				: lang(array('string' => 'Deliveries to {var:1} were stopped.', 'vars' => h($hook['url']))));
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was set to {var:2}.',

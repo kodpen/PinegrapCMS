@@ -120,7 +120,7 @@ if ($_POST) {
             lang(array('string' => 'product ({var:1}) was created', 'vars' => array($result['name']))),
             $_SESSION['sessionusername']);
 
-        $liveform_target->add_notice(lang(array('string' => 'product ({var:1}) was created', 'vars' => array($result['name']))));
+        $liveform_target->add_notice(lang(array('string' => 'product ({var:1}) was created', 'vars' => array(h($result['name'])))));
 
         go(PATH . SOFTWARE_DIRECTORY . '/view_fields.php?product_id=' . (int) $result['product_ids'][0]);
     }
@@ -155,7 +155,7 @@ if ($_POST) {
     }
 
     $liveform_target = new liveform('view_products');
-    $liveform_target->add_notice(lang(array('string' => 'product ({var:1}) was created', 'vars' => array($result['name']))));
+    $liveform_target->add_notice(lang(array('string' => 'product ({var:1}) was created', 'vars' => array(h($result['name'])))));
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
 }

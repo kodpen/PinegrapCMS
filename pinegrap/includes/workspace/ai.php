@@ -4047,7 +4047,7 @@ function ws_ai_settings_test($liveform)
     if (!$models['ok']) {
         $error = ws_ai_http_error($models['response']);
         db("UPDATE config SET ws_ai_error = '" . e(mb_substr($error, 0, 250)) . "'");
-        $liveform->add_error($error);
+        $liveform->add_error(h($error));
         return;
     }
 
@@ -4074,7 +4074,7 @@ function ws_ai_settings_test($liveform)
     if (($response['http'] !== 200) || !isset($response['json']['choices'][0]['message'])) {
         $error = ws_ai_http_error($response);
         db("UPDATE config SET ws_ai_error = '" . e(mb_substr($error, 0, 250)) . "'");
-        $liveform->add_error($error);
+        $liveform->add_error(h($error));
         return;
     }
 
