@@ -2754,14 +2754,23 @@ function ws_change_apply($viewer, $change_id)
  * the Workspace's own tasks and notes are not in pg_audit_tables(). A record
  * moved to the Recycle Bin is a "recycle". A product or an offer deleted for
  * good is not recorded here: pg_pb_delete_product() and _pg_offer_delete()
- * write their own line. Any other action is an "update".
+ * write their own line.
  *
- * @param string $type   a kind of ws_change_types()
- * @param string $action create, update, delete, add, remove
- * @param array  $done   the writer's answer: ok, id, binned
+ * An order is recorded as the order screen and the external API record it:
+ * a "cancel" when it goes to cancelled from another status (the condition on
+ * which ws_change_write_order() runs process_order_cancellation()), a
+ * "restore" when it leaves cancelled for another status but incomplete
+ * (api_orders_status_move(): an order never goes to or from a basket there).
+ * Any other action is an "update".
+ *
+ * @param string     $type   a kind of ws_change_types()
+ * @param string     $action create, update, delete, add, remove
+ * @param array      $done   the writer's answer: ok, id, binned
+ * @param array      $values field => new value, as given to the writer
+ * @param array|null $record the record as the writer was given it
  * @return array table, action; empty when no line is written here
  */
-function ws_change_audit_target($type, $action, array $done)
+function ws_change_audit_target($type, $action, array $done, array $values = array(), $record = null)
 {
     $tables = array(
         'product' => 'products',
@@ -2794,6 +2803,19 @@ function ws_change_audit_target($type, $action, array $done)
         }
 
         return array('table' => $tables[$type], 'action' => 'delete');
+    }
+
+    if (($type === 'order') && ($action === 'update') && is_array($record) && isset($values['status'])) {
+        $from = (string) ($record['status'] ?? '');
+        $to = (string) $values['status'];
+
+        if (($to === 'cancelled') && ($from !== 'cancelled')) {
+            return array('table' => $tables[$type], 'action' => 'cancel');
+        }
+
+        if (($from === 'cancelled') && ($to !== 'cancelled') && ($to !== 'incomplete')) {
+            return array('table' => $tables[$type], 'action' => 'restore');
+        }
     }
 
     return array('table' => $tables[$type], 'action' => 'update');
@@ -2859,7 +2881,7 @@ function ws_change_write($viewer, $type, $action, $record, $values, $as_job = fa
 
         $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
 
-        $target = $audit ? ws_change_audit_target($type, $action, is_array($done) ? $done : array()) : array();
+        $target = $audit ? ws_change_audit_target($type, $action, is_array($done) ? $done : array(), is_array($values) ? $values : array(), $record) : array();
         $record_id = ($action === 'create') ? (int) ($done['id'] ?? 0) : $id;
 
         if ($target && ($record_id > 0)) {

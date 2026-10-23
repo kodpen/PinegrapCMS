@@ -96,6 +96,36 @@ function test_workspace_audit_target_delete_and_recycle()
 	pg_assert_same(array('table' => 'orders', 'action' => 'delete'), ws_change_audit_target('order', 'delete', $ok), 'an order deleted');
 }
 
+// An order moved to cancelled is a "cancel" and one taken out of cancelled a
+// "restore", as the order screen and the API record them; any other change
+// to an order, a cancelled one included, is an "update".
+function test_workspace_audit_target_order_cancel_and_restore()
+{
+	$ok = array('ok' => true, 'error' => '', 'id' => 7);
+	$cancel = array('table' => 'orders', 'action' => 'cancel');
+	$restore = array('table' => 'orders', 'action' => 'restore');
+	$update = array('table' => 'orders', 'action' => 'update');
+	$complete = array('id' => 7, 'status' => 'complete');
+	$cancelled = array('id' => 7, 'status' => 'cancelled');
+
+	pg_assert_same($cancel, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled'), $complete), 'complete to cancelled');
+	pg_assert_same($cancel, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled', 'cancellation_reason' => 'Stok yok'), array('id' => 7, 'status' => 'exported')), 'exported to cancelled, with a reason');
+
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('notes' => 'Aranacak'), $cancelled), 'a note on a cancelled order');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled', 'notes' => 'x'), $cancelled), 'cancelled stays cancelled');
+
+	pg_assert_same($restore, ws_change_audit_target('order', 'update', $ok, array('status' => 'complete'), $cancelled), 'cancelled to complete');
+	pg_assert_same($restore, ws_change_audit_target('order', 'update', $ok, array('status' => 'exported', 'notes' => 'x'), $cancelled), 'cancelled to exported');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'incomplete'), $cancelled), 'back to a basket is no restore (the API refuses it)');
+
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'exported'), $complete), 'complete to exported');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('notes' => 'x'), $complete), 'a note');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok), 'no values or record given');
+	pg_assert_same($update, ws_change_audit_target('order', 'update', $ok, array('status' => 'cancelled')), 'no record given');
+	pg_assert_same(array(), ws_change_audit_target('order', 'update', array('ok' => false), array('status' => 'cancelled'), $complete), 'a refused cancellation');
+	pg_assert_same(array('table' => 'offers', 'action' => 'update'), ws_change_audit_target('offer', 'update', $ok, array('status' => 'cancelled'), $complete), 'only orders are cancelled');
+}
+
 // A write that did not go through leaves no line.
 function test_workspace_audit_target_needs_a_write_that_went_through()
 {
@@ -166,6 +196,7 @@ function test_workspace_audit_every_caller_goes_through_the_wrapper()
 
 			pg_assert_true(($start !== false) && ($end !== false), 'ws_change_write() is in changes.php');
 			pg_assert_same(1, substr_count(substr($source, $start, $end - $start), "call_user_func('ws_change_write_' . \$type,"), 'the wrapper calls the writer');
+			pg_assert_contains("ws_change_audit_target(\$type, \$action, is_array(\$done) ? \$done : array(), is_array(\$values) ? \$values : array(), \$record)", substr($source, $start, $end - $start), 'and names the line with the values and the record');
 
 			$source = substr($source, 0, $start) . substr($source, $end);
 		}
