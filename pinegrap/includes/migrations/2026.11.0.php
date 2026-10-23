@@ -49,6 +49,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
 	upgrade_2026_11_0_passkeys();               // 11.0.13
+	upgrade_2026_11_0_form_field_translate();   // 11.0.26
 
 }
 
@@ -1085,5 +1086,17 @@ function upgrade_2026_11_0_passkeys() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
+
+}
+
+// A switch on each text field of a custom form: switched off, the answers
+// visitors give in that field (icon names, codes, JSON) are never listed for
+// translation nor looked up when a page shows them. Existing fields stay
+// included, the way they behaved before.
+function upgrade_2026_11_0_form_field_translate() {
+
+	install_add_column('form_fields', 'translate_values', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Forms: each text field can now be left out of translation; existing fields stay included.');
 
 }

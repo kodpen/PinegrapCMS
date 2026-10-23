@@ -221,6 +221,14 @@ function pg_cf_load_page_fields($page_id)
     // Optional in older schemas — probed, never assumed.
     $has_upload_folder = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation    = pg_cf_form_fields_has_column('validation_regex');
+    $translate_by_field = array();
+    if (pg_schema_has('form_fields', 'translate_values')) {
+        foreach ((array)db_items(
+            "SELECT id, translate_values FROM form_fields
+             WHERE page_id = '$page_id' AND form_type = 'custom'") as $t) {
+            $translate_by_field[(int)$t['id']] = ((int)$t['translate_values'] === 1);
+        }
+    }
     $validation_by_field = array();
     if ($has_validation) {
         foreach ((array)db_items(
@@ -276,6 +284,7 @@ function pg_cf_load_page_fields($page_id)
             'multiple'        => ((int)$r['multiple'] === 1),
             'office_use_only' => ((int)$r['office_use_only'] === 1),
             'wysiwyg'         => ((int)$r['wysiwyg'] === 1),
+            'translate'       => isset($translate_by_field[$id]) ? $translate_by_field[$id] : true,
             'rss_field'       => (string)$r['rss_field'],
             'contact_field'   => (string)$r['contact_field'],
             'default_value'   => (string)$r['default_value'],
@@ -858,6 +867,29 @@ function pg_cf_rich_text_flag($wanted, $type, $stored = null)
 }
 
 /**
+ * The `translate_values` column a designed field is written with: 1 when the
+ * answers given in the field are listed for translation and translated where
+ * a widget shows them (pg_tr_extract_form_records(), pg_tr_record_fields()),
+ * 0 when they are left as they were typed (icon names, codes, JSON).
+ *
+ * Only a text box or a text area has its answers translated, so any other
+ * field is 1. $wanted is the control's `_cf.translate`: true or false once
+ * the designer's switch has been used. null means the control does not say
+ * (a tree drawn before the switch existed, a field set on the classic field
+ * screen): the stored row ($stored, with `translate_values` when the column
+ * was read) keeps its flag, and a new field is included.
+ */
+function pg_cf_translate_flag($wanted, $type, $stored = null)
+{
+    if (!in_array((string)$type, array('text box', 'text area'), true)) return 1;
+    if ($wanted === null) {
+        return (is_array($stored) && isset($stored['translate_values'])
+                && (string)$stored['translate_values'] === '0') ? 0 : 1;
+    }
+    return $wanted ? 1 : 0;
+}
+
+/**
  * Write a page's form: `custom_form_pages` + `form_fields` + `form_field_options`.
  *
  * The list is AUTHORITATIVE - pg_cf_reconcile_page_form() derives it from the
@@ -906,6 +938,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $valid_contact  = pg_cf_contact_fields();
     $has_upload_col = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation = pg_cf_form_fields_has_column('validation_regex');
+    $has_translate  = pg_schema_has('form_fields', 'translate_values');
     $user_id        = (int)$user_id;
 
     // What is on the page's form right now, so we can tell an update from an
@@ -914,7 +947,8 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $old_list = array();
     $old_title_id = 0;
     foreach ((array)db_items(
-        "SELECT id, name, label, type, wysiwyg, rss_field FROM form_fields
+        "SELECT id, name, label, type, wysiwyg, rss_field"
+         . ($has_translate ? ", translate_values" : "") . " FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
@@ -983,6 +1017,13 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             // own — so nothing here has to guess at the operator's intent.
             $set['validation_regex']   = mb_substr((string)(isset($f['regex']) ? $f['regex'] : ''), 0, 255);
             $set['validation_message'] = mb_substr((string)(isset($f['regex_message']) ? $f['regex_message'] : ''), 0, 255);
+        }
+        if ($has_translate) {
+            // Three-state like `wysiwyg`: a field whose control does not say
+            // keeps the row's flag, so a save never resets it.
+            $set['translate_values'] = pg_cf_translate_flag(
+                array_key_exists('translate', $f) ? $f['translate'] : null, $type,
+                ($id > 0 && isset($existing[$id])) ? $existing[$id] : null);
         }
 
         // A folder the operator cannot edit is not a folder they may upload
@@ -1863,9 +1904,9 @@ function _pg_cf_type_by_input()
     );
 }
 
-// The `_cf` record a control carries, with every key present. `wysiwyg` is
-// three-state: null when the control does not say (the field row keeps the
-// flag it has), otherwise true or false.
+// The `_cf` record a control carries, with every key present. `wysiwyg` and
+// `translate` are three-state: null when the control does not say (the field
+// row keeps the flag it has), otherwise true or false.
 function _pg_cf_node_record($node)
 {
     $cf = (is_array($node) && isset($node['props']['_cf']) && is_array($node['props']['_cf']))
@@ -1881,6 +1922,7 @@ function _pg_cf_node_record($node)
         'quiz_question'      => !empty($cf['quiz_question']),
         'quiz_answer'        => isset($cf['quiz_answer']) ? (string)$cf['quiz_answer'] : '',
         'wysiwyg'            => array_key_exists('wysiwyg', $cf) ? !empty($cf['wysiwyg']) : null,
+        'translate'          => array_key_exists('translate', $cf) ? !empty($cf['translate']) : null,
     );
 }
 
@@ -1903,6 +1945,8 @@ function _pg_cf_node_record($node)
  * `wysiwyg` (rich text) is read for a text area only and stays null when
  * the control's `_cf` has no such key: the writer then keeps the row's own
  * flag (pg_cf_rich_text_flag()). The editor's twin is _cfFieldsOf().
+ * `translate` (include the answers in translation) is three-state the same
+ * way (pg_cf_translate_flag()).
  */
 function _pg_cf_controls($widget_tree, $page_id = 0)
 {
@@ -2007,6 +2051,7 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'multiple'        => ($tag === 'select' && array_key_exists('multiple', $a)) || $it === 'checkbox',
                         'office_use_only' => $cf['office_use_only'],
                         'wysiwyg'         => ($tag === 'textarea') ? $cf['wysiwyg'] : false,
+                        'translate'       => $cf['translate'],
                         'rss_field'       => $rss,
                         'contact_field'   => $cf['contact_field'],
                         'default_value'   => $default,
