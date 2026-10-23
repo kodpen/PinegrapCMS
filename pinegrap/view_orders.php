@@ -873,6 +873,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
             db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+
+            // Only the status changed, so the line is written from what the
+            // export read rather than reading thousands of rows again. An
+            // order listed twice (a product name search joins its items) is
+            // changed, and recorded, once.
+            if (function_exists('pg_audit') && (mysqli_affected_rows(db::$con) > 0)) {
+                pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+            }
         }
     }
     
@@ -2252,6 +2260,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
             db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+
+            // Only the status changed, so the line is written from what the
+            // export read rather than reading thousands of rows again. An
+            // order listed twice (a product name search joins its items) is
+            // changed, and recorded, once.
+            if (function_exists('pg_audit') && (mysqli_affected_rows(db::$con) > 0)) {
+                pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+            }
         }
     }
 

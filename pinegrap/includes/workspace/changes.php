@@ -2644,7 +2644,7 @@ function ws_change_apply($viewer, $change_id)
     $fields = $laid['fields'];
     $values = $laid['values'];
 
-    $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
+    $done = ws_change_write($viewer, $type, $action, $record, $values, false);
 
     if (!$done['ok']) {
         $release('failed', $done['error']);
@@ -2742,6 +2742,144 @@ function ws_change_apply($viewer, $change_id)
     ws_message_touch($change['message_id']);
 
     return array('ok' => true, 'error' => '', 'stale' => false, 'decision_id' => $decision_id);
+}
+
+/**
+ * The audit trail line a Workspace write leaves: the pg_audit_tables() table
+ * and the action, or nothing.
+ *
+ * Only the kinds whose table the trail follows are recorded: products and
+ * their stock, orders, users, pages, files and offers. Contacts, ERP
+ * accounts, product groups, submitted forms, calendar events, channels and
+ * the Workspace's own tasks and notes are not in pg_audit_tables(). A record
+ * moved to the Recycle Bin is a "recycle". A product or an offer deleted for
+ * good is not recorded here: pg_pb_delete_product() and _pg_offer_delete()
+ * write their own line. Any other action is an "update".
+ *
+ * @param string $type   a kind of ws_change_types()
+ * @param string $action create, update, delete, add, remove
+ * @param array  $done   the writer's answer: ok, id, binned
+ * @return array table, action; empty when no line is written here
+ */
+function ws_change_audit_target($type, $action, array $done)
+{
+    $tables = array(
+        'product' => 'products',
+        'stock'   => 'products',
+        'order'   => 'orders',
+        'user'    => 'user',
+        'page'    => 'page',
+        'file'    => 'files',
+        'offer'   => 'offers',
+    );
+
+    $type = (string) $type;
+    $action = (string) $action;
+
+    if (empty($done['ok']) || !isset($tables[$type])) {
+        return array();
+    }
+
+    if ($action === 'create') {
+        return array('table' => $tables[$type], 'action' => 'create');
+    }
+
+    if ($action === 'delete') {
+        if (!empty($done['binned'])) {
+            return array('table' => $tables[$type], 'action' => 'recycle');
+        }
+
+        if (in_array($type, array('product', 'offer'), true)) {
+            return array();
+        }
+
+        return array('table' => $tables[$type], 'action' => 'delete');
+    }
+
+    return array('table' => $tables[$type], 'action' => 'update');
+}
+
+/**
+ * Writes a change with the writer of its kind (ws_change_write_<type>()) and
+ * records it in the audit trail. Every write the Workspace makes to a site
+ * record comes through here: a proposal applied (ws_change_apply()), the
+ * record drawer (ws_quick_edit_save()), a bulk change's slices
+ * (ws_bulk_step()) and a scheduled action (ws_scheduled_change()).
+ *
+ * The row is read before the write (not for a create) and again after it,
+ * as the panel's save paths do (pg_audit_fetch(), pg_audit_record()); an
+ * offer is compared with its conditions and actions
+ * (_pg_offer_audit_state()), as the offer screen and the external API
+ * compare it. Which line is written, if any: ws_change_audit_target(). A
+ * line that cannot be written is left out and the change stands; without
+ * the trail's functions (includes/fn/audit.php) nothing is recorded.
+ *
+ * $as_job records the lines as the software's own doing (source "job"). A
+ * bulk change goes on a slice at a time on whichever screen ticks or in the
+ * Workspace job (ws_bulk_continue()), and a scheduled action runs in the job:
+ * the operator whose request happens to run it did not make the change. Who
+ * applied a proposal stays on its ws_ai_changes row (decided_by). The lines
+ * the writers' own helpers write (pg_pb_delete_product(), _pg_offer_delete(),
+ * update_product_group_status()) follow the same switch.
+ *
+ * @param array      $viewer
+ * @param string     $type    a kind of ws_change_types()
+ * @param string     $action
+ * @param array|null $record  as ws_change_record() read it; null for a create
+ * @param array      $values  field => new value
+ * @param bool       $as_job  record the lines as the job's
+ * @return array the writer's answer, unchanged
+ */
+function ws_change_write($viewer, $type, $action, $record, $values, $as_job = false)
+{
+    $type = (string) $type;
+    $action = (string) $action;
+    $id = is_array($record) ? (int) ($record['id'] ?? 0) : 0;
+    $audit = function_exists('pg_audit_record') && function_exists('pg_audit_as_job');
+
+    // The offer screen's loader, which the API reuses for the same line.
+    if ($audit && ($type === 'offer') && !function_exists('_pg_offer_audit_state') && file_exists(PG_FUNCTIONS_DIR . '/edit_offer_f.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+    }
+
+    $offers = $audit && function_exists('_pg_offer_audit_state');
+    $was = ($audit && $as_job) ? pg_audit_as_job(true) : null;
+
+    try {
+        // Whether a delete went to the Recycle Bin is known only after it,
+        // so the row is read as if it will.
+        $before = array();
+        $may = ($audit && ($action !== 'create') && ($id > 0)) ? ws_change_audit_target($type, $action, array('ok' => true, 'binned' => true)) : array();
+
+        if ($may && ($may['table'] === 'offers')) {
+            $before = $offers ? _pg_offer_audit_state($id) : array();
+        } elseif ($may) {
+            $before = pg_audit_fetch($may['table'], $id);
+        }
+
+        $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
+
+        $target = $audit ? ws_change_audit_target($type, $action, is_array($done) ? $done : array()) : array();
+        $record_id = ($action === 'create') ? (int) ($done['id'] ?? 0) : $id;
+
+        if ($target && ($record_id > 0)) {
+            if ($target['table'] !== 'offers') {
+                pg_audit_record($target['action'], $target['table'], $record_id, $before);
+            } elseif ($offers) {
+                $after = _pg_offer_audit_state($record_id);
+
+                if ($before || $after) {
+                    pg_audit($target['action'], 'offer', $record_id, $before, $after, pg_audit_label_of('offers', $after ? $after : $before));
+                }
+            }
+        }
+    } finally {
+        if ($was !== null) {
+            pg_audit_as_job($was);
+        }
+    }
+
+    return $done;
 }
 
 /**
@@ -3002,7 +3140,8 @@ function ws_change_group_clouds($group_id, $clear_only = false)
 /* ---------------------------------------------------------------------------
    The writes. Each one does what the panel and the external API do with the
    same record (the same columns, clean-ups, events and follow-ups), as the
-   person. They answer ok, error and, for a new record, its id.
+   person. They answer ok, error and, for a new record, its id. They are
+   called only through ws_change_write(), which records the audit trail line.
    --------------------------------------------------------------------------- */
 
 /**
