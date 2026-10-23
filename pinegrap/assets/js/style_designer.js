@@ -31678,7 +31678,7 @@ const StyleDesigner = (function () {
                 var _cvUpcoming   = parseInt(_cfg.number_of_upcoming_events, 10);
                 if (!(_cvUpcoming > 0)) _cvUpcoming = 10;
                 var _cvDateFormat = (typeof _cfg.date_format === 'string' && ['d.m.Y','Y-m-d','d M Y'].indexOf(_cfg.date_format) !== -1) ? _cfg.date_format : '';
-                var _cvNoEvents   = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('There are no events this month.');
+                var _cvNoEvents   = _swCalendarEmptyMessage(_cfg.empty_message);
                 var _cvEventPages = _swListCache.list_calendar_event_pages || null;
                 if (!_cvEventPages) _swFetchList('list_calendar_event_pages', 'pages', function () { renderProperties(); });
 
@@ -47141,6 +47141,18 @@ const StyleDesigner = (function () {
         return /^[a-z0-9-]+-widget( \[\d+\])?$/.test(String(name || ''));
     }
 
+    // The calendar's empty-state sentence as the settings show it. One
+    // setting serves every view (month, week, upcoming), so the default names
+    // no period; the month sentence the editor used to write, in either
+    // language, reads as that default. Twin of pg_sw_calendar_empty_message()
+    // (the server also turns an empty setting into the default).
+    function _swCalendarEmptyMessage(stored) {
+        if (typeof stored !== 'string' || stored === 'There are no events this month.' || stored === 'Bu ay etkinlik yok.') {
+            return _sdT('There are no events to show.');
+        }
+        return stored;
+    }
+
     // The config keys a kind starts with. Shared by "create a widget of this
     // kind" and "switch this widget to that kind" — one list of defaults,
     // not two that drift. Only keys the config does not already have are
@@ -47173,7 +47185,7 @@ const StyleDesigner = (function () {
         } else if (newType === 'order_view') {
             if (cfg.date_format === undefined) cfg.date_format = '';
         } else if (newType === 'calendar_view') {
-            if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events this month.');
+            if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events to show.');
             if (cfg.date_format === undefined) cfg.date_format = '';
             if (cfg.default_view === undefined) cfg.default_view = 'monthly';
             if (cfg.week_start === undefined) cfg.week_start = 'monday';
@@ -49167,9 +49179,12 @@ const StyleDesigner = (function () {
                             _bindings: { text: '__price_formatted' } }),
                         // Description → __description (the long text — full_description).
                         // short_description is already used as the heading above, so the
-                        // long description is the sensible binding here.
-                        createNode('content', { contentType: 'paragraph',
-                            text: _sdT('Description'), cssClass: 'text-body-secondary mb-4',
+                        // long description is the sensible binding here. The value is
+                        // rich text with paragraphs, lists and images of its own, so
+                        // it goes into a div: a <p> around it is closed by the browser
+                        // before the first inner <p> and the classes miss the text.
+                        createNode('semantic', { tag: 'div', cssClass: 'text-body-secondary mb-4',
+                            customName: _sdT('Description'),
                             _bindings: { text: '__description' } }),
                         // Out-of-stock notice — the operator's own wording from
                         // the product editor (products.out_of_stock_message).
@@ -49549,9 +49564,11 @@ const StyleDesigner = (function () {
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'dropdown', customName: _sdT('Signed In'),
                         _bindings: { eo_visible_if: 'is_signed_in' } }, [
-                        createNode('semantic', { tag: 'a', cssClass: 'd-flex align-items-center gap-2 link-body-emphasis text-decoration-none dropdown-toggle',
-                            href: '#', customName: _sdT('Account Button'),
-                            _attrs: [{ name: 'role', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
+                        // A real button: Space opens the menu as well as
+                        // Enter, which an <a role="button"> does not do.
+                        createNode('semantic', { tag: 'button', cssClass: 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle',
+                            customName: _sdT('Account Button'),
+                            _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'dropdown' }, { name: 'aria-expanded', value: 'false' }] }, [
                             createNode('content', { contentType: 'image', src: 'https://placehold.co/64x64/4f6bed/ffffff?text=JC', alt: _sdT('Jane Cooper'),
                                 cssClass: 'rounded-circle object-fit-cover', width: '32', height: '32',
                                 _bindings: { src: '__user_avatar_url' } }),
@@ -50674,7 +50691,7 @@ const StyleDesigner = (function () {
                             customName: _sdT('Month Grid'),
                             _bindings: { section: 'month_grid' } }),
                         createNode('content', { contentType: 'paragraph',
-                            text: _sdT('There are no events this month.'), cssClass: 'text-body-secondary',
+                            text: _sdT('There are no events to show.'), cssClass: 'text-body-secondary',
                             customName: _sdT('No Events Message'),
                             _bindings: { text: '__empty_message' } }),
                         loopArea

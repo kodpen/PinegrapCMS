@@ -169,4 +169,5 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, page and design auto names, empty widget, gated type change (fork/all/cancel), walking all page tabs, pg_shared_component_usage() and usage_all rows.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
-- wysiwyg-text-binding.md: Never give a WYSIWYG (block-wrapped) field to a text binding: nested p breaks the DOM; use _pg_rich_text_to_inline() in all three places; no extra .alert box.
+- widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
+- wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

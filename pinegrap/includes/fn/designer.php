@@ -858,7 +858,9 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
 
     // A widget's records show their pictures through bound ^^tokens^^, so
     // their srcset is written on each widget's finished output
-    // (pg_img_responsive_html()). Not in an e-mail, which takes none.
+    // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
+    // text written for the classic theme keeps its pictures in their column
+    // on a Bootstrap 5 page through the same pass (pg_img_fluid_alias()).
     $render = function ($m) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
@@ -1088,7 +1090,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         '/<!--pg-system-widget:(\d+)-->/',
         function ($m) use ($render, $email) {
             $out = $render($m);
-            return $email ? $out : pg_img_responsive_html($out);
+            return $email ? $out : pg_img_responsive_html(pg_img_fluid_alias($out));
         },
         $html
     );
@@ -4179,6 +4181,22 @@ function _pg_fancybox_assets_once()
 }
 
 /**
+ * The name of one image of an image carousel, for its slide link, its
+ * thumbnail link and its indicator: the links wrap pictures with an empty
+ * alt, so without it a screen reader reads out the file's address. The
+ * variant chooser (pg_civ_variants.js) rebuilds the same links with the same
+ * words.
+ *
+ * @param int $number 1-based
+ * @param int $total
+ * @return string plain text
+ */
+function pg_carousel_image_label($number, $total)
+{
+    return lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array((int)$number, (int)$total)));
+}
+
+/**
  * Render the thumbnail strip for a carousel.
  *
  * Fancybox v6 lightbox triggers require the image inside an <a data-fancybox>
@@ -4221,7 +4239,8 @@ function _pg_render_carousel_thumbs($slides, $crl_id, $thumb_size, $lightbox, $f
                   . ' data-fancybox-trigger="' . h($fb_gallery) . '"'
                   . ' data-fancybox-index="' . (int)$_si . '"'
                   . ' data-bs-target="#' . h($crl_id) . '" data-bs-slide-to="' . (int)$_si . '"'
-                  . ' class="pg-carousel-thumb-link">'
+                  . ' class="pg-carousel-thumb-link"'
+                  . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($slides))) . '">'
                   . '<img src="' . h($_slide) . '"'
                   . ' class="pg-carousel-thumb' . $_active_cls . '"'
                   . ' style="' . $_thumb_style . '"'
@@ -5753,7 +5772,7 @@ function _render_content_html($props, $pad, $kids = '')
                 foreach ($crl_slides as $_si => $_slide) {
                     $out .= '<button type="button" data-bs-target="#' . $crl_id . '" data-bs-slide-to="' . (int)$_si . '"'
                           . ($_si === 0 ? ' class="active" aria-current="true"' : '')
-                          . ' aria-label="Slide ' . ($_si + 1) . '"></button>';
+                          . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($crl_slides))) . '"></button>';
                 }
                 $out .= '</div>';
             }
@@ -5778,6 +5797,7 @@ function _render_content_html($props, $pad, $kids = '')
                           . '<a href="' . h($_slide) . '"'
                           . ' data-fancybox="' . h($crl_fb_gallery) . '"'
                           . ' class="pg-carousel-slide-link d-block w-100' . $_zoom_cls . '"'
+                          . ' aria-label="' . h(pg_carousel_image_label($_si + 1, count($crl_slides))) . '"'
                           . $_zoom_src . '>'
                           . '<img src="' . h($_slide) . '" class="d-block w-100" alt="" loading="lazy">'
                           . '</a>'
@@ -8629,7 +8649,7 @@ function pg_designer_preview_widgets($page_id, $widgets)
                 $html = '';
             }
             ob_end_clean();
-            $out[(int)$sid] = (string)$html;
+            $out[(int)$sid] = pg_designer_resolve_output_placeholders((string)$html);
         }
     } finally {
         $_GET = $saved_get;
@@ -8638,6 +8658,28 @@ function pg_designer_preview_widgets($page_id, $widgets)
         pg_sw_preview_overrides(array());
     }
     return $out;
+}
+
+/**
+ * The address placeholders a page's output resolves last
+ * (get_page_content.php): rich text keeps its images and links as
+ * "{path}name.jpg". The Preview and the canvas's ghost records take widget
+ * HTML straight from the renderer, so they resolve the same placeholders
+ * here, or every image in a record is a request for "/%7Bpath%7Dname.jpg".
+ *
+ * @param string      $html
+ * @param string|null $path               OUTPUT_PATH when null
+ * @param string|null $software_directory OUTPUT_SOFTWARE_DIRECTORY when null
+ * @return string
+ */
+function pg_designer_resolve_output_placeholders($html, $path = null, $software_directory = null)
+{
+    $html = (string)$html;
+    if ($html === '' || strpos($html, '{') === false) return $html;
+    if ($path === null) $path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    if ($software_directory === null) $software_directory = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '';
+    $html = preg_replace('/{path}/i', pg_regex_replacement((string)$path), $html);
+    return preg_replace('/{software_directory}/i', pg_regex_replacement((string)$software_directory), $html);
 }
 
 /**

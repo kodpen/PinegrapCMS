@@ -1132,6 +1132,51 @@ function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
 
 
 /**
+ * Give every <img> of a piece of HTML that carries the Bootstrap 3 class
+ * img-responsive the Bootstrap 5 class img-fluid as well.
+ *
+ * Rich text written for the classic theme (a form's text area, a product's
+ * description) scales its pictures with img-responsive, which only the
+ * classic theme's stylesheet defines. A system widget prints that text on a
+ * visual-designer page, where the picture would keep its natural width and
+ * push the page sideways; img-fluid is the same rule there. The stored text
+ * is not changed.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_img_fluid_alias($html)
+{
+    if (!is_string($html) || (stripos($html, 'img-responsive') === false)) {
+        return $html;
+    }
+
+    return preg_replace_callback('~<img\b[^>]*>~i', function ($match) {
+
+        $tag = $match[0];
+
+        return preg_replace_callback('~(\sclass\s*=\s*)(?:"([^"]*)"|\'([^\']*)\')~i', function ($attr) {
+
+            $double = !isset($attr[3]);
+            $value = $double ? $attr[2] : $attr[3];
+            $classes = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+
+            if (!in_array('img-responsive', $classes, true) || in_array('img-fluid', $classes, true)) {
+                return $attr[0];
+            }
+
+            $value = preg_replace('/(^|\s)img-responsive(?=\s|$)/', '$1img-responsive img-fluid', $value, 1);
+            $quote = $double ? '"' : "'";
+
+            return $attr[1] . $quote . $value . $quote;
+
+        }, $tag, 1);
+
+    }, $html);
+}
+
+
+/**
  * The page HTML with the responsive markup taken out, for an e-mail.
  *
  * Mail programs do not choose between candidates the way a browser does, and
