@@ -1130,3 +1130,44 @@ function test_erp_edoc_parasut_linked_contact_usable()
 	pg_assert_false(erp_edoc_parasut_linked_contact_usable(null, '7001', '1234567808'));
 	pg_assert_false(erp_edoc_parasut_linked_contact_usable($contact, '7001', ''));
 }
+
+// Many consumers share the final consumer's number, and the e-Arşiv is
+// printed with the card's address and mailed to the card's e-mail: a card
+// of that number is the buyer's only when it holds the buyer's name,
+// address, district, city and e-mail. Another person of the same name gets
+// a card of their own.
+function test_erp_edoc_parasut_final_consumer_card_matches()
+{
+	$party = pg_test_parasut_party(array(
+		'title' => 'Ayşe Demir', 'is_person' => true, 'tax_number' => '', 'tax_office' => '', 'email' => 'ayse.k@example.com',
+		'address' => 'Kızılay Mah. 1. Sok. 3', 'district' => 'Çankaya', 'city' => 'Ankara', 'postcode' => '06420',
+	));
+	$card = erp_edoc_parasut_contact_attributes($party, '11111111111');
+
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches($card, $party, '11111111111'), 'the card opened for this buyer');
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('name' => ' ayşe demir ', 'email' => 'Ayse.K@Example.COM')), $party, '11111111111'), 'case and outer spaces');
+
+	// The same name at another address, district or city, or with another
+	// e-mail, is another buyer.
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('address' => 'Alsancak Mah. 1453 Sok. 9', 'district' => 'Konak', 'city' => 'İzmir')), $party, '11111111111'), 'another city');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('address' => 'Kızılay Mah. 2. Sok. 5')), $party, '11111111111'), 'another address');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('district' => 'Keçiören')), $party, '11111111111'), 'another district');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('email' => 'aysed@example.org')), $party, '11111111111'), 'another e-mail');
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('name' => 'Ayşe Yılmaz')), $party, '11111111111'), 'another name');
+
+	// A card with an e-mail the buyer did not give would mail the document
+	// there; with none on either side the card is the buyer's.
+	$no_email = array_merge($party, array('email' => ''));
+	pg_assert_false(erp_edoc_parasut_final_consumer_card_matches($card, $no_email, '11111111111'), 'an e-mail the buyer did not give');
+	pg_assert_true(erp_edoc_parasut_final_consumer_card_matches(array_merge($card, array('email' => null)), $no_email, '11111111111'), 'no e-mail on either side');
+}
+
+// The search by number takes a final-consumer card only after that check.
+function test_erp_edoc_parasut_contact_for_checks_final_consumer_card()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+	$from = strpos($source, 'function erp_edoc_parasut_contact_for(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+
+	pg_assert_contains('if ($final_consumer && !erp_edoc_parasut_final_consumer_card_matches($attributes, $party, $tax_number)) {', $section);
+}

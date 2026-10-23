@@ -623,9 +623,10 @@ function erp_edoc_parasut_contact_attributes($party, $tax_number)
  * last read it may have been archived, deleted or given another number at
  * Paraşüt, and then the card is looked up as if there were no link.
  *
- * A counter sale carries the final consumer's number, which many cards may
- * share; such a buyer is matched by name on top of the number, so one
- * consumer's document is not written on another consumer's card.
+ * A buyer without a number carries the final consumer's, which many cards
+ * share; such a card is taken only when it holds the buyer's own name,
+ * address and e-mail (erp_edoc_parasut_final_consumer_card_matches()), so
+ * one consumer's document is not written on another consumer's card.
  *
  * @param array $party       erp_edoc_invoice_party() output (+ provider_code)
  * @param string $tax_number Digits
@@ -649,7 +650,6 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
     }
 
     $final_consumer = ($tax_number === erp_edoc_final_consumer_tckn());
-    $wanted_name = mb_strtolower(trim((string) $party['title']), 'UTF-8');
 
     $found = erp_edoc_parasut_request('GET', '/contacts?filter[tax_number]=' . rawurlencode($tax_number) . '&page[size]=25', null, $context);
 
@@ -676,7 +676,7 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
                 continue;
             }
 
-            if ($final_consumer && (mb_strtolower(trim((string) ($attributes['name'] ?? '')), 'UTF-8') !== $wanted_name)) {
+            if ($final_consumer && !erp_edoc_parasut_final_consumer_card_matches($attributes, $party, $tax_number)) {
                 continue;
             }
 
@@ -702,6 +702,36 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array())
     }
 
     return array('id' => $id, 'error' => '');
+}
+
+/**
+ * Whether a card found under the final consumer's number is this buyer's.
+ * The sales invoice sends no address, phone or e-mail of its own: the
+ * e-Arşiv is printed with the card's details and mailed to the card's
+ * e-mail. So the card is taken only when its name, address, district, city
+ * and e-mail are the ones a new card for the buyer would be written with
+ * (outer spaces and case ignored). A card holding an e-mail the buyer did
+ * not give is not taken either, as the document would be mailed there.
+ *
+ * @param array  $attributes  attributes of a contact Paraşüt listed
+ * @param array  $party       erp_edoc_invoice_party() output
+ * @param string $tax_number  The final consumer's number, digits
+ * @return bool
+ */
+function erp_edoc_parasut_final_consumer_card_matches($attributes, $party, $tax_number)
+{
+    $wanted = erp_edoc_parasut_contact_attributes($party, $tax_number);
+
+    foreach (array('name', 'address', 'district', 'city', 'email') as $field) {
+        $have = mb_strtolower(trim((string) ($attributes[$field] ?? '')), 'UTF-8');
+        $want = mb_strtolower(trim((string) ($wanted[$field] ?? '')), 'UTF-8');
+
+        if ($have !== $want) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /**
