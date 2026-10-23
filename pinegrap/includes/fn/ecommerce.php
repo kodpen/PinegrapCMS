@@ -6603,13 +6603,15 @@ function pg_format_number($amount, $decimals = 2)
  * it back either way.
  *
  * @param float|int|string $amount
+ * @param int              $decimals 2 for money; 5 for an exchange rate
+ *                                   (currencies.exchange_rate is decimal(10,5))
  * @return string
  */
-function pg_format_input_amount($amount)
+function pg_format_input_amount($amount, $decimals = 2)
 {
     $s = pg_number_separators();
     $amount = is_numeric($amount) ? (float) $amount : 0.0;
-    return number_format($amount, 2, $s['decimal'], '');
+    return number_format($amount, max(0, (int) $decimals), $s['decimal'], '');
 }
 
 /**
@@ -6626,10 +6628,15 @@ function pg_format_input_amount($amount)
  * be 123456,00) and read back with pg_normalize_amount() or
  * pg_pb_price_to_cents(), which take either way of writing.
  *
+ * The exchange rate box passes 5 decimals, the scale of
+ * currencies.exchange_rate (decimal(10,5)) and of what the rate updater
+ * writes; with two, a rate of 0.02853 was saved as 0.03.
+ *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return array attribute => value, as $liveform->output_field() takes them
  */
-function pg_money_mask_attributes($separators = null)
+function pg_money_mask_attributes($separators = null, $decimals = 2)
 {
     $s = is_array($separators) ? $separators : pg_number_separators();
 
@@ -6637,7 +6644,7 @@ function pg_money_mask_attributes($separators = null)
         'data-inputmask-alias'          => 'currency',
         'data-inputmask-radixPoint'     => (string) $s['decimal'],
         'data-inputmask-groupSeparator' => (string) $s['thousands'],
-        'data-inputmask-digits'         => '2',
+        'data-inputmask-digits'         => (string) max(0, (int) $decimals),
         'data-inputmask-digitsOptional' => 'false',
         'data-inputmask-placeholder'    => '0',
     );
@@ -6648,13 +6655,14 @@ function pg_money_mask_attributes($separators = null)
  * space in front of each attribute.
  *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return string HTML
  */
-function pg_money_mask_html($separators = null)
+function pg_money_mask_html($separators = null, $decimals = 2)
 {
     $html = '';
 
-    foreach (pg_money_mask_attributes($separators) as $name => $value) {
+    foreach (pg_money_mask_attributes($separators, $decimals) as $name => $value) {
         $html .= ' ' . $name . '="' . h($value) . '"';
     }
 
