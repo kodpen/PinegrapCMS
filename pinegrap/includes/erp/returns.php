@@ -132,8 +132,9 @@ function erp_returnable_lines($invoice_id)
  * figures below zero, and so are its pieces and what is left of it: each is
  * held between zero and what is left, on the side of zero the line is on
  * (erp_return_within()). Not chosen, it comes back with the goods in
- * proportion (erp_return_credit_quantities()); a return that would then give
- * back more than is left of the sale, or less than nothing, is refused
+ * proportion (erp_return_credit_quantities()). A return that would give back
+ * more than is left of the sale, or less than nothing, is refused, and so is
+ * a credit quantity typed by hand out of step with the goods at its VAT rate
  * (erp_return_credit_refusal()).
  *
  * @param array $parent_lines  from erp_returnable_lines()
@@ -142,7 +143,19 @@ function erp_returnable_lines($invoice_id)
  */
 function erp_return_build($parent_lines, $quantities)
 {
-    $quantities = erp_return_credit_quantities($parent_lines, (array) $quantities);
+    $quantities = (array) $quantities;
+    // Credit lines given a quantity by the caller, before the ones left out
+    // are filled in with the goods' share: only those are held per VAT rate.
+    $typed_credits = array();
+    foreach ($parent_lines as $parent) {
+        $line_id = (int) $parent['id'];
+        if (((int) $parent['line_total'] < 0) && ((float) $parent['remaining_qty'] > 0.00001)
+            && isset($quantities[$line_id]) && ((float) $quantities[$line_id] > 0)) {
+            $typed_credits[] = $line_id;
+        }
+    }
+
+    $quantities = erp_return_credit_quantities($parent_lines, $quantities);
     $lines = array();
     // What erp_rate_vat() takes for the lines given back in part, and what is
     // left on each line, under the line's key in $lines.
@@ -306,7 +319,7 @@ function erp_return_build($parent_lines, $quantities)
             'grand_total' => $subtotal - $discount_total + $tax_total - $withholding_total,
         ),
         'is_full' => $is_full,
-        'error' => erp_return_credit_refusal($parent_lines, $lines),
+        'error' => erp_return_credit_refusal($parent_lines, $lines, $typed_credits),
     );
 }
 
@@ -339,9 +352,12 @@ function erp_return_within($figure, $limit)
  * goods (amount less discount), rounded to the four places a quantity is
  * stored with; once the last of the goods comes back, all of it, so the
  * returns of a sale add up to the sale. The goods are the lines at the
- * credit's VAT rate, and the lines of every rate when none is left at its
- * own: the credit's VAT lowered the VAT of its rate. Lines without a product
- * (shipping, surcharges) carry no share, unless no line carries one.
+ * credit's VAT rate when what is left of them covers what is left of the
+ * credit (the credit's VAT lowered the VAT of its rate), and otherwise the
+ * lines of every rate: goods worth less than the credit at its rate could
+ * not carry it, and a return of the other goods alone would give back more
+ * than is left of the sale. Lines without a product (shipping, surcharges)
+ * carry no share, unless no line carries one.
  *
  * A quantity chosen for a credit line is kept as chosen.
  *
@@ -402,7 +418,15 @@ function erp_return_credit_quantities($parent_lines, $quantities)
             return $line['rate'] === $rate;
         });
 
-        if (empty($weights)) {
+        $own_left = 0;
+        foreach ($weights as $line) {
+            $own_left += $line['left'];
+        }
+
+        $credit_left = abs(((int) $credit['line_total'] - (int) ($credit['returned_line_total'] ?? 0))
+            - ((int) $credit['discount_amount'] - (int) ($credit['returned_discount'] ?? 0)));
+
+        if (empty($weights) || ($own_left < $credit_left)) {
             $weights = $goods;
         }
 
@@ -443,15 +467,21 @@ function erp_return_credit_quantities($parent_lines, $quantities)
  * step with them: the goods with too little of it give back more than is
  * left of the sale, the credit with too few goods less than nothing, which no
  * ledger takes (erp_account_post() refuses an amount below zero). So while a
- * credit line has something left, what a return gives back in all, and its
- * net and its VAT at each VAT rate, lie between zero and what is left of
- * them.
+ * credit line has something left, what a return gives back in all lies
+ * between zero and what is left of the sale, and nothing can be given back
+ * of a sale already below zero. A credit quantity typed by hand must also
+ * keep the net and the VAT given back at each VAT rate between zero and what
+ * is left of them. The share worked out for a credit left out is not held
+ * per rate: a credit larger than the goods of its rate, or at a rate where
+ * only the shipping is left, follows the goods of every rate, and no share
+ * of it fits each rate.
  *
- * @param array $parent_lines  from erp_returnable_lines()
- * @param array $lines         the return's lines, from erp_return_build()
+ * @param array $parent_lines   from erp_returnable_lines()
+ * @param array $lines          the return's lines, from erp_return_build()
+ * @param array $typed_credits  ids of the credit lines given a quantity by the caller
  * @return string
  */
-function erp_return_credit_refusal($parent_lines, $lines)
+function erp_return_credit_refusal($parent_lines, $lines, $typed_credits = array())
 {
     $credit = null;
 
@@ -492,15 +522,37 @@ function erp_return_credit_refusal($parent_lines, $lines)
         $back['total'] += $net + (int) $line['tax_total'] - (int) $line['withholding_amount'];
     }
 
-    $fits = (erp_return_within($back['total'], $left['total']) === $back['total']);
+    if ($left['total'] < 0) {
+        return lang('What is left of this sale is below zero after an earlier return, so it cannot be returned further. Correct it with a manual document.');
+    }
 
-    foreach ($back['rates'] as $rate => $figures) {
-        foreach ($figures as $name => $amount) {
-            $fits = $fits && (erp_return_within($amount, $left['rates'][$rate][$name] ?? 0) === $amount);
+    $fits = ($back['total'] >= 0) && ($back['total'] <= $left['total']);
+
+    if (!empty($typed_credits)) {
+        foreach ($back['rates'] as $rate => $figures) {
+            foreach ($figures as $name => $amount) {
+                $fits = $fits && (erp_return_within($amount, $left['rates'][$rate][$name] ?? 0) === $amount);
+            }
         }
     }
 
-    return $fits ? '' : lang(array(
+    if ($fits) {
+        return '';
+    }
+
+    if (empty($typed_credits)) {
+        return lang('This return would give back more than is left of the sale, or less than nothing.');
+    }
+
+    // Name the first credit line typed by hand.
+    foreach ($parent_lines as $parent) {
+        if ((int) $parent['id'] === (int) reset($typed_credits)) {
+            $credit = $parent;
+            break;
+        }
+    }
+
+    return lang(array(
         'string' => 'Line "{var:1}" is below zero and comes back with the goods it was sold with: leave its quantity empty to give back its share. A return can give back neither more than is left of the sale nor less than nothing, in all or at any VAT rate.',
         'vars' => array((string) $credit['description']),
     ));

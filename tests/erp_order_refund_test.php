@@ -193,3 +193,22 @@ function test_erp_order_refund_of_an_order_with_a_credit_line()
 	pg_assert_same(array(1 => 5400, 2 => 10800), erp_order_refund_line_prices($source['lines'][0]));
 	pg_assert_same(array(1 => -1620, 2 => -3240), erp_order_refund_line_prices($source['lines'][1]));
 }
+
+// The dialog marks a credit row, and its Everything button leaves it at 0:
+// the server then brings the credit back whole with the last of the goods.
+// Set to its whole-number maximum after a partial return, it was a credit
+// quantity out of step with the goods, and the refund was refused.
+function test_erp_order_refund_dialog_leaves_the_credit_row_to_the_goods()
+{
+	if (!defined('BASE_CURRENCY_SYMBOL')) {
+		define('BASE_CURRENCY_SYMBOL', '$');
+	}
+
+	list($order, $items) = pg_test_erp_order_refund_cart(array(array(2, 5000), array(2, -1500)), 0);
+	$html = erp_order_refund_dialog(pg_test_erp_order_refund_source($order, $items), 7, 0, 8400);
+
+	pg_assert_contains('data-refund-line="100" min="0"', $html);
+	pg_assert_contains('data-refund-line="101" data-refund-credit="1"', $html);
+	pg_assert_true(strpos($html, 'data-refund-line="100" data-refund-credit') === false);
+	pg_assert_contains('input.hasAttribute("data-refund-credit") ? 0 : input.max', $html);
+}

@@ -383,3 +383,101 @@ function test_erp_return_of_a_credit_line_leaves_the_shipping_out()
 	pg_assert_same(array(1.0, 1.0), pg_test_erp_return_taxes($built, 'quantity'));
 	pg_assert_same(8400, $built['totals']['grand_total']);
 }
+
+// A credit at a rate where only the shipping is left of the sale: 2 x 100.00
+// at 10%, a credit of -30.00 at 20% and 33.33 of shipping at 20% (226.00).
+// No goods share its rate, so it follows the goods of every rate: one of the
+// two units brings half of it back (92.00), both all of it (184.00). Held to
+// what is left at 20%, the credit's share came below zero there and both
+// returns were refused.
+function test_erp_return_of_a_credit_line_at_a_rate_with_only_shipping_left()
+{
+	$parents = array(
+		pg_test_erp_return_line(1, 2, 10000, 10, 2000, array('product_id' => 5)),
+		pg_test_erp_return_line(2, 1, -3000, 20, -600, array('product_id' => 5)),
+		pg_test_erp_return_line(3, 1, 3333, 20, 666),
+	);
+
+	$one = erp_return_build($parents, array(1 => 1));
+	pg_assert_same('', $one['error']);
+	pg_assert_same(array(1.0, 0.5), pg_test_erp_return_taxes($one, 'quantity'));
+	pg_assert_same(9200, $one['totals']['grand_total']);
+
+	$both = erp_return_build($parents, array(1 => 2));
+	pg_assert_same('', $both['error']);
+	pg_assert_same(18400, $both['totals']['grand_total']);
+}
+
+// A credit larger than the goods of its own rate: a shirt of 100.00 at 20%, a
+// book of 10.00 at 10% and a credit of -30.00 at 10% (98.00). The book alone
+// cannot carry it, so it follows the goods of every rate: the shirt alone
+// gives back 90.00, the book afterwards the 8.00 left, and the two returns
+// are the invoice. The shirt alone gave back 120.00 of 98.00, the book alone
+// less than nothing, and both were refused.
+function test_erp_return_of_a_credit_larger_than_the_goods_of_its_rate()
+{
+	$shirt = pg_test_erp_return_line(1, 1, 10000, 20, 2000, array('product_id' => 5));
+	$book = pg_test_erp_return_line(2, 1, 1000, 10, 100, array('product_id' => 5));
+	$credit = pg_test_erp_return_line(3, 1, -3000, 10, -300, array('product_id' => 5));
+
+	$first = erp_return_build(array($shirt, $book, $credit), array(1 => 1));
+	pg_assert_same('', $first['error']);
+	pg_assert_same(9000, $first['totals']['grand_total']);
+
+	$given = array();
+	foreach ($first['lines'] as $line) {
+		$given[(int) $line['parent_line_id']] = array($line['quantity'], $line['tax_total'], 0, 0, $line['line_total'], $line['discount_amount']);
+	}
+
+	$parents = array(
+		pg_test_erp_return_line(1, 1, 10000, 20, 2000, array('product_id' => 5), $given[1]),
+		$book,
+		pg_test_erp_return_line(3, 1, -3000, 10, -300, array('product_id' => 5), $given[3]),
+	);
+	$last = erp_return_build($parents, array(2 => 1));
+
+	pg_assert_same('', $last['error']);
+	pg_assert_same(9800, $first['totals']['grand_total'] + $last['totals']['grand_total']);
+}
+
+// A sale already below zero after an earlier return (the goods back without
+// the credit, before the credit followed them): what is left cannot be
+// returned. Typed by hand, the credit passed and came to -36.00, which no
+// ledger takes, and the return failed with no message.
+function test_erp_return_of_a_sale_already_below_zero_is_refused()
+{
+	$parents = array(
+		pg_test_erp_return_line(1, 2, 5000, 20, 2000, array('product_id' => 5), array(2, 2000, 0, 0, 10000, 0)),
+		pg_test_erp_return_line(2, 2, -1500, 20, -600, array('product_id' => 5)),
+	);
+	$built = erp_return_build($parents, array(2 => 2));
+
+	pg_assert_same(lang('What is left of this sale is below zero after an earlier return, so it cannot be returned further. Correct it with a manual document.'), $built['error']);
+}
+
+// A credit whose remainder is a fraction after a partial return comes back
+// whole with the last of the goods: 3 x 33.33 and 2 x -15.00 at 20% (83.99),
+// one unit back first, the other two afterwards give back the 55.99 left.
+function test_erp_return_of_a_fractional_credit_remainder_with_the_last_goods()
+{
+	$goods = pg_test_erp_return_line(1, 3, 3333, 20, 2000, array('product_id' => 5));
+	$credit = pg_test_erp_return_line(2, 2, -1500, 20, -600, array('product_id' => 5));
+
+	$first = erp_return_build(array($goods, $credit), array(1 => 1));
+	pg_assert_same('', $first['error']);
+
+	$given = array();
+	foreach ($first['lines'] as $line) {
+		$given[(int) $line['parent_line_id']] = array($line['quantity'], $line['tax_total'], 0, 0, $line['line_total'], $line['discount_amount']);
+	}
+
+	$parents = array(
+		pg_test_erp_return_line(1, 3, 3333, 20, 2000, array('product_id' => 5), $given[1]),
+		pg_test_erp_return_line(2, 2, -1500, 20, -600, array('product_id' => 5), $given[2]),
+	);
+	$last = erp_return_build($parents, array(1 => 2));
+
+	pg_assert_same('', $last['error']);
+	pg_assert_same(5599, $last['totals']['grand_total']);
+	pg_assert_same(8399, $first['totals']['grand_total'] + $last['totals']['grand_total']);
+}

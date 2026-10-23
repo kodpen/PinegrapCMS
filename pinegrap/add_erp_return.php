@@ -190,7 +190,7 @@ if (!$_POST) {
                         </table>
                     </div>
                     <div class="card-footer bg-reset border-0">
-                        <div class="form-text">' . lang('Set a quantity to zero to leave that line out. Returning everything gives back exactly what the invoice charged, to the kurus.') . '</div>
+                        <div class="form-text">' . lang('Set a quantity to zero to leave that line out; a line below zero left at zero comes back with the goods in proportion. Returning everything gives back exactly what the invoice charged, to the kurus.') . '</div>
                     </div>
                 </div>
 
