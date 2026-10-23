@@ -6,7 +6,8 @@
  * rule (which revisions expire), the settings snapshot read from a page row,
  * the source labels, the identity check that spares a duplicate row, and the
  * first revision of a page that has none (its values, the style's tree as
- * fallback, and where the save calls it).
+ * fallback, and where the save calls it), and which failed INSERT is tried
+ * again.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -279,4 +280,62 @@ function test_page_revisions_compare_fetches_the_revision_shared_components()
 	pg_assert_true(($collect !== false) && ($fetch !== false) && ($draw !== false), 'collect, fetch and draw are there');
 	pg_assert_true(($collect < $fetch) && ($fetch < $draw), 'the revision is drawn after its components are fetched');
 	pg_assert_contains('!_sharedCache[id]', $section, 'only what the cache does not hold');
+}
+
+// Two writes of one page at the same moment fail on each other's locks more
+// often than on the unique key. A deadlock or an auto-increment value the
+// engine could not read is tried again after a growing wait, a duplicate
+// number at once; four statements at most.
+function test_page_revisions_retry_on_lock_errors()
+{
+	foreach (array(1213, 1467) as $errno) {
+		pg_assert_same(20000, pg_page_revision_retry_delay($errno, 1), $errno . ' after the first try');
+		pg_assert_same(40000, pg_page_revision_retry_delay($errno, 2), $errno . ' after the second try');
+		pg_assert_same(60000, pg_page_revision_retry_delay($errno, 3), $errno . ' after the third try');
+		pg_assert_same(-1, pg_page_revision_retry_delay($errno, 4), $errno . ' not after the fourth');
+	}
+
+	// A lock wait timeout has already waited innodb_lock_wait_timeout.
+	pg_assert_same(20000, pg_page_revision_retry_delay(1205, 1));
+	pg_assert_same(-1, pg_page_revision_retry_delay(1205, 2));
+
+	pg_assert_same(0, pg_page_revision_retry_delay(1062, 1));
+	pg_assert_same(0, pg_page_revision_retry_delay(1062, 3));
+	pg_assert_same(-1, pg_page_revision_retry_delay(1062, 4));
+	pg_assert_same(-1, pg_page_revision_retry_delay('1062', 0), 'no statement run yet');
+}
+
+// The first revision a duplicate ends: the other write recorded the page.
+// Its lock errors are tried again like any other write's.
+function test_page_revisions_seed_retry_ends_on_duplicate()
+{
+	pg_assert_same(-1, pg_page_revision_retry_delay(1062, 1, true));
+	pg_assert_same(20000, pg_page_revision_retry_delay(1213, 1, true));
+	pg_assert_same(40000, pg_page_revision_retry_delay(1467, 2, true));
+}
+
+// Anything but a duplicate or a lock error is a real failure: no second try.
+function test_page_revisions_no_retry_on_other_errors()
+{
+	foreach (array(0, 1054, 1146, 1406, 2006) as $errno) {
+		pg_assert_same(-1, pg_page_revision_retry_delay($errno, 1), (string) $errno);
+	}
+}
+
+// Both writers ask the rule after a failed statement and stop when it says
+// so; neither stops on the first error that is not a duplicate any more.
+function test_page_revisions_writers_ask_the_retry_rule()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_revisions.php');
+
+	foreach (array('pg_page_revision_seed' => ', true)', 'pg_page_revision_record' => ', $attempt)') as $name => $call) {
+		$from = strpos($source, 'function ' . $name . '(');
+		$end = ($from === false) ? false : strpos($source, "\nfunction ", $from + 1);
+		$body = ($from === false) ? '' : (($end === false) ? substr($source, $from) : substr($source, $from, $end - $from));
+
+		pg_assert_true(strpos($body, 'pg_page_revision_retry_delay(') !== false, $name . ' asks the rule');
+		pg_assert_true(strpos($body, $call . ';') !== false, $name . ' passes its own case');
+		pg_assert_true(preg_match('/if \(\$delay < 0\) \{\s*break;\s*\}/', $body) === 1, $name . ' stops when told');
+		pg_assert_true(strpos($body, '!== 1062) {' . "\n" . '            break;') === false, $name . ' does not stop on a lock error');
+	}
 }

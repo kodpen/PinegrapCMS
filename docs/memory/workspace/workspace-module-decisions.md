@@ -10,7 +10,7 @@ description: Binding decisions of the Workspace module (channels, tasks, plan bo
 
 ## Who may enter? (K3, K10, K14, K16)
 - Rights, not new role numbers (100+ `== 3` and 300+ `< 3` checks would silently misread a role 4). Role 3 stays "User"; `TINYINT` columns on `user`: `manage_workspace` (gate), `manage_workspace_assign`, `manage_workspace_board`, `manage_workspace_settings`. Roles 0–2 are members by default, `ws_profiles.excluded` opts one out.
-- A new right column goes into all four role-3 ladder files and the `pg_user_has_ws_columns()` probe, or a user with only that right loses access.
+- A new right column goes into all five role-3 ladder files (`core/permission-columns.md`) and the `pg_user_has_ws_columns()` probe, or a user with only that right loses access.
 - `user` also holds site members (customers) as role 3: no `ws_` screen, endpoint, push, search hit or file may reach them. First acceptance test.
 - Department lead is a flag (`is_lead`), not a right: assign and board rights inside their own department only. A person can be in several departments, one `is_primary` (K6).
 - Without `manage_workspace_assign` a member gives tasks only to themselves and departments they lead.

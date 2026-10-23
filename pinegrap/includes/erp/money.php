@@ -184,22 +184,28 @@ function erp_quantity_text($quantity)
  * treats that has changed between PHP versions. The invoice editor applies
  * the same rule (decimalUnits(), assets/js/erp_invoice_editor.js).
  *
+ * The units are a whole number held in a float: a float is exact up to 2^53,
+ * far above the 999999999999999 units a DECIMAL(15,4) quantity can hold,
+ * while an int stops at PHP_INT_MAX, which on a 32-bit build is 214748.3647
+ * at four places.
+ *
  * @param float|int|string $value
  * @param int              $places  0 to 10
- * @return int
+ * @return float
  */
 function erp_decimal_units($value, $places)
 {
     $value = (float) $value;
     $places = max(0, min(10, (int) $places));
     $parts = explode('.', sprintf('%.10F', abs($value)));
-    $units = (int) ($parts[0] . substr($parts[1], 0, $places));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
 
     if ((int) substr($parts[1], $places, 1) >= 5) {
-        $units++;
+        $units += 1;
     }
 
-    return ($value < 0) ? -$units : $units;
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
 }
 
 /**
@@ -285,34 +291,70 @@ function erp_percent_text($rate)
  * assets/js/erp_invoice_editor.js), where every step also stays within the
  * integers a JavaScript number holds exactly.
  *
- * @param int $amount
- * @param int $units
- * @param int $scale  10000 for four places, 100000 for a percentage with three
- * @return int
+ * On a 32-bit build the remainder product reaches the scale squared (10^10
+ * for a rate) and the units of a quantity past 214,748.3647 are already a
+ * float (erp_decimal_units()), so there the same steps run on floats, which
+ * hold every whole number below 2^53 exactly: fmod() of whole floats and the
+ * division of a multiple of the scale have no rounding error.
+ *
+ * @param int|float $amount  A whole number
+ * @param int|float $units   A whole number
+ * @param int       $scale   10000 for four places, 100000 for a percentage with three
+ * @return int|float  An int; a float only on a 32-bit build, for a result past PHP_INT_MAX
  */
 function erp_multiply_units($amount, $units, $scale)
 {
-    $amount = (int) $amount;
-    $units = (int) $units;
+    $amount = is_int($amount) ? $amount : (float) $amount;
+    $units = is_int($units) ? $units : (float) $units;
     $scale = max(1, (int) $scale);
     $negative = (($amount < 0) xor ($units < 0));
 
     $amount = abs($amount);
     $units = abs($units);
-    $amount_rest = $amount % $scale;
-    $amount_whole = intdiv($amount, $scale);
-    $units_rest = $units % $scale;
-    $units_whole = intdiv($units, $scale);
-    $rest = $amount_rest * $units_rest;
 
-    $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
-        + ($amount_rest * $units_whole) + intdiv($rest, $scale);
-
-    if ((($rest % $scale) * 2) >= $scale) {
-        $result++;
+    // Whole units held in a float (erp_decimal_units()) take the integer
+    // steps when they fit a 64-bit int.
+    if ((PHP_INT_SIZE >= 8) && is_float($amount) && ($amount < PHP_INT_MAX)) {
+        $amount = (int) $amount;
     }
 
-    return ($negative && ($result !== 0)) ? -$result : $result;
+    if ((PHP_INT_SIZE >= 8) && is_float($units) && ($units < PHP_INT_MAX)) {
+        $units = (int) $units;
+    }
+
+    if (is_int($amount) && is_int($units) && (PHP_INT_SIZE >= 8)) {
+        $amount_rest = $amount % $scale;
+        $amount_whole = intdiv($amount, $scale);
+        $units_rest = $units % $scale;
+        $units_whole = intdiv($units, $scale);
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = $rest % $scale;
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + intdiv($rest, $scale);
+    } else {
+        $amount = (float) $amount;
+        $units = (float) $units;
+        $amount_rest = fmod($amount, $scale);
+        $amount_whole = ($amount - $amount_rest) / $scale;
+        $units_rest = fmod($units, $scale);
+        $units_whole = ($units - $units_rest) / $scale;
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = fmod($rest, $scale);
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + (($rest - $rest_rest) / $scale);
+    }
+
+    if (($rest_rest * 2) >= $scale) {
+        $result += 1;
+    }
+
+    if (is_float($result) && ($result < PHP_INT_MAX)) {
+        $result = (int) $result;
+    }
+
+    return ($negative && ($result > 0)) ? -$result : $result;
 }
 
 /**
@@ -325,7 +367,7 @@ function erp_multiply_units($amount, $units, $scale)
  *
  * @param int   $kurus
  * @param float $rate   Percentage, e.g. 20 for 20%
- * @return int  Kurus
+ * @return int|float  Kurus; a float only on a 32-bit build, past PHP_INT_MAX
  */
 function erp_apply_rate($kurus, $rate)
 {
@@ -366,6 +408,34 @@ function erp_split_gross($gross, $rate)
 }
 
 /**
+ * The amount before tax that comes to a total once the tax at the rate is
+ * taken on the whole of it (erp_apply_rate()); null when no amount does.
+ *
+ * There is one at most: a kurus more on the amount puts one or two on the
+ * total, so at 20% one total in six (3 kurus off a multiple of 6, such as
+ * 57.93) is never reached, at 10% one in eleven. A document whose lines at
+ * one rate come to such a total cannot have its tax taken on their sum, the
+ * way an e-document provider takes it.
+ *
+ * @param int   $total  Kurus, tax included
+ * @param float $rate   Percentage
+ * @return int|null
+ */
+function erp_rate_amount($total, $rate)
+{
+    $total = (int) $total;
+    $near = (int) round($total * 100 / (100 + (float) $rate));
+
+    foreach (array($near, $near - 1, $near + 1) as $amount) {
+        if (($amount >= 0) && (($amount + erp_apply_rate($amount, $rate)) === $total)) {
+            return $amount;
+        }
+    }
+
+    return null;
+}
+
+/**
  * Convert an amount into the base currency at a given exchange rate.
  *
  * The one place a document-currency figure becomes a base-currency one. The
@@ -391,7 +461,7 @@ function erp_to_base($kurus, $exchange_rate)
  *
  * @param int   $unit_price  Kurus
  * @param float $quantity
- * @return int  Kurus
+ * @return int|float  Kurus; a float only on a 32-bit build, past PHP_INT_MAX
  */
 function erp_line_total($unit_price, $quantity)
 {

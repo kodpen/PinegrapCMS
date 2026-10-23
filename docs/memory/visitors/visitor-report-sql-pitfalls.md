@@ -10,7 +10,7 @@ description: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GR
 - Full data: streaming CSV with `MYSQLI_USE_RESULT` + `flush()` every 1000 rows; peak memory is one row. The `mysqli_query()` default pulls the whole result into PHP, so not accumulating in an array is not enough.
 - `$where`, `prepare_sql_operation()` and all `summarize_by` options are unchanged; advanced filters still read the raw `visitors` table.
 
-## ONLY_FULL_GROUP_BY traps (MySQL 5.7+ default)
+## Which ONLY_FULL_GROUP_BY traps (MySQL 5.7+ default) must a rollup query avoid?
 - No ordinal in GROUP BY (`GROUP BY 1, 2`): removed in MySQL 8. Write the alias.
 - Do not select a non-grouped column with GROUP BY. The `visitor_content_hourly` hourly-peak query resolves ties in PHP (`ORDER BY stat_hour, id`, first row wins), not with `GROUP BY c.stat_hour`.
 - Compute the bucket key AFTER grouping. `SHA1(...)` inside a GROUP BY select asks MySQL to prove the hash is functionally dependent on its inputs, which varies by version. Backfill groups in the derived table and hashes outside.

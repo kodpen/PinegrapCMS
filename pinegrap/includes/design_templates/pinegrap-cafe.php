@@ -2646,14 +2646,14 @@ $mail_page = function ($children) use ($el, $shared, $mail_style) {
 $mail_heading = function ($text) use ($heading, $attr) {
     return $heading('h1', $text, 'h4 fw-bold mb-3', array('_attrs' => array($attr('style', 'font-size:22px;font-weight:700;margin:0 0 16px;color:#2b1d14'))));
 };
-$mail_para = function ($text, $class = 'mb-3') use ($para, $attr) {
-    return $para($text, $class, array('_attrs' => array($attr('style', 'margin:0 0 16px'))));
+$mail_para = function ($text, $class = 'mb-3', $style = 'margin:0 0 16px') use ($para, $attr) {
+    return $para($text, $class, array('_attrs' => array($attr('style', $style))));
 };
-$mail_button = function ($text, $href) use ($el, $link, $mail_style, $attr) {
+$mail_button = function ($text, $href, $extra = array()) use ($el, $link, $mail_style, $attr) {
     return $el('p', 'my-4', lang('Button'), array(
         $link($text, $href, 'btn btn-primary px-4', array($attr('style',
             'display:inline-block;padding:10px 22px;border-radius:6px;font-weight:600;text-decoration:none;'
-            . 'background-color:#6f4e37;background-color:var(--bs-primary);color:#ffffff;color:var(--pg-on-primary,#ffffff)'))),
+            . 'background-color:#6f4e37;background-color:var(--bs-primary,#6f4e37);color:#ffffff;color:var(--pg-on-primary,#ffffff)')), $extra),
     ), $mail_style('margin:24px 0'));
 };
 $mail_line = function ($label, $values) use ($el, $span, $mail_style, $attr) {
@@ -2777,6 +2777,29 @@ $pages[] = array_merge($mail_settings, array(
         $mail_button(lang('See the coming events'), '{{page:events}}'),
     )),
 ));
+
+// The account e-mails: the welcome after a sign-up and the password reset
+// link. Their Account E-mail widgets fill in the member's name and links.
+$pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_account_welcome',
+    'name'  => lang('email-account-welcome'),
+    'title' => lang('Account Welcome E-mail'),
+    'tree'  => $mail_page(array($widget('account_email_welcome'))),
+));
+$pages[] = array_merge($mail_settings, array(
+    'key'   => 'email_password_reset',
+    'name'  => lang('email-password-reset'),
+    'title' => lang('Password Reset E-mail'),
+    'tree'  => $mail_page(array($widget('account_email_reset'))),
+));
+// The member's first name after "Hello,", in an element of its own: a
+// translated page matches whole texts.
+$mail_account_greeting = function () use ($el, $span, $bind, $mail_style) {
+    return $el('p', 'mb-3', lang('Greeting'), array(
+        $span(lang('Hello,'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+        $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
+    ), $mail_style('margin:0 0 16px'));
+};
 
 // ── Widgets ─────────────────────────────────────────────────────────────
 
@@ -3778,18 +3801,52 @@ $widgets = array(
         'page'   => 'register',
         'slug'   => lang('registration'),
         'config' => array(
-            'regionType'       => 'registration',
-            'show_remember_me' => true,
-            'login_page_id'    => '{{tab:login}}',
-            'redirect_page_id' => '{{tab:my_account}}',
+            'regionType'            => 'registration',
+            'show_remember_me'      => true,
+            'login_page_id'         => '{{tab:login}}',
+            'redirect_page_id'      => '{{tab:my_account}}',
+            'welcome_email_page_id' => '{{tab:email_account_welcome}}',
+            'welcome_email_subject' => lang('Welcome! Your account is ready'),
         ),
         'tree'   => 'starter',
     ),
     'forgot_password' => array(
         'page'   => 'forgot_password',
         'slug'   => lang('forgot-password'),
-        'config' => array('regionType' => 'forgot_password', 'login_page_id' => '{{tab:login}}'),
+        'config' => array(
+            'regionType'          => 'forgot_password',
+            'login_page_id'       => '{{tab:login}}',
+            'reset_email_page_id' => '{{tab:email_password_reset}}',
+            'reset_email_subject' => lang('Reset your password'),
+        ),
         'tree'   => 'starter',
+    ),
+    // The account e-mails' widgets, drawn for the member the e-mail is
+    // sent to. The reset e-mail's button carries the set password link: a
+    // page without it is not sent (the built-in e-mail goes instead).
+    'account_email_welcome' => array(
+        'page'   => 'email_account_welcome',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Welcome!')),
+            $mail_account_greeting(),
+            $mail_para(lang('Your account is ready.')),
+            $mail_button(lang('Go to my account'), '#', array('_bindings' => array('href' => '__my_account_url'))),
+            $mail_para(lang('See you soon at the café!'), 'small text-body-secondary mb-0', 'font-size:13px;color:#75655a;margin:0'),
+        )),
+    ),
+    'account_email_reset' => array(
+        'page'   => 'email_password_reset',
+        'slug'   => lang('account-email'),
+        'config' => array('regionType' => 'account_email'),
+        'tree'   => $widget_root(array(
+            $mail_heading(lang('Reset your password')),
+            $mail_account_greeting(),
+            $mail_para(lang('We received a request to reset your password.')),
+            $mail_button(lang('Set a new password'), '#', array('_bindings' => array('href' => '__set_password_url'))),
+            $mail_para(lang('The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.'), 'small text-body-secondary mb-0', 'font-size:13px;color:#75655a;margin:0'),
+        )),
     ),
     'set_password' => array(
         'page'   => 'set_password',
@@ -4077,7 +4134,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',

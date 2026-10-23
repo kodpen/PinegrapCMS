@@ -458,7 +458,9 @@ define('STRONG_PASSWORD', $row['strong_password']);
 define('PASSWORD_HINT', $row['password_hint']);
 define('PROXY_ADDRESS', $row['proxy_address']);
 define('BADGE_LABEL', $row['badge_label']);
-define('TIMEZONE', $row['timezone']);
+// An old zone name (US/Eastern) is read as its current one; a name this PHP
+// does not know is '' so that the server's zone is used without a warning.
+define('TIMEZONE', pg_timezone_canonical($row['timezone']));
 define('DATE_FORMAT', $row['date_format']);
 define('TIME_FORMAT', $row['time_format']);
 define('ORGANIZATION_NAME', $row['organization_name']);
