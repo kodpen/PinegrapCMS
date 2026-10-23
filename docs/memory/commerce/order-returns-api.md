@@ -27,4 +27,4 @@ description: Returns over the external API: GET/POST /orders/{id}/returns, body,
 - commerce/order-returns-events.md.
 
 ## Tests?
-- `tests/returns_events_test.php`, `tests/api_order_returns_test.php`. Sandbox runs (customer path, API, panel, refunds with an iyzico stand-in, races, Workspace): PR body.
+- `tests/returns_events_test.php`, `tests/api_order_returns_test.php`. Sandbox runs (customer path, API, panel, refunds with an iyzico stand-in, races, Workspace): PR #1352 body.

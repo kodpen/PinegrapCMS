@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to AP
 2. Done (PR #677): order view widget tokens and flags, `order_return.php`, request mail, staff bell: docs/memory/commerce/order-returns-customer.md. Left: the classic order view (`get_view_order_screen_content.php`, liveform `view_order`) shows no returns.
 3. Done (PR #808): list and bulk approve, one return's moves, decision mails, audit trail, bell, order card, delivery date from the parcel rows: docs/memory/commerce/order-returns-panel.md. Left: a form for staff to record a request (`pg_return_create()` source `panel`).
 4. Done (PR #936): refund by driver or recorded, ERP return invoice hand-off, refund mail, reminder job, `[NEW]` line: docs/memory/commerce/order-returns-refund.md.
-5. Done (PR #TBD): `GET/POST /orders/{id}/returns`, `order.return.*` webhooks, Workspace trigger: docs/memory/commerce/order-returns-api.md, order-returns-events.md.
+5. Done (PR #1352): `GET/POST /orders/{id}/returns`, `order.return.*` webhooks, Workspace trigger: docs/memory/commerce/order-returns-api.md, order-returns-events.md.
 
 ## Open questions?
 - Partial-quantity returns of variant products: allowed per line; exchange (swap) is out of scope.
