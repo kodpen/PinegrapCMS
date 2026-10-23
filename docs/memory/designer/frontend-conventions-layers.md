@@ -18,6 +18,6 @@ description: Palette component vs system widget layers and where each is documen
 1. Legacy parity is the yardstick: correct behaviour = output of the legacy page type doing the same job (`catalog` / `catalog detail` / `form list view` ...). Do not guess; open the legacy page and compare.
 2. A settings-panel switch must be a real switch: if a feature is off, elements bound to it are NOT emitted to the frontend at all and appear faded on the designer canvas. "Visible but non-functional" is forbidden (e.g. a dead button opening an empty offcanvas): catalog-binding-disabled-no-output.md.
 3. Product groups are nested: "products in this group" almost always means products anywhere UNDER the group. Any query looking only at direct `products_groups_xref` membership is suspect (catalog-listing-system-widget.md).
-4. A discount percentage yields fractional minor units: `round()`, never `(int)`, or card and feed differ by one kuruş.
+4. An offer's percentage price comes whole from `pg_percent_off()` (`get_discounted_product_prices()`, commerce/offer-percent-rounding.md); a price worked out anywhere else with a fraction is rounded with `round()`, never cut with `(int)`, or card and feed differ by one kuruş.
 
 Related: docs/memory/designer/catalog-listing-system-widget.md
