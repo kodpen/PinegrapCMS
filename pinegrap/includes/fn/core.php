@@ -1531,17 +1531,21 @@ function pg_timezone_canonical($name, $known = null)
 
 /**
  * A stored time zone name as the pick lists (get_timezones()) offer it, so
- * that an old name stays selected as its current option.
+ * that it stays selected: the name this PHP knows (pg_timezone_canonical()).
+ * An old name is its current option, or itself where this PHP's database
+ * lacks the current one: selecting the current name there would store a name
+ * this PHP cannot use on the next save. A name this PHP does not know in
+ * either form stays as it is (the site settings show it as a custom option).
  *
- * @param string $name
+ * @param string        $name
+ * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
  * @return string
  */
-function pg_timezone_list_value($name)
+function pg_timezone_list_value($name, $known = null)
 {
-    $name = trim((string) $name);
-    $legacy = pg_timezone_legacy_names();
+    $zone = pg_timezone_canonical($name, $known);
 
-    return isset($legacy[$name]) ? $legacy[$name] : $name;
+    return ($zone !== '') ? $zone : trim((string) $name);
 }
 
 /**
@@ -2868,11 +2872,21 @@ function output_gift_card_code($code)
 {
     return mb_substr($code, 0, 4) . '-' . mb_substr($code, 4, 4) . '-' . mb_substr($code, 8, 4) . '-' . mb_substr($code, 12, 4);
 }
-// Create a function that gets timezones which are used to populate
-// global timezone in site settings and user timezone in my account profile.
-function get_timezones()
+/**
+ * The time zones of the pick lists (site settings, my account profile) and
+ * the names a submitted profile may store, label => zone. Each zone is offered
+ * by the name this PHP knows (pg_timezone_canonical()): its current IANA name,
+ * or its old one where this PHP's time zone database predates the rename
+ * (America/Nuuk is tzdata 2020a; every PHP 7.1 and 7.2 release, 7.3 before
+ * 7.3.18 and 7.4 before 7.4.6 embed older databases). A zone this PHP knows
+ * by neither name is left out, so no list offers a zone that cannot be used.
+ *
+ * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
+ * @return array
+ */
+function get_timezones($known = null)
 {
-    return array(
+    $zones = array(
         '(UTC-11:00) Midway Island' => 'Pacific/Midway',
         '(UTC-11:00) Samoa' => 'Pacific/Pago_Pago',
         '(UTC-10:00) Hawaii' => 'Pacific/Honolulu',
@@ -2997,6 +3011,18 @@ function get_timezones()
         '(UTC+12:00) Magadan' => 'Asia/Magadan',
         '(UTC+13:00) Nuku\'alofa' => 'Pacific/Tongatapu'
     );
+
+    $offered = array();
+
+    foreach ($zones as $label => $zone) {
+        $zone = pg_timezone_canonical($zone, $known);
+
+        if ($zone !== '') {
+            $offered[$label] = $zone;
+        }
+    }
+
+    return $offered;
 }
 
 
