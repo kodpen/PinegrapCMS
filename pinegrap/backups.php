@@ -289,7 +289,7 @@ if (!$_POST) {
 		    if (is_file($dir)) {
 		        if (!unlink($dir)) {
 		            $liveform->add_warning(
-		                lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>$dir))
+		                lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>h($dir)))
 		            );
 		        } else {
 		            $liveform->add_notice(
@@ -314,13 +314,13 @@ if (!$_POST) {
 		            if ($file->isDir()) {
 		                if (!rmdir($path)) {
 		                    $liveform->add_warning(
-		                        lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>$path))
+		                        lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>h($path)))
 		                    );
 		                }
 		            } else {
 		                if (!unlink($path)) {
 		                    $liveform->add_warning(
-		                        lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>$path))
+		                        lang(array('string'=>'File ({var:1}) delete is unsuccess','vars'=>h($path)))
 		                    );
 		                }
 		            }
@@ -332,7 +332,7 @@ if (!$_POST) {
 		        // Try to remove the main directory
 		        if (!rmdir($dir)) {
 		            $liveform->add_warning(
-		                lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>$dir))
+		                lang(array('string'=>'Folder ({var:1}) delete is unsuccess','vars'=>h($dir)))
 		            );
 		        } else {
 		            $liveform->add_notice(
@@ -349,11 +349,13 @@ if (!$_POST) {
 		        }
 		
 		    } catch (UnexpectedValueException $e) {
-		        // Handle inaccessible directory (permission denied, etc.)
+		        // Handle inaccessible directory (permission denied, etc.). The
+		        // exception is a PHP warning, which PHP has already HTML-escaped
+		        // when html_errors is on.
 		        $liveform->add_warning(
 		            lang(array(
 		                'string'=>'Backup folder ({var:1}) cannot be accessed: {var:2}',
-		                'vars'=>array($dir, $e->getMessage())
+		                'vars'=>array(h($dir), filter_var(ini_get('html_errors'), FILTER_VALIDATE_BOOLEAN) ? $e->getMessage() : h($e->getMessage()))
 		            ))
 		        );
 		        // No notice or log here

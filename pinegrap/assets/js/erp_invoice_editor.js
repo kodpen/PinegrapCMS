@@ -160,6 +160,25 @@
         return parseFloat((whole || '0') + '.' + (fraction || '0')) || 0;
     }
 
+    // erp_decimal_units(): a decimal as a whole number of its smallest unit
+    // at the given places, half away from zero, rounded on the digits
+    // toFixed() writes (the ones PHP's sprintf() writes), not on a product of
+    // floats.
+    function decimalUnits(value, places) {
+        value = Number(value) || 0;
+        var parts = Math.abs(value).toFixed(10).split('.');
+        var units = parseInt(parts[0] + parts[1].substring(0, places), 10);
+        if (parseInt(parts[1].charAt(places), 10) >= 5) {
+            units++;
+        }
+        return value < 0 ? -units : units;
+    }
+
+    // erp_quantity_round(): the four places a line's quantity is stored with.
+    function quantityRound(quantity) {
+        return decimalUnits(quantity, 4) / 10000;
+    }
+
     // round() in PHP: half away from zero.
     function roundHalfAway(value) {
         return value < 0 ? -Math.round(-value) : Math.round(value);
@@ -415,7 +434,8 @@
     }
 
     function lineFigures(row) {
-        var quantity = parseQuantity(field(row, 'quantity') ? field(row, 'quantity').value : '');
+        // Priced at the places it is saved with, as the server prices it.
+        var quantity = quantityRound(parseQuantity(field(row, 'quantity') ? field(row, 'quantity').value : ''));
         var unitPrice = parseKurus(field(row, 'unit_price') ? field(row, 'unit_price').value : '');
         var discountRate = parseDecimal(field(row, 'discount_rate') ? field(row, 'discount_rate').value : '');
         var offerRate = parseDecimal(field(row, 'offer_discount_rate') ? field(row, 'offer_discount_rate').value : '');

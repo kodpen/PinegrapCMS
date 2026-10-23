@@ -746,6 +746,14 @@ function ws_change_value($field, $value)
             return null;
 
         case 'date':
+            // Empty, or the zero date a DATE NOT NULL column keeps for empty:
+            // both are the empty date. Each writer stores it its own way
+            // (ws_change_date_column(), ws_change_offer_date_column(), NULL
+            // for a task).
+            if (is_string($value) && ((trim($value) === '') || (trim($value) === '0000-00-00'))) {
+                return '';
+            }
+
             if (!is_string($value) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', trim($value), $match)
                 || !checkdate((int) $match[2], (int) $match[3], (int) $match[1])) {
                 return null;
@@ -896,9 +904,55 @@ function ws_change_current_value($field, $row)
         case 'answers':
             return array_map('strval', (array) $raw);
 
+        case 'date':
+            // The zero date is how a DATE NOT NULL column says "no date"; a
+            // date input cannot show it and empties itself, so it is given
+            // as ''.
+            $raw = trim((string) $raw);
+
+            return (strpos($raw, '0000-00-00') === 0) ? '' : $raw;
+
         default:
             return trim((string) $raw);
     }
+}
+
+/**
+ * A date as a DATE NOT NULL column that means "no date" by the zero date
+ * takes it: contacts.expiration_date, which the contact screen stores as
+ * '0000-00-00' for a membership without an end. The empty date is therefore
+ * written as the zero date explicitly.
+ *
+ * @param string $value A date from ws_change_value(): 'YYYY-MM-DD' or ''.
+ * @return string
+ */
+function ws_change_date_column($value)
+{
+    return ((string) $value === '') ? '0000-00-00' : (string) $value;
+}
+
+/**
+ * A date as the offers table takes it. An offer without an end carries the
+ * offer screen's open end date (PG_OFFER_OPEN_END_DATE), never the zero
+ * date: checkout applies an offer only while CURRENT_DATE() <= end_date, so
+ * a zero end would end it at once. An empty start date is refused by
+ * ws_change_check() before it gets here.
+ *
+ * @param string $name  'start_date' or 'end_date'.
+ * @param string $value A date from ws_change_value(): 'YYYY-MM-DD' or ''.
+ * @return string
+ */
+function ws_change_offer_date_column($name, $value)
+{
+    if (($name === 'end_date') && ((string) $value === '')) {
+        if (!defined('PG_OFFER_OPEN_END_DATE')) {
+            require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+        }
+
+        return PG_OFFER_OPEN_END_DATE;
+    }
+
+    return (string) $value;
 }
 
 /**
@@ -1368,6 +1422,12 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             return '';
 
         case 'offer':
+            // The offer screen needs a start date; an empty end date is the
+            // open end (ws_change_offer_date_column()).
+            if (array_key_exists('start_date', $values) && ((string) $values['start_date'] === '')) {
+                return lang('An offer needs a start date.');
+            }
+
             $start = $values['start_date'] ?? ($record['start_date'] ?? '');
             $end = $values['end_date'] ?? ($record['end_date'] ?? '');
 
@@ -2460,8 +2520,12 @@ function ws_change_apply_record_check($viewer, $change)
             return $fail(lang('Invalid request.'));
         }
 
+        // The zero date and '' are the same empty date (the record gives ''),
+        // whichever of the two the stored proposal names.
+        $was = (($field[0] === 'date') && ($item['from'] === '0000-00-00')) ? '' : $item['from'];
+
         $moved = (($action === 'update') || ($action === 'delete')) && ($field[3] !== '')
-            && (ws_change_current_value($field, $record) !== $item['from']);
+            && (ws_change_current_value($field, $record) !== $was);
 
         // A record the change names (a product for a group, a parent group)
         // that is gone since.
@@ -3276,6 +3340,10 @@ function ws_change_write_contact($viewer, $action, $record, $values)
 
     foreach ($values as $name => $value) {
         if (isset($fields[$name])) {
+            if ($fields[$name][0] === 'date') {
+                $value = ws_change_date_column($value);
+            }
+
             $set[] = $fields[$name][3] . " = '" . (is_bool($value) ? ($value ? '1' : '0') : e($value)) . "'";
         }
     }
@@ -3883,7 +3951,7 @@ function ws_change_write_offer($viewer, $action, $record, $values)
 
     foreach ($values as $name => $value) {
         if (isset($fields[$name])) {
-            $parts[] = $fields[$name][3] . " = '" . e((string) $value) . "'";
+            $parts[] = $fields[$name][3] . " = '" . e((string) (($fields[$name][0] === 'date') ? ws_change_offer_date_column($name, $value) : $value)) . "'";
         }
     }
 

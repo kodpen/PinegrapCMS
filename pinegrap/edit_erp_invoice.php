@@ -136,9 +136,9 @@ if ($_POST) {
         $result = erp_edoc_invoice_send($invoice_id, (int) $user['id']);
 
         if ($result['success']) {
-            $liveform->add_notice($result['message']);
+            $liveform->add_notice(h($result['message']));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
@@ -152,9 +152,9 @@ if ($_POST) {
         $result = erp_edoc_invoice_submit($invoice_id, (int) $user['id']);
 
         if ($result['success']) {
-            $liveform->add_notice($result['message']);
+            $liveform->add_notice(h($result['message']));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
@@ -194,9 +194,9 @@ if ($_POST) {
         $result = erp_edoc_invoice_send($invoice_id, (int) $user['id']);
 
         if ($result['success']) {
-            $liveform->add_notice($result['message']);
+            $liveform->add_notice(h($result['message']));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
@@ -239,9 +239,9 @@ if ($_POST) {
         $result = erp_edoc_invoice_poll($invoice_id);
 
         if ($result['success']) {
-            $liveform->add_notice($result['message']);
+            $liveform->add_notice(h($result['message']));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
@@ -257,12 +257,12 @@ if ($_POST) {
         $provider_cancel = erp_edoc_invoice_provider_cancel($invoice_id, '', (int) $user['id']);
 
         if (!$provider_cancel['success']) {
-            $liveform->mark_error('_error', $provider_cancel['error']);
+            $liveform->mark_error('_error', h($provider_cancel['error']));
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
         }
 
         if ((string) $provider_cancel['message'] !== '') {
-            $liveform->add_notice($provider_cancel['message']);
+            $liveform->add_notice(h($provider_cancel['message']));
         }
 
         $result = erp_invoice_cancel($invoice_id, (int) $user['id']);
@@ -271,7 +271,7 @@ if ($_POST) {
             log_activity(lang(array('string' => 'erp document ({var:1}) was cancelled', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The document has been cancelled.'));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);

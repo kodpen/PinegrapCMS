@@ -55,7 +55,7 @@ if ($_POST) {
                 $liveform->add_notice(lang('There are more documents in that range than one read takes. Read the rest with a narrower range.'));
             }
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go($self_url . '?state=' . urlencode((string) ($_POST['state'] ?? 'new')));

@@ -10,7 +10,7 @@ Site search found no record of a visual page (only legacy list pages were); the 
 - `update_search_index.php` collects the list widgets (`pg_sw_form_list_types()`) of each page it indexes, then writes one item per record after the page loop, before files (as the sitemap's designer branch).
 - Detail page: `standard`, its "Include in site search" on, folder not archived or binned. Record view: its first `form_item_view` over the list's form.
 - `pg_sw_search_index_eligible()`: both widgets public, no `viewer_filter`, no filter on the viewer (with no visitor it matches every anonymous record).
-- Records: `pg_sw_list_record_filter_clause()` (record view's filters strict and fail closed, then the list's), `forms.complete = 1`, a reference code.
+- Records: `pg_sw_list_record_filter_clause()` (record view's filters strict, then the list's; closed: `pg_sw_filter_sql_closed()`), `forms.complete = 1`, a reference code.
 - Before drawing, `pg_sw_record_comment_context($detail, $id)['visible']`; after, `pg_sw_item_missing()`. Either fails: no item.
 
 ## What does an item hold?

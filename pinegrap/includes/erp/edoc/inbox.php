@@ -562,7 +562,9 @@ function erp_edoc_inbox_line_product($line)
  * (447.108 for a line of 75) the quantity and price cannot both be kept and
  * still add up to the line; the line is then written as one unit of its
  * amount, with the real quantity and price in its description, so the
- * document still adds up.
+ * document still adds up. A quantity with more than the four places a line
+ * is stored with is checked as stored, and folds the same way when the
+ * supplier's price does not add up with it.
  *
  * @param array $document  erp_ubl_read() output
  * @return array ['lines' => typed lines, 'source' => the document's figures
@@ -624,7 +626,10 @@ function erp_edoc_inbox_lines($document)
 
         $net = (int) $line['line_extension'];
         $gross = $net + $discount;
-        $quantity = ((float) $line['quantity'] > 0) ? (float) $line['quantity'] : 1.0;
+        $quantity_given = ((float) $line['quantity'] > 0) ? (float) $line['quantity'] : 1.0;
+        // The line is stored and priced with four places (erp_quantity_round());
+        // the price is checked against that quantity, not the one written.
+        $quantity = erp_quantity_round($quantity_given);
         $unit_code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $line['unit_code']));
 
         // NIU (number of international units) is what most Turkish
@@ -633,9 +638,17 @@ function erp_edoc_inbox_lines($document)
             $unit_code = 'C62';
         }
 
+        // A price worked out from the amount stands only beside the
+        // supplier's own quantity: with a shortened one, neither figure on
+        // the line would be the document's, so the line folds instead.
+        $candidates = array(erp_ubl_kurus($line['price']));
+        if (($quantity > 0) && ($quantity === $quantity_given)) {
+            $candidates[] = (int) round($gross / $quantity);
+        }
+
         $unit_price = null;
-        foreach (array(erp_ubl_kurus($line['price']), ($quantity > 0) ? (int) round($gross / $quantity) : 0) as $candidate) {
-            if (($candidate >= 0) && (erp_line_total($candidate, $quantity) === $gross)) {
+        foreach ($candidates as $candidate) {
+            if (($candidate >= 0) && ($quantity > 0) && (erp_line_total($candidate, $quantity) === $gross)) {
                 $unit_price = $candidate;
                 break;
             }
@@ -660,7 +673,7 @@ function erp_edoc_inbox_lines($document)
         if ($unit_price === null) {
             $folded[] = (string) $line['no'];
             $price = (strpos((string) $line['price'], '.') !== false) ? rtrim(rtrim((string) $line['price'], '0'), '.') : (string) $line['price'];
-            $text .= ' (' . rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') . ' × ' . $price . ')';
+            $text .= ' (' . rtrim(rtrim(sprintf('%.10F', $quantity_given), '0'), '.') . ' × ' . $price . ')';
             $quantity = 1.0;
             $unit_code = 'C62';
             $unit_price = $gross;

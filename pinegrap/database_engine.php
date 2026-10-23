@@ -307,7 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($engine_ok) {
         $liveform->add_notice($engine_text);
     } else {
-        $liveform->add_error($engine_text);
+        $liveform->add_error(h($engine_text));
     }
 
     go($database_engine_url);

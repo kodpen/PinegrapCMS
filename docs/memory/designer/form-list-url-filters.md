@@ -35,7 +35,7 @@ description: form_list_view filters valued from the page address (author, tag ar
 - "Show only when": `has_filter_value` (title rule), `no_filter_value` (none applied; on in the installer preview). Lists mark only these; another widget's flag (pasted `record_found`) is drawn. Resolved on surround and loop template before records go in (>1 MB spans broke PCRE).
 
 ## Cautions?
-- `submitter` compares the username; prefer a text or pick-list author field.
+- `submitter` compares the username; prefer `submitter_name` or an author field.
 - Check box + "is equal to" matches one exact value.
 - A filter on a hidden field is a yes/no oracle for it.
 
