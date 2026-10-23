@@ -25,7 +25,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-vat-per-rate.md: Plan (owner's decisions 2026-10-21 and 22; steps 1-6 done): the ERP takes VAT and withholding per rate group on a document's lines, as Paraşüt does; 7 (memory) remains
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
-- files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
 - forms-subscription-double-opt-in.md: Proposal (2026-10-21, awaiting owner decision): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions

@@ -25533,5 +25533,8 @@
     "This return would give back more than is left of the sale, or less than nothing.": "Bu iade, satıştan kalandan fazlasını ya da sıfırdan azını geri verirdi.",
     "This form has no action and is not in a Custom Form widget: what the visitor enters is neither stored nor sent (Form → Action)": "Bu formun eylemi yok ve bir Özel Form widget'ında durmuyor: ziyaretçinin girdikleri ne kaydedilir ne de gönderilir (Form → Eylem)",
     "There are no events to show.": "Gösterilecek etkinlik yok.",
-    "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}"
+    "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}",
+    "Sorry, {var:1} was not accepted. Office files with macros cannot be added here; save it without macros (.docx, .xlsx or .pptx) and try again.": "Üzgünüz, {var:1} kabul edilmedi. Makro içeren Office dosyaları buraya eklenemez; dosyayı makrosuz (.docx, .xlsx veya .pptx) kaydedip yeniden deneyin.",
+    "Workspace messages": "Çalışma Alanı mesajları",
+    "Workspace tasks": "Çalışma Alanı görevleri"
 }
