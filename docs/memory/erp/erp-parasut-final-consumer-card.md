@@ -10,7 +10,7 @@ description: Which Paraşüt card the invoice of a buyer without a TCKN (final c
 
 ## Why is a name match not enough?
 - The `sales_invoices` body sends no address, phone or e-mail: the e-Arşiv shows the card's, and Paraşüt mails it to the card's e-mail (the `sent` and `bounced` states the poll reads).
-- Until #PR the name alone decided: a second "Ayşe Demir" with another address and e-mail was invoiced on the first one's card, so her e-Arşiv showed the first buyer's address and phone and went to the first buyer's mailbox, and a returning consumer who had moved got the old address. Nothing corrected it later: the account sync never links the final-consumer card (`erp_edoc_account_link_from_invoice()` leaves it alone).
+- Until #1405 the name alone decided: a second "Ayşe Demir" with another address and e-mail was invoiced on the first one's card, so her e-Arşiv showed the first buyer's address and phone and went to the first buyer's mailbox, and a returning consumer who had moved got the old address. Nothing corrected it later: the account sync never links the final-consumer card (`erp_edoc_account_link_from_invoice()` leaves it alone).
 
 ## What is still open?
 - One page of 25 cards is read: once a store has more cards under the number, the buyer's own card may not be on it and an equal second card is opened (right details, one card more). Paraşüt accepts `filter[name]` on contacts (its error text lists it); it has not been tried in this search.
