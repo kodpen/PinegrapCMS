@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-invoice
-description: What the order screen's legacy Paraşüt "Create Invoice" sends: the ERP's lines and refusals (#1268), an unanswered create (#PR), the buyer card (#1408), the e-document attributes (#1278)
+description: What the order screen's legacy Paraşüt "Create Invoice" sends: the ERP's lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), the e-document attributes (#1278)
 ---
 
 ## How does "Create Invoice" build the invoice? (#1268, #1274)
@@ -9,7 +9,7 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: th
 - Stores with the buttons on settle their checkout charges like ERP stores (`pg_order_charges_settle_rates()`).
 - Dev, demo company: #1182 (discount) 150.32, #1181 625.82, #1180 57.92, #1176 (57.93) 57.92.
 
-## What if the create gets no answer? (#PR)
+## What if the create gets no answer? (#1416)
 - Before `POST sales_invoices` the order gets the bare mark `?` (`ERP_EDOC_PARASUT_UNSURE`; date and contact are on the order). `parasut_order_invoice_id_after_create()`: the id, `''` after a 4xx, the mark kept after a timeout, 5xx or 2xx naming no record.
 - `parasut_order_invoice_unsure()`: the list shows "Check Paraşüt", not the emblem; the order screen's button and status row a warning (`parasut_order_invoice_status_badge()`), never "Sent"; the button stays on.
 - The next press searches as the ERP driver does (erp-parasut-send-failures.md): `parasut_order_invoice_find()` (contact, issue date, 20 pages), `_matches()` (the driver's match, issued records kept in). One draft: id kept, then total check and e-document; one issued: id kept, nothing sent; none: created; several or a failed search: refused, mark kept.
