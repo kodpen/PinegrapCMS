@@ -71,7 +71,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-3 my-2">
                                             <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control', 'maxlength'=>'11','inputmode'=>'numeric','data-inputmask-alias'=>'currency','style'=>'text-align: right;','data-inputmask-placeholder'=>'0')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control', 'maxlength'=>'11','inputmode'=>'numeric','style'=>'text-align: right;') + pg_money_mask_attributes()) . '
                                         </div>
 
                                         <div class="col-12 my-3">
@@ -133,7 +133,8 @@ if (!$_POST) {
         exit();
     }
 
-    $exchange_rate = $liveform->get_field_value('exchange_rate');
+    // The mask posts the rate in the panel language (1.234,56 or 1,234.56).
+    $exchange_rate = pg_normalize_amount($liveform->get_field_value('exchange_rate'));
 
     // If this currency was set as the base currency then set exchange rate to 1.
     if ($liveform->get_field_value('base') == 1) {

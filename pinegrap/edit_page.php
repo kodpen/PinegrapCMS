@@ -1406,6 +1406,33 @@ if (!$_POST) {
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
                 exit();
             }
+
+            // An e-mail switched on with nothing to send, or a "Next Page"
+            // confirmation without a page (pg_cf_legacy_settings_errors()).
+            // Checked only when this save writes the form's properties: the
+            // condition is the one that guards saving the page type below. A
+            // user who may not set the type is not shown these fields, posts
+            // none of them, and keeps the stored ones.
+            if (
+                $user_can_set_page_type($current_page_type)
+                && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']))
+            ) {
+                $custom_form_setting_errors = pg_cf_legacy_settings_errors(
+                    pg_page_form_type_properties_from_post('custom form', (int) $_POST['id']),
+                    function ($page_id) {
+                        return ($page_id > 0)
+                            && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0)
+                            && !(function_exists('pg_recycle_page_binned') && pg_recycle_page_binned((int) $page_id));
+                    });
+
+                if ($custom_form_setting_errors) {
+                    foreach ($custom_form_setting_errors as $custom_form_setting_field => $custom_form_setting_error) {
+                        $liveform->mark_error($custom_form_setting_field, $custom_form_setting_error);
+                    }
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
+                    exit();
+                }
+            }
         }
         
         // if user is above a user role, then deal with home page checkbox

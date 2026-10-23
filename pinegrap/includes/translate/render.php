@@ -149,7 +149,7 @@ function pg_tr_render_props($props, $type)
  */
 function pg_tr_render_rules()
 {
-    return '2026.4.9';
+    return '2026.11.0';
 }
 
 /**
