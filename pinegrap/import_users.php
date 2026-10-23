@@ -440,17 +440,17 @@ if (!$_POST) {
         
         // If there were emails that had an invalid format
         if ($invalid_emails_count > 0) {
-            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} email address(es) were invalid. ({var:2})','vars'=>array($invalid_emails_count,$invalid_email_list))) . '</p>';
+            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} email address(es) were invalid. ({var:2})','vars'=>array($invalid_emails_count,htmlspecialchars($invalid_email_list, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')))) . '</p>';
         }
         
         // If there were users that already exist
         if ($pre_existing_users_count > 0) {
-            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} user name(s) already exist. ({var:2})','vars'=>array($pre_existing_users_count,$pre_existing_user_list))) . '</p>';
+            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} user name(s) already exist. ({var:2})','vars'=>array($pre_existing_users_count,htmlspecialchars($pre_existing_user_list, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')))) . '</p>';
         }
         
         // If there were email addresses that already exist.
         if ($pre_existing_emails_count > 0) {
-            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} email address(es) already exist. ({var:2})','vars'=>array($pre_existing_emails_count,$pre_existing_email_list))) . '</p>';
+            $combined_errors .= '<p>' . lang(array('string'=>'{var:1} email address(es) already exist. ({var:2})','vars'=>array($pre_existing_emails_count,htmlspecialchars($pre_existing_email_list, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')))) . '</p>';
         }
         
       

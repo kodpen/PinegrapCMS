@@ -2452,8 +2452,11 @@ $widgets = array(
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary pb-3 mb-4 border-bottom', lang('Post Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
-                                $icon('bi-person', 'ms-2'),
-                                $span(lang('Dr. Jane Cooper'), '', lang('Author'), $bind('submitter')),
+                                // The author line leaves when the record has no contact name.
+                                $el('span', 'pg-hide-if-empty d-inline-flex align-items-center gap-2 ms-2', lang('Author'), array(
+                                    $icon('bi-person'),
+                                    $span(lang('Dr. Jane Cooper'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
+                                )),
                             )),
                             $ai_summary(),
                             $optional_image('cover_image', 'title', 'rounded-4 object-fit-cover', 'ratio ratio-16x9 mb-4',
@@ -3063,7 +3066,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.0.3',
+    'version'     => '1.0.4',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',

@@ -102,11 +102,11 @@ if ($_POST) {
 
 			if ($check['ok']) {
 
-				$liveform->add_notice(lang(array('string' => '{var:1} works.', 'vars' => $account['label'])));
+				$liveform->add_notice(lang(array('string' => '{var:1} works.', 'vars' => h($account['label']))));
 
 			} else {
 
-				$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array($account['label'], $check['error']))));
+				$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), h($check['error'])))));
 
 			}
 
@@ -120,7 +120,7 @@ if ($_POST) {
 
 			pg_connect_disconnect($account['id']);
 
-			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $account['label'])));
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($account['label']))));
 
 			log_activity(lang(array(
 				'string' => 'disconnected the {var:1} account {var:2}',
@@ -146,9 +146,9 @@ $flash = pg_connect_flash_take();
 if (is_array($flash)) {
 
 	if ($flash['kind'] === 'error') {
-		$liveform->add_error($flash['text']);
+		$liveform->add_error(h($flash['text']));
 	} else {
-		$liveform->add_notice($flash['text']);
+		$liveform->add_notice(h($flash['text']));
 	}
 
 }

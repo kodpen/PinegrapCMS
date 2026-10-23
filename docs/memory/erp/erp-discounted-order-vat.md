@@ -26,4 +26,4 @@ description: Order VAT at checkout and on the ERP invoice (per rate, again after
 
 ## When can the filter differ from checkout?
 - It reads today's gateway and the line snapshot (`recurring_payment_period`, `recurring_start_date`); `submit_order.php` used `products.recurring` and the submit-time gateway. They differ after an unrecorded ClearCommerce period, a later recurring/start change on the product, or a switch to non-recurring between cart update (which writes `recurring_payment_period`) and submit.
-- Still unfiltered (follow-up): old Paraşüt export `parasut_create_invoice()` (`includes/fn/parasut.php` ~1620) sends every non-saved row.
+- The order screen's old Paraşüt button takes the same filter since #1268 (`parasut_order_invoice_lines()`).

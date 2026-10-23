@@ -2319,6 +2319,55 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
     return $price + (int) round($rate / 100 * $price);
 }
 
+/**
+ * The price a bulk product edit (edit_products.php) gives a product.
+ *
+ * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease
+ * by a percentage, '4' increase by a percentage. The decrease methods refuse
+ * any result at or below zero, a free or negative price included; the
+ * increase methods refuse one only when the change lowers the price (a
+ * negative value), so a free product raised by a percentage stays free. A
+ * refused change keeps the old price. A price below zero would become an
+ * order line below zero, which an e-document provider refuses on an invoice.
+ *
+ * @param int|string       $price   products.price, minor units
+ * @param int|string       $method  '1' to '4'; any other changes nothing
+ * @param int|float|string $value   minor units for '1' and '2' (rounded to whole ones), a percentage for '3' and '4'
+ * @return array  ['price' => int, the new price or the old one when refused, 'refused' => bool]
+ */
+function pg_bulk_price_change($price, $method, $value)
+{
+    $price = (int) $price;
+    $method = (string) $method;
+
+    if (!in_array($method, array('1', '2', '3', '4'), true)) {
+        return array('price' => $price, 'refused' => false);
+    }
+
+    switch ($method) {
+        case '1':
+            $new = $price - (int) round((float) $value);
+            break;
+        case '2':
+            $new = $price + (int) round((float) $value);
+            break;
+        case '3':
+            $new = (int) round(((100 - (float) $value) / 100) * $price);
+            break;
+        default:
+            $new = (int) round(((100 + (float) $value) / 100) * $price);
+            break;
+    }
+
+    $decrease = ($method === '1') || ($method === '3');
+
+    if (($new <= 0) && ($decrease || ($new < $price))) {
+        return array('price' => $price, 'refused' => true);
+    }
+
+    return array('price' => $new, 'refused' => false);
+}
+
 
 /**
  * A typed tax rate as it is stored, or NULL when the field was left empty.
@@ -3223,10 +3272,33 @@ function pg_offer_action_target($offer_action)
     return $target;
 }
 
-// The least expensive line the customer is paying for. Lines an offer put in
-// the cart are skipped - a gift is already free, and discounting it again would
-// let one offer eat another's. A tie goes to the lowest row id so the same line
-// wins every time the cart is recalculated.
+// The least expensive line the customer is paying for, out of $lines (id,
+// price, added_by_offer, product_selection_type). Lines an offer put in the
+// cart are skipped - a gift is already free, and discounting it again would
+// let one offer eat another's - and so are donations: their price is the
+// amount the visitor typed, not an item, and a small donation was picked as
+// "the cheapest item" and set to 0. A tie goes to the lowest row id so the
+// same line wins every time the cart is recalculated. 0 when no line counts.
+function pg_offer_cheapest_line_id($lines)
+{
+    $cheapest_id    = 0;
+    $cheapest_price = 0;
+    foreach ((array) $lines as $line) {
+        $id    = (int) $line['id'];
+        $price = (int) $line['price'];
+        if (((int) $line['added_by_offer'] !== 0) || ($price <= 0) || (($line['product_selection_type'] ?? '') === 'donation')) {
+            continue;
+        }
+        if (($cheapest_id === 0) || ($price < $cheapest_price) || (($price === $cheapest_price) && ($id < $cheapest_id))) {
+            $cheapest_id    = $id;
+            $cheapest_price = $price;
+        }
+    }
+    return $cheapest_id;
+}
+
+// The cheapest line of the cart (pg_offer_cheapest_line_id()), of one
+// recipient when $ship_to_id is given.
 //
 // Read fresh on every call: apply_offers_to_cart() collects its discounts and
 // writes them after the pass, so the prices this reads do not move underneath
@@ -3237,24 +3309,48 @@ function pg_offer_cheapest_item_id($ship_to_id = 0)
     if ($order_id <= 0) {
         return 0;
     }
-    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
-    return (int) db_value("SELECT id FROM order_items
+    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (order_items.ship_to_id = '" . e($ship_to_id) . "')" : '';
+    return pg_offer_cheapest_line_id(db_items("SELECT
 
-        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0') AND (price > 0)" . pg_order_item_active_sql() . " $sql_recipient
+            order_items.id,
+            order_items.price,
+            order_items.added_by_offer,
+            products.selection_type AS product_selection_type
 
-        ORDER BY price ASC, id ASC
+        FROM order_items
 
-        LIMIT 1");
+        LEFT JOIN products ON order_items.product_id = products.id
+
+        WHERE (order_items.order_id = '" . e($order_id) . "') AND (order_items.added_by_offer = '0') AND (order_items.price > 0)" . pg_order_item_active_sql() . " $sql_recipient"));
 }
 
 // Does this product discount apply to this cart line? A cheapest-line target
 // cannot answer from the product alone, so the line and the scope come in too.
 function pg_offer_action_targets_item($offer_action, $order_item, $ship_to_id = 0)
 {
+    // A donation is the amount the visitor typed: no product discount takes
+    // it, even one that names the donation product.
+    if (($order_item['product_selection_type'] ?? '') === 'donation') {
+        return false;
+    }
     if (pg_offer_action_target($offer_action) == 'cheapest') {
         return ((int) $order_item['id'] == pg_offer_cheapest_item_id($ship_to_id));
     }
     return pg_offer_action_targets_product($offer_action, $order_item['product_id']);
+}
+
+// The unit price a line an offer discounted goes back to when
+// apply_offers_to_cart() takes the discounts off before weighing the offers
+// again: the member's agreed price (pg_erp_member_prices()) or the list price.
+// null for a donation, which keeps its own price: the product's price is 0
+// there, and putting it back threw away the amount the visitor typed.
+function pg_offer_restored_line_price($order_item, $member_prices)
+{
+    if (($order_item['product_selection_type'] ?? '') === 'donation') {
+        return null;
+    }
+    $product_id = (int) $order_item['product_id'];
+    return isset($member_prices[$product_id]) ? $member_prices[$product_id]['price'] : $order_item['product_price'];
 }
 
 // How many units of a cart line a product discount covers. "The cheapest item
@@ -3711,19 +3807,45 @@ function pg_offer_cart_conditions_met($offer_id, $ship_to_id = 0)
     return true;
 }
 
-// Everything in the cart, counted by the piece. A gift the offer itself put
-// there does not help the customer reach the threshold that earns it, so rows
-// an offer added are left out.
+// The pieces among $lines (quantity, product_selection_type) that count toward
+// a "cart quantity" condition. A donation line is left out: its price is the
+// amount the visitor typed, not a piece, and since a donation is never the
+// cheapest item, counting it let a donation of 1 minor unit complete "buy N,
+// cheapest free" and make a real product free. A line whose product was
+// deleted (no selection type) still counts.
+function pg_offer_counted_quantity($lines)
+{
+    $quantity = 0;
+    foreach ((array) $lines as $line) {
+        if (($line['product_selection_type'] ?? '') === 'donation') {
+            continue;
+        }
+        $quantity += (int) $line['quantity'];
+    }
+    return $quantity;
+}
+
+// Everything in the cart, counted by the piece (pg_offer_counted_quantity()).
+// A gift the offer itself put there does not help the customer reach the
+// threshold that earns it, so rows an offer added are left out, and so are
+// donations.
 function pg_offer_cart_quantity($ship_to_id = 0)
 {
     $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
     if (($order_id <= 0) || pg_offer_guest_view()) {
         return 0;
     }
-    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (ship_to_id = '" . e($ship_to_id) . "')" : '';
-    return (int) db_value("SELECT SUM(quantity) FROM order_items
+    $sql_recipient = ((int) $ship_to_id > 0) ? "AND (order_items.ship_to_id = '" . e($ship_to_id) . "')" : '';
+    return pg_offer_counted_quantity(db_items("SELECT
 
-        WHERE (order_id = '" . e($order_id) . "') AND (added_by_offer = '0')" . pg_order_item_active_sql() . " $sql_recipient");
+            order_items.quantity,
+            products.selection_type AS product_selection_type
+
+        FROM order_items
+
+        LEFT JOIN products ON order_items.product_id = products.id
+
+        WHERE (order_items.order_id = '" . e($order_id) . "') AND (order_items.added_by_offer = '0')" . pg_order_item_active_sql() . " $sql_recipient"));
 }
 
 function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
@@ -3916,7 +4038,9 @@ function apply_offers_to_cart()
 
             products.id AS product_id,
 
-            products.price AS product_price
+            products.price AS product_price,
+
+            products.selection_type AS product_selection_type
 
         FROM order_items
 
@@ -3942,11 +4066,12 @@ function apply_offers_to_cart()
     foreach ($order_items as $order_item) {
         // if a product was found for this order item, then remove discount
         if ($order_item['product_id'] != '') {
+            $restored_price = pg_offer_restored_line_price($order_item, $member_prices);
             $query = "UPDATE order_items
 
                 SET
 
-                    price = '" . (isset($member_prices[(int) $order_item['product_id']]) ? $member_prices[(int) $order_item['product_id']]['price'] : $order_item['product_price']) . "',
+                    " . (($restored_price !== null) ? "price = '" . e($restored_price) . "'," : '') . "
 
                     offer_id = '0',
 
@@ -4101,6 +4226,8 @@ function apply_offers_to_cart()
             order_items.quantity,
 
             products.price AS product_price,
+
+            products.selection_type AS product_selection_type,
 
             ship_tos.complete,
 
@@ -4860,6 +4987,8 @@ function get_best_offer_id($offer_code, $scope = '')
             order_items.quantity,
 
             products.price AS product_price,
+
+            products.selection_type AS product_selection_type,
 
             ship_tos.complete,
 
