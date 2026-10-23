@@ -1,6 +1,6 @@
 ---
 name: cart-express-order-warnings
-description: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
+description: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 ---
 
 ## Which values do the cart and express order pages start before use?
@@ -38,6 +38,12 @@ not find a gift card for that code (…). Therefore, the gift card has been
 removed from your order." and the total no longer counts it. The same
 fallback guards the redemption step (race between check and charge). Before,
 both reads were `null` and warned; the message was already shown.
+
+## What does the plain-text receipt e-mail start? (#PR)
+`get_order_receipt_in_plain_text()` uses the same ship to 0 fallback, reads
+country names and the billing information page's labels with `?? ''` (an
+express order has no `billing_information_page_id`), and starts the card
+type/number and each recipient's `$output_shipping` as `''`. Same text.
 
 ## How was it checked?
 Sandbox (`tools/setup_sandbox.sh`), cart, quote cart and express order in
