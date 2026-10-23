@@ -1958,16 +1958,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * (pg_order_charges_reachable()), as submit_order() charges it. The express
  * order widget shows and posts these.
  *
- * @param array  $lines             per line, in the order of their ids: price, quantity, tax_total (the
- *                                  whole line), tax_rate (the line's, null when not kept), recurring,
- *                                  recurring_start_date, start_days (the product's start), gift_card
- * @param int    $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
- * @param int    $shipping
- * @param int    $gift_card_balance the applied gift cards' balance
- * @param float  $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE, or the decimal string it holds
- * @param string $today             Y-m-d
- * @param bool   $clearcommerce     the gateway charges recurring lines itself
- * @param bool   $settle_rates      keep each rate's total reachable (pg_order_charges_settle_rates())
+ * @param array        $lines             per line, in the order of their ids: price, quantity, tax_total
+ *                                        (the whole line), tax_rate (the line's, null when not kept),
+ *                                        recurring, recurring_start_date, start_days (the product's
+ *                                        start), gift_card
+ * @param int          $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
+ * @param int          $shipping
+ * @param int          $gift_card_balance the applied gift cards' balance
+ * @param float|string $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE, the decimal string the database gives
+ * @param string       $today             Y-m-d
+ * @param bool         $clearcommerce     the gateway charges recurring lines itself
+ * @param bool         $settle_rates      keep each rate's total reachable (pg_order_charges_settle_rates())
  * @return array subtotal, discount, tax, shipping, gift_card_discount, total, surcharge, total_with_surcharge
  */
 function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gift_card_balance, $surcharge_percent, $today, $clearcommerce, $settle_rates = false)
