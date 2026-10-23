@@ -34,6 +34,7 @@ function get_view_order_screen_content($properties)
     $order_discount = 0;
     $output_shipping = '';
     $output_discount = '';
+    $output_grand_tax = '';
     $output_grand_shipping = '';
     $output_delete_button = '';
 

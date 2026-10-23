@@ -48,6 +48,7 @@ function get_order_receipt_in_plain_text($order_id)
     // when the totals are assembled below.
     $subtotal = 0;
     $grand_tax = 0;
+    $grand_shipping = 0;
     // The lines charged today, for their tax after the order discount
     // (pg_order_items_charged_tax()).
     $charged_item_ids = array();
@@ -758,7 +759,10 @@ function get_order_receipt_in_plain_text($order_id)
     // start grand total off with just the subtotal (we will add tax and shipping later, if necessary)
     $grand_total = $subtotal;
 
+    // Only set for an order that has the row, but always printed.
     $output_discount = '';
+    $output_grand_tax = '';
+    $output_grand_shipping = '';
 
     // if there is an order discount from an offer, prepare order discount
     $order_discount = $figures['discount'] / 100;

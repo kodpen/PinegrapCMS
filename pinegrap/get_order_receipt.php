@@ -126,9 +126,15 @@ function get_order_receipt($properties) {
         // when the totals are assembled below.
         $subtotal = 0;
         $grand_tax = 0;
+        $grand_shipping = 0;
         // The lines charged today, for their tax after the order discount
         // (pg_order_items_charged_tax()).
         $charged_item_ids = array();
+
+        // Only set for an order that has the row, but always printed.
+        $output_discount = '';
+        $output_grand_tax = '';
+        $output_grand_shipping = '';
 
         // set shipping to false until we find out that this is a shipping order
         $shipping = false;
