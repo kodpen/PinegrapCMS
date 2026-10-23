@@ -12,7 +12,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 ## What does a staff move do?
 - `pg_return_staff_move($id, $to, $options, $user_id)`: refuses a rejection without a note (the customer is told why); `pg_return_move()` with `by` staff; `pg_audit('update', 'order_return', id, …)` over `pg_return_audit_fields()` (status, decision_note, carrier, carrier_code, tracking_number; no time stamps); one activity log line per target; the decision mail on approved/rejected. A failed mail never undoes the move; the screen says the mail could not be sent.
 - Sent back by staff: tracking number, carrier only when chosen (empty keeps the approval's). The refund deadline counts from that stamp.
-- Approved and received are announced by `pg_return_move()` itself (`order.return.approved` / `.received`, one per request of a bulk approval); rejected, shipped and closed are not (commerce/order-returns-api.md).
+- Approved and received are announced by `pg_return_move()` itself (`order.return.approved` / `.received`, one per request of a bulk approval); rejected, shipped and closed are not (commerce/order-returns-events.md).
 
 ## Which carrier and code does approval offer?
 - `pg_return_approval_defaults()`: the delivery's parcel carrier (`shipping_tracking_numbers.carrier`, else recognised from the method code with `pg_shipping_carrier()`), else `pg_shipping_default_carrier()`, else the latest approval's carrier; the code is the one given with the latest approval for that carrier (a contracted return code repeats). There is no setting for a fixed return carrier (it is written into the contract template); bulk approve uses the same suggestion and no note.
@@ -21,7 +21,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 - `pg_return_decision_mail_body()`: approved → carrier and code (or "you can send the goods back now"), the shop's note, and "tell us on your order page" when `pg_returns_customer_enabled()`; rejected → the shop's note, no carrier or code. Sent by `pg_return_send_decision_mail()` through the mail queue, sharing `pg_return_mail_context()` with the request mail.
 
 ## What is not here yet?
-- Staff recording a request from the panel (source `panel`). The refund, the ERP hand-off and the reminder job: commerce/order-returns-refund.md; the API, the webhooks and the Workspace trigger: commerce/order-returns-api.md.
+- Staff recording a request from the panel (source `panel`). The refund, the ERP hand-off and the reminder job: commerce/order-returns-refund.md; the API: commerce/order-returns-api.md; the webhooks and the Workspace trigger: commerce/order-returns-events.md.
 
 ## Tests?
 - `tests/returns_test.php` (filter, defaults, actions, audit fields, refund due, parcel delivery, mail body, order card). The screens ran on a `tools/setup_sandbox.sh` sandbox (PR #808 body).
