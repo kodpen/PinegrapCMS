@@ -23,3 +23,7 @@ description: How a visit answered from the page file cache is still counted (PR 
 - A replayed payload counts like a reload; the signature only stops counting pages of one's choice.
 - `utm_*`, `t` and `a` query codes: an address with a query is never served from the cache, so they are always counted by a drawn page.
 - A CDN copy taken from a drawn answer has no beacon; one taken from a file-cache hit has it.
+
+## Is a new visitor counted twice?
+- No for IPv4: the drawn first page dropped its new session (`pg_page_cache_drop_new_session()`), so the beacon's request opens another session, and `init_tracking()` finds the visitor row again through its 30-minute IP match (same IP, tracking and affiliate code).
+- IPv6: `INET_ATON()` is NULL (0), so that match joins every cookieless IPv6 visitor of the last 30 minutes into one row (`platform/page-cache-gate.md`); undercounts, never doubles.

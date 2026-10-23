@@ -312,6 +312,27 @@ function test_page_cache_request_scheme()
 	pg_assert_same(array('http', ''), pg_page_cache_request_scheme(array('HTTPS' => 'off')));
 	pg_assert_same(array('https', ''), pg_page_cache_request_scheme(array('SERVER_PORT' => '443')));
 	pg_assert_same(array('http', 'https'), pg_page_cache_request_scheme(array('HTTP_X_FORWARDED_PROTO' => 'HTTPS, http')));
+
+	// Every header Secure Mode trusts (check_proxy_ssl_headers()) says https
+	// the same way; anything else is no word at all, so a made-up header
+	// value cannot make a copy of its own.
+	$says_https = array(
+		'cf' => array('HTTP_CF_VISITOR' => '{"scheme":"https"}'),
+		'forwarded' => array('HTTP_FORWARDED' => 'for=192.0.2.1;proto=https'),
+		'ssl' => array('HTTP_X_FORWARDED_SSL' => 'on'),
+		'front_end' => array('HTTP_FRONT_END_HTTPS' => 'On'),
+		'port' => array('HTTP_X_FORWARDED_PORT' => '443'),
+	);
+
+	foreach ($says_https as $name => $server) {
+		pg_assert_same(array('http', 'https'), pg_page_cache_request_scheme($server), $name);
+	}
+
+	foreach (array('http', 'ftp', 'httpsx', 'abcdefghij', '') as $value) {
+		pg_assert_same(array('http', ''), pg_page_cache_request_scheme(array('HTTP_X_FORWARDED_PROTO' => $value)), 'X-Forwarded-Proto: ' . $value);
+	}
+
+	pg_assert_same(array('http', ''), pg_page_cache_request_scheme(array('HTTP_X_FORWARDED_PORT' => '8080', 'HTTP_X_FORWARDED_SSL' => 'off')));
 }
 
 function test_page_cache_file_path()
@@ -480,6 +501,116 @@ function test_page_cache_panel_action_dirties()
 	pg_assert_false(pg_page_cache_panel_dirties('user_online_check', array('file' => 'dashboard.php', 'write' => true)), 'a poll');
 	pg_assert_false(pg_page_cache_panel_dirties('get_widget_data', array('file' => 'designer.php', 'write' => false)), 'a read');
 	pg_assert_false(pg_page_cache_panel_dirties('x', null));
+}
+
+// The editor, the shared components and the file explorer each carry reads,
+// polls and writes on one write row; only a sub-action that changes what a
+// visitor may see makes stored pages old. The presence heartbeat runs every
+// twenty seconds in every open editor.
+function test_page_cache_panel_sub_action_dirties()
+{
+	$designer = array('file' => 'designer.php', 'write' => true);
+
+	foreach (array('presence', 'leave', 'lock_release', 'notes_fetch', 'note_save', 'page_load', 'preview_widgets', 'widget_ghosts', 'seo_check', 'revisions_list', 'revision_get', 'tab_layout', 'ai_status', '', 'nope') as $sub) {
+		pg_assert_false(pg_page_cache_panel_dirties('designer', $designer, array('sub_action' => $sub)), 'designer ' . $sub);
+	}
+
+	foreach (array('page_delete', 'page_detach', 'design_publish', 'design_delete', 'form_adopt', 'theme_look_save') as $sub) {
+		pg_assert_true(pg_page_cache_panel_dirties('designer', $designer, array('sub_action' => $sub)), 'designer ' . $sub);
+	}
+
+	pg_assert_false(pg_page_cache_panel_dirties('designer', $designer), 'no sub-action');
+	pg_assert_false(pg_page_cache_panel_dirties('designer', $designer, array('sub_action' => array('page_delete'))), 'not a string');
+
+	$file = array('file' => 'designer.php', 'write' => true);
+	pg_assert_false(pg_page_cache_panel_dirties('designer_file', $file, array('sub_action' => 'read')));
+	pg_assert_false(pg_page_cache_panel_dirties('designer_file', $file, array('sub_action' => 'list_folders')));
+	pg_assert_true(pg_page_cache_panel_dirties('designer_file', $file, array('sub_action' => 'save')));
+
+	$shared = array('file' => 'shared_component.php', 'write' => true);
+	pg_assert_false(pg_page_cache_panel_dirties('shared_component', $shared, array('sub_action' => 'get')));
+	pg_assert_false(pg_page_cache_panel_dirties('shared_component', $shared, array('sub_action' => 'list_all_pages')));
+	pg_assert_true(pg_page_cache_panel_dirties('shared_component', $shared, array('sub_action' => 'content_update')));
+
+	$explorer = array('file' => 'explorer.php', 'write' => true);
+
+	foreach (array('explorer_list', 'explorer_tree', 'get_breadcrumb', 'get_tables', 'explorer_file_get', 'explorer_catalog_list') as $type) {
+		pg_assert_false(pg_page_cache_panel_dirties('file_explorer', $explorer, array('type' => $type)), $type);
+	}
+
+	foreach (array('explorer_upload', 'explorer_file_save', 'delete_file', 'explorer_catalog_quick_edit', 'explorer_short_link_update') as $type) {
+		pg_assert_true(pg_page_cache_panel_dirties('file_explorer', $explorer, array('type' => $type)), $type);
+	}
+}
+
+// Every sub-action those handlers answer is sorted into one of the two lists,
+// so a new one is decided on rather than left out.
+function test_page_cache_panel_sub_actions_are_all_sorted()
+{
+	$handlers = array(
+		'designer' => array('includes/panel/designer.php', 'pg_panel_designer'),
+		'designer_file' => array('includes/panel/designer.php', 'pg_panel_designer_file'),
+		'shared_component' => array('includes/panel/shared_component.php', 'pg_panel_shared_component'),
+		'file_explorer' => array('includes/panel/explorer.php', 'pg_panel_file_explorer'),
+	);
+
+	$lists = pg_page_cache_panel_sub_actions();
+
+	foreach ($handlers as $action => $where) {
+		$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $where[0]));
+		$start = strpos($source, 'function ' . $where[1] . '(');
+		pg_assert_true($start !== false, $where[1]);
+		$next = strpos($source, "\nfunction ", (int) $start + 10);
+		$body = ($next === false) ? (string) substr($source, (int) $start) : (string) substr($source, (int) $start, $next - (int) $start);
+
+		// The handler's own switch is indented once inside the function;
+		// nested switches are indented deeper.
+		preg_match_all('/^        case \'([a-z0-9_]+)\':/m', $body, $found);
+		$cases = $found[1];
+
+		// The assistant's sub-actions are answered before the switch.
+		if ($action === 'designer') {
+			preg_match('/array\(\'ai_state\'[^)]*\)/', $body, $ai);
+			preg_match_all('/\'([a-z_]+)\'/', isset($ai[0]) ? $ai[0] : '', $ai_names);
+			pg_assert_true(count($ai_names[1]) > 0, 'the assistant sub-actions are found');
+			$cases = array_merge($cases, $ai_names[1]);
+		}
+
+		pg_assert_true(count($cases) > 3, $action . ' has sub-actions');
+
+		$sorted = array_merge($lists[$action]['dirty'], $lists[$action]['clean']);
+
+		pg_assert_same(array(), array_values(array_diff(array_unique($cases), $sorted)), $action . ': sub-actions in neither list');
+		pg_assert_same(array(), array_values(array_intersect($lists[$action]['dirty'], $lists[$action]['clean'])), $action . ': in both lists');
+	}
+}
+
+// A tool call of the MCP server runs an API route inside one POST; only a
+// write that went through makes stored pages old.
+function test_page_cache_mcp_dirties()
+{
+	pg_assert_true(pg_page_cache_mcp_dirties('PUT', false, 200));
+	pg_assert_true(pg_page_cache_mcp_dirties('post', false, 201));
+	pg_assert_true(pg_page_cache_mcp_dirties('DELETE', false, 204));
+	pg_assert_false(pg_page_cache_mcp_dirties('GET', false, 200), 'a read');
+	pg_assert_false(pg_page_cache_mcp_dirties('PATCH', true, 200), 'a rehearsal');
+	pg_assert_false(pg_page_cache_mcp_dirties('PATCH', null, 200), 'an invalid rehearsal flag');
+	pg_assert_false(pg_page_cache_mcp_dirties('DELETE', false, 404), 'a refusal');
+	pg_assert_false(pg_page_cache_mcp_dirties('POST', false, 422));
+}
+
+// api.php hands the request to the dirty rule; the MCP server asks once the
+// route has answered, before the result leaves.
+function test_page_cache_panel_and_mcp_wiring()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+	pg_assert_contains('pg_page_cache_panel_dirties($action, $entry, is_array($request) ? $request : array())', $actions);
+
+	$tools = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
+	$hook = strpos($tools, 'api_send_hook(function');
+	$dirty = strpos($tools, 'pg_page_cache_mcp_dirties($route[\'method\'], $split[\'dry_run\'], $status_code)');
+	$result = strpos($tools, 'pg_mcp_tool_result($id, $status_code, $body, $modern);');
+	pg_assert_true(($hook !== false) && ($dirty !== false) && ($result !== false) && ($hook < $dirty) && ($dirty < $result), 'in the send hook');
 }
 
 function test_page_cache_announce_dirties()

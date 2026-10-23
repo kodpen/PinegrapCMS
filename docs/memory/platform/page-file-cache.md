@@ -1,6 +1,6 @@
 ---
 name: page-file-cache
-description: Pinegrap's own page cache on disk (PR #1402): router serving, when a page is stored, the generation number that drops every copy, purge and sweep
+description: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 ---
 
 ## What does it do?
@@ -10,7 +10,7 @@ description: Pinegrap's own page cache on disk (PR #1402): router serving, when 
 
 ## When does the router serve?
 - `pg_page_cache_serve_check()`: TTL on, file cache on, `page_cache_generation` in the config row, GET/HEAD, no `?`, Host = `config.hostname` (no copy per made-up Host), no Authorization, no `pg_nc` / `software[auth]` / `pg_consent` cookie, `config.mobile` off, `maintenance_mode` off.
-- Key: sha1 of scheme (HTTPS/port 443), X-Forwarded-Proto, host, path, `config.version`. Secure Mode may redirect on the proxy header, so both are in it.
+- Key: sha1 of scheme (HTTPS/port 443), whether a proxy says https (the headers of `check_proxy_ssl_headers()`, reduced to `https` or ''), host, path, `config.version`. Secure Mode may redirect on the proxy's word, so both are in it; a made-up header value draws no copy of its own.
 
 ## When is a page stored?
 - Only where the router named it: `router_page_cache_store_here()` before the home-page and page fall-through `get_page.php` requires. Never a short link (its address draws another page) or a pattern 404.
@@ -21,13 +21,11 @@ description: Pinegrap's own page cache on disk (PR #1402): router serving, when 
 - Age < TTL fresh; < 2×TTL stale: the request that gets `<key>.lock` (`fopen 'x'`, taken over after 30 s) draws it again, the others get it with `X-Pinegrap-Cache: stale` and `s-maxage=0`. Older: a normal miss.
 
 ## How are copies dropped?
-- `config.page_cache_generation` (2026.11.0, 11.0.29). Raising it moves to a new folder, so nothing older is read. `pg_page_cache_mark_dirty()` raises it once at shutdown when the status is < 400.
-- Marked by: a non-GET/HEAD/OPTIONS request of a signed-in user or `integration.php` (`init.php`, `pg_page_cache_request_dirties()`; not `page_view.php`, `api.php`, `chat.php`, `software_update_check.php`, `workspace*`, MCP, OAuth); `api.php` write rows of the content/designer/commerce/shared_component/explorer handlers except add_to_cart and shipping lookups (`pg_page_cache_panel_dirties()`; dashboard polls are write rows too); `pg_announce()` of `page.*`, `product.*`, `product_group.*`, `file.*`; a product selling out in `submit_order.php`.
-- Raised directly: `pg_page_schedule_run()` when it moved a page; the settings save when the TTL changes; `pg_purge_caches()` (also sets the folder aside, "Page Cache").
-- Members' POSTs (cart while signed in) over-invalidate: costs hit ratio, never correctness. Stock counts after a sale, anonymous comments or records and legacy GET writes wait for the TTL.
+- `config.page_cache_generation` (2026.11.0, 11.0.29): raising it moves to a new folder, so nothing older is read. Which writes raise it: `page-cache-invalidation.md`.
 
 ## Who cleans the disk?
 - `job.php`, `pg_page_cache_sweep_run()`: at most every 10 minutes (`data/cache/page-sweep.txt`), 10 s budget: set-aside `page.old-*`, other generations, copies older than 2×TTL, dead locks, temp files; everything when the cache is off.
 
 ## What does a hit skip?
+- Setting `pg_nc`: a visitor whose session turned personal before the switch-on sees stored copies until a page is drawn for them (`page-cache-gate.md`).
 - `init_tracking()` and record views (counted by the beacon, `visitors/page-view-beacon.md`), the perf log, `waf_run('init')` content inspection (harmless for GET without a query; a new init-phase block rule must also run in the router phase).

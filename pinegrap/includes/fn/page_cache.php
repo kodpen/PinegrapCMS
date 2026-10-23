@@ -628,10 +628,12 @@ function pg_page_cache_file_enabled()
 }
 
 /**
- * The scheme the request came in on, as this server sees it, and what a proxy
- * in front says about it (X-Forwarded-Proto, first value, '' when absent).
- * Both go into the key: Secure Mode may trust the proxy's word and redirect,
- * so a copy drawn for one must never answer the other.
+ * The scheme the request came in on, as this server sees it, and whether a
+ * proxy in front says https ('https', else ''). Both go into the key: Secure
+ * Mode may trust the proxy's word and redirect, so a copy drawn for one must
+ * never answer the other. The proxy's word is read from the same headers as
+ * check_proxy_ssl_headers() (core.php, not loaded in the router) and reduced
+ * to one of two values, so a made-up header value draws no copy of its own.
  *
  * @param array $server $_SERVER
  * @return array [scheme, forwarded]
@@ -641,14 +643,20 @@ function pg_page_cache_request_scheme(array $server)
     $https = (!empty($server['HTTPS']) && (strtolower((string) $server['HTTPS']) !== 'off'))
         || (isset($server['SERVER_PORT']) && ((int) $server['SERVER_PORT'] === 443));
 
-    $forwarded = '';
+    $header = function ($name) use ($server) {
+        return (isset($server[$name]) && is_scalar($server[$name])) ? strtolower(trim((string) $server[$name])) : '';
+    };
 
-    if (isset($server['HTTP_X_FORWARDED_PROTO']) && is_string($server['HTTP_X_FORWARDED_PROTO'])) {
-        $first = explode(',', $server['HTTP_X_FORWARDED_PROTO']);
-        $forwarded = substr((string) preg_replace('/[^a-z]/', '', strtolower($first[0])), 0, 10);
-    }
+    $first = explode(',', $header('HTTP_X_FORWARDED_PROTO'));
 
-    return array($https ? 'https' : 'http', $forwarded);
+    $proxy_https = (trim($first[0]) === 'https')
+        || (strpos($header('HTTP_CF_VISITOR'), '"scheme":"https"') !== false)
+        || (bool) preg_match('/proto\s*=\s*"?https"?/', $header('HTTP_FORWARDED'))
+        || ($header('HTTP_X_FORWARDED_SSL') === 'on')
+        || ($header('HTTP_FRONT_END_HTTPS') === 'on')
+        || ($header('HTTP_X_FORWARDED_PORT') === '443');
+
+    return array($https ? 'https' : 'http', $proxy_https ? 'https' : '');
 }
 
 /**
@@ -1365,23 +1373,130 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
  * Whether an api.php action may change what pages show: a write of the
  * content, designer, commerce, shared component or file explorer handlers,
  * except the shop's visitor actions. Dashboard, notification and system
- * polls are writes of their own and leave stored pages alone.
+ * polls are writes of their own and leave stored pages alone. The actions
+ * that carry many sub-actions on one write row (pg_page_cache_panel_sub_actions())
+ * count only for a sub-action that changes what a visitor may see: the
+ * editor's presence heartbeat alone runs every twenty seconds.
  *
  * @param string     $action
- * @param array|null $entry its pg_panel_actions() row
+ * @param array|null $entry   its pg_panel_actions() row
+ * @param array      $request the request api.php decoded
  * @return bool
  */
-function pg_page_cache_panel_dirties($action, $entry)
+function pg_page_cache_panel_dirties($action, $entry, array $request = array())
 {
     if (!is_array($entry) || empty($entry['write'])) {
         return false;
     }
 
-    if (in_array((string) $action, array('add_to_cart', 'get_delivery_date', 'get_shipping_methods'), true)) {
+    $action = (string) $action;
+
+    if (in_array($action, array('add_to_cart', 'get_delivery_date', 'get_shipping_methods'), true)) {
         return false;
     }
 
+    $sub_actions = pg_page_cache_panel_sub_actions();
+
+    if (isset($sub_actions[$action])) {
+        $key = $sub_actions[$action]['key'];
+        $sub = (isset($request[$key]) && is_string($request[$key])) ? $request[$key] : '';
+
+        return in_array($sub, $sub_actions[$action]['dirty'], true);
+    }
+
     return in_array((string) ($entry['file'] ?? ''), array('content.php', 'designer.php', 'commerce.php', 'shared_component.php', 'explorer.php'), true);
+}
+
+/**
+ * The api.php actions that carry many sub-actions on one write row, the
+ * request key that names the sub-action, the ones that may change what a
+ * visitor sees ('dirty') and the ones that do not ('clean': reads, polls,
+ * the editor's own state, templates and assistant proposals that reach no
+ * page until it is saved). A sub-action in neither list leaves stored pages
+ * alone; tests/page_cache_test.php checks that every one the handlers answer
+ * is in a list.
+ *
+ * @return array
+ */
+function pg_page_cache_panel_sub_actions()
+{
+    return array(
+        'designer' => array(
+            'key' => 'sub_action',
+            'dirty' => array('form_adopt', 'page_detach', 'page_delete', 'import_paste', 'design_publish',
+                'design_rename', 'design_delete', 'theme_save', 'theme_look_save', 'theme_palette_save'),
+            'clean' => array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch', 'form_fields',
+                'design_targets', 'selectable_pages', 'page_load', 'import_fragment', 'seo_check',
+                'widget_ghosts', 'preview_widgets', 'template_prepare', 'template_from_design',
+                'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
+                'theme_look_css', 'theme_palette_css',
+                'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
+        ),
+        'designer_file' => array(
+            'key' => 'sub_action',
+            'dirty' => array('create', 'delete', 'save'),
+            'clean' => array('list_folders', 'read'),
+        ),
+        'shared_component' => array(
+            'key' => 'sub_action',
+            'dirty' => array('create', 'update', 'content_update', 'set_content_editable', 'update_config',
+                'rename', 'delete', 'delete_many'),
+            'clean' => array('list', 'usage_all', 'prefetch', 'get', 'list_custom_forms',
+                'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',
+                'list_product_groups', 'list_catalog_pages', 'list_catalog_listing_pages',
+                'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields'),
+        ),
+        'file_explorer' => array(
+            'key' => 'type',
+            'dirty' => array('explorer_create_folder', 'explorer_create_file', 'explorer_rename', 'explorer_move',
+                'explorer_paste', 'explorer_delete_files', 'explorer_upload', 'explorer_folder_access_set',
+                'explorer_recycle_delete', 'explorer_recycle_restore', 'explorer_hard_delete',
+                'explorer_optimize', 'explorer_webp', 'explorer_folder_settings_set',
+                'explorer_pages_bulk_edit', 'explorer_files_bulk_edit', 'explorer_file_save',
+                'explorer_rotate', 'explorer_backup_extract', 'explorer_zip_create', 'explorer_zip_extract',
+                'explorer_short_link_create', 'explorer_short_link_rename', 'explorer_short_link_update',
+                'explorer_short_link_duplicate', 'explorer_short_link_delete', 'explorer_catalog_recycle',
+                'explorer_catalog_restore', 'explorer_catalog_purge', 'explorer_catalog_enable',
+                'explorer_products_bulk_edit', 'explorer_catalog_quick_edit', 'explorer_catalog_access_set',
+                'explorer_catalog_membership_remove', 'explorer_catalog_create_group',
+                'explorer_catalog_rename', 'explorer_catalog_paste', 'delete_file'),
+            'clean' => array('explorer_list', 'explorer_tree', 'explorer_folder_options',
+                'explorer_folder_access_get', 'explorer_delete_check', 'explorer_folder_settings_get',
+                'explorer_bulk_page_options', 'explorer_bulk_file_options', 'explorer_shared_list',
+                'explorer_files_design', 'explorer_file_get', 'explorer_office_preview',
+                'explorer_file_usage', 'explorer_backups_list', 'explorer_backup_zip',
+                'explorer_backup_rename', 'explorer_backup_copy', 'explorer_backup_delete',
+                'explorer_backup_upload', 'explorer_backup_chmod',
+                'explorer_erp_tree', 'explorer_erp_list', 'explorer_short_links_list',
+                'explorer_short_link_options', 'explorer_catalog_list', 'explorer_catalog_tree',
+                'explorer_catalog_pages', 'explorer_bulk_product_options', 'explorer_catalog_access_get',
+                'get_folder_id', 'get_breadcrumb', 'get_tables'),
+        ),
+    );
+}
+
+/**
+ * Whether a tool call of the MCP server changed what pages may show: its API
+ * route writes (not GET or HEAD), it was no rehearsal (X-Dry-Run; null is an
+ * invalid flag, refused) and the route answered with success. The server
+ * answers reads with POST too, so the request method says nothing.
+ *
+ * @param string    $method      the route's method
+ * @param bool|null $dry_run
+ * @param int       $status_code what the route answered with
+ * @return bool
+ */
+function pg_page_cache_mcp_dirties($method, $dry_run, $status_code)
+{
+    if (in_array(strtoupper((string) $method), array('', 'GET', 'HEAD', 'OPTIONS'), true)) {
+        return false;
+    }
+
+    if ($dry_run !== false) {
+        return false;
+    }
+
+    return ((int) $status_code >= 200) && ((int) $status_code < 300);
 }
 
 /**

@@ -28,4 +28,4 @@ description: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page an
 - Sessions personal before the switch-on lack `pg_nc` until their next origin answer: a CDN may show them the anonymous copy once; nothing leaks.
 - Fail-closed cost: `software.urls`, an empty `software.liveforms` or an auto dialog keep the session personal for the visit (a site with an auto dialog caches nothing); `/` with the language redirect never caches. Unchecked on a real session.
 
-Related: page-file-cache.md, page-cache-proxy-rules.md, visitors/page-view-beacon.md
+Related: page-cache-decisions.md, page-file-cache.md, page-cache-invalidation.md

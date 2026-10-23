@@ -357,7 +357,16 @@ function pg_mcp_tool_call($id, $params, $modern) {
 
 	api_header('X-Dry-Run', $split['dry_run'] ? 'true' : '');
 
-	api_send_hook(function ($status_code, $body) use ($id, $modern) {
+	api_send_hook(function ($status_code, $body) use ($id, $modern, $route, $split) {
+
+		// A write that went through makes every page the page cache keeps
+		// old once the request ends. Every tool call is a POST, so init.php
+		// cannot tell, and most routes announce nothing (pg_announce()).
+		if (function_exists('pg_page_cache_mcp_dirties') && pg_page_cache_mcp_dirties($route['method'], $split['dry_run'], $status_code)) {
+
+			pg_page_cache_mark_dirty();
+
+		}
 
 		pg_mcp_tool_result($id, $status_code, $body, $modern);
 

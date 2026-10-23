@@ -404,7 +404,7 @@ function pg_panel_dispatch($action, $request)
 
     // A write that may change what pages show makes every page the page
     // cache keeps old once the request ends (includes/fn/page_cache.php).
-    if (function_exists('pg_page_cache_panel_dirties') && pg_page_cache_panel_dirties($action, $entry)) {
+    if (function_exists('pg_page_cache_panel_dirties') && pg_page_cache_panel_dirties($action, $entry, is_array($request) ? $request : array())) {
         pg_page_cache_mark_dirty();
     }
 
