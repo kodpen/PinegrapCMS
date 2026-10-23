@@ -26,8 +26,8 @@ description: Accounts a form auto-registers or an administrator creates (add use
 - The designer token `__new_account_password` (widgets.php) carries the same note; no separate link token or new designer label yet.
 
 ## What does an administrator's "New Account" e-mail carry?
-- The set password link instead of the password (`add_user.php`, `import_users.php` with "Notify User"): `core/admin-new-account-email-link.md`, PR #1217.
+- A set password link, never the password (`add_user.php`, `import_users.php`): `core/admin-new-account-email-link.md` (#1217).
 
 ## What is still open?
-- `reset_password.php` mails the password an administrator resets and repeats it with `h($random_password)` in the notice: separate fix.
-- Tests: `tests/auto_registration_set_password_test.php`, `tests/add_user_set_password_test.php`.
+- `reset_password.php` still mails the password an administrator resets and repeats it in the notice: separate fix.
+- Tests: `tests/auto_registration_set_password_test.php`.
