@@ -2979,13 +2979,17 @@ function submit_order($type) {
                         }
                     
                         // The bank's 3-D Secure return posts no card fields and
-                        // skips the card checks above, so there is no card number.
-                        // The instalment charge the bank took is the one kept in
-                        // iyzipay_3ds_state, so iyzico is not asked for a new quote.
+                        // skips the card checks above, so there is no card number
+                        // or expiry. The instalment charge the bank took is the one
+                        // kept in iyzipay_3ds_state and the instalment count comes
+                        // with the bank's answer, so the instalment limit is still
+                        // checked but iyzico is not asked for a new quote.
                         $iyzipay_threeds_return = (($_GET['mode'] ?? '') == 'iyzipay_threedsecure_return');
 
                         if ($iyzipay_threeds_return) {
                             $card_number = '';
+                            $expiration_month = '';
+                            $expiration_year = '';
                         }
 
                         // Card BIN
@@ -2999,12 +3003,12 @@ function submit_order($type) {
                     
                         // Buyer installment selection
                         $get_buyer_payment_installment_selection = (int)$liveform->get_field_value('installment');
-                        if (!$iyzipay_threeds_return && ($get_buyer_payment_installment_selection >= 1)) {
+                        if ($get_buyer_payment_installment_selection >= 1) {
                             if ($get_buyer_payment_installment_selection > $accepted_payment_installments) {
                                 $liveform->mark_error('payment_gateway', lang('Payment Installment cannot be bigger than accepted Installment!'));
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                                 exit();
-                            } else {
+                            } elseif (!$iyzipay_threeds_return) {
                                 $payment_installment = $get_buyer_payment_installment_selection;
                             
                                 // Retrieve installment info

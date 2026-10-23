@@ -20,12 +20,14 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_bridge.php');
 
-// The Iyzipay block of submit_order.php, from its case to the direct payment.
+// The Iyzipay block of submit_order.php, from its case in the gateway switch
+// to the direct payment. An earlier `case 'Iyzipay':` (the cURL check) comes
+// first in the file, so the block starts at the last one before its end.
 function payment_iyzico_threeds_return_test_block()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
-	$start = strpos($source, "case 'Iyzipay':");
-	$end = ($start !== false) ? strpos($source, '// Direct (non-3DS) payment', $start) : false;
+	$end = strpos($source, '// Direct (non-3DS) payment');
+	$start = ($end !== false) ? strrpos(substr($source, 0, $end), "case 'Iyzipay':") : false;
 
 	return (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
 }
@@ -48,6 +50,8 @@ function test_payment_iyzico_threeds_return_records_the_kept_charge()
 // the base is 57.92, iyzico quotes a 2.05 charge and the card is charged 2.04.
 // Only the kept 2.04 in orders.installment_charges gives the invoice total
 // erp_invoice_from_order() accepts; a new quote (2.05) or none (0) is refused.
+// Its charges_taxed (null: the store's setting) is true wherever the charge is
+// lowered: pg_order_charges_settle_rates() needs pg_order_charges_taxed().
 function test_payment_iyzico_threeds_return_order_is_invoiced()
 {
 	$lines = array(11 => array('amount' => 3995, 'rate' => '20.000', 'tax' => 799));
@@ -73,13 +77,15 @@ function test_payment_iyzico_threeds_return_order_is_invoiced()
 	}
 }
 
-// The return posts no card: the card number is set before the BIN is read,
-// iyzico is not asked for a new instalment quote, and after the amount check
-// the order takes the state row's totals.
+// The return posts no card: the card number and expiry are set before they
+// are read, the instalment limit is still checked but iyzico is not asked for
+// a new instalment quote, and after the amount check the order takes the
+// state row's totals.
 function test_payment_iyzico_threeds_return_takes_the_kept_figures()
 {
 	$block = payment_iyzico_threeds_return_test_block();
 	pg_assert_true($block !== '', 'the Iyzipay block is found');
+	pg_assert_contains('IyzipayBootstrap::init();', $block, 'the block is the gateway case');
 
 	pg_assert_contains("\$iyzipay_threeds_return = ((\$_GET['mode'] ?? '') == 'iyzipay_threedsecure_return');", $block);
 	pg_assert_true((bool) preg_match("/if \\(\\\$iyzipay_threeds_return\\) \\{\\s*\\\$card_number = '';/", $block), 'no card number on the return');
@@ -88,7 +94,20 @@ function test_payment_iyzico_threeds_return_takes_the_kept_figures()
 	$bin = strpos($block, '$card_binNumber = substr($card_number, 0, 6);');
 	pg_assert_true(($card !== false) && ($bin !== false) && ($card < $bin), 'the card number is set before the BIN is read');
 
-	pg_assert_contains('if (!$iyzipay_threeds_return && ($get_buyer_payment_installment_selection >= 1)) {', $block, 'no instalment quote on the return');
+	$flat = (string) preg_replace('/\s+/', ' ', $block);
+	pg_assert_contains("if (\$iyzipay_threeds_return) { \$card_number = ''; \$expiration_month = ''; \$expiration_year = ''; }", $flat, 'no card expiry on the return');
+
+	$expiry = strpos($block, "\$expiration_year = '';");
+	$card_expiry = strpos($block, '$paymentCard->setExpireMonth($expiration_month);');
+	pg_assert_true(($expiry !== false) && ($card_expiry !== false) && ($expiry < $card_expiry), 'the expiry is set before the card in the request reads it');
+
+	// The limit check runs on the return as before; only the quote is skipped.
+	$selection = strpos($block, 'if ($get_buyer_payment_installment_selection >= 1) {');
+	$limit = ($selection !== false) ? strpos($block, "lang('Payment Installment cannot be bigger than accepted Installment!')", $selection) : false;
+	$skip = ($limit !== false) ? strpos($block, '} elseif (!$iyzipay_threeds_return) {', $limit) : false;
+	$quote = strpos($block, 'new \Iyzipay\Request\RetrieveInstallmentInfoRequest()');
+	pg_assert_true(($selection !== false) && ($limit !== false), 'the instalment limit is checked on the return too');
+	pg_assert_true(($skip !== false) && ($quote !== false) && ($skip < $quote), 'no instalment quote on the return');
 
 	$return = strpos($block, "} elseif ((\$_GET['mode'] ?? '') == 'iyzipay_threedsecure_return') {");
 	$check = ($return !== false) ? strpos($block, 'iyzipay_cancel_payment(', $return) : false;
