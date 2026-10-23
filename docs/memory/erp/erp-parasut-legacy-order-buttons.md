@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-order-buttons
-description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): when they give way to the ERP's documents card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#PR)
+description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): when they give way to the ERP's documents card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#1418)
 ---
 
 ## What are the legacy Paraşüt buttons?
@@ -13,7 +13,7 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 ## What do the buttons do on an order already sent?
 - Nothing: each refuses before any request when its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) holds a record's id, and is drawn disabled. The unsure mark `?` is not one (erp-parasut-legacy-invoice.md). The invoice id is kept once the sales invoice exists, even if its e-document failed or is converting (job id not kept): finish it in Paraşüt. Before #1084 each press raised another sales invoice and e-document (#759); before #1407 each E-Shipment press posted another outgoing `shipment_documents` (stock out twice, first id overwritten).
 
-## Which VKN/TCKN does "E-Shipment" check? (#PR)
+## Which VKN/TCKN does "E-Shipment" check? (#1418)
 - `_parasut_shipment_identity_refusal()`, skipped for an order already shipped: with `PARASUT_TC_IN_FIELD` custom_field_1/2, the order's field (what the buyer card is opened with, `_parasut_order_identity()`), named as on the order screen ("Custom Field #1"); with "do not use" (the default) or tax_number, the contact's `tax_number`, as before. Before, custom-field stores were refused although the number was on the order.
 
 ## What is left?
