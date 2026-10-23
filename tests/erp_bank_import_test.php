@@ -377,3 +377,68 @@ function test_erp_bank_amount_leading_separator()
 	pg_assert_same(1200, erp_bank_amount('12'), 'whole');
 	pg_assert_same(null, erp_bank_amount('TL'), 'no number');
 }
+
+// A line's first occurrence keeps the hash lines were stored under before, so
+// a statement taken in again still meets the lines already there.
+function test_erp_bank_line_hash_first_occurrence_unchanged()
+{
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ'), 'default occurrence');
+	pg_assert_same(erp_bank_line_hash(7, '2026-10-15', -850, 'EFT UCRETI'), erp_bank_line_hash(7, '2026-10-15', -850, 'eft ucreti', 1), 'letter case aside');
+}
+
+// The second real line of the same day, amount and words is a line of its own.
+function test_erp_bank_line_hash_repeated_line()
+{
+	$first = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 1);
+	$second = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2);
+	$third = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 3);
+
+	pg_assert_true($first !== $second, 'second differs from first');
+	pg_assert_true($second !== $third, 'third differs from second');
+	pg_assert_same($second, erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2), 'the same file gives the same hashes again');
+	pg_assert_true(erp_bank_line_hash(8, '2026-10-15', -850, 'EFT ÜCRETİ', 2) !== $second, 'another bank account');
+}
+
+// The statement's four lines, two of them the same fee: every line gets its
+// own hash, and reading the file again gives the same four.
+function test_erp_bank_line_hashes_count_repeats_per_file()
+{
+	$lines = array(
+		array('2026-10-15', -100000, 'EFT GİDEN ABC LTD'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+		array('2026-10-15', -200000, 'EFT GİDEN XYZ AŞ'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+	);
+
+	$hashes = function () use ($lines) {
+		$seen = array();
+		$out = array();
+
+		foreach ($lines as $line) {
+			$out[] = erp_bank_line_hash(7, $line[0], $line[1], $line[2], erp_bank_line_occurrence($seen, 7, $line[0], $line[1], $line[2]));
+		}
+
+		return $out;
+	};
+
+	$first = $hashes();
+
+	pg_assert_same(4, count(array_unique($first)), 'four lines, four hashes');
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), $first[1], 'the first fee keeps the old hash');
+	pg_assert_same($first, $hashes(), 'taken in again, the same hashes');
+}
+
+// An amount past 2^31 kurus is a float on 32-bit PHP. The hash takes it as the
+// statement build always wrote it into the key, without an (int) cast that
+// would wrap it, so a large line stored before still turns a re-upload away.
+function test_erp_bank_line_hash_large_amount()
+{
+	$amount = erp_bank_amount('-30.000.000,00');
+
+	pg_assert_same(sha1('7|2026-10-15|' . $amount . '|eft giden'), erp_bank_line_hash(7, '2026-10-15', $amount, 'EFT GIDEN'), 'first occurrence as before');
+	pg_assert_same('7|2026-10-15|-3000000000|eft giden', '7|2026-10-15|' . $amount . '|eft giden', 'the key holds the amount unwrapped');
+
+	$seen = array();
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', $amount, 'EFT GIDEN'), 'first');
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', erp_bank_amount('12.949.672,96'), 'EFT GIDEN'), 'an amount the cast would wrap onto is counted apart');
+}
