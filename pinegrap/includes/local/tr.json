@@ -26699,5 +26699,6 @@
     "Tab character": "Sekme karakteri",
     "Vertical bar (|)": "Dikey çizgi (|)",
     "Split again": "Yeniden böl",
-    "If the columns come out wrong, choose the separator and split the lines again.": "Sütunlar yanlış ayrıldıysa ayırıcıyı seçip satırları yeniden bölün."
+    "If the columns come out wrong, choose the separator and split the lines again.": "Sütunlar yanlış ayrıldıysa ayırıcıyı seçip satırları yeniden bölün.",
+    "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı."
 }
