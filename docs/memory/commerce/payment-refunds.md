@@ -24,7 +24,7 @@ description: Money back through payment drivers (PRs #873, #903): the order's dr
   - `Auto-refund EXCEPTION — order #N. MANUAL REFUND REQUIRED. <message>` when `raw.exception` is set (pg_payment_call() caught it).
   Both failures → `manual_required`.
 - `<service>` = `pg_payment_log_name($key)`: the definition's optional `log_name`, default `label`. Both iyzico drivers say `Iyzipay`, so the lines are the gateway code's.
-- A failure's `raw.message` is the service's own words (`''` when none); the iyzico refund and cancel keep it there.
+- A failure's `raw.message` is the service's own words (`''` when none); with `raw.exception` set it is PHP's text, for the log (pg_payment_call(), iyzico refund's unreadable body: PR #1260).
 
 ## What stays outside?
 - `iyzipay_cancel_payment()` and the 3-D Secure return in submit_order.php (plan step 2b).
