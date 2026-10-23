@@ -9,7 +9,7 @@ description: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched 
 - PHP 7.1 only: an `object` parameter type is read as a class named `Iyzipay\Model\Mapper\object`. With the property types dropped alone, the refund would leave and every answer, success included, would read as "an answer that cannot be read".
 - CI never saw it: it runs PHP 8.3, and `tools/lint.php` and `tools/phpcs.xml` skip the folder.
 
-## What was changed?
+## What was changed? (#1353)
 - 24 files under `src/Iyzipay/Request/` and `src/Iyzipay/Model/` (all typed properties of the SDK): `private string $x;` became `private $x;`, defaults kept, nothing else. A getter that reads a property never set throws TypeError (null against its return type) instead of Error; the `?? null` getters still give null. Nothing tells the two apart: `pg_payment_call()` takes both as `\Error`, and the refund driver's TypeError catch wraps only `create()`, after it set every field of the request.
 - `Model/Mapper/AmountBaseRefundMapper.php`: `object $jsonObject` became `\stdClass $jsonObject`. json_decode() gives a \stdClass for every JSON object; any other body is still the TypeError the refund driver reads as unreadable (payment-unclear-answers.md). Only the log text changed (stdClass for object).
 
