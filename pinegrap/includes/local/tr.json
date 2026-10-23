@@ -26665,9 +26665,10 @@
     "A secret key has no spaces or special characters.": "Gizli anahtar boşluk ya da özel karakter içermez.",
     "The stored secret key cannot be read with this site's encryption key. Enter it again.": "Saklanan gizli anahtar bu sitenin şifreleme anahtarıyla okunamıyor. Yeniden girin.",
     "{var:1} did not accept these keys ({var:2}).": "{var:1} bu anahtarları kabul etmedi ({var:2}).",
-    "The {var:1} keys were saved without being checked: {var:2}": "{var:1} anahtarları denetlenmeden kaydedildi: {var:2}",
     "Checks that a form is sent by a person; loaded only on pages with a form.": "Bir formun bir insan tarafından gönderildiğini denetler; yalnızca form bulunan sayfalarda yüklenir.",
     "Spam Protection": "Spam Koruması",
     "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits": "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site anahtarı, gizli anahtar, stopforumspam, form sınırları",
-    "CAPTCHA is on ({var:1})": "CAPTCHA açık ({var:1})"
+    "CAPTCHA is on ({var:1})": "CAPTCHA açık ({var:1})",
+    "This server has no cURL extension, so it cannot check a CAPTCHA with the provider and forms show the built-in question.": "Bu sunucuda cURL eklentisi yok; CAPTCHA sağlayıcıyla denetlenemiyor ve formlar yerleşik soruyu gösteriyor.",
+    "{var:1} could not be reached from this server ({var:2}), so it was not switched on and forms show the built-in question. Its keys were saved; choose it again to retry.": "{var:1} bu sunucudan erişilemedi ({var:2}); bu yüzden açılmadı ve formlar yerleşik soruyu gösteriyor. Anahtarları kaydedildi; yeniden denemek için onu tekrar seçin."
 }

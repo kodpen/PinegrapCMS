@@ -284,3 +284,77 @@ function test_captcha_settings_decide_fields_not_drawn()
 	pg_assert_same('none', $decision['apps']['turnstile']['action']);
 	pg_assert_same('none', $decision['apps']['hcaptcha']['action']);
 }
+
+// The provider's answer to the settings check: refused keys are marked on the
+// secret, a provider this server cannot reach is kept off with its keys saved,
+// and a good answer changes nothing.
+function test_captcha_settings_answer()
+{
+	$empty = array('turnstile' => pg_captcha_test_app('', '', false), 'hcaptcha' => pg_captcha_test_app('', '', false));
+	$decision = pg_captcha_settings_decide(pg_captcha_test_post('turnstile', array(
+		'captcha_turnstile_site_key' => '0xsite',
+		'captcha_turnstile_secret'   => '0xsecret',
+	)), $empty, '');
+
+	pg_assert_same($decision, pg_captcha_settings_answer($decision, array('outcome' => 'retry', 'detail' => 'invalid-input-response')), 'keys accepted');
+	pg_assert_same($decision, pg_captcha_settings_answer($decision, array('outcome' => 'pass', 'detail' => 'HTTP 200')), 'passed');
+
+	$refused = pg_captcha_settings_answer($decision, array('outcome' => 'misconfigured', 'detail' => 'invalid-input-secret'));
+	pg_assert_true(isset($refused['marks']['captcha_turnstile_secret']), 'refused keys are marked');
+	pg_assert_true(strpos($refused['marks']['captcha_turnstile_secret'], 'invalid-input-secret') !== false, 'with the code');
+
+	$unreachable = pg_captcha_settings_answer($decision, array('outcome' => 'unavailable', 'detail' => 'Could not resolve host'));
+	pg_assert_same(array(), $unreachable['marks'], 'not a mistake in the keys');
+	pg_assert_same('save', $unreachable['apps']['turnstile']['action'], 'the keys are kept');
+	pg_assert_same(false, $unreachable['apps']['turnstile']['enabled'], 'but not switched on');
+	pg_assert_same('', $unreachable['provider'], 'forms keep the built-in question');
+	pg_assert_same(1, count($unreachable['notices']));
+}
+
+// Settings without cURL are refused, so no provider is switched on that
+// could never be asked.
+function test_captcha_settings_refusal_without_curl()
+{
+	if (function_exists('curl_init')) {
+		pg_assert_true(strpos(pg_captcha_settings_refusal(), 'cURL') === false, 'cURL present');
+	} else {
+		pg_assert_true(strpos(pg_captcha_settings_refusal(), 'cURL') !== false, 'cURL missing');
+	}
+}
+
+// A liveform stand-in that only keeps errors.
+class pg_captcha_test_form
+{
+	public $errors = array();
+
+	public function mark_error($field, $sentence)
+	{
+		$this->errors[$field] = $sentence;
+	}
+
+	public function check_form_errors()
+	{
+		return count($this->errors) > 0;
+	}
+}
+
+// A missing token is sent back without asking the provider; a form that
+// already has an error is not checked at all.
+function test_captcha_check_without_asking()
+{
+	$active = array('provider' => 'turnstile', 'site_key' => '0xsite', 'secret' => '0xsecret');
+	$post = $_POST;
+
+	$_POST = array();
+	$form = new pg_captcha_test_form();
+	pg_assert_same('retry', pg_captcha_check($form, $active), 'no token');
+	pg_assert_true(isset($form->errors['captcha_submitted_answer']), 'marked on the answer');
+
+	$_POST = array('cf-turnstile-response' => 'made-up');
+	$form = new pg_captcha_test_form();
+	$form->mark_error('email', 'required');
+	pg_assert_same('skipped', pg_captcha_check($form, $active), 'an earlier error');
+	pg_assert_same(array('email'), array_keys($form->errors), 'nothing added');
+
+	$_POST = $post;
+}

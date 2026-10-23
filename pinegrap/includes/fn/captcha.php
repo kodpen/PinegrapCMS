@@ -138,7 +138,9 @@ function pg_captcha_active()
 
     $active = null;
 
-    if (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !pg_connect_can_seal()) {
+    // Without cURL no provider can be asked, so forms keep the built-in
+    // question instead of refusing every submission.
+    if (!function_exists('curl_init') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !pg_connect_can_seal()) {
         return $active;
     }
 
@@ -388,12 +390,21 @@ function pg_captcha_verify_request($provider, $site_key, $secret, $token, $ip)
  * visitor sees. Fails closed: when the provider cannot judge, the submission
  * is refused and the visitor asked to try again.
  *
+ * A form that already has an error is sent back anyway and draws a fresh
+ * widget, so the provider is not asked: a script posting made-up tokens with
+ * a broken form cannot make this server call out on every post.
+ *
  * @param object $liveform
  * @param array  $active pg_captcha_active()
- * @return string pg_captcha_verify_outcome()
+ * @return string pg_captcha_verify_outcome(), or 'skipped' when the form
+ *                already had an error
  */
 function pg_captcha_check($liveform, $active)
 {
+    if ($liveform->check_form_errors()) {
+        return 'skipped';
+    }
+
     $token = pg_captcha_token($active['provider'], $_POST);
 
     if ($token === '') {
@@ -500,6 +511,10 @@ function pg_captcha_settings_refusal()
         return lang('This site has no encryption key, so it cannot keep the secret key of a CAPTCHA provider.');
     }
 
+    if (!function_exists('curl_init')) {
+        return lang('This server has no cURL extension, so it cannot check a CAPTCHA with the provider and forms show the built-in question.');
+    }
+
     return '';
 }
 
@@ -556,9 +571,11 @@ function pg_captcha_settings_fields()
         $label = pg_captcha_providers()[$selected]['label'];
 
         if (pg_captcha_provider() !== $selected) {
-            $warning = lang(array(
+            $warning = !function_exists('curl_init')
+                ? lang('This server has no cURL extension, so it cannot check a CAPTCHA with the provider and forms show the built-in question.')
+                : lang(array(
                 'string' => 'The {var:1} keys are incomplete or cannot be read with this site\'s encryption key, so forms show the built-in question. Enter them again.',
-                'vars'   => array(h($label))));
+                    'vars'   => array(h($label))));
         } elseif (function_exists('waf_setting') && (trim((string) waf_setting('security_csp_policy', '')) !== '')) {
             $warning = lang(array(
                 'string' => 'This site sends its own Content-Security-Policy (Firewall settings). Add these sources to it, or {var:1} cannot load: {var:2}',
@@ -775,19 +792,51 @@ function pg_captcha_settings_check($post, $liveform)
     }
 
     $provider = $decision['ask'];
-    $definition = pg_captcha_provider_definition($provider);
 
     // A made-up token: a provider that accepts the keys answers that the
     // token is not valid, one that does not names the secret or site key.
     $result = pg_captcha_verify_request($provider, $decision['apps'][$provider]['site_key'], $decision['secret'], 'pinegrap-settings-check', '');
 
+    $decision = pg_captcha_settings_answer($decision, $result);
+
+    foreach ($decision['marks'] as $field => $sentence) {
+        if (!$liveform->check_field_error($field)) {
+            $liveform->mark_error($field, $sentence);
+        }
+    }
+
+    return $decision;
+}
+
+/**
+ * What the provider's answer to the settings check changes in a decision.
+ * Keys the provider refuses are marked on the secret field, so nothing is
+ * written. A provider this server cannot reach is not switched on: its keys
+ * are kept and forms stay on the built-in question, because a switched-on
+ * provider that cannot be asked refuses every submission.
+ *
+ * @param array $decision pg_captcha_settings_decide() with 'ask' set
+ * @param array $result   pg_captcha_verify_request()
+ * @return array the decision
+ */
+function pg_captcha_settings_answer($decision, $result)
+{
+    $provider = $decision['ask'];
+    $definition = pg_captcha_provider_definition($provider);
+
+    if (($definition === null) || !isset($decision['apps'][$provider])) {
+        return $decision;
+    }
+
     if ($result['outcome'] === 'misconfigured') {
-        $liveform->mark_error('captcha_' . $provider . '_secret', lang(array(
+        $decision['marks']['captcha_' . $provider . '_secret'] = lang(array(
             'string' => '{var:1} did not accept these keys ({var:2}).',
-            'vars'   => array(h($definition['label']), h($result['detail'])))));
+            'vars'   => array(h($definition['label']), h($result['detail']))));
     } elseif ($result['outcome'] === 'unavailable') {
+        $decision['apps'][$provider]['enabled'] = false;
+        $decision['provider'] = '';
         $decision['notices'][] = lang(array(
-            'string' => 'The {var:1} keys were saved without being checked: {var:2}',
+            'string' => '{var:1} could not be reached from this server ({var:2}), so it was not switched on and forms show the built-in question. Its keys were saved; choose it again to retry.',
             'vars'   => array(h($definition['label']), h($result['detail']))));
     }
 

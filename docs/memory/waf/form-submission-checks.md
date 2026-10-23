@@ -7,7 +7,8 @@ description: custom_form.php protections other than the limits - order of the ch
 - Subscription bombing (kodpen.com, Oct 2026): scripts typed strangers' real addresses into a subscription form; the maths CAPTCHA did not stop them. PR #1386. The limits: `waf/form-submission-limits.md`.
 
 ## What does custom_form.php check, in order?
-- Only for `action == 'submit'` by a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet: fill time, CAPTCHA, StopForumSpam, the limits; then the hook code.
+- Only for `action == 'submit'` by a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet: fill time, StopForumSpam, the limits; then the hook code.
+- The CAPTCHA (`validate_captcha_answer()`) runs between fill time and StopForumSpam whenever `CAPTCHA` is on, errors or not; a provider (Turnstile/hCaptcha) is asked only while the form has no error yet.
 - Every refusal is a liveform error, so the form comes back with what was typed.
 
 ## How does the fill time work?
