@@ -9559,7 +9559,8 @@ function get_protected_shipping_method_filter()
  *      $is_admin === true skips it entirely.
  *   3. Persist cancellation columns (status / cancelled_at / cancelled_by /
  *      cancellation_reason).
- *   4. Expire gift cards that were issued by this order.
+ *   4. Cancel the review request e-mail that has not been sent yet, and
+ *      expire gift cards that were issued by this order.
  *   5. Log activity + REFUND ACTION REQUIRED reminder for the operator.
  *   6. Optional: customer email notification (ECOMMERCE_CANCEL_EMAIL_NOTIFICATION).
  *   7. Optional: automatic refund through the payment method's driver
@@ -9662,6 +9663,13 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
     }
+
+    // ── Cancel the pending review request ───────────────────────────────
+    // Staff may cancel an order after it shipped, while its review request
+    // e-mail is still waiting to go out; the review form it links to would
+    // tell the customer the order was not bought. Only the request that
+    // cancelled the order (the guarded write above) gets here.
+    pg_review_request_cancel($order_id);
 
     // ── Expire gift cards issued by this order ──────────────────────────
     // Folded in from the removed legacy cancel_order(). A cancelled order

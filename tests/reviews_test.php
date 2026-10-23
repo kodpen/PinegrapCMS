@@ -354,5 +354,55 @@ function test_reviews_request_paths()
 	pg_assert_contains("case 'order_review_request':", $mail, 'the log names it');
 	pg_assert_contains('mailto:|http:\/\/|\^\^)', $mail, 'a link to a mail-merge field is not made absolute');
 
-	pg_assert_contains('pg_review_verified_filter_sql(', (string) file_get_contents($root . '/view_comments.php'), 'Comment Moderation filters verified purchases');
+	$comments = (string) file_get_contents($root . '/view_comments.php');
+
+	pg_assert_contains('pg_review_verified_filter_sql(', $comments, 'Comment Moderation filters verified purchases');
+	pg_assert_contains("pg_filter_select('verified'", $comments, 'with the toolbar\'s filter select');
+}
+
+// Two saves of one order at once both passed the once-per-order check: the
+// check and the start run under a lock of the order, released on every path.
+function test_reviews_request_lock()
+{
+	$function = new ReflectionFunction('pg_review_request_start');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	$lock = strpos($source, "GET_LOCK('");
+	$check = strpos($source, "email_campaigns.action = 'order_review_request'");
+	$create = strpos($source, 'create_auto_email_campaigns(');
+	$release = strpos($source, "RELEASE_LOCK('");
+
+	pg_assert_contains("'pg_review_request_' . \$order_id", $source, 'a lock per order');
+	pg_assert_contains("', 5)\") !== 1", $source, 'waits five seconds, gives up when not held');
+	pg_assert_true(($lock !== false) && ($check !== false) && ($lock < $check), 'the check runs under the lock');
+	pg_assert_true(($create !== false) && ($check < $create), 'the start after the check');
+	pg_assert_contains('finally', $source, 'released on every path');
+	pg_assert_true(($release !== false) && ($create < $release), 'released after the start');
+}
+
+// An order cancelled after it shipped (staff may) loses its pending review
+// request: its customer's review form would say "not bought". Only the
+// request that cancels the order cancels it.
+function test_reviews_request_cancel()
+{
+	$function = new ReflectionFunction('pg_review_request_cancel');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_contains("email_campaigns.status = 'cancelled'", $source);
+	pg_assert_contains("email_campaigns.action = 'order_review_request'", $source);
+	pg_assert_contains("email_campaigns.status = 'ready'", $source, 'only one not sent yet');
+	pg_assert_contains("email_campaigns.status = 'paused'", $source, 'only one not sent yet');
+	pg_assert_contains('email_campaigns.order_id', $source);
+
+	$cancellation = new ReflectionFunction('process_order_cancellation');
+	$lines = file($cancellation->getFileName());
+	$source = implode('', array_slice($lines, $cancellation->getStartLine() - 1, $cancellation->getEndLine() - $cancellation->getStartLine() + 1));
+
+	$write = strpos($source, "AND status <> 'cancelled'");
+	$guard = strpos($source, 'mysqli_affected_rows(db::$con) < 1');
+	$cancel = strpos($source, 'pg_review_request_cancel($order_id)');
+
+	pg_assert_true(($write !== false) && ($guard !== false) && ($cancel !== false) && ($write < $guard) && ($guard < $cancel), 'process_order_cancellation() cancels it after its own status write');
 }

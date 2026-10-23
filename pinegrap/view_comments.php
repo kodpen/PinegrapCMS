@@ -268,28 +268,16 @@ foreach ($comments as $comment) {
 }
 
 
-// The verified filter's menu in the toolbar; its button names the list on
-// screen.
-$output_verified_menu = '';
+// The verified filter in the toolbar's filter slot. It submits
+// ?verified=yes|no, and ?verified= for all comments.
+$output_verified_filter = '';
 
 if ($reviews_ready) {
-    $verified_choices = array(
+    $output_verified_filter = pg_filter_select('verified', array(
         ''    => lang('All comments'),
         'yes' => lang('Verified purchases'),
         'no'  => lang('Not verified'),
-    );
-
-    $output_verified_items = '';
-
-    foreach ($verified_choices as $choice => $label) {
-        $output_verified_items .= '<li><a class="dropdown-item link-body-emphasis' . (($verified === (string) $choice) ? ' active' : '') . '" href="' . h('view_comments.php?verified=' . $choice) . '">' . h($label) . '</a></li>';
-    }
-
-    $output_verified_menu = '
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-ghost dropdown-toggle' . (($verified !== '') ? ' active' : '') . '" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-patch-check me-1" aria-hidden="true"></i>' . h($verified_choices[$verified]) . '</button>
-                            <ul class="dropdown-menu">' . $output_verified_items . '</ul>
-                        </div>';
+    ), $verified, array('label' => lang('Verified purchase'), 'action' => 'view_comments.php', 'id' => 'verified'));
 }
 
 print
@@ -311,9 +299,10 @@ print
             ' . $liveform->output_notices() . '
             <div class="row mb-2  flex-wrap">
                 <div class="col-12 text-center text-md-start">
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">' . $output_verified_menu . '
+                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default) . '
+                        ' . $output_verified_filter . '
                     </nav>
                 </div>
             </div>

@@ -747,6 +747,42 @@ function get_email_campaign_profile_options()
     }
     return $email_campaign_profile_options;
 }
+/**
+ * Takes the scheme off a link whose address is exactly a mail-merge field that
+ * holds a whole address (href="http://^^review_url^^" becomes
+ * href="^^review_url^^"). The editor's Link dialog puts its default protocol
+ * (http://) in front of whatever is typed into it, and the field brings its
+ * own, so the e-mail would link to "http://https://...". Any other address,
+ * one with a host or more text around the field included, is left as it is.
+ *
+ * @param string $body   the e-mail's HTML
+ * @param array  $fields names of the fields that hold a whole address
+ * @return string
+ */
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url'))
+{
+    $body = (string) $body;
+    $names = array();
+
+    foreach ((array) $fields as $field) {
+        if ((string) $field !== '') {
+            $names[] = preg_quote((string) $field, '/');
+        }
+    }
+
+    if (!$names || ($body === '')) {
+        return $body;
+    }
+
+    // The field must close the attribute with the quote that opened it.
+    $result = preg_replace(
+        '/(<\s*a\s(?:[^>]*?\s)?href\s*=\s*(["\']))\s*https?:\/\/(\^\^(?:' . implode('|', $names) . ')\^\^)(?=\2)/i',
+        '$1$3',
+        $body);
+
+    return ($result === null) ? $body : $result;
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
@@ -881,6 +917,8 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
+            // A link made with the editor's Link button to ^^review_url^^ was stored with http:// in front of it.
+            $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
             // If there is not a base tag in the HTML, add base tag and convert relative links to absolute links.

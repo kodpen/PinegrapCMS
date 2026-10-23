@@ -523,6 +523,7 @@ function pg_review_product_aggregate_jsonld($product_id)
 // only where a review could be written - an order placed with an account
 // (the form asks the reader to sign in with it) and bought by the same rule
 // the form checks - and only once per order, whatever came of the first one.
+// Cancelling the order cancels a request that has not been sent yet.
 //
 // Comment Moderation lists verified purchases, or everything else, apart.
 
@@ -699,6 +700,10 @@ function pg_review_request_targets($order_id)
  * once one is. An order that never ships (downloads, services) gets no
  * request.
  *
+ * The check for an earlier request and the start run under a lock of the
+ * order: two saves of one order at once (parallel shipment posts, a retried
+ * call) would otherwise both find none and both start one.
+ *
  * @param int $order_id
  * @return bool whether create_auto_email_campaigns() was asked to start it
  */
@@ -727,17 +732,6 @@ function pg_review_request_start($order_id)
         return false;
     }
 
-    $requested = db_value(
-        "SELECT 1 FROM email_campaigns
-        WHERE
-            (email_campaigns.action = 'order_review_request')
-            AND (email_campaigns.order_id = '" . $order_id . "')
-        LIMIT 1");
-
-    if ($requested) {
-        return false;
-    }
-
     $detail_page = function_exists('pg_sw_catalog_detail_page_name') ? (string) pg_sw_catalog_detail_page_name(0) : '';
 
     if ($detail_page === '') {
@@ -762,19 +756,73 @@ function pg_review_request_start($order_id)
         return false;
     }
 
-    create_auto_email_campaigns(array(
-        'action'        => 'order_review_request',
-        'order_id'      => $order_id,
-        'contact_id'    => $order['contact_id'],
-        'email_address' => $order['billing_email_address'],
-        'fields'        => pg_review_request_fields($order['order_number'], $links),
-        'data'          => array(
-            'order_id'       => $order_id,
-            'review_targets' => $targets,
-        ),
-    ));
+    $lock = 'pg_review_request_' . $order_id;
 
-    return true;
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return false;
+    }
+
+    try {
+        $requested = db_value(
+            "SELECT 1 FROM email_campaigns
+            WHERE
+                (email_campaigns.action = 'order_review_request')
+                AND (email_campaigns.order_id = '" . $order_id . "')
+            LIMIT 1");
+
+        if ($requested) {
+            return false;
+        }
+
+        create_auto_email_campaigns(array(
+            'action'        => 'order_review_request',
+            'order_id'      => $order_id,
+            'contact_id'    => $order['contact_id'],
+            'email_address' => $order['billing_email_address'],
+            'fields'        => pg_review_request_fields($order['order_number'], $links),
+            'data'          => array(
+                'order_id'       => $order_id,
+                'review_targets' => $targets,
+            ),
+        ));
+
+        return true;
+    } finally {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+    }
+}
+
+/**
+ * Cancels the review request of an order that has not been sent yet (ready or
+ * paused): the order was cancelled, and the review form would tell its
+ * customer the order was not bought. The cancelled row stays, so the order
+ * gets no new request, not even once it is restored (once per order).
+ *
+ * @param int $order_id
+ * @return void
+ */
+function pg_review_request_cancel($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return;
+    }
+
+    db(
+        "UPDATE email_campaigns
+        SET
+            email_campaigns.status = 'cancelled',
+            email_campaigns.last_modified_user_id = '" . (defined('USER_ID') ? (int) USER_ID : 0) . "',
+            email_campaigns.last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE
+            (email_campaigns.action = 'order_review_request')
+            AND
+            (
+                (email_campaigns.status = 'ready')
+                OR (email_campaigns.status = 'paused')
+            )
+            AND (email_campaigns.order_id = '" . $order_id . "')");
 }
 
 /**
