@@ -183,3 +183,79 @@ function test_order_charged_tax_meets_the_invoice()
 		pg_assert_same($tax, $built['totals']['tax_total'], 'run ' . $run . ' invoice');
 	}
 }
+
+// At a decimal rate the group's tax is the exact one: 7.00 + 8.00 at 2.3%
+// carry 0.35, 30.00 at 4.35% 1.31, a line below zero -0.35; 16.00 less 1.00
+// leaves 15.00 and 0.35. On a 32-bit build a rate's lines past 21,474,836.47
+// add up to a float, taken whole.
+function test_order_tax_by_rate_takes_the_exact_tax_at_decimal_rates()
+{
+	pg_assert_same(array(1 => 16, 2 => 19), pg_tax_by_rate(array(
+		1 => array('amount' => 700, 'rate' => '2.300'),
+		2 => array('amount' => 800, 'rate' => 2.3),
+	)));
+	pg_assert_same(array(1 => 131, 2 => -35), pg_tax_by_rate(array(
+		1 => array('amount' => 3000, 'rate' => 4.35),
+		2 => array('amount' => -1500, 'rate' => '2.300'),
+	)));
+	pg_assert_same(35, pg_order_charged_tax(array(51 => array('amount' => 1600, 'rate' => '2.300', 'tax' => 37)), 100));
+	pg_assert_same(array(1 => 400000000, 2 => 200000000), pg_tax_by_rate(array(
+		1 => array('amount' => 2000000000, 'rate' => 20),
+		2 => array('amount' => 1000000000, 'rate' => 20),
+	)));
+}
+
+// On random documents at rates with one to three decimals, half of whose
+// rate groups come to an amount taxed at exactly a half (amount x units of
+// 0.001% / 100000 ends in .5: an odd multiple of 50000 / gcd(units, 50000)),
+// the checkout's taxes are erp_rate_vat()'s line for line and its rate
+// amount erp_rate_amount()'s around every total a group reaches. Every
+// figure stays below 2^31.
+function test_order_tax_by_rate_matches_the_erp_at_decimal_rates()
+{
+	mt_srand(20261023);
+
+	for ($run = 0; $run < 2000; $run++) {
+		$lines = array();
+		$erp = array();
+		$id = 500;
+
+		for ($group = mt_rand(1, 3); $group > 0; $group--) {
+			$places = mt_rand(1, 3);
+			$units = mt_rand(1, 40 * (int) pow(10, $places)) * (int) pow(10, 3 - $places);
+			$text = intdiv($units, 1000) . '.' . sprintf('%03d', $units % 1000);
+			$rate = mt_rand(0, 1) ? $text : (float) $text;
+			$gcd = $units;
+			$b = 50000;
+
+			while ($b !== 0) {
+				list($gcd, $b) = array($b, $gcd % $b);
+			}
+
+			$half = (intdiv($units, $gcd) % 2) ? (2 * mt_rand(0, 999) + 1) * intdiv(50000, $gcd) : 0;
+			$sum = ($half && mt_rand(0, 1)) ? $half : mt_rand(1, mt_rand(0, 1) ? 99999 : 99999999);
+			$net = $sum;
+
+			for ($i = mt_rand(1, 4); $i > 0; $i--) {
+				$amount = ($i > 1) ? mt_rand(0, $sum) : $sum;
+				$sum -= $amount;
+				$lines[$id] = array('amount' => $amount, 'rate' => $rate);
+				$erp[$id] = array('net' => $amount, 'tax_rate' => $rate);
+				$id++;
+			}
+
+			$reached = $net + erp_apply_rate($net, $rate);
+
+			foreach (array($reached - 1, $reached, $reached + 1) as $total) {
+				pg_assert_same(erp_rate_amount($total, $rate), pg_tax_rate_amount($total, $rate), $total . ' at ' . $rate);
+			}
+		}
+
+		$expected = array();
+		foreach (erp_rate_vat($erp)['lines'] as $key => $figures) {
+			$expected[$key] = $figures['vat'];
+		}
+
+		pg_assert_same($expected, pg_tax_by_rate($lines), 'run ' . $run);
+	}
+}

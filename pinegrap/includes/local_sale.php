@@ -247,7 +247,7 @@ function local_sale_line_rate($item)
  */
 function local_sale_line_tax($item)
 {
-    return (int) round(local_sale_line_rate($item) / 100 * ((int) $item['price'] * (int) $item['quantity']));
+    return pg_tax_apply_rate((int) $item['price'] * (int) $item['quantity'], local_sale_line_rate($item));
 }
 
 /**
@@ -302,7 +302,7 @@ function local_sale_lines($order_id)
 
         $lines[$index]['tax'] = $tax;
         $lines[$index]['gross'] = $net + $tax;
-        $lines[$index]['unit_gross'] = (int) round((int) $row['price'] * (100 + $rate) / 100);
+        $lines[$index]['unit_gross'] = (int) $row['price'] + pg_tax_apply_rate((int) $row['price'], $rate);
         // What the till view shows (local_sale_prices_net()).
         $lines[$index]['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $lines[$index]['unit_gross'];
         $lines[$index]['amount_till'] = local_sale_prices_net() ? $net : ($net + $tax);
