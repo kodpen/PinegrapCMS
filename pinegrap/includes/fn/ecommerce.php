@@ -1158,14 +1158,22 @@ function pg_order_list_status_html($order, $paid_known)
     // parasut_exported is set by two different things: the spreadsheet export
     // and an invoice raised through the API. Only parasut_invoice_id tells
     // them apart, so the tooltip is chosen from that rather than claiming an
-    // invoice exists for an order that was only exported to a file.
+    // invoice exists for an order that was only exported to a file. The
+    // unsure mark a create with no answer leaves there is no invoice: the
+    // order is marked to be checked at Paraşüt instead.
     $parasut_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+    $parasut_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
+    $parasut_invoiced = ($parasut_invoice_id !== '') && !$parasut_unsure;
 
-    if (((int) ($order['parasut_exported'] ?? 0) != 0) || ($parasut_invoice_id !== '')) {
-        $title = ($parasut_invoice_id !== '')
+    if (((int) ($order['parasut_exported'] ?? 0) != 0) || $parasut_invoiced) {
+        $title = $parasut_invoiced
             ? lang('An invoice was created for this order in Parasut')
             : lang('This order has been exported for upload to parasut.com');
         $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+    }
+
+    if ($parasut_unsure) {
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;
@@ -2285,8 +2293,8 @@ function get_effective_tax_rate($product_rate, $zone_rate)
  * the tax the checkout adds on top of it.
  *
  * The shop keeps product prices without tax and update_order_item_taxes()
- * adds round(rate / 100 x price) per line at the checkout, so this is that
- * formula for a quantity of one. It is the figure to hand anybody who wants
+ * adds the rate's tax at the checkout (pg_tax_apply_rate()), so this is that
+ * tax on a quantity of one. It is the figure to hand anybody who wants
  * the final price - a marketplace quotes its sale price with the tax inside -
  * and it is the price itself whenever the checkout would add nothing: the
  * shop has tax switched off, the product is not taxable, or the shop's
@@ -2316,7 +2324,7 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
 
     $rate = get_effective_tax_rate($product_rate, $zone_rate);
 
-    return $price + (int) round($rate / 100 * $price);
+    return $price + pg_tax_apply_rate($price, $rate);
 }
 
 /**
@@ -2475,17 +2483,170 @@ function get_default_tax_rate()
 }
 
 /**
+ * A decimal as whole units of 1/10^$places, rounded half away from zero on
+ * the digits sprintf() writes it with: 2.3 at three places is 2300, although
+ * 2.3 is 2.2999... in binary.
+ *
+ * The checkout's copy of the ERP's erp_decimal_units() (includes/erp/money.php),
+ * which a store without the ERP never loads; tests/tax_apply_rate_test.php
+ * holds the two sources equal. A float, so it stays whole past PHP_INT_MAX on
+ * a 32-bit build.
+ *
+ * @param float|int|string $value
+ * @param int              $places  0 to 10
+ * @return float
+ */
+function pg_decimal_units($value, $places)
+{
+    $value = (float) $value;
+    $places = max(0, min(10, (int) $places));
+    $parts = explode('.', sprintf('%.10F', abs($value)));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
+
+    if ((int) substr($parts[1], $places, 1) >= 5) {
+        $units += 1;
+    }
+
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
+}
+
+/**
+ * An amount times a decimal held as whole units of 1/$scale, rounded half
+ * away from zero on the exact product, in whole numbers only.
+ *
+ * The checkout's copy of the ERP's erp_multiply_units() (includes/erp/money.php);
+ * tests/tax_apply_rate_test.php holds the two sources equal, so the float
+ * steps a 32-bit build takes stay the ERP's although CI never runs them. Both
+ * factors are split at the scale, so no partial product outgrows an integer
+ * while the result fits; on a 32-bit build the same steps run on whole
+ * floats, exact below 2^53.
+ *
+ * @param int|float $amount  A whole number
+ * @param int|float $units   A whole number
+ * @param int       $scale   100000 for a percentage at three places
+ * @return int|float  An int; a float only on a 32-bit build, for a result past PHP_INT_MAX
+ */
+function pg_multiply_units($amount, $units, $scale)
+{
+    $amount = is_int($amount) ? $amount : (float) $amount;
+    $units = is_int($units) ? $units : (float) $units;
+    $scale = max(1, (int) $scale);
+    $negative = (($amount < 0) xor ($units < 0));
+
+    $amount = abs($amount);
+    $units = abs($units);
+
+    // Whole units held in a float (pg_decimal_units()) take the integer
+    // steps when they fit a 64-bit int.
+    if ((PHP_INT_SIZE >= 8) && is_float($amount) && ($amount < PHP_INT_MAX)) {
+        $amount = (int) $amount;
+    }
+
+    if ((PHP_INT_SIZE >= 8) && is_float($units) && ($units < PHP_INT_MAX)) {
+        $units = (int) $units;
+    }
+
+    if (is_int($amount) && is_int($units) && (PHP_INT_SIZE >= 8)) {
+        $amount_rest = $amount % $scale;
+        $amount_whole = intdiv($amount, $scale);
+        $units_rest = $units % $scale;
+        $units_whole = intdiv($units, $scale);
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = $rest % $scale;
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + intdiv($rest, $scale);
+    } else {
+        $amount = (float) $amount;
+        $units = (float) $units;
+        $amount_rest = fmod($amount, $scale);
+        $amount_whole = ($amount - $amount_rest) / $scale;
+        $units_rest = fmod($units, $scale);
+        $units_whole = ($units - $units_rest) / $scale;
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = fmod($rest, $scale);
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + (($rest - $rest_rest) / $scale);
+    }
+
+    if (($rest_rest * 2) >= $scale) {
+        $result += 1;
+    }
+
+    if (is_float($result) && ($result < PHP_INT_MAX)) {
+        $result = (int) $result;
+    }
+
+    return ($negative && ($result > 0)) ? -$result : $result;
+}
+
+/**
+ * The tax at a rate on an amount: the rate at the three places the rate
+ * columns keep, the exact product rounded half away from zero. 2.3% of 15.00
+ * is 0.345, so 0.35, on every PHP version; round(1500 * 2.3 / 100) is 34 on
+ * PHP 8.4 and later, where round() no longer pre-rounds 34.4999... The ERP's
+ * erp_apply_rate(), so an order's tax is its invoice's.
+ *
+ * The amount is taken as it comes, not cut to an int: on a 32-bit build the
+ * lines of one rate past 21,474,836.47 add up to a float, which
+ * pg_multiply_units() takes whole.
+ *
+ * @param int|float        $amount  minor units, a whole number
+ * @param float|int|string $rate    percent
+ * @return int|float  minor units; a float only on a 32-bit build, past PHP_INT_MAX
+ */
+function pg_tax_apply_rate($amount, $rate)
+{
+    return pg_multiply_units($amount, pg_decimal_units($rate, 3), 100000);
+}
+
+/**
+ * A percentage of an amount, the exact product rounded half away from zero:
+ * what an offer's percentage takes off the order. pg_tax_apply_rate()'s rule,
+ * the percentage at three places. 35% of 13.10 is 4.585, so 4.59 on every PHP
+ * version; round(1310 * (35 / 100)) is 458 on PHP 8.4 and later, where
+ * round() no longer pre-rounds 458.49999...
+ *
+ * @param int|float        $amount   minor units, a whole number
+ * @param float|int|string $percent
+ * @return int|float  minor units; a float only on a 32-bit build, past PHP_INT_MAX
+ */
+function pg_percent_of($amount, $percent)
+{
+    return pg_multiply_units($amount, pg_decimal_units($percent, 3), 100000);
+}
+
+/**
+ * An amount less a percentage of it: what is left, rounded half away from
+ * zero on the exact figure. The price or shipping cost an offer's percentage
+ * leaves. What is left is rounded, as round($amount - $amount * $percent /
+ * 100) always did, not the amount less pg_percent_of(): 55% off 6.50 leaves
+ * 2.925, so 2.93, not 6.50 - 3.58 = 2.92.
+ *
+ * @param int|float        $amount   minor units, a whole number
+ * @param float|int|string $percent
+ * @return int|float  minor units; a float only on a 32-bit build, past PHP_INT_MAX
+ */
+function pg_percent_off($amount, $percent)
+{
+    return pg_multiply_units($amount, 100000 - pg_decimal_units($percent, 3), 100000);
+}
+
+/**
  * The tax of an order's lines, taken once on the sum of the lines at each
  * rate and spread back over them.
  *
  * Lines at one rate are a group: the group's tax is the rate on the sum of
- * their amounts, rounded half away from zero, and it is shared out over them
- * in proportion to their amounts (pg_tax_spread()). The lines add up to their
- * group and each stays within a minor unit of what it would carry alone. It
- * is how an e-document provider that works the tax out from the rates comes
- * to its figures, and how the ERP takes a document's taxes (erp_rate_vat(),
- * which gives the same figures for lines without withholding). A line with a
- * negative amount is taxed alone, so a group's shares never run backwards.
+ * their amounts, rounded half away from zero (pg_tax_apply_rate()), and it
+ * is shared out over them in proportion to their amounts (pg_tax_spread()).
+ * The lines add up to their group and each stays within a minor unit of what
+ * it would carry alone. It is how an e-document provider that works the tax
+ * out from the rates comes to its figures, and how the ERP takes a
+ * document's taxes (erp_rate_vat(), which gives the same figures for lines
+ * of zero or more without withholding). A line with a negative amount is
+ * taxed alone, so a group's shares never run backwards.
  *
  * @param array $lines  key => ['amount' => int minor units, 'rate' => float percent]; no rate, or 0, is no tax
  * @return array  key => int tax, in the order given
@@ -2505,7 +2666,7 @@ function pg_tax_by_rate($lines)
         }
 
         if ($amount < 0) {
-            $taxes[$key] = (int) round($amount * $rate / 100);
+            $taxes[$key] = pg_tax_apply_rate($amount, $rate);
             continue;
         }
 
@@ -2521,7 +2682,7 @@ function pg_tax_by_rate($lines)
     }
 
     foreach ($groups as $group) {
-        $tax = (int) round($group['amount'] * $group['rate'] / 100);
+        $tax = pg_tax_apply_rate($group['amount'], $group['rate']);
 
         foreach (pg_tax_spread($tax, $group['members']) as $key => $share) {
             $taxes[$key] = $share;
@@ -2693,6 +2854,42 @@ function pg_order_items_charged_tax($item_ids, $discount)
 }
 
 /**
+ * The order discount, tax and total an order's page shows (the order view in
+ * My Account, the receipt page and e-mail), in minor units.
+ *
+ * A placed order shows what it was charged: submit_order() writes the
+ * discount, tax and total to the order, and the order history, the panel and
+ * the order view widget read them there. The session's order_discount is the
+ * visitor's cart's, worked out by apply_offers_to_cart(); it is shown only on
+ * that cart while it is not placed, whose tax and total the page works out
+ * from its lines (null here). Any other unplaced order, a cart saved on the
+ * account, has no discount until it is opened as the cart again.
+ *
+ * @param array      $order    the orders row: id, status, discount, tax, total
+ * @param array|null $session  $_SESSION['ecommerce']: order_id, order_discount
+ * @return array  ['discount' => int, 'tax' => int|null, 'total' => int|null]
+ */
+function pg_order_page_figures($order, $session)
+{
+    if ((string) ($order['status'] ?? 'incomplete') !== 'incomplete') {
+        return array(
+            'discount' => (int) ($order['discount'] ?? 0),
+            'tax' => (int) ($order['tax'] ?? 0),
+            'total' => (int) ($order['total'] ?? 0),
+        );
+    }
+
+    $discount = 0;
+    $cart_id = (int) ($session['order_id'] ?? 0);
+
+    if (($cart_id > 0) && ($cart_id === (int) ($order['id'] ?? 0))) {
+        $discount = max(0, (int) round((float) ($session['order_discount'] ?? 0)));
+    }
+
+    return array('discount' => $discount, 'tax' => null, 'total' => null);
+}
+
+/**
  * The tax of each of an order's lines, as the checkout writes it
  * (update_order_item_taxes()).
  *
@@ -2800,7 +2997,7 @@ function pg_tax_rate_amount($total, $rate)
     $near = (int) round($total * 100 / (100 + (float) $rate));
 
     foreach (array($near, $near - 1, $near + 1) as $amount) {
-        if (($amount >= 0) && (($amount + (int) round($amount * (float) $rate / 100)) === $total)) {
+        if (($amount >= 0) && (($amount + pg_tax_apply_rate($amount, $rate)) === $total)) {
             return $amount;
         }
     }
@@ -3418,16 +3615,16 @@ function pg_offer_gift_line_unit_price($line_unit_price, $quantity, $paid_unit_p
 }
 
 // The unit price a gift (an 'add product' result) is charged at: the product's
-// price less the action's amount, or less its percentage, in minor units and
-// rounded. Never below zero: an amount larger than the price, or a price
-// lowered after the offer was set up, would otherwise leave a line that takes
-// money off the order.
+// price less the action's amount, or less its percentage (pg_percent_off()),
+// in minor units. Never below zero: an amount larger than the price, or a
+// price lowered after the offer was set up, would otherwise leave a line that
+// takes money off the order.
 function pg_offer_gift_price($product_price, $discount_amount, $discount_percentage)
 {
     if ($discount_amount != 0) {
         $price = $product_price - $discount_amount;
     } else {
-        $price = $product_price - ($product_price * ($discount_percentage / 100));
+        $price = pg_percent_off($product_price, $discount_percentage);
     }
     if ($price < 0) {
         $price = 0;
@@ -3722,14 +3919,14 @@ function pg_offer_order_discount_percentage($tiers, $subtotal, $action_percentag
 
 // What one 'discount order' action takes off this subtotal, in minor units:
 // its amount when it has one, otherwise its percentage (the ladder's rung when
-// there is a ladder) of the subtotal. Never more than the subtotal, so an order
-// total is never shown below zero.
+// there is a ladder) of the subtotal (pg_percent_of()). Never more than the
+// subtotal, so an order total is never shown below zero.
 function pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)
 {
     if ($amount != 0) {
         $discount = $amount;
     } else {
-        $discount = round($subtotal * (pg_offer_order_discount_percentage($tiers, $subtotal, $percentage) / 100));
+        $discount = pg_percent_of($subtotal, pg_offer_order_discount_percentage($tiers, $subtotal, $percentage));
     }
     if ($discount > $subtotal) {
         $discount = $subtotal;
@@ -4356,7 +4553,7 @@ function apply_offers_to_cart()
                                         $discounted_price = $order_item['product_price'] - $offer_action['discount_product_amount'];
                                         // else discount is by percentage, so get discounted price
                                     } else {
-                                        $discounted_price = $order_item['product_price'] - ($order_item['product_price'] * ($offer_action['discount_product_percentage'] / 100));
+                                        $discounted_price = pg_percent_off($order_item['product_price'], $offer_action['discount_product_percentage']);
                                     }
                                     // if the discounted price is less than 0, then set discounted price to 0
                                     if ($discounted_price < 0) {
@@ -4742,7 +4939,7 @@ function apply_offers_to_cart()
                                     // if this offer and action is valid for the shipping method then continue to prepare to discount shipping
                                     if (mysqli_num_rows($result) != 0) {
                                         $original_shipping_cost = $ship_to['shipping_cost'];
-                                        $discounted_shipping_cost = $original_shipping_cost - ($original_shipping_cost * ($offer_action['discount_shipping_percentage'] / 100));
+                                        $discounted_shipping_cost = pg_percent_off($original_shipping_cost, $offer_action['discount_shipping_percentage']);
                                         // if this offer is going to discount the ship to more than any previous offer so far, use this offer
                                         if ((isset($discounted_ship_tos[$ship_to['id']]) == false) || ($discounted_shipping_cost < $discounted_ship_tos[$ship_to['id']]['shipping_cost'])) {
                                             // if this is the first offer that has discounted this ship to, then prepare array
@@ -5121,7 +5318,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                         $discounted_price = $order_item['product_price'] - $offer_action['discount_product_amount'];
                                         // else discount is by percentage, so get discounted price
                                     } else {
-                                        $discounted_price = $order_item['product_price'] - ($order_item['product_price'] * ($offer_action['discount_product_percentage'] / 100));
+                                        $discounted_price = pg_percent_off($order_item['product_price'], $offer_action['discount_product_percentage']);
                                     }
                                     // if the discounted price is less than 0, then set discounted price to 0
                                     if ($discounted_price < 0) {
@@ -5269,7 +5466,7 @@ function get_best_offer_id($offer_code, $scope = '')
                                         } else {
                                             $original_shipping_cost = $ship_to['shipping_cost'];
                                         }
-                                        $discounted_shipping_cost = $original_shipping_cost - ($original_shipping_cost * ($offer_action['discount_shipping_percentage'] / 100));
+                                        $discounted_shipping_cost = pg_percent_off($original_shipping_cost, $offer_action['discount_shipping_percentage']);
                                         // if this offer is going to discount the ship to more than any previous offer so far, use this offer
                                         if ((isset($discounted_ship_tos[$ship_to['id']]) == false) || ($discounted_shipping_cost < $discounted_ship_tos[$ship_to['id']]['shipping_cost'])) {
                                             // if this is the first offer that has discounted this ship to, then prepare array
@@ -6514,7 +6711,7 @@ function get_discounted_product_prices($for_member = true)
                         $discounted_price = $price - $offer_action['discount_product_amount'];
                         // else discount is by percentage, so get discounted price
                     } else {
-                        $discounted_price = $price - ($price * ($offer_action['discount_product_percentage'] / 100));
+                        $discounted_price = pg_percent_off($price, $offer_action['discount_product_percentage']);
                     }
                     // if the discounted price is less than 0, then set discounted price to 0
                     if ($discounted_price < 0) {
@@ -6603,13 +6800,15 @@ function pg_format_number($amount, $decimals = 2)
  * it back either way.
  *
  * @param float|int|string $amount
+ * @param int              $decimals 2 for money; 5 for an exchange rate
+ *                                   (currencies.exchange_rate is decimal(10,5))
  * @return string
  */
-function pg_format_input_amount($amount)
+function pg_format_input_amount($amount, $decimals = 2)
 {
     $s = pg_number_separators();
     $amount = is_numeric($amount) ? (float) $amount : 0.0;
-    return number_format($amount, 2, $s['decimal'], '');
+    return number_format($amount, max(0, (int) $decimals), $s['decimal'], '');
 }
 
 /**
@@ -6626,10 +6825,15 @@ function pg_format_input_amount($amount)
  * be 123456,00) and read back with pg_normalize_amount() or
  * pg_pb_price_to_cents(), which take either way of writing.
  *
+ * The exchange rate box passes 5 decimals, the scale of
+ * currencies.exchange_rate (decimal(10,5)) and of what the rate updater
+ * writes; with two, a rate of 0.02853 was saved as 0.03.
+ *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return array attribute => value, as $liveform->output_field() takes them
  */
-function pg_money_mask_attributes($separators = null)
+function pg_money_mask_attributes($separators = null, $decimals = 2)
 {
     $s = is_array($separators) ? $separators : pg_number_separators();
 
@@ -6637,7 +6841,7 @@ function pg_money_mask_attributes($separators = null)
         'data-inputmask-alias'          => 'currency',
         'data-inputmask-radixPoint'     => (string) $s['decimal'],
         'data-inputmask-groupSeparator' => (string) $s['thousands'],
-        'data-inputmask-digits'         => '2',
+        'data-inputmask-digits'         => (string) max(0, (int) $decimals),
         'data-inputmask-digitsOptional' => 'false',
         'data-inputmask-placeholder'    => '0',
     );
@@ -6648,13 +6852,14 @@ function pg_money_mask_attributes($separators = null)
  * space in front of each attribute.
  *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return string HTML
  */
-function pg_money_mask_html($separators = null)
+function pg_money_mask_html($separators = null, $decimals = 2)
 {
     $html = '';
 
-    foreach (pg_money_mask_attributes($separators) as $name => $value) {
+    foreach (pg_money_mask_attributes($separators, $decimals) as $name => $value) {
         $html .= ' ' . $name . '="' . h($value) . '"';
     }
 
@@ -11162,4 +11367,109 @@ function pg_product_more_images($product_ids)
     }
 
     return $images;
+}
+
+// Product import (import_products.php): the price cells and the row cells of
+// an import file.
+
+// A price cell of an import file (price, extra_shipping_cost,
+// compare_at_price) in minor units, or null when it is not an amount.
+//
+// Two kinds of text reach the importer. A spreadsheet stores a number with a
+// dot and as many decimals as it has (1499.99, 1799.988 for a formula's
+// =B2*1,2, 1799.9879999999998 when Excel writes all seventeen digits, 1E+3),
+// and a .xlsx or .ods cell comes through as exactly that: it is read as the
+// number it is and rounded to the minor unit. Anything else was typed: a
+// currency symbol or code, a decimal comma, grouping (₺15,00, 12,50,
+// 1.234,56, 1 234,56, 1.234 TL), read by the product screen's own rule,
+// pg_pb_price_figure() (the figure behind pg_pb_price_to_cents()), so a
+// figure means the same in a file as in the box.
+//
+// Words, other characters, a minus sign, more than fifteen digits (beyond
+// that a float is no longer exact) or more than the price column holds give
+// null: the caller reports the row rather than storing a figure nobody wrote.
+// Needs product_builder.php for the typed reader.
+function pg_products_import_price_cents($value)
+{
+    $value = trim((string) $value);
+
+    if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
+
+        $amount = round(((float) $value) * 100);
+
+        if (!is_finite($amount) || ($amount > 2147483647)) {
+            return null;
+        }
+
+        return (int) $amount;
+    }
+
+    // A symbol or a code before or after the figure, and spaces or
+    // apostrophes that group its digits, are left out; whatever else is
+    // there makes it not an amount.
+    if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
+        return null;
+    }
+
+    $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
+    $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
+
+    if (($digits === 0) || ($digits > 15)) {
+        return null;
+    }
+
+    // Bounded as a float, before the int cast: on a 32-bit build the cast
+    // would wrap an amount above the top into a wrong or negative price.
+    $amount = round(((float) pg_pb_price_figure($figure)) * 100);
+
+    if (!is_finite($amount) || ($amount > 2147483647)) {
+        return null;
+    }
+
+    return (int) $amount;
+}
+
+// The money cells of one import row, read before the database is touched.
+// $money_positions maps each money column the header has (price,
+// extra_shipping_cost, compare_at_price) to its position. Returns
+// array('prices' => array(column => minor units), 'refused' => bool): an
+// empty cell (or spaces alone) is left out, as is a compare_at_price that
+// starts with a minus sign, which leaves the stored one alone; a cell that is
+// not an amount refuses the whole row.
+//
+// A function of its own because the importer keeps each header column's
+// position in a script variable named <column>_key: a loop there with a
+// variable such as $price_key overwrote the price column's position.
+function pg_products_import_row_prices($row, $money_positions)
+{
+    $prices = array();
+
+    foreach ($money_positions as $money_column => $money_position) {
+        $cell = trim(pg_products_import_row_value($row, $money_position));
+
+        if (($cell === '') || (($money_column == 'compare_at_price') && (strpos($cell, '-') === 0))) {
+            continue;
+        }
+
+        $cents = pg_products_import_price_cents($cell);
+
+        if ($cents === null) {
+            return array('prices' => array(), 'refused' => true);
+        }
+
+        $prices[$money_column] = $cents;
+    }
+
+    return array('prices' => $prices, 'refused' => false);
+}
+
+// The text of one column of a CSV row: '' when the file has no such column
+// (null, or false from array_search()) or the row ends before it.
+function pg_products_import_row_value($row, $key)
+{
+    if (($key === null) || ($key === false) || !isset($row[$key])) {
+        return '';
+    }
+
+    return (string) $row[$key];
 }

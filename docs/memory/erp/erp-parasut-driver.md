@@ -12,8 +12,8 @@ description: Paraşüt e-document driver (includes/erp/edoc/parasut.php): reques
 - `cancel_invoice` → no e-document: `DELETE sales_invoices/{id}`; e-Arşiv: `DELETE sales_invoices/{id}/cancel` while `cancellable_until` holds; e-Fatura: refused (return invoice).
 
 ## How are withholding, exemption and the order sent?
-- Lines (price, VAT, discounts) and why the totals must agree: erp-parasut-invoice-lines.md.
-- Withholding is per line (`details[].vat_withholding_rate`); its code goes in the e-document as `vat_withholding_params[{detail_id, vat_withholding_code}]` with Paraşüt's line ids (`?include=details`, `erp_edoc_parasut_detail_ids()`, ERP line order).
+- Lines, their VAT and the totals check: erp-parasut-invoice-lines.md.
+- Withholding is per line (`details[].vat_withholding_rate`); its code goes in the e-document as `vat_withholding_params[{detail_id, vat_withholding_code}]` with Paraşüt's line ids (`?include=details`, `erp_edoc_parasut_detail_ids()`; ERP lines first, rounding lines last).
 - Exemption: one code per document (`vat_exemption_reason_code`); 250/350 need `vat_exemption_reason` in words (the invoice note; refused without).
 - `order_no` is `orders.order_number` (the row id until #912), `order_date` the day; both or none (one alone is refused).
 

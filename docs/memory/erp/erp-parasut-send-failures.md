@@ -13,6 +13,7 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 - One found: taken over (total check, no POST). If its date or contact is not the invoice's now, it is deleted (2xx/404) and the invoice written fresh; not deleted: refused with its id, mark kept (#1210).
 - None: written. Several: refused with the ids. Search fails, or nothing matched with pages left unread (`erp_edoc_parasut_search_incomplete()`): refused, nothing written. Way out of the last: delete the record on Paraşüt or cancel the invoice.
 - Open: cancelling the invoice while the mark is set does not look at Paraşüt.
+- The order screen's own Create Invoice searches the same way (erp-parasut-legacy-invoice.md).
 
 ## What if the total differs and the record will not be deleted?
 - The `DELETE` answer is read (404 = gone). Not deleted: the refusal names the id, the service keeps it on the `error` row; the send gate refuses and cancelling the invoice deletes it there (#1019).
@@ -20,10 +21,11 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 
 ## Which rows are handed to GİB?
 - Only `created`: `erp_edoc_parasut_submit_refusal()` in the driver's `submit_invoice` (#1210), so a stale tab or replayed POST cannot convert an `error` row's wrong-total record. The service still refuses `sent`/`accepted` first.
+- A withheld invoice: Paraşüt's line ids must number `erp_edoc_parasut_detail_count()`, the ERP lines plus the rounding lines `erp_edoc_parasut_vat_shift()` writes after them. Until #1406 only the ERP lines were counted, so a TEVKIFAT invoice with line-by-line VAT and a rounding line at another rate stayed `created`, refused at every hand-over ("not the same lines").
 
 ## When does the send gate refuse a record the provider holds?
 - `erp_edoc_invoice_held_refusal()` (service.php, via `erp_edoc_invoice_can_send()`): `created` (hand it over instead), `error` with `edoc_external_id` (ask after its status).
-- Sendable again: `none`, `error` without an id, `rejected`.
+- Sendable again: `none`, `error` without an id, `rejected`, and a stalled `sending` row (no id, untouched 15 minutes: the process died waiting, `erp_edoc_invoice_send_stalled()`), so the mark is searched (#1412).
 
 ## Tests
-- `tests/erp_edoc_parasut_test.php` (job reading, unsure answer and mark, written matches, search incomplete, submit refusal), `tests/erp_edoc_service_test.php` (held refusal).
+- `tests/erp_edoc_parasut_test.php` (job reading, unsure answer and mark, written matches, search incomplete, submit refusal, detail count), `tests/erp_edoc_service_test.php` (held refusal, stalled send).

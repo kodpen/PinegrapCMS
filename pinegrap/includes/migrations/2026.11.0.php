@@ -49,6 +49,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
 	upgrade_2026_11_0_passkeys();               // 11.0.13
+	upgrade_2026_11_0_not_found_log();          // 11.0.30
 	upgrade_2026_11_0_erp_invoice_recurring_day(); // 11.0.60
 
 }
@@ -1086,6 +1087,38 @@ function upgrade_2026_11_0_passkeys() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
+
+}
+
+// The 404 log (includes/fn/not_found_log.php). One row per address that
+// answered 404 after the short links had their chance
+// (pg_short_link_not_found()), in the form a short link name takes, so a row
+// can become a redirect as it is: the path without the language prefix and the
+// query string, at most 191 characters like short_links.name. A repeat raises
+// the counts and adds no row. path_key is the SHA-1 of the path: a unique key
+// on the path itself would fold "Old-Page" and "old-page" into one row under
+// utf8mb4_unicode_ci. hit_count counts every recorded request, crawler_hits
+// those of them from search engine crawlers the firewall verified; other bots
+// are not recorded. referrer keeps the first referring address seen (scheme,
+// host and path). The general job removes rows not seen for 90 days, and the
+// writer keeps the table under its row cap.
+function upgrade_2026_11_0_not_found_log() {
+
+	install_create_table('not_found_log', "CREATE TABLE not_found_log (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		path_key      CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		path          VARCHAR(191) NOT NULL DEFAULT '',
+		referrer      VARCHAR(512) NOT NULL DEFAULT '',
+		hit_count     INT UNSIGNED NOT NULL DEFAULT 0,
+		crawler_hits  INT UNSIGNED NOT NULL DEFAULT 0,
+		first_seen    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_path (path_key),
+		KEY idx_last_seen (last_seen)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('404 log: addresses no page, file or short link answers are now counted with where visitors came from, and a redirect can be made from each of them. Addresses not asked for in 90 days are removed.');
 
 }
 

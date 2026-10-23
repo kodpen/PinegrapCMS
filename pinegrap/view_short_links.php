@@ -266,6 +266,10 @@ pg_page_shell(
                         <a class="btn btn-sm btn-ghost" href="view_short_links.php?export=csv"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Export') . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default) . '
+                        ' . (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
+                            <a class="btn btn-ghost active" href="view_short_links.php" aria-current="page">' . h(lang('Short Links')) . '</a>
+                            <a class="btn btn-ghost" href="view_not_found_log.php">' . h(lang('404 Log')) . '</a>
+                        </div>' : '') . '
                     </nav>
                 </div>
             </div>

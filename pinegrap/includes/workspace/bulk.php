@@ -18,8 +18,10 @@
  * Applied, it works through the records a slice at a time, each one exactly
  * as a single proposed change is written: checked against the person's own
  * rights to that record (ws_change_allowed(), ws_change_check()) and written
- * by the same writer (ws_change_write_*), so the events, log lines and the
- * Recycle Bin are the ones the panel uses. The screen carries the work on
+ * by the same writer (ws_change_write(), which calls ws_change_write_<kind>()),
+ * so the events, log lines and the Recycle Bin are the ones the panel uses;
+ * its audit trail lines are recorded as the job's, since a slice runs on
+ * whichever screen ticks or in the job. The screen carries the work on
  * (ws_ai_bulk_step), and the screens' tick and the assistant's job finish
  * what a closed screen left. At the end one locked decision says what was
  * done; what is still running shows its progress on the card.
@@ -758,7 +760,7 @@ function ws_bulk_step($change_id)
             continue;
         }
 
-        $done = call_user_func('ws_change_write_' . $type, $viewer, $spec['action'], $record, $values);
+        $done = ws_change_write($viewer, $type, $spec['action'], $record, $values, true);
 
         if (empty($done['ok'])) {
             $state['failed']++;

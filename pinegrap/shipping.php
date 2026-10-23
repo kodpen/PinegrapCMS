@@ -185,7 +185,7 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         $original_shipping_cost = $shipping_cost;
         
         // Update shipping cost to contain discount.
-        $shipping_cost = (int) round($shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100)));
+        $shipping_cost = pg_percent_off($shipping_cost, $offer['discount_shipping_percentage']);
     }
     
     // Update shipping cost for recipient.
@@ -2084,7 +2084,7 @@ function get_shipping_methods($properties) {
                 $original_shipping_cost = $shipping_cost;
                 
                 // update shipping cost to contain discount
-                $shipping_cost = $shipping_cost - ($shipping_cost * ($offer['discount_shipping_percentage'] / 100));
+                $shipping_cost = pg_percent_off($shipping_cost, $offer['discount_shipping_percentage']);
 
                 $discounted = true;
 
