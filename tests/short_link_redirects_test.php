@@ -7,11 +7,11 @@
  * what each * matched, where an address on this site leads, the checks that
  * keep a link from leading to itself or round a loop, the address a visitor
  * is sent to and the status it is sent with, the answer and the name as a
- * window posts them, and the CSV file of links that
- * the list exports and the import reads. The runner has no connection,
- * so the columns of 2026.11.0 (11.0.12) read as missing: names stop at 100
- * characters and pg_short_link_redirect_columns() writes nothing, as on a
- * site that has not run the upgrade.
+ * window posts them, the CSV file of links that the list exports and the
+ * import reads, and what a renamed page's old name may become. The runner
+ * has no connection, so the columns of 2026.11.0 (11.0.12) read as missing:
+ * names stop at 100 characters and pg_short_link_redirect_columns() writes
+ * nothing, as on a site that has not run the upgrade.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -440,6 +440,68 @@ function test_short_link_redirects_columns_wait_for_the_upgrade()
 	pg_assert_same(null, $answer['problem'], 'nor checked');
 	pg_assert_same(100, pg_short_link_name_max(), 'the name column before the upgrade');
 	pg_assert_same(255, pg_short_link_url_max(), 'the address column before the upgrade');
+}
+
+function test_short_link_redirects_renamed_page_old_name()
+{
+	pg_assert_same('', pg_short_link_rename_problem('hakkimizda', 'kurumsal'), 'a new name');
+	pg_assert_same('', pg_short_link_rename_problem('blog/eski', 'blog/yeni'), 'a name with a slash');
+	pg_assert_same('unchanged', pg_short_link_rename_problem('About', 'about'), 'case only: the page is found by the old name');
+	pg_assert_same('unchanged', pg_short_link_rename_problem('eski sayfa', 'eski_sayfa'), 'the same stored form');
+	pg_assert_same('unchanged', pg_short_link_rename_problem('eski_sayfa', 'eski sayfa'), 'the same stored form, the other way');
+	pg_assert_same('unchanged', pg_short_link_rename_problem('', 'yeni'), 'no old name');
+	pg_assert_same('unchanged', pg_short_link_rename_problem('eski', '  '), 'no new name');
+	pg_assert_same('name', pg_short_link_rename_problem('a*b', 'ab'), 'a star would make a pattern');
+	pg_assert_same('name', pg_short_link_rename_problem('soru?', 'soru'), 'a character no short link takes');
+	pg_assert_same('name', pg_short_link_rename_problem(str_repeat('a', 101), 'b'), 'longer than the name column takes');
+
+	if (class_exists('Normalizer')) {
+		pg_assert_same('unchanged', pg_short_link_rename_problem('ürün', 'URUN'), 'one name to the database');
+		pg_assert_same('', pg_short_link_rename_problem('hakkımızda', 'hakkimizda'), 'ı and i are two names');
+	}
+}
+
+function test_short_link_redirects_renamed_page_waits_for_the_upgrade()
+{
+	pg_assert_same('', pg_short_link_not_redirect_to_page_sql(5), 'no link redirects before the upgrade');
+
+	$renamed = pg_short_link_page_renamed(5, 'eski', 'yeni', true, 1, 0);
+
+	pg_assert_same(false, $renamed['added'], 'nothing is added');
+	pg_assert_same(0, $renamed['removed'], 'nor removed');
+	pg_assert_same('schema', $renamed['skipped'], 'and says why');
+	pg_assert_same('eski', $renamed['from'], 'the old name');
+}
+
+function test_short_link_redirects_renamed_page_messages()
+{
+	$renamed = function ($added, $removed, $skipped) {
+		return array('from' => 'eski sayfa', 'to' => 'yeni', 'added' => $added, 'removed' => $removed, 'skipped' => $skipped);
+	};
+
+	$said = pg_short_link_page_renamed_messages($renamed(true, 0, ''), '/site/');
+
+	pg_assert_same(1, count($said['notes']), 'added: one note');
+	pg_assert_true(strpos($said['notes'][0], '/site/eski sayfa') !== false && strpos($said['notes'][0], '/site/yeni') !== false, 'naming both addresses under the base path');
+	pg_assert_same(array(), $said['warnings'], 'and no warning');
+
+	$said = pg_short_link_page_renamed_messages($renamed(false, 1, 'off'), '/');
+
+	pg_assert_same(1, count($said['notes']), 'a redirect of its own removed');
+	pg_assert_true(strpos($said['notes'][0], '/yeni') !== false, 'names the address the page took back');
+
+	foreach (array('name', 'taken', 'loop') as $skipped) {
+		$said = pg_short_link_page_renamed_messages($renamed(false, 0, $skipped), '/');
+
+		pg_assert_same(1, count($said['warnings']), 'asked for and not added: ' . $skipped);
+		pg_assert_same(array(), $said['notes'], 'no note: ' . $skipped);
+	}
+
+	foreach (array('off', 'unchanged', 'draft', 'schema') as $skipped) {
+		$said = pg_short_link_page_renamed_messages($renamed(false, 0, $skipped), '/');
+
+		pg_assert_same(array('notes' => array(), 'warnings' => array()), $said, 'nothing to say: ' . $skipped);
+	}
 }
 
 function test_short_link_redirects_name_parts_that_cannot_be_opened()

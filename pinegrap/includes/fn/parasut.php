@@ -1368,6 +1368,63 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
 }
 
 /**
+ * The attributes the buyer card of an order is opened with at Paraşüt.
+ *
+ * The identity number goes in tax_number, the one field Paraşüt keeps for
+ * a company's VKN and a person's TCKN; contact_type says which. The buyer
+ * is a company when the order names a billing company, a person otherwise,
+ * and a person whenever the number has 11 digits (a TCKN, also that of a
+ * sole proprietor trading under a name), as the ERP's Paraşüt driver opens
+ * a card (erp_edoc_parasut_contact_attributes()).
+ *
+ * @param array  $order      Order row (billing_* fields)
+ * @param string $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
+ * @return array
+ */
+function parasut_order_contact_attributes($order, $id_number)
+{
+    $id_number = trim((string) $id_number);
+    $billing_company = trim($order['billing_company'] ?? '');
+
+    if (($billing_company !== '') && (strlen($id_number) !== 11)) {
+        $contact_type = 'company';
+    } else {
+        $contact_type = 'person';
+    }
+
+    $name = ($billing_company !== '')
+        ? $billing_company
+        : trim(trim($order['billing_first_name'] ?? '') . ' ' . trim($order['billing_last_name'] ?? ''));
+
+    $attributes = [
+        'account_type' => 'customer',
+        'contact_type' => $contact_type,
+        'name' => $name,
+        'email' => $order['billing_email_address'] ?? '',
+        'phone' => $order['billing_phone_number'] ?? '',
+    ];
+
+    if ($id_number !== '') {
+        $attributes['tax_number'] = $id_number;
+    }
+
+    // Build address string.
+    $addr_parts = array_filter([
+        $order['billing_address_1'] ?? '',
+        $order['billing_address_2'] ?? '',
+        $order['billing_city'] ?? '',
+        $order['billing_state'] ?? '',
+        $order['billing_zip_code'] ?? '',
+        $order['billing_country'] ?? '',
+    ]);
+    if ($addr_parts) {
+        $attributes['address'] = implode(', ', $addr_parts);
+    }
+
+    return $attributes;
+}
+
+/**
  * @param array $order Full order row from DB (billing_* fields, contact_id, id)
  * @return array ['success' => bool, 'parasut_contact_id' => string|null, 'error' => string]
  */
@@ -1384,51 +1441,7 @@ function parasut_sync_contact($order)
         return ['success' => true, 'parasut_contact_id' => $order['parasut_contact_id'], 'error' => ''];
     }
 
-    // Determine name and contact type.
-    $billing_company = trim($order['billing_company'] ?? '');
-    $billing_first = trim($order['billing_first_name'] ?? '');
-    $billing_last = trim($order['billing_last_name'] ?? '');
-
-    if ($billing_company !== '') {
-        $contact_type = 'company';
-        $name = $billing_company;
-    } else {
-        $contact_type = 'person';
-        $name = trim($billing_first . ' ' . $billing_last);
-    }
-
-    // Identification number (TC / VKN).
-    $id_number = _parasut_order_identity($order);
-
-    $attributes = [
-        'account_type' => 'customer',
-        'contact_type' => $contact_type,
-        'name' => $name,
-        'email' => $order['billing_email_address'] ?? '',
-        'phone' => $order['billing_phone_number'] ?? '',
-    ];
-
-    if ($id_number !== '') {
-        // VKN for companies, TCKN for persons.
-        if ($contact_type === 'company') {
-            $attributes['tax_number'] = $id_number;
-        } else {
-            $attributes['tckn'] = $id_number;
-        }
-    }
-
-    // Build address string.
-    $addr_parts = array_filter([
-        $order['billing_address_1'] ?? '',
-        $order['billing_address_2'] ?? '',
-        $order['billing_city'] ?? '',
-        $order['billing_state'] ?? '',
-        $order['billing_zip_code'] ?? '',
-        $order['billing_country'] ?? '',
-    ]);
-    if ($addr_parts) {
-        $attributes['address'] = implode(', ', $addr_parts);
-    }
+    $attributes = parasut_order_contact_attributes($order, _parasut_order_identity($order));
 
     $body = [
         'data' => [
@@ -1897,12 +1910,6 @@ function parasut_create_invoice($order_id)
  */
 function parasut_create_shipment($order_id)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
-
     // Fetch full order.
     $query = "SELECT orders.*
               FROM orders
@@ -1914,6 +1921,30 @@ function parasut_create_shipment($order_id)
     if (!$order) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
     }
+
+    // One outgoing shipment document per order, refused before any request.
+    // Every create takes the stock-tracked lines out of Paraşüt's stock again
+    // and shipment_documents has no idempotency key, so a second press would
+    // leave a second waybill for the same sale and overwrite the stored id
+    // of the first.
+    $existing_shipment_id = trim((string) ($order['parasut_shipment_id'] ?? ''));
+
+    if ($existing_shipment_id !== '') {
+        return [
+            'success' => false,
+            'parasut_shipment_id' => $existing_shipment_id,
+            'error' => lang(array(
+                'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.',
+                'vars' => array($existing_shipment_id),
+            )),
+        ];
+    }
+
+    $token_result = parasut_get_token();
+    if (!$token_result['success']) {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
+    }
+    $token = $token_result['token'];
 
     // Sync contact.
     $contact_result = parasut_sync_contact($order);
