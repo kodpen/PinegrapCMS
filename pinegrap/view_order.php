@@ -2521,16 +2521,20 @@ if (!$_POST) {
         }
 
         // Build the e-irsaliye button separately so the main button group stays simple.
+        // An order whose shipment document is already in Paraşüt is not offered
+        // the action again: parasut_create_shipment() refuses a second one.
         $output_parasut_shipment_button = '';
         if ($has_shippable) {
             $shipment_btn_class = $parasut_shipment_id ? 'link-success' : ($is_mixed ? 'link-warning' : 'link-secondary');
             $shipment_btn_title = $is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt E-İrsaliye';
             $shipment_mixed_icon = $is_mixed ? ' <i class="bi bi-exclamation-triangle-fill text-warning small"></i>' : '';
+            $shipment_btn_action = ($parasut_shipment_id !== '')
+                ? ' disabled title="' . h(lang('This order already has a shipment document in Paraşüt.')) . '"'
+                : ' onclick="pgConfirm({title:\'Paraşüt E-İrsaliye\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
+                title="' . $shipment_btn_title . '"';
             $output_parasut_shipment_button = '
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . $shipment_btn_class . '"
-                onclick="pgConfirm({title:\'Paraşüt E-İrsaliye\', message:\'' . $js_confirm_shipment . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-e-irsaliye-form\').submit();}); return false;"
-                title="' . $shipment_btn_title . '">
+                class="btn btn-link py-0 mb-2 ' . $shipment_btn_class . '"' . $shipment_btn_action . '>
                 <i class="bi bi-truck me-1"></i>' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
             </button>';
         }

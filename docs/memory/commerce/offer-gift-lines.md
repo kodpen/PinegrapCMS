@@ -4,7 +4,7 @@ description: An offer's gift line ('add product' result): the price it is charge
 ---
 
 ## What price does a gift line get?
-- `pg_offer_gift_price($product_price, $amount, $percentage)`: the product's price less the action's amount, or less its percentage; rounded minor units, never below 0. Every place that prices a gift uses it: `apply_offer_gift_to_cart()` (first placement), the gift-line pass at the top of `apply_offers_to_cart()` (rewrites price and quantity on every cart pass), `get_best_offer_id()` and the claim button's `add_pending_offers()`.
+- `pg_offer_gift_price($product_price, $amount, $percentage)`: the product's price less the action's amount, or less its percentage (`pg_percent_off()`, offer-percent-rounding.md); minor units, never below 0. Every place that prices a gift uses it: `apply_offer_gift_to_cart()` (first placement), the gift-line pass at the top of `apply_offers_to_cart()` (rewrites price and quantity on every cart pass), `get_best_offer_id()` and the claim button's `add_pending_offers()`.
 - The editor does not cap an amount at the product's price, and a product's price can drop after the offer was set up; without the floor the gift line was rewritten with a negative price on the next cart pass and took money off the subtotal (`order_items.price` is a signed INT).
 
 ## Which recipient does a gift go to?
