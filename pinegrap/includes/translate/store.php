@@ -71,10 +71,15 @@ function pg_tr_hash($normalized, $format = 'text')
 
 /**
  * Whether a text is worth translating: it has letters, it is not only a
- * token the renderer fills in later, and it is not placeholder Latin.
+ * token the renderer fills in later, it is not a data value
+ * (pg_tr_data_value()), and it is not placeholder Latin.
  */
 function pg_tr_translatable($text)
 {
+    if (pg_tr_data_value($text)) {
+        return false;
+    }
+
     $plain = trim(strip_tags((string) $text));
 
     if ($plain === '') {
@@ -97,6 +102,74 @@ function pg_tr_translatable($text)
     }
 
     return !pg_tr_placeholder_latin($plain);
+}
+
+/**
+ * Whether a text is a value kept as text rather than words: a data: URI (an
+ * inline SVG icon, an image), a JSON object or array, or code that makes up
+ * the whole value. A form record or a field holds such values, and an
+ * engine has nothing to translate in them: it answers with the value itself
+ * or breaks it. Read on the raw value, markup included, since stripping the
+ * tags would leave "data:image/svg+xml," or a script's statements behind as
+ * words. Only whole values are data: a sentence with inline <code> or
+ * <kbd>, or one that names a <script> tag, is still a sentence. A lone
+ * address (a URL, an e-mail address) is not data either: a site can give a
+ * language its own address, and a reviewed translation of it has to keep
+ * being drawn.
+ *
+ * @param string $text
+ * @return bool
+ */
+function pg_tr_data_value($text)
+{
+    $value = trim((string) $text);
+
+    if ($value === '') {
+        return false;
+    }
+
+    // data:[<media type>][;<parameter>]...,<data> - the media type and the
+    // comma tell it from a label such as "Data: 2024".
+    if (preg_match('~^data:(?:[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+)?(?:;[^,;\s]*)*,~i', $value)) {
+        return true;
+    }
+
+    if ((($value[0] === '{') || ($value[0] === '[')) && is_array(json_decode($value, true))) {
+        return true;
+    }
+
+    // Code inside <code> or <kbd> sits in a sentence (both are inline tags,
+    // so the paragraph arrives as one value): such a value is words. So is
+    // a text with a {var:1} placeholder, which the site fills into its own
+    // sentences ("Showing {var:1} of {var:2}" would read as CSS rules).
+    if ((preg_replace('~<(code|kbd)\b[^>]*>.*?</\1>~is', '', $value) !== $value)
+        || preg_match('~\{var:\d+\}~', $value)) {
+        return false;
+    }
+
+    // Code, on whole values only: a script or style element that opens and
+    // closes the value; a function statement; an arrow function assigned to
+    // a name; a call whose argument is a function or an arrow with a block;
+    // a declaration whose call takes an arrow; one or more CSS rules with an
+    // ASCII selector and ASCII property names. An inline text has its >
+    // escaped, hence the &gt; spellings. Each pattern is anchored at both
+    // ends, so a sentence that names a tag or holds an arrow stays words.
+    $patterns = array(
+        '~^<(script|style)\b[^>]*>.*</\1>$~is',
+        '~^(?:(?:var|let|const)\s+)?(?:[\w$.]+\s*=\s*)?(?:async\s+)?function\b\s*[\w$]*\s*\([^()]*\)\s*\{.*\}\s*;?$~is',
+        '~^(?:(?:var|let|const)\s+)?[\w$.]+\s*=\s*(?:async\s*)?(?:\([^()]*\)|[\w$]+)\s*=(?:>|&gt;).*[;}]$~is',
+        '~^(?:(?:var|let|const)\s+[\w$]+\s*=\s*)?[\w$.]+\s*\(.*(?:\bfunction\b\s*[\w$]*\s*\([^()]*\)\s*|=(?:>|&gt;)\s*)\{.*\}\s*\)\s*;?$~is',
+        '~^(?:var|let|const)\s+[\w$]+\s*=\s*[\w$.]+\s*\(.*=(?:>|&gt;).*\)\s*;$~is',
+        '~^(?:[a-z0-9_.#*:\[\]="\' >+\~,()-]+\{\s*(?:[a-z-]+\s*:\s*[^{};]+;\s*)*[a-z-]+\s*:\s*[^{};]+;?\s*\}\s*)+$~i',
+    );
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $value)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
