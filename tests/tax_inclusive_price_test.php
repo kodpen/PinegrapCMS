@@ -86,3 +86,13 @@ function test_tax_inclusive_price_marketplace_price_without_tax_is_the_shop_pric
 	pg_assert_same(7995, mp_product_price(array('price' => '7995', 'taxable' => '1', 'tax_rate' => null)));
 	pg_assert_same(79.95, mp_price_major(mp_product_price(array('price' => '7995', 'taxable' => '1', 'tax_rate' => '20.000'))));
 }
+
+// 2.00 at 7.25% comes to 2.145 with its tax, so 2.15; 0.50 at 29% comes to
+// 0.645, so 0.65: the checkout's tax on one unit (pg_tax_apply_rate()),
+// where round(rate / 100 x price) gives 2.14 and 0.64 on PHP 8.4 and later.
+function test_tax_inclusive_price_takes_the_exact_tax()
+{
+	pg_assert_same(215, get_tax_inclusive_price(200, 1, 7.25, 18.0, true));
+	pg_assert_same(65, get_tax_inclusive_price(50, 1, '29.000', 18.0, true));
+	pg_assert_same(1535, get_tax_inclusive_price(1500, 1, '2.300', 18.0, true));
+}

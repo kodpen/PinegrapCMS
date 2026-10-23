@@ -2285,8 +2285,8 @@ function get_effective_tax_rate($product_rate, $zone_rate)
  * the tax the checkout adds on top of it.
  *
  * The shop keeps product prices without tax and update_order_item_taxes()
- * adds round(rate / 100 x price) per line at the checkout, so this is that
- * formula for a quantity of one. It is the figure to hand anybody who wants
+ * adds the rate's tax at the checkout (pg_tax_apply_rate()), so this is that
+ * tax on a quantity of one. It is the figure to hand anybody who wants
  * the final price - a marketplace quotes its sale price with the tax inside -
  * and it is the price itself whenever the checkout would add nothing: the
  * shop has tax switched off, the product is not taxable, or the shop's
@@ -2316,7 +2316,7 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
 
     $rate = get_effective_tax_rate($product_rate, $zone_rate);
 
-    return $price + (int) round($rate / 100 * $price);
+    return $price + pg_tax_apply_rate($price, $rate);
 }
 
 /**
@@ -2475,17 +2475,138 @@ function get_default_tax_rate()
 }
 
 /**
+ * A decimal as whole units of 1/10^$places, rounded half away from zero on
+ * the digits sprintf() writes it with: 2.3 at three places is 2300, although
+ * 2.3 is 2.2999... in binary.
+ *
+ * The checkout's copy of the ERP's erp_decimal_units() (includes/erp/money.php),
+ * which a store without the ERP never loads; tests/tax_apply_rate_test.php
+ * holds the two sources equal. A float, so it stays whole past PHP_INT_MAX on
+ * a 32-bit build.
+ *
+ * @param float|int|string $value
+ * @param int              $places  0 to 10
+ * @return float
+ */
+function pg_decimal_units($value, $places)
+{
+    $value = (float) $value;
+    $places = max(0, min(10, (int) $places));
+    $parts = explode('.', sprintf('%.10F', abs($value)));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
+
+    if ((int) substr($parts[1], $places, 1) >= 5) {
+        $units += 1;
+    }
+
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
+}
+
+/**
+ * An amount times a decimal held as whole units of 1/$scale, rounded half
+ * away from zero on the exact product, in whole numbers only.
+ *
+ * The checkout's copy of the ERP's erp_multiply_units() (includes/erp/money.php);
+ * tests/tax_apply_rate_test.php holds the two sources equal, so the float
+ * steps a 32-bit build takes stay the ERP's although CI never runs them. Both
+ * factors are split at the scale, so no partial product outgrows an integer
+ * while the result fits; on a 32-bit build the same steps run on whole
+ * floats, exact below 2^53.
+ *
+ * @param int|float $amount  A whole number
+ * @param int|float $units   A whole number
+ * @param int       $scale   100000 for a percentage at three places
+ * @return int|float  An int; a float only on a 32-bit build, for a result past PHP_INT_MAX
+ */
+function pg_multiply_units($amount, $units, $scale)
+{
+    $amount = is_int($amount) ? $amount : (float) $amount;
+    $units = is_int($units) ? $units : (float) $units;
+    $scale = max(1, (int) $scale);
+    $negative = (($amount < 0) xor ($units < 0));
+
+    $amount = abs($amount);
+    $units = abs($units);
+
+    // Whole units held in a float (pg_decimal_units()) take the integer
+    // steps when they fit a 64-bit int.
+    if ((PHP_INT_SIZE >= 8) && is_float($amount) && ($amount < PHP_INT_MAX)) {
+        $amount = (int) $amount;
+    }
+
+    if ((PHP_INT_SIZE >= 8) && is_float($units) && ($units < PHP_INT_MAX)) {
+        $units = (int) $units;
+    }
+
+    if (is_int($amount) && is_int($units) && (PHP_INT_SIZE >= 8)) {
+        $amount_rest = $amount % $scale;
+        $amount_whole = intdiv($amount, $scale);
+        $units_rest = $units % $scale;
+        $units_whole = intdiv($units, $scale);
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = $rest % $scale;
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + intdiv($rest, $scale);
+    } else {
+        $amount = (float) $amount;
+        $units = (float) $units;
+        $amount_rest = fmod($amount, $scale);
+        $amount_whole = ($amount - $amount_rest) / $scale;
+        $units_rest = fmod($units, $scale);
+        $units_whole = ($units - $units_rest) / $scale;
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = fmod($rest, $scale);
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + (($rest - $rest_rest) / $scale);
+    }
+
+    if (($rest_rest * 2) >= $scale) {
+        $result += 1;
+    }
+
+    if (is_float($result) && ($result < PHP_INT_MAX)) {
+        $result = (int) $result;
+    }
+
+    return ($negative && ($result > 0)) ? -$result : $result;
+}
+
+/**
+ * The tax at a rate on an amount: the rate at the three places the rate
+ * columns keep, the exact product rounded half away from zero. 2.3% of 15.00
+ * is 0.345, so 0.35, on every PHP version; round(1500 * 2.3 / 100) is 34 on
+ * PHP 8.4 and later, where round() no longer pre-rounds 34.4999... The ERP's
+ * erp_apply_rate(), so an order's tax is its invoice's.
+ *
+ * The amount is taken as it comes, not cut to an int: on a 32-bit build the
+ * lines of one rate past 21,474,836.47 add up to a float, which
+ * pg_multiply_units() takes whole.
+ *
+ * @param int|float        $amount  minor units, a whole number
+ * @param float|int|string $rate    percent
+ * @return int|float  minor units; a float only on a 32-bit build, past PHP_INT_MAX
+ */
+function pg_tax_apply_rate($amount, $rate)
+{
+    return pg_multiply_units($amount, pg_decimal_units($rate, 3), 100000);
+}
+
+/**
  * The tax of an order's lines, taken once on the sum of the lines at each
  * rate and spread back over them.
  *
  * Lines at one rate are a group: the group's tax is the rate on the sum of
- * their amounts, rounded half away from zero, and it is shared out over them
- * in proportion to their amounts (pg_tax_spread()). The lines add up to their
- * group and each stays within a minor unit of what it would carry alone. It
- * is how an e-document provider that works the tax out from the rates comes
- * to its figures, and how the ERP takes a document's taxes (erp_rate_vat(),
- * which gives the same figures for lines without withholding). A line with a
- * negative amount is taxed alone, so a group's shares never run backwards.
+ * their amounts, rounded half away from zero (pg_tax_apply_rate()), and it
+ * is shared out over them in proportion to their amounts (pg_tax_spread()).
+ * The lines add up to their group and each stays within a minor unit of what
+ * it would carry alone. It is how an e-document provider that works the tax
+ * out from the rates comes to its figures, and how the ERP takes a
+ * document's taxes (erp_rate_vat(), which gives the same figures for lines
+ * of zero or more without withholding). A line with a negative amount is
+ * taxed alone, so a group's shares never run backwards.
  *
  * @param array $lines  key => ['amount' => int minor units, 'rate' => float percent]; no rate, or 0, is no tax
  * @return array  key => int tax, in the order given
@@ -2505,7 +2626,7 @@ function pg_tax_by_rate($lines)
         }
 
         if ($amount < 0) {
-            $taxes[$key] = (int) round($amount * $rate / 100);
+            $taxes[$key] = pg_tax_apply_rate($amount, $rate);
             continue;
         }
 
@@ -2521,7 +2642,7 @@ function pg_tax_by_rate($lines)
     }
 
     foreach ($groups as $group) {
-        $tax = (int) round($group['amount'] * $group['rate'] / 100);
+        $tax = pg_tax_apply_rate($group['amount'], $group['rate']);
 
         foreach (pg_tax_spread($tax, $group['members']) as $key => $share) {
             $taxes[$key] = $share;
@@ -2800,7 +2921,7 @@ function pg_tax_rate_amount($total, $rate)
     $near = (int) round($total * 100 / (100 + (float) $rate));
 
     foreach (array($near, $near - 1, $near + 1) as $amount) {
-        if (($amount >= 0) && (($amount + (int) round($amount * (float) $rate / 100)) === $total)) {
+        if (($amount >= 0) && (($amount + pg_tax_apply_rate($amount, $rate)) === $total)) {
             return $amount;
         }
     }

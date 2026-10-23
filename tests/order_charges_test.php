@@ -174,3 +174,64 @@ function test_order_installment_charge_goes_a_kurus_lower()
 	);
 	pg_assert_same(205, pg_order_installment_charge($two, 0, $charges, 205));
 }
+
+// 15.00 at 2.3% comes to 15.35 and no amount to 15.34; 30.00 at 4.35% to
+// 31.31 and none to 31.30, as the invoice takes them (erp_rate_amount()).
+function test_order_tax_rate_amount_takes_the_exact_tax()
+{
+	pg_assert_same(1500, pg_tax_rate_amount(1535, '2.300'));
+	pg_assert_same(null, pg_tax_rate_amount(1534, '2.300'), '15.34 at 2.3%');
+	pg_assert_same(3000, pg_tax_rate_amount(3131, 4.35));
+	pg_assert_same(null, pg_tax_rate_amount(3130, 4.35), '31.30 at 4.35%');
+}
+
+// What the checkout charges at decimal rates, goods at a half-kurus tax
+// among them, is invoiced at rate x net per rate and at the order's total.
+function test_order_charges_meet_the_invoice_at_decimal_rates()
+{
+	mt_srand(20261024);
+	$rates = array('2.300', '4.350', '1.390', '20.000');
+	$halves = array('2.300' => 500, '4.350' => 1000, '1.390' => 5000);
+
+	for ($run = 0; $run < 600; $run++) {
+		$lines = array();
+
+		for ($i = mt_rand(1, 4); $i > 0; $i--) {
+			$rate = $rates[mt_rand(0, count($rates) - 1)];
+			$amount = (isset($halves[$rate]) && mt_rand(0, 1)) ? (2 * mt_rand(0, 99) + 1) * $halves[$rate] : mt_rand(1, 150000);
+			$lines[300 + $i] = array('amount' => $amount, 'rate' => $rate);
+		}
+
+		$subtotal = array_sum(array_column($lines, 'amount'));
+		$discount = mt_rand(0, 3) ? 0 : mt_rand(1, $subtotal);
+		$taxes = pg_order_line_taxes($lines);
+		$charged = array();
+		$items = array();
+
+		foreach ($lines as $id => $line) {
+			$charged[$id] = array('amount' => $line['amount'], 'rate' => $line['rate'], 'tax' => $taxes[$id]);
+			$items[] = array('product_id' => 7, 'product_name' => 'Item', 'short_description' => '', 'quantity' => 1,
+				'price' => $line['amount'], 'tax_total' => $taxes[$id], 'tax_rate' => $line['rate']);
+		}
+
+		$tax = ($discount > 0) ? pg_order_charged_tax($charged, $discount) : array_sum($taxes);
+		$settled = pg_order_charges_reachable($charged, $discount, array('shipping' => mt_rand(0, 2) ? mt_rand(1, 5000) : 0, 'surcharge' => 0));
+		$built = erp_order_lines(array('discount' => $discount, 'tax' => $tax, 'shipping' => $settled['shipping'], 'surcharge' => 0), $items, true);
+
+		pg_assert_same($subtotal - $discount + $tax + $settled['shipping'], $built['totals']['grand_total'], 'run ' . $run . ' total');
+
+		$nets = array();
+		$vats = array();
+		foreach ($built['lines'] as $line) {
+			$key = number_format((float) $line['tax_rate'], 3, '.', '');
+			$nets[$key] = ($nets[$key] ?? 0) + $line['line_total'] - $line['discount_amount'];
+			$vats[$key] = ($vats[$key] ?? 0) + $line['tax_total'];
+		}
+
+		foreach ($nets as $key => $net) {
+			if ((float) $key > 0) {
+				pg_assert_same(erp_apply_rate($net, $key), $vats[$key], 'run ' . $run . ' at ' . $key);
+			}
+		}
+	}
+}
