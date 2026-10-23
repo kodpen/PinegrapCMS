@@ -141,8 +141,9 @@ function pg_tr_render_props($props, $type)
 /**
  * The rules a page is drawn by in a language: what is translated, and what
  * keeps the page from the search engines. A body drawn under other rules is
- * drawn again (pg_tr_render_page_body()), and what the pages answered the
- * search engines is dropped once when they change (pg_tr_render_rules_check()).
+ * drawn again (pg_tr_render_page_body()). When they change, the drawn bodies
+ * are dropped once and the kept "index" answers stay
+ * (pg_tr_render_rules_check()).
  *
  * @return string
  */
@@ -152,12 +153,16 @@ function pg_tr_render_rules()
 }
 
 /**
- * Drops the drawn bodies and the kept robots answers of every language once
- * after the rules changed (an update), so the sitemap does not go on reading
- * answers given under the old ones for pages nobody has visited since. A
- * marker in data/temp says the rules in force were applied; when it cannot
- * be written nothing is dropped, rather than dropping on every request - the
- * bodies are still drawn again by their fingerprint.
+ * Drops the drawn bodies of every language once after the rules changed (an
+ * update). The kept robots answers that said "index" stay: with "no answer
+ * means not offered" (pg_tr_index_decide()), dropping them would take every
+ * language address out of sitemap.xml and the alternates until each page is
+ * visited in each language. An old "index" is corrected by the page's own
+ * robots meta on its next draw, and the search engines follow that meta; an
+ * old "noindex" gives the same answer as none. A marker in data/temp says
+ * the rules in force were applied; when it cannot be written nothing is
+ * dropped, rather than dropping on every request - the bodies are still
+ * drawn again by their fingerprint.
  */
 function pg_tr_render_rules_check()
 {
@@ -179,7 +184,7 @@ function pg_tr_render_rules_check()
         return;
     }
 
-    pg_tr_invalidate_pages();
+    pg_tr_invalidate_pages('', 0, false);
 }
 
 /**
@@ -620,6 +625,7 @@ function pg_tr_render_finalize($content)
     $active = pg_tr_active();
     $current = $active ? pg_tr_language() : $source;
     $noindex = false;
+    $own_verdict = null;
 
     if (!$active) {
         // The page in its own language: the stored body carries the fixed
@@ -741,16 +747,20 @@ function pg_tr_render_finalize($content)
         // Under the reviewed policy the answer depends on everything drawn
         // on the page - shared components, menus, the catalog - which
         // sitemap.xml and the alternates on the other languages' pages
-        // cannot draw to find out. It is kept for them (pg_tr_indexable()).
+        // cannot draw to find out. It is kept for them (pg_tr_indexable()),
+        // and the page names itself as an alternate by the answer kept, as
+        // they do: an address that keeps none is offered nowhere. The answer
+        // is the robots meta as it now stands, so a page the operator took
+        // out of the search engines (page.noindex) answers noindex too.
         if (($row['index_policy'] === 'reviewed') && ($canonical !== '')) {
-            pg_tr_page_verdict_keep($canonical, $current, !$noindex);
+            $own_verdict = pg_tr_page_verdict_keep($canonical, $current, !pg_tr_robots_says_noindex($content));
         }
     }
 
     // The alternates: the source and x-default on the source, and every
     // enabled target whose address of the page the search engines may index
     // - the rule sitemap.xml follows; for the language being drawn, the
-    // robots directive just written. Only for an address that is a page, and
+    // answer just kept. Only for an address that is a page, and
     // none at all when no other language may be indexed.
     if (($canonical !== '') && !preg_match('~<link\b[^>]*\shreflang=~i', $content)) {
         $links = '';
@@ -761,11 +771,10 @@ function pg_tr_render_finalize($content)
 
             foreach ($targets as $code => $row) {
                 if ($active && ($code === $current)) {
-                    // Under the reviewed policy an address below a page (a
-                    // catalog item) is offered in no language, as in
-                    // pg_tr_indexable(), so the set stays the same on every
-                    // page that names it.
-                    $indexable = !$noindex && (($row['index_policy'] !== 'reviewed') || (pg_tr_page_id_of_url($canonical) > 0));
+                    // The answer just kept, through the rule the other
+                    // pages and sitemap.xml read it by, so the set stays the
+                    // same on every page that names it.
+                    $indexable = pg_tr_index_decide((string) $row['index_policy'], $own_verdict);
                 } else {
                     $indexable = pg_tr_indexable($row, $canonical, true);
                 }

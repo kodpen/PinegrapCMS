@@ -480,7 +480,7 @@ function test_designer_canvas_controls_theme_view_wiring()
 	pg_assert_true($flag < strpos($loader, 'canvasDoc.head.appendChild(scr)'), 'the flag is set before the file runs');
 
 	pg_assert_contains("canvasDoc.addEventListener('pg-theme-change', _sdCanvasThemeChanged);", $js, 'the editor follows a switcher clicked on the canvas');
-	pg_assert_contains("doc.write('<!DOCTYPE html><html' + (canvasDarkTheme ? ' data-bs-theme=\"dark\"' : '') + '>", $js, 'a fresh canvas document opens in the view, on <html>');
+	pg_assert_contains("<html lang=\"' + esc(_sdDocLang()) + '\"' + (canvasDarkTheme ? ' data-bs-theme=\"dark\"' : '') + '>", $js, 'a fresh canvas document opens in the view, on <html>');
 	pg_assert_contains("'html[data-bs-theme=\"dark\"] .sd-dz {", $js, 'the dark drop zones follow the view on <html>');
 
 	$engine = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_theme_switcher.js');

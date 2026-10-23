@@ -7938,6 +7938,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     if ($report['reason'] === 'animated') {
                         $errors[] = lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file['name']));
+                    } elseif ($report['reason'] === 'orientation_unreadable') {
+                        $errors[] = lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file['name']));
                     } elseif ($report['reason'] === 'missing') {
                         $errors[] = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
                     } elseif ($report['reason'] === 'no_webp') {
@@ -8414,6 +8416,8 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 if ($report['reason'] === 'animated') {
                     $message = lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file['name']));
+                } elseif ($report['reason'] === 'orientation_unreadable') {
+                    $message = lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file['name']));
                 } elseif ($report['reason'] === 'missing') {
                     $message = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
                 } elseif ($report['reason'] === 'no_library') {

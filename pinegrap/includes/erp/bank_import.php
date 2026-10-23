@@ -14,8 +14,10 @@
  *
  * Banks export in their own layout, so the columns are chosen once per bank
  * account and remembered (erp_bank_statements.mapping). A line is known by a
- * hash of its day, amount and words, so a statement taken in twice, or two
- * that overlap, add each line once.
+ * hash of its day, amount and words, and of how many times the same day,
+ * amount and words came before it in the file, so a statement taken in twice,
+ * or two that overlap, add each line once, while two real lines that read
+ * alike (two transfer fees on one day) are both kept.
  *
  * The file is a CSV or the Excel workbook internet banking offers beside it
  * (.xlsx, or the older .xls), or an OpenDocument sheet (.ods) for a statement
@@ -703,6 +705,7 @@ function erp_bank_statement_build($statement_id, $mapping)
     $skipped = 0;
     $line_no = 0;
     $till_id = (int) $statement['cash_account_id'];
+    $seen = array();
 
     foreach ($rows as $cells) {
         $cells = (array) $cells;
@@ -728,7 +731,7 @@ function erp_bank_statement_build($statement_id, $mapping)
         }
 
         $description = ($column('description') >= 0) ? mb_substr(trim((string) ($cells[$column('description')] ?? '')), 0, 255) : '';
-        $hash = sha1($till_id . '|' . $date . '|' . $amount . '|' . mb_strtolower($description));
+        $hash = erp_bank_line_hash($till_id, $date, $amount, $description, erp_bank_line_occurrence($seen, $till_id, $date, $amount, $description));
         $line_no++;
 
         $ok = db("INSERT IGNORE INTO erp_bank_statement_lines SET
@@ -756,6 +759,69 @@ function erp_bank_statement_build($statement_id, $mapping)
     $matched = erp_bank_statement_match((int) $statement['id']);
 
     return array('success' => true, 'added' => $added, 'skipped' => $skipped, 'matched' => $matched, 'error' => '');
+}
+
+/**
+ * The hash a statement line is known by: its bank account, day, amount and
+ * words, and which occurrence of those it is in the file.
+ *
+ * The first occurrence hashes as lines always have (no suffix), so lines
+ * taken in before this count existed still turn a re-upload away. A second
+ * real line of the same day, amount and words (two transfer fees) gets "|2"
+ * and is added; the same file, or an overlapping one that holds both, gives
+ * the same hashes again and adds nothing.
+ *
+ * @param int    $till_id
+ * @param string $date        Y-m-d
+ * @param int    $amount      kurus, signed
+ * @param string $description
+ * @param int    $occurrence  1 for the first line that reads so in the file
+ * @return string
+ */
+function erp_bank_line_hash($till_id, $date, $amount, $description, $occurrence = 1)
+{
+    $key = erp_bank_line_key($till_id, $date, $amount, $description);
+
+    return sha1(((int) $occurrence > 1) ? $key . '|' . (int) $occurrence : $key);
+}
+
+/**
+ * Count a line among the ones read from the same file so far: which
+ * occurrence of its day, amount and words (letter case aside) it is.
+ *
+ * @param array  $seen        Counts so far, kept by the caller across the file
+ * @param int    $till_id
+ * @param string $date
+ * @param int    $amount
+ * @param string $description
+ * @return int  1 for the first
+ */
+function erp_bank_line_occurrence(&$seen, $till_id, $date, $amount, $description)
+{
+    $key = erp_bank_line_key($till_id, $date, $amount, $description);
+    $seen[$key] = ($seen[$key] ?? 0) + 1;
+
+    return $seen[$key];
+}
+
+/**
+ * The text a statement line's hash and its occurrence count are built from:
+ * bank account, day, amount and lower-cased words, joined as the statement
+ * build always joined them.
+ *
+ * The amount is not cast to int: past 2^31 kurus it is a float on 32-bit PHP,
+ * and a cast would wrap it to another amount and change the hash of a line
+ * stored before.
+ *
+ * @param int       $till_id
+ * @param string    $date
+ * @param int|float $amount
+ * @param string    $description
+ * @return string
+ */
+function erp_bank_line_key($till_id, $date, $amount, $description)
+{
+    return (int) $till_id . '|' . $date . '|' . $amount . '|' . mb_strtolower((string) $description);
 }
 
 /**
