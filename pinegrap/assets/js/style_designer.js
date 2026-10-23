@@ -272,7 +272,8 @@ const StyleDesigner = (function () {
     var _sharedDirty      = {};  // id → true  — unsaved inline edits awaiting flush
     var _editingSharedSid = 0;   // sid of shared component currently being edited (0 = none)
     var _sdSharedContentReady = false;  // the schema can open components to content editors
-    var _sharedSnapshots  = {};  // id → JSON string snapshot taken before first edit this session
+    var _sharedSnapshots  = {};  // id → JSON of the stored row (taken when the tree is first drawn or edited)
+    var _sharedWarned     = {};  // id → true once the "editing a shared component" toast was shown
 
     // Pre-save hook for the assets panel. Default no-op so saveAjax can call
     // it unconditionally; initAssetsPanel() reassigns to a real implementation
@@ -794,7 +795,9 @@ const StyleDesigner = (function () {
                             // tab - or the layout a template leaves to the editor -
                             // went back to the stored row as soon as another page
                             // showing it was opened, and the save wrote that back.
-                            if (_sharedDirty[sid] && _sharedCache[sid] && _sharedCache[sid].tree) return;
+                            // A tree that differs from its snapshot counts as
+                            // unsaved too: not every edit path marks it.
+                            if (_sdSharedChanged(sid)) { _sharedDirty[sid] = true; return; }
                             var parsed = null;
                             try { parsed = JSON.parse(item.tree_json); } catch (e) {}
                             // Object slots the PHP round trip turned into arrays.
@@ -843,7 +846,7 @@ const StyleDesigner = (function () {
                                 if (tcfg && tcfg.template_origin && _swIsType(tcfg.regionType)) {
                                     var st = _buildStarterTree(tcfg.regionType);
                                     _sdTreeObjects(st); _backfillIds(st); _normalizeToggleableShowState(st);
-                                    _sharedSnapshots[sid] = JSON.stringify(parsed);
+                                    _sharedSnapshots[sid] = _sdSharedTreeJSON(parsed);
                                     _sharedCache[sid].tree = st;
                                     _sharedDirty[sid] = true;
                                     repaired.push(item.name || ('#' + sid));
@@ -2094,7 +2097,7 @@ const StyleDesigner = (function () {
                 if (!rec.ids || typeof rec.ids !== 'object' || Array.isArray(rec.ids)) rec.ids = {};
                 rec.ids[String(p.page_id)] = byKey[key];
             });
-            if (_sharedSnapshots[w.sid]) _sharedSnapshots[w.sid] = JSON.stringify(w.tree);
+            if (_sharedSnapshots[w.sid]) _sharedSnapshots[w.sid] = _sdSharedTreeJSON(w.tree);
         });
     }
 
@@ -2778,7 +2781,7 @@ const StyleDesigner = (function () {
             }
             var cached = _sharedCache[sid];
             if (!cached) { if (afterDone) afterDone(false); return; }
-            if (!_sharedSnapshots[sid]) _sharedSnapshots[sid] = cached.tree ? JSON.stringify(cached.tree) : '{}';
+            if (!_sharedSnapshots[sid]) _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
             if (typeof saveState === 'function') saveState();
             var name = (res.settings && res.settings.form_name) ? String(res.settings.form_name) : '';
             // Same message area the starter tree carries (_ensureMessagesNode
@@ -5911,6 +5914,14 @@ const StyleDesigner = (function () {
         // or blue ring on non-.sd-tb children — sd-system-wrap overrides are on the wrapper
         // only, so we explicitly flatten descendants here.
         '.sd-system-wrap > *:not(.sd-tb) { box-shadow:none !important; outline:none !important; }',
+        // On the page _render_system_widget_express_order() draws the widget
+        // inside `.container.py-4.pg-eo-wrap`, whose side padding takes in the
+        // negative margins of the starter's top-level `.row` (-8px with g-3).
+        // The canvas draws the tree without that frame, so the grid stuck out
+        // of the canvas on both sides and the canvas scrolled sideways. Only
+        // the container's side padding (.75rem in Bootstrap 5) is mirrored;
+        // its max-width and py-4 stay page-only.
+        _SD_BX + '.sd-system-wrap[data-sd-sys-type="express_order"] > .sd-shared-inner { padding-left:.75rem; padding-right:.75rem; }',
         '.sd-system-placeholder { padding:.75rem 1rem; font-size:.8rem; color:#6366f1; border:2px dashed rgba(99,102,241,.45); border-radius:.35rem; text-align:center; background:rgba(99,102,241,.04); min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; }',
         '.sd-system-tb-name { font-size:.68rem; color:#6366f1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
         // The widget's name tag hangs above its frame, out of the layout, and
@@ -6677,6 +6688,25 @@ const StyleDesigner = (function () {
             canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
             canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
         }
+        // A text written in place inside a dropdown keeps its keys. Left to
+        // the document, Bootstrap's handler cancels the key first (the caret
+        // does not move) and then throws "Cannot read properties of
+        // undefined (reading 'parentNode')": the toggle it looks for beside
+        // the menu sits inside its own wrapper. The edit's key handler
+        // (stored on the editing element as _sdEditKeydown) runs here
+        // instead, before the document, and the event is stopped; what the
+        // handler would have let bubble goes on to the editor's shortcuts,
+        // as it does for any other text. The browser's default action is
+        // untouched, so the caret moves and Escape ends the edit.
+        function _sdDdEditKey(e, t) {
+            var host = t;
+            while (host && host !== canvasDoc && !host._sdEditKeydown) host = host.parentNode;
+            if (host && typeof host._sdEditKeydown === 'function') {
+                host._sdEditKeydown.call(host, e);
+                if (!e.cancelBubble) _sdShortcutKeydown(e);
+            }
+            e.stopPropagation();
+        }
         var _cvWin = canvasDoc.defaultView;
         if (_cvWin) {
             _cvWin.addEventListener('click', function (e) {
@@ -6697,15 +6727,14 @@ const StyleDesigner = (function () {
             // Bootstrap's keydown data-api (Escape, ArrowUp, ArrowDown on a
             // toggle or inside a menu) builds a Dropdown on the same missing
             // menu and throws as well. Escape closes the open menus here; the
-            // editor's own shortcuts still see the key. A text being written
-            // in place is left alone: its own key handling sits on the element
-            // and would not run once the event is stopped at the window.
+            // editor's own shortcuts still see the key.
             _cvWin.addEventListener('keydown', function (e) {
                 if (e.key !== 'Escape' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
                 var t = e.target;
-                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc || t.isContentEditable) return;
-                if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
+                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc) return;
+                if (!t.isContentEditable && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
                 if (!t.closest('[data-bs-toggle="dropdown"], .dropdown-menu')) return;
+                if (t.isContentEditable) { _sdDdEditKey(e, t); return; }
                 e.stopPropagation();
                 if (e.key === 'Escape' && canvasDoc.querySelector('.dropdown-menu.show')) {
                     e.preventDefault();
@@ -8512,6 +8541,53 @@ const StyleDesigner = (function () {
         applyIssueBadges();
         scheduleValidation();
         _sdLivePreviewSchedule();
+        _sdSharedBaseline();
+    }
+
+    // Every cached component tree gets a snapshot of what its row holds the
+    // first time it is drawn, so _sdSharedCatchEdits() sees a change made by
+    // any path: an in-place edit of a button label, for one, writes the node
+    // without selecting it, and a widget added in the session had no
+    // snapshot to compare with, so its edit was never saved. Taken after the
+    // canvas is drawn (the draw may mirror canvas state into the tree), and
+    // never for an entry already marked dirty: its row may hold something
+    // else, and the flush sends a dirty entry without a snapshot as it is.
+    function _sdSharedBaseline() {
+        for (var k in _sharedCache) {
+            if (!Object.prototype.hasOwnProperty.call(_sharedCache, k)) continue;
+            if (_sharedSnapshots[k] || _sharedDirty[k]) continue;
+            var c = _sharedCache[k];
+            if (c && c.tree) _sharedSnapshots[k] = _sdSharedTreeJSON(c.tree);
+        }
+    }
+
+    // True when a cached component holds a change its row does not: marked
+    // dirty, or its tree differs from the snapshot.
+    function _sdSharedChanged(sid) {
+        var c = _sharedCache[sid];
+        if (!c || !c.tree) return false;
+        if (_sharedDirty[sid]) return true;
+        return !!_sharedSnapshots[sid] && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[sid];
+    }
+
+    // A component tree as its snapshot is written and compared. The keys a
+    // selection writes without changing anything (the Layers panel's
+    // `_expanded`, an empty `_attrs`) are read past, as for a page
+    // (_pgBaselineTreeKey()): selecting inside a widget is not an edit.
+    function _sdSharedTreeJSON(t) {
+        return t ? JSON.stringify(t, _pgBaselineTreeKey) : '{}';
+    }
+
+    // Marks the component holding `node` as changed. Called by the paths
+    // that write a node without going through a selection (the in-place
+    // text edits). Returns the component id, 0 for a page node or a
+    // component this operator does not write.
+    function _sdSharedMarkEdited(node) {
+        var sid = _resolveSharedSid(node);
+        if (!(sid > 0)) return 0;
+        if (_sdIsContentLevel() && !_sdSharedOpenToContent(sid)) return 0;
+        _sharedDirty[sid] = true;
+        return sid;
     }
 
     // Track whether the current selection is inside a shared component;
@@ -8525,10 +8601,15 @@ const StyleDesigner = (function () {
             _editingSharedSid = 0;
         }
         if (_editingSharedSid > 0) {
-            _sharedDirty[_editingSharedSid] = true;
-            if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
+            // A snapshot only of a tree nothing has changed yet: one taken
+            // after a change would let the save skip it as unchanged.
+            if (!_sharedSnapshots[_editingSharedSid] && !_sharedDirty[_editingSharedSid]) {
                 var _sc = _sharedCache[_editingSharedSid];
-                _sharedSnapshots[_editingSharedSid] = _sc ? JSON.stringify(_sc.tree) : '{}';
+                _sharedSnapshots[_editingSharedSid] = _sdSharedTreeJSON(_sc && _sc.tree);
+            }
+            _sharedDirty[_editingSharedSid] = true;
+            if (_editingSharedSid !== _prevSid && !_sharedWarned[_editingSharedSid]) {
+                _sharedWarned[_editingSharedSid] = true;
                 sdToast(
                     '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
                     _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
@@ -8694,6 +8775,7 @@ const StyleDesigner = (function () {
         renderAttrsPanel();
         renderStylesPanel();
         updateCtxBar();
+        _sdSharedBaseline();
     }
 
     // The <details> the operator opened or closed on the canvas. A render
@@ -10306,6 +10388,9 @@ const StyleDesigner = (function () {
         var _isSysWidget = !!(cached && cached.system_region_config);
         var _sysCfg = null;
         if (_isSysWidget) { try { _sysCfg = JSON.parse(cached.system_region_config); } catch(e) {} }
+        // The widget's kind, for canvas rules that mirror the frame its page
+        // renderer draws around the tree (express_order's container).
+        if (_sysCfg && _sysCfg.regionType) wrapper.setAttribute('data-sd-sys-type', String(_sysCfg.regionType));
 
         // NOTE: The wrapper is intentionally NOT draggable. Nested draggable elements
         // (inner drag handles of heading/paragraph/container within a system widget's
@@ -11696,6 +11781,10 @@ const StyleDesigner = (function () {
         // Double-click → contenteditable
         s.addEventListener('dblclick', function(e) {
             e.preventDefault(); e.stopPropagation();
+            // The label is the button's text: the button is selected, and
+            // the same edit right is asked as for any in-place text.
+            _sdInlineSelect(node);
+            if (!_sdMayEdit(node, 'text')) return;
             // Bound text can't be edited here — the binding overwrites it on
             // the next render, so the edit would vanish without explanation.
             if (_sdTextIsBound(node)) {
@@ -11717,12 +11806,13 @@ const StyleDesigner = (function () {
             if (node.props.text !== t) {
                 saveState();
                 node.props.text = t;
+                _sdSharedMarkEdited(node);
                 // Text already in DOM; just refresh panels so tree view / props reflect it.
                 try { renderHtmlTree(); } catch (e) {}
                 try { renderProperties(); } catch (e) {}
             }
         });
-        s.addEventListener('keydown', function(e) {
+        var _vtKeydown = function(e) {
             if (e.key === 'Enter') { e.preventDefault(); s.blur(); }
             else if (e.key === 'Escape') { e.preventDefault(); s.textContent = node.props.text || ''; s.blur(); }
             // Native <button> ancestors activate on Space → swallows the keystroke
@@ -11753,7 +11843,10 @@ const StyleDesigner = (function () {
                 }
             }
             else { e.stopPropagation(); } // don't let canvas Delete-key shortcut remove the parent
-        });
+        };
+        s.addEventListener('keydown', _vtKeydown);
+        // Inside a dropdown the canvas window calls it itself (_sdDdEditKey()).
+        s._sdEditKeydown = _vtKeydown;
         // Drag-over highlighting: left half → drop before text, right half → drop after text.
         s.addEventListener('dragover', function(e) {
             if (!dragData) return;
@@ -12893,6 +12986,14 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // The node an in-place edit starts on becomes the selection. The canvas
+    // is not redrawn (it would drop the element about to be edited), so the
+    // shared component tracking that render() runs is run here.
+    function _sdInlineSelect(node) {
+        if (selectedNode !== node) { selectedNode = node; renderTree(); renderProperties(); }
+        _sdTrackSharedEditing();
+    }
+
     function setupInlineEditing(wrapper, innerEl, node) {
         // Icon double-click → open the icon picker
         if (node.type === 'content' && node.props.contentType === 'icon') {
@@ -13055,7 +13156,7 @@ const StyleDesigner = (function () {
                 e.stopPropagation();
                 e.preventDefault();
                 // Ensure node is selected on double click
-                if (selectedNode !== node) { selectedNode = node; renderTree(); renderProperties(); }
+                _sdInlineSelect(node);
 
                 // Somebody else holds this page — or the operator edits
                 // content rather than design. This is the call that answers
@@ -13213,6 +13314,7 @@ const StyleDesigner = (function () {
                         // start of the session captured the BEFORE state, so
                         // there's nothing else to do here.
                         node.props[item.prop] = newText;
+                        _sdSharedMarkEdited(node);
                         renderProperties();
                         renderTree();
                         _sdLivePreviewSchedule();
@@ -13231,7 +13333,12 @@ const StyleDesigner = (function () {
                 };
 
                 item.el.addEventListener('blur', commit, { once: true });
-                item.el.addEventListener('keydown', function (ke) {
+                var _ieKeydown = function (ke) {
+                    // The listener outlives the session: a link or button
+                    // keeps the focus once the edit ends, and stopping its
+                    // keys here would starve the canvas shortcuts (Ctrl+Z
+                    // after the edit) and replay an old Escape.
+                    if (isCommitted) return;
                     if (ke.key === 'Escape') {
                         isCommitted = true; // Prevent blur commit
                         liveTextObs.disconnect(); // Stop watching — user cancelled
@@ -13312,7 +13419,11 @@ const StyleDesigner = (function () {
                     } else {
                         ke.stopPropagation(); // Prevent Delete/Backspace from deleting the node while editing
                     }
-                });
+                };
+                item.el.addEventListener('keydown', _ieKeydown);
+                // Inside a dropdown the canvas window takes the key before
+                // the element and calls this handler itself (_sdDdEditKey()).
+                item.el._sdEditKeydown = _ieKeydown;
             });
 
             // Visual cursor hint, not on bound text: its double-click
@@ -46151,6 +46262,12 @@ const StyleDesigner = (function () {
         if (draftBox) draftBox.addEventListener('change', _sdSettingsSyncSave);
         var homeBox = document.getElementById('pg_page_home');
         if (homeBox) homeBox.addEventListener('change', function () { _sdSettingsSyncSave(); _sdSettingsAddress(); });
+        // The old address of a renamed page: the tab's choice for its next save.
+        var redirectBox = document.getElementById('sd-page-name-redirect');
+        if (redirectBox) redirectBox.addEventListener('change', function () {
+            var p = _pgActivePage();
+            if (p) p.page_name_redirect = redirectBox.checked ? 1 : 0;
+        });
 
         // ── The live lines of the page panes ──
         var folderSel = document.getElementById('pg_page_folder');
@@ -46288,8 +46405,20 @@ const StyleDesigner = (function () {
         var p = _pgActivePage() || {};
         var nameEl = document.getElementById('sd-page-name');
         var name = (nameEl ? nameEl.value : (p.page_name || '')).trim();
-        if (!name) { box.textContent = _sdT('The address appears here once the page has a name.'); return; }
         var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        // A saved page under a new name may keep its old address, sending
+        // visitors on (pg_short_link_page_renamed()): on unless switched off
+        // for this rename (_pgTabsSerialize()).
+        var redirectRow = document.getElementById('sd-page-redirect-row');
+        if (redirectRow) {
+            var renamed = !!(p.page_id > 0 && p.savedName && name && name !== p.savedName);
+            redirectRow.classList.toggle('d-none', !renamed);
+            var redirectBox = document.getElementById('sd-page-name-redirect');
+            if (redirectBox) redirectBox.checked = (p.page_name_redirect !== 0);
+            var redirectFrom = document.getElementById('sd-page-redirect-from');
+            if (redirectFrom) redirectFrom.textContent = renamed ? site + p.savedName : '';
+        }
+        if (!name) { box.textContent = _sdT('The address appears here once the page has a name.'); return; }
         var shown = site + name;
         var live = _pgPageViewUrl(p);
         var h = '<span class="bi bi-link-45deg me-1" aria-hidden="true"></span>';
@@ -51537,7 +51666,7 @@ const StyleDesigner = (function () {
         }
         // Snapshot before first change so undo can recover the original state.
         if (!_sharedSnapshots[sid]) {
-            _sharedSnapshots[sid] = cached.tree ? JSON.stringify(cached.tree) : '{}';
+            _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
         }
         var newTree = _buildStarterTree(regionType);
         _sharedCache[sid].tree = newTree;
@@ -54411,6 +54540,10 @@ const StyleDesigner = (function () {
                 _pgTabsAfterSave(res.data);
                 if (Array.isArray(res.data.warnings) && res.data.warnings.length) {
                     sdToast(res.data.warnings.map(esc).join('<br>'), 'warning', 7000);
+                }
+                // A renamed page's old address, sent on to the new one.
+                if (Array.isArray(res.data.notes) && res.data.notes.length) {
+                    sdToast(res.data.notes.map(esc).join('<br>'), 'info', 7000);
                 }
                 if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
                 // Server may request a redirect (used by add_system_style after creating
@@ -57756,6 +57889,12 @@ const StyleDesigner = (function () {
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
+            // A saved page under a new name: whether its old address sends
+            // visitors on (pg_short_link_page_renamed()); on unless it was
+            // switched off under the name.
+            if (p.page_id > 0 && p.savedName && String(p.page_name || '').trim() !== p.savedName) {
+                rec.page_name_redirect = (p.page_name_redirect === 0) ? 0 : 1;
+            }
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
             // request. `page_id: 0` means "this page", resolved on the server.
@@ -57846,7 +57985,13 @@ const StyleDesigner = (function () {
         _pages.forEach(function (p) {
             if (p.page_id > 0 && p.savedName && p.savedName !== p.page_name) _pgFollowRename(p.savedName, p.page_name);
         });
-        _pages.forEach(function (p) { p.baseline = _pgBaselineOf(p); if (p.page_id > 0) p.savedName = p.page_name; });
+        _pages.forEach(function (p) {
+            p.baseline = _pgBaselineOf(p);
+            if (p.page_id > 0) p.savedName = p.page_name;
+            // The redirect choice was for the rename just saved; the next
+            // one starts with it on again.
+            delete p.page_name_redirect;
+        });
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
         _pgTabsSyncUrl();
@@ -58508,7 +58653,7 @@ const StyleDesigner = (function () {
         Object.keys(_sharedSnapshots).forEach(function (k) {
             if (_sharedDirty[k]) return;
             var c = _sharedCache[k];
-            if (c && c.tree && JSON.stringify(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
+            if (c && c.tree && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
         });
     }
 
@@ -58534,13 +58679,15 @@ const StyleDesigner = (function () {
             if (!cached || !cached.tree) { delete _sharedDirty[sid]; return; }
             if (contentLevel && !_sdSharedOpenToContent(sid)) { delete _sharedDirty[sid]; return; }
             var currentJson = JSON.stringify(cached.tree);
+            var currentCmp  = _sdSharedTreeJSON(cached.tree);
             // Skip if tree is unchanged since the snapshot (no real edit happened).
             // The snapshot stays: it is still what the stored row holds.
-            if (_sharedSnapshots[sid] && currentJson === _sharedSnapshots[sid]) {
+            if (_sharedSnapshots[sid] && currentCmp === _sharedSnapshots[sid]) {
                 delete _sharedDirty[sid];
                 return;
             }
-            delete _sharedSnapshots[sid];
+            // The snapshot stays until the answer: a refused or unanswered
+            // push keeps it, so the next save still sees the change.
             delete _sharedDirty[sid];
             pending.push(fetch(apiBase, {
                 method: 'POST',
@@ -58569,7 +58716,7 @@ const StyleDesigner = (function () {
                         if (storedJson !== currentJson && _sharedCache[sid] && _sharedCache[sid].tree === cached.tree) {
                             if (selectedNode && _nodeInTree(selectedNode, cached.tree)) { selectedNode = null; selectedNodes = []; }
                             _sharedCache[sid].tree = stored;
-                            _sharedSnapshots[sid] = storedJson;
+                            _sharedSnapshots[sid] = _sdSharedTreeJSON(stored);
                             redraw = true;
                             return;
                         }
@@ -58578,7 +58725,7 @@ const StyleDesigner = (function () {
                 // Written: what was sent is the stored row now. Kept as the
                 // snapshot so an edit made after this save is found by
                 // _sdSharedCatchEdits() even when no new selection marks it.
-                _sharedSnapshots[sid] = currentJson;
+                _sharedSnapshots[sid] = currentCmp;
             }).catch(function () {
                 // Not answered: keep it dirty so the next save tries again.
                 _sharedDirty[sid] = true;

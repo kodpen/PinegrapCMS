@@ -910,6 +910,15 @@ function erp_invoice_from_order_locked($order_id, $options = array())
         return $fail(lang('Order not found.'));
     }
 
+    // Only a finished sale is invoiced. Checked here, not only by the screens
+    // that offer the step: a delivery note written before the order was
+    // cancelled, or a form opened before it, still reaches this writer.
+    if (!in_array((string) $order['status'], erp_order_billable_statuses(), true)) {
+        return $fail(((string) $order['status'] === 'cancelled')
+            ? lang('A cancelled order is not invoiced.')
+            : lang('An order is invoiced once it is complete.'));
+    }
+
     $items = (array) db_items("SELECT order_items.*, products.short_description,
             products.tax_rate AS product_tax_rate, products.start AS product_start
         FROM order_items

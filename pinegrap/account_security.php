@@ -16,7 +16,9 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  *
  * Account security actions for the signed-in member: sign out of all devices,
- * disconnect Google, Microsoft or Apple, and turn two-step verification on or off. State changes only; the my-account screen renders the
+ * disconnect Google, Microsoft or Apple, turn two-step verification on or off,
+ * and rename or remove a passkey (adding one goes through passkey.php). State
+ * changes only; the my-account screen renders the
  * matching buttons (pg_account_security_section). Every action requires a POST
  * with a valid CSRF token, and the Google-only guard is enforced here so the
  * screen cannot be bypassed.
@@ -248,6 +250,77 @@ if (strpos($action, 'mfa_') === 0) {
     }
 
     go($mfa_back);
+}
+
+// Passkeys (includes/fn/passkeys.php): rename one, or remove one after the
+// proofs the account has. Each action returns to where the two-step actions
+// do; a refused proof is reported through that page's form messages.
+if (strpos($action, 'passkey_') === 0) {
+
+    $passkey_back = $back_or(pg_mfa_account_url());
+    $passkey_messages = new liveform('my_account_profile');
+    $passkey_username = (string) ($_SESSION['sessionusername'] ?? '');
+    $passkey_id = (isset($_POST['passkey_id']) && is_scalar($_POST['passkey_id'])) ? (int) $_POST['passkey_id'] : 0;
+
+    // An operator signed in as this person cannot change how the person signs
+    // in; the screen offers nothing to press in that mode either.
+    if (!empty($_SESSION['software']['logged_in_as_different_user'])) {
+        output_error(lang('Passkeys cannot be changed while signed in as another user.'));
+    }
+
+    // Before the upgrade, or for a passkey that is not this account's (a
+    // stale page, another account's id), there is nothing to act on.
+    if (!pg_passkeys_table_exists() || ($passkey_id <= 0) || (pg_passkey_name_of($user_id, $passkey_id) === null)) {
+        go($passkey_back);
+    }
+
+    if ($action === 'passkey_rename') {
+        $passkey_name = pg_passkey_rename($user_id, $passkey_id,
+            (isset($_POST['name']) && is_scalar($_POST['name'])) ? (string) $_POST['name'] : '');
+
+        if ($passkey_name !== null) {
+            log_activity(lang(array('string' => 'user renamed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
+        }
+
+        go($passkey_back);
+    }
+
+    if ($action === 'passkey_remove') {
+        // The password (none for a Google-only account) and, while two-step
+        // verification is on, a code. An account with neither has its session
+        // alone to show; without two-step verification its passkeys answer no
+        // sign-in step.
+        $passkey_proofs = pg_passkey_reauth_fields(
+            db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'"),
+            pg_mfa_table_exists() && pg_mfa_enabled($user_id));
+
+        if ($passkey_proofs['password'] || $passkey_proofs['code']) {
+            $passkey_refusal = pg_mfa_reauth_refusal($user_id, $passkey_username,
+                (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '',
+                (isset($_POST['code']) && is_scalar($_POST['code'])) ? (string) $_POST['code'] : '');
+
+            // A locked name or address is answered as on the sign-in forms:
+            // 429 with the error page.
+            if ($passkey_refusal === 'locked') {
+                pg_login_throttle_guard($passkey_username);
+            }
+
+            if ($passkey_refusal !== '') {
+                $passkey_messages->add_error(pg_mfa_reauth_message($passkey_refusal));
+                go($passkey_back);
+            }
+        }
+
+        $passkey_name = pg_passkey_remove($user_id, $passkey_id);
+
+        if ($passkey_name !== null) {
+            log_activity(lang(array('string' => 'user removed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
+        }
+
+        go($passkey_back);
+    }
+
+    go($passkey_back);
 }
 
 // Unknown or missing action.

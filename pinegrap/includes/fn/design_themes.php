@@ -1368,3 +1368,156 @@ function _pg_design_thumb_cafe()
         . '<circle cx="216" cy="195" r="1.2" style="fill:var(--tp)"/><rect x="220" y="194" width="30" height="1.8" rx=".9" fill="#adb5bd"/>'
         . '<rect x="276" y="189" width="34" height="1.8" rx=".9" fill="#6c757d"/><rect x="284" y="194" width="26" height="1.8" rx=".9" fill="#6c757d"/>';
 }
+
+// The news site: the dark top bar, the masthead with the name, the search
+// and the subscribe button, the sections bar in the palette's colour, the
+// breaking strip, the lead grid (a large story and two beside it, their
+// words on a dark gradient), the featured row, a section block with its
+// coloured rule beside the most read box with outlined numbers, and the
+// dark footer. Same variables as the home page drawing.
+function _pg_design_thumb_news()
+{
+    // A lead story: a picture in the second colour, darkened towards its
+    // foot, where the words sit.
+    $lead = function ($x, $y, $w, $h) {
+        return '<rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="' . $h . '" rx="3" style="rx:var(--tr);fill:var(--ts);opacity:.9"/>'
+            . '<rect x="' . $x . '" y="' . $y . '" width="' . $w . '" height="' . $h . '" rx="3" style="rx:var(--tr)" fill="url(#pg-thumb-news-scrim)"/>';
+    };
+
+    // The featured row: a 3:2 picture, a kicker and two lines of headline.
+    $featured = '';
+    foreach (array(10, 87, 164, 241) as $i => $x) {
+        $featured .= '<rect x="' . $x . '" y="118" width="70" height="14" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.25"/>'
+            . '<rect x="' . $x . '" y="135" width="14" height="2" rx="1" style="fill:var(--tp)"/>'
+            . '<rect x="' . $x . '" y="139" width="' . (60 - $i * 4) . '" height="2.6" rx="1.3" fill="#1f2937"/>'
+            . '<rect x="' . $x . '" y="143.4" width="' . (40 + $i * 3) . '" height="2.6" rx="1.3" fill="#1f2937"/>';
+    }
+
+    // Two stories of the section block: a square picture and two lines.
+    $rows = '';
+    foreach (array(10, 106) as $x) {
+        $rows .= '<rect x="' . $x . '" y="166" width="16" height="16" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.35"/>'
+            . '<rect x="' . ($x + 20) . '" y="168" width="64" height="2.6" rx="1.3" fill="#1f2937"/>'
+            . '<rect x="' . ($x + 20) . '" y="173" width="48" height="2" rx="1" fill="#94a3b8"/>';
+    }
+
+    // The most read box: three outlined numbers and their headlines.
+    $ranks = '';
+    foreach (array(163, 170.5, 178) as $i => $y) {
+        $ranks .= '<circle cx="220" cy="' . $y . '" r="2.6" fill="none" style="stroke:var(--tp)" stroke-width=".9"/>'
+            . '<rect x="226" y="' . ($y - 1.2) . '" width="' . (70 - $i * 8) . '" height="2.4" rx="1.2" fill="#1f2937"/>';
+    }
+
+    // The sections bar's links, the first marked current.
+    $nav = '';
+    foreach (array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10) as $i) {
+        $nav .= '<rect x="' . (10 + $i * 26) . '" y="33" width="' . (14 + ($i * 3) % 7) . '" height="2" rx="1" fill="#fff"/>';
+    }
+
+    return '<defs><linearGradient id="pg-thumb-news-scrim" x1="0" y1="1" x2="0" y2="0">'
+        . '<stop offset="0" stop-color="#000" stop-opacity=".85"/><stop offset=".5" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/>'
+        . '</linearGradient></defs>'
+        . '<rect width="320" height="200" fill="#fff"/>'
+        // the dark top bar: quick links on the left, the theme and the sign-in on the right
+        . '<rect width="320" height="7" fill="#212529"/>'
+        . '<rect x="10" y="2.6" width="22" height="1.8" rx=".9" fill="#adb5bd"/><rect x="36" y="2.6" width="18" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="276" y="1.6" width="10" height="3.8" rx="1.9" fill="#6c757d"/><rect x="290" y="1.6" width="20" height="3.8" rx="1.2" fill="none" stroke="#adb5bd" stroke-width=".6"/>'
+        // the masthead: the name and its line, the search and the subscribe button
+        . '<rect x="10" y="12" width="70" height="7" rx="1" fill="#111827"/><rect x="10" y="22" width="40" height="2" rx="1" fill="#94a3b8"/>'
+        . '<rect x="196" y="13.5" width="70" height="9" rx="3" style="rx:var(--tr)" fill="#f1f5f9"/><circle cx="202" cy="18" r="1.8" fill="none" stroke="#94a3b8" stroke-width=".7"/>'
+        . '<rect x="272" y="13" width="40" height="10" rx="3" style="rx:var(--tbr);fill:var(--tp)"/><rect x="280" y="17" width="24" height="2" rx="1" fill="#fff"/>'
+        . '<rect y="28.4" width="320" height=".6" fill="#e5e7eb"/>'
+        // the sections bar in the palette's colour
+        . '<rect y="29" width="320" height="10" style="fill:var(--tp)"/>' . $nav
+        . '<rect x="10" y="37" width="14" height="2" fill="#fff"/>'
+        // the breaking strip: the red label and the moving headlines
+        . '<rect x="10" y="40" width="30" height="6" rx="1" fill="#dc3545"/><rect x="15" y="42.2" width="20" height="1.6" rx=".8" fill="#fff"/>'
+        . '<rect x="46" y="42" width="70" height="2" rx="1" fill="#475569"/><circle cx="121" cy="43" r=".9" fill="#94a3b8"/>'
+        . '<rect x="126" y="42" width="84" height="2" rx="1" fill="#475569"/><circle cx="215" cy="43" r=".9" fill="#94a3b8"/>'
+        . '<rect x="220" y="42" width="76" height="2" rx="1" fill="#475569"/>'
+        . '<rect y="47" width="320" height=".6" fill="#e5e7eb"/>'
+        // the lead grid: the large story with its badge, headline and summary, two beside it
+        . $lead(10, 52, 196, 60)
+        . '<rect x="16" y="86" width="18" height="3" rx="1" style="fill:var(--tp)"/>'
+        . '<rect x="16" y="92" width="120" height="5" rx="1.5" fill="#fff"/><rect x="16" y="99" width="90" height="5" rx="1.5" fill="#fff"/>'
+        . '<rect x="16" y="106.5" width="100" height="2" rx="1" fill="#fff" opacity=".7"/>'
+        . $lead(212, 52, 98, 29) . '<rect x="217" y="74" width="70" height="3" rx="1.5" fill="#fff"/>'
+        . $lead(212, 83, 98, 29) . '<rect x="217" y="105" width="60" height="3" rx="1.5" fill="#fff"/>'
+        // the featured row
+        . $featured
+        // a section block: its title over a rule in the section's colour, and two stories
+        . '<rect x="10" y="153" width="26" height="4" rx="1" fill="#c8302a"/>'
+        . '<rect x="10" y="161" width="190" height=".6" fill="#e5e7eb"/><rect x="10" y="160" width="26" height="2" fill="#c8302a"/>'
+        . $rows
+        // the most read box
+        . '<rect x="212" y="152" width="98" height="30" style="rx:var(--tr)" fill="#fff" stroke="#e5e7eb" stroke-width=".6"/>'
+        . '<rect x="217" y="155" width="30" height="2.4" rx="1.2" fill="#111827"/>'
+        . $ranks
+        // the dark footer
+        . '<rect y="184" width="320" height="16" fill="#212529"/>'
+        . '<rect x="10" y="188.5" width="40" height="3" rx="1" fill="#f8fafc"/><rect x="10" y="194" width="60" height="1.6" rx=".8" fill="#6c757d"/>'
+        . '<rect x="104" y="189" width="20" height="1.8" rx=".9" fill="#adb5bd"/><rect x="104" y="194" width="26" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="160" y="189" width="24" height="1.8" rx=".9" fill="#adb5bd"/><rect x="160" y="194" width="18" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="216" y="189" width="30" height="1.8" rx=".9" fill="#adb5bd"/><rect x="216" y="194" width="22" height="1.8" rx=".9" fill="#adb5bd"/>'
+        . '<rect x="272" y="189" width="28" height="1.8" rx=".9" fill="#adb5bd"/><rect x="272" y="194" width="20" height="1.8" rx=".9" fill="#adb5bd"/>';
+}
+
+// The long-read magazine: a quiet top row with the subscribe button, the
+// name centred over its line, the sections over a double rule, the cover
+// (a picture beside a large title, with no words on the picture), the
+// latest stories as three portrait cards, the editor's letter on a paper
+// tint, and the footer. Every colour but the greys follows the palette, the
+// paper as the template's own CSS mixes it. Same variables as the home page
+// drawing.
+function _pg_design_thumb_magazine()
+{
+    // The section links, centred.
+    $nav = '';
+    for ($i = 0; $i < 6; $i++) {
+        $nav .= '<rect x="' . (87 + $i * 26) . '" y="36" width="16" height="2" rx="1" fill="#475569"/>';
+    }
+
+    // The latest: a 4:5 picture cut to the band, a kicker and two lines.
+    $cards = '';
+    foreach (array(12, 114, 216) as $i => $x) {
+        $cards .= '<rect x="' . $x . '" y="124" width="92" height="34" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.25"/>'
+            . '<rect x="' . $x . '" y="161" width="16" height="1.5" rx=".75" style="fill:var(--ts)"/>'
+            . '<rect x="' . $x . '" y="164.5" width="' . (80 - $i * 6) . '" height="2.4" rx="1.2" fill="#1f2937"/>'
+            . '<rect x="' . $x . '" y="168" width="' . (58 + $i * 5) . '" height="2.4" rx="1.2" fill="#1f2937"/>';
+    }
+
+    // The footer's link groups.
+    $footer = '';
+    foreach (array(12, 92, 172, 252) as $i => $x) {
+        $footer .= '<rect x="' . $x . '" y="194.4" width="' . (28 - $i * 2) . '" height="1.2" rx=".6" fill="#adb5bd"/>'
+            . '<rect x="' . $x . '" y="197.2" width="' . (18 + $i * 2) . '" height="1.2" rx=".6" fill="#adb5bd"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the top row: quick links on the left, Subscribe on the right
+        . '<rect x="12" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/><rect x="30" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/>'
+        . '<rect x="48" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/>'
+        . '<rect x="288" y="1.5" width="22" height="5" rx="2" style="rx:var(--tbr);fill:var(--tp)"/>'
+        . '<rect y="7.6" width="320" height=".4" fill="#e5e7eb"/>'
+        // the name, centred, and its line
+        . '<rect x="112" y="14" width="96" height="9" rx="4.5" fill="#111827"/>'
+        . '<rect x="133" y="27" width="54" height="2" rx="1" fill="#94a3b8"/>'
+        // the sections over the double rule
+        . '<rect y="33.6" width="320" height=".4" fill="#e5e7eb"/>' . $nav
+        . '<rect y="40.4" width="320" height=".8" fill="#111827"/><rect y="42.6" width="320" height="1.6" fill="#111827"/>'
+        // the cover: the picture, then the kicker, the title, the standfirst and the byline beside it
+        . '<rect x="12" y="50" width="170" height="68" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.35"/>'
+        . '<rect x="192" y="56" width="26" height="2" rx="1" style="fill:var(--ts)"/>'
+        . '<rect x="192" y="62" width="110" height="7" rx="1.5" fill="#111827"/><rect x="192" y="72" width="96" height="7" rx="1.5" fill="#111827"/>'
+        . '<rect x="192" y="82" width="70" height="7" rx="1.5" fill="#111827"/>'
+        . '<rect x="192" y="94" width="100" height="2" rx="1" fill="#64748b"/><rect x="192" y="99" width="100" height="2" rx="1" fill="#64748b"/>'
+        . '<rect x="192" y="107" width="40" height="2" rx="1" fill="#64748b"/>'
+        // the latest
+        . $cards
+        // the editor's letter on paper: the portrait and two lines
+        . '<rect y="174" width="320" height="18" fill="#fff"/><rect y="174" width="320" height="18" style="fill:var(--ts);opacity:.06"/>'
+        . '<circle cx="40" cy="183" r="7" style="fill:var(--ts);opacity:.4"/>'
+        . '<rect x="54" y="179" width="120" height="3" rx="1.5" fill="#1f2937"/><rect x="54" y="185" width="90" height="2" rx="1" fill="#64748b"/>'
+        // the footer
+        . '<rect y="192" width="320" height="8" fill="#f1f3f5"/>' . $footer;
+}

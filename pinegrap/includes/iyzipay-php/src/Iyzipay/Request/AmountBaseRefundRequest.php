@@ -7,9 +7,9 @@ use Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class AmountBaseRefundRequest extends Request {
-    private string $paymentId;
-    private float $price;
-    private string $ip;
+    private $paymentId;
+    private $price;
+    private $ip;
 
     public function getPaymentId(): string {
         return $this->paymentId;

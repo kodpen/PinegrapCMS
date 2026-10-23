@@ -1,6 +1,6 @@
 ---
 name: passkeys
-description: Plan (approved 2026-10-19; steps 1-2 done, registration closed until re-auth): WebAuthn passkeys as second factor or passwordless sign-in; account screens, gate left
+description: Plan (approved 2026-10-19; steps 1-3 done, 3b and 4 left): WebAuthn passkeys as second factor or passwordless sign-in; designed account widget and the gate left
 ---
 
 ## Why?
@@ -16,15 +16,17 @@ description: Plan (approved 2026-10-19; steps 1-2 done, registration closed unti
 
 ## What is built?
 - Step 1 (PR #594): the verifier and its tests, docs/memory/core/webauthn-verifier.md.
-- Step 2 (PR #672): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects. Registration is closed in `passkey.php` (403 `denied`) until step 3, and `pg_mfa_reset()` removes passkeys (admin reset, both deletes).
+- Step 2 (PR #672): `user_passkeys` (11.0.13, with `alg`, `backup_eligible`, `backup_state`, `user_handle`), `includes/fn/passkeys.php`, `passkey.php` (registration, sign-in options), the passkey button and answer in `mfa.php` verify mode, `assets/js/pg_passkey.js`; docs/memory/core/passkey-ceremonies.md. Changed from the sketch: the sign-in answer is posted to the screen that owns the step (`mfa.php`), because completing a sign-in redirects; `pg_mfa_reset()` removes passkeys (admin reset, both deletes).
+- Step 3 (PR #1384): the classic account page (`pg_passkey_account_section()`: list, add, rename, remove), `passkey.php` registration behind re-authentication (`pg_mfa_reauth_refusal()`; only with TOTP on), the `passkeys` export section; docs/memory/core/passkey-account-section.md.
 
 ## What remains?
-3. UI in Account Security widget and panel account (list, add with `PgPasskey.register()`, rename, remove) (S). Rename and remove need endpoint actions. Lift the `passkey.php` registration refusal only with re-authentication: `current_password` plus a TOTP or recovery code, rules and limits of `pg_mfa_self_disable_check()`, in JSON; the ceremony begun after a successful re-auth is the stamp `register` needs (a stolen session must not plant a passkey). Also a `passkeys` section in the personal-data export (`includes/fn/privacy_export.php` after `identities`: id, user_id, name, aaguid, transports, backup_eligible, backup_state, created_at, last_used_at; never credential_id, public_key or user_handle); update the pinned keys in `tests/privacy_export_test.php` and "27 keys" in `core/personal-data-export.md`.
+3b. The designed `account_security` widget (`includes/fn/widgets_account.php`, `style_designer.js`, design templates): the loop of passkeys with their flags, the add form and its script, rename and remove forms posting to the step 3 actions, binding tokens, the palette default tree (S).
 4. Sign-in form conditional UI (passwordless: `pg_passkey_signin_begin(0)`, answer posted to the sign-in screens), two-step integration: the account found by the passkey must still exist, an account with a passkey and no TOTP gets `verify` mode, a passkey satisfies `mfa_required_role`, recovery codes for passkey-only accounts (S–M).
 5. Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
 ## Open questions?
 - `rpId` on sites served from a sub-folder or several hosts: use the host only; the language prefix does not matter.
+- Step 4: what an account without TOTP proves to add a passkey (adding needs TOTP on until then), and whether removing one then needs more than its password.
 
 ## Where to start?
-- Step 3; read `core/passkey-ceremonies.md` (what exists, refusal words) and `two-step-sign-in.md` (the account section `pg_mfa_account_section()`, `edit_user.php` reset rules). Step 4 also `social-sign-in.md` for the session and remember-me rules.
+- Step 3b: read `core/passkey-account-section.md` (the classic section is the model) and `designer/` for the widget rules. Step 4: `core/passkey-ceremonies.md` (what exists, refusal words), `two-step-sign-in.md` and `social-sign-in.md` for the session and remember-me rules.

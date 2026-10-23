@@ -2982,10 +2982,15 @@ function pg_designer_target_modal()
  * API and the MCP server. The root is taken from the software directory's
  * location instead.
  *
- * @param string $name page name
+ * A short link that redirects to the page being renamed ($page_id) stood for
+ * one of its old addresses and does not count; the save deletes it once the
+ * page has the name (pg_short_link_page_renamed()).
+ *
+ * @param string $name    page name
+ * @param int    $page_id the page being renamed, 0 for none
  * @return bool
  */
-function pg_designer_page_name_taken_elsewhere($name)
+function pg_designer_page_name_taken_elsewhere($name, $page_id = 0)
 {
     $name  = trim((string)$name);
     $lower = mb_strtolower($name, 'UTF-8');
@@ -2998,7 +3003,7 @@ function pg_designer_page_name_taken_elsewhere($name)
     if ((int)db_value("SELECT COUNT(*) FROM files WHERE name = '" . e($name) . "'") > 0) {
         return true;
     }
-    if ((int)db_value("SELECT COUNT(*) FROM short_links WHERE name = '" . e($name) . "'") > 0) {
+    if ((int)db_value("SELECT COUNT(*) FROM short_links WHERE name = '" . e($name) . "'" . pg_short_link_not_redirect_to_page_sql($page_id)) > 0) {
         return true;
     }
     // Compared without case: Windows serves a folder whatever the case of
@@ -3028,12 +3033,15 @@ function pg_designer_page_name_taken_elsewhere($name)
  *   pg_comments_allow_new, pg_comments_rating, page_draft (1 = keep the page
  *   off the site in the drafts folder; page_folder is then the folder it is
  *   published to), page_publish_at and page_unpublish_at (when the page goes
- *   on the site and comes off it, pg_page_schedule_parse(); '' for none)
+ *   on the site and comes off it, pg_page_schedule_parse(); '' for none),
+ *   page_name_redirect (1 = a renamed page's old name sends visitors to it,
+ *   pg_short_link_page_renamed())
  *
  * Returns array('ok' => bool, 'page_id' => int, 'errors' => [...], 'warnings' => [...],
  * 'draft' => bool), with 'revision_no' (the revision written, 0 for none)
- * when the save wrote, and 'publish_at' / 'unpublish_at' (datetime-local
- * text) when the save decided the page's times.
+ * when the save wrote, 'publish_at' / 'unpublish_at' (datetime-local
+ * text) when the save decided the page's times, and 'renamed' (what
+ * pg_short_link_page_renamed() did) when the save gave the page a new name.
  * On error nothing is written for this page.
  *
  * $dry_run = true runs the validation and returns without touching the
@@ -3079,7 +3087,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         // a name being given now: a page that already has it keeps saving.
         $renamed = ($page_id <= 0)
             || ((string)db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1") !== $name);
-        if ($dup > 0 || ($renamed && pg_designer_page_name_taken_elsewhere($name))) {
+        if ($dup > 0 || ($renamed && pg_designer_page_name_taken_elsewhere($name, $page_id))) {
             $errors[] = lang(array('string' => 'The page name "{var:1}" is already in use.', 'vars' => $name));
         }
         // A language directory (/en/...) would shadow a page of the same name.
@@ -3346,6 +3354,8 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // Whether this save changed the page: a new page did, an existing one
     // unless its row comes back as stored (decided below).
     $changed = true;
+    // What a new name did to the page's short links (pg_short_link_page_renamed()).
+    $renamed_links = null;
 
     if ($page_id > 0) {
         // The page's own columns, as this save writes them.
@@ -3426,6 +3436,13 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             $page_id, $search, $keywords,
             is_array($prev) ? $prev['page_search'] : 0,
             is_array($prev) ? $prev['page_search_keywords'] : '');
+        // A new name is a new address: a redirect of the page's own that
+        // held the name goes, and the old name sends visitors here when the
+        // editor asks for it (page_name_redirect, offered under the name).
+        if (is_array($prev) && (string)$prev['page_name'] !== $name) {
+            $renamed_links = pg_short_link_page_renamed($page_id, (string)$prev['page_name'], $name,
+                $flag('page_name_redirect') === 1, (int)$user['id'], (int)$prev['page_folder']);
+        }
         if (!$carried) {
             log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
         }
@@ -3511,6 +3528,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // another save's number.
     $result = array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => ($draft_return > 0),
                     'revision_no' => (int)$revision_no);
+    // The short link a rename added or removed, for the editor to say.
+    if ($renamed_links !== null) {
+        $result['renamed'] = $renamed_links;
+    }
     // The times as this save left them, for the editor's tab: a time that
     // had come was carried out and cleared.
     if ($schedule['apply']) {
@@ -7739,8 +7760,8 @@ function pg_design_template_prepare($template_id, $user)
 
     // Second pass, once every row exists: a widget or shared component
     // placed inside another one's tree is pointed at its row the way the
-    // pages are below, and the row is written again. The shipped templates
-    // place none there, so for them nothing changes.
+    // pages are below, and the row is written again (the News template
+    // nests most_read in its article view and two lists in a shared strip).
     foreach ($row_trees as $rkey => $rtree) {
         $linked = _pg_tpl_link_widgets($rtree, $widgets, $shared);
         if ($linked === $rtree) continue;

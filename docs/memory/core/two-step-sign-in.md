@@ -4,12 +4,13 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 ---
 
 ## What is built?
-- Authenticator-app codes (RFC 6238, own code, no library) and 10 one-time recovery codes: `includes/fn/mfa.php` (pure primitives tested in `tests/mfa_test.php`), screen `mfa.php` (modes `verify` and `setup`).
+- Authenticator-app codes (RFC 6238, own code, no library) and 10 one-time recovery codes: `includes/fn/mfa.php` (pure parts tested in `tests/mfa_test.php`), screen `mfa.php` (modes `verify` and `setup`).
 - Tables `user_mfa` (encrypted `totp_secret`, `last_step` against replay, `pending_secret` during setup) and `user_mfa_recovery` (SHA-256 hashes, `used_at`); `config.mfa_required_role` (99 = nobody required), constant `MFA_REQUIRED_ROLE`, card in Settings › Security.
-- `pg_mfa_table_exists()` probes both tables by exact name; before the upgrade every caller treats the feature as off. `pg_mfa_available()` also needs `ENCRYPTION_KEY` and openssl.
+- `pg_mfa_table_exists()` probes both tables by exact name; before the upgrade callers treat it as off. `pg_mfa_available()` also needs `ENCRYPTION_KEY` and openssl.
 - Pre-build audit: `git show 88e7ac6d:docs/_tespit_2026_10_08/2fa_kesif_raporu.md`
-- Not built: e-mail codes, trusted devices. The QR is inline SVG from `includes/fn/qr.php` (docs/memory/core/qr-code-generator.md).
-- `mfa.php` verify mode also takes a passkey of the account, on the same attempt counter and completion: docs/memory/core/passkey-ceremonies.md.
+- Not built: e-mail codes, trusted devices. QR: inline SVG from `includes/fn/qr.php` (qr-code-generator.md).
+- `mfa.php` verify mode also takes a passkey (same attempt counter and completion): passkey-ceremonies.md.
+- `pg_mfa_reauth_refusal()`: the account page's shared proof check (TOTP off, passkey add or remove).
 
 ## Where does the gate sit?
 - `pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)`: after the password (or Google) was accepted and the throttle cleared, BEFORE `pg_device_limit_gate()` and before any remember-me token. A token minted earlier would sign the browser in on its next request through `initialize_user()` with no code.
@@ -32,4 +33,4 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 
 ## What breaks it?
 - Resetting the encryption key (Settings › Commerce) re-encrypts only card numbers; every TOTP key becomes unreadable and those accounts need a reset. The settings screen warns when `user_mfa` has enabled rows.
-- Turning the second factor on or off (`pg_mfa_revoke_other_sessions()`) drops every other remember-me token of the account and all its API devices; the current browser keeps its token.
+- Turning the second factor on or off (`pg_mfa_revoke_other_sessions()`) drops the account's other remember-me tokens and all its API devices; this browser keeps its token.

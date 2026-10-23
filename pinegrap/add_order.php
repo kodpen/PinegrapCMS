@@ -96,7 +96,7 @@ if ($request === 'search_products') {
             'short_description' => (string) $row['short_description'],
             'inventory' => (int) $row['inventory'],
             'inventory_quantity' => (int) $row['inventory_quantity'],
-            'price_text' => local_sale_money_text(local_sale_prices_net() ? (int) $row['price'] : (int) round((int) $row['price'] * (100 + $rate) / 100)),
+            'price_text' => local_sale_money_text(local_sale_prices_net() ? (int) $row['price'] : (int) $row['price'] + pg_tax_apply_rate((int) $row['price'], $rate)),
         );
     }
     add_order_json(array('results' => $results));

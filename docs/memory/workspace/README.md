@@ -10,7 +10,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Decide access only with `ws_can_read_channel()` and its siblings; no `ws_` screen, endpoint, push, search hit or file may reach a site member (`workspace-module-decisions.md`).
 - Put a new API scope in the owner ceiling `ws_owner_scopes()` too, or the endpoint answers 403 (`workspace-module-decisions.md`).
 - Add a new right column to all five role-3 ladder files (`core/permission-columns.md`) and `pg_user_has_ws_columns()`, or users holding only that right lose access (`workspace-module-decisions.md`).
-- Write site records only through `includes/workspace/changes.php` (`ws_change_check()`, `ws_change_write_<kind>()`): it refuses binned products and bounds money (`workspace-record-changes.md`).
+- Write site records only through `includes/workspace/changes.php` (`ws_change_check()`, then `ws_change_write()`, never a `ws_change_write_<kind>()` by name): it refuses binned products, bounds money and writes the audit line (`workspace-record-changes.md`).
 - Gate the person's own answers with `ws_api_person_only()` and changes to their words with `ws_api_own_words_only()`; an own-words route carries `'mcp' => false` (`workspace-api-callers.md`).
 - Give every write route `'dry_run' => true`, a `*_check()` shared with the panel, then `api_dry_run_stop()` before the write (`workspace-api-dry-run.md`).
 - Delete inbox lines only with `ws_inbox_delete()` and call `ws_inbox_reach_lost()` / `_regained()` when access changes, or `changed_since` misses it (`workspace-api-sync-inbox.md`).

@@ -23,7 +23,7 @@ function test_privacy_export_sections_are_pinned()
 {
 	pg_assert_same(
 		array(
-			'user', 'sessions', 'two_step', 'identities', 'push_subscriptions',
+			'user', 'sessions', 'two_step', 'identities', 'passkeys', 'push_subscriptions',
 			'contact', 'contact_groups', 'address_book',
 			'orders', 'order_items', 'ship_tos', 'order_documents', 'returns', 'refunds', 'gift_cards',
 			'form_submissions', 'signatures', 'comments', 'watchers', 'campaigns', 'consents',
@@ -36,6 +36,20 @@ function test_privacy_export_sections_are_pinned()
 	foreach (pg_privacy_export_sections() as $key => $label) {
 		pg_assert_true(is_string($label) && ($label !== ''), 'label of ' . $key);
 	}
+}
+
+// A passkey is exported by what the person sees of it; the credential (its
+// id and hash, public key, user handle, counter, algorithm) is never read.
+function test_privacy_export_passkeys_leave_the_credential_out()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy_export.php');
+
+	pg_assert_same(1, preg_match_all('/SELECT ([^"]*?) FROM user_passkeys/', $source, $matches), 'one read of user_passkeys');
+	pg_assert_same(
+		'id, user_id, name, aaguid, transports, backup_eligible, backup_state, created_at, last_used_at',
+		isset($matches[1][0]) ? $matches[1][0] : '',
+		'columns'
+	);
 }
 
 // The person as asked for: one address in its normal form, positive ids only.
