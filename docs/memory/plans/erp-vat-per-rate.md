@@ -24,4 +24,4 @@ description: Plan (owner's decisions 2026-10-21 and 22; steps 1-6 done): the ERP
 
 ## Where to start?
 - Step 7: move the lasting decisions above into erp-money-and-currency.md and erp-discounted-order-vat.md (the latter is at its size limit: condense), then delete this file.
-- After #1243 (exact `erp_apply_rate()`): `pg_tax_by_rate()` / `pg_tax_rate_amount()` take its rule (float `round()` of a rate like 7.7 differs on PHP 8.4+).
+- Done after #1243: the checkout's tax at a rate is the ERP's exact rule (`pg_tax_apply_rate()`, #1329).
