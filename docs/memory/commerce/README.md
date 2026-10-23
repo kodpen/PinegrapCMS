@@ -53,6 +53,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - n11-api-facts.md: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 - offer-discounted-units.md: How many units of a cart line an offer discounts (cheapest item: one, gift from a paid line: the action's quantity, product or group: all) and the spread unit price that charges it
+- offer-donation-lines.md: Donation lines and offers: never the cheapest item, never discounted by a product offer, not counted toward "cart quantity", their typed amount kept when offers are taken off the cart (#987, PR #1259)
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
@@ -87,6 +88,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feed-streaming.md: How the daily product feed build streams a large catalog to data/feeds/ chunk by chunk (writer open/add/close, CSV/TSV work file), why, and the out-of-memory symptom it fixed (PR #1056)
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
+- product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
 - product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
 - product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits

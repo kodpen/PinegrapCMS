@@ -40,7 +40,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
-- erp-bank-statements.md: ERP bank statement import (4.102): formats and readers, the PHPExcel libxml trap, the title-block cut, each line once (line_hash), matching within 3 days, recording via receipt or expense.
+- erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals, each line once (line_hash), matching, recording.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake

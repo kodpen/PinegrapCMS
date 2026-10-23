@@ -112,12 +112,35 @@ function pg_assert_contains($needle, $haystack, $label = '')
 		var_export($haystack, true) . ' does not contain ' . var_export($needle, true));
 }
 
+// Vendored libraries ship as they are; tools/lint.php skips the same folders.
+$vendored_directories = array();
+
+foreach (array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/phpexcel', 'includes/boxpacker', 'includes/dompdf', 'assets/lib') as $relative) {
+	$path = realpath(PG_FUNCTIONS_DIR . '/' . $relative);
+
+	if ($path !== false) {
+		$vendored_directories[] = $path . DIRECTORY_SEPARATOR;
+	}
+}
+
 // A warning or notice inside a test is a bug the test would otherwise print
-// and pass; turning it into an exception makes the test an ERROR.
-set_error_handler(function ($severity, $message, $file, $line) {
+// and pass; turning it into an exception makes the test an ERROR. A
+// deprecation raised inside a vendored library is the vendor's: PHPExcel's
+// implicitly nullable parameters are deprecated from PHP 8.4 on and stopped
+// the whole run at the first test file that loads it.
+set_error_handler(function ($severity, $message, $file, $line) use ($vendored_directories) {
 	if (!(error_reporting() & $severity)) {
 		return false;
 	}
+
+	if (($severity & (E_DEPRECATED | E_USER_DEPRECATED)) !== 0) {
+		foreach ($vendored_directories as $directory) {
+			if (strpos((string) $file, $directory) === 0) {
+				return true;
+			}
+		}
+	}
+
 	throw new ErrorException($message, 0, $severity, $file, $line);
 });
 

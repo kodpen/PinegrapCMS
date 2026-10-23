@@ -674,9 +674,9 @@ function ws_file_preview_edge($wanted)
  * now and then, and drawn again when asked for.
  *
  * Null - send the picture as it is - when it is no larger than the edge
- * already, when it cannot be drawn smaller here (an animated GIF, a format
- * the image library does not read, no image library, not enough memory) or
- * when the copy cannot be kept.
+ * already, when it cannot be drawn smaller here (an animated GIF, PNG or
+ * WebP, a format the image library does not read, no image library, not
+ * enough memory) or when the copy cannot be kept.
  *
  * @param string $path   the stored file
  * @param int    $wanted the longest edge asked for

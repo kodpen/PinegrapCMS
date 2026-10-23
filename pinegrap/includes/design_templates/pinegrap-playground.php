@@ -2005,7 +2005,8 @@ $widgets = array(
                             )),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-3', lang('Post Details'), array(
                                 $span(lang('Date'), 'badge rounded-pill text-bg-warning border border-2 border-dark fs-6', lang('Date'), $bind('submitted_date_and_time')),
-                                $span(lang('Jane Cooper'), 'badge rounded-pill text-bg-light border border-2 border-dark fs-6', lang('Author'), $bind('submitter')),
+                                // The author badge leaves when the record has no contact name.
+                                $span(lang('Jane Cooper'), 'pg-hide-if-empty badge rounded-pill text-bg-light border border-2 border-dark fs-6', lang('Author'), $bind('submitter_name')),
                             )),
                             $heading('h1', lang('Why I draw my cat every single day'), 'display-5 fw-bolder mb-4', $bind('title')),
                             $ai_summary(),
@@ -2288,7 +2289,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.8',
+    'version'     => '1.0.9',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',
