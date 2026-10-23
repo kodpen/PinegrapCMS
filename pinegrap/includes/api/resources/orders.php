@@ -358,9 +358,13 @@ function api_orders_get($params) {
 	// again - it is what the customer bought and what belongs on an invoice.
 	// products.name is the catalogue today, which may have been renamed since,
 	// and is null when the product has been deleted altogether.
+	//
+	// ship_to_id says which delivery (shipments[].id) the line went in: a
+	// return names lines of one delivery (POST /orders/{id}/returns). null
+	// for a line sent to no address, which cannot be returned.
 	$item_rows = api_rows("SELECT order_items.id, order_items.product_id, order_items.quantity,
 			order_items.price, order_items.tax_total, order_items.shipping,
-			order_items.product_name,
+			order_items.product_name, order_items.ship_to_id,
 			products.name AS catalogue_name
 		FROM order_items
 		LEFT JOIN products ON order_items.product_id = products.id
@@ -376,6 +380,7 @@ function api_orders_get($params) {
 			'product_id'     => ($item['product_id'] > 0) ? (int)$item['product_id'] : null,
 			'name'           => $item['product_name'],
 			'catalogue_name' => ($item['catalogue_name'] === null) ? null : $item['catalogue_name'],
+			'ship_to_id'     => ((int)$item['ship_to_id'] > 0) ? (int)$item['ship_to_id'] : null,
 			'quantity'       => (int)$item['quantity'],
 			'price'          => api_money($item['price']),
 			// The tax on the whole line, not on one unit. price stays per unit,
@@ -1383,6 +1388,7 @@ function api_order_schema() {
 			'product_id'     => 'integer?',
 			'name'           => 'string',
 			'catalogue_name' => 'string?',
+			'ship_to_id'     => 'integer?',
 			'quantity'       => 'integer',
 			'price'          => 'integer',
 			'tax'            => 'integer',

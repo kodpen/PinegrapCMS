@@ -6,8 +6,8 @@
  * /orders/{id}/returns, includes/api/resources/orders.php): the shape of a
  * return against its declaration, a request nobody answered yet, the lines a
  * POST names, the two route rows (scopes, rehearsal, 201 or 200, the body
- * and its limits against the return model) and the object in the OpenAPI
- * registry.
+ * and its limits against the return model), the delivery each line of GET
+ * /orders/{id} names, and the object in the OpenAPI registry.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -224,6 +224,24 @@ function test_api_order_returns_create_route()
 	foreach (array('order_not_returnable', 'no_shipping_address', 'return_in_progress', 'order.return.requested') as $named) {
 		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
 	}
+
+	pg_assert_contains('ship_to_id', $items['description'], 'lines are matched to the delivery by their ship_to_id');
+}
+
+// A return names lines of one delivery, so GET /orders/{id} says which
+// delivery each line went in; a line sent to no address has none.
+function test_api_order_returns_order_lines_name_their_delivery()
+{
+	$schema = api_order_schema();
+
+	pg_assert_same('integer?', $schema['items'][0]['ship_to_id'] ?? null, 'declared, null for a line sent to no address');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/orders.php');
+	$start = strpos($source, "\nfunction api_orders_get(");
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	pg_assert_contains('order_items.ship_to_id', $body, 'read with the line');
+	pg_assert_contains("'ship_to_id'     => ((int)\$item['ship_to_id'] > 0) ? (int)\$item['ship_to_id'] : null,", $body, 'null for 0');
 }
 
 // The customer's words fit their column: a TEXT, wider than the limit.
