@@ -54,5 +54,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, not started, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
+- workspace-channel-icons.md: Plan (2026-10-23, not started, answers open): a channel gets an icon its manager picks from a curated Bootstrap Icons list; kind and customer marks stay visible; colour and icon over the API
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
