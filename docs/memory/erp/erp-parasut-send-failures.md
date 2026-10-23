@@ -23,7 +23,7 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 
 ## When does the send gate refuse a record the provider holds?
 - `erp_edoc_invoice_held_refusal()` (service.php, via `erp_edoc_invoice_can_send()`): `created` (hand it over instead), `error` with `edoc_external_id` (ask after its status).
-- Sendable again: `none`, `error` without an id, `rejected`, and a stalled `sending` row (no id, untouched 15 minutes: the process died waiting, `erp_edoc_invoice_send_stalled()`), so the mark is searched (#PR).
+- Sendable again: `none`, `error` without an id, `rejected`, and a stalled `sending` row (no id, untouched 15 minutes: the process died waiting, `erp_edoc_invoice_send_stalled()`), so the mark is searched (#1412).
 
 ## Tests
 - `tests/erp_edoc_parasut_test.php` (job reading, unsure answer and mark, written matches, search incomplete, submit refusal), `tests/erp_edoc_service_test.php` (held refusal, stalled send).
