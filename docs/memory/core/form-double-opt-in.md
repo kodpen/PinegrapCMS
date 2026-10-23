@@ -4,7 +4,7 @@ description: Double opt-in for custom forms that add to a contact group (11.0.27
 ---
 
 ## What does the switch do?
-- `custom_form_pages.double_opt_in` (step `upgrade_2026_11_0_form_double_opt_in()`, label 11.0.27, default 0). On: a submission keeps the contact but not the form's `contact_group_id`; the contact's own address gets a link; the group is joined only after the button on `confirm_subscription.php` is pressed. Off: unchanged behaviour.
+- `custom_form_pages.double_opt_in` (step `upgrade_2026_11_0_form_double_opt_in()`, label 11.0.27, default 0; PR #1387). On: a submission keeps the contact but not the form's `contact_group_id`; the contact's own address gets a link; the group is joined only after the button on `confirm_subscription.php` is pressed. Off: unchanged behaviour.
 - Not held when the contact is already in the group, the group does not exist, or the registration/membership group is the same group.
 - Set in the legacy page form (inside the "Add to Contact Group" row, `includes/forms/page_form.php`) and in the designer form settings (`sd-cf-sb` `data-s="double_opt_in"` under Contact group; `pg_cf_load_page_form_settings()` / `pg_cf_write_form_settings()`).
 - Every read and write waits for the column: `pg_fs_ready()` (upgrade bridge: `create_or_update_page_type_record()` writes every key as a column, `custom_form.php` lists columns).

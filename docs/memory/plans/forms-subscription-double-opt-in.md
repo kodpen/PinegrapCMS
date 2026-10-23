@@ -1,6 +1,6 @@
 ---
 name: forms-subscription-double-opt-in
-description: Proposal (2026-10-21, awaiting owner decision): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
+description: Plan (approved 2026-10-23; step c done, PR #1387; a, b, d open): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
 ---
 
 ## Where does this come from?
@@ -16,7 +16,7 @@ description: Proposal (2026-10-21, awaiting owner decision): forms that add to a
 ## Steps (one small PR each)
 a. No schema: `waf_rate` buckets in `custom_form.php`: per recipient (one submitter mail and one sign-up per address per 24 h), per address for group forms, per domain; minimum fill time from `issued` (signed time field when CAPTCHA is off); StopForumSpam over https.
 b. `^^email_preferences_url^^` (signed, `pg_email_preferences_query()`) and `^^confirm_subscription_url^^` in submitter subject, body and e-mail page, beside `key_code`.
-c. Double opt-in: the submission keeps the contact, not the group. Link: HMAC with ENCRYPTION_KEY (own prefix) over contact, group, time; 7 days; no stored state. GET shows a button, POST confirms (mail scanners open links). Confirm joins the group and logs `granted` (ip, UA); submission logs `pending`. A per-form switch needs `custom_form_pages.double_opt_in`: one 2026.11.0 step, label from the owner; the designer form settings get it too.
+c. Double opt-in: the submission keeps the contact, not the group. Link: HMAC with ENCRYPTION_KEY (own prefix) over contact, group, time; 7 days; no stored state. GET shows a button, POST confirms (mail scanners open links). Confirm joins the group and logs `granted` (ip, UA); submission logs `pending`. A per-form switch needs `custom_form_pages.double_opt_in`: one 2026.11.0 step, label from the owner; the designer form settings get it too. Done, PR #1387 (11.0.27; `core/form-double-opt-in.md`).
 d. Turnstile/hCaptcha: keys in `connect_apps` `captcha_<provider>` like `sms_<key>` (no schema); `get_captcha_fields()`/`get_captcha_info()` print the widget, so the designer `captcha` section binding stays; server-side verify; host into `waf_csp_policy()`.
 
 ## What must the owner decide?
