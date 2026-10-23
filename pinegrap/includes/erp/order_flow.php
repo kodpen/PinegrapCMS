@@ -529,6 +529,24 @@ function erp_order_flow_invoice_row($order)
 }
 
 /**
+ * Whether the returns raised against an invoice have taken all of it back.
+ *
+ * Measured in money: the returns that stand give back the invoice's total.
+ * An invoice of 0.00 (a free order) gives no money back, so for it a return
+ * has to stand at all; without one nothing has been taken back, and a
+ * cancelled order's invoice is still to be cancelled or returned.
+ *
+ * @param int $grand    The invoice's grand total
+ * @param int $returned What its returns give back (erp_invoice_returned_total())
+ * @param int $returns  How many returns stand against it (erp_invoice_returns())
+ * @return bool
+ */
+function erp_order_flow_returned_in_full($grand, $returned, $returns)
+{
+    return ((int) $returned >= (int) $grand) && (((int) $grand !== 0) || ((int) $returns > 0));
+}
+
+/**
  * The two steps a cancelled or refunded order adds: the document that takes
  * the sale back, and the money that goes back to the customer.
  *
@@ -559,7 +577,9 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
     // ------------------------------------------------------ the document
     $step = array('label' => lang('Return or cancellation'), 'state' => 'ready', 'title' => '', 'facts' => array(), 'action' => '', 'reason' => '', 'links' => array());
 
-    foreach (erp_invoice_returns($invoice_id) as $return) {
+    $returns = erp_invoice_returns($invoice_id);
+
+    foreach ($returns as $return) {
         $step['links'][] = array('label' => (string) $return['full_number'], 'url' => 'edit_erp_invoice.php?id=' . (int) $return['id']);
     }
 
@@ -584,10 +604,10 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
         $step['title'] = lang('The invoice was cancelled');
         $step['facts'][] = (string) $invoice['full_number'];
         $step['links'][] = array('label' => lang('View'), 'url' => 'edit_erp_invoice.php?id=' . $invoice_id);
-    } elseif ($returned >= $grand) {
+    } elseif (erp_order_flow_returned_in_full($grand, $returned, count($returns))) {
         $step['state'] = 'done';
         $step['title'] = lang('Returned in full');
-    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty(erp_invoice_returns($invoice_id))) {
+    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty($returns)) {
         $step['action'] = 'invoice_cancel';
         if (!$has_edoc && ($provider_label === '')) {
             // Without an e-document provider the invoice is paper: whether
@@ -684,6 +704,7 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
  * An invoice cancelled from the card frees its allocations first, so the
  * money that paid it is no longer tied to it. Then the account's credit is
  * the only measure left, and the figure is marked as a guess for the form.
+ * An invoice of 0.00 took no money, so nothing is guessed for it.
  *
  * @param array $order
  * @param array $invoice
@@ -729,8 +750,9 @@ function erp_order_flow_money($order, $invoice)
 
     // A cancelled invoice has no allocations left to count. If nothing tied
     // to the order says what came in, the account's credit stands in for it
-    // until a refund has been recorded from here.
-    if ($cancelled && ($in === 0) && empty($refunds)) {
+    // until a refund has been recorded from here. An invoice of 0.00 took
+    // no money, so a credit on the account belongs to other sales.
+    if ($cancelled && ($in === 0) && empty($refunds) && ((int) $invoice['grand_total'] !== 0)) {
         $balance = (int) db_value("SELECT COALESCE(SUM(CASE WHEN direction = 'debit' THEN amount_base ELSE -amount_base END), 0)
             FROM erp_account_transactions WHERE account_id = '" . (int) $invoice['account_id'] . "'");
         if ($balance < 0) {
