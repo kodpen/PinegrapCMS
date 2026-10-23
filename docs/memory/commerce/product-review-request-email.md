@@ -10,7 +10,7 @@ description: The e-mail asking a buyer for a review (order_review_request; 2026.
 ## When is nothing started?
 - A save that keeps the shipping mail back: API `POST /orders/{id}/shipment` without `notify=true` (the default, so a backfill mails no one), the Workspace's tracking edit. `shipworks.php` and the marketplace import do not go through `update_order()`.
 - No review columns (`pg_reviews_ready()`), an order without an account (`orders.user_id = 0`: the form signs the reader in with it), or not bought by the form's rule (`pg_review_bought_sql()`).
-- The order has an `email_campaigns` row of the action in any status (sent, waiting, cancelled). Checked under `GET_LOCK('pg_review_request_<id>', 5)` (not held: nothing), so two saves at once start one. A shipment while no profile is enabled creates no row, so a later one may still start it.
+- The order has an `email_campaigns` row of the action in any status (sent, waiting, cancelled). Checked under `GET_LOCK(pg_review_request_lock_name(), 5)`, a name with the database's md5 and the order id (not held: nothing), so two saves at once start one. A shipment while no profile is enabled creates no row, so a later one may still start it.
 - No product page (`pg_sw_catalog_detail_page_name(0)`) or no item with an address.
 
 ## Which items does it ask about?

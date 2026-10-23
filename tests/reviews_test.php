@@ -373,7 +373,7 @@ function test_reviews_request_lock()
 	$create = strpos($source, 'create_auto_email_campaigns(');
 	$release = strpos($source, "RELEASE_LOCK('");
 
-	pg_assert_contains("'pg_review_request_' . \$order_id", $source, 'a lock per order');
+	pg_assert_contains('$lock = pg_review_request_lock_name($order_id);', $source, 'a lock per order');
 	pg_assert_contains("', 5)\") !== 1", $source, 'waits five seconds, gives up when not held');
 	pg_assert_true(($lock !== false) && ($check !== false) && ($lock < $check), 'the check runs under the lock');
 	pg_assert_true(($create !== false) && ($check < $create), 'the start after the check');
@@ -405,4 +405,43 @@ function test_reviews_request_cancel()
 	$cancel = strpos($source, 'pg_review_request_cancel($order_id)');
 
 	pg_assert_true(($write !== false) && ($guard !== false) && ($cancel !== false) && ($write < $guard) && ($guard < $cancel), 'process_order_cancellation() cancels it after its own status write');
+}
+
+// pg_review_request_lock_name() run in its own process, with DB_DATABASE and
+// DB_HOST defined as a site's configuration defines them: the tests after
+// this one must not find them defined. Null when PHP cannot be started again.
+function reviews_test_lock_name($database, $host, $order_id)
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$code = "define('PG_TEST_RUNNER', true);"
+		. ' require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ';'
+		. " define('DB_DATABASE', " . var_export($database, true) . ');'
+		. " define('DB_HOST', " . var_export($host, true) . ');'
+		. ' echo pg_review_request_lock_name(' . var_export($order_id, true) . ');';
+
+	$out = array();
+	$status = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $out, $status);
+
+	return ($status === 0) ? implode("\n", $out) : 'failed: ' . implode("\n", $out);
+}
+
+// GET_LOCK names belong to the whole database server, so the lock of an
+// order's review request carries the database: two sites on one server do
+// not wait for each other's order of the same id.
+function test_reviews_request_lock_name()
+{
+	$name = reviews_test_lock_name('shop', 'db', 42);
+
+	if ($name === null) {
+		return;
+	}
+
+	pg_assert_same('pg_review_request_' . md5('shop@db') . '_42', $name, 'the database and the order');
+	pg_assert_false($name === reviews_test_lock_name('other_shop', 'db', 42), 'another database, another lock');
+	pg_assert_same('pg_review_request_' . md5('shop@db') . '_7', reviews_test_lock_name('shop', 'db', "7' OR '1'='1"), 'the order id as a number');
+	pg_assert_true(strlen((string) reviews_test_lock_name('shop', 'db', 4294967295)) <= 64, 'within the 64 characters GET_LOCK takes');
 }

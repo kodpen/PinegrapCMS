@@ -690,6 +690,21 @@ function pg_review_request_targets($order_id)
 }
 
 /**
+ * The name of the lock that keeps two saves of one order from both passing
+ * the once-per-order check of its review request. GET_LOCK names belong to
+ * the whole database server, so the name carries the database.
+ *
+ * @param int $order_id
+ * @return string
+ */
+function pg_review_request_lock_name($order_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return 'pg_review_request_' . md5($database) . '_' . (int) $order_id;
+}
+
+/**
  * Starts the review request e-mail of an order that has just shipped.
  *
  * Nothing is started for an order placed without an account or not bought
@@ -756,7 +771,7 @@ function pg_review_request_start($order_id)
         return false;
     }
 
-    $lock = 'pg_review_request_' . $order_id;
+    $lock = pg_review_request_lock_name($order_id);
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
         return false;
