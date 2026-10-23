@@ -87,13 +87,18 @@ $comments_administrator_email_conditional_administrators = $row['comments_admini
 $comments_submitter_email_page_id = $row['comments_submitter_email_page_id'];
 $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 
-// A page built in the visual editor shows a submitted form through its
-// form_item_view widget rather than a page type. For the checks below it is
-// a form item view page, and the widget's access setting is its submitter
-// security (see pg_sw_record_comment_context()).
+// The thread the comment may join, worked out again from the page rather than
+// taken from the hidden fields (includes/fn/comments.php). A page built in the
+// visual editor shows a submitted form through its form_item_view widget
+// rather than a page type, and its comments are that record's: for the checks
+// below it is a form item view page, and the widget's access setting is its
+// submitter security (see pg_sw_record_comment_context()).
+$comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);
 $comment_record = null;
-if (($page_type != 'form item view') && ($item_type == 'submitted_form') && function_exists('pg_sw_record_comment_context')) {
-    $comment_record = pg_sw_record_comment_context($page_id, $item_id);
+if ($comment_thread['accept']) {
+    $item_type = $comment_thread['item_type'];
+    $item_id = $comment_thread['item_id'];
+    $comment_record = $comment_thread['record'];
     if ($comment_record !== null) {
         $page_type = 'form item view';
     }
@@ -103,6 +108,31 @@ $comment_label = get_comment_label(array('label' => $comments_label));
 $output_comment_label = h($comment_label);
 $comment_label_lowercase = mb_strtolower($comment_label);
 $output_comment_label_lowercase = h($comment_label_lowercase);
+
+// A page with a form_item_view widget takes comments on the record it shows
+// and on nothing else: a post naming the page itself, a product, or a record
+// the widget does not show to this visitor goes back to the form with what
+// was typed, never onto a thread the page does not show. The posted thread is
+// dropped from the form state, so the form drawn again carries the record the
+// page shows rather than the posted one.
+if (($comment_thread['refusal'] === 'item_type') || ($comment_thread['refusal'] === 'record')) {
+    $refused_record = (($comment_thread['refusal'] === 'record') && is_array($comment_thread['record']) && is_array($comment_thread['record']['form']))
+        ? $comment_thread['record']['form'] : null;
+
+    if ($comment_thread['refusal'] === 'item_type') {
+        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+        $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)));
+    } else if ($refused_record !== null) {
+        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$refused_record['reference_code'] ))), $_SESSION['sessionusername'] ?? '');
+        $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)));
+    } else {
+        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+        $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)));
+    }
+
+    $liveform->set_field('item_type', array());
+    $liveform->set_field('item_id', array());
+}
 
 // validate fields that need to be validated
 $liveform->validate_required_field('message', lang(array('string'=>'A {var:1} is required.','vars'=>$output_comment_label_lowercase)));
@@ -233,12 +263,10 @@ if ($user['role'] == 3) {
     $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
 }
 
-// If the page type or item type is not valid for a form item view/submitted form,
-// then log activity and output error.
-if (
-    (($page_type == 'form item view') && ($item_type != 'submitted_form'))
-    || (($page_type != 'form item view') && ($item_type == 'submitted_form'))
-) {
+// If the page type or item type is not valid for a form item view/submitted form
+// (a legacy form item view page takes only a submitted form, a page without a
+// form_item_view widget never one), then log activity and output error.
+if ($comment_thread['refusal'] === 'page_type') {
     log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername']);
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
