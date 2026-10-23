@@ -752,7 +752,7 @@ function pg_tr_lookup($hash, $language)
  * spaces around it aside: a name, a code, a word the engine gave back as it
  * was. The page shows its own words there, so a machine translation like
  * that does not keep the page from the search engines the way engine output
- * does (pg_tr_render_text(), pg_tr_index_stats()).
+ * does (pg_tr_render_text()).
  *
  * @param string $source normalised source
  * @param string $text   the translation
@@ -827,9 +827,27 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
             text = VALUES(text), engine = VALUES(engine), status = VALUES(status), suspicious = VALUES(suspicious),
             updated_by = VALUES(updated_by), updated_at = VALUES(updated_at)");
 
-    pg_tr_invalidate_pages($language);
+    pg_tr_invalidate_pages($language, 0, !pg_tr_write_keeps_verdicts($status));
 
     return true;
+}
+
+/**
+ * Whether writing a translation leaves the pages' "may be indexed" answers
+ * standing (pg_tr_page_verdicts()). A page answered "index" only when no text
+ * it drew counted as engine output, so a reviewed translation cannot turn
+ * that answer. Any machine translation can, a text's first one included: a
+ * text printed from the database (pg_tr_db_text(): catalog, widget output,
+ * custom HTML, a rich-text record field) is not counted while it has no
+ * translation, but once it has a machine one it counts as engine output and
+ * pg_tr_render_finalize() prints noindex.
+ *
+ * @param string $status machine | reviewed, as written
+ * @return bool
+ */
+function pg_tr_write_keeps_verdicts($status)
+{
+    return ($status === 'reviewed');
 }
 
 /**
@@ -842,7 +860,7 @@ function pg_tr_set_status($string_id, $language, $status, $user_id = 0)
     db("UPDATE translations SET status = '$status', updated_by = '" . ((int) $user_id) . "', updated_at = '" . time() . "'
         WHERE string_id = '" . ((int) $string_id) . "' AND language = '" . e($language) . "'");
 
-    pg_tr_invalidate_pages($language);
+    pg_tr_invalidate_pages($language, 0, ($status !== 'reviewed'));
 }
 
 /**
@@ -891,7 +909,7 @@ function pg_tr_review_all($language, $scope = 'all', $user_id = 0, $suspicious =
     $count = (int) mysqli_affected_rows(db::$con);
 
     if ($count > 0) {
-        pg_tr_invalidate_pages($language);
+        pg_tr_invalidate_pages($language, 0, false);
     }
 
     return $count;
@@ -946,20 +964,30 @@ function pg_tr_clear($language, $scope = 'all', $with_reviewed = false)
 
 /**
  * Drops the drawn bodies of a language (or of one page in every language),
- * so the next visit draws them again with the translations as they are now.
- * Many writes in one request drop them once.
+ * so the next visit draws them again with the translations as they are now,
+ * and with them what the pages answered the search engines
+ * (pg_tr_page_verdicts()): until a page is drawn again its language address
+ * is offered nowhere. With $verdicts false (a change that can only let pages
+ * be indexed) a page that answered "index" keeps that answer; only its body
+ * goes. Many writes in one request drop them once.
+ *
+ * @param string $language '' for every language
+ * @param int    $page_id  0 for every page
+ * @param bool   $verdicts whether the answers go as well
+ * @return int how many rows were dropped or emptied
  */
-function pg_tr_invalidate_pages($language = '', $page_id = 0)
+function pg_tr_invalidate_pages($language = '', $page_id = 0, $verdicts = true)
 {
     static $done = array();
 
     $key = $language . '|' . (int) $page_id;
 
-    if (isset($done[$key])) {
-        return;
+    // After a drop with the answers there is nothing left for a lighter one.
+    if (isset($done[$key]) && ($done[$key] || !$verdicts)) {
+        return 0;
     }
 
-    $done[$key] = true;
+    $done[$key] = (bool) $verdicts;
 
     $where = array();
 
@@ -971,7 +999,40 @@ function pg_tr_invalidate_pages($language = '', $page_id = 0)
         $where[] = "page_id = '" . (int) $page_id . "'";
     }
 
-    db("DELETE FROM page_translations" . ($where ? ' WHERE ' . implode(' AND ', $where) : ''));
+    $count = 0;
+
+    foreach (pg_tr_invalidate_sql($where, $verdicts, function_exists('pg_tr_page_verdict_ready') && pg_tr_page_verdict_ready()) as $sql) {
+        db($sql);
+        $count += (int) mysqli_affected_rows(db::$con);
+    }
+
+    return $count;
+}
+
+/**
+ * The statements pg_tr_invalidate_pages() runs. Dropping the answers deletes
+ * the rows. Keeping them (and only when the schema has the column) empties
+ * the body of a row that answered "index", so the body cache draws it again,
+ * and deletes the rest: a "noindex" or no answer is offered nowhere either
+ * way.
+ *
+ * @param array $where         SQL conditions on page_translations, escaped
+ * @param bool  $verdicts      whether the answers go as well
+ * @param bool  $verdict_ready whether page_translations.indexable exists
+ * @return array of SQL statements
+ */
+function pg_tr_invalidate_sql($where, $verdicts, $verdict_ready)
+{
+    $where = array_values((array) $where);
+
+    if ($verdicts || !$verdict_ready) {
+        return array("DELETE FROM page_translations" . ($where ? ' WHERE ' . implode(' AND ', $where) : ''));
+    }
+
+    return array(
+        "UPDATE page_translations SET tree_code = '', fingerprint = '' WHERE " . implode(' AND ', array_merge($where, array('indexable = 1'))),
+        "DELETE FROM page_translations WHERE " . implode(' AND ', array_merge($where, array('(indexable IS NULL OR indexable = 0)'))),
+    );
 }
 
 /* ---------------------------------------------------------------------------
