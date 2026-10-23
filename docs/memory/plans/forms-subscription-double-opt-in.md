@@ -20,10 +20,10 @@ c. Double opt-in: the submission keeps the contact, not the group. Link: HMAC wi
 d. Turnstile/hCaptcha: keys in `connect_apps` `captcha_<provider>` like `sms_<key>` (no schema); `get_captcha_fields()`/`get_captcha_info()` print the widget, so the designer `captcha` section binding stays; server-side verify; host into `waf_csp_policy()`.
 
 ## What must the owner decide?
-1. Per-form switch (schema) or automatic for groups with `email_subscription` on (no schema, behaviour change)?
+1. Decided: a per-form switch (`custom_form_pages.double_opt_in`, step c).
 2. Turnstile, hCaptcha or both; on a failed verify call refuse or accept?
 3. Skip CAPTCHA for signed-in members, or only staff?
-4. İYS proof: group in `purpose`, keep IP and UA? (`sms-and-iys.md` step 4)
+4. Decided: purpose `group:<id>`, IP and UA kept (step c).
 5. kodpen.com group members since 2026-10-13 never confirmed: remove (recommended) or keep; never send them a reconfirm mail.
 6. Bucket numbers.
 

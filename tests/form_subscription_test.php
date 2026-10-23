@@ -141,3 +141,16 @@ function test_form_subscription_pending_url_holder()
 	pg_assert_same('https://example.com/c', pg_fs_pending_url(901), 'read back');
 	pg_assert_same('', pg_fs_pending_url(902), 'another form');
 }
+
+// Subscribed means in the group and not opted out of it on the e-mail
+// preferences screen; an opted-out member may confirm again.
+function test_form_subscription_subscribed()
+{
+	pg_assert_true(pg_fs_subscribed(true, null), 'in the group, no opt_in row');
+	pg_assert_true(pg_fs_subscribed(true, '1'), 'in the group, opted in');
+	pg_assert_true(pg_fs_subscribed(true, 1), 'opted in as an integer');
+	pg_assert_false(pg_fs_subscribed(true, '0'), 'in the group, opted out');
+	pg_assert_false(pg_fs_subscribed(true, 0), 'opted out as an integer');
+	pg_assert_false(pg_fs_subscribed(false, null), 'not in the group');
+	pg_assert_false(pg_fs_subscribed(false, '1'), 'an opt_in row without the group');
+}

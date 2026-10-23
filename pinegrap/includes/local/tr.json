@@ -26646,5 +26646,8 @@
     "Confirm my subscription": "Aboneliğimi onayla",
     "Ask for confirmation by e-mail before adding to the group (double opt-in)": "Gruba eklemeden önce e-postayla onay iste (çift onay)",
     "The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.": "Gönderen, kişi kaydındaki adrese bir bağlantı alır ve gruba ancak bu bağlantının açtığı sayfadaki düğmeye bastıktan sonra katılır.",
-    "Waiting for confirmation": "Onay bekleniyor"
+    "Waiting for confirmation": "Onay bekleniyor",
+    "No confirmation e-mail was sent for contact group {var:1}: the request could not be recorded in the consent log, which limits these e-mails to one a day.": "{var:1} numaralı kişi grubu için onay e-postası gönderilmedi: istek, bu e-postaları günde bire sınırlayan izin kaydına yazılamadı.",
+    "All e-mails from this site are turned off for this address. Turn them back on in your e-mail preferences to receive this list.": "Bu adres için bu sitedeki tüm e-postalar kapalı. Bu listeyi almak için e-posta tercihlerinizden e-postaları yeniden açın.",
+    "Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.": "Gönderimden sonraki mesajda bir onay e-postasının yolda olduğunu söyleyin: form bunu kendisi söylemez."
 }

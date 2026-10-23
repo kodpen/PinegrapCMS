@@ -31668,12 +31668,17 @@ const StyleDesigner = (function () {
                             '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Fields bound to a contact create or update the sender\'s contact record, and that record joins this group.')) + '</div>' +
                             // Double opt-in: the group waits for the link
-                            // mailed to the contact's own address.
-                            '<div class="form-check form-switch mt-2">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
-                            '</div>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' + esc(_sdT('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) + '</div>'
+                            // mailed to the contact's own address. Shown only
+                            // once the server has the column; until then the
+                            // save would drop the value.
+                            (_cfMeta().doubleOptIn ? (
+                                '<div class="form-check form-switch mt-2">' +
+                                    '<input class="form-check-input sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '>' +
+                                    '<label class="form-check-label" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
+                                '</div>' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' + esc(_sdT('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) + ' ' +
+                                    esc(_sdT('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) + '</div>'
+                            ) : '')
                         ) +
                         // Opening an account and giving a membership are two
                         // settings: a contact form registers its sender so they

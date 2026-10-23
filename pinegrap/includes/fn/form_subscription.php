@@ -10,8 +10,8 @@
  * the contact to the group. The link carries contact, group and issue time and
  * an HMAC over them and the contact's address under ENCRYPTION_KEY, so nothing
  * is stored for it; a changed address or key makes every open link invalid.
- * consent_log keeps a pending row for each confirmation mail sent and a granted
- * row for each confirmation, both with purpose "group:<id>".
+ * consent_log keeps a pending row for each confirmation mail and a granted row
+ * for each confirmation, both with purpose "group:<id>".
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -121,7 +121,8 @@ function pg_fs_parse($source)
  * invalid: not parsed, no expected signature (no key, the contact or its
  *          address is gone), a signature that does not match, or issued more
  *          than five minutes ahead of this clock;
- * member:  the contact is already in the group (a second click);
+ * member:  the contact is subscribed already (a second click), see
+ *          pg_fs_subscribed();
  * expired: older than pg_fs_ttl();
  * confirm: the button may add the contact to the group.
  *
@@ -157,8 +158,24 @@ function pg_fs_link_state($parsed, $expected, $now, $is_member)
 }
 
 /**
+ * Whether a contact counts as subscribed to a group: in it, and not opted out
+ * of it. Leaving a subscription group on the e-mail preferences screen keeps
+ * the group row and writes opt_in = 0, so such a contact may confirm again;
+ * no opt_in row is how every other membership looks.
+ *
+ * @param bool  $in_group      a contacts_contact_groups_xref row exists
+ * @param mixed $group_opt_in  opt_in.opt_in, null when there is no row
+ * @return bool
+ */
+function pg_fs_subscribed($in_group, $group_opt_in)
+{
+    return $in_group && (($group_opt_in === null) || ((int) $group_opt_in === 1));
+}
+
+/**
  * Whether a submission leaves the form's group out until the confirmation:
- * the form asks for it, names a group, and the contact is not in it already.
+ * the form asks for it, names a group, and the contact is not subscribed to
+ * it already (pg_fs_subscribed()).
  *
  * @param mixed $double_opt_in
  * @param mixed $group_id
@@ -189,6 +206,14 @@ function pg_fs_resend_allowed($last_pending_at, $now)
 /**
  * The confirmation link of a submitted form, kept for this request so the
  * submitter's own e-mail can carry it. Read with one argument, set with two.
+ *
+ * The link is signed for the contact's own address. The submitter mail goes
+ * to $submitter_email_address in custom_form.php, which can be another
+ * address: the signed-in user's when the form has no contact e-mail field, or
+ * an e-mail field not bound to the contact. A caller puts this link into that
+ * mail only when that address, normalised, equals pg_fs_contact_email() for
+ * the contact; otherwise the link would reach someone other than the owner of
+ * the address and the confirmation would mean nothing.
  *
  * @param int         $form_id
  * @param string|null $url
@@ -246,7 +271,7 @@ function pg_fs_contact_email($contact_id)
 }
 
 /**
- * Whether a contact is in a contact group.
+ * Whether a contact is subscribed to a contact group (pg_fs_subscribed()).
  *
  * @param int $contact_id
  * @param int $group_id
@@ -254,12 +279,41 @@ function pg_fs_contact_email($contact_id)
  */
 function pg_fs_is_member($contact_id, $group_id)
 {
-    return (int) db_value(
+    $contact_id = (int) $contact_id;
+    $group_id = (int) $group_id;
+
+    $in_group = (int) db_value(
         "SELECT COUNT(*)
         FROM contacts_contact_groups_xref
         WHERE
-            (contact_id = '" . (int) $contact_id . "')
-            AND (contact_group_id = '" . (int) $group_id . "')") > 0;
+            (contact_id = '" . $contact_id . "')
+            AND (contact_group_id = '" . $group_id . "')") > 0;
+
+    if (!$in_group) {
+        return false;
+    }
+
+    $opt_in = db_value(
+        "SELECT MIN(opt_in)
+        FROM opt_in
+        WHERE
+            (contact_id = '" . $contact_id . "')
+            AND (contact_group_id = '" . $group_id . "')");
+
+    return pg_fs_subscribed(true, (($opt_in === '') || ($opt_in === null)) ? null : $opt_in);
+}
+
+/**
+ * Whether a contact has turned off every e-mail from the site
+ * (contacts.opt_in = 0, "unsubscribe from all" on the e-mail preferences
+ * screen). Campaigns skip such a contact in every group.
+ *
+ * @param int $contact_id
+ * @return bool
+ */
+function pg_fs_global_opt_out($contact_id)
+{
+    return (string) db_value("SELECT opt_in FROM contacts WHERE id = '" . (int) $contact_id . "'") === '0';
 }
 
 /**
@@ -371,11 +425,12 @@ function pg_fs_send_confirmation($email, $url, $group)
 /**
  * A submission whose form's group was held back: makes the confirmation link,
  * keeps it for the submitter's mail and, at most once a day per address and
- * group, mails it and records the request as pending.
+ * group, records the request as pending and mails it.
  *
  * The link goes to the contact's own address, never to an address typed into
  * another field. A contact without one cannot confirm; the group stays out
- * and the reason is logged.
+ * and the reason is logged. The pending row is written before the mail and is
+ * what the daily limit reads, so a row that cannot be written sends no mail.
  *
  * @param int $form_id
  * @param int $contact_id
@@ -408,24 +463,41 @@ function pg_fs_hold_submission($form_id, $contact_id, $group_id)
         return $url;
     }
 
-    if (pg_fs_send_confirmation($email, $url, pg_fs_group($group_id))) {
-        pg_consent_log_record(array(
-            'channel'    => 'email',
-            'purpose'    => 'group:' . (int) $group_id,
-            'status'     => 'pending',
-            'source'     => 'form',
-            'email'      => $email,
-            'contact_id' => (int) $contact_id,
-        ));
+    $pending_id = pg_consent_log_record(array(
+        'channel'    => 'email',
+        'purpose'    => 'group:' . (int) $group_id,
+        'status'     => 'pending',
+        'source'     => 'form',
+        'email'      => $email,
+        'contact_id' => (int) $contact_id,
+    ));
+
+    if ($pending_id <= 0) {
+        log_activity(lang(array(
+            'string' => 'No confirmation e-mail was sent for contact group {var:1}: the request could not be recorded in the consent log, which limits these e-mails to one a day.',
+            'vars'   => array((string) (int) $group_id))));
+        return $url;
     }
+
+    pg_fs_send_confirmation($email, $url, pg_fs_group($group_id));
 
     return $url;
 }
 
 /**
- * The confirmation: adds the contact to the group, opts it in to the group and
- * to e-mail in general (a subscription group mails only contacts opted in to
- * both), and records the consent with this request's address and browser.
+ * The confirmation: adds the contact to the group, opts it in to the group,
+ * and records the consent with this request's address and browser.
+ *
+ * A contact that has turned off every e-mail from the site (contacts.opt_in
+ * = 0) keeps that: the confirmation is for one group, and switching the
+ * general opt-in back on would also restart every other group's mail. Such a
+ * contact receives the group's mail after turning e-mail back on in the
+ * e-mail preferences (a subscription group mails only contacts opted in to
+ * both, add_email_campaign.php).
+ *
+ * Each write is one statement that checks and writes together, so two
+ * presses at once leave one group row and one opt_in row. A failed write
+ * returns false instead of ending the request.
  *
  * @param int    $contact_id
  * @param int    $group_id
@@ -441,19 +513,26 @@ function pg_fs_confirm($contact_id, $group_id, $email)
         return false;
     }
 
-    if (!pg_fs_is_member($contact_id, $group_id)) {
-        if (!db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $contact_id . "', '" . $group_id . "')")) {
+    $where = "(contact_id = '" . $contact_id . "') AND (contact_group_id = '" . $group_id . "')";
+
+    $writes = array(
+        "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
+        SELECT '" . $contact_id . "', '" . $group_id . "' FROM DUAL
+        WHERE NOT EXISTS (SELECT 1 FROM contacts_contact_groups_xref WHERE " . $where . ")",
+        "UPDATE opt_in SET opt_in = '1' WHERE " . $where,
+        "INSERT INTO opt_in (contact_id, contact_group_id, opt_in)
+        SELECT '" . $contact_id . "', '" . $group_id . "', '1' FROM DUAL
+        WHERE NOT EXISTS (SELECT 1 FROM opt_in WHERE " . $where . ")",
+        "UPDATE contacts SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $contact_id . "'",
+    );
+
+    foreach ($writes as $query) {
+        // Not db(): a failed query there ends the request with an error page.
+        if (@mysqli_query(db::$con, $query) === false) {
+            error_log('Pinegrap: subscription confirmation failed: ' . mysqli_error(db::$con));
             return false;
         }
     }
-
-    if (db_value("SELECT COUNT(*) FROM opt_in WHERE (contact_id = '" . $contact_id . "') AND (contact_group_id = '" . $group_id . "')") > 0) {
-        db("UPDATE opt_in SET opt_in = '1' WHERE (contact_id = '" . $contact_id . "') AND (contact_group_id = '" . $group_id . "')");
-    } else {
-        db("INSERT INTO opt_in (contact_id, contact_group_id, opt_in) VALUES ('" . $contact_id . "', '" . $group_id . "', '1')");
-    }
-
-    db("UPDATE contacts SET opt_in = '1', timestamp = UNIX_TIMESTAMP() WHERE id = '" . $contact_id . "'");
 
     pg_consent_log_record(array(
         'channel'    => 'email',

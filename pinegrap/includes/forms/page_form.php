@@ -594,7 +594,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <input type="checkbox" class="form-check-input" role="switch" id="custom_form_double_opt_in" name="custom_form_double_opt_in" value="1"' . ((($custom_form_properties['double_opt_in'] ?? '') == 1) ? ' checked="checked"' : '') . ' />
                 <label class="form-check-label" for="custom_form_double_opt_in">' . h(lang('Ask for confirmation by e-mail before adding to the group (double opt-in)')) . '</label>
             </div>
-            <div class="form-text">' . h(lang('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) . '</div>';
+            <div class="form-text">' . h(lang('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) . ' ' . h(lang('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) . '</div>';
     }
 
     // if submitter e-mail is enabled prepare to check check box

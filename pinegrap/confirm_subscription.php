@@ -78,6 +78,12 @@ $pg_fs_content =
     . '<h2 style="margin-top:0">' . h(lang('Confirm your subscription')) . '</h2>'
     . '<p>' . h($pg_fs_message) . '</p>';
 
+// Confirming one group does not undo "unsubscribe from all" (pg_fs_confirm()),
+// so the address owner is told why the group's mail will not come yet.
+if ((($pg_fs_state === 'confirmed') || ($pg_fs_state === 'member')) && pg_fs_global_opt_out($pg_fs_link['c'])) {
+    $pg_fs_content .= '<p>' . h(lang('All e-mails from this site are turned off for this address. Turn them back on in your e-mail preferences to receive this list.')) . '</p>';
+}
+
 if (($pg_fs_state === 'confirm') || ($pg_fs_state === 'failed')) {
     $pg_fs_content .=
         '<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/confirm_subscription.php') . '" style="margin-top:1.25em">'
