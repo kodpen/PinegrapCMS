@@ -315,7 +315,7 @@ function erp_order_flow_state($order_id)
             $step['state'] = 'ready';
             $step['action'] = 'edoc_submit';
             $step['reason'] = lang(array('string' => 'The document is waiting as a draft at {var:1}; hand it to GİB to make it official.', 'vars' => $provider_label));
-        } elseif (in_array($status, array('queued', 'sending', 'sent'), true)) {
+        } elseif (in_array($status, array('queued', 'sending', 'sent'), true) && !erp_edoc_invoice_send_stalled($invoice)) {
             $step['state'] = 'waiting';
             $step['action'] = 'edoc_poll';
             $step['reason'] = lang('Sent; GİB has not answered yet. Ask again in a little while.');
@@ -360,6 +360,11 @@ function erp_order_flow_state($order_id)
                 if ($message !== '') {
                     $step['facts'][] = array('text' => lang(array('string' => 'Last answer: {var:1}', 'vars' => $message)));
                 }
+            }
+
+            // The send that stopped may have left a draft at the provider.
+            if (erp_edoc_invoice_send_stalled($invoice)) {
+                $step['facts'][] = array('text' => lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $provider_label)));
             }
         }
     }

@@ -938,6 +938,29 @@ function erp_edoc_invoice_held_refusal($invoice)
 }
 
 /**
+ * Whether a send stopped before the provider's answer was written: the row
+ * is still 'sending', carries no provider id, and was last written more than
+ * fifteen minutes ago, far longer than any send takes. The request ended
+ * inside the driver call (a time limit, a killed process, a fatal error), and
+ * nothing else ever moves the row on. Such a row may go again like an
+ * 'error' row without an id; the driver's own check for a record the stopped
+ * try may have written (Paraşüt's unsure mark) then runs. A fresh 'sending'
+ * row is a send still in flight.
+ *
+ * @param array    $invoice  An erp_invoices row
+ * @param int|null $now      The time to judge by; now when omitted
+ * @return bool
+ */
+function erp_edoc_invoice_send_stalled($invoice, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    return ((string) ($invoice['edoc_status'] ?? 'none') === 'sending')
+        && (trim((string) ($invoice['edoc_external_id'] ?? '')) === '')
+        && ((int) ($invoice['updated_at'] ?? 0) < ($now - 900));
+}
+
+/**
  * May this invoice be sent now, and if not, why not - in the operator's words.
  *
  * @param array $invoice  An erp_invoices row
@@ -982,7 +1005,9 @@ function erp_edoc_invoice_can_send($invoice)
         return array('ok' => false, 'provider' => $provider, 'reason' => $held);
     }
 
-    if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true)) {
+    // A send that stopped before the provider answered is not refused: no
+    // poll can answer a row without an id.
+    if (in_array((string) $invoice['edoc_status'], array('queued', 'sending', 'sent', 'accepted'), true) && !erp_edoc_invoice_send_stalled($invoice)) {
         return array('ok' => false, 'provider' => $provider, 'reason' => lang('The document has already gone; ask after its status instead of sending it twice.'));
     }
 

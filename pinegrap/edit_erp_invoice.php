@@ -1171,6 +1171,9 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . ((!$edoc_gate['ok'] && in_array($edoc_status, array('none', 'error'), true))
                             ? '<div class="col-12 my-2"><div class="form-text">' . h($edoc_gate['reason']) . '</div></div>'
                             : '') . '
+                        ' . (erp_edoc_invoice_send_stalled($invoice)
+                            ? '<div class="col-12 my-2"><div class="form-text">' . h(lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $edoc_carrier_label))) . '</div></div>'
+                            : '') . '
                     </div>
                     ' . $output_edoc_date . '
                     ' . $output_edoc_fix . '
