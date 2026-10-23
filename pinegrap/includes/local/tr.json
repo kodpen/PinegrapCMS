@@ -26693,5 +26693,11 @@
     "erp expense repeat till was changed": "erp gider tekrarının hesabı değiştirildi",
     "The next ones are paid from the chosen till. A date still waiting is written on the next run.": "Sonrakiler seçilen hesaptan ödenecek. Bekleyen bir tarih bir sonraki çalışmada yazılır.",
     "Change the till": "Hesabı değiştir",
-    "Only the next ones change; the expenses it wrote keep their till.": "Yalnız sonrakiler değişir; tekrarın yazdığı giderler kendi hesaplarında kalır."
+    "Only the next ones change; the expenses it wrote keep their till.": "Yalnız sonrakiler değişir; tekrarın yazdığı giderler kendi hesaplarında kalır.",
+    "Semicolon (;)": "Noktalı virgül (;)",
+    "Comma (,)": "Virgül (,)",
+    "Tab character": "Sekme karakteri",
+    "Vertical bar (|)": "Dikey çizgi (|)",
+    "Split again": "Yeniden böl",
+    "If the columns come out wrong, choose the separator and split the lines again.": "Sütunlar yanlış ayrıldıysa ayırıcıyı seçip satırları yeniden bölün."
 }
