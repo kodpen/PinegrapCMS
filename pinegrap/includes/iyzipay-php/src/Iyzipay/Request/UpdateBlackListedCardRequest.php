@@ -7,8 +7,8 @@ use \Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class UpdateBlackListedCardRequest extends Request {
-    private string $cardUserKey = '';
-    private string $cardToken = '';
+    private $cardUserKey = '';
+    private $cardToken = '';
 
     public function getCardUserKey(): string {
         return $this->cardUserKey;

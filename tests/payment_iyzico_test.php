@@ -11,7 +11,8 @@
  * process_order_cancellation(), iyzipay_cancel_payment()), copied below as
  * legacy_*() builders. iyzico is replaced by a stand-in HTTP client that
  * records what is posted and answers with canned JSON; no network and no
- * database is reached (the 3-D Secure row goes to a recording writer).
+ * database is reached (the 3-D Secure row goes to a recording writer). The
+ * last test keeps the bundled SDK (includes/iyzipay-php) to what PHP 7.1 runs.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -981,4 +982,42 @@ function test_payment_iyzico_checkout_totals_without_an_amount()
 		array('total' => 5000, 'installment_charge' => 0, 'total_without_installment_charge' => 0, 'payment_installment' => 1),
 		pg_payment_checkout_totals(pg_payment_answer('authorize', array('success' => true, 'status' => 'paid', 'amount' => 4000, 'installments' => -2)), 5000),
 		'less than the total charges nothing extra');
+}
+
+/* ---------------------------------------------------------------------------
+   The bundled SDK
+   --------------------------------------------------------------------------- */
+
+// The SDK under includes/iyzipay-php asks for PHP 7.4 and the product runs on
+// 7.1 and up. A typed property (7.4) is a parse error on 7.1-7.3 as soon as
+// the autoloader loads its class, and PHP 7.1 reads an "object" parameter type
+// (7.2) as a class named "object": the refund stopped at the first and every
+// iyzico answer failed to map at the second. Neither shows on the PHP version
+// CI runs, and tools/lint.php skips the folder.
+function test_payment_iyzico_sdk_keeps_to_php_7_1()
+{
+	$typed = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR . '/includes/iyzipay-php', FilesystemIterator::SKIP_DOTS));
+
+	foreach ($files as $file) {
+		if (substr($file->getFilename(), -4) !== '.php') {
+			continue;
+		}
+
+		// A property declaration with a type between its modifiers and its name.
+		preg_match_all(
+			'/^[ \t]*(?:(?:public|protected|private|var|static|readonly)[ \t]+)+(?!(?:function|const|public|protected|private|var|static|readonly|abstract|final)\b)\??[\w\\\\|&]+[ \t]+\$\w+/m',
+			(string) file_get_contents($file->getPathname()),
+			$matches);
+
+		foreach ($matches[0] as $declaration) {
+			$typed[] = $file->getFilename() . ': ' . trim($declaration);
+		}
+	}
+
+	pg_assert_same(array(), $typed, 'typed properties in the SDK');
+
+	$type = (new ReflectionMethod('Iyzipay\Model\Mapper\AmountBaseRefundMapper', 'mapAmountBaseRefundFrom'))->getParameters()[1]->getType();
+
+	pg_assert_same('stdClass', ($type instanceof ReflectionNamedType) ? $type->getName() : '', 'the refund mapper takes the decoded answer as \stdClass, not object');
 }

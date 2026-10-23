@@ -9,8 +9,8 @@ use Iyzipay\Options;
 use Iyzipay\RequestStringBuilder;
 
 class IyziLinkUpdateProductStatus extends IyzipayResource {
-    private string $token;
-    private string $productStatus;
+    private $token;
+    private $productStatus;
 
     public function getToken(): string {
         return $this->token;

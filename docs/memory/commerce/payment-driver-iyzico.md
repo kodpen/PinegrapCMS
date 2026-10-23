@@ -25,4 +25,4 @@ description: iyzico drivers (card for Iyzipay, redirect for Pay With Iyzico), th
 ## How was it verified?
 - `tests/payment_iyzico_test.php`: a stand-in for iyzico's HTTP client (`\Iyzipay\ApiResource::setHttpClient()`) records the posted JSON, compared with requests built by the gateway code's own statements (copied as `legacy_*()`), plus answers for 3DS start, instalments, protected currency, fraud, PWI return checks and cancel, refund and cancel. No running shop or iyzico sandbox was used.
 
-Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/order-cancellation-config.md, docs/memory/plans/payment-driver-layer.md
+Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/order-cancellation-config.md, docs/memory/plans/payment-driver-layer.md, docs/memory/commerce/iyzipay-sdk-php71-patch.md (the bundled SDK is patched for PHP 7.1)
