@@ -1088,14 +1088,16 @@ function pg_account_security_section()
         $devices_html = '<p>' . h(lang('No remembered devices.')) . '</p>';
     }
 
-    // Two-step verification (includes/fn/mfa.php) comes last: it carries its
-    // own heading, so it does not read as part of the device list.
+    // Two-step verification (includes/fn/mfa.php) and passkeys
+    // (includes/fn/passkeys.php) come last: each carries its own heading, so
+    // they do not read as part of the device list.
     $mfa_html = pg_mfa_account_section($user_id, $algo, $action_url, $token);
+    $passkey_html = pg_passkey_account_section($user_id, $algo, $action_url, $token);
 
     return
         '<div class="pg-account-security" style="margin-top:2em;max-width:640px">'
         . '<div class="heading" style="margin-bottom:10px">' . h(lang('Sign-in and devices')) . '</div>'
-        . $identity_html . $devices_html . $mfa_html . '</div>';
+        . $identity_html . $devices_html . $mfa_html . $passkey_html . '</div>';
 }
 
 // The configured cap on concurrent "remember me" devices per account (Settings).
@@ -3829,6 +3831,29 @@ function pg_login_throttle_subjects($identifier)
 }
 
 /**
+ * Whether this address or this account is locked out right now: the check
+ * of pg_login_throttle_guard() without its answer, for a caller that refuses
+ * in its own shape (passkey.php answers JSON). False while the throttle is
+ * off.
+ */
+function pg_login_throttle_locked($identifier)
+{
+    if (!pg_login_throttle_enabled()) {
+        return false;
+    }
+
+    $limits = pg_login_throttle_limits();
+
+    foreach (pg_login_throttle_subjects($identifier) as $scope => $subject) {
+        if (waf_rate_hits($subject, 'lock' . $scope, $limits['lockout']) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Stop the request when this address or this account is already locked out.
  *
  * Called before the password is checked, so a locked-out attempt costs one
@@ -3841,16 +3866,8 @@ function pg_login_throttle_subjects($identifier)
  */
 function pg_login_throttle_guard($identifier)
 {
-    if (!pg_login_throttle_enabled()) {
-        return;
-    }
-
-    $limits = pg_login_throttle_limits();
-
-    foreach (pg_login_throttle_subjects($identifier) as $scope => $subject) {
-        if (waf_rate_hits($subject, 'lock' . $scope, $limits['lockout']) > 0) {
-            pg_login_throttle_deny($limits);
-        }
+    if (pg_login_throttle_locked($identifier)) {
+        pg_login_throttle_deny(pg_login_throttle_limits());
     }
 }
 
