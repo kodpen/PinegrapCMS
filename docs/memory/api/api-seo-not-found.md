@@ -20,4 +20,4 @@ description: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log ove
 - A row still being asked for can move between pages under `hits` and `last_seen`; `first_seen` does not move.
 - No `q` filter or path sort: a text cursor value is not what the cursor helpers carry.
 
-Tests: `tests/api_seo_not_found_test.php` (shape against the declaration, `answered_by`, the cursor mark, the route, the page SQL); `tools/check_api_schema.php` pairs the presenter with its schema.
+Tests: `tests/api_seo_not_found_test.php` (shape against the declaration, `answered_by`, the cursor mark, the route, the page SQL); `tools/check_api_schema.php` pairs the presenter with its schema. PR: #1423.
