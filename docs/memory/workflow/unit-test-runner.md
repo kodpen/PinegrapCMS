@@ -9,6 +9,7 @@ description: tools/test.php: what it loads, which PHP errors fail a test (vendor
 ## Which PHP errors fail a test?
 - The error handler turns every warning, notice and deprecation into an `ErrorException`, so the test is an ERROR instead of printing and passing.
 - Not a deprecation raised inside a vendored library (the folders `tools/lint.php` skips: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `assets/lib`): it is let through. Symptom fixed: on PHP 8.4 and later PHPExcel's implicitly nullable parameters (`PHPExcel.php:806` first) stopped the whole run with a fatal error at the first test file that loads it, before any test ran (#1283).
+- `pg_assert_contains()` counts an empty needle as contained on every version, as `str_contains()` does from PHP 8.0; `strpos()` before 8.0 warns "Empty needle". A test that shows PHP refusing something catches the runner's `ErrorException` beside PHP 8's `TypeError`: PHP 7 only warns (`tests/order_submit_affiliate_test.php`).
 
 ## What does a run on another PHP version need?
 - `-d memory_limit=-1`: the official Docker images default to 128M and the full suite needs more (it ran out in `designer_blocks_test.php` on 7.1 and in `office_dom_ceiling_test.php` on 8.5). Also the extensions some tests use: `intl` (short link names fold "Ürün" through `Normalizer`), `zip` (office tests), `pdo_mysql` (the mysqldump settings test). Without them those tests fail for the missing extension, not for the PHP version.
