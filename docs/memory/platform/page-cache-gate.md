@@ -1,6 +1,6 @@
 ---
 name: page-cache-gate
-description: Anonymous page cache gate (PR #PRNUM): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot
+description: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page answers a CDN or proxy may keep, the pg_nc marker, bypass reasons, the header callback slot
 ---
 
 ## What does it do?
