@@ -2791,6 +2791,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__not_found_message'    => $not_found_message,
             '__new_account_email'    => '',
             '__new_account_password' => '',
+            '__new_account_set_password_url' => '',
             '__edit_url'             => '',
         );
     } else {
@@ -2826,11 +2827,14 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the
         // legacy custom form confirmation screen did. No password is handed
-        // out; the password token carries the set password link instead
-        // (pg_cf_new_account_password_note()), for the visitor alone.
+        // out. The set password link, for the visitor alone, has a token of
+        // its own for a button's href; the password token, which older
+        // designs print as text, carries a sentence with that link
+        // (pg_cf_new_account_password_note()).
         $new_account_email = pg_cf_new_account_email((int)$form_row['id']);
+        $new_account_link  = ($new_account_email !== '') ? pg_cf_new_account_link((int)$form_row['id']) : '';
         $new_account_note  = ($new_account_email !== '')
-            ? pg_cf_new_account_password_note(pg_cf_new_account_link((int)$form_row['id']), pg_cf_new_account_for_submitter()) : '';
+            ? pg_cf_new_account_password_note($new_account_link, pg_cf_new_account_for_submitter()) : '';
 
         $extra = array(
             'form_item_view'         => $self_url !== '' ? $self_url : '#',
@@ -2840,6 +2844,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__not_found_message'    => '',
             '__new_account_email'    => h($new_account_email),
             '__new_account_password' => h($new_account_note),
+            // Empty unless the link is live and the viewer sent the form.
+            '__new_account_set_password_url' => h($new_account_link),
             // The record's edit screen, for whoever may edit this form's
             // submissions (the legacy form item view's Edit button).
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)
@@ -2877,6 +2883,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         ? $_SESSION['software']['submitted_form_reference_codes'] : array();
     $flags = array(
         'has_new_account'        => $found_and_allowed && $extra['__new_account_email'] !== '',
+        'has_set_password_link'  => $found_and_allowed && $extra['__new_account_set_password_url'] !== '',
         'record_found'           => (bool)$found_and_allowed,
         'record_not_found'       => !$found_and_allowed,
         'submitted_this_session' => $found_and_allowed && in_array((string)$form_row['reference_code'], array_map('strval', $own_codes), true),

@@ -12180,7 +12180,8 @@ const StyleDesigner = (function () {
         '__recipient_address': _sdT('Sample Street 1, 34000 Istanbul, Türkiye'),
         '__recipient_phone': '+90 555 000 00 00',
         '__new_account_email': 'sample@example.com',
-        '__new_account_password': 'a1b2c3d4',
+        '__new_account_password': _sdT('Set it with this link: {var:1}', 'https://example.com/set-password'),
+        '__new_account_set_password_url': '#',
         '__ai_summary': _sdT('The main points of the post, written by the visitor\'s browser.'),
         '__item_name': _sdT('Sample Product Name'),
         '__item_short_description': _sdT('Sample Product Name'),
@@ -34049,7 +34050,8 @@ const StyleDesigner = (function () {
     // a confirmation page tells them how to sign in.
     var SW_FORM_ITEM_VIEW_ACCOUNT_TOKENS = [
         ['__new_account_email',    _sdT('New account email (when the form opened one)')],
-        ['__new_account_password', _sdT('New account password (when the form opened one)')],
+        ['__new_account_password', _sdT('New account password note (a sentence with the set password link)')],
+        ['__new_account_set_password_url', _sdT('Set password link address (only for the person who sent the form)')],
         ['__edit_url',             _sdT('Edit screen address (only for users who may edit the record)')]
     ];
     // AI: the links that open an assistant with a question about the record
@@ -35532,6 +35534,7 @@ const StyleDesigner = (function () {
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
+            ['has_set_password_link',  _sdT('A set password link is ready for the visitor')],
             ['record_found',           _sdT('The record is shown')],
             ['record_not_found',       _sdT('There is no record to show (missing, or not for this visitor)')],
             ['submitted_this_session', _sdT('The visitor sent this record themselves, in this session')],

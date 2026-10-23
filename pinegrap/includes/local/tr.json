@@ -15224,7 +15224,6 @@
     "New Password (again)": "Yeni Şifre (tekrar)",
     "New Recipient": "Yeni Alıcı",
     "New account email (when the form opened one)": "Yeni hesabın e-postası (form hesap açtıysa)",
-    "New account password (when the form opened one)": "Yeni hesabın şifresi (form hesap açtıysa)",
     "New recipient address — the empty form (href)": "Yeni alıcı adresi — boş form (href)",
     "News and campaigns, once a month.": "Ayda bir haberler ve kampanyalar.",
     "No Password Yet": "Henüz Şifre Yok",
@@ -26142,5 +26141,8 @@
     "An article taken off the site can still show in the site search until the editors update the search index.": "Siteden kaldırılan bir haber, editörler arama dizinini güncelleyene kadar site aramasında görünmeye devam edebilir.",
     "bridge-photo.jpg": "kopru-fotografi.jpg",
     "To change your article or take it back, write to the desk below; an editor makes the change.": "Haberinizi değiştirmek ya da geri çekmek için aşağıdan masaya yazın; değişikliği bir editör yapar.",
-    "jane.cooper": "ayse.yilmaz"
+    "jane.cooper": "ayse.yilmaz",
+    "New account password note (a sentence with the set password link)": "Yeni hesabın parola notu (parola belirleme bağlantısını içeren cümle)",
+    "Set password link address (only for the person who sent the form)": "Parola belirleme bağlantısının adresi (yalnız formu gönderen kişi için)",
+    "A set password link is ready for the visitor": "Ziyaretçi için bir parola belirleme bağlantısı hazır"
 }
