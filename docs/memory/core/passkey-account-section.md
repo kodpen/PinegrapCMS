@@ -1,6 +1,6 @@
 ---
 name: passkey-account-section
-description: Passkeys on the account page (pg_passkey_account_section(), PR #TBD): who may add one, the re-authentication in passkey.php, rename and remove in account_security.php, what is shown when
+description: Passkeys on the account page (pg_passkey_account_section(), PR #1384): who may add one, the re-authentication in passkey.php, rename and remove in account_security.php, what is shown when
 ---
 
 ## Where is it drawn?

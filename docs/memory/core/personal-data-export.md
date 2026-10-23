@@ -13,7 +13,7 @@ description: privacy_export.php (PR #938): one person's data as JSON and a PDF s
 ## What do the sections read?
 - `pg_privacy_export_sections()` pins the 28 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut).
 - Orders include carts: an `order_items` line with `saved_for_later` is the wishlist. A product form's answers sit in the order row as `form_answers`; a form submission's fields as `fields`, found also by the address typed in any field (`form_data.data`, prefix index).
-- Passkeys (`passkeys`, after `identities`, PR #TBD): id, user_id, name, aaguid, transports, backup flags, created_at, last_used_at. The credential (credential_id, credential_hash, public_key, user_handle, sign_count, alg) is never read; a test pins the columns.
+- Passkeys (`passkeys`, after `identities`, PR #1384): id, user_id, name, aaguid, transports, backup flags, created_at, last_used_at. The credential (credential_id, credential_hash, public_key, user_handle, sign_count, alg) is never read; a test pins the columns.
 - References only: ERP documents (number, date, totals, status) and Workspace customer channels. Not read: site log, `audit_log`, `visitors` (no index by order; IPs cleared by retention), Workspace guest rooms (a guest has only a name).
 
 ## What is masked?
