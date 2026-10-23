@@ -86,9 +86,11 @@ function pg_sw_type_labels()
 // so an identifier means the same thing on both sides and a site builder can
 // carry what they already know into the designer.
 //
-// Three entries have no row in that registry: the link to the detail page (the
+// Four entries have no row in that registry: the link to the detail page (the
 // classic screens carry it as their own ^^form_item_view^^ token) and the two
-// ids. Those have an empty `sql`; the renderer supplies their value.
+// ids, which have an empty `sql` because the renderer supplies their value,
+// and submitter_name, the author's name a public page may print (see
+// pg_sw_submitter_name_sql()).
 //
 // `join` names the query joins a field's SQL depends on. A template that never
 // mentions the field keeps them out of the query, so a listing that prints
@@ -141,8 +143,104 @@ function pg_sw_standard_fields()
         'type'  => '',
         'join'  => array(),
     );
+    // `submitter` is the login username: right for staff screens and the
+    // classic pages, wrong for a public byline, where it publishes half of a
+    // credential (a member's username defaults to the local part of their
+    // e-mail address). This one is the contact's name, the same rule as the
+    // BlogPosting author (pg_submitted_form_author_name()).
+    $fields['submitter_name'] = array(
+        'label' => lang('Author Name'),
+        'sql'   => pg_sw_submitter_name_sql('submitter_contact'),
+        'type'  => '',
+        'join'  => array('submitter_contact'),
+    );
 
     return $fields;
+}
+
+// The SQL for a submission's author name, read from the contact joined as
+// $alias (forms.contact_id): the first and last name, else the nickname, ''
+// when the record has no contact or the contact no name. The login username
+// is never read. Mirrors pg_submitted_form_author_name() (includes/fn/seo.php):
+// CONCAT_WS skips the NULL halves, so a name with one part has no stray space.
+function pg_sw_submitter_name_sql($alias)
+{
+    $a = preg_replace('/[^a-z0-9_]/', '', strtolower((string)$alias));
+    return "IFNULL(NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM($a.first_name), ''), NULLIF(TRIM($a.last_name), ''))), ''),"
+         . " IFNULL(TRIM($a.nickname), ''))";
+}
+
+// Whether a form's own field named $name overrides the standard field of that
+// name. The rule is the other way round for the classic registry's names (a
+// standard field beats a same-named form field, as on the classic screens).
+// submitter_name is widget-only and newer than forms that may already have a
+// field called that, so their field keeps printing what it printed before.
+// style_designer.js keeps the same list in _SW_FORM_FIELD_WINS.
+function pg_sw_form_field_wins($name)
+{
+    return in_array(mb_strtolower((string)$name, 'UTF-8'), array('submitter_name'), true);
+}
+
+// The identifiers a form's own fields answer to in a widget template, as a
+// lookup set: the name, the name without hyphens, the label and the label's
+// slug, the keys pg_sw_index_form_data() files a record's values under.
+// $rows are form_fields rows carrying `name` and `label`.
+function pg_sw_form_field_identifiers($rows)
+{
+    $ids = array();
+    foreach ((array)$rows as $row) {
+        $keys  = array();
+        $name  = isset($row['name']) ? trim((string)$row['name']) : '';
+        $label = isset($row['label']) ? trim((string)$row['label']) : '';
+        if ($name !== '') {
+            $keys[] = $name;
+            $keys[] = preg_replace('/[^a-z0-9_]/i', '', $name);
+        }
+        if ($label !== '') {
+            $keys[] = $label;
+            $keys[] = pg_sw_slugify($label);
+        }
+        foreach ($keys as $key) {
+            $key = mb_strtolower(trim((string)$key), 'UTF-8');
+            if ($key !== '') $ids[$key] = true;
+        }
+    }
+    return $ids;
+}
+
+// The standard names in $tokens (name => true) that yield to a field of the
+// form, given that form's identifiers (pg_sw_form_field_identifiers()). The
+// form decides, not the record: a record with no value for that field prints
+// nothing, as it did before the standard name existed, and never the standard
+// value in its place. The filter and the editor decide the same way.
+function pg_sw_yielded_standard_names($tokens, $identifiers)
+{
+    $names = array();
+    foreach ((array)$tokens as $name => $unused) {
+        $name = mb_strtolower((string)$name, 'UTF-8');
+        if (pg_sw_form_field_wins($name) && isset($identifiers[$name])) $names[] = $name;
+    }
+    return array_values(array_unique($names));
+}
+
+// pg_sw_yielded_standard_names() for form $custom_form_page_id. The form's
+// fields are read only when $tokens names a standard field that may yield.
+function pg_sw_form_yields($tokens, $custom_form_page_id)
+{
+    $may_yield = false;
+    foreach ((array)$tokens as $name => $unused) {
+        if (pg_sw_form_field_wins($name)) {
+            $may_yield = true;
+            break;
+        }
+    }
+    if (!$may_yield) return array();
+    $rows = db_items(
+        "SELECT name, label
+         FROM form_fields
+         WHERE page_id = '" . (int)$custom_form_page_id . "'"
+    );
+    return pg_sw_yielded_standard_names($tokens, pg_sw_form_field_identifiers($rows));
 }
 
 // Every identifier a widget template names, as a lookup set. The optional
@@ -214,6 +312,9 @@ function pg_sw_standard_sql($tokens, $detail_page_id, $skip = array())
     }
     if (isset($needed['last_modifier'])) {
         $join .= " LEFT JOIN user AS last_modifier ON forms.last_modified_user_id = last_modifier.user_id";
+    }
+    if (isset($needed['submitter_contact'])) {
+        $join .= " LEFT JOIN contacts AS submitter_contact ON (forms.contact_id = submitter_contact.id) AND (forms.contact_id > 0)";
     }
     if (isset($needed['submitted_form_info'])) {
         $join .= " LEFT JOIN submitted_form_info"
@@ -301,7 +402,11 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         $type             = '';
         $data             = '';
 
-        if (isset($standard[$name]) && array_key_exists($name, $row)) {
+        // A form's own field wins over the few standard names that yield to
+        // it (pg_sw_form_field_wins()); every other standard name beats it.
+        $form_wins = isset($custom[$name]) && pg_sw_form_field_wins($name);
+
+        if (!$form_wins && isset($standard[$name]) && array_key_exists($name, $row)) {
             $is_standard = true;
             $type        = $standard[$name]['type'];
             $data        = (string)$row[$name];
@@ -1072,13 +1177,33 @@ function pg_sw_url_filter_state($add = null)
     return $state;
 }
 
+// The fields a filter may name on form $custom_form_page_id, keyed by their
+// lower-case name: every named field but the information blocks.
+function pg_sw_filter_form_fields($custom_form_page_id)
+{
+    $custom = array();
+    $rows = db_items(
+        "SELECT id, name, type, multiple
+         FROM form_fields
+         WHERE page_id = '" . (int)$custom_form_page_id . "'
+           AND type != 'information'
+           AND name != ''"
+    );
+    foreach ((array)$rows as $row) {
+        $custom[mb_strtolower((string)$row['name'], 'UTF-8')] = $row;
+    }
+    return $custom;
+}
+
 // The filters a form_list_view widget applies to its records: the classic
 // form list view's filters (edit_form_list_view.php, form_list_view_filters),
 // kept in the widget's system_region_config as `filters`, a list of
 //   { field, operator, value, dynamic_value, dynamic_value_attribute }
 //
 // `field` is a standard field (reference_code, submitter, submitted_date_and_time
-// …, see pg_sw_standard_fields()) or the name of one of the form's own fields.
+// …, see pg_sw_standard_fields()) or the name of one of the form's own fields;
+// a form field named like a standard field that yields (pg_sw_form_field_wins())
+// is the one compared.
 // A filter with a value compares against that value. One without compares
 // against its dynamic value, worked out on every request the way the classic
 // screen does it (get_dynamic_value()): today, N days ago, the signed-in
@@ -1086,15 +1211,16 @@ function pg_sw_url_filter_state($add = null)
 // depends on its type, so the editor lists only those that fit.
 //
 // A filter naming a field the form no longer has, or an operator outside the
-// classic list, is skipped rather than failing the query. Every filter must
-// match (AND), as on the classic screen.
+// classic list, is left out of the SQL rather than failing the query, and
+// counted: the caller then shows no record (pg_sw_filter_sql_closed()).
+// Every filter must match (AND), as on the classic screen.
 //
 // Returns the SQL to add to the listing's WHERE, the standard fields it
 // reads (name => true) so the caller joins the tables they live in,
-// `missing`, how many filters were skipped for naming a field the form does
-// not have, and `invalid`, how many named a field with an operator outside
-// the list (a record view's filters fail closed on either). A row with no
-// field is blank and counts in neither.
+// `missing`, how many filters were left out for naming a field the form
+// does not have, and `invalid`, how many named a field with an operator
+// outside the list (lists and record views fail closed on either). A row
+// with no field is blank and counts in neither.
 //
 // The dynamic value 'url parameter' (lists only) takes the value from the
 // query parameter its dynamic_value_attribute names (pg_sw_url_param_name():
@@ -1129,12 +1255,15 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     $standard = pg_sw_standard_fields();
     $custom   = null;
 
-    foreach (array_slice(array_values($filters), 0, 50) as $filter) {
+    // At most 50 filters are applied. A filter past them cannot be applied
+    // and is counted in `invalid`, so the set closes rather than showing the
+    // records it would hold back.
+    foreach (array_values($filters) as $position => $filter) {
         if (!is_array($filter)) continue;
         $field    = isset($filter['field'])    ? trim((string)$filter['field']) : '';
         $operator = isset($filter['operator']) ? (string)$filter['operator']    : '';
         if ($field === '') continue;
-        if (!in_array($operator, $operators, true)) {
+        if ($position >= 50 || !in_array($operator, $operators, true)) {
             $out['invalid']++;
             continue;
         }
@@ -1167,24 +1296,20 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
         // the `exact` condition.
         $exact_sql = '';
 
-        if (isset($standard[$field]) && $standard[$field]['sql'] !== '') {
+        $use_standard = isset($standard[$field]) && $standard[$field]['sql'] !== '';
+        // A form that has its own field for a yielding name compares that
+        // field; one known only by its label is not comparable and is
+        // skipped as missing, as it was before the standard name existed.
+        if ($use_standard && pg_sw_form_yields(array($field => true), $custom_form_page_id)) {
+            $use_standard = false;
+        }
+
+        if ($use_standard) {
             $operand_1 = $standard[$field]['sql'];
             $type      = $standard[$field]['type'];
             $out['tokens'][$field] = true;
         } else {
-            if ($custom === null) {
-                $custom = array();
-                $rows = db_items(
-                    "SELECT id, name, type, multiple
-                     FROM form_fields
-                     WHERE page_id = '" . (int)$custom_form_page_id . "'
-                       AND type != 'information'
-                       AND name != ''"
-                );
-                foreach ((array)$rows as $row) {
-                    $custom[mb_strtolower((string)$row['name'], 'UTF-8')] = $row;
-                }
-            }
+            if ($custom === null) $custom = pg_sw_filter_form_fields($custom_form_page_id);
             $key = mb_strtolower($field, 'UTF-8');
             if (!isset($custom[$key])) {
                 $out['missing']++;
@@ -1267,6 +1392,25 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     return $out;
 }
 
+// Whether a set of filters, as pg_sw_form_list_filter_sql() returned it,
+// shows no record at all. A filter that names a field the form no longer
+// has (renamed or deleted) or an operator outside the list cannot be
+// applied, and leaving it out would show the records it holds back: a
+// "Status is equal to Published" list would list the drafts. So the list,
+// its feeds, the sitemap and the search index show none, as the record view
+// does. $record_view also closes on a filter valued from the page address,
+// which a record view never reads; a list leaves such a filter out when the
+// address carries no value (`address` counts only the contexts without one).
+function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
+{
+    if (!is_array($filter_sql)) return false;
+    $missing = isset($filter_sql['missing']) ? (int)$filter_sql['missing'] : 0;
+    $invalid = isset($filter_sql['invalid']) ? (int)$filter_sql['invalid'] : 0;
+    $address = isset($filter_sql['address']) ? (int)$filter_sql['address'] : 0;
+    if ($missing > 0 || $invalid > 0) return true;
+    return $record_view && $address > 0;
+}
+
 // Render a system widget's form_list_view. Loop-area aware:
 //
 //   1. _split_widget_tree pulls the loop_area out of the tree (replaced by a marker).
@@ -1287,7 +1431,9 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
 //                             against: reference_code, submitted_date_and_time,
 //                             submitter, number_of_comments, newest_comment …,
 //                             plus form_item_view (the detail link),
-//                             submitted_form_id and submitter_user_id
+//                             submitted_form_id, submitter_user_id and
+//                             submitter_name (the contact's name, for a
+//                             public byline; submitter is the username)
 //
 // A date or date-and-time field takes an optional format suffix, as on the
 // classic screens: ^^submitted_date_and_time^^%%d.m.Y%% or %%relative%%.
@@ -1595,6 +1741,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
     // ── Filters the designer set (every record must match all of them) ────
     $filter_sql   = pg_sw_form_list_filter_sql($custom_form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array(), $request);
+    // A filter that cannot be applied (its field gone, its operator unknown)
+    // lists nothing rather than everything it was meant to hold back.
+    if (pg_sw_filter_sql_closed($filter_sql)) {
+        $filter_sql['where']  = ' AND (0 = 1)';
+        $filter_sql['tokens'] = array();
+    }
     $filter_where = $filter_sql['where'];
     // The value from the address, printed only once records match it
     // exactly, so the page never repeats text that names nothing in the
@@ -1783,7 +1935,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // joins the comments table.
     $template_tokens = pg_sw_template_tokens($loop_template);
     // A filter on a standard field needs that field's table joined too.
-    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, array('reference_code', 'address_name'));
+    // A standard name the form has its own field for is not selected, so the
+    // token prints that field or nothing (pg_sw_yielded_standard_names()).
+    $standard_skip   = array_merge(array('reference_code', 'address_name'), pg_sw_form_yields($template_tokens, $custom_form_page_id));
+    $standard_sql    = pg_sw_standard_sql($template_tokens + $filter_sql['tokens'], $detail_page_id, $standard_skip);
 
     // 1. Pull submitted form rows (the `forms` table) for this custom form,
     //    applying ordering + search + pagination.
@@ -1977,8 +2132,8 @@ function pg_sw_record_view_filters($cfg)
 
 // The filters a list's records go through when each is addressed on the
 // list's detail page: the record view's own first (they decide what the
-// page shows, and pg_sw_form_list_filter_sql() reads at most fifty), then
-// the list's.
+// page shows), then the list's. pg_sw_form_list_filter_sql() applies at
+// most fifty and closes on a filter past them.
 function pg_sw_merge_record_filters($list_cfg, $view_cfg)
 {
     $list = (is_array($list_cfg) && isset($list_cfg['filters']) && is_array($list_cfg['filters']))
@@ -2014,12 +2169,12 @@ function pg_sw_record_filter_bypass($email, $form_id)
 // for a query over `forms`. The detail page is the one whose view counters
 // a standard field reads. Both parts are '' when no filter applies.
 //
-// $strict is for a record view's filters, which keep records from the
-// public: a filter naming a field the form no longer has (renamed or
-// deleted), an operator outside the list (a translated "eşittir" in a
-// hand-written config), or a value taken from the address (a list-only
-// dynamic value; a record view never reads the address) matches no record
-// (`closed`), where a list skips it.
+// A filter naming a field the form no longer has (renamed or deleted) or an
+// operator outside the list (a translated "eşittir" in a hand-written
+// config) matches no record (`closed`, pg_sw_filter_sql_closed()). $strict
+// is for a record view's filters: a value taken from the address (a
+// list-only dynamic value; a record view never reads the address) closes
+// it too, where a list leaves that filter out.
 //
 // $request is the query the list's URL filters read (pg_sw_filter_request());
 // null leaves them out. `params`, `inexact` and `exact` say what was applied
@@ -2029,7 +2184,7 @@ function pg_sw_record_filter_clause($custom_form_page_id, $filters, $detail_page
     $out = array('join' => '', 'where' => '', 'closed' => false, 'params' => array(), 'inexact' => false, 'exact' => '');
     if (!is_array($filters) || !$filters) return $out;
     $filter_sql = pg_sw_form_list_filter_sql((int)$custom_form_page_id, $filters, $request);
-    if ($strict && ($filter_sql['missing'] > 0 || $filter_sql['invalid'] > 0 || $filter_sql['address'] > 0)) {
+    if (pg_sw_filter_sql_closed($filter_sql, $strict)) {
         $out['where']  = ' AND (0 = 1)';
         $out['closed'] = true;
         return $out;
@@ -2048,7 +2203,8 @@ function pg_sw_record_filter_clause($custom_form_page_id, $filters, $detail_page
 
 // The JOIN and WHERE for a list's records as its detail page shows them:
 // the record view's filters and the list's (pg_sw_merge_record_filters()),
-// and no record at all when the record view's own filters fail closed.
+// and no record at all when the record view's own filters fail closed or a
+// filter of the list cannot be applied (pg_sw_filter_sql_closed()).
 // For the list's feed and the sitemap, whose links lead to that page.
 // $request: the feed passes the address its list's URL filters read; the
 // sitemap passes none, so those filters are left out and every record the
@@ -2414,6 +2570,8 @@ function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
 //   ^^form_item_view^^      — this page's URL with ?r= preserved (canonical self)
 //   ^^submitted_form_id^^   — forms.id
 //   ^^submitter_user_id^^   — forms.user_id
+//   ^^submitter_name^^      — the contact's name, never the username (a
+//                             public byline binds this, not submitter)
 //   ^^not_found^^           — empty when the record is shown; the configured
 //                             message when ?r= is missing or the visitor may
 //                             not see it (wrap a hide/show region around it);
@@ -2497,7 +2655,10 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // reads — the same rule the listing follows. `?r=` identifies the record,
     // and the detail page whose view counters apply is this page itself.
     $template_tokens = pg_sw_template_tokens($loop_template . $static_html);
-    $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), array('reference_code', 'address_name'));
+    // As on the list: a standard name the form has its own field for is not
+    // selected (pg_sw_yielded_standard_names()).
+    $standard_skip   = array_merge(array('reference_code', 'address_name'), pg_sw_form_yields($template_tokens, $custom_form_page_id));
+    $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), $standard_skip);
 
     $reference_code = isset($_GET['r']) ? trim((string)$_GET['r']) : '';
     // An e-mail page (a form's confirmation or notification) is drawn for
@@ -2664,9 +2825,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the
-        // legacy custom form confirmation screen did.
-        $new_account = isset($_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']])
-            ? (array)$_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']] : array();
+        // legacy custom form confirmation screen did. No password is handed
+        // out; the password token carries the set password link instead
+        // (pg_cf_new_account_password_note()), for the visitor alone.
+        $new_account_email = pg_cf_new_account_email((int)$form_row['id']);
+        $new_account_note  = ($new_account_email !== '')
+            ? pg_cf_new_account_password_note(pg_cf_new_account_link((int)$form_row['id']), pg_cf_new_account_for_submitter()) : '';
 
         $extra = array(
             'form_item_view'         => $self_url !== '' ? $self_url : '#',
@@ -2674,8 +2838,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitter_user_id'      => (string)$form_row['user_id'],
             'not_found'              => '',  // empty when found — the not_found region renders empty
             '__not_found_message'    => '',
-            '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
-            '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
+            '__new_account_email'    => h($new_account_email),
+            '__new_account_password' => h($new_account_note),
             // The record's edit screen, for whoever may edit this form's
             // submissions (the legacy form item view's Edit button).
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)

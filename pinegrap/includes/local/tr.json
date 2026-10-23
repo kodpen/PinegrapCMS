@@ -25454,6 +25454,14 @@
     "A value from the page address, compared with is equal to, finds records": "Sayfa adresindeki değer eşittir ile karşılaştırıldı ve kayıt buldu",
     "No value from the page address is applied": "Sayfa adresinden bir değer uygulanmadı",
     "An internet-sale e-Archive invoice names the web address and the carrier, and this order does not give these: {var:1}. The carrier is set on the order's shipping method (Carrier Title, Carrier VKN). Nothing was sent to Paraşüt.": "İnternet satışı e-Arşiv faturası web adresini ve taşıyıcıyı yazar; bu sipariş şunları vermiyor: {var:1}. Taşıyıcı siparişin nakliye yönteminde girilir (Taşıyıcı Unvanı, Taşıyıcı VKN). Paraşüt'e bir şey gönderilmedi.",
+    "We have created a new account for you on our site.": "Sitemizde sizin için yeni bir hesap oluşturduk.",
+    "A new account was created with this submission: {var:1}": "Bu gönderimle yeni bir hesap oluşturuldu: {var:1}",
+    "Set your password: {var:1}": "Parolanızı belirleyin: {var:1}",
+    "Set your password": "Parolanızı belirleyin",
+    "You can set a password with \"Forgot password\" on the sign-in page.": "Giriş sayfasındaki \"Parolamı Unuttum\" bağlantısıyla bir parola belirleyebilirsiniz.",
+    "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}",
+    "These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.": "Şu satırlar, içlerindeki fiyat, karşılaştırma fiyatı ya da ek kargo ücreti bir tutar olmadığı için içe aktarılmadı: {var:1}.",
+    "An offer needs a start date.": "Teklifin bir başlangıç tarihi olmalı.",
     "PHP Security Fixes": "PHP Güvenlik Düzeltmeleri",
     "PHP fixes": "PHP düzeltmeleri",
     "This PHP has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619).": "Bu PHP, PHP2Shell açıklarının (CVE-2026-109618, CVE-2026-109619) düzeltmelerini içeriyor.",
@@ -25463,5 +25471,9 @@
     "Until then, turning off session.upload_progress.enabled in php.ini closes one of the ways in; Pinegrap does not use it.": "O zamana kadar php.ini'de session.upload_progress.enabled ayarını kapatmak giriş yollarından birini kapatır; Pinegrap bu ayarı kullanmıyor.",
     "{var:1} is on with the Plain Text format, but its Body is empty. Write the body of the e-mail, or choose HTML and select a page.": "{var:1} açık ve biçimi Düz Metin, ancak Gövde boş. E-postanın gövdesini yazın ya da HTML'i seçip bir sayfa seçin.",
     "{var:1} is on with the HTML format, but no page is selected. Select the page to send, or choose Plain Text and write a body.": "{var:1} açık ve biçimi HTML, ancak sayfa seçilmemiş. Gönderilecek sayfayı seçin ya da Düz Metin'i seçip gövdeyi yazın.",
-    "The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.": "Onay Türü Sonraki Sayfa, ancak sayfa seçilmemiş. Ziyaretçinin gönderdikten sonra gideceği sayfayı seçin ya da Mesaj'ı seçin."
+    "The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.": "Onay Türü Sonraki Sayfa, ancak sayfa seçilmemiş. Ziyaretçinin gönderdikten sonra gideceği sayfayı seçin ya da Mesaj'ı seçin.",
+    "Line \"{var:1}\" has an amount below zero, and Paraşüt takes no such line: a line's price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.": "\"{var:1}\" satırının tutarı sıfırın altında; Paraşüt eksi tutarlı satır kabul etmiyor: satırın fiyatı, indirimi ve KDV'si sıfır ya da daha büyük olmalı. Paraşüt'e hiçbir şey gönderilmedi.",
+    "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
+    "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin.",
+    "Scroller Controls": "Kaydırıcı Kontrolleri"
 }

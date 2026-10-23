@@ -84,9 +84,9 @@ log_activity(lang(array('string' => 'HTML import ({var:1}): {var:2} page(s)', 'v
 // Notes from the import (skipped framework files, missing stylesheets …)
 // travel to the editor's notice area.
 $lf_edit = new liveform('edit_system_style', (int)$made['style_id']);
-$lf_edit->add_notice(lang(array('string' => '{var:1} page(s) were imported into "{var:2}".', 'vars' => array(count($made['page_ids']), $project))));
+$lf_edit->add_notice(lang(array('string' => '{var:1} page(s) were imported into "{var:2}".', 'vars' => array(count($made['page_ids']), htmlspecialchars($project, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')))));
 foreach (array_slice($made['warnings'], 0, 8) as $w) {
-    $lf_edit->add_notice($w);
+    $lf_edit->add_notice(htmlspecialchars($w, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
 }
 
 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_system_style.php?id=' . (int)$made['style_id']);
