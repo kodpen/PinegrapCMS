@@ -149,7 +149,10 @@ function test_page_scripts_preview_loads_bootstrap_once()
 // Runs $steps after the Preview's document helpers (_sdPreviewDarkView(),
 // _sdSetDarkThemeAttr(), _sdInsertBeforeBodyEnd(), _SD_ASSET_STAMP,
 // _SD_PAGE_SCRIPTS, _sdPageScriptFiles()) with the editor script loaded
-// from $script_src; the decoded JSON it prints, or null without Node.
+// from $script_src; the decoded JSON it prints, or null when Node is not
+// installed (the test is skipped). Output that is not JSON fails the test
+// and is shown: the extracted source ends in a comment, so $steps starts on
+// a line of its own or it would be commented out and print nothing.
 function _test_page_scripts_run($steps, $script_src = 'https://example.test/pinegrap/assets/js/style_designer.js?v=1700000000')
 {
 	$out = array();
@@ -169,7 +172,7 @@ function _test_page_scripts_run($steps, $script_src = 'https://example.test/pine
 
 	$script = 'var document = { currentScript: { src: ' . json_encode($script_src) . ' }, baseURI: "https://example.test/pinegrap/" };'
 		. substr($source, $from, $to - $from)
-		. $steps;
+		. "\n" . $steps;
 
 	$file = tempnam(sys_get_temp_dir(), 'pgpagescripts');
 	file_put_contents($file, $script);
@@ -177,9 +180,13 @@ function _test_page_scripts_run($steps, $script_src = 'https://example.test/pine
 	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	unlink($file);
 
-	pg_assert_same(0, $code, implode("\n", $out));
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
 
-	return json_decode(implode("\n", $out), true);
+	$answer = json_decode($printed, true);
+	pg_assert_true(($printed !== '') && (json_last_error() === JSON_ERROR_NONE), 'Node printed JSON: ' . (($printed === '') ? '(nothing)' : $printed));
+
+	return $answer;
 }
 
 // The Preview's scripts go just before the page's own last </body>, also
@@ -249,5 +256,59 @@ function test_page_scripts_preview_files_carry_the_editor_stamp()
 	);
 	if ($bare !== null) {
 		pg_assert_same(array('https://example.test/pinegrap/assets/js/pg_bs_tips.js'), $bare, 'no stamp, no ?v=');
+	}
+}
+
+// The finished Preview document of $raw (a page markup) with the assets
+// panel's $js_rows, built by _sdPreviewDocHtml() with the editor around it
+// stubbed: the framework is Bootstrap from a CDN, no meta tags, no theme.
+function _test_page_scripts_preview_doc($raw, $js_rows)
+{
+	$fn = _test_page_scripts_js_function('_sdPreviewDocHtml');
+	pg_assert_true($fn !== '', '_sdPreviewDocHtml is found');
+	if ($fn === '') {
+		return null;
+	}
+
+	return _test_page_scripts_run(
+		$fn . "\n"
+		. 'var canvasDarkTheme = false, location = { protocol: "https:", host: "example.test" }, window = { OUTPUT_PATH: "/" };'
+		. 'function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }'
+		. 'function _sdT(s) { return s; }'
+		. 'function _sdMetaTagsEffective() { return []; }'
+		. 'function _sdMetaTagAttr() { return "name"; }'
+		. 'function _readAssetsFromFields() { return { cssFiles: [], jsFiles: ' . json_encode($js_rows) . ', gfFonts: [] }; }'
+		. 'function _sdAssetsInPlay(list) { return (list || []).filter(function (f) { return f && f.enabled !== false; }); }'
+		. 'function _sdFrameworkInfo() { return { css: "https://cdn.test/bootstrap.min.css", js: "https://cdn.test/bootstrap.bundle.min.js" }; }'
+		. 'function _sdThemeHeadHtml() { return ""; }'
+		. 'function _sdIconsUrl() { return "https://cdn.test/bootstrap-icons.min.css"; }'
+		. 'function _sdIsBootstrapCssHref(h) { return /bootstrap(\.min)?\.css/.test(h || ""); }'
+		. 'function _sdPreviewHarness() { return ""; }'
+		. 'console.log(JSON.stringify(_sdPreviewDocHtml({}, ' . json_encode($raw) . ')));'
+	);
+}
+
+// One Bootstrap script per Preview: the assets panel's enabled Bootstrap JS
+// row, or the framework's file when there is none (or it is switched off),
+// never both. The marker scripts the page asks for come after it, deferred.
+function test_page_scripts_preview_document_loads_one_bootstrap_bundle()
+{
+	$raw = '<html><head><meta charset="utf-8"></head><body><a data-bs-toggle="tooltip" title="x">y</a></body></html>';
+	$row = array('type' => 'external-js', 'meta' => 'bootstrap-js', 'name' => 'Bootstrap JS', 'content' => 'https://cdn.test/own/bootstrap.bundle.js', 'enabled' => true);
+
+	$with_row = _test_page_scripts_preview_doc($raw, array($row));
+	if ($with_row === null) {
+		return;
+	}
+	pg_assert_same(1, substr_count($with_row, 'bootstrap.bundle'), 'with the row: one bundle');
+	pg_assert_contains('<script src="https://cdn.test/own/bootstrap.bundle.js"></script>', $with_row);
+	pg_assert_same(1, substr_count($with_row, 'pg_bs_tips.js'), 'the tooltip marker loads the tips once');
+
+	$row['enabled'] = false;
+	foreach (array('without a row' => array(), 'with the row off' => array($row)) as $label => $rows) {
+		$doc = (string) _test_page_scripts_preview_doc($raw, $rows);
+		pg_assert_same(1, substr_count($doc, 'bootstrap.bundle'), $label . ': one bundle');
+		pg_assert_contains('<script src="https://cdn.test/bootstrap.bundle.min.js"></script>', $doc);
+		pg_assert_true(strpos($doc, 'pg_bs_tips.js') > strpos($doc, 'bootstrap.bundle.min.js'), $label . ': the tips after the framework');
 	}
 }
