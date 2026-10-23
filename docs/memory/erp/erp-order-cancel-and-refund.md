@@ -14,7 +14,7 @@ description: How a cancelled or refunded order reaches the ERP: the order card's
 - The cancel step first removes the invoice's settlements (the money stays on the account as credit; a receipt spent wholly on this invoice is tied to the order), then `erp_invoice_cancel()` sets `orders.erp_invoice_id = 0` so the order can be invoiced again. Find an order's invoice, cancelled or not, with `erp_order_flow_invoice_row()`.
 
 ## And a free order's 0.00 invoice?
-- The same steps. It reads "Returned in full" only once a return stands (`erp_order_flow_returned_in_full()`, `tests/erp_order_flow_test.php`). 0 ≥ 0 used to mark it returned with no return: the cancel was never offered and the invoice stayed issued (#PR).
+- The same steps. It reads "Returned in full" only once a return stands (`erp_order_flow_returned_in_full()`, `tests/erp_order_flow_test.php`). 0 ≥ 0 used to mark it returned with no return: the cancel was never offered and the invoice stayed issued (#1417).
 
 ## How much money goes back?
 - Per order, never from the account balance: a walk-in account is shared by every counter sale. `erp_order_flow_money()`: in = settlements on the invoice (gift card excluded) + receipts recorded from the order's card (`erp_cash_transactions.order_id`, step 4.66) not allocated to it; worth = 0 for a cancelled invoice, else the invoice less its returns; owed = in − worth − payments already recorded from the card.
