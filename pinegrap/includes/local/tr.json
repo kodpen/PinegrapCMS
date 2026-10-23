@@ -26634,5 +26634,6 @@
     "The old address {var:1} now sends visitors to {var:2} (301).": "Eski adres {var:1} artık ziyaretçileri {var:2} adresine kalıcı olarak yönlendiriyor (301).",
     "The old address {var:1} does not send visitors on: a short link cannot have that name.": "Eski adres {var:1} yönlendirilmiyor: bir kısa link bu adı alamaz.",
     "The old address {var:1} does not send visitors on: another page, a file or a short link uses it now.": "Eski adres {var:1} yönlendirilmiyor: bu adı artık başka bir sayfa, dosya veya kısa link kullanıyor.",
+    "{var:1} will not take the invoice until these are on the account card: {var:2}. The customer has no account yet; the invoice would open it from the contact card and the order's billing address.": "{var:1} şu alanlar cari kartında olmadan faturayı almıyor: {var:2}. Müşterinin henüz carisi yok; fatura onu kişi kartından ve siparişin fatura adresinden açar.",
     "The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}'s screen before sending it again.": "Son gönderim {var:1} cevap vermeden yarıda kaldı; belgenin bir taslağı orada oluşmuş olabilir. Yeniden göndermeden önce {var:1} ekranına bakın."
 }
