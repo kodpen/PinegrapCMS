@@ -795,6 +795,44 @@ function pg_img_prefetch($srcs)
 
 
 /**
+ * The delivery formats the markup may offer for one picture, given its colour
+ * profile.
+ *
+ * GD writes no colour profile, so the engine makes no derivative of a picture
+ * whose profile is not sRGB (or cannot be read) when GD would write it, and
+ * every candidate would be the full-size original. Without Imagick that is
+ * every derivative; with Imagick it is each modern format Imagick cannot
+ * write and GD can (pg_image_format_writer()).
+ *
+ * @param array $formats webp, avif => bool (pg_image_delivery_formats())
+ * @param bool $foreign the file carries a profile other than sRGB
+ *                      (pg_image_has_foreign_color_profile())
+ * @param bool $imagick Imagick is loaded
+ * @param array $writers webp, avif => 'imagick', 'gd' or '' (pg_image_format_writer())
+ * @return array|null the formats to offer, or null when the picture gets no
+ *                    responsive markup at all
+ */
+function pg_img_profile_formats($formats, $foreign, $imagick, $writers)
+{
+    if (!$foreign) {
+        return $formats;
+    }
+
+    if (!$imagick) {
+        return null;
+    }
+
+    foreach ($formats as $format => $on) {
+        if ($on && (!isset($writers[$format]) || ($writers[$format] !== 'imagick'))) {
+            $formats[$format] = false;
+        }
+    }
+
+    return $formats;
+}
+
+
+/**
  * The responsive sets of an image address, read from the file it points at:
  * null when it is not a file of this site that can have derivatives.
  *
@@ -845,10 +883,26 @@ function pg_img_responsive($src)
         return null;
     }
 
-    // A colour profile other than sRGB on a server without Imagick: GD writes
-    // no profile, so the engine makes no derivatives of it and every
-    // candidate would be the full-size original.
-    if (!class_exists('Imagick') && pg_image_has_foreign_color_profile(FILE_DIRECTORY_PATH . '/' . $name)) {
+    // A colour profile other than sRGB: GD writes no profile, so the engine
+    // makes no derivative of such a picture where GD would write it, and
+    // those candidates would be the full-size original. Without Imagick the
+    // picture gets no responsive markup; with it, a format only GD writes is
+    // left out (pg_img_profile_formats()). The file is read only when GD
+    // would write something.
+    $formats = pg_image_delivery_formats();
+    $imagick = class_exists('Imagick');
+    $writers = array();
+    $gd_writes = !$imagick;
+
+    foreach ($formats as $format => $on) {
+        $writers[$format] = ($on && $imagick) ? pg_image_format_writer($format) : '';
+        $gd_writes = $gd_writes || ($on && ($writers[$format] !== 'imagick'));
+    }
+
+    $foreign = $gd_writes && pg_image_has_foreign_color_profile(FILE_DIRECTORY_PATH . '/' . $name);
+    $formats = pg_img_profile_formats($formats, $foreign, $imagick, $writers);
+
+    if ($formats === null) {
         return null;
     }
 
@@ -859,7 +913,7 @@ function pg_img_responsive($src)
     }
 
     $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-    $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_delivery_formats());
+    $sets = pg_img_responsive_sets($src, $width, $extension, $formats);
 
     if (($sets['srcset'] === '') && !$sets['sources']) {
         return null;

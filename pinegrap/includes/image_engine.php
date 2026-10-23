@@ -714,6 +714,10 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         // or Adobe RGB photo turned pale. The profile is taken first and put
         // back after the strip, unless the pixels are CMYK and are converted
         // below (a CMYK profile no longer describes them then).
+        // setImageProfile() attaches the bytes on every build; profileImage()
+        // attaches nothing on an ImageMagick built without lcms. An sRGB
+        // profile is not put back: untagged pixels are shown as sRGB anyway,
+        // and it would add about 3 KB to every derivative and Optimize result.
         $icc = '';
 
         if ($image->getImageColorspace() != Imagick::COLORSPACE_CMYK) {
@@ -723,8 +727,8 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 
         $image->stripImage();
 
-        if ($icc !== '') {
-            $image->profileImage('icc', $icc);
+        if (($icc !== '') && !pg_image_icc_is_srgb($icc)) {
+            $image->setImageProfile('icc', $icc);
         }
 
         // Only converted when it has to be. A CMYK JPEG shown in a browser is
@@ -1969,7 +1973,11 @@ function pg_image_png_icc_profile($file_path)
 
                 // Name, NUL, compression method, then the zlib stream.
                 if ((strlen($data) === $length) && ($name_end !== false) && function_exists('gzuncompress')) {
-                    $icc = @gzuncompress(substr($data, $name_end + 2));
+                    // A real profile inflates to a few kilobytes, a few hundred at
+                    // most. A larger stream counts as unreadable (and so foreign)
+                    // instead of being inflated: a small zlib bomb would otherwise
+                    // exhaust memory, which @ does not stop.
+                    $icc = @gzuncompress(substr($data, $name_end + 2), 4194304);
 
                     if (is_string($icc) && ($icc !== '')) {
                         $profile = $icc;
@@ -1979,7 +1987,9 @@ function pg_image_png_icc_profile($file_path)
                 break;
             }
 
-            if (($length < 0) || ($length > 0x7FFFFFFF) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
+            // The chunk's data and its CRC; a length that would overflow the
+            // offset on 32-bit PHP ends the search, as in pg_image_is_animated_png().
+            if (($length < 0) || ($length > 0x7FFFFFFF) || ($length > PHP_INT_MAX - 4) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
                 break;
             }
         }
@@ -2505,10 +2515,12 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     // is scaled or turned into WebP, and the point of a derivative is fewer
     // bytes. Both depend on the source's bytes only, so they are remembered.
     // A missing library is the server's state instead, which can change while
-    // the file does not, so that is not.
+    // the file does not, so that is not. Nor is a colour-profile refusal: it
+    // depends on which library writes the format, and it is checked before any
+    // decode, so repeating it is cheap.
     if (($data === '') || (strlen($data) >= $size)) {
 
-        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif'), true)) {
+        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif', 'color_profile'), true)) {
             pg_image_derivative_put($path . '.skip', '');
             pg_image_derivative_prune($folder, $width, $extension, $name);
         }

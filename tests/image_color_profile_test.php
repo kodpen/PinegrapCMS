@@ -164,7 +164,18 @@ function test_image_icc_profile_found_in_each_format()
 		pg_assert_same($p3, pg_image_icc_profile($folder . '/icc.png'), 'PNG iCCP');
 		pg_assert_same('', pg_image_icc_profile($folder . '/srgb.png'), 'PNG with an sRGB chunk');
 		pg_assert_same(false, pg_image_icc_profile($folder . '/bad.png'), 'PNG iCCP that does not inflate');
+
+		// A few hundred bytes that inflate to 5 MB: past the cap the profile
+		// counts as unreadable instead of being inflated into memory.
+		file_put_contents($folder . '/bomb.png', image_color_profile_test_png(image_color_profile_test_png_chunk('iCCP', "ICC Profile\x00\x00" . gzcompress(str_repeat("\x00", 5 * 1024 * 1024), 9))));
+		pg_assert_true(pg_image_icc_profile($folder . '/bomb.png') === false, 'PNG iCCP that inflates past the cap');
+		pg_assert_true(pg_image_has_foreign_color_profile($folder . '/bomb.png'), 'and it counts as foreign');
+
 		pg_assert_same('', pg_image_icc_profile($folder . '/plain.png'), 'PNG without a profile');
+
+		// A chunk length near 2 GB would overflow the offset on 32-bit PHP.
+		file_put_contents($folder . '/huge.png', image_color_profile_test_png(pack('N', 0x7FFFFFFD) . 'zTXt'));
+		pg_assert_same('', pg_image_icc_profile($folder . '/huge.png'), 'PNG with a chunk length near 2 GB');
 
 		file_put_contents($folder . '/icc.webp', image_color_profile_test_webp(0x20, 'ICCP' . pack('V', strlen($p3)) . $p3 . ((strlen($p3) % 2) ? "\x00" : '')));
 		file_put_contents($folder . '/flag.webp', image_color_profile_test_webp(0x20, ''));
@@ -209,7 +220,7 @@ function test_image_gd_leaves_foreign_color_profile()
 		$derivative = pg_image_derivative(21, $source, array('width' => 480, 'format' => ''), $folder . '/cache');
 
 		pg_assert_same('original', $derivative['status'], 'the original is sent');
-		pg_assert_same(1, count(glob($folder . '/cache/21/480-*.jpg.skip')), 'and that is remembered');
+		pg_assert_same(0, count(glob($folder . '/cache/21/480-*.jpg.skip')), 'not remembered: it depends on the library');
 
 		$srgb = $folder . '/files/srgb.jpg';
 		image_color_profile_test_jpeg($srgb, 1200, 800, image_color_profile_test_app2(image_color_profile_test_icc('sRGB IEC61966-2.1'), array(0)));
@@ -221,4 +232,19 @@ function test_image_gd_leaves_foreign_color_profile()
 	} finally {
 		image_color_profile_test_remove($folder);
 	}
+}
+
+// For a picture with a foreign profile the markup offers only the formats
+// Imagick writes; without Imagick it offers none at all.
+function test_image_responsive_profile_formats()
+{
+	$all = array('webp' => true, 'avif' => true);
+	$writers = array('webp' => 'imagick', 'avif' => 'gd');
+
+	pg_assert_same($all, pg_img_profile_formats($all, false, false, array()), 'not foreign: unchanged without Imagick');
+	pg_assert_same($all, pg_img_profile_formats($all, false, true, $writers), 'not foreign: unchanged with Imagick');
+	pg_assert_same(null, pg_img_profile_formats($all, true, false, array('webp' => 'gd', 'avif' => 'gd')), 'foreign without Imagick: no responsive markup');
+	pg_assert_same(array('webp' => true, 'avif' => false), pg_img_profile_formats($all, true, true, $writers), 'foreign: a format only GD writes is left out');
+	pg_assert_same(array('webp' => false, 'avif' => false), pg_img_profile_formats(array('webp' => false, 'avif' => true), true, true, array('webp' => 'imagick', 'avif' => '')), 'a format switched off stays off');
+	pg_assert_same($all, pg_img_profile_formats($all, true, true, array('webp' => 'imagick', 'avif' => 'imagick')), 'foreign: Imagick writes both');
 }
