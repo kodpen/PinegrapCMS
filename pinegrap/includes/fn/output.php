@@ -3194,6 +3194,10 @@ function output_menu($properties = false)
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-link-45deg bi-me-2\'>' . lang('Short Links') . '</a>';
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_short_link.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Short Link'))) . '</a>';
+            // PAGES > 404 Log (includes/fn/not_found_log.php), once the table is there.
+            if (pg_not_found_log_ready()) {
+                $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_not_found_log.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sign-dead-end bi-me-2\'>' . lang('404 Log') . '</a>';
+            }
         }
         // PAGES > Auto Dialogs (the screens are gated at manager level, so users do not get the entries)
         if ($user['role'] < 3) {
@@ -3766,6 +3770,7 @@ function output_menu($properties = false)
         case 'view_short_links.php':
         case 'add_short_link.php':
         case 'edit_short_link.php':
+        case 'view_not_found_log.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':

@@ -253,39 +253,78 @@ function pg_short_link_path_name($path)
 }
 
 /**
- * What is wrong with a stored-form name, or '' when it can be used.
+ * Which part of the name rule a stored-form name breaks, as a code, or ''
+ * when it can be used: empty, length (more than $max characters), characters
+ * (one outside letters, numbers and . _ - / [ ] ~ ( ) + , ! = @ *), wildcards
+ * (more than 9 stars), stars_only (nothing beside the stars and slashes),
+ * dot_part (a . or .. part between slashes, which a browser resolves before
+ * it asks, so the name could never be opened). No text and no query: the 404
+ * log asks it on the visitor's request (pg_not_found_log_name()).
+ *
+ * @param string $name
+ * @param int    $max
+ * @return string
+ */
+function pg_short_link_name_fault($name, $max)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return 'empty';
+    }
+
+    if (mb_strlen($name, 'UTF-8') > (int) $max) {
+        return 'length';
+    }
+
+    if (preg_match('/^[\p{L}\p{M}\p{N}._\-\/\[\]~()+,!=@*]+$/u', $name) !== 1) {
+        return 'characters';
+    }
+
+    if (substr_count($name, '*') > 9) {
+        return 'wildcards';
+    }
+
+    if (trim($name, '*/') === '') {
+        return 'stars_only';
+    }
+
+    if (preg_match('#(^|/)\.{1,2}(/|$)#', $name) === 1) {
+        return 'dot_part';
+    }
+
+    return '';
+}
+
+/**
+ * What is wrong with a stored-form name, or '' when it can be used
+ * (pg_short_link_name_fault(), said in words).
  *
  * @param string $name pg_short_link_name_from_address()
  * @return string
  */
 function pg_short_link_name_problem($name)
 {
-    $name = (string) $name;
+    $max = pg_short_link_name_max();
 
-    if ($name === '') {
-        return lang('Name is required.');
-    }
+    switch (pg_short_link_name_fault($name, $max)) {
+        case 'empty':
+            return lang('Name is required.');
 
-    if (mb_strlen($name, 'UTF-8') > pg_short_link_name_max()) {
-        return lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_short_link_name_max())));
-    }
+        case 'length':
+            return lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array($max)));
 
-    if (preg_match('/^[\p{L}\p{M}\p{N}._\-\/\[\]~()+,!=@*]+$/u', $name) !== 1) {
-        return pg_short_link_name_rule_text();
-    }
+        case 'characters':
+            return pg_short_link_name_rule_text();
 
-    if (substr_count($name, '*') > 9) {
-        return lang('A name can have at most 9 wildcards (*).');
-    }
+        case 'wildcards':
+            return lang('A name can have at most 9 wildcards (*).');
 
-    if (trim($name, '*/') === '') {
-        return lang('A name needs at least one letter or number beside its wildcards.');
-    }
+        case 'stars_only':
+            return lang('A name needs at least one letter or number beside its wildcards.');
 
-    // A browser resolves . and .. in a path before it asks, so a name with
-    // such a part could never be opened.
-    if (preg_match('#(^|/)\.{1,2}(/|$)#', $name) === 1) {
-        return lang('A part of the name between slashes cannot be . or .. alone.');
+        case 'dot_part':
+            return lang('A part of the name between slashes cannot be . or .. alone.');
     }
 
     return '';
