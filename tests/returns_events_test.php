@@ -30,17 +30,18 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 
 // A return as pg_return_load() gives it: the row's columns as strings, the
-// lines with their names.
+// lines with their names. The order, the delivery, the person and the lines
+// have different ids, so a field read from the wrong column shows.
 function returns_events_test_row($changes = array())
 {
 	return array_merge(array(
-		'id' => '12', 'order_id' => '9001', 'ship_to_id' => '9001', 'status' => 'requested', 'reason' => 'damaged',
+		'id' => '12', 'order_id' => '9001', 'ship_to_id' => '9101', 'status' => 'requested', 'reason' => 'damaged',
 		'customer_note' => 'Kutu ezik geldi', 'decision_note' => '', 'carrier' => '', 'carrier_code' => '', 'tracking_number' => '',
-		'source' => 'customer', 'requested_by' => '9001', 'decided_by' => '0', 'requested_at' => '1792731600',
+		'source' => 'customer', 'requested_by' => '118', 'decided_by' => '0', 'requested_at' => '1792731600',
 		'decided_at' => '0', 'shipped_at' => '0', 'received_at' => '0', 'refunded_at' => '0', 'closed_at' => '0',
 		'items' => array(
-			array('order_item_id' => 9001, 'quantity' => 2, 'product_id' => 71, 'name' => 'Yeşil Ofis Sandalyesi'),
-			array('order_item_id' => 9002, 'quantity' => 1, 'product_id' => 70, 'name' => 'Mocha Ofis Sandalyesi'),
+			array('order_item_id' => 9201, 'quantity' => 2, 'product_id' => 71, 'name' => 'Yeşil Ofis Sandalyesi'),
+			array('order_item_id' => 9202, 'quantity' => 1, 'product_id' => 70, 'name' => 'Mocha Ofis Sandalyesi'),
 		),
 	), $changes);
 }
@@ -74,13 +75,13 @@ function test_returns_events_payload_shape()
 		'id'           => 9001,
 		'order_number' => '99001',
 		'return_id'    => 12,
-		'ship_to_id'   => 9001,
+		'ship_to_id'   => 9101,
 		'status'       => 'requested',
 		'source'       => 'customer',
 		'reason'       => 'damaged',
 		'items'        => array(
-			array('order_item_id' => 9001, 'quantity' => 2),
-			array('order_item_id' => 9002, 'quantity' => 1),
+			array('order_item_id' => 9201, 'quantity' => 2),
+			array('order_item_id' => 9202, 'quantity' => 1),
 		),
 	), $payload);
 }
@@ -180,8 +181,12 @@ function test_returns_events_announce_points()
 
 	$move = returns_events_test_body($source, 'pg_return_move');
 
+	$announce = strpos($move, "pg_return_announce('order.return.' . \$to");
+	$guard = strpos($move, 'mysqli_affected_rows(db::$con) !== 1');
+
 	pg_assert_contains("array('approved', 'received')", $move, 'the move announces approved and received');
-	pg_assert_contains("pg_return_announce('order.return.' . \$to", $move);
+	pg_assert_true($announce !== false, 'pg_return_move() announces the move');
+	pg_assert_true(($announce !== false) && ($guard !== false) && ($announce > $guard), 'after the conditional UPDATE took the row: the losing side of two moves announces nothing');
 
 	$refund = returns_events_test_body($source, 'pg_return_refund');
 	$announce = strpos($refund, "pg_return_announce('order.return.refunded'");
@@ -219,8 +224,8 @@ function test_returns_events_audit_fields_of_a_new_return()
 		'reason'        => 'damaged',
 		'customer_note' => 'Kutu ezik geldi',
 		'source'        => 'customer',
-		'ship_to_id'    => '9001',
-		'items'         => array(9001 => '2', 9002 => '1'),
+		'ship_to_id'    => '9101',
+		'items'         => array(9201 => '2', 9202 => '1'),
 	), pg_return_audit_create_fields(returns_events_test_row()));
 
 	pg_assert_same(array(
