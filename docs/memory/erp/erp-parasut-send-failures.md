@@ -20,7 +20,7 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 
 ## Which rows are handed to GİB?
 - Only `created`: `erp_edoc_parasut_submit_refusal()` in the driver's `submit_invoice` (#1210), so a stale tab or replayed POST cannot convert an `error` row's wrong-total record. The service still refuses `sent`/`accepted` first.
-- A withheld invoice: Paraşüt's line ids must number `erp_edoc_parasut_detail_count()`, the ERP lines plus the rounding lines `erp_edoc_parasut_vat_shift()` writes after them. Until #PR only the ERP lines were counted, so a TEVKIFAT invoice with line-by-line VAT and a rounding line at another rate stayed `created`, refused at every hand-over ("not the same lines").
+- A withheld invoice: Paraşüt's line ids must number `erp_edoc_parasut_detail_count()`, the ERP lines plus the rounding lines `erp_edoc_parasut_vat_shift()` writes after them. Until #1406 only the ERP lines were counted, so a TEVKIFAT invoice with line-by-line VAT and a rounding line at another rate stayed `created`, refused at every hand-over ("not the same lines").
 
 ## When does the send gate refuse a record the provider holds?
 - `erp_edoc_invoice_held_refusal()` (service.php, via `erp_edoc_invoice_can_send()`): `created` (hand it over instead), `error` with `edoc_external_id` (ask after its status).
