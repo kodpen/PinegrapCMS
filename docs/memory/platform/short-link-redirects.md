@@ -31,4 +31,4 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - Restore from the File Manager's bin runs the same check (#1235); a link that would loop stays in the bin and the restore names it and why.
 - Before the step nothing is written or checked and names stay at 100 characters.
 
-CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799, #1235.
+CSV files: `short-link-csv.md`. Renamed pages: `page-rename-redirect.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799, #1235.
