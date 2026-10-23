@@ -802,6 +802,69 @@ function pg_liveform_message_text($message)
     return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
+// The HTML of one DOM node as it stands in the tree, the same on every PHP
+// version: use it instead of $document->saveHTML($node).
+//
+// saveHTML($node) pretty-prints before PHP 7.3 whatever formatOutput says
+// (it calls libxml's htmlNodeDump()), and on later versions when formatOutput
+// is on: libxml then writes a line break after a block element whose next
+// sibling is not text, and after the start tag or before the end tag of a
+// block whose first or last child is not text ("<p>A</p>\n<p>B</p>",
+// "<ul>\n<li>a</li>\n</ul>"). It never writes one next to a text node, so in
+// those cases the node is copied (a copy has no next sibling), the copy gets
+// an empty text node (which writes nothing) in each such place inside it, and
+// the copy is saved; the caller's tree is left as it is.
+function pg_dom_html($node)
+{
+    $document = $node->ownerDocument;
+
+    if (($node->nodeType !== XML_ELEMENT_NODE) || ((PHP_VERSION_ID >= 70300) && !$document->formatOutput)) {
+        return $document->saveHTML($node);
+    }
+
+    $copy = $node->cloneNode(true);
+    $elements = array($copy);
+
+    while ($elements) {
+        $element = array_pop($elements);
+
+        if (!$element->firstChild) {
+            continue;
+        }
+
+        if ($element->firstChild->nodeType !== XML_TEXT_NODE) {
+            $element->insertBefore($document->createTextNode(''), $element->firstChild);
+        }
+
+        if ($element->lastChild->nodeType !== XML_TEXT_NODE) {
+            $element->appendChild($document->createTextNode(''));
+        }
+
+        // The live child list grows while text goes in, so a copy is walked.
+        // The last child is text now, so every element child has a next
+        // sibling.
+        $children = array();
+
+        foreach ($element->childNodes as $child) {
+            $children[] = $child;
+        }
+
+        foreach ($children as $child) {
+            if ($child->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            if ($child->nextSibling->nodeType !== XML_TEXT_NODE) {
+                $element->insertBefore($document->createTextNode(''), $child->nextSibling);
+            }
+
+            $elements[] = $child;
+        }
+    }
+
+    return $document->saveHTML($copy);
+}
+
 function escape($string)
 {
     // Same as h(): null escapes to '' without the PHP 8.1 deprecation.
