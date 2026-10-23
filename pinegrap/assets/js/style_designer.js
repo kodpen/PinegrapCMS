@@ -16022,7 +16022,8 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('Contact us'), cssClass: 'fw-bold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: _sdT('We are happy to answer your questions.'), cssClass: 'lead text-body-secondary mb-0' })
                                 ]),
-                                createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form') }, [
+                                createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form'),
+                                    _attrs: [{ name: 'method', value: 'post' }] }, [
                                     _cfField('col-md-6', cfId + '_name',    _sdT('Full Name'),  'text',  _sdT('Your full name'), true),
                                     _cfField('col-md-6', cfId + '_email',   _sdT('Email'),   'email', _sdT('name@example.com'), true),
                                     _cfField('col-12',   cfId + '_subject', _sdT('Subject'),      'text',  _sdT('The subject of your message'), false),
@@ -16073,7 +16074,8 @@ const StyleDesigner = (function () {
                                     _ciInfoItem('bi-envelope-fill',  _sdT('Email'),  _sdT('contact@example.com'))
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Form Col') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form') }, [
+                                    createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form'),
+                                        _attrs: [{ name: 'method', value: 'post' }] }, [
                                         createNode('semantic', { tag: 'div', cssClass: 'col-md-6', customName: _sdT('Name Field') }, [
                                             createNode('semantic', { tag: 'label', cssClass: 'form-label', customName: _sdT('Name Label'),
                                                 _attrs: [{ name: 'for', value: ciId + '_name' }] }, [
@@ -16136,7 +16138,8 @@ const StyleDesigner = (function () {
                                 ])
                             ]),
                             createNode('semantic', { tag: 'div', cssClass: 'col-lg-8 mx-auto', customName: _sdT('Form Body') }, [
-                                createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form') }, [
+                                createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Contact Form'),
+                                    _attrs: [{ name: 'method', value: 'post' }] }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'col-md-6', customName: _sdT('Email Field') }, [
                                         createNode('semantic', { tag: 'label', cssClass: 'form-label', customName: _sdT('Email Label'),
                                             _attrs: [{ name: 'for', value: cmId + '_email' }] }, [
@@ -16191,7 +16194,8 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'icon', iconName: 'bi-envelope-heart', cssClass: 'text-primary mb-3', fontSize: '32' }),
                                 createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Join Our Weekly Newsletter'), cssClass: 'fw-bold mb-2' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('The newest posts in your inbox every Monday.'), cssClass: 'lead text-body-secondary mb-0' }),
-                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mt-4 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mt-4 flex-column flex-sm-row', customName: _sdT('Newsletter Form'),
+                                    _attrs: [{ name: 'method', value: 'post' }] }, [
                                     createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                         _attrs: [{ name: 'for', value: nlId + '_email' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
@@ -16223,7 +16227,8 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Product updates, new features and industry news straight to your inbox.'), cssClass: 'lead mb-0' })
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '5', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Form Col') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form'),
+                                        _attrs: [{ name: 'method', value: 'post' }] }, [
                                         createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                             _attrs: [{ name: 'for', value: nsId + '_email' }] }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
@@ -16260,7 +16265,8 @@ const StyleDesigner = (function () {
                                                 createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Monthly Newsletter'), cssClass: 'badge text-bg-primary mb-3 align-self-start' }),
                                                 createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Content Full of Ideas'), cssClass: 'fw-bold mb-2' }),
                                                 createNode('content', { contentType: 'paragraph', text: _sdT('Selected articles, product updates and notes from our team every month. Short and worthwhile, with nothing wasted.'), cssClass: 'text-body-secondary mb-4' }),
-                                                createNode('semantic', { tag: 'form', cssClass: 'd-grid gap-2', customName: _sdT('Newsletter Form') }, [
+                                                createNode('semantic', { tag: 'form', cssClass: 'd-grid gap-2', customName: _sdT('Newsletter Form'),
+                                                    _attrs: [{ name: 'method', value: 'post' }] }, [
                                                     createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                                         _attrs: [{ name: 'for', value: ncId + '_email' }] }, [
                                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
@@ -16295,7 +16301,8 @@ const StyleDesigner = (function () {
                                             createNode('content', { contentType: 'icon', iconName: 'bi-hexagon-fill', cssClass: 'text-primary mb-3', fontSize: '32' }),
                                             createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Sign In to Your Account'), cssClass: 'fw-bold mb-0' })
                                         ]),
-                                        createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Login Form') }, [
+                                        createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Login Form'),
+                                            _attrs: [{ name: 'method', value: 'post' }] }, [
                                             createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Email Field') }, [
                                                 createNode('semantic', { tag: 'label', cssClass: 'form-label', customName: _sdT('Email Label'),
                                                     _attrs: [{ name: 'for', value: lcId + '_email' }] }, [
@@ -16397,7 +16404,8 @@ const StyleDesigner = (function () {
                                     ]),
                                     createNode('content', { contentType: 'heading', tag: 'h3', text: _sdT('Log In'), cssClass: 'fw-bold mb-2' }),
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Sign in to your account and carry on with your work.'), cssClass: 'lead text-body-secondary mb-4' }),
-                                    createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Login Form') }, [
+                                    createNode('semantic', { tag: 'form', cssClass: 'row g-3', customName: _sdT('Login Form'),
+                                        _attrs: [{ name: 'method', value: 'post' }] }, [
                                         createNode('semantic', { tag: 'div', cssClass: 'col-12', customName: _sdT('Email Field') }, [
                                             createNode('semantic', { tag: 'label', cssClass: 'form-label', customName: _sdT('Email Label'),
                                                 _attrs: [{ name: 'for', value: lsId + '_email' }] }, [
@@ -16457,7 +16465,8 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'icon', iconName: 'bi-hexagon-fill', cssClass: 'text-primary mb-2', fontSize: '24' }),
                                     createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Sign in'), cssClass: 'fw-semibold mb-0' })
                                 ]),
-                                createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Login Form') }, [
+                                createNode('semantic', { tag: 'form', cssClass: '', customName: _sdT('Login Form'),
+                                    _attrs: [{ name: 'method', value: 'post' }] }, [
                                     _lmFloating(lmId + '_email', 'email',    _sdT('Email')),
                                     _lmFloating(lmId + '_pass',  'password', _sdT('Password')),
                                     createNode('component', { componentType: 'btn', text: _sdT('Log In'), variant: 'primary', size: '', btnElement: 'button', btnType: 'submit', cssClass: 'w-100 mb-3' }),
@@ -16621,7 +16630,8 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Be the first to get the monthly updates.'), cssClass: 'text-body-secondary mb-0' })
                                 ]),
                                 createNode('col', { xs: '12', sm: '', md: '', lg: '7', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '', customName: _sdT('Newsletter Form Col') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form') }, [
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Newsletter Form'),
+                                        _attrs: [{ name: 'method', value: 'post' }] }, [
                                         createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                             _attrs: [{ name: 'for', value: fnId + '_email' }] }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
@@ -16926,7 +16936,8 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'heading', tag: 'div', text: '404', cssClass: 'display-3 fw-bold text-primary mb-2' }),
                                 createNode('content', { contentType: 'heading', tag: 'h2', text: _sdT('We could not find what you were looking for'), cssClass: 'fw-bold mb-3' }),
                                 createNode('content', { contentType: 'paragraph', text: _sdT('Would you like to search instead? You may find what you need in our content.'), cssClass: 'lead text-body-secondary mb-4' }),
-                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mb-4 flex-column flex-sm-row', customName: _sdT('Search Form') }, [
+                                createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 mb-4 flex-column flex-sm-row', customName: _sdT('Search Form'),
+                                    _attrs: [{ name: 'role', value: 'search' }] }, [
                                     createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Search Label'),
                                         _attrs: [{ name: 'for', value: e4sId + '_q' }] }, [
                                         createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Search the site'), cssClass: 'mb-0 d-inline' })
@@ -18111,6 +18122,8 @@ const StyleDesigner = (function () {
                         };
                         // Email-only notify form: a visually hidden label, the field and a submit
                         // button, either side by side in an input group or stacked on phones.
+                        // It posts, like every block form but search: an unwired sample must
+                        // not put what was typed into the address bar and the server logs.
                         var _mnNotify = function (cls, grouped) {
                             var id = _bkUid('mt_email');
                             var label = createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
@@ -18126,8 +18139,10 @@ const StyleDesigner = (function () {
                                 ] });
                             var btn = createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary text-nowrap', text: _sdT('Notify me'),
                                 customName: _sdT('Submit Button'), _attrs: [{ name: 'type', value: 'submit' }] });
-                            if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ]);
-                            return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ]);
+                            if (grouped) return _bkTag('form', cls, _sdT('Notify Form'), [ label, _bkDiv('input-group', _sdT('Input Group'), [ input, btn ]) ],
+                                [{ name: 'method', value: 'post' }]);
+                            return _bkTag('form', 'd-flex flex-column flex-sm-row gap-2 ' + cls, _sdT('Notify Form'), [ label, input, btn ],
+                                [{ name: 'method', value: 'post' }]);
                         };
                     }
 
@@ -19561,7 +19576,8 @@ const StyleDesigner = (function () {
                                     createNode('content', { contentType: 'paragraph', text: _sdT('Get product updates, company news, and more.'), cssClass: 'text-body-secondary mb-0' })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'col-md-7', customName: _sdT('Newsletter Form') }, [
-                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Subscribe Form') }, [
+                                    createNode('semantic', { tag: 'form', cssClass: 'd-flex gap-2 flex-column flex-sm-row', customName: _sdT('Subscribe Form'),
+                                        _attrs: [{ name: 'method', value: 'post' }] }, [
                                         createNode('semantic', { tag: 'label', cssClass: 'visually-hidden', customName: _sdT('Email Label'),
                                             _attrs: [{ name: 'for', value: _fnlId + '_email' }] }, [
                                             createNode('content', { contentType: 'heading', tag: 'span', text: _sdT('Email address'), cssClass: 'mb-0 d-inline' })
@@ -42640,6 +42656,8 @@ const StyleDesigner = (function () {
                 var val = this.value;
                 setNodeAttr(selectedNode, attrName, val);
                 renderCanvas(); renderAttrsPanel(); renderHtmlTree();
+                // An action written here answers the audit's form_no_action.
+                scheduleValidation();
             });
         });
 
@@ -60440,6 +60458,18 @@ const StyleDesigner = (function () {
         }));
     }
 
+    // Whether a form is sent nowhere: a semantic <form> with no action
+    // written (a blank one sends it back to the same page too) and no action
+    // bound for a system widget. Submitting it reloads the page and nothing
+    // keeps what the visitor typed. Where it sits is the caller's to judge:
+    // inside a system widget the widget wraps or binds it (custom_form puts
+    // its own <form action="custom_form.php"> around it).
+    function _sdAuditFormGoesNowhere(n) {
+        if (!n || n.type !== 'semantic' || String(n.props.tag || '').toLowerCase() !== 'form') return false;
+        if (n.props._bindings && n.props._bindings.action) return false;
+        return !_sdAuditAttr(n, 'action');
+    }
+
     var _validationRules = [
         { id: 'img_alt', label: _sdT('img alt is missing'),
             check: function(node, ctx) {
@@ -60613,7 +60643,8 @@ const StyleDesigner = (function () {
     function _pageLevelIssues(root) {
         var h1 = 0, main = 0, landmarks = 0, hasHeading = false, firstLevel = 0;
         var cfUnbound = [];
-        (function walk(n, inPageForm) {
+        var formsNowhere = [];
+        (function walk(n, inPageForm, inWidget) {
             if (!n) return;
             var tag = '';
             if (n.type === 'content' && n.props.contentType === 'heading') tag = n.props.tag || '';
@@ -60626,6 +60657,10 @@ const StyleDesigner = (function () {
             // there is no field for it, so nothing is stored. Silent data loss
             // is the worst kind, so it is said out loud, on the control.
             if (inPageForm && _cfIsFormControl(n) && !_cfControlName(n)) cfUnbound.push(n);
+            // A form outside every system widget with no action: the Form
+            // item, a block's sample form, imported markup. It is a hint, not
+            // a ban; an action or a Custom Form widget makes it go somewhere.
+            if (!inWidget && _sdAuditFormGoesNowhere(n)) formsNowhere.push(n);
             if (n.type === 'shared_ref') {
                 var sid = n.props && n.props.sharedId ? parseInt(n.props.sharedId, 10) : 0;
                 var c = sid > 0 ? _sharedCache[sid] : null;
@@ -60634,17 +60669,24 @@ const StyleDesigner = (function () {
                     var cfg = null;
                     try { cfg = c.system_region_config ? JSON.parse(c.system_region_config) : null; } catch (e) { cfg = null; }
                     _sdSharedOpen[sid] = true;
-                    try { walk(c.tree, _cfWidgetOwnsPageForm(cfg)); }
+                    try { walk(c.tree, _cfWidgetOwnsPageForm(cfg), inWidget || !!(cfg && _swIsType(cfg.regionType))); }
                     finally { delete _sdSharedOpen[sid]; }
                 }
             }
-            if (n.children) n.children.forEach(function (c2) { walk(c2, inPageForm); });
-        })(root, false);
+            if (n.children) n.children.forEach(function (c2) { walk(c2, inPageForm, inWidget); });
+        })(root, false, false);
         var out = [];
         cfUnbound.forEach(function (n) {
             out.push({
                 rule: 'cf_field_unnamed',
                 label: _sdT('This control has no field name — it is not saved even when submitted (Form Field → Field name)'),
+                seo: '', node: n, nodeLabel: getNodeLabel(n)
+            });
+        });
+        formsNowhere.forEach(function (n) {
+            out.push({
+                rule: 'form_no_action',
+                label: _sdT('This form has no action and is not in a Custom Form widget: what the visitor enters is neither stored nor sent (Form → Action)'),
                 seo: '', node: n, nodeLabel: getNodeLabel(n)
             });
         });
