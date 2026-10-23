@@ -1,11 +1,16 @@
 ---
 name: erp-invoice-cancel-and-open-amount
-description: When an ERP invoice can be cancelled, what cancel does to ledger, number, gift card, stock and the order, the period lock, and how open amount and paid status treat returns.
+description: When an ERP invoice can be cancelled, what the screen asks before the provider, what cancel does to ledger, number, gift card, stock and order, the period lock, open amount and returns.
 ---
 
 ## When can an invoice be cancelled?
 - `erp_invoice_cancel()` (`includes/erp/returns.php`) only when nothing hangs on it: no money allocated (the gift-card allocation the invoice posted itself does not count; `erp_invoice_receipt_count()`), no return against it, and its issue date outside the closed period (erp-period-lock).
 - Drafts are deleted, not cancelled (erp-manual-invoice-draft-issue). Whether an order's invoice is cancelled or answered with a return: erp-order-cancel-and-refund.
+
+## What does the invoice screen ask before the provider?
+- Cancel on `edit_erp_invoice.php` asks the refusals of `erp_invoice_cancel()` again on the row at the POST (cancelled already, money allocated, a return against it) in its words, then `erp_edoc_invoice_provider_cancel()` asks the lock, and only then is the provider asked (#PR).
+- Before, a receipt allocated or a return written after the page was drawn reached the provider first: the e-Archive was cancelled at GİB (or the draft there deleted) while the invoice stayed issued and paid here.
+- The receipt check is not in `erp_edoc_invoice_provider_cancel()`: the order card removes the allocations only after the provider step.
 
 ## What does cancel do?
 - The ledger row is never deleted: an opposite entry (`kind = 'adjustment'`, `doc_type = 'cancel'`) reverses it, dated today, carrying the document's own currency, rate and base value.
