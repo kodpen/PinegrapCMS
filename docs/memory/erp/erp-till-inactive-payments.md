@@ -14,7 +14,7 @@ description: An expense is never paid from a till or bank account that was taken
 - The run's `erp_expense_save()` fails, the date is given back and the reason goes to `last_error` (shown on the expense's repeat card); the next run tries again.
 - An expense already paid from the till keeps its movement; cancelling it still puts the money back into that till.
 
-## How is a repeat moved to another till? (PR #PRNUM)
+## How is a repeat moved to another till? (#1332, PR #1342)
 - The repeat card on `edit_erp_expense.php` has "Change the till" (a till select and a method select) for an active repeat written as paid, shown only with the till right (`USER_MANAGE_ERP_CASH`) and not to the read-only accountant; the POST action `repeat_till` checks the same. It opens by itself while the named till is taken off.
 - `erp_expense_recurrence_set_till($id, $cash_account_id, $method)` (`includes/erp/expense_recurring.php`) asks `erp_expense_recurrence_till_refusal($recurrence, $till, $method)` (pure, `tests/erp_expense_recurring_test.php`): active, then `pay_mode = 'paid'`, then the till gate above, then the method against `erp_cash_payment_methods()`. It writes `cash_account_id`, `payment_method`, clears `last_error`, and leaves the expenses already written alone.
 - The given-back date is written on the next run from the new till, on its own date, with the lock checked per date; a run catches up at most twelve dates.
