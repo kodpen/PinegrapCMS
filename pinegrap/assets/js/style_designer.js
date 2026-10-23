@@ -46265,6 +46265,12 @@ const StyleDesigner = (function () {
         if (draftBox) draftBox.addEventListener('change', _sdSettingsSyncSave);
         var homeBox = document.getElementById('pg_page_home');
         if (homeBox) homeBox.addEventListener('change', function () { _sdSettingsSyncSave(); _sdSettingsAddress(); });
+        // The old address of a renamed page: the tab's choice for its next save.
+        var redirectBox = document.getElementById('sd-page-name-redirect');
+        if (redirectBox) redirectBox.addEventListener('change', function () {
+            var p = _pgActivePage();
+            if (p) p.page_name_redirect = redirectBox.checked ? 1 : 0;
+        });
 
         // ── The live lines of the page panes ──
         var folderSel = document.getElementById('pg_page_folder');
@@ -46402,8 +46408,20 @@ const StyleDesigner = (function () {
         var p = _pgActivePage() || {};
         var nameEl = document.getElementById('sd-page-name');
         var name = (nameEl ? nameEl.value : (p.page_name || '')).trim();
-        if (!name) { box.textContent = _sdT('The address appears here once the page has a name.'); return; }
         var site = (_design && _design.site && _design.site.url) ? String(_design.site.url) : (location.origin + (window.OUTPUT_PATH || '/'));
+        // A saved page under a new name may keep its old address, sending
+        // visitors on (pg_short_link_page_renamed()): on unless switched off
+        // for this rename (_pgTabsSerialize()).
+        var redirectRow = document.getElementById('sd-page-redirect-row');
+        if (redirectRow) {
+            var renamed = !!(p.page_id > 0 && p.savedName && name && name !== p.savedName);
+            redirectRow.classList.toggle('d-none', !renamed);
+            var redirectBox = document.getElementById('sd-page-name-redirect');
+            if (redirectBox) redirectBox.checked = (p.page_name_redirect !== 0);
+            var redirectFrom = document.getElementById('sd-page-redirect-from');
+            if (redirectFrom) redirectFrom.textContent = renamed ? site + p.savedName : '';
+        }
+        if (!name) { box.textContent = _sdT('The address appears here once the page has a name.'); return; }
         var shown = site + name;
         var live = _pgPageViewUrl(p);
         var h = '<span class="bi bi-link-45deg me-1" aria-hidden="true"></span>';
@@ -54526,6 +54544,10 @@ const StyleDesigner = (function () {
                 if (Array.isArray(res.data.warnings) && res.data.warnings.length) {
                     sdToast(res.data.warnings.map(esc).join('<br>'), 'warning', 7000);
                 }
+                // A renamed page's old address, sent on to the new one.
+                if (Array.isArray(res.data.notes) && res.data.notes.length) {
+                    sdToast(res.data.notes.map(esc).join('<br>'), 'info', 7000);
+                }
                 if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
                 // Server may request a redirect (used by add_system_style after creating
                 // a new record so the user lands on the edit page). Skip the unload-warn
@@ -57870,6 +57892,12 @@ const StyleDesigner = (function () {
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
+            // A saved page under a new name: whether its old address sends
+            // visitors on (pg_short_link_page_renamed()); on unless it was
+            // switched off under the name.
+            if (p.page_id > 0 && p.savedName && String(p.page_name || '').trim() !== p.savedName) {
+                rec.page_name_redirect = (p.page_name_redirect === 0) ? 0 : 1;
+            }
             // The page's own form-level settings. The fields are not sent:
             // the server reads them off the widget tree flushed before this
             // request. `page_id: 0` means "this page", resolved on the server.
@@ -57960,7 +57988,13 @@ const StyleDesigner = (function () {
         _pages.forEach(function (p) {
             if (p.page_id > 0 && p.savedName && p.savedName !== p.page_name) _pgFollowRename(p.savedName, p.page_name);
         });
-        _pages.forEach(function (p) { p.baseline = _pgBaselineOf(p); if (p.page_id > 0) p.savedName = p.page_name; });
+        _pages.forEach(function (p) {
+            p.baseline = _pgBaselineOf(p);
+            if (p.page_id > 0) p.savedName = p.page_name;
+            // The redirect choice was for the rename just saved; the next
+            // one starts with it on again.
+            delete p.page_name_redirect;
+        });
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
         _pgTabsSyncUrl();

@@ -9,9 +9,9 @@ use Iyzipay\Request\ReportingScrollTransactionRequest;
 use Iyzipay\RequestStringBuilder;
 
 class ReportingScrollTransaction extends IyzipayResource {
-    private string $documentScrollVoSortingOrder;
-    private string $transactionDate;
-    private string $lastId;
+    private $documentScrollVoSortingOrder;
+    private $transactionDate;
+    private $lastId;
 
     public static function create(ReportingScrollTransactionRequest $request, Options $options): ReportingScrollTransaction {
         $uri = $options->getBaseUrl() . '/v2/reporting/payment/scroll-transactions' . RequestStringBuilder::requestToStringQuery($request, 'reportingScrollTransaction');

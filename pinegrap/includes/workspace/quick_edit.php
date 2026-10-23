@@ -362,7 +362,7 @@ function ws_quick_edit_save($viewer, $type, $id, $fields, $from = array(), $chan
         // this one logs its own line below.
         $GLOBALS['ws_change_log_quiet'] = true;
         ws_change_source(array('kind' => 'person', 'name' => $person));
-        $done = call_user_func('ws_change_write_' . $row['type'], $viewer, 'update', $check['record'], $values);
+        $done = ws_change_write($viewer, $row['type'], 'update', $check['record'], $values, false);
         ws_change_source(false);
         $GLOBALS['ws_change_log_quiet'] = false;
 

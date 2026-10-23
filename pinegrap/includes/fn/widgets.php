@@ -5618,8 +5618,10 @@ function pg_sw_item_missing($mark = null)
     }
     // The address may be one that a short link with a * in its name stands
     // for (includes/fn/short_link_redirects.php); then this does not return.
+    // Otherwise it goes into the 404 log (includes/fn/not_found_log.php).
     if (function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
     $missing = true;
     if (!headers_sent()) {

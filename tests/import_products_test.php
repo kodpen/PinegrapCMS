@@ -5,7 +5,9 @@
  * Tests for taking a product spreadsheet in (import_products_f.php):
  * pg_products_import_xlsx_date(), which turns a day count into the importer's
  * date text, and pg_products_import_to_csv() over a small .ods written here,
- * which goes through PHPExcel's OpenDocument reader.
+ * which goes through PHPExcel's OpenDocument reader. Also the price and row
+ * cell readers of an import file in includes/fn/ecommerce.php
+ * (pg_products_import_price_cents() needs product_builder.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -205,4 +207,14 @@ function test_products_import_row_value()
 	pg_assert_same('', pg_products_import_row_value(array('a'), 3), 'past the end of the row');
 	pg_assert_same('', pg_products_import_row_value(array('a'), null), 'no such column');
 	pg_assert_same('', pg_products_import_row_value(array('a'), false), 'array_search() found none');
+}
+
+// The cell readers are functions of the ecommerce module, which functions.php
+// loads, not of the screen's root helper file.
+function test_products_import_cell_readers_live_in_the_ecommerce_module()
+{
+	foreach (array('pg_products_import_price_cents', 'pg_products_import_row_prices', 'pg_products_import_row_value') as $name) {
+		$function = new ReflectionFunction($name);
+		pg_assert_same(realpath(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php'), realpath((string) $function->getFileName()), $name);
+	}
 }

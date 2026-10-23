@@ -190,6 +190,13 @@ function ws_file_edit_target($viewer, $message_id, $kind)
         return lang('This file cannot be edited here.');
     }
 
+    // A macro file posted before channels refused them: its edited copy or
+    // replacement would be refused, so a window opened earlier is told now,
+    // before the file is rewritten.
+    if (($kind === 'office') && ws_upload_refused($message['file_name'])) {
+        return ws_upload_refused_message($message['file_name']);
+    }
+
     return array($message, $channel);
 }
 

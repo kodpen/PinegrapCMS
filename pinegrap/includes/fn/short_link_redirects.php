@@ -253,39 +253,78 @@ function pg_short_link_path_name($path)
 }
 
 /**
- * What is wrong with a stored-form name, or '' when it can be used.
+ * Which part of the name rule a stored-form name breaks, as a code, or ''
+ * when it can be used: empty, length (more than $max characters), characters
+ * (one outside letters, numbers and . _ - / [ ] ~ ( ) + , ! = @ *), wildcards
+ * (more than 9 stars), stars_only (nothing beside the stars and slashes),
+ * dot_part (a . or .. part between slashes, which a browser resolves before
+ * it asks, so the name could never be opened). No text and no query: the 404
+ * log asks it on the visitor's request (pg_not_found_log_name()).
+ *
+ * @param string $name
+ * @param int    $max
+ * @return string
+ */
+function pg_short_link_name_fault($name, $max)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return 'empty';
+    }
+
+    if (mb_strlen($name, 'UTF-8') > (int) $max) {
+        return 'length';
+    }
+
+    if (preg_match('/^[\p{L}\p{M}\p{N}._\-\/\[\]~()+,!=@*]+$/u', $name) !== 1) {
+        return 'characters';
+    }
+
+    if (substr_count($name, '*') > 9) {
+        return 'wildcards';
+    }
+
+    if (trim($name, '*/') === '') {
+        return 'stars_only';
+    }
+
+    if (preg_match('#(^|/)\.{1,2}(/|$)#', $name) === 1) {
+        return 'dot_part';
+    }
+
+    return '';
+}
+
+/**
+ * What is wrong with a stored-form name, or '' when it can be used
+ * (pg_short_link_name_fault(), said in words).
  *
  * @param string $name pg_short_link_name_from_address()
  * @return string
  */
 function pg_short_link_name_problem($name)
 {
-    $name = (string) $name;
+    $max = pg_short_link_name_max();
 
-    if ($name === '') {
-        return lang('Name is required.');
-    }
+    switch (pg_short_link_name_fault($name, $max)) {
+        case 'empty':
+            return lang('Name is required.');
 
-    if (mb_strlen($name, 'UTF-8') > pg_short_link_name_max()) {
-        return lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_short_link_name_max())));
-    }
+        case 'length':
+            return lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array($max)));
 
-    if (preg_match('/^[\p{L}\p{M}\p{N}._\-\/\[\]~()+,!=@*]+$/u', $name) !== 1) {
-        return pg_short_link_name_rule_text();
-    }
+        case 'characters':
+            return pg_short_link_name_rule_text();
 
-    if (substr_count($name, '*') > 9) {
-        return lang('A name can have at most 9 wildcards (*).');
-    }
+        case 'wildcards':
+            return lang('A name can have at most 9 wildcards (*).');
 
-    if (trim($name, '*/') === '') {
-        return lang('A name needs at least one letter or number beside its wildcards.');
-    }
+        case 'stars_only':
+            return lang('A name needs at least one letter or number beside its wildcards.');
 
-    // A browser resolves . and .. in a path before it asks, so a name with
-    // such a part could never be opened.
-    if (preg_match('#(^|/)\.{1,2}(/|$)#', $name) === 1) {
-        return lang('A part of the name between slashes cannot be . or .. alone.');
+        case 'dot_part':
+            return lang('A part of the name between slashes cannot be . or .. alone.');
     }
 
     return '';
@@ -1403,6 +1442,218 @@ function pg_short_link_redirect_columns($link, $code = null, $stored = 0, $links
         ),
         'problem' => $problem,
     );
+}
+
+/**
+ * Why a renamed page's old name cannot become a short link to it, or '' when
+ * it can. 'unchanged': the router would find the new name for the old one
+ * (the same name to the database, as "About" and "about" are, or the same
+ * stored form, as "a b" and "a_b"), so the link would answer at the page's
+ * own address and send its visitors round in a loop. 'name': no short link
+ * can have the name (pg_short_link_name_problem()), or a * would make it a
+ * pattern.
+ *
+ * @param string $old_name The name the page had
+ * @param string $new_name The name it has now
+ * @return string
+ */
+function pg_short_link_rename_problem($old_name, $new_name)
+{
+    $old = pg_short_link_path_name(trim((string) $old_name));
+    $new = trim((string) $new_name);
+
+    if (($old === '') || ($new === '')) {
+        return 'unchanged';
+    }
+
+    $old_key = pg_short_link_key($old);
+
+    foreach (array_unique(array($new, pg_short_link_path_name($new))) as $form) {
+        if ($old_key === pg_short_link_key($form)) {
+            return 'unchanged';
+        }
+    }
+
+    if (pg_short_link_is_pattern($old) || (pg_short_link_name_problem($old) !== '')) {
+        return 'name';
+    }
+
+    return '';
+}
+
+/**
+ * SQL that leaves out the short links standing for a page's old addresses:
+ * links that send visitors on (301, 302) to that page. Such a link does not
+ * hold its name against the page. The page may take the name back, and the
+ * rename deletes the link (pg_short_link_page_renamed()): left in place it
+ * would answer before the page (router.php reads short links first) and send
+ * every visitor round in a loop. '' before 11.0.12, when no link redirects.
+ *
+ * @param int $page_id
+ * @return string " AND NOT (…)" or ''
+ */
+function pg_short_link_not_redirect_to_page_sql($page_id)
+{
+    if (((int) $page_id <= 0) || !pg_short_link_redirects_ready()) {
+        return '';
+    }
+
+    return " AND NOT ((destination_type = 'page') AND (page_id = '" . (int) $page_id . "') AND (redirect_code IN (301, 302)))";
+}
+
+/**
+ * What a page's new name does to its short links, once the name is written.
+ *
+ * A link that sent visitors on to the page under the name it has now goes
+ * (pg_short_link_not_redirect_to_page_sql()). With $redirect, the old name
+ * becomes a short link that answers 301 and sends visitors to the page at its
+ * own address. One link covers the old address in every language: the router
+ * takes the language prefix off before it looks for a link, and
+ * pg_short_link_location() puts it back. It leads to the page, not to an
+ * address, so it still leads there after the next rename. Nothing is added
+ * for a draft (the old address was never on the site), for a name the router
+ * finds the page by anyway or no link can have
+ * (pg_short_link_rename_problem()), or for a name somebody else holds by now.
+ *
+ * @param int    $page_id
+ * @param string $old_name   The name the page had
+ * @param string $new_name   The name it has now
+ * @param bool   $redirect   Whether the old name is to send visitors here
+ * @param int    $user_id
+ * @param int    $old_folder The folder the page was in
+ * @return array 'from' (the old name as a link has it), 'to' (the new name),
+ *               'added' (bool), 'removed' (links deleted), 'skipped' ('' or
+ *               why no link was added: off, schema, unchanged, name, draft,
+ *               taken, loop)
+ */
+function pg_short_link_page_renamed($page_id, $old_name, $new_name, $redirect, $user_id = 0, $old_folder = 0)
+{
+    $page_id = (int) $page_id;
+    $new = trim((string) $new_name);
+    $from = pg_short_link_path_name(trim((string) $old_name));
+    $out = array('from' => $from, 'to' => $new, 'added' => false, 'removed' => 0, 'skipped' => '');
+
+    if (($page_id <= 0) || ($new === '') || !pg_short_link_redirects_ready()) {
+        $out['skipped'] = 'schema';
+        return $out;
+    }
+
+    // The new name as the router looks it up: as it came, then in the stored
+    // form. A one-time link has no name, so an empty one is never asked for.
+    $new_forms = array_values(array_unique(array($new, pg_short_link_path_name($new))));
+
+    db("DELETE FROM short_links
+        WHERE (name IN ('" . implode("', '", array_map('e', $new_forms)) . "'))
+        AND (destination_type = 'page') AND (page_id = '$page_id') AND (redirect_code IN (301, 302))");
+
+    $out['removed'] = max(0, (int) mysqli_affected_rows(db::$con));
+
+    if (!$redirect) {
+        $out['skipped'] = 'off';
+        return $out;
+    }
+
+    $problem = pg_short_link_rename_problem($old_name, $new);
+
+    if ($problem !== '') {
+        $out['skipped'] = $problem;
+        return $out;
+    }
+
+    if (function_exists('pg_page_is_draft') && pg_page_is_draft((int) $old_folder)) {
+        $out['skipped'] = 'draft';
+        return $out;
+    }
+
+    // The page held the name until now, so nothing else should; a page,
+    // file or link that has it anyway keeps it.
+    $from_sql = "'" . implode("', '", array_map('e', array_values(array_unique(array(trim((string) $old_name), $from))))) . "'";
+
+    if (((int) db_value("SELECT COUNT(*) FROM page WHERE page_name IN ($from_sql)") > 0)
+        || ((int) db_value("SELECT COUNT(*) FROM files WHERE name IN ($from_sql)") > 0)
+        || ((int) db_value("SELECT COUNT(*) FROM short_links WHERE name IN ($from_sql)") > 0)) {
+        $out['skipped'] = 'taken';
+        return $out;
+    }
+
+    $answer = pg_short_link_redirect_columns(array('id' => 0, 'name' => $from, 'destination_type' => 'page', 'url' => ''), 301, 0, array());
+
+    if ($answer['problem'] !== null) {
+        $out['skipped'] = 'loop';
+        return $out;
+    }
+
+    $columns = array(
+        "name = '" . e($from) . "'",
+        "destination_type = 'page'",
+        "page_id = '$page_id'",
+        "created_user_id = '" . (int) $user_id . "'",
+        "created_timestamp = UNIX_TIMESTAMP()",
+        "last_modified_user_id = '" . (int) $user_id . "'",
+        "last_modified_timestamp = UNIX_TIMESTAMP()",
+    );
+
+    if (pg_short_link_modes_ready()) {
+        $columns[] = "link_mode = 'permanent'";
+    }
+
+    foreach ($answer['columns'] as $column => $value) {
+        $columns[] = $column . " = '" . (int) $value . "'";
+    }
+
+    db("INSERT INTO short_links SET " . implode(', ', $columns));
+
+    $out['added'] = ((int) mysqli_insert_id(db::$con) > 0);
+
+    if ($out['added']) {
+        log_activity(lang(array('string' => 'short link ({var:1}) was created', 'vars' => $from)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    }
+
+    return $out;
+}
+
+/**
+ * What a save says about pg_short_link_page_renamed()'s answer: the link
+ * added or removed as notes, a redirect that was asked for and could not be
+ * added as a warning. A redirect left off, a draft and a name the page is
+ * found by anyway say nothing.
+ *
+ * @param array  $result pg_short_link_page_renamed()
+ * @param string $base   The site's base path (PATH)
+ * @return array array('notes' => string[], 'warnings' => string[])
+ */
+function pg_short_link_page_renamed_messages($result, $base = '/')
+{
+    $out = array('notes' => array(), 'warnings' => array());
+
+    if (!is_array($result)) {
+        return $out;
+    }
+
+    $base = '/' . ltrim((string) $base, '/');
+    $from = $base . (isset($result['from']) ? (string) $result['from'] : '');
+    $to = $base . (isset($result['to']) ? (string) $result['to'] : '');
+
+    if (!empty($result['removed'])) {
+        $out['notes'][] = lang(array('string' => 'The redirect from {var:1} was removed: the page answers at that address itself now.', 'vars' => array($to)));
+    }
+
+    if (!empty($result['added'])) {
+        $out['notes'][] = lang(array('string' => 'The old address {var:1} now sends visitors to {var:2} (301).', 'vars' => array($from, $to)));
+    }
+
+    switch (isset($result['skipped']) ? (string) $result['skipped'] : '') {
+        case 'name':
+            $out['warnings'][] = lang(array('string' => 'The old address {var:1} does not send visitors on: a short link cannot have that name.', 'vars' => array($from)));
+            break;
+
+        case 'taken':
+        case 'loop':
+            $out['warnings'][] = lang(array('string' => 'The old address {var:1} does not send visitors on: another page, a file or a short link uses it now.', 'vars' => array($from)));
+            break;
+    }
+
+    return $out;
 }
 
 /**

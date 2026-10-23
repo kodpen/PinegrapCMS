@@ -40,6 +40,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-response-json-encoding.md: How the external API writes its answer as JSON (api_json_encode()): broken UTF-8 bytes become U+FFFD, an answer JSON cannot hold (INF, NAN) becomes a 500 server_error, never an empty body
 - api-sales-report-periods.md: GET /reports/sales: only periods with orders come back, at most 400; a window whose orders fall on more days or months is refused with 422 instead of being cut, so totals always cover the whole window
+- api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries

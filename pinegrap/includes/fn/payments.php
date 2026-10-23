@@ -1162,6 +1162,31 @@ function pg_payment_checkout_totals($answer, $total)
 }
 
 /**
+ * What an order records from an iyzico 3-D Secure payment the bank confirmed:
+ * the totals of the iyzipay_3ds_state row written when the payment started
+ * (pg_payment_iyzico_threeds_keep()), whose instalment charge is the one the
+ * card was charged (pg_order_installment_charge() may have lowered iyzico's
+ * quote). A new quote on the return would be another figure.
+ *
+ * @param array $state iyzipay_3ds_state row: base_total_cents (the total
+ *                     before the instalment charge), installment_charge_cents
+ * @return array total, installment_charge, total_without_installment_charge
+ *               (0 when there is no charge), in the variables
+ *               pg_payment_checkout_totals() fills
+ */
+function pg_payment_threeds_state_totals($state)
+{
+    $total = (int) ($state['base_total_cents'] ?? 0);
+    $charge = max(0, (int) ($state['installment_charge_cents'] ?? 0));
+
+    return array(
+        'total'                            => $total + $charge,
+        'installment_charge'               => $charge,
+        'total_without_installment_charge' => ($charge > 0) ? $total : 0,
+    );
+}
+
+/**
  * The order's delivery address when it has exactly one and something to
  * ship, for a service that asks for the address the goods go to.
  *

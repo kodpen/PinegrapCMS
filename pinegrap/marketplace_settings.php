@@ -232,7 +232,7 @@ if ($_POST) {
 
 			$liveform->add_warning(lang(array(
 				'string' => 'Could not connect: {var:1}',
-				'vars'   => array($result['error'])
+				'vars'   => array(h($result['error']))
 			)));
 
 		}
@@ -277,7 +277,7 @@ if ($_POST) {
 
 		} else {
 
-			$liveform->add_warning($result['error']);
+			$liveform->add_warning(h($result['error']));
 
 		}
 
@@ -344,7 +344,7 @@ if ($_POST) {
 
 			if (!$loaded['ok']) {
 
-				$liveform->add_warning($loaded['error']);
+				$liveform->add_warning(h($loaded['error']));
 
 			}
 
@@ -407,7 +407,7 @@ if ($_POST) {
 
 		if (!$ready['ok']) {
 
-			$liveform->add_warning($ready['error']);
+			$liveform->add_warning(h($ready['error']));
 
 		} else {
 
