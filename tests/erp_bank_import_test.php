@@ -428,6 +428,47 @@ function test_erp_bank_line_hashes_count_repeats_per_file()
 	pg_assert_same($first, $hashes(), 'taken in again, the same hashes');
 }
 
+// The "one open invoice of this amount" a statement line suggests is an
+// invoice, never a return document, in the line's currency, open by what is
+// left once its returns are taken off.
+function test_erp_bank_open_invoice_query_invoices_only()
+{
+	$sql = erp_bank_open_invoice_query('sales', 'TRY', true, 30000);
+
+	pg_assert_contains("i.doc_type = 'invoice'", $sql, 'invoices only');
+	pg_assert_contains("i.direction = 'sales'", $sql, 'money in closes a sale');
+	pg_assert_contains("ret.parent_invoice_id = i.id", $sql, 'returns taken off');
+	pg_assert_contains("COALESCE(ret.returned, 0)", $sql, 'by what they gave back');
+	pg_assert_contains("r.doc_type = 'return'", $sql, 'returns only');
+	pg_assert_contains("r.status <> 'cancelled'", $sql, 'a cancelled return gives nothing back');
+	pg_assert_contains("= '30000'", $sql, 'the amount');
+	pg_assert_contains("LIMIT 2", $sql, 'one is told from several');
+
+	pg_assert_contains("i.direction = 'purchase'", erp_bank_open_invoice_query('purchase', 'TRY', true, 850), 'money out closes a purchase');
+}
+
+// The currency rule is the one erp_post_receipt() applies: with foreign
+// currencies on the line's currency exactly (a blank-currency invoice would be
+// refused), with them off no currency condition, as posting checks none.
+function test_erp_bank_open_invoice_query_currency()
+{
+	$home = erp_bank_open_invoice_query('sales', 'try', true, 100);
+
+	pg_assert_contains("i.currency = 'TRY'", $home, 'the line currency, upper case');
+	pg_assert_true(strpos($home, "i.currency = ''") === false, 'no blank-currency alternative');
+	pg_assert_contains("i.currency = 'USD'", erp_bank_open_invoice_query('sales', 'USD', true, 100), 'foreign currency');
+	pg_assert_contains("i.currency = 'USD'", erp_bank_open_invoice_query('sales', "US'D", true, 100), 'letters only');
+	pg_assert_true(strpos(erp_bank_open_invoice_query('sales', 'TRY', false, 100), 'i.currency') === false, 'FX off: no currency condition');
+}
+
+// With foreign currencies off (ERP_FX_ENABLED undefined under the runner) a
+// line is recorded in the store's currency whatever the till says.
+function test_erp_bank_line_currency_fx_off()
+{
+	pg_assert_same(erp_base_currency(), erp_bank_line_currency('USD'), 'a foreign till');
+	pg_assert_same(erp_base_currency(), erp_bank_line_currency(''), 'a till with no currency');
+}
+
 // An amount past 2^31 kurus is a float on 32-bit PHP. The hash takes it as the
 // statement build always wrote it into the key, without an (int) cast that
 // would wrap it, so a large line stored before still turns a re-upload away.

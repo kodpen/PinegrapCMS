@@ -107,7 +107,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing with the invoice template, turning into an invoice draft, signature evidence, expiry notice.
 - erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, the read/accountant/write areas, USER_ERP_READONLY, and the writers outside ERP screens.
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
-- erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132); the bank statement suggestion still open.
+- erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132), and the bank statement suggestion offers only invoices (PR #1228).
 - erp-reconciliation-letter.md: ERP account reconciliation letter (cari mutabakat): as-of balance from the ledger, option sanitizing, reference, row cap, e-mail attachments, screen pattern.
 - erp-recurring-documents.md: Repeating ERP expenses (4.96) and invoices (4.93): what may repeat, how a run claims a date, lock and error handling, where runs start, draft or issue mode, stop and restart.
 - erp-recurring-invoice-day.md: The day of the month a repeating invoice keeps: an invoice of the 31st repeats on every month's last day, not on the 28th the first February cut it to
