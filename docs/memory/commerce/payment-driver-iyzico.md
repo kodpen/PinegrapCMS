@@ -15,8 +15,8 @@ description: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their subm
 ## How does submit_order.php use them?
 - One branch before the non-recurring charge switch: `pg_payment_checkout_driver(method, ECOMMERCE_PAYMENT_GATEWAY, mode)` non-empty → `authorize` (or `complete` on the driver's return mode) through `pg_payment_call()`; else the switch runs. The answer fills the gateway code's variables (`pg_payment_checkout_totals()`: amount above the total = instalment charge; `card_brand` → `card_type`).
 - Return modes keep the old addresses (`pg_payment_return_mode()`): `iyzipay_threedsecure_return`, `pay_with_iyzico_return`; the checks atop submit_order.php and order_preview.php still apply.
-- A return whose driver has no `complete()` goes to the gateway code: the frozen Iyzipay block finishes the 3-D Secure return from the `iyzipay_3ds_state` row the driver writes before iyzico is asked (`pg_payment_iyzico_threeds_keep()`).
-- The card's instalment charge is lowered where a rate's total would be out of reach (`pg_order_installment_charge()`, #1269, erp/erp-order-charges-vat.md); the 3-D Secure row keeps that figure.
+- A return whose driver has no `complete()` goes to the gateway code: the frozen Iyzipay block finishes the 3-D Secure return (commerce/payment-iyzico-threeds-return.md).
+- The card's instalment charge is lowered where a rate's total would be out of reach (`pg_order_installment_charge()`, #1269, erp/erp-order-charges-vat.md); the 3-D Secure row and the order keep that figure.
 - PWI state (token, conversation id, order id, base total): `ecommerce.payment_state.pay_with_iyzico`; a token or order mismatch keeps it (iyzico not asked), any iyzico answer ends it.
 - A registered driver that cannot load refuses the payment, never falls back to the gateway code (a card gateway with no legacy case would complete unpaid). Errors go through `h()` before `mark_error()`.
 

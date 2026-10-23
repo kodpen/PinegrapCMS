@@ -44,7 +44,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10-api.md: Security findings of the 2026-10-20 external API scan: role-3 forms folder rule (PR #933) and customers group rule (PR #956) done; left: private-folder moves pass the widening check
 - security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
 - security-findings-2026-10.md: Security findings of the 2026-10-19 audit: what the PRs of 2026-10-19 fixed, what still waits (eval re-ordering, form renderers, CVV, gateway secrets), owner questions; item 8 done (#713)
-- seo-toolkit-redirects.md: Plan (approved 2026-10-19, in progress: steps 1-7 done; redirects are short link options with CSV, the File Manager choice, the rename 301 and the 404 log): the 404 API left
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-4 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19, in progress: provider layer, Netgsm driver, settings card and queue done): order/shipping/OTP messages, İYS consent sync for e-mail and SMS marketing, 3-year consent log

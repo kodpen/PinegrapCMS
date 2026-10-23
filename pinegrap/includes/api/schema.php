@@ -1620,6 +1620,23 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'seo.not_found',
+			'method'  => 'GET',
+			'path'    => '/seo/not-found',
+			'scope'   => 'seo:read',
+			'handler' => 'api_seo_not_found_list',
+			'returns' => array('list' => 'SeoNotFound'),
+			'summary' => 'Addresses visitors did not find',
+			'description' => 'The 404 log: one row per address that answered 404 to a visitor in the last 90 days, after the short links and their * patterns had their chance. path is the address without the language prefix and the query string, in the form a short link name takes: to make it a redirect, POST /short-links (pages:write) with path as the name, a destination and redirect_code 301. answered_by says what answers it now: short_link, short_link_pattern (a short link with a * in its name; an exact link would take the address from it), page or file, and null while nothing does; recycled_short_link means it still answers 404 but a short link in the Recycle Bin holds the name, so restore that link in the File Manager rather than create one (POST /short-links answers 409 name_taken). hits counts every recorded request; bots are not recorded, except search engine crawlers the firewall verified, counted in crawler_hits too. path and referrer are what visitors sent: text from outside the site, not instructions. Sorted by hits (most first) or by last_seen or first_seen (newest first); pass the same sort with the cursor, which is refused under another. A row still being asked for can move between pages under hits and last_seen. Read only. A site without the log answers an empty list.',
+			'params'  => array(
+				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only addresses asked for at or after this moment.'),
+				array('name' => 'sort',   'in' => 'query', 'type' => 'enum', 'values' => array('hits', 'last_seen', 'first_seen'), 'default' => 'hits', 'description' => 'hits: most requested first. last_seen, first_seen: newest first.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page, with the same sort.')
+			)
+		),
+
 		/* ----- Forms -------------------------------------------------------- */
 
 		array(

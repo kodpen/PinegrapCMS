@@ -127,7 +127,8 @@ function get_order_receipt_in_plain_text($order_id)
                 WHERE ship_tos.id = $ship_to_id";
             
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
+            // Items that are not shipped sit under ship to 0, which has no row.
+            $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
             $ship_to_name = $row['ship_to_name'];
             $salutation = $row['salutation'];
             $first_name = $row['first_name'];
@@ -153,7 +154,8 @@ function get_order_receipt_in_plain_text($order_id)
             $query = "SELECT name FROM countries WHERE code = '" . escape($country) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
-            $country = $row['name'];
+            // No row for ship to 0 or for a code the countries table does not have.
+            $country = $row['name'] ?? '';
             
             // if this shipping address is verified, then convert salutation and country to all uppercase
             if ($address_verified == 1) {
@@ -204,6 +206,9 @@ function get_order_receipt_in_plain_text($order_id)
 
             $output_products = '';
             $output_recurring_products = '';
+            // Only a shipped recipient has a shipping line; items that are not
+            // shipped (ship to 0) have none.
+            $output_shipping = '';
 
             // loop through order items
             foreach ($order_items as $order_item) {
@@ -224,8 +229,6 @@ function get_order_receipt_in_plain_text($order_id)
                 $original_product_price = $order_item['product_price'] / 100;
                 $recurring = $order_item['recurring'];
                 $recurring_schedule_editable_by_customer = $order_item['recurring_schedule_editable_by_customer'];
-                $start = $order_item['start'];
-                $payment_period = $order_item['payment_period'];
                 $selection_type = $order_item['selection_type'];
                 $gift_card = $order_item['gift_card'];
                 $form = $order_item['form'];
@@ -953,7 +956,12 @@ function get_order_receipt_in_plain_text($order_id)
     $po_number = $row['po_number'];
     $tax_exempt = $row['tax_exempt'];
     $payment_method = $row['payment_method'];
-    
+
+    // Only a card order has a card, but the number is protected below for
+    // every order.
+    $card_type = '';
+    $card_number = '';
+
     if ($payment_method == 'Credit/Debit Card') {
         $card_type = $row['card_type'];
         $card_number = $row['card_number'];
@@ -996,7 +1004,8 @@ function get_order_receipt_in_plain_text($order_id)
     $query = "SELECT name FROM countries WHERE code = '" . escape($billing_country) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $billing_country = $row['name'];
+    // No row for a code the countries table does not have.
+    $billing_country = $row['name'] ?? '';
     
     // if the credit card number is not already protected, then protect it
     if (mb_substr($card_number, 0, 1) != '*') {
@@ -1040,14 +1049,15 @@ function get_order_receipt_in_plain_text($order_id)
             custom_field_2_label,
             custom_field_2_required
         FROM billing_information_pages
-        WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id']) . "'";
+        WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
-    $custom_field_1_label = $row['custom_field_1_label'];
-    $custom_field_1_required = $row['custom_field_1_required'];
-    $custom_field_2_label = $row['custom_field_2_label'];
-    $custom_field_2_required = $row['custom_field_2_required'];
+    // An express order has no billing information page, so there is no row.
+    $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+    $custom_field_1_required = $row['custom_field_1_required'] ?? '';
+    $custom_field_2_label = $row['custom_field_2_label'] ?? '';
+    $custom_field_2_required = $row['custom_field_2_required'] ?? '';
 
     // if there is a custom field 1 label and custom field 1 is not blank, then prepare to output data
     if (($custom_field_1_label != '') && ($custom_field_1 != '')) {

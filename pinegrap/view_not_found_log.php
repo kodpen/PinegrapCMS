@@ -157,9 +157,11 @@ foreach ($rows as $row) {
 
     if ($answer === null) {
         $output_create = '<a class="m-1 btn-data-control btn btn-outline-primary border-2" href="' . h(pg_not_found_log_redirect_url($path)) . '" title="' . h(lang('Create redirect')) . '" aria-label="' . h(lang('Create redirect')) . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>';
-    } elseif ($answer['state'] === 'redirect') {
-        // The router answers the address before any page: no new 404 comes.
-        $output_state = ' <span class="badge rounded-pill text-bg-light border">' . h(lang('Short link')) . '</span>';
+    } elseif (($answer['state'] === 'redirect') || ($answer['state'] === 'pattern')) {
+        // A short link answers the address now (a * pattern only once no page
+        // does): no new 404 comes, and an exact link would take it from the
+        // pattern.
+        $output_state = ' <span class="badge rounded-pill text-bg-light border">' . h(($answer['state'] === 'pattern') ? lang('Wildcard') : lang('Short link')) . '</span>';
         $output_create = '<a class="m-1 btn-data-control btn btn-outline-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
     } elseif ($answer['state'] === 'binned') {
         $output_state = '<div class="small text-body-secondary">' . h(lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.')) . '</div>';
