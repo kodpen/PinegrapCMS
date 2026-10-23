@@ -22,10 +22,11 @@ description: Which blocks the designer's Themes panel writes light and dark vari
 - The light form, the old combined form, a bare `:root` and a bare `[data-bs-theme="light"]`, either quote style, each from its first selector; the tail of a combined form is never taken for a bare block. In Light mode the panel shows the light block over the shared one. A panel write puts the value in its own block and removes it from the other light block.
 
 ## How are designs saved with the old selector fixed?
-- In the editor only, no server rewrite and no upgrade step: `_ensureBootstrapSentinels()` splits the old combined block when the design loads and `_writeThemeVar()` before every write. Colour variables move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, and the block moves before the dark block when it sat after it. A block of mode-neutral variables already before the dark block is not touched. A design nobody opens keeps the old block.
+- In the editor: `_ensureBootstrapSentinels()` on load, `_writeThemeVar()` before every write. Colours move to the light block (the block is renamed when it held only colours; an existing light block takes the moved ones it lacks); the rest stay, moved before the dark block when after it.
+- On the server: step 11.0.31 makes the same split for designs nobody opens, old page copies, design templates and old theme files (`designer-theme-light-selector-upgrade.md`).
 - A bare `:root` or `[data-bs-theme="light"]` block is hand-written and is left as written.
-- "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the shared, light and dark blocks with these selectors; theme files saved before keep theirs.
+- "Save these colours as a theme" (`_sdThemeCssFromUserStyles()`) writes the shared, light and dark blocks with these selectors.
 - Palette files (`pg_design_palette_css()`) keep `:root, [data-bs-theme=light]`: they set every variable they override in their dark block too.
 
 ## What keeps this from coming back?
-- `tests/designer_theme_light_selector_test.php` runs the helpers under Node: the selectors, `_themeDarkOwnVars()` against the shipped bootstrap 5.3.8 dark block, every read form with its offset, the split, panel writes, a small cascade check (dark page keeps font and radius, gets the dark background) and the call sites with comments stripped.
+- `tests/designer_theme_light_selector_test.php` runs the helpers under Node: the selectors, `_themeDarkOwnVars()` against the shipped bootstrap 5.3.8 dark block, every read form with its offset, the split, panel writes, a small cascade check (dark page keeps font and radius, gets the dark background) and the call sites with comments stripped; `tests/designer_theme_vars_test.php` checks the PHP twin.

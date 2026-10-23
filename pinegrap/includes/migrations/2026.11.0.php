@@ -55,6 +55,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
+	upgrade_2026_11_0_theme_light_selector();   // 11.0.31
 
 }
 
@@ -1248,5 +1249,193 @@ function upgrade_2026_11_0_page_cache_generation() {
 	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
+
+}
+
+// The Themes panel's old combined light block in stored designs (2026.11.0,
+// 11.0.31; no table changes; includes/fn/designer_theme_vars.php).
+//
+// Until the panel kept its light and shared blocks apart it wrote every
+// light value under `:root, [data-bs-theme="light"]`. That `:root` also
+// matches an <html> a theme switcher set to dark, and the design's User
+// Styles load after bootstrap.css, so a light Background (#fdf6e3) kept a
+// "Dark" page light with light grey text. The editor splits the block when a
+// design is opened and before every panel write; a design nobody opens kept
+// it. This step makes the same split, byte for byte, wherever the old block
+// is stored and served without the editor:
+//   - the design's asset list, style.style_custom_css (its User Styles entry,
+//     meta 'user-styles');
+//   - the per-page copy designs saved before 2026.4.4 still render from
+//     while the design's own list is empty, page.page_custom_css;
+//   - the asset list inside a design template made from a design,
+//     design_template.template_json (assets.css), which a new design is
+//     installed from;
+//   - a theme file the old "Save these colours as a theme" wrote: a design
+//     CSS file in exactly that shape, loaded after the User Styles. It is
+//     written again as the button writes it now. A stylesheet written or
+//     changed by hand is not in that shape and is left alone, and so are
+//     the palette files (their unquoted `[data-bs-theme=light]` is not the
+//     panel's block, and they set every colour again in their dark block).
+// A row that is not a JSON list, has no User Styles entry or holds no old
+// block is left as it is, so a second run changes nothing.
+function upgrade_2026_11_0_theme_light_selector() {
+
+	if (!function_exists('pg_theme_vars_upgrade_assets_json')) {
+
+		install_skipped('Visual designer: the old light colours of the Themes panel were not split, because includes/fn/designer_theme_vars.php is missing. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$designs = upgrade_2026_11_0_theme_light_selector_rows('style', 'style_id', 'style_custom_css', 'pg_theme_vars_upgrade_assets_json');
+
+	$pages = upgrade_2026_11_0_theme_light_selector_rows('page', 'page_id', 'page_custom_css', 'pg_theme_vars_upgrade_assets_json');
+
+	$templates = upgrade_2026_11_0_theme_light_selector_rows('design_template', 'id', 'template_json', 'pg_theme_vars_upgrade_template_json');
+
+	$files = upgrade_2026_11_0_theme_light_selector_files();
+
+	if (($designs + $pages + $templates + $files) === 0) {
+
+		install_skipped('Visual designer: no design keeps its Themes panel light colours in the old block that also applied to a dark page.');
+
+		return;
+
+	}
+
+	install_ran('Visual designer: the Themes panel light colours that also applied to a page a theme switcher set to dark were split from the fonts and radii, as the editor does when a design is opened (' . $designs . ' designs, ' . $pages . ' pages, ' . $templates . ' design templates, ' . $files . ' theme files). A dark page now takes the dark colours; light pages look as before.');
+
+}
+
+// The rows of one table whose column holds a User Styles entry, one at a
+// time in id order (a design's assets can be megabytes), each rewritten
+// with $rewrite when it gives a new text. Returns how many were rewritten.
+// When the pass has used its time budget the version pauses, and the next
+// pass of the same request goes on after the last id it reached; a new
+// request starts again from the first row and leaves the rows done before
+// as they are.
+function upgrade_2026_11_0_theme_light_selector_rows($table, $id_column, $column, $rewrite) {
+
+	static $progress = array();
+
+	if (!install_table_exists($table) || !install_column_exists($table, $column)) {
+
+		return 0;
+
+	}
+
+	$key = $table . '.' . $column;
+
+	if (!isset($progress[$key])) {
+
+		$progress[$key] = array('last' => 0, 'changed' => 0);
+
+	}
+
+	while (true) {
+
+		$row = db_item(
+			"SELECT `$id_column` AS id, `$column` AS value FROM `$table`
+			WHERE (`$id_column` > '" . (int) $progress[$key]['last'] . "') AND (`$column` LIKE '%user-styles%')
+			ORDER BY `$id_column`
+			LIMIT 1");
+
+		if (!$row) {
+
+			break;
+
+		}
+
+		$progress[$key]['last'] = (int) $row['id'];
+
+		$value = (string) $row['value'];
+
+		$new = $rewrite($value);
+
+		if (is_string($new) && ($new !== $value)) {
+
+			db("UPDATE `$table` SET `$column` = '" . e($new) . "' WHERE `$id_column` = '" . (int) $row['id'] . "'");
+
+			$progress[$key]['changed']++;
+
+		}
+
+		if (install_pass_seconds() >= install_pause_budget()) {
+
+			install_pause('Visual designer: splitting the old Themes panel light colours, ' . $table . ' up to id ' . (int) $row['id'] . '.');
+
+		}
+
+	}
+
+	return $progress[$key]['changed'];
+
+}
+
+// Theme files the old "Save these colours as a theme" wrote: design CSS
+// files in the file manager, in exactly the shape that button wrote
+// (pg_theme_vars_is_old_theme_file()), written again as it writes them now.
+// Returns how many were rewritten.
+function upgrade_2026_11_0_theme_light_selector_files() {
+
+	if (!defined('FILE_DIRECTORY_PATH') || !install_column_exists('files', 'design')) {
+
+		return 0;
+
+	}
+
+	$changed = 0;
+
+	foreach ((array) db_items("SELECT id, name FROM files WHERE (design = '1') AND (type = 'css') ORDER BY id") as $row) {
+
+		$name = (string) $row['name'];
+
+		if (($name === '') || ($name !== basename($name)) || ($name[0] === '.')) {
+
+			continue;
+
+		}
+
+		$path = FILE_DIRECTORY_PATH . '/' . $name;
+
+		// The button refuses a stylesheet over 500 KB.
+		if (!is_file($path) || (filesize($path) > 512000)) {
+
+			continue;
+
+		}
+
+		$css = @file_get_contents($path);
+
+		if (!is_string($css) || !pg_theme_vars_is_old_theme_file($css) || !preg_match('//u', $css)) {
+
+			continue;
+
+		}
+
+		$new = pg_theme_vars_theme_css($css);
+
+		if (($new === '') || ($new === pg_theme_vars_trim($css))) {
+
+			continue;
+
+		}
+
+		if (@file_put_contents($path, $new) === false) {
+
+			install_note('Visual designer: the theme file ' . $name . ' in data/files could not be written, so it still keeps its light colours on a page a theme switcher set to dark. Save the colours as a theme again from the Themes panel.');
+
+			continue;
+
+		}
+
+		db("UPDATE files SET size = '" . (int) strlen($new) . "' WHERE id = '" . (int) $row['id'] . "'");
+
+		$changed++;
+
+	}
+
+	return $changed;
 
 }
