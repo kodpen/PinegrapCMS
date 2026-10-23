@@ -10,9 +10,12 @@
  * and Collapsed switches write the panel and its toggles together, and the
  * accordions the palette builds (the Components tab's accordion, the FAQ
  * blocks) have working toggles whose state agrees with their panels and
- * survives a save. The functions are cut out of assets/js/style_designer.js
- * and run under Node; on a machine without Node the test is skipped. The
- * builders are found with the source scanner of designer_blocks_test.php.
+ * survives a save. A modal, offcanvas or dropdown menu open on the canvas
+ * stays open through a rebuild of the canvas without reaching the tree. The
+ * functions are cut out of assets/js/style_designer.js and run under Node
+ * (the canvas on a small DOM stand-in); on a machine without Node the test is
+ * skipped. The builders are found with the source scanner of
+ * designer_blocks_test.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -157,6 +160,114 @@ function test_designer_collapse_state_other_toggleables_close()
 	}
 
 	pg_assert_same(array('modal fade', 'offcanvas offcanvas-start', 'dropdown-menu'), $answer, 'show is dropped');
+}
+
+// A small stand-in for the canvas document: elements with classes,
+// attributes and a parent, and querySelectorAll() for a list of classes.
+function designer_collapse_state_dom()
+{
+	return 'function El(cls, attrs, parent) { var self = this; this.cls = String(cls).split(/\\s+/).filter(Boolean); this.attrs = attrs || {}; this.parentElement = parent || null;'
+		. ' this.classList = { contains: function (c) { return self.cls.indexOf(c) !== -1; }, add: function (c) { if (self.cls.indexOf(c) === -1) self.cls.push(c); } }; }'
+		. 'El.prototype.hasAttribute = function (n) { return Object.prototype.hasOwnProperty.call(this.attrs, n); };'
+		. 'El.prototype.getAttribute = function (n) { return this.hasAttribute(n) ? this.attrs[n] : null; };'
+		. 'El.prototype.removeAttribute = function (n) { delete this.attrs[n]; };'
+		. 'function Doc(els) { this.els = els; }'
+		. 'Doc.prototype.querySelectorAll = function (sel) { var want = sel.split(",").map(function (s) { return s.trim().replace(/^\\./, ""); });'
+		. ' return this.els.filter(function (e) { return want.some(function (c) { return e.classList.contains(c); }); }); };'
+		. 'function wrap(id, sid) { var a = { "data-sd-id": id }; if (sid) a["data-sw-sid"] = sid; return new El("sd-wrap", a); }'
+		// One canvas: a page menu and a widget modal under the same node id, an
+		// offcanvas, a menu of server HTML (no wrapper), a self-wrapped menu
+		// and a collapse. `open` names the ones drawn open.
+		. 'function canvas(open) { open = open || {}; var c = {};'
+		. ' c.menu = new El("dropdown-menu" + (open.menu ? " show" : ""), {}, wrap("sd_1"));'
+		. ' c.modal = new El("modal fade" + (open.modal ? " show" : ""), {}, wrap("sd_1", "7"));'
+		. ' c.oc = new El("offcanvas offcanvas-start" + (open.oc ? " show" : ""), {}, wrap("sd_3"));'
+		. ' c.server = new El("dropdown-menu" + (open.server ? " show" : ""), {}, new El("nav"));'
+		. ' c.self = new El("dropdown-menu" + (open.self ? " show" : ""), open.self ? { "data-sd-id": "sd_4", "data-sd-self": "", "data-bs-popper": "static" } : { "data-sd-id": "sd_4", "data-sd-self": "" });'
+		. ' c.col = new El("collapse" + (open.col ? " show" : ""), {}, wrap("sd_5"));'
+		. ' c.doc = new Doc([c.menu, c.modal, c.oc, c.server, c.self, c.col]); return c; }'
+		. 'function shown(c) { return ["menu", "modal", "oc", "server", "self", "col"].filter(function (k) { return c[k].classList.contains("show"); }); }';
+}
+
+// Modal, offcanvas and dropdown-menu are the toggleables whose open state is
+// canvas state only; a collapse, a modal's dialog or a dropdown's own box are
+// not.
+function test_designer_collapse_state_canvas_only_kinds()
+{
+	$answer = designer_collapse_state_run(
+		'out(["modal fade", "offcanvas offcanvas-start show", "dropdown-menu dropdown-menu-end", "collapse navbar-collapse",'
+		. ' "accordion-collapse collapse show", "modal-dialog", "dropdown", "offcanvas-body", "", null].map(function (c) { return _sdShowIsCanvasOnly(c); }));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, false, false, false, false, false, false, false), $answer, 'modal, offcanvas, dropdown-menu only');
+}
+
+// A rebuild of the canvas keeps what was open on it: the capture names each
+// open modal, offcanvas or menu a tree node draws (a widget's node apart from
+// the page's node of the same id; server HTML and a collapse left out), the
+// restore opens them again in the new drawing. A node that still carries
+// `show` (an offcanvas as the palette adds it) stays open on the canvas and
+// loses it in the tree; a collapse node is left alone; an open menu loses
+// Popper's mark.
+function test_designer_collapse_state_canvas_open_survives_rebuild()
+{
+	$answer = designer_collapse_state_run(
+		designer_collapse_state_dom()
+		. 'var before = canvas({ menu: true, modal: true, server: true, col: true });'
+		. 'var open = _sdCanvasOpenCapture(before.doc);'
+		. 'var nodes = { ":sd_1": N("semantic", { tag: "ul", cssClass: "dropdown-menu" }), "7:sd_1": N("semantic", { tag: "div", cssClass: "modal fade" }),'
+		. ' ":sd_3": N("semantic", { tag: "div", cssClass: "offcanvas offcanvas-start show" }), ":sd_4": N("semantic", { tag: "ul", cssClass: "dropdown-menu show" }),'
+		. ' ":sd_5": N("semantic", { tag: "div", cssClass: "collapse show" }) };'
+		. 'function nodeOf(id, w) { return nodes[(w.getAttribute("data-sw-sid") || "") + ":" + id] || null; }'
+		. 'var after = canvas({ oc: true, self: true, col: true });'
+		. '_sdCanvasOpenRestore(after.doc, open, nodeOf);'
+		. 'var again = canvas({ col: true }); _sdCanvasOpenRestore(again.doc, {}, nodeOf);'
+		. '_sdCanvasOpenRestore(null, open, nodeOf);'
+		. 'out({ open: open, shown: shown(after), popper: after.self.getAttribute("data-bs-popper"),'
+		. ' tree: Object.keys(nodes).map(function (k) { return k + " " + cls(nodes[k]); }), closed: shown(again), none: _sdCanvasOpenCapture(null) });'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(':sd_1' => true, '7:sd_1' => true), $answer['open'], 'the open page menu and widget modal are named, server HTML and the collapse are not');
+	pg_assert_same(array('menu', 'modal', 'oc', 'self', 'col'), $answer['shown'], 'open again after the rebuild; the drawn-open offcanvas and self-wrapped menu stay open');
+	pg_assert_same(null, $answer['popper'], 'an open menu loses data-bs-popper');
+	pg_assert_same(array(
+		':sd_1 dropdown-menu', '7:sd_1 modal fade', ':sd_3 offcanvas offcanvas-start', ':sd_4 dropdown-menu', ':sd_5 collapse show',
+	), $answer['tree'], 'the tree keeps no show of a modal, offcanvas or menu; a collapse keeps its own');
+	pg_assert_same(array('col'), $answer['closed'], 'nothing captured: the new drawing stays as the tree has it');
+	pg_assert_same(array(), $answer['none'], 'no canvas, nothing open');
+}
+
+// Where the editor uses it: renderCanvas() captures before the body is
+// emptied (only when the canvas shows the active page, whose ids the keys
+// name) and restores after the build; the mirror from the canvas into the
+// tree is for a collapse only and skips the canvas-only kinds; the context
+// bar's Show / Hide writes the tree for a collapse only.
+function test_designer_collapse_state_canvas_open_wiring()
+{
+	$render = _test_blocks_slice('    function renderCanvas() {', "\n    }\n");
+	$capture = strpos($render, 'canvasDoc.body._sdDrawnPage === _activeKey ? _sdCanvasOpenCapture(canvasDoc) : {}');
+	$wipe = strpos($render, "canvasDoc.body.innerHTML = '';");
+	$build = strpos($render, 'buildNodeEl(tree)');
+	$stamp = strpos($render, 'canvasDoc.body._sdDrawnPage = _activeKey;');
+	$restore = strpos($render, '_sdCanvasOpenRestore(canvasDoc, _openToggleables, _sdFindNodeForEl);');
+	pg_assert_true($capture !== false && $wipe !== false && $build !== false && $stamp !== false && $restore !== false, 'renderCanvas() captures, stamps and restores');
+	pg_assert_true($capture < $wipe && $wipe < $build && $build < $stamp && $stamp < $restore, 'capture before the wipe, restore after the build');
+
+	$sync = _test_blocks_slice('    function _syncToggleableShowStateFromDom() {', "\n    }\n");
+	pg_assert_true(strpos($sync, "canvasDoc.body._sdDrawnPage !== _activeKey) return;") !== false, 'the mirror waits for the active page on the canvas');
+	pg_assert_true(strpos($sync, "canvasDoc.querySelectorAll('.collapse')") !== false, 'the mirror reads collapse elements only');
+	pg_assert_true(strpos($sync, '_sdShowIsCanvasOnly(node.props.cssClass)) continue;') !== false, 'the mirror skips a canvas-only node');
+
+	$ctx = _test_blocks_slice('    function ctxBarToggle(toShow) {', "\n    }\n");
+	pg_assert_true(strpos($ctx, 'if (!_sdShowIsCanvasOnly(targetNode.props.cssClass)) {') !== false, 'Show / Hide writes the tree for a collapse only');
 }
 
 // The Expanded / Collapsed switches open or close a panel and flip every

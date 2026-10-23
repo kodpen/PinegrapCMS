@@ -12,7 +12,7 @@ description: Canvas links never navigate in the designer, even #fragment, becaus
 ## Why does the editor open dropdowns instead of Bootstrap?
 - Bootstrap Dropdown looks for the menu as the trigger's **sibling**; on the canvas `.sd-wrap` sits in between, so it finds none and throws (`display:contents` does not change DOM sibling relations; this is the sibling version of a direct-child assumption).
 - For `[data-bs-toggle="dropdown"]` the editor finds the menu via scope and toggles `show` itself; one menu is open at a time.
-- **The menu stays open** so the operator can select and edit items inside; Bootstrap would close it on the next click.
+- **The menu stays open** so the operator can select and edit items inside; Bootstrap would close it on the next click. A redraw keeps it open on the canvas only, never in the tree (designer-canvas-open-state.md).
 - When adding a new Bootstrap JS component, check whether it depends on a sibling/child relationship.
 
 ## Why is the dropdown guard on the canvas window, not the document?
