@@ -324,12 +324,14 @@ function test_erp_auto_invoice_tax_number_difference_texts()
 	pg_assert_true($none !== $other);
 
 	// An account the order is billed to may rightly hold another number; a
-	// store that invoices on its own is told it holds the order and does not
-	// try again. Neither is said otherwise.
+	// store that invoices on its own is told it holds the order while the
+	// numbers differ; a later trigger runs the decision again, so the text
+	// never says it is not tried again. Neither is said otherwise.
 	$billed = erp_order_tax_number_difference_text(array_merge($own, array('own' => false)));
 	pg_assert_true((strpos($billed, $other) === 0) && (strlen($billed) > strlen($other)), 'billed to another account');
 	$automatic = erp_order_tax_number_difference_text($own, true);
-	pg_assert_contains('does not try again', $automatic);
+	pg_assert_contains('while the two differ', $automatic);
+	pg_assert_true(strpos($automatic, 'try again') === false, 'a later trigger can still issue it');
 	pg_assert_true(strpos($other, 'on its own') === false, 'nothing about the automatic invoice when it is off');
 
 	$bell = erp_auto_invoice_tax_number_reason();

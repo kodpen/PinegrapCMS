@@ -15,7 +15,7 @@ description: What a checkout writes on the contact card: the "Update my contact 
 - Owner decision (2026-10-20): fill an empty card rather than add tax columns to `orders` (a schema step).
 
 ## Does a new number on the card reach the order's invoice?
-- No: the card never changes an ERP account that already exists, and the invoice carries the account's number. When the card names another number, the automatic invoice is held and the order screen shows both (owner decision 2026-10-23, erp/erp-order-tax-number-difference.md).
+- No: the card never changes an ERP account that already exists, and the invoice carries the account's number. When the card names another number, the automatic invoice is held and the order screen shows both (chosen 2026-10-23 in #1307, erp/erp-order-tax-number-difference.md).
 
 ## Which test covers it?
 - `tests/checkout_contact_tax_test.php`.

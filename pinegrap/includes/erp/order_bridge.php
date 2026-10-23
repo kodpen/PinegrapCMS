@@ -1388,8 +1388,8 @@ function erp_order_tax_number_difference($order)
  *
  * An account the order is billed to, not the contact's own, may rightly
  * carry another number, and the text says so. Where the store invoices its
- * orders on its own, the text adds that it holds this one and does not try
- * again once the numbers agree: nothing retries, the card's button issues it.
+ * orders on its own, the text adds that it does not issue it on its own while
+ * they differ; a later trigger runs the decision again.
  *
  * @param array $difference  contact_tax_number, account_tax_number, account_title, own
  * @param bool  $automatic   The store issues invoices on its own (ERP_AUTO_INVOICE_ON)
@@ -1418,7 +1418,7 @@ function erp_order_tax_number_difference_text($difference, $automatic = false)
     }
 
     if ($automatic) {
-        $text .= ' ' . lang('The store does not issue it on its own while the two differ, and does not try again once they agree: issue it here.');
+        $text .= ' ' . lang('The store does not issue it on its own while the two differ: check them, then issue it here.');
     }
 
     return $text;
