@@ -584,6 +584,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $custom_form_auto_registration_checked = '';
     }
 
+    // Double opt-in: drawn only once the 11.0.27 column is there, inside the
+    // contact group row so it shows and hides with it.
+    $custom_form_double_opt_in_switch = '';
+
+    if (pg_fs_ready()) {
+        $custom_form_double_opt_in_switch =
+            '<div class="form-check form-switch mt-2">
+                <input type="checkbox" class="form-check-input" role="switch" id="custom_form_double_opt_in" name="custom_form_double_opt_in" value="1"' . ((($custom_form_properties['double_opt_in'] ?? '') == 1) ? ' checked="checked"' : '') . ' />
+                <label class="form-check-label" for="custom_form_double_opt_in">' . h(lang('Ask for confirmation by e-mail before adding to the group (double opt-in)')) . '</label>
+            </div>
+            <div class="form-text">' . h(lang('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) . '</div>';
+    }
+
     // if submitter e-mail is enabled prepare to check check box
     if (($custom_form_properties['submitter_email'] ?? '') == 1) {
         $custom_form_submitter_email_checked = ' checked="checked"';
@@ -2114,6 +2127,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             '<div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_contact_group_id_row" style="' . $custom_form_contact_group_id_row_style . '">
                 <label class="form-label" for="custom_form_contact_group_id">' . lang('Add to Contact Group') . '</label>
                 <select class="form-select" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['contact_group_id'] ?? ''), $user) . '</select>
+                ' . $custom_form_double_opt_in_switch . '
             </div>
             <div class="col-12 my-2" id="custom_form_submitter_email_row" style="' . $custom_form_submitter_email_row_style . '">
                 <div class="form-check form-switch">
@@ -3004,6 +3018,12 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
 
             if ($hooks) {
                 $properties['hook_code'] = $field('custom_form_hook_code');
+            }
+
+            // Written only once the 11.0.27 column is there: every key here
+            // becomes a column of the save query.
+            if (pg_fs_ready()) {
+                $properties['double_opt_in'] = $field('custom_form_double_opt_in', 0) ? 1 : 0;
             }
 
             break;

@@ -1,21 +1,22 @@
 ---
 name: consent-log-and-audit-trail
-description: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them yet
+description: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
 ---
 
 ## What are the two tables?
 - `consent_log`: one row per consent given or refused, appended only. `audit_log`: who changed what (panel, API, job) with the changed fields before and after. Both from `upgrade_2026_11_0_privacy_logs()` (11.0.16, PR #738); gates `pg_consent_log_ready()`, `pg_audit_ready()`. Helpers: `includes/fn/privacy.php`, `includes/fn/audit.php`.
 
 ## What is the person token?
-- `pg_privacy_person_token($email)`: HMAC-SHA256 of `person:` + the trimmed, lower-cased address (`pg_privacy_normalize_email()`) under `ENCRYPTION_KEY`; `''` without an address or a key. It ties rows that outlive the person's records (consents kept as proof, anonymised orders) to the person. Export and erasure use the same function. A changed `ENCRYPTION_KEY` orphans every token.
+- `pg_privacy_person_token($email)`: HMAC-SHA256 of `person:` + the trimmed, lower-cased address (`pg_privacy_normalize_email()`) under `ENCRYPTION_KEY`; `''` without an address or a key. It ties consents kept as proof and anonymised orders to the person. Export and erasure use the same function. A changed `ENCRYPTION_KEY` orphans every token.
 
 ## How is a consent row made?
-- `pg_consent_log_record($event)`; `pg_consent_log_row()` validates. Channel and purpose from `pg_consent_log_purposes()`: `cookie` takes the notice's categories (`pg_consent_category_letters()`: analytics, marketing), `email`/`sms`/`call` take `marketing` (the İYS channels), `contract` takes the `order_documents.type` values (`preinfo`, `contract`, `kvkk`). Status `granted` or `refused`; a withdrawal is a refused row after a granted one. Source from `pg_consent_log_sources()`; a new writer adds its source there.
+- `pg_consent_log_record($event)`; `pg_consent_log_row()` validates. Channel and purpose from `pg_consent_log_purposes()`: `cookie` takes the notice's categories (`pg_consent_category_letters()`), `email`/`sms`/`call` take `marketing` (İYS channels), `email` also `group:<id>` (`pg_consent_log_purpose_valid()`), `contract` takes the `order_documents.type` values (`preinfo`, `contract`, `kvkk`). Status `granted`, `refused` or `pending` (a confirmation mail sent; never a consent); a withdrawal is a refused row after a granted one. Source from `pg_consent_log_sources()`; a new writer adds its source there.
 - A person (token, user or contact) is required except on `cookie`, which an anonymous visitor answers. ip is `waf_client_ip()` unless passed (pass `''` for imports and İYS pulls). A row that cannot be written returns 0 and stops nothing.
 - Current answer: `pg_consent_log_current(pg_consent_log_rows($person))`, the newest row per `channel:purpose` (time, then id).
 
 ## Who writes consent rows today?
-- Nobody yet. Planned writers: a server endpoint for the cookie notice (it still keeps the answer only in the `pg_consent` cookie), sign-up, checkout (legal documents, the KVKK box of `checkout-legal-documents.md` step 4), My Account, unsubscribe, İYS (`sms-and-iys.md` steps 4–5; the table those steps need is this one).
+- Double opt-in forms: source `form`, `group:<id>`, pending then granted (`form-double-opt-in.md`).
+- Planned: a cookie notice endpoint (now only the `pg_consent` cookie), sign-up, checkout (KVKK box, `checkout-legal-documents.md` step 4), My Account, unsubscribe, İYS (`sms-and-iys.md` steps 4–5).
 
 ## What does pg_audit() keep?
 - Only the fields that differ, compared as text (a DB row and a posted form disagree only on type). A side not given (before a create, after a delete) is `NULL`. An update that changed nothing writes nothing; an event given no fields (a key revoked) is always written.
@@ -29,6 +30,6 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 - Both keep their rows in a backup (records of who did what, like `log`); `tests/backup_test.php` pins it.
 
 ## Tests?
-- `tests/privacy_test.php`, `tests/audit_log_test.php`. The writers were run against MariaDB 10.11 (quotes, Unicode, an unchanged update, a long text).
+- `tests/privacy_test.php`, `tests/audit_log_test.php`. The writers were run against MariaDB 10.11 (quotes, Unicode, a long text).
 
 Related: docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md, docs/memory/platform/cookie-consent-notice.md

@@ -410,9 +410,11 @@ function pg_cf_load_page_form_settings($page_id)
         'confirm_email' => 0, 'confirm_subject' => '', 'confirm_page_id' => 0,
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
-        'pretty_urls' => 0,
+        'pretty_urls' => 0, 'double_opt_in' => 0,
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
+    // The 11.0.27 column is read once it is there.
+    $double_opt_in_ready = pg_fs_ready();
 
     $row = db_item(
         "SELECT form_name, enabled, quiz, save, auto_registration,
@@ -420,7 +422,7 @@ function pg_cf_load_page_form_settings($page_id)
                 administrator_email_format, administrator_email_page_id,
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
-                membership, membership_days, pretty_urls
+                membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -454,6 +456,8 @@ function pg_cf_load_page_form_settings($page_id)
         // Records addressed by their name (/<page>/<title>) rather than by
         // their reference code; the name comes from the Title field.
         'pretty_urls'          => (int)$row['pretty_urls'] === 1 ? 1 : 0,
+        // The contact joins the group only through the link mailed to it.
+        'double_opt_in'        => ($double_opt_in_ready && (int)$row['double_opt_in'] === 1) ? 1 : 0,
     );
 }
 
@@ -806,6 +810,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     // fields (the Title field among them) are in place.
     if (array_key_exists('pretty_urls', $settings)) {
         $set['pretty_urls'] = !empty($settings['pretty_urls']) ? '1' : '0';
+    }
+    if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
+        $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';
     }
     if (array_key_exists('confirmation_message', $settings)) {
         $msg = trim((string)$settings['confirmation_message']);

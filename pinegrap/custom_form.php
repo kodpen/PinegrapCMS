@@ -69,6 +69,7 @@ $query =
         custom_form_pages.confirmation_alternative_page,
         custom_form_pages.confirmation_alternative_page_contact_group_id,
         custom_form_pages.confirmation_alternative_page_id
+        " . (pg_fs_ready() ? ", custom_form_pages.double_opt_in" : '') . "
     FROM page
     LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
     WHERE page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "'";
@@ -119,6 +120,8 @@ $confirmation_page_id = $row['confirmation_page_id'];
 $confirmation_alternative_page = $row['confirmation_alternative_page'];
 $confirmation_alternative_page_contact_group_id = $row['confirmation_alternative_page_contact_group_id'];
 $confirmation_alternative_page_id = $row['confirmation_alternative_page_id'];
+// Read only once the 11.0.27 column is there; off until then.
+$double_opt_in = isset($row['double_opt_in']) ? (int) $row['double_opt_in'] : 0;
 
 // If auto-registration is disabled, then check if we need to show an error
 // about the user not being logged in, if this form grants membership or private access.
@@ -1111,8 +1114,17 @@ if ($liveform->check_form_errors() == false) {
     
     // if there is a contact, then add contact to contact groups and connect contact to submitted form
     if ($contact_id) {
+        // The form's own group. With double opt-in the contact joins it only
+        // through the confirmation link (includes/fn/form_subscription.php).
+        // Kept apart because the loop below reuses $contact_group_id.
+        $form_contact_group_id = (int) $contact_group_id;
+        $form_contact_group_held = ($double_opt_in === 1)
+            && ($form_contact_group_id > 0)
+            && pg_fs_hold_group($double_opt_in, $form_contact_group_id, pg_fs_is_member($contact_id, $form_contact_group_id))
+            && (pg_fs_group($form_contact_group_id) !== null);
+
         // if contact group is set for custom form, add it to array
-        if ($contact_group_id != 0) {
+        if (($contact_group_id != 0) && !$form_contact_group_held) {
             $contact_groups[] = $contact_group_id;
         }
         
@@ -1122,6 +1134,12 @@ if ($liveform->check_form_errors() == false) {
         // then add membership contact group to contact groups array
         if (($membership == 1) && ($membership_days > 0) && (MEMBERSHIP_CONTACT_GROUP_ID != 0) && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)) {
             $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
+        }
+
+        // The registration or membership group may be the form's group too;
+        // the contact joins it through that, and nothing waits for a link.
+        if ($form_contact_group_held && in_array($form_contact_group_id, array_map('intval', $contact_groups), true)) {
+            $form_contact_group_held = false;
         }
         
         // loop through contact groups that contact should be added to
@@ -1161,6 +1179,11 @@ if ($liveform->check_form_errors() == false) {
             SET contact_id = '$contact_id'
             WHERE id = '$form_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // Mail the confirmation link to the contact's own address.
+        if ($form_contact_group_held) {
+            pg_fs_hold_submission($form_id, $contact_id, $form_contact_group_id);
+        }
     }
 
     // If this form grants private access and there is a user,

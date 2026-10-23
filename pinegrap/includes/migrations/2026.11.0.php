@@ -49,6 +49,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
 	upgrade_2026_11_0_passkeys();               // 11.0.13
+	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 
 }
 
@@ -1085,5 +1086,18 @@ function upgrade_2026_11_0_passkeys() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
+
+}
+
+// A per-form switch for double opt-in: with it on, a custom form that adds its
+// sender to a contact group mails a signed confirmation link instead, and the
+// contact joins the group only when the button behind the link is pressed
+// (includes/fn/form_subscription.php). Off on every existing form, so no form
+// changes what it does until the switch is turned on.
+function upgrade_2026_11_0_form_double_opt_in() {
+
+	install_add_column('custom_form_pages', 'double_opt_in', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Forms: a form that adds its sender to a contact group can now ask for confirmation by e-mail first (double opt-in). The switch is off on every form until it is turned on in the settings of the form.');
 
 }
