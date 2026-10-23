@@ -23,9 +23,9 @@ description: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page an
 - `header_register_callback()` keeps one callback; a second call silently replaces the first (`pg_tr_define_from_request()`, init.php ~870, registered one first). Use `pg_header_callback_add()`, never `header_register_callback()`.
 
 ## What is lost on a CDN hit?
-- `init_tracking()`, record view counts, the perf log, the WAF (bans, country rule). Stale content lives up to the TTL; no purge yet.
+- `init_tracking()`, record views, the perf log, the WAF (bans, country rule). Stale content up to the TTL; a purge reaches no CDN.
 - Setting on, CDN or not: a new visitor's session is dropped on each cacheable page, so visitor rows use the 30-minute IP match; `INET_ATON()` is NULL (0) for IPv6, so cookieless IPv6 visitors in 30 minutes share one row. The help text does not say this yet.
 - Sessions personal before the switch-on lack `pg_nc` until their next origin answer: a CDN may show them the anonymous copy once; nothing leaks.
 - Fail-closed cost: `software.urls`, an empty `software.liveforms` or an auto dialog keep the session personal for the visit (a site with an auto dialog caches nothing); `/` with the language redirect never caches. Unchecked on a real session.
 
-Related: platform/page-cache-proxy-rules.md, plans/anonymous-page-cache.md
+Related: page-file-cache.md, page-cache-proxy-rules.md, visitors/page-view-beacon.md

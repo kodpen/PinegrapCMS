@@ -27,4 +27,4 @@ description: Cache rules for a CDN or reverse proxy in front of Pinegrap (Cloudf
 - The builtin `vcl_backend_response` honours `s-maxage` and does not cache an answer with `Set-Cookie` or `no-store`; keep it.
 
 ## What does a hit skip?
-- Visitor tracking, record view counts and the performance log until the visitor beacon step lands; stale pages up to the lifetime (no purge yet).
+- The performance log; visitor tracking and record view counts, except on a copy taken from a file-cache hit, which carries the beacon (`visitors/page-view-beacon.md`); stale pages up to the lifetime: a purge drops the origin's copies (`page-file-cache.md`), not the proxy's.
