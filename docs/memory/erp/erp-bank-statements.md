@@ -13,7 +13,12 @@ description: ERP bank statement import (4.102): readers, the PHPExcel libxml tra
 ## How is a CSV's separator chosen? (#1076, PR #1219)
 - `erp_bank_csv_separator()` splits the first 50 non-empty lines with each candidate (`;`, `,`, tab, `|`) as CSV, quotes respected. The one that reads the most lines as dated amounts wins; a tie goes to the one whose most common column width covers more lines, then to the earlier one; `;` is the fallback.
 - Before, the most frequent character in the first ten lines won: a Turkish `;` export with commas in descriptions and decimal commas split on the commas (amount in two cells). Column counts alone still let a comma title block or a heading-less tab file tip it to `,`.
-- There is no separator choice on the column screen. `str_getcsv()` gets its escape argument (PHP 8.4+ deprecation).
+- `str_getcsv()` gets its escape argument (PHP 8.4+ deprecation).
+
+## Can the operator choose the separator? (PR #NNNN)
+- Yes, on the column screen of a CSV statement: Automatic (the guess above), `;`, `,`, tab, `|`. The form posts a name (`erp_bank_csv_separators()`), not the character (a tab could be trimmed).
+- A CSV statement keeps its lines until the columns are chosen (`raw_rows` = `{"csv": [lines]}`); `erp_bank_statement_rows()` splits them and cuts the title block on every read. A workbook, or a CSV taken in before, keeps its cells (a list): no select.
+- The name is stored in the statement's `mapping` (`separator`): the import uses the split shown, and the bank account's next statement starts with it.
 
 ## How is an amount's sign and decimals read? (`erp_bank_amount()`, PR #1219)
 - Negative: a minus (`-`, U+2212) before the first digit, also after `TL`, `₺`, `TRY`; one right after the last digit or ending the text (`1.234,56 TL-`); or `(` before and `)` after the number. Before, only the very ends of the text were looked at, so `TL -1.234,56` was money in.

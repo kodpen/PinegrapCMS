@@ -26142,5 +26142,11 @@
     "An article taken off the site can still show in the site search until the editors update the search index.": "Siteden kaldırılan bir haber, editörler arama dizinini güncelleyene kadar site aramasında görünmeye devam edebilir.",
     "bridge-photo.jpg": "kopru-fotografi.jpg",
     "To change your article or take it back, write to the desk below; an editor makes the change.": "Haberinizi değiştirmek ya da geri çekmek için aşağıdan masaya yazın; değişikliği bir editör yapar.",
-    "jane.cooper": "ayse.yilmaz"
+    "jane.cooper": "ayse.yilmaz",
+    "Semicolon (;)": "Noktalı virgül (;)",
+    "Comma (,)": "Virgül (,)",
+    "Tab character": "Sekme karakteri",
+    "Vertical bar (|)": "Dikey çizgi (|)",
+    "Split again": "Yeniden böl",
+    "If the columns come out wrong, choose the separator and split the lines again.": "Sütunlar yanlış ayrıldıysa ayırıcıyı seçip satırları yeniden bölün."
 }
