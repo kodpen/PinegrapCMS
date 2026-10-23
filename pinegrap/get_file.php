@@ -192,6 +192,9 @@ if (strncasecmp($file['name'], 'erp-', 4) === 0) {
 // nothing is a workspace file.
 $workspace_file = false;
 
+// Set when a page built in the visual editor opened a submitted form's file.
+$designed_attachment = false;
+
 if ($erp_document === false) {
     $ws_row = null;
     $ws_legacy = false;
@@ -788,6 +791,28 @@ if ($file['attachment'] == 1) {
                         }
                     }
                 }
+
+                // A page built in the visual editor shows a record through a
+                // form widget, which the classic pages above know nothing
+                // of: a public record view or list printing this field, on a
+                // page the visitor may view, for a record its filters let
+                // through. Loaded only here, where the file would otherwise
+                // be refused.
+                if ($attachment_access == false) {
+                    if (!defined('PG_GET_FILE')) {
+                        define('PG_GET_FILE', true);
+                    }
+
+                    require_once(dirname(__FILE__) . '/includes/record_files.php');
+
+                    $attachment_access = pg_record_file_designed_access(
+                        $submitted_form['custom_form_page_id'],
+                        $submitted_form['id'],
+                        $submitted_form['attachment_field_name']
+                    );
+
+                    $designed_attachment = $attachment_access;
+                }
             }
         }
     }
@@ -1161,6 +1186,14 @@ switch ($access_control_type) {
 // A workspace file may stay in the reader's browser, which draws it again every
 // time the channel is opened, but never in a shared proxy.
 if ($workspace_file) {
+    $cache_control_type = 'private';
+}
+
+// A file a designed page opened depends on the visitor (the page's folder)
+// and on the record as it is now (its filters): a shared cache keeping it
+// would serve it to visitors the page does not show it to, and keep a record
+// taken back to draft open for a week.
+if ($designed_attachment) {
     $cache_control_type = 'private';
 }
 

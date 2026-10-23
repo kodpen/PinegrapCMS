@@ -18,6 +18,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Build a palette component as a tree of semantic nodes with Bootstrap classes: no script, stylesheet or fixed inline style, and `render()` equal to `toHTML()` (`palette-component-rules.md`).
 - Resolve canvas elements with `_sdFindNodeForEl(id, el)` and parents with `_sdAnyParent(node)`: `findNodeById()` is null inside widgets and shared components (`designer-find-node-for-el.md`).
 - Keep `shared_ref.children` empty (`[]`): a shared component is drawn per request from its row; never write its expanded children into a stored tree (`shared-component-model.md`).
+- Mark the component a node lives in when a path writes the node without selecting it (`_sdSharedMarkEdited(node)`); never take a snapshot after a change, or Save skips it as unchanged (`shared-component-editor-cache.md`).
 - Add a new page-save dependency beyond the page's tree and settings to `_pgPageUnchanged()`, or Save skips the page as unchanged (`multi-page-designer-editor.md`).
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
 <!-- key-rules:end -->
@@ -40,6 +41,9 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
+- design-template-news-layout.md: News template page shapes: the lead grid, most read inside the article's record view, newsletter field order, one tip call on the front page, band padding, p titles in the drawer, whole tips.
+- design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
+- design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
 - design-templates-file-format.md: Writing a design template file (includes/design_templates/<id>.php): version, keys, placeholders, requires, starter widgets, shared parts, folders, and what opening a template writes before Publish.
 - design-templates-from-design.md: Templates made from a design (2026.4.8): design_template table, custom-<n> ids, same shape as a template file, the pg_dtc_* placeholder export, assets, deleting, the same-request cache trap.
@@ -64,10 +68,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
 - designer-canvas-controls.md: Which canvas controls run as on the page (_SD_CANVAS_CONTROLS) and why a click on their icon or label reaches them; the theme toggle's icon beside the editor toolbar.
 - designer-canvas-design-assets.md: How a design's scripts and stylesheets reach the designer canvas: scripts once per canvas document, realm reset, links synced by difference, file stamps, frame scheduling, motion pause, state classes.
-- designer-canvas-links.md: Canvas links never navigate in the designer, including #fragment, because of the <base> tag; Bootstrap-bound links; why the editor opens dropdowns itself, guarded on the canvas window.
+- designer-canvas-links.md: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 - designer-canvas-redraw-paths.md: Which designer path redraws what: render() for tree changes, _sdSelectRender() for a selection, the overview marked in place, the scroll pass, toolbars filled on first need, writes by difference.
 - designer-canvas-selector-bridge.md: Canvas selector bridge for designs on their own framework: rules rewritten across .sd-wrap, only rules whose classes are on the page, flat selector lists instead of :is(), one place that rewrites.
-- designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, .sd-loop-area width, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), cycle guard.
+- designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), express order frame, cycle guard.
 - designer-canvas-theme-view.md: The editor's Dark/Light canvas view and the theme switchers on the canvas are one state on the canvas <html>, never stored: applyCanvasTheme(), pgThemeNoStore, why not <body>.
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
@@ -82,11 +86,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
+- designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-home-screen.md: Visual Page Editor home (view_system_styles.php): drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
-- designer-inline-text-editing.md: Canvas in-place text editing: spaces typed into a button label, labels of colour/date/file inputs, no edit hint on bound text, the canvas <html lang> for Turkish capitals.
+- designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
@@ -151,7 +156,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
-- shared-component-editor-cache.md: The editor's shared component cache: prefetchShared() never overwrites a dirty entry, _sharedDirty and snapshots, what marks a component dirty, the flush at Save, repairing a template placeholder.
+- shared-component-editor-cache.md: The editor's shared component cache: prefetch keeps a changed entry, the snapshot every drawn tree gets, what marks a component dirty, the flush at Save, a template placeholder.
 - shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
