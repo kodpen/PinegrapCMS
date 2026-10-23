@@ -279,6 +279,34 @@ function erp_split_gross($gross, $rate)
 }
 
 /**
+ * The amount before tax that comes to a total once the tax at the rate is
+ * taken on the whole of it (erp_apply_rate()); null when no amount does.
+ *
+ * There is one at most: a kurus more on the amount puts one or two on the
+ * total, so at 20% one total in six (3 kurus off a multiple of 6, such as
+ * 57.93) is never reached, at 10% one in eleven. A document whose lines at
+ * one rate come to such a total cannot have its tax taken on their sum, the
+ * way an e-document provider takes it.
+ *
+ * @param int   $total  Kurus, tax included
+ * @param float $rate   Percentage
+ * @return int|null
+ */
+function erp_rate_amount($total, $rate)
+{
+    $total = (int) $total;
+    $near = (int) round($total * 100 / (100 + (float) $rate));
+
+    foreach (array($near, $near - 1, $near + 1) as $amount) {
+        if (($amount >= 0) && (($amount + erp_apply_rate($amount, $rate)) === $total)) {
+            return $amount;
+        }
+    }
+
+    return null;
+}
+
+/**
  * Convert an amount into the base currency at a given exchange rate.
  *
  * The one place a document-currency figure becomes a base-currency one. The

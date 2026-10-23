@@ -15,5 +15,5 @@ description: The "CA Certificate Bundle" system status check (CURL_CA_BUNDLE age
 - Older than 12 months -> yellow (half the weight); older than 24 months -> red (full weight); otherwise green.
 - Message carries the parsed date (per site `DATE_FORMAT`) and the age in months; tile value is "N ay".
 
-## Cache caveat
+## Why does a changed setting not show at once?
 - Subject to the 10-minute status cache: after changing the constant in `config.php` the new row does not show until `data/temp/system_status_cache.json` is deleted. The cache shape version (`v`) was not changed: no new key was added to each check.

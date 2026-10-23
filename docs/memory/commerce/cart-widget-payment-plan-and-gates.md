@@ -13,7 +13,7 @@ description: Who writes cart recurring payment plan columns, the Messages-node-b
 - Row builders read `$_pg_cart_lf_snapshot` (`pg_liveform_snapshot`, a copy taken before the tree is drawn). A new row block needing the liveform takes the same copy, not the liveform object.
 - This is the cart form of the membership-widget rule "read first, then add the Messages node".
 
-## Staff-only controls are gated in two places
+## Where are staff-only controls gated?
 - `__offline_payment_checkbox` is invisible to customers (role < 3 or `set_offline_payment`). The gate is checked separately at render AND on the `cart_action.php` POST side.
 - The POST check is mandatory: the checkbox is only HTML; a visitor could POST `offline_payment_allowed=1` and complete an order without paying. Hiding at render time is not an authorization check.
 

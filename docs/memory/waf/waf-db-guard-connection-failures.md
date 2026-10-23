@@ -4,7 +4,7 @@ description: includes/db_guard.php rules: no fatal on DB connect error, only tra
 ---
 
 ## Why does the WAF sit behind a DB guard (`includes/db_guard.php`)?
-- In `init.php`, `db_connect()` is at line 225 and `waf_run('init')` at 737. When the connection pool is full the request dies at 225 and the firewall never runs: it cannot ban the attacker and the lock feeds itself. This took a site down (`forgot_password.php` + SMTP-waiting connections + `max_user_connections`).
+- In `init.php`, `db_connect()` runs long before `waf_run('init')`, which waits for `initialize_user()`. When the connection pool is full the request dies at `db_connect()` and the firewall never runs: it cannot ban the attacker and the lock feeds itself. This took a site down (`forgot_password.php` + SMTP-waiting connections + `max_user_connections`).
 
 ## Which three rules came out of it?
 - A connection error cannot be fatal. Since PHP 8.1 mysqli throws and `@` does not suppress it; the `else` branch of `db_connect()` was dead code for years. `try/catch` + 503 is mandatory. A stack trace per request is a second crash cause on disk-quota hosting, so the log writes ONE line per minute.

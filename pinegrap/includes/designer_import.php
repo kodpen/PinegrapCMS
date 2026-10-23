@@ -803,8 +803,12 @@ function pg_di_node($node, $ctx)
         // srcset left in the raw attributes would beat whatever the picker
         // sets later (the browser prefers it over src).
         $attrs = pg_di_attrs($node, $ctx, array('class', 'id', 'src', 'alt', 'width', 'height', 'srcset', 'sizes'));
+        // An <img> without an alt attribute gets no alt prop, so the editor's
+        // audit asks for one; alt="" (a decorative image) is kept as written.
+        $alt = $node->hasAttribute('alt') ? array('alt' => (string)$node->getAttribute('alt')) : array();
         return pg_di_mk('content', array_merge(array(
-            'contentType' => 'image', 'src' => $src, 'alt' => (string)$node->getAttribute('alt'),
+            'contentType' => 'image', 'src' => $src,
+        ), $alt, array(
             'width' => (string)$node->getAttribute('width'), 'height' => (string)$node->getAttribute('height'),
             'fluid' => false, 'rounded' => false, 'objectPosition' => '', 'aspectRatio' => '', 'cssClass' => $cls,
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
