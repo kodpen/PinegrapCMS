@@ -8,6 +8,18 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f \"$CLAUDE_PROJECT_DIR/tools/install_git_hooks.sh\" ]; then bash \"$CLAUDE_PROJECT_DIR/tools/install_git_hooks.sh\" --session-start; fi"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "WebFetch",
