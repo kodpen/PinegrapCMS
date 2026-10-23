@@ -14,7 +14,7 @@ description: An offer's percentage as a figure (order discount, product, gift, s
 - `pg_offer_order_discount_value()` (the session's `order_discount`, `orders.discount`; the ladder rung too) and `pg_offer_gift_price()`.
 - The product discount in `apply_offers_to_cart()`, `get_best_offer_id()` and `get_discounted_product_prices()` (catalogue, feeds, price history offer rows): a whole number now, where it was a float that MySQL rounded on the INT write and that the running subtotal later offers are checked against carried with its fraction.
 - The shipping discount in `apply_offers_to_cart()`, `get_best_offer_id()`, `shipping.php` (the recipient's cost and the method list), `shipping_method.php`, `shopping_cart.php` and `get_shipping_method.php` (the cost a method list shows).
-- `tests/offer_percent_test.php` reads the product tree and fails on a `discount_...percentage ... / 100` left anywhere.
+- `tests/offer_percent_test.php` reads the root pages (`pinegrap/*.php`) and `pinegrap/includes/fn/*.php`, comments left out, and fails on a `discount_...percentage ... / 100` left there. Other folders (`includes/erp/`, `includes/api/`, templates) are not scanned.
 
 ## What did it fix? (PR #1367)
 - PHP 8.4 and later no longer pre-round in `round()`: 1310 x 0.35 = 458.4999... gave 4.58 where PHP 8.3 gave 4.59 (35% of 13.10); 29% of 14.50 (4.21) and 55% off 6.50 (2.93) were a kurus lower too. About one amount and percentage pair in 1,700 moved (one in 2,800 of what is left), at percentages such as 29, 35, 55 and 57; the same cart was charged differently by server version.
@@ -23,6 +23,7 @@ description: An offer's percentage as a figure (order discount, product, gift, s
 
 ## What still rounds a float percentage?
 - The card surcharge (`ECOMMERCE_SURCHARGE_PERCENTAGE`): `submit_order.php`, `pg_express_order_charged_totals()`, the express order and order preview pages. It is not an offer and its setting is a decimal.
+- The bulk price change by percentage: `pg_bulk_price_change()` methods 3 and 4 (`edit_products.php`) and the Catalog Manager's `increase_percent` / `decrease_percent` (`view_folder_and_files_f.php`), `round(((100 - $value) / 100) * $price)` on a typed decimal. It writes `products.price`, not an offer.
 - The ERP storefront's best offer (`includes/erp/products.php`) already uses `erp_apply_rate()`.
 
 Related: docs/memory/commerce/offer-order-discount-ladder.md, docs/memory/commerce/offer-gift-lines.md, docs/memory/commerce/offer-discounted-units.md
