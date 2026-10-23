@@ -13,6 +13,7 @@ description: What the ERP does when a step of a Paraşüt send goes wrong (no an
 - One found: taken over (total check, no POST). If its date or contact is not the invoice's now, it is deleted (2xx/404) and the invoice written fresh; not deleted: refused with its id, mark kept (#1210).
 - None: written. Several: refused with the ids. Search fails, or nothing matched with pages left unread (`erp_edoc_parasut_search_incomplete()`): refused, nothing written. Way out of the last: delete the record on Paraşüt or cancel the invoice.
 - Open: cancelling the invoice while the mark is set does not look at Paraşüt.
+- The order screen's own Create Invoice searches the same way (erp-parasut-legacy-invoice.md).
 
 ## What if the total differs and the record will not be deleted?
 - The `DELETE` answer is read (404 = gone). Not deleted: the refusal names the id, the service keeps it on the `error` row; the send gate refuses and cancelling the invoice deletes it there (#1019).
