@@ -2764,9 +2764,14 @@ function pg_return_refund_plan($return)
  * another way ('manual': a bank transfer, cash; 0 when the money already went
  * back from the order screen). The return is marked refunded before the
  * driver is asked, under the order's lock, so a second click or a second
- * person cannot pay it twice; a refusal puts it back. What was paid back is
- * added to the order's refunded amount with an order_refunds row; the order's
- * status and totals stay as they are (a return is not a cancellation).
+ * person cannot pay it twice; a refusal puts it back. An unclear answer (no
+ * answer in time, one that cannot be read: the money may have gone back)
+ * does not: the return stays refunded and the amount is recorded as refunded
+ * but unconfirmed, the attempt is logged and the operator is told to check
+ * the service's own screen - reopening it sent a second refund on the next
+ * click. What was paid back is added to the order's refunded amount with an
+ * order_refunds row; the order's status and totals stay as they are (a
+ * return is not a cancellation).
  *
  * The caller has checked the person's commerce rights.
  *
@@ -2774,12 +2779,13 @@ function pg_return_refund_plan($return)
  * @param array $options amount (minor units), method (driver or manual),
  *                       reference (of a manual refund)
  * @param int   $user_id
- * @return array ok, error, amount, method, mailed, erp (pg_return_refund_plan()'s)
+ * @return array ok, error, amount, method, mailed, erp (pg_return_refund_plan()'s),
+ *               unclear (the driver's answer did not say; ok is false)
  */
 function pg_return_refund($return_id, $options, $user_id = 0)
 {
     $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'amount' => 0, 'method' => '', 'mailed' => false, 'erp' => null);
+        return array('ok' => false, 'error' => $error, 'amount' => 0, 'method' => '', 'mailed' => false, 'erp' => null, 'unclear' => false);
     };
 
     if (!pg_returns_ready() || !pg_schema_has('order_refunds', 'notes') || !pg_schema_has('orders', 'refunded_amount')) {
@@ -2850,8 +2856,13 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     }
 
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
+    $unclear = null;
 
     if ($method === 'driver') {
+        // A driver refund keeps only the service's own id of the refund: the
+        // form's reference belongs to a refund made another way.
+        $reference = '';
+
         $order_row = db_item("SELECT * FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
         $order_lines = db_items(
             "SELECT * FROM order_items
@@ -2864,16 +2875,27 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             log_activity($line);
         }
 
-        if (!$answer['success']) {
+        list($service_words, $service_detail) = pg_return_refund_service_words($answer);
+
+        if (!$answer['success'] && $answer['unclear']) {
+            // The return stays refunded and the money is booked: a second
+            // click must not send a second refund, and whatever the service
+            // did, the operator finishes it on its own screen.
+            $unclear = pg_return_refund_unclear_lines($return['id'], $plan['order']['order_number'], $amount, $plan['driver_label'], $service_words, $service_detail);
+
+            log_activity($unclear['log']);
+        } elseif (!$answer['success']) {
             db("UPDATE order_returns SET status = 'received', refunded_at = 0
                 WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
 
             $release();
 
-            return $fail(((string) $answer['error'] !== '') ? (string) $answer['error'] : lang('The refund could not be made.'));
-        }
+            log_activity(pg_return_refund_refused_line($return['id'], $plan['order']['order_number'], $amount, $plan['driver_label'], ($service_detail !== '') ? $service_detail : (string) $answer['error']));
 
-        $reference = pg_return_text((string) $answer['refund_reference'], 255);
+            return $fail(((string) $answer['error'] !== '') ? (string) $answer['error'] : lang('The refund could not be made.'));
+        } else {
+            $reference = pg_return_text((string) $answer['refund_reference'], 255);
+        }
     }
 
     if ($amount > 0) {
@@ -2885,7 +2907,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
                 '" . $amount . "',
                 '" . (($method === 'driver') ? 'return' : 'return_manual') . "',
                 '" . e($reference) . "',
-                '" . e('Return request #' . (int) $return['id']) . "',
+                '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
                 NOW())");
     }
 
@@ -2904,6 +2926,21 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     pg_audit('update', 'order_return', (int) $return['id'], $old, $after,
         lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int) $return['id'], $plan['order']['order_number']))));
 
+    if ($unclear !== null) {
+        // Nothing is mailed and the ERP hand-off is not offered: whether the
+        // money went back is not known; staff confirm it on the service's
+        // screen, then tell the customer and issue the return invoice by hand.
+        return array(
+            'ok'      => false,
+            'error'   => $unclear['error'],
+            'amount'  => $amount,
+            'method'  => $method,
+            'mailed'  => false,
+            'erp'     => null,
+            'unclear' => true,
+        );
+    }
+
     $vars = array((int) $return['id'], $plan['order']['order_number'], pg_return_money_text($amount));
 
     log_activity(($method === 'driver')
@@ -2917,7 +2954,76 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         'method' => $method,
         'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method) : false,
         'erp'    => $plan['erp'],
+        'unclear' => false,
     );
+}
+
+/**
+ * What a failed refund answer says, split by who may read it. The screen
+ * words are the service's own (raw.message) and are '' when the driver threw:
+ * raw.exception set means raw.message is PHP's exception text, which can name
+ * classes and server paths, so it goes to the activity log only. The log
+ * detail is raw.message whatever it holds. Neither falls back to the answer's
+ * error sentence, which the caller has already.
+ *
+ * @param array $answer a pg_payment_answer() shape
+ * @return array screen words, log detail
+ */
+function pg_return_refund_service_words($answer)
+{
+    $raw = (is_array($answer) && isset($answer['raw']) && is_array($answer['raw'])) ? $answer['raw'] : array();
+    $detail = (isset($raw['message']) && is_scalar($raw['message'])) ? (string) $raw['message'] : '';
+    $words = (isset($raw['exception']) && ((string) $raw['exception'] !== '')) ? '' : $detail;
+
+    return array($words, $detail);
+}
+
+/**
+ * What an unclear refund answer of a return leaves: the activity log line
+ * (the return, the order, the amount, the service and what came back) and the
+ * sentence the operator reads.
+ *
+ * @param int         $return_id
+ * @param string      $order_number
+ * @param int         $amount     minor units asked back
+ * @param string      $service    the driver's label
+ * @param string      $message    the service's own words, for the screen
+ * @param string|null $log_detail what came back, for the log (exception text
+ *                                included); null: the same as $message
+ * @return array log, error
+ */
+function pg_return_refund_unclear_lines($return_id, $order_number, $amount, $service, $message, $log_detail = null)
+{
+    $message = (string) $message;
+    $log_detail = ($log_detail === null) ? $message : (string) $log_detail;
+
+    $vars = array((int) $return_id, (string) $order_number, pg_return_money_text($amount), (string) $service);
+
+    return array(
+        'log'   => lang(array(
+            'string' => 'Return request {var:1} of order {var:2}: {var:4} gave no clear answer to the refund of {var:3} ({var:5}). The return stays refunded and the amount was recorded as refunded. Check the refund on the {var:4} screen; if it is not there, make it there.',
+            'vars'   => array_merge($vars, array(($log_detail !== '') ? $log_detail : lang('no answer'))))),
+        'error' => lang(array(
+            'string' => 'No clear answer came from {var:4} ({var:5}): the refund of {var:3} may have been made. The return stays refunded and the amount was recorded. Check the payment on the {var:4} screen before doing anything else; if the refund is not there, make it there. Do not send it again from here.',
+            'vars'   => array_merge($vars, array(($message !== '') ? $message : lang('no answer'))))),
+    );
+}
+
+/**
+ * The activity log line of a refund the service refused for a return.
+ *
+ * @param int    $return_id
+ * @param string $order_number
+ * @param int    $amount  minor units asked back
+ * @param string $service the driver's label
+ * @param string $message the service's words
+ * @return string
+ */
+function pg_return_refund_refused_line($return_id, $order_number, $amount, $service, $message)
+{
+    return lang(array(
+        'string' => 'Return request {var:1} of order {var:2}: {var:4} refused the refund of {var:3} ({var:5}). The return is back to received.',
+        'vars'   => array((int) $return_id, (string) $order_number, pg_return_money_text($amount), (string) $service, ((string) $message !== '') ? (string) $message : lang('no message'))));
 }
 
 /**

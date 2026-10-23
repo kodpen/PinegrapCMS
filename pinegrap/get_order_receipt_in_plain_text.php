@@ -1157,21 +1157,13 @@ function get_order_receipt_in_plain_text($order_id)
             $output_credit_debit_card_information;
     }
 
-    $output_auto_registration = '';
-
     // If a user account was created via the auto-registration feature,
-    // then show user account info.
-    if (($_SESSION['software']['auto_registration']['email_address'] ?? '') != '') {
-        $output_auto_registration =
-            "\n" .
-            "\n" .
-            'New Account:' . "\n" .
-            '-------------------------' . "\n" .
-            'We have created a new account for you so you can view your orders on our site. You can find your login info below.' . "\n" .
-            "\n" .
-            'Email: ' . ($_SESSION['software']['auto_registration']['email_address'] ?? '') . "\n" .
-            'Password: ' . ($_SESSION['software']['auto_registration']['password'] ?? '');
-    }
+    // then name it; the customer also gets the link to set its password.
+    $output_auto_registration = pg_order_new_account_block(
+        pg_order_new_account_email(),
+        pg_order_new_account_link(),
+        pg_order_new_account_drawn_for_customer(),
+        false);
     
     return
         $output_order_receipt_messages .

@@ -377,3 +377,109 @@ function test_erp_bank_amount_leading_separator()
 	pg_assert_same(1200, erp_bank_amount('12'), 'whole');
 	pg_assert_same(null, erp_bank_amount('TL'), 'no number');
 }
+
+// A line's first occurrence keeps the hash lines were stored under before, so
+// a statement taken in again still meets the lines already there.
+function test_erp_bank_line_hash_first_occurrence_unchanged()
+{
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ'), 'default occurrence');
+	pg_assert_same(erp_bank_line_hash(7, '2026-10-15', -850, 'EFT UCRETI'), erp_bank_line_hash(7, '2026-10-15', -850, 'eft ucreti', 1), 'letter case aside');
+}
+
+// The second real line of the same day, amount and words is a line of its own.
+function test_erp_bank_line_hash_repeated_line()
+{
+	$first = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 1);
+	$second = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2);
+	$third = erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 3);
+
+	pg_assert_true($first !== $second, 'second differs from first');
+	pg_assert_true($second !== $third, 'third differs from second');
+	pg_assert_same($second, erp_bank_line_hash(7, '2026-10-15', -850, 'EFT ÜCRETİ', 2), 'the same file gives the same hashes again');
+	pg_assert_true(erp_bank_line_hash(8, '2026-10-15', -850, 'EFT ÜCRETİ', 2) !== $second, 'another bank account');
+}
+
+// The statement's four lines, two of them the same fee: every line gets its
+// own hash, and reading the file again gives the same four.
+function test_erp_bank_line_hashes_count_repeats_per_file()
+{
+	$lines = array(
+		array('2026-10-15', -100000, 'EFT GİDEN ABC LTD'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+		array('2026-10-15', -200000, 'EFT GİDEN XYZ AŞ'),
+		array('2026-10-15', -850, 'EFT ÜCRETİ'),
+	);
+
+	$hashes = function () use ($lines) {
+		$seen = array();
+		$out = array();
+
+		foreach ($lines as $line) {
+			$out[] = erp_bank_line_hash(7, $line[0], $line[1], $line[2], erp_bank_line_occurrence($seen, 7, $line[0], $line[1], $line[2]));
+		}
+
+		return $out;
+	};
+
+	$first = $hashes();
+
+	pg_assert_same(4, count(array_unique($first)), 'four lines, four hashes');
+	pg_assert_same(sha1('7|2026-10-15|-850|' . mb_strtolower('EFT ÜCRETİ')), $first[1], 'the first fee keeps the old hash');
+	pg_assert_same($first, $hashes(), 'taken in again, the same hashes');
+}
+
+// The "one open invoice of this amount" a statement line suggests is an
+// invoice, never a return document, in the line's currency, open by what is
+// left once its returns are taken off.
+function test_erp_bank_open_invoice_query_invoices_only()
+{
+	$sql = erp_bank_open_invoice_query('sales', 'TRY', true, 30000);
+
+	pg_assert_contains("i.doc_type = 'invoice'", $sql, 'invoices only');
+	pg_assert_contains("i.direction = 'sales'", $sql, 'money in closes a sale');
+	pg_assert_contains("ret.parent_invoice_id = i.id", $sql, 'returns taken off');
+	pg_assert_contains("COALESCE(ret.returned, 0)", $sql, 'by what they gave back');
+	pg_assert_contains("r.doc_type = 'return'", $sql, 'returns only');
+	pg_assert_contains("r.status <> 'cancelled'", $sql, 'a cancelled return gives nothing back');
+	pg_assert_contains("= '30000'", $sql, 'the amount');
+	pg_assert_contains("LIMIT 2", $sql, 'one is told from several');
+
+	pg_assert_contains("i.direction = 'purchase'", erp_bank_open_invoice_query('purchase', 'TRY', true, 850), 'money out closes a purchase');
+}
+
+// The currency rule is the one erp_post_receipt() applies: with foreign
+// currencies on the line's currency exactly (a blank-currency invoice would be
+// refused), with them off no currency condition, as posting checks none.
+function test_erp_bank_open_invoice_query_currency()
+{
+	$home = erp_bank_open_invoice_query('sales', 'try', true, 100);
+
+	pg_assert_contains("i.currency = 'TRY'", $home, 'the line currency, upper case');
+	pg_assert_true(strpos($home, "i.currency = ''") === false, 'no blank-currency alternative');
+	pg_assert_contains("i.currency = 'USD'", erp_bank_open_invoice_query('sales', 'USD', true, 100), 'foreign currency');
+	pg_assert_contains("i.currency = 'USD'", erp_bank_open_invoice_query('sales', "US'D", true, 100), 'letters only');
+	pg_assert_true(strpos(erp_bank_open_invoice_query('sales', 'TRY', false, 100), 'i.currency') === false, 'FX off: no currency condition');
+}
+
+// With foreign currencies off (ERP_FX_ENABLED undefined under the runner) a
+// line is recorded in the store's currency whatever the till says.
+function test_erp_bank_line_currency_fx_off()
+{
+	pg_assert_same(erp_base_currency(), erp_bank_line_currency('USD'), 'a foreign till');
+	pg_assert_same(erp_base_currency(), erp_bank_line_currency(''), 'a till with no currency');
+}
+
+// An amount past 2^31 kurus is a float on 32-bit PHP. The hash takes it as the
+// statement build always wrote it into the key, without an (int) cast that
+// would wrap it, so a large line stored before still turns a re-upload away.
+function test_erp_bank_line_hash_large_amount()
+{
+	$amount = erp_bank_amount('-30.000.000,00');
+
+	pg_assert_same(sha1('7|2026-10-15|' . $amount . '|eft giden'), erp_bank_line_hash(7, '2026-10-15', $amount, 'EFT GIDEN'), 'first occurrence as before');
+	pg_assert_same('7|2026-10-15|-3000000000|eft giden', '7|2026-10-15|' . $amount . '|eft giden', 'the key holds the amount unwrapped');
+
+	$seen = array();
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', $amount, 'EFT GIDEN'), 'first');
+	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', erp_bank_amount('12.949.672,96'), 'EFT GIDEN'), 'an amount the cast would wrap onto is counted apart');
+}

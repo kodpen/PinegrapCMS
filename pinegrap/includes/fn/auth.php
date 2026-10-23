@@ -3072,8 +3072,25 @@ function pg_form_captcha_check($key, $answer)
     return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $entry['answer']));
 }
 
+/**
+ * The id of the CAPTCHA answer box: captcha_submitted_answer for the first
+ * CAPTCHA a page prints, numbered from the second on (two forms on one page).
+ *
+ * @param int $number 1 for the page's first CAPTCHA
+ * @return string
+ */
+function pg_captcha_answer_id($number)
+{
+    $number = (int) $number;
+
+    return 'captcha_submitted_answer' . (($number > 1) ? '_' . $number : '');
+}
+
 function get_captcha_fields($liveform)
 {
+    // How many CAPTCHAs this request has printed (pg_captcha_answer_id()).
+    static $captcha_count = 0;
+
     if (!CAPTCHA) {
         return '';
     }
@@ -3091,8 +3108,12 @@ function get_captcha_fields($liveform)
         $liveform->assign_field_value('captcha_submitted_answer', '');
         // The body field is a honeypot field which we will use to determine if the submitter is a bot.
         // The captcha_correct_answer field actually contains a fake, incorrect answer.
+        // The answer box is labelled by its question. Its id is the one the
+        // classic themes style (input#captcha_submitted_answer); a second
+        // CAPTCHA on the same page numbers its own.
+        $answer_id = pg_captcha_answer_id(++$captcha_count);
         $captcha_label_box = '<div class="software_captcha_label" style="font-weight: bold; margin-bottom: .5em">' . lang('To prevent spam, please tell us') . ':</div>';
-        $captcha_question_box = '<span class="software_captcha_question"> ' . lang(array('string' => 'What is {var:1} + {var:2} ?', 'vars' => array($first_number, $second_number))) . '</span>';
+        $captcha_question_box = '<label class="software_captcha_question" for="' . h($answer_id) . '"> ' . lang(array('string' => 'What is {var:1} + {var:2} ?', 'vars' => array($first_number, $second_number))) . '</label>';
         $output_captcha_fields = '<div class="captcha">
 
                 <div style="display: none">' . $liveform->output_field(array(
@@ -3114,6 +3135,7 @@ function get_captcha_fields($liveform)
                     )) . $captcha_label_box . $captcha_question_box . $liveform->output_field(array(
                         'type' => 'number',
                         'name' => 'captcha_submitted_answer',
+                        'id' => $answer_id,
                         'maxlength' => '2',
                         'size' => '2',
                         'required' => 'true',
@@ -4466,6 +4488,172 @@ function pg_set_password_link_issue($user_id)
 }
 
 /**
+ * Who the order receipt being drawn now is for: 'screen' (the receipt page of
+ * the session that placed the order; the default), 'customer' (their copy of
+ * the receipt e-mail) or 'store' (the copy for the store's BCC addresses).
+ * submit_order.php sets it around each copy it draws. Pass a value to set it,
+ * nothing to ask.
+ *
+ * @param string|null $audience
+ * @return string
+ */
+function pg_order_receipt_audience($audience = null)
+{
+    static $current = 'screen';
+
+    if (in_array($audience, array('screen', 'customer', 'store'), true)) {
+        $current = $audience;
+    }
+
+    return $current;
+}
+
+/**
+ * Whether the account an order's auto-registration opened is handed to the
+ * reader of the receipt: the customer's e-mail, and the receipt page unless a
+ * staff member placed the order for the customer (ghosting) - that session is
+ * not the customer's. Never the store's copy.
+ *
+ * @param string $audience see pg_order_receipt_audience()
+ * @param bool   $ghost    the order was placed by a staff member for the customer
+ * @return bool
+ */
+function pg_order_new_account_for_customer($audience, $ghost)
+{
+    if ($audience === 'customer') {
+        return true;
+    }
+
+    return ($audience === 'screen') && !$ghost;
+}
+
+/**
+ * The copies of an order receipt e-mail: one to the customer with the BCC
+ * addresses, or, when the order opened an account, the customer's copy alone
+ * (it carries the set password link) and one copy for each BCC address.
+ *
+ * @param string $customer_email_address
+ * @param array  $bcc_email_addresses
+ * @param bool   $new_account
+ * @return array list of array('to' => string, 'bcc' => array, 'audience' => 'customer'|'store')
+ */
+function pg_order_receipt_copies($customer_email_address, $bcc_email_addresses, $new_account)
+{
+    $bcc_email_addresses = array_values(array_filter((array) $bcc_email_addresses, 'strlen'));
+
+    if (!$new_account || (count($bcc_email_addresses) === 0)) {
+        return array(array('to' => (string) $customer_email_address, 'bcc' => $bcc_email_addresses, 'audience' => 'customer'));
+    }
+
+    $copies = array(array('to' => (string) $customer_email_address, 'bcc' => array(), 'audience' => 'customer'));
+
+    foreach ($bcc_email_addresses as $email_address) {
+        $copies[] = array('to' => (string) $email_address, 'bcc' => array(), 'audience' => 'store');
+    }
+
+    return $copies;
+}
+
+/**
+ * The e-mail address of the account the last order of this session opened,
+ * or ''.
+ *
+ * @return string
+ */
+function pg_order_new_account_email()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    return (is_array($entry) && isset($entry['email_address'])) ? (string) $entry['email_address'] : '';
+}
+
+/**
+ * Whether the receipt being drawn now may hand that account over (see
+ * pg_order_new_account_for_customer()).
+ *
+ * @return bool
+ */
+function pg_order_new_account_drawn_for_customer()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    return pg_order_new_account_for_customer(pg_order_receipt_audience(), is_array($entry) && !empty($entry['ghost']));
+}
+
+/**
+ * The set password link of that account for the customer, or '' (someone
+ * else's copy, no account, or the link was used or expired).
+ *
+ * @return string
+ */
+function pg_order_new_account_link()
+{
+    $entry = $_SESSION['software']['auto_registration'] ?? null;
+
+    if (!is_array($entry) || empty($entry['user_id']) || !pg_order_new_account_drawn_for_customer()) {
+        return '';
+    }
+
+    return pg_set_password_link((int) $entry['user_id']);
+}
+
+/**
+ * The "new account" block of an order receipt, plain text or HTML. The
+ * customer gets the address and the link to set a password; anyone else only
+ * learns that the order opened an account for the address. No password is
+ * ever written.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when there is no live link
+ * @param bool   $for_customer
+ * @param bool   $html
+ * @return string '' without an account
+ */
+function pg_order_new_account_block($email_address, $set_password_url, $for_customer, $html)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    if (!$for_customer) {
+        $line = lang(array('string' => 'A new account was created with this order: {var:1}', 'vars' => array($html ? h($email_address) : $email_address)));
+
+        return $html
+            ? '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" . '<div class="account data"><p>' . $line . '</p></div>'
+            : "\n\n" . lang('New Account') . ':' . "\n" . '-------------------------' . "\n" . $line;
+    }
+
+    $intro = lang('We have created a new account for you so you can view your orders on our site.');
+
+    if ($html) {
+        $out =
+            '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" .
+            '<div class="account data">' . "\n" .
+            '<p>' . $intro . '</p>' . "\n" .
+            '<p>' . lang('Email') . ': ' . h($email_address) . '</p>' . "\n";
+
+        $out .= ($set_password_url !== '')
+            ? '<p><a href="' . h($set_password_url) . '">' . lang('Set your password') . '</a></p>' . "\n"
+            : '<p>' . h(lang('You can set a password with "Forgot password" on the sign-in page.')) . '</p>' . "\n";
+
+        return $out . '</div>';
+    }
+
+    $out =
+        "\n\n" . lang('New Account') . ':' . "\n" . '-------------------------' . "\n" .
+        $intro . "\n" .
+        "\n" .
+        lang('Email') . ': ' . $email_address . "\n";
+
+    return $out . (($set_password_url !== '')
+        ? lang(array('string' => 'Set your password: {var:1}', 'vars' => array($set_password_url)))
+        : lang('You can set a password with "Forgot password" on the sign-in page.'));
+}
+
+/**
  * The set password link issued for an account by pg_set_password_link_issue(),
  * or '' once it was used, replaced by a forgot password request or expired.
  * The page is the site's set password page (the panel's set_password.php,
@@ -4514,6 +4702,37 @@ function pg_set_password_link($user_id)
     }
 
     return pg_set_password_link_url(URL_SCHEME . HOSTNAME_SETTING, $path, $token);
+}
+
+/**
+ * The body of the e-mail add_user.php and import_users.php send when an
+ * administrator opens an account and notifies its owner: the address, the
+ * link to set a password (or, without one, where to get one) and the sign-in
+ * address. The password the account was created with is never written.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when no link could be issued
+ * @param string $login            the "Login:" lines, or ''
+ * @return string plain text
+ */
+function pg_new_user_email_body($email_address, $set_password_url, $login)
+{
+    $body =
+        lang('An administrator has created a new account for you.') . "\n" .
+        "\n" .
+        lang('Email') . ': ' . (string) $email_address . "\n";
+
+    if ((string) $set_password_url !== '') {
+        $body .= lang(array('string' => 'Set your password: {var:1}', 'vars' => array((string) $set_password_url))) . "\n";
+    } else {
+        $body .= lang('You can set a password with "Forgot password" on the sign-in page.') . "\n";
+    }
+
+    if ((string) $login !== '') {
+        $body .= "\n" . (string) $login;
+    }
+
+    return $body;
 }
 
 

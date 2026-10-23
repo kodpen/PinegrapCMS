@@ -1113,9 +1113,11 @@ function get_search_results($properties) {
 
                     $item['price_info'] = $output_price;
 
-                    $item['price'] = $item['price'] / 100;
+                    // Product group rows carry no price column, and only product
+                    // groups get a price range above.
+                    $item['price'] = isset($item['price']) ? $item['price'] / 100 : 0;
 
-                    if ($item['price_range']) {
+                    if (!empty($item['price_range'])) {
                         $item['price_range']['smallest_price'] = $item['price_range']['smallest_price'] / 100;
                         $item['price_range']['largest_price'] = $item['price_range']['largest_price'] / 100;
                         $item['price_range']['original_price'] = $item['price_range']['original_price'] / 100;

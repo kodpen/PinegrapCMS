@@ -393,6 +393,12 @@
          * etc.) — only swaps inner images. Bootstrap re-initializes
          * automatically because the carousel root is the same element.
          */
+        // The name of image i of the gallery, as pg_carousel_image_label()
+        // writes it on the server.
+        function imageLabel(i, total) {
+            return label('image_of', 'Image {n} of {total}').replace('{n}', String(i + 1)).replace('{total}', String(total));
+        }
+
         function rebuildCarousel(wrapper, gallery) {
             var carouselEl = wrapper.classList.contains('carousel') ? wrapper : wrapper.querySelector('.carousel');
             if (!carouselEl) return;
@@ -422,6 +428,7 @@
                         + '<a href="' + escAttr(url) + '"'
                         + ' data-fancybox="' + escAttr(fbGallery) + '"'
                         + ' class="pg-carousel-slide-link d-block w-100' + zoomCls + '"'
+                        + ' aria-label="' + escAttr(imageLabel(i, gallery.length)) + '"'
                         + zoomAttr + '>'
                         + '<img src="' + escAttr(url) + '" class="d-block w-100" alt="" loading="lazy">'
                         + '</a>'
@@ -438,7 +445,7 @@
                 if (gallery.length > 1) {
                     indicators.innerHTML = gallery.map(function (_, i) {
                         var sel = (i === 0) ? ' class="active" aria-current="true"' : '';
-                        return '<button type="button" data-bs-target="#' + crlId + '" data-bs-slide-to="' + i + '"' + sel + ' aria-label="Slide ' + (i + 1) + '"></button>';
+                        return '<button type="button" data-bs-target="#' + crlId + '" data-bs-slide-to="' + i + '"' + sel + ' aria-label="' + escAttr(imageLabel(i, gallery.length)) + '"></button>';
                     }).join('');
                 } else {
                     indicators.innerHTML = '';
@@ -462,7 +469,8 @@
                             + ' data-fancybox-trigger="' + escAttr(fbGallery) + '"'
                             + ' data-fancybox-index="' + i + '"'
                             + ' data-bs-target="#' + crlId + '" data-bs-slide-to="' + i + '"'
-                            + ' class="pg-carousel-thumb-link">'
+                            + ' class="pg-carousel-thumb-link"'
+                            + ' aria-label="' + escAttr(imageLabel(i, gallery.length)) + '">'
                             + '<img src="' + escAttr(url) + '"'
                             + ' class="pg-carousel-thumb' + actCls + '" style="' + escAttr(thumbStyle) + '" alt="" loading="lazy">'
                             + '</a>';

@@ -537,6 +537,25 @@ function pg_process_image_file($file_path, $options = array())
         $use_imagick = ($writer === 'imagick');
     }
 
+    // GD turns a JPEG upright from its EXIF orientation (Imagick reads the
+    // tag itself). When the file carries an Exif block whose orientation
+    // cannot be read, which way up a browser shows it is not known: a copy
+    // written without the tag could come out on its side, so the file is
+    // left as it is.
+    if (!$use_imagick && ($type == IMAGETYPE_JPEG) && (pg_image_jpeg_orientation($file_path) === 0)) {
+        $report['reason'] = 'orientation_unreadable';
+        return $report;
+    }
+
+    // GD writes no colour profile, and pixels written without theirs are
+    // shown as sRGB: a Display P3 (phone) or Adobe RGB photo comes out
+    // washed out, and on Optimize for good. Imagick carries the profile
+    // over, so only the GD half leaves such a file as it is.
+    if (!$use_imagick && pg_image_has_foreign_color_profile($file_path)) {
+        $report['reason'] = 'color_profile';
+        return $report;
+    }
+
     $resize = (($max_dimension > 0) && (max($width, $height) > max(1, $resize_trigger)));
 
     list($target_width, $target_height) = $resize
@@ -690,7 +709,27 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         // and on its side on another.
         pg_image_apply_imagick_orientation($image);
 
+        // stripImage() drops the ICC profile with the rest of the metadata,
+        // and pixels without their profile are shown as sRGB: a Display P3
+        // or Adobe RGB photo turned pale. The profile is taken first and put
+        // back after the strip, unless the pixels are CMYK and are converted
+        // below (a CMYK profile no longer describes them then).
+        // setImageProfile() attaches the bytes on every build; profileImage()
+        // attaches nothing on an ImageMagick built without lcms. An sRGB
+        // profile is not put back: untagged pixels are shown as sRGB anyway,
+        // and it would add about 3 KB to every derivative and Optimize result.
+        $icc = '';
+
+        if ($image->getImageColorspace() != Imagick::COLORSPACE_CMYK) {
+            $profiles = $image->getImageProfiles('icc', true);
+            $icc = isset($profiles['icc']) ? (string) $profiles['icc'] : '';
+        }
+
         $image->stripImage();
+
+        if (($icc !== '') && !pg_image_icc_is_srgb($icc)) {
+            $image->setImageProfile('icc', $icc);
+        }
 
         // Only converted when it has to be. A CMYK JPEG shown in a browser is
         // the classic "colours went wrong after optimizing" report; tagging an
@@ -1074,17 +1113,14 @@ function pg_image_gd_read($file_path, $type)
  */
 function pg_image_apply_gd_orientation($image, $file_path)
 {
-    if (!function_exists('exif_read_data') || !function_exists('imagerotate')) {
+    if (!function_exists('imagerotate')) {
         return $image;
     }
 
-    $exif = @exif_read_data($file_path);
-
-    if (!$exif || empty($exif['Orientation'])) {
-        return $image;
-    }
-
-    $orientation = (int) $exif['Orientation'];
+    // The exif extension when there is one, else the file's own bytes: a
+    // server without exif (Windows PHP and the upstream php Docker images
+    // leave it out) used to keep every phone photo on its side.
+    $orientation = pg_image_jpeg_orientation($file_path);
     $rotated     = null;
     $flip        = false;
 
@@ -1648,11 +1684,14 @@ function pg_image_format_probe($format, $directory)
 
 
 /**
- * The EXIF orientation of a JPEG, 1 to 8; 1 when it has none or it cannot be
- * read.
+ * The EXIF orientation of a JPEG, 1 to 8; 1 when it has none; 0 when it has
+ * an Exif block whose orientation cannot be read.
  *
- * Read with the exif extension, the same reader the GD half of the engine
- * uses; without it Imagick is asked, which is then also what the engine uses.
+ * Read with the exif extension when it is loaded and it read the first IFD;
+ * else from the file's own bytes (pg_image_jpeg_exif_orientation()). Imagick
+ * (a header ping) is asked only for a block those bytes cannot read, or when
+ * the exif extension is missing; it is then also what the engine uses. The
+ * GD half of the engine turns the pixels by this number.
  *
  * @param string $file_path
  * @return int
@@ -1662,9 +1701,24 @@ function pg_image_jpeg_orientation($file_path)
     if (function_exists('exif_read_data')) {
         $exif = @exif_read_data($file_path);
 
-        $orientation = (is_array($exif) && !empty($exif['Orientation'])) ? (int) $exif['Orientation'] : 1;
+        if (is_array($exif) && isset($exif['Orientation']) && is_numeric($exif['Orientation'])) {
+            $orientation = (int) $exif['Orientation'];
 
-        return (($orientation >= 1) && ($orientation <= 8)) ? $orientation : 1;
+            return (($orientation >= 1) && ($orientation <= 8)) ? $orientation : 1;
+        }
+
+        // IFD0 was read and holds no orientation.
+        if (is_array($exif) && isset($exif['SectionsFound']) && in_array('IFD0', explode(',', str_replace(' ', '', (string) $exif['SectionsFound'])), true)) {
+            return 1;
+        }
+
+        // exif read no IFD0: the file's own bytes tell "no Exif block" (1)
+        // from a broken one (0) without an Imagick ping on every page render.
+        $own = pg_image_jpeg_exif_orientation($file_path);
+
+        if (($own !== 0) || !class_exists('Imagick')) {
+            return $own;
+        }
     }
 
     if (class_exists('Imagick')) {
@@ -1686,6 +1740,504 @@ function pg_image_jpeg_orientation($file_path)
         }
     }
 
+    return pg_image_jpeg_exif_orientation($file_path);
+}
+
+
+/**
+ * The EXIF orientation of a JPEG read from its own bytes, for a server
+ * without the exif extension: 1 to 8; 1 when the file has no Exif block or
+ * the block has no orientation (or one outside 1 to 8, which browsers ignore
+ * too); 0 when there is an Exif block that cannot be read.
+ *
+ * The marker segments are walked from the start of the file to the Exif
+ * APP1 segment ("Exif\0\0"); every other segment's data is skipped with a
+ * seek. The walk ends at the start of the image data (SOS).
+ *
+ * @param string $file_path
+ * @return int
+ */
+function pg_image_jpeg_exif_orientation($file_path)
+{
+    $segments = pg_image_jpeg_app_segments($file_path, 0xE1, "Exif\x00");
+
+    if ($segments === false) {
+        return 0;
+    }
+
+    // An APP1 segment is also where XMP lives; only the Exif one holds the
+    // orientation, and the first one counts.
+    return $segments ? pg_image_exif_tiff_orientation(substr($segments[0], 6)) : 1;
+}
+
+
+/**
+ * The data of a JPEG's APPn segments of one marker that start with $prefix,
+ * in file order, prefix included.
+ *
+ * The marker segments are walked from the start of the file; every other
+ * segment's data is skipped with a seek. The walk ends at the start of the
+ * image data (SOS), which no metadata segment follows.
+ *
+ * @param string $file_path
+ * @param int    $marker 0xE1 for APP1, 0xE2 for APP2 ...
+ * @param string $prefix
+ * @return array|false false when a matching segment is cut short by the end of the file
+ */
+function pg_image_jpeg_app_segments($file_path, $marker, $prefix)
+{
+    $segments = array();
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return $segments;
+    }
+
+    if (@fread($handle, 2) === "\xFF\xD8") {
+
+        while (true) {
+
+            $byte = @fread($handle, 1);
+
+            if (!is_string($byte) || ($byte !== "\xFF")) {
+                break;
+            }
+
+            // A marker may be preceded by any number of 0xFF fill bytes.
+            do {
+                $byte = @fread($handle, 1);
+            } while (is_string($byte) && ($byte === "\xFF"));
+
+            if (!is_string($byte) || ($byte === '')) {
+                break;
+            }
+
+            $code = ord($byte);
+
+            // RSTn and TEM stand alone, without a length.
+            if ((($code >= 0xD0) && ($code <= 0xD7)) || ($code === 0x01)) {
+                continue;
+            }
+
+            // Start of scan or end of image.
+            if (($code === 0xDA) || ($code === 0xD9)) {
+                break;
+            }
+
+            $length = @fread($handle, 2);
+
+            if (!is_string($length) || (strlen($length) !== 2)) {
+                break;
+            }
+
+            $length = unpack('n', $length);
+            $length = $length[1] - 2;
+
+            if ($length < 0) {
+                break;
+            }
+
+            if (($code === $marker) && ($length >= strlen($prefix))) {
+
+                $data = (string) @fread($handle, $length);
+
+                if (strncmp($data, $prefix, strlen($prefix)) === 0) {
+
+                    if (strlen($data) !== $length) {
+                        $segments = false;
+                        break;
+                    }
+
+                    $segments[] = $data;
+                    continue;
+                }
+
+                if (strlen($data) !== $length) {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (@fseek($handle, $length, SEEK_CUR) !== 0) {
+                break;
+            }
+        }
+    }
+
+    fclose($handle);
+
+    return $segments;
+}
+
+
+/**
+ * The ICC colour profile embedded in an image file: its bytes, '' when there
+ * is none, false when the file announces one that cannot be read.
+ *
+ * Told by the file's own first bytes: a JPEG's APP2 "ICC_PROFILE" chunks
+ * (joined in their sequence order), a PNG's iCCP chunk (an sRGB chunk means
+ * sRGB, no profile), a WebP's ICCP chunk. Any other file has none here.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_icc_profile($file_path)
+{
+    $head = @file_get_contents($file_path, false, null, 0, 12);
+
+    if (!is_string($head) || (strlen($head) < 12)) {
+        return '';
+    }
+
+    if (substr($head, 0, 2) === "\xFF\xD8") {
+
+        $segments = pg_image_jpeg_app_segments($file_path, 0xE2, "ICC_PROFILE\x00");
+
+        if ($segments === false) {
+            return false;
+        }
+
+        $chunks = array();
+
+        foreach ($segments as $segment) {
+
+            if (strlen($segment) < 14) {
+                return false;
+            }
+
+            $chunks[ord($segment[12])] = substr($segment, 14);
+        }
+
+        ksort($chunks);
+
+        return implode('', $chunks);
+    }
+
+    if (substr($head, 0, 8) === "\x89PNG\r\n\x1A\n") {
+        return pg_image_png_icc_profile($file_path);
+    }
+
+    if ((substr($head, 0, 4) === 'RIFF') && (substr($head, 8, 4) === 'WEBP')) {
+        return pg_image_webp_icc_profile($file_path);
+    }
+
+    return '';
+}
+
+
+/**
+ * A PNG's ICC profile from its iCCP chunk (zlib-compressed): '' when there is
+ * none or an sRGB chunk says the pixels are sRGB; false when the chunk cannot
+ * be read. Only chunk headers are read on the way; the search ends at IDAT.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_png_icc_profile($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return '';
+    }
+
+    $profile = '';
+
+    if (@fread($handle, 8) === "\x89PNG\r\n\x1A\n") {
+
+        while (true) {
+
+            $header = @fread($handle, 8);
+
+            if (!is_string($header) || (strlen($header) !== 8)) {
+                break;
+            }
+
+            $length = unpack('N', substr($header, 0, 4));
+            $length = $length[1];
+            $type = substr($header, 4, 4);
+
+            if (($type === 'sRGB') || ($type === 'IDAT') || ($type === 'IEND')) {
+                break;
+            }
+
+            if ($type === 'iCCP') {
+
+                $profile = false;
+
+                // A profile is a few kilobytes; 16 MB keeps a hostile length
+                // from being read into memory.
+                $data = (($length > 0) && ($length <= 16777216)) ? (string) @fread($handle, $length) : '';
+                $name_end = strpos($data, "\x00");
+
+                // Name, NUL, compression method, then the zlib stream.
+                if ((strlen($data) === $length) && ($name_end !== false) && function_exists('gzuncompress')) {
+                    // A real profile inflates to a few kilobytes, a few hundred at
+                    // most. A larger stream counts as unreadable (and so foreign)
+                    // instead of being inflated: a small zlib bomb would otherwise
+                    // exhaust memory, which @ does not stop.
+                    $icc = @gzuncompress(substr($data, $name_end + 2), 4194304);
+
+                    if (is_string($icc) && ($icc !== '')) {
+                        $profile = $icc;
+                    }
+                }
+
+                break;
+            }
+
+            // The chunk's data and its CRC; a length that would overflow the
+            // offset on 32-bit PHP ends the search, as in pg_image_is_animated_png().
+            if (($length < 0) || ($length > 0x7FFFFFFF) || ($length > PHP_INT_MAX - 4) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
+                break;
+            }
+        }
+    }
+
+    fclose($handle);
+
+    return $profile;
+}
+
+
+/**
+ * A WebP's ICC profile from its ICCP chunk: '' when there is none; false when
+ * the VP8X header announces one (flag 0x20) that is not there or cut short.
+ * The ICCP chunk follows VP8X, before the image or animation data.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_webp_icc_profile($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return '';
+    }
+
+    $profile = '';
+    $head = @fread($handle, 12);
+
+    if (is_string($head) && (strlen($head) === 12) && (substr($head, 0, 4) === 'RIFF') && (substr($head, 8, 4) === 'WEBP')) {
+
+        $announced = false;
+
+        while (true) {
+
+            $header = @fread($handle, 8);
+
+            if (!is_string($header) || (strlen($header) !== 8)) {
+                break;
+            }
+
+            $type = substr($header, 0, 4);
+            $size = unpack('V', substr($header, 4, 4));
+            $size = $size[1];
+
+            if (($size < 0) || ($size > 16777216)) {
+                break;
+            }
+
+            if ($type === 'ICCP') {
+                $data = ($size > 0) ? (string) @fread($handle, $size) : '';
+                $profile = (($size > 0) && (strlen($data) === $size)) ? $data : false;
+                $announced = false;
+                break;
+            }
+
+            if ($type === 'VP8X') {
+                $data = (string) @fread($handle, $size);
+                $announced = (strlen($data) >= 1) && ((ord($data[0]) & 0x20) !== 0);
+
+                if (!$announced || (($size % 2) && (@fseek($handle, 1, SEEK_CUR) !== 0))) {
+                    break;
+                }
+
+                continue;
+            }
+
+            // The image or animation data: no profile comes after it.
+            break;
+        }
+
+        if ($announced) {
+            $profile = false;
+        }
+    }
+
+    fclose($handle);
+
+    return $profile;
+}
+
+
+/**
+ * Whether an ICC profile describes sRGB: an RGB profile whose description
+ * ('desc' tag, a v2 text or a v4 multi-language record) names sRGB.
+ *
+ * A profile that cannot be read counts as not sRGB.
+ *
+ * @param string $icc
+ * @return bool
+ */
+function pg_image_icc_is_srgb($icc)
+{
+    $icc = (string) $icc;
+    $length = strlen($icc);
+
+    if (($length < 132) || (substr($icc, 16, 4) !== 'RGB ') || (substr($icc, 36, 4) !== 'acsp')) {
+        return false;
+    }
+
+    $count = unpack('N', substr($icc, 128, 4));
+    $count = $count[1];
+
+    if (($count < 0) || (132 + ($count * 12) > $length)) {
+        return false;
+    }
+
+    for ($i = 0; $i < $count; $i++) {
+
+        $entry = substr($icc, 132 + ($i * 12), 12);
+
+        if (substr($entry, 0, 4) !== 'desc') {
+            continue;
+        }
+
+        $offset = unpack('N', substr($entry, 4, 4));
+        $offset = $offset[1];
+        $size = unpack('N', substr($entry, 8, 4));
+        $size = $size[1];
+
+        if (($offset < 0) || ($size < 12) || ($offset + $size > $length)) {
+            return false;
+        }
+
+        $tag = substr($icc, $offset, $size);
+        $text = '';
+
+        if (substr($tag, 0, 4) === 'desc') {
+            $text_length = unpack('N', substr($tag, 8, 4));
+            $text = substr($tag, 12, max(0, min($text_length[1], $size - 12)));
+
+        } elseif ((substr($tag, 0, 4) === 'mluc') && ($size >= 28)) {
+            // The first record: UTF-16BE; an ASCII name reads with the NULs
+            // taken out.
+            $text_length = unpack('N', substr($tag, 20, 4));
+            $text_offset = unpack('N', substr($tag, 24, 4));
+            $text = str_replace("\x00", '', (string) substr($tag, max(0, $text_offset[1]), max(0, $text_length[1])));
+        }
+
+        return (stripos($text, 'srgb') !== false);
+    }
+
+    return false;
+}
+
+
+/**
+ * Whether an image file carries a colour profile other than sRGB (or one
+ * that cannot be read). A file without a profile is shown as sRGB.
+ *
+ * @param string $file_path
+ * @return bool
+ */
+function pg_image_has_foreign_color_profile($file_path)
+{
+    $icc = pg_image_icc_profile($file_path);
+
+    if ($icc === '') {
+        return false;
+    }
+
+    return ($icc === false) || !pg_image_icc_is_srgb($icc);
+}
+
+
+/**
+ * The orientation tag (0x0112) of the first IFD of an Exif TIFF block: 1 to
+ * 8; 1 when there is no such tag or its value is outside 1 to 8; 0 when the
+ * block cannot be read (unknown byte order, an offset or entry outside it,
+ * a tag of an unexpected type).
+ *
+ * @param string $tiff the bytes after "Exif\0\0"
+ * @return int
+ */
+function pg_image_exif_tiff_orientation($tiff)
+{
+    $tiff = (string) $tiff;
+    $length = strlen($tiff);
+
+    // An Exif header followed by no TIFF block holds no orientation, and
+    // browsers show the file as stored.
+    if ($length === 0) {
+        return 1;
+    }
+
+    if ($length < 8) {
+        return 0;
+    }
+
+    $order = substr($tiff, 0, 2);
+
+    if ($order === 'II') {
+        $short = 'v';
+        $long = 'V';
+    } elseif ($order === 'MM') {
+        $short = 'n';
+        $long = 'N';
+    } else {
+        return 0;
+    }
+
+    $magic = unpack($short, substr($tiff, 2, 2));
+
+    if ($magic[1] !== 42) {
+        return 0;
+    }
+
+    $offset = unpack($long, substr($tiff, 4, 4));
+    $offset = $offset[1];
+
+    // A negative offset is a value over 2 GB read on 32-bit PHP.
+    if (($offset < 8) || ($offset + 2 > $length)) {
+        return 0;
+    }
+
+    $count = unpack($short, substr($tiff, $offset, 2));
+    $count = $count[1];
+
+    if ($offset + 2 + ($count * 12) > $length) {
+        return 0;
+    }
+
+    for ($i = 0; $i < $count; $i++) {
+
+        $entry = substr($tiff, $offset + 2 + ($i * 12), 12);
+        $tag = unpack($short, substr($entry, 0, 2));
+
+        if ($tag[1] !== 0x0112) {
+            continue;
+        }
+
+        $type = unpack($short, substr($entry, 2, 2));
+
+        // SHORT as the specification says; LONG from some writers.
+        if ($type[1] === 3) {
+            $value = unpack($short, substr($entry, 8, 2));
+        } elseif ($type[1] === 4) {
+            $value = unpack($long, substr($entry, 8, 4));
+        } else {
+            return 0;
+        }
+
+        $value = (int) $value[1];
+
+        return (($value >= 1) && ($value <= 8)) ? $value : 1;
+    }
+
     return 1;
 }
 
@@ -1695,8 +2247,13 @@ function pg_image_jpeg_orientation($file_path)
  * its side with an orientation tag that turns it upright has its two edges
  * swapped here, because the engine turns the pixels upright before scaling.
  *
+ * A JPEG whose Exif orientation cannot be read has no size here: which way
+ * up a browser shows it is not known, so no derivative and no srcset width
+ * is made from it.
+ *
  * @param string $file_path
  * @return array width, height; zeros when the file is not a readable image
+ *               or its orientation cannot be read
  */
 function pg_image_oriented_size($file_path)
 {
@@ -1709,9 +2266,18 @@ function pg_image_oriented_size($file_path)
     $width = (int) $size[0];
     $height = (int) $size[1];
 
-    // Orientations 5 to 8 are the quarter turns.
-    if (isset($size[2]) && ((int) $size[2] === IMAGETYPE_JPEG) && (pg_image_jpeg_orientation($file_path) >= 5)) {
-        return array($height, $width);
+    if (isset($size[2]) && ((int) $size[2] === IMAGETYPE_JPEG)) {
+
+        $orientation = pg_image_jpeg_orientation($file_path);
+
+        if ($orientation === 0) {
+            return array(0, 0);
+        }
+
+        // Orientations 5 to 8 are the quarter turns.
+        if ($orientation >= 5) {
+            return array($height, $width);
+        }
     }
 
     return array($width, $height);
@@ -1949,10 +2515,12 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     // is scaled or turned into WebP, and the point of a derivative is fewer
     // bytes. Both depend on the source's bytes only, so they are remembered.
     // A missing library is the server's state instead, which can change while
-    // the file does not, so that is not.
+    // the file does not, so that is not. Nor is a colour-profile refusal: it
+    // depends on which library writes the format, and it is checked before any
+    // decode, so repeating it is cheap.
     if (($data === '') || (strlen($data) >= $size)) {
 
-        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif'), true)) {
+        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif', 'color_profile'), true)) {
             pg_image_derivative_put($path . '.skip', '');
             pg_image_derivative_prune($folder, $width, $extension, $name);
         }

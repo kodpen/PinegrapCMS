@@ -762,6 +762,12 @@ $liveform->remove_form('edit_file');
             case 'animated':
                 return lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file_name));
 
+            case 'orientation_unreadable':
+                return lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file_name));
+
+            case 'color_profile':
+                return lang(array('string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.', 'vars' => $file_name));
+
             case 'missing':
                 return lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file_name));
 

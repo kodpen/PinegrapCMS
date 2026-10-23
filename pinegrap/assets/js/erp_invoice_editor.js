@@ -184,12 +184,36 @@
         return value < 0 ? -Math.round(-value) : Math.round(value);
     }
 
-    function applyRate(kurus, rate) {
-        return roundHalfAway(kurus * rate / 100);
+    // erp_multiply_units(): amount x units / scale, half away from zero, in
+    // whole numbers only. Both factors are split at the scale, so every step
+    // is an exact integer below 2^53 while the result is, and a product of
+    // floats never lands a hair beside a half (1310 * 1.15 is 1506.4999...).
+    function multiplyUnits(amount, units, scale) {
+        var negative = (amount < 0) !== (units < 0);
+        amount = Math.abs(amount);
+        units = Math.abs(units);
+        var amountRest = amount % scale;
+        var amountWhole = (amount - amountRest) / scale;
+        var unitsRest = units % scale;
+        var unitsWhole = (units - unitsRest) / scale;
+        var rest = amountRest * unitsRest;
+        var restRest = rest % scale;
+        var result = (amountWhole * unitsWhole * scale) + (amountWhole * unitsRest)
+            + (amountRest * unitsWhole) + ((rest - restRest) / scale);
+        if (restRest * 2 >= scale) {
+            result++;
+        }
+        return (negative && result !== 0) ? -result : result;
     }
 
+    // erp_apply_rate(): the rate at three places, the exact product rounded.
+    function applyRate(kurus, rate) {
+        return multiplyUnits(kurus, decimalUnits(rate, 3), 100000);
+    }
+
+    // erp_line_total(): the quantity at four places, the exact product rounded.
     function lineTotal(unitPrice, quantity) {
-        return roundHalfAway(unitPrice * quantity);
+        return multiplyUnits(unitPrice, decimalUnits(quantity, 4), 10000);
     }
 
     // erp_allocate(): the total split in proportion to the weights, each its

@@ -716,6 +716,52 @@ function test_designer_blocks_forms_can_be_submitted()
 	pg_assert_same(array(), $no_submit, 'block forms without a submit button');
 }
 
+// A block form has no action until the operator wires it, and a form with no
+// method is sent with GET: the login blocks put the typed password into the
+// address bar and the server logs. Every block form says method="post" in its
+// own _attrs, except a search form (role="search"), whose query belongs in
+// the address. Read on every 'form' a builder writes, through
+// createNode('semantic', { tag: 'form', … }) or the family's _bkTag('form',
+// …, attrs); a form written any other way fails the count.
+function test_designer_blocks_forms_post_unless_search()
+{
+	$js = _test_blocks_js();
+	$range = _test_blocks_cfp_range();
+	pg_assert_true($range !== null, 'createFromPalette() is found');
+	$body = substr($js, $range[0], $range[1] - $range[0]);
+	$post = "name:\\s*'method',\\s*value:\\s*'post'";
+	$read = 0;
+	$wrong = array();
+
+	preg_match_all("/createNode\\('semantic',\\s*\\{\\s*tag:\\s*'form'/", $body, $m, PREG_OFFSET_CAPTURE);
+	foreach ($m[0] as $hit) {
+		$open = strpos($js, '{', $range[0] + $hit[1]);
+		$scan = _test_blocks_scan($js, $open + 1);
+		$props = substr($js, $open, $scan['end'] - $open + 1);
+		$line = substr_count($js, "\n", 0, $range[0] + $hit[1]) + 1;
+		$search = (bool) preg_match("/name:\\s*'role',\\s*value:\\s*'search'/", $props);
+		if ($search === (bool) preg_match('/' . $post . '/', $props)) {
+			$wrong[] = 'line ' . $line . ($search ? ' (search form posts)' : ' (no method post)');
+		}
+		$read++;
+	}
+
+	preg_match_all("/_bkTag\\('form',/", $body, $m, PREG_OFFSET_CAPTURE);
+	foreach ($m[0] as $hit) {
+		$at = $range[0] + $hit[1];
+		$end = _test_blocks_call_end($js, strpos($js, '(', $at));
+		$call = $end < 0 ? '' : substr($js, $at, $end - $at + 1);
+		if (!preg_match("/\\]\\s*,\\s*\\[\\s*\\{\\s*" . $post . "\\s*\\}\\s*\\]\\s*\\)$/", $call)) {
+			$wrong[] = 'line ' . (substr_count($js, "\n", 0, $at) + 1) . ' (no method post)';
+		}
+		$read++;
+	}
+
+	pg_assert_true($read >= 15, 'the forms of createFromPalette() are read');
+	pg_assert_same($read, preg_match_all("/'form'/", $body), 'every form of createFromPalette() is written one of the two read ways');
+	pg_assert_same(array(), $wrong, 'block forms whose method does not match their kind');
+}
+
 // A <button>, <label>, <span> or heading holds phrasing content only: a
 // paragraph or a <div> inside one is invalid HTML (image-carousel's control
 // labels were a <p> in a visually-hidden <span> in the <button>). Checked on

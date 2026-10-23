@@ -7938,6 +7938,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                     if ($report['reason'] === 'animated') {
                         $errors[] = lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file['name']));
+                    } elseif ($report['reason'] === 'color_profile') {
+                        $errors[] = lang(array('string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.', 'vars' => $file['name']));
+                    } elseif ($report['reason'] === 'orientation_unreadable') {
+                        $errors[] = lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file['name']));
                     } elseif ($report['reason'] === 'missing') {
                         $errors[] = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
                     } elseif ($report['reason'] === 'no_webp') {
@@ -8414,6 +8418,10 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
 
                 if ($report['reason'] === 'animated') {
                     $message = lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file['name']));
+                } elseif ($report['reason'] === 'color_profile') {
+                    $message = lang(array('string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.', 'vars' => $file['name']));
+                } elseif ($report['reason'] === 'orientation_unreadable') {
+                    $message = lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file['name']));
                 } elseif ($report['reason'] === 'missing') {
                     $message = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
                 } elseif ($report['reason'] === 'no_library') {
@@ -11152,6 +11160,21 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
                             $errors[] = lang('The name that you entered is already in use, so please enter a different name.');
                             continue;
                         }
+                    }
+
+                    // Links saved while it sat here were checked without it,
+                    // so coming back it could close a loop or a chain too long
+                    // with them. Such a link stays in the bin and the reason
+                    // is reported.
+                    $restore_short_link_check = pg_short_link_redirect_columns(array(
+                        'id' => (int) $restore_short_link['id'],
+                        'name' => $restore_short_link_name,
+                        'destination_type' => $restore_short_link['destination_type'],
+                        'url' => $restore_short_link['url']), null, (int) ($restore_short_link['redirect_code'] ?? 0));
+
+                    if ($restore_short_link_check['problem'] !== null) {
+                        $errors[] = lang(array('string' => 'The short link {var:1} stays in the recycle bin: {var:2}', 'vars' => array($restore_short_link['name'], $restore_short_link_check['problem']['message'])));
+                        continue;
                     }
 
                     db(

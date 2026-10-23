@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for liveform field values that arrive as arrays (?name[]=x): a field
- * that holds one value keeps its markup instead of stopping the page.
+ * that holds one value keeps its markup instead of stopping the page; a field
+ * without an id prints none, and the CAPTCHA answer box has an id and a label.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -100,5 +101,63 @@ function test_liveform_prepare_tag_without_type_or_value()
 
 		pg_assert_contains('<input name="nickname" value="Ann">', $html, 'input without type');
 		pg_assert_contains('<input type="checkbox" name="agree">', $html, 'box without value');
+	});
+}
+
+// A field given no id prints no id attribute (an empty id="" on several
+// fields is a duplicate id); a field given one prints it.
+function test_liveform_output_field_without_id()
+{
+	_test_liveform_with_session(function ($form) {
+		$types = array('text', 'number', 'hidden', 'textarea', 'password', 'checkbox', 'radio', 'select');
+		foreach ($types as $type) {
+			$field = array('type' => $type, 'name' => 'f_' . $type);
+			if ($type === 'select') $field['options'] = array('A' => 'a');
+			$html = $form->output_field($field);
+			pg_assert_false(strpos($html, ' id=') !== false, $type . ' without an id');
+
+			$field['id'] = 'my_' . $type;
+			pg_assert_contains(' id="my_' . $type . '"', $form->output_field($field), $type . ' with an id');
+		}
+	});
+}
+
+// The CAPTCHA answer box keeps the id the classic themes style; a second
+// CAPTCHA on the page numbers its own, and the question is its label.
+function test_liveform_captcha_answer_id()
+{
+	pg_assert_same('captcha_submitted_answer', pg_captcha_answer_id(1));
+	pg_assert_same('captcha_submitted_answer_2', pg_captcha_answer_id(2));
+	pg_assert_same('captcha_submitted_answer', pg_captcha_answer_id(0));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
+	pg_assert_contains('<label class="software_captcha_question" for="\' . h($answer_id) . \'">', $source, 'the question labels the box');
+	pg_assert_contains("'id' => \$answer_id,", $source, 'the box carries the id');
+}
+
+// output_field() writes every Inputmask option it is given, so a money box
+// drawn through liveform takes the panel language's separators; an empty
+// thousands separator is written too (no grouping, not the alias default).
+function test_liveform_forwards_inputmask_options()
+{
+	_test_liveform_with_session(function ($form) {
+		$html = $form->output_field(array('type' => 'text', 'name' => 'balance', 'id' => 'balance', 'value' => '1234,56')
+			+ pg_money_mask_attributes(array('decimal' => ',', 'thousands' => '.')));
+
+		pg_assert_contains(' data-inputmask-alias="currency"', $html, 'the alias');
+		pg_assert_contains(' data-inputmask-radixPoint=","', $html, 'the decimal comma');
+		pg_assert_contains(' data-inputmask-groupSeparator="."', $html, 'the thousands dot');
+		pg_assert_contains(' data-inputmask-digits="2"', $html, 'two decimals');
+		pg_assert_contains(' data-inputmask-digitsOptional="false"', $html, 'always shown');
+		pg_assert_same(1, substr_count($html, 'data-inputmask-alias='), 'the alias written once');
+
+		$plain = $form->output_field(array('type' => 'text', 'name' => 'rate')
+			+ pg_money_mask_attributes(array('decimal' => ',', 'thousands' => '')));
+
+		pg_assert_contains(' data-inputmask-groupSeparator=""', $plain, 'no grouping');
+
+		$escaped = $form->output_field(array('type' => 'text', 'name' => 'x', 'data-inputmask-mask' => '"><b>'));
+
+		pg_assert_contains(' data-inputmask-mask="&quot;&gt;&lt;b&gt;"', $escaped, 'the value escaped');
 	});
 }

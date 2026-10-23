@@ -795,6 +795,44 @@ function pg_img_prefetch($srcs)
 
 
 /**
+ * The delivery formats the markup may offer for one picture, given its colour
+ * profile.
+ *
+ * GD writes no colour profile, so the engine makes no derivative of a picture
+ * whose profile is not sRGB (or cannot be read) when GD would write it, and
+ * every candidate would be the full-size original. Without Imagick that is
+ * every derivative; with Imagick it is each modern format Imagick cannot
+ * write and GD can (pg_image_format_writer()).
+ *
+ * @param array $formats webp, avif => bool (pg_image_delivery_formats())
+ * @param bool $foreign the file carries a profile other than sRGB
+ *                      (pg_image_has_foreign_color_profile())
+ * @param bool $imagick Imagick is loaded
+ * @param array $writers webp, avif => 'imagick', 'gd' or '' (pg_image_format_writer())
+ * @return array|null the formats to offer, or null when the picture gets no
+ *                    responsive markup at all
+ */
+function pg_img_profile_formats($formats, $foreign, $imagick, $writers)
+{
+    if (!$foreign) {
+        return $formats;
+    }
+
+    if (!$imagick) {
+        return null;
+    }
+
+    foreach ($formats as $format => $on) {
+        if ($on && (!isset($writers[$format]) || ($writers[$format] !== 'imagick'))) {
+            $formats[$format] = false;
+        }
+    }
+
+    return $formats;
+}
+
+
+/**
  * The responsive sets of an image address, read from the file it points at:
  * null when it is not a file of this site that can have derivatives.
  *
@@ -845,6 +883,29 @@ function pg_img_responsive($src)
         return null;
     }
 
+    // A colour profile other than sRGB: GD writes no profile, so the engine
+    // makes no derivative of such a picture where GD would write it, and
+    // those candidates would be the full-size original. Without Imagick the
+    // picture gets no responsive markup; with it, a format only GD writes is
+    // left out (pg_img_profile_formats()). The file is read only when GD
+    // would write something.
+    $formats = pg_image_delivery_formats();
+    $imagick = class_exists('Imagick');
+    $writers = array();
+    $gd_writes = !$imagick;
+
+    foreach ($formats as $format => $on) {
+        $writers[$format] = ($on && $imagick) ? pg_image_format_writer($format) : '';
+        $gd_writes = $gd_writes || ($on && ($writers[$format] !== 'imagick'));
+    }
+
+    $foreign = $gd_writes && pg_image_has_foreign_color_profile(FILE_DIRECTORY_PATH . '/' . $name);
+    $formats = pg_img_profile_formats($formats, $foreign, $imagick, $writers);
+
+    if ($formats === null) {
+        return null;
+    }
+
     list($width, $height) = pg_image_oriented_size(FILE_DIRECTORY_PATH . '/' . $name);
 
     if (($width < 1) || ($height < 1)) {
@@ -852,7 +913,7 @@ function pg_img_responsive($src)
     }
 
     $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
-    $sets = pg_img_responsive_sets($src, $width, $extension, pg_image_delivery_formats());
+    $sets = pg_img_responsive_sets($src, $width, $extension, $formats);
 
     if (($sets['srcset'] === '') && !$sets['sources']) {
         return null;
@@ -1065,6 +1126,51 @@ function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
         $kept = rtrim($body);
 
         return $kept . $add . substr($body, strlen($kept)) . substr($tag, -$close);
+
+    }, $html);
+}
+
+
+/**
+ * Give every <img> of a piece of HTML that carries the Bootstrap 3 class
+ * img-responsive the Bootstrap 5 class img-fluid as well.
+ *
+ * Rich text written for the classic theme (a form's text area, a product's
+ * description) scales its pictures with img-responsive, which only the
+ * classic theme's stylesheet defines. A system widget prints that text on a
+ * visual-designer page, where the picture would keep its natural width and
+ * push the page sideways; img-fluid is the same rule there. The stored text
+ * is not changed.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_img_fluid_alias($html)
+{
+    if (!is_string($html) || (stripos($html, 'img-responsive') === false)) {
+        return $html;
+    }
+
+    return preg_replace_callback('~<img\b[^>]*>~i', function ($match) {
+
+        $tag = $match[0];
+
+        return preg_replace_callback('~(\sclass\s*=\s*)(?:"([^"]*)"|\'([^\']*)\')~i', function ($attr) {
+
+            $double = !isset($attr[3]);
+            $value = $double ? $attr[2] : $attr[3];
+            $classes = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+
+            if (!in_array('img-responsive', $classes, true) || in_array('img-fluid', $classes, true)) {
+                return $attr[0];
+            }
+
+            $value = preg_replace('/(^|\s)img-responsive(?=\s|$)/', '$1img-responsive img-fluid', $value, 1);
+            $quote = $double ? '"' : "'";
+
+            return $attr[1] . $quote . $value . $quote;
+
+        }, $tag, 1);
 
     }, $html);
 }
