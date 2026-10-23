@@ -721,7 +721,7 @@ function pg_cf_legacy_settings_errors($settings, $page_exists)
         }
     }
 
-    if ($value('confirmation_type') === 'page' &&!call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
+    if ($value('confirmation_type') === 'page' && !call_user_func($page_exists, (int)$value('confirmation_page_id'))) {
         $errors['custom_form_confirmation_page_id'] = lang('The Confirmation Type is Next Page, but no page is selected. Select the page the visitor goes to after submitting, or choose Message.');
     }
 
