@@ -604,7 +604,7 @@ define('PG_PRICE_HISTORY_OFFER_BUDGET', 10);
  * was worked out before the price was changed, and the stored price stands.
  *
  * @param array $prices     product id => products.price
- * @param array $discounted product id => discounted price, as get_discounted_product_prices() gives it (floats)
+ * @param array $discounted product id => discounted price, as get_discounted_product_prices() gives it (whole minor units)
  * @return array product id => price (int), in the order of $prices
  */
 function pg_price_history_offer_prices($prices, $discounted)

@@ -88,7 +88,9 @@ function api_scope_groups() {
 		'forms'     => array('label' => 'Forms',      'read' => 'forms:read',     'write' => 'forms:write'),
 
 		// Read only: a finding is produced by the analyser, and the way to clear
-		// one is to fix what it is about through the record's own endpoint.
+		// one is to fix what it is about through the record's own endpoint. The
+		// 404 log is read the same way; a redirect for an address in it is a
+		// short link (POST /short-links, pages:write).
 		'seo'       => array('label' => 'SEO',        'read' => 'seo:read',       'write' => ''),
 
 		'webhooks'  => array('label' => 'Webhooks',   'read' => '',               'write' => 'webhooks:manage'),

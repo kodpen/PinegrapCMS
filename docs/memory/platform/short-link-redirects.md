@@ -10,7 +10,7 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - `short_links.redirect_code` 0: as always. A page, product group, product or file is shown at the short address; an address elsewhere is sent on (301 when permanent, 302 when timed or one-time, without the visitor's query string).
 - 301 or 302: `Location` to the destination's own address (`pg_short_link_location()`, language prefix kept), the visitor's query string after the destination's own, the tracking code as `t=` first.
 - A timed or one-time link answers 302 even when saved with 301 (`pg_short_link_status()`): a browser keeps a 301 for good.
-- `router.php` answers an exact name itself (`router_short_link_redirect()`), loading `includes/fn/short_link_redirects.php` alone: the router has no `functions.php` (`router-no-functions-php.md`) and the address builders call no `lang()`.
+- `router.php` answers an exact name itself, after the firewall like any page (`router_short_link_redirect()`), loading `includes/fn/short_link_redirects.php` alone: the router has no `functions.php` (`router-no-functions-php.md`) and the address builders call no `lang()`.
 
 ## What can a name be, and how does a request find its link?
 - `short-link-names.md`: the name rule, a pasted old address as a name, the lookup as it came and in the stored form, IIS name recovery, how two names compare.
@@ -31,4 +31,4 @@ description: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301
 - Restore from the File Manager's bin runs the same check (#1235); a link that would loop stays in the bin and the restore names it and why.
 - Before the step nothing is written or checked and names stay at 100 characters.
 
-CSV files: `short-link-csv.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799, #1235.
+CSV files: `short-link-csv.md`. Renamed pages: `page-rename-redirect.md`. Tests: `tests/short_link_redirects_test.php`, `short_link_requests_test.php`. PRs: #699, #799, #1235.
