@@ -11,7 +11,7 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 - Without the ERP, or with the ERP and no provider (paper invoices), the buttons work. The orders list's Excel export for Paraşüt is not affected.
 
 ## What do the buttons do on an order already sent?
-- Nothing: each refuses before any request when its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) is set, and is drawn disabled. The invoice id is kept once the sales invoice exists, even if its e-document failed or is converting (job id not kept): finish it in Paraşüt. Before #1084 each press raised another sales invoice and e-document (#759); before #1407 each E-Shipment press posted another outgoing `shipment_documents` (stock out twice, first id overwritten).
+- Nothing: each refuses before any request when its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) holds a record's id, and is drawn disabled. The unsure mark `?` is not one (erp-parasut-legacy-invoice.md). The invoice id is kept once the sales invoice exists, even if its e-document failed or is converting (job id not kept): finish it in Paraşüt. Before #1084 each press raised another sales invoice and e-document (#759); before #1407 each E-Shipment press posted another outgoing `shipment_documents` (stock out twice, first id overwritten).
 
 ## What is left?
 - Removing the invoice and shipment code from `includes/fn/parasut.php` once no store relies on it (plans/erp-edocument-leftovers.md); `view_parasut_inbox.php` keeps working.

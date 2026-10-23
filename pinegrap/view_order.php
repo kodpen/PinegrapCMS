@@ -2454,21 +2454,20 @@ if (!$_POST) {
         $has_shippable = ($shippable_count > 0);
         $is_mixed      = ($shippable_count > 0 && $non_shippable_count > 0);
 
-        // Show invoice status badge.
-        $output_parasut_invoice_badge  = '';
+        // Show invoice status badge. The unsure mark a create with no answer
+        // leaves (parasut_order_invoice_unsure()) is no invoice: it asks for
+        // Paraşüt to be checked, and Create Invoice stays offered, since the
+        // press looks for the record there before it writes one.
+        $parasut_invoice_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
+        $parasut_invoice_sent = ($parasut_invoice_id !== '') && !$parasut_invoice_unsure;
+        $output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);
         $output_parasut_shipment_badge = '';
-        if ($parasut_invoice_id !== '') {
-            $output_parasut_invoice_badge = ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($parasut_invoice_id) . '">' . lang('Sent') . '</span>';
-        }
         if ($parasut_shipment_id !== '') {
             $output_parasut_shipment_badge = ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '">' . lang('Sent') . '</span>';
         }
 
         // Status rows shown inside the Order Information card.
-        $invoice_row_badge  = $parasut_invoice_id !== ''
-            ? '<span class="badge bg-success">' . lang('Sent') . '</span>'
-              . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($parasut_invoice_id) . '</small>'
-            : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+        $invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);
         $shipment_row_badge = $parasut_shipment_id !== ''
             ? '<span class="badge bg-success">' . lang('Sent') . '</span>'
               . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($parasut_shipment_id) . '</small>'
@@ -2546,15 +2545,17 @@ if (!$_POST) {
         // document that was not valid.
         // An order that already has its sales invoice in Paraşüt is not offered
         // the action again: parasut_create_invoice() refuses a second one.
-        $output_parasut_invoice_action = ($parasut_invoice_id !== '')
+        $output_parasut_invoice_action = $parasut_invoice_sent
             ? ' disabled title="' . h(lang('This order already has a sales invoice in Paraşüt.')) . '"'
             : ' onclick="pgConfirm({title:\'Paraşüt\', message:\'' . $js_confirm_invoice . '\', confirmText:\'' . lang('Continue') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'primary\'}).then(function(ok){if(ok) document.getElementById(\'parasut-invoice-form\').submit();}); return false;"
-                title="Paraşüt"';
+                title="' . ($parasut_invoice_unsure
+                    ? h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.') . ' ' . lang('Pressed again, it looks for the invoice at Paraşüt first and writes one only if none is there.'))
+                    : 'Paraşüt') . '"';
 
         $output_parasut_buttons = '
         <div class="btn-group btn-group-sm flex-wrap">
             <button type="button"
-                class="btn btn-link py-0 mb-2 ' . (($parasut_invoice_id !== '') ? 'link-success' : 'link-secondary') . '"' . $output_parasut_invoice_action . '>
+                class="btn btn-link py-0 mb-2 ' . ($parasut_invoice_sent ? 'link-success' : ($parasut_invoice_unsure ? 'link-warning' : 'link-secondary')) . '"' . $output_parasut_invoice_action . '>
                 <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>
             ' . $output_parasut_shipment_button . '
