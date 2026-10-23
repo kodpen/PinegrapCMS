@@ -1158,14 +1158,22 @@ function pg_order_list_status_html($order, $paid_known)
     // parasut_exported is set by two different things: the spreadsheet export
     // and an invoice raised through the API. Only parasut_invoice_id tells
     // them apart, so the tooltip is chosen from that rather than claiming an
-    // invoice exists for an order that was only exported to a file.
+    // invoice exists for an order that was only exported to a file. The
+    // unsure mark a create with no answer leaves there is no invoice: the
+    // order is marked to be checked at Paraşüt instead.
     $parasut_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+    $parasut_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
+    $parasut_invoiced = ($parasut_invoice_id !== '') && !$parasut_unsure;
 
-    if (((int) ($order['parasut_exported'] ?? 0) != 0) || ($parasut_invoice_id !== '')) {
-        $title = ($parasut_invoice_id !== '')
+    if (((int) ($order['parasut_exported'] ?? 0) != 0) || $parasut_invoiced) {
+        $title = $parasut_invoiced
             ? lang('An invoice was created for this order in Parasut')
             : lang('This order has been exported for upload to parasut.com');
         $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+    }
+
+    if ($parasut_unsure) {
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;
@@ -2843,6 +2851,42 @@ function pg_order_items_charged_tax($item_ids, $discount)
     }
 
     return pg_order_charged_tax($lines, $discount);
+}
+
+/**
+ * The order discount, tax and total an order's page shows (the order view in
+ * My Account, the receipt page and e-mail), in minor units.
+ *
+ * A placed order shows what it was charged: submit_order() writes the
+ * discount, tax and total to the order, and the order history, the panel and
+ * the order view widget read them there. The session's order_discount is the
+ * visitor's cart's, worked out by apply_offers_to_cart(); it is shown only on
+ * that cart while it is not placed, whose tax and total the page works out
+ * from its lines (null here). Any other unplaced order, a cart saved on the
+ * account, has no discount until it is opened as the cart again.
+ *
+ * @param array      $order    the orders row: id, status, discount, tax, total
+ * @param array|null $session  $_SESSION['ecommerce']: order_id, order_discount
+ * @return array  ['discount' => int, 'tax' => int|null, 'total' => int|null]
+ */
+function pg_order_page_figures($order, $session)
+{
+    if ((string) ($order['status'] ?? 'incomplete') !== 'incomplete') {
+        return array(
+            'discount' => (int) ($order['discount'] ?? 0),
+            'tax' => (int) ($order['tax'] ?? 0),
+            'total' => (int) ($order['total'] ?? 0),
+        );
+    }
+
+    $discount = 0;
+    $cart_id = (int) ($session['order_id'] ?? 0);
+
+    if (($cart_id > 0) && ($cart_id === (int) ($order['id'] ?? 0))) {
+        $discount = max(0, (int) round((float) ($session['order_discount'] ?? 0)));
+    }
+
+    return array('discount' => $discount, 'tax' => null, 'total' => null);
 }
 
 /**

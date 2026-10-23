@@ -585,7 +585,8 @@ function test_payment_iyzico_installment_without_a_higher_price_adds_nothing()
 // Where the quoted instalment charge would leave a rate's total one the VAT,
 // taken on the whole, never reaches, the card is charged the fewest kurus
 // less (pg_order_installment_charge()): 57.92 at 20% with the bank's 59.97 is
-// charged 59.96, and the 3-D Secure row and the order keep 2.04.
+// charged 59.96, and the 3-D Secure row and the order keep 2.04
+// (pg_payment_threeds_state_totals() on the bank's return).
 function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
 {
 	$quote = array('installmentDetails' => array(array('installmentPrices' => array(
@@ -622,6 +623,10 @@ function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
 	pg_assert_same('59.96', $http->posts[1]['body']['paidPrice']);
 	pg_assert_same(204, $kept[0]['installment_charge_cents']);
 	pg_assert_same(5792, $kept[0]['base_total_cents']);
+	pg_assert_same(
+		array('total' => 5996, 'installment_charge' => 204, 'total_without_installment_charge' => 5792),
+		pg_payment_threeds_state_totals($kept[0]),
+		'the bank\'s return records the same figures');
 
 	// Where the checkout does not settle its rates, the bank's figure stands.
 	$http = payment_iyzico_test_http(array(
@@ -908,6 +913,68 @@ function test_payment_iyzico_refund_sends_the_legacy_amount_base_refund()
 
 	pg_assert_false($refused['success']);
 	pg_assert_same('İade tutarı fazla', $refused['error']);
+}
+
+// The body of one function of the drivers' file, for the wrappers that read
+// the store's settings and cannot be called with other ones.
+function payment_iyzico_test_function_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
+
+function test_payment_iyzico_card_refund_in_the_protected_currency_is_not_sent()
+{
+	// The card was charged in USD (10714 hundredths at 0.0297 is 3.18 USD):
+	// iyzico reads a refund's price in that currency, so 20.00 TRY must not
+	// go out as 20.00.
+	$settings = payment_iyzico_test_settings(array('protected_currency' => 'USD', 'protected_rate' => 0.0297));
+	$http = payment_iyzico_test_http(array('/v2/payment/refund' => payment_iyzico_test_success(array('paymentId' => 'r-2000'))));
+
+	$answer = pg_payment_answer('refund', pg_payment_iyzico_card_refund_with(payment_iyzico_test_order(), 2000, $settings));
+
+	pg_assert_same(array(), $http->posts, 'nothing is sent to iyzico');
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear'], 'a refusal: no money moved, the operator refunds in the iyzico panel');
+	pg_assert_same(lang(array(
+		'string' => 'Card payments are taken in the protected currency ({var:1}), so this refund cannot be sent from here. Refund it in the iyzico panel, then record it on the order\'s return request with "Record a refund made another way"; the order screen has no place to record it.',
+		'vars'   => array('USD'))), $answer['error']);
+	pg_assert_same(array(), $answer['raw'], 'iyzico said nothing: no words of its own for the log');
+
+	// The sentence names the return screen's choice for a refund made outside
+	// the driver; it has to be the label that screen draws.
+	pg_assert_contains("h(lang('Record a refund made another way'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_return.php'), 'the return screen records a refund made in the iyzico panel');
+}
+
+function test_payment_iyzico_card_refund_in_the_base_currency_is_sent()
+{
+	$http = payment_iyzico_test_http(array('/v2/payment/refund' => payment_iyzico_test_success(array('paymentId' => 'r-1250'))));
+
+	$answer = pg_payment_answer('refund', pg_payment_iyzico_card_refund_with(payment_iyzico_test_order(), 1250, payment_iyzico_test_settings()));
+
+	pg_assert_same(1, count($http->posts));
+	pg_assert_same(legacy_iyzico_refund_request('24680', 12.5), payment_iyzico_test_without_conversation($http->posts[0]['body']));
+	pg_assert_true($answer['success']);
+	pg_assert_same('r-1250', $answer['refund_reference']);
+}
+
+function test_payment_iyzico_pay_with_iyzico_refund_ignores_the_protected_currency()
+{
+	// Pay With Iyzico is always taken in the base currency, whatever the
+	// card's protected currency.
+	$settings = payment_iyzico_test_settings(array('protected_currency' => 'USD'));
+	$http = payment_iyzico_test_http(array('/v2/payment/refund' => payment_iyzico_test_success(array('paymentId' => 'r-2000'))));
+
+	$answer = pg_payment_answer('refund', pg_payment_iyzico_refund_with(payment_iyzico_test_order(), 2000, $settings));
+
+	pg_assert_same(legacy_iyzico_refund_request('24680', 20.0), payment_iyzico_test_without_conversation($http->posts[0]['body']));
+	pg_assert_true($answer['success']);
+
+	pg_assert_contains('pg_payment_iyzico_card_refund_with(', payment_iyzico_test_function_source('pg_payment_iyzico_refund'), 'the card driver refunds through the protected-currency check');
+	pg_assert_contains('pg_payment_iyzico_refund_with(', payment_iyzico_test_function_source('pg_payment_pay_with_iyzico_refund'));
+	pg_assert_false(strpos(payment_iyzico_test_function_source('pg_payment_pay_with_iyzico_refund'), 'card_refund') !== false, 'Pay With Iyzico refunds without it');
 }
 
 function test_payment_iyzico_cancel_sends_the_legacy_cancel()

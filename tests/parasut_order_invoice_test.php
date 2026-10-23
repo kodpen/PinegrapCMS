@@ -431,3 +431,260 @@ function test_parasut_order_edoc_names_the_exemption_of_a_zero_rated_line()
 	pg_assert_same(array(), $edoc['attributes']);
 	pg_assert_contains('350', $edoc['error']);
 }
+
+// What the order keeps after Create Invoice's POST sales_invoices: the
+// record's id when Paraşüt names one, nothing when it refused the request,
+// and the unsure mark when no answer, a 5xx or a success without a record
+// leaves open that Paraşüt wrote it.
+function test_parasut_order_invoice_id_after_create()
+{
+	$written = array('http_code' => 201, 'body' => array('data' => array('id' => '5001', 'type' => 'sales_invoices')), 'raw' => '{}');
+	pg_assert_same('5001', parasut_order_invoice_id_after_create($written));
+	pg_assert_same('5001', parasut_order_invoice_id_after_create(array('http_code' => 200, 'body' => array('data' => array('id' => 5001)), 'raw' => '{}')));
+
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => 'Operation timed out after 30001 milliseconds')), 'a timeout');
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 502, 'body' => null, 'raw' => '<html>')), 'a gateway error');
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 201, 'body' => null, 'raw' => '<html>')), 'a success without a record');
+
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 422, 'body' => array('errors' => array()), 'raw' => '{}')), 'a refusal');
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 429, 'body' => null, 'raw' => '')), 'refused unprocessed');
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 401, 'body' => null, 'raw' => '')));
+}
+
+// The unsure mark is told from a record's id without the driver loaded: the
+// order list and the order screen read it.
+function test_parasut_order_invoice_unsure()
+{
+	pg_assert_true(parasut_order_invoice_unsure(ERP_EDOC_PARASUT_UNSURE), 'the bare mark');
+	pg_assert_true(parasut_order_invoice_unsure(' ? '), 'read trimmed');
+	pg_assert_true(parasut_order_invoice_unsure('?2026-10-22:7001'), 'the ERP\'s longer mark');
+	pg_assert_false(parasut_order_invoice_unsure(''), 'not sent');
+	pg_assert_false(parasut_order_invoice_unsure('5001'), 'a record');
+	pg_assert_false(parasut_order_invoice_unsure(null));
+}
+
+// A sales invoice in Paraşüt's list answer, as GET sales_invoices with
+// include=active_e_document gives it.
+function pg_test_parasut_listed_invoice($id, $overrides = array(), $contact_id = '7001', $edoc_id = '')
+{
+	return array(
+		'id' => $id,
+		'type' => 'sales_invoices',
+		'attributes' => array_merge(array(
+			'description' => 'Order #1180',
+			'issue_date' => '2026-10-22',
+			'item_type' => 'invoice',
+			'net_total' => '57.92',
+		), $overrides),
+		'relationships' => array(
+			'contact' => array('data' => array('id' => $contact_id, 'type' => 'contacts')),
+			'active_e_document' => array('data' => ($edoc_id === '') ? null : array('id' => $edoc_id, 'type' => 'e_archives')),
+		),
+	);
+}
+
+function pg_test_parasut_search_payload()
+{
+	return array('data' => array('type' => 'sales_invoices', 'attributes' => array('description' => 'Order #1180', 'issue_date' => '2026-10-22')));
+}
+
+// The order's record in a list answer: its description, issue date and
+// contact, not cancelled. One already an e-document (converted on Paraşüt's
+// screen after the unanswered press) is still the order's, named as issued.
+function test_parasut_order_invoice_matches()
+{
+	$body = array('data' => array(
+		pg_test_parasut_listed_invoice('5003'),
+		pg_test_parasut_listed_invoice('5002', array(), '7001', '9100'),
+		pg_test_parasut_listed_invoice('5004', array('description' => 'Order #1181')),
+		pg_test_parasut_listed_invoice('5005', array('issue_date' => '2026-10-21')),
+		pg_test_parasut_listed_invoice('5006', array(), '7002'),
+		pg_test_parasut_listed_invoice('5007', array('item_type' => 'cancelled')),
+		'not a record',
+	), 'meta' => array('total_pages' => 1));
+
+	$matches = parasut_order_invoice_matches($body, pg_test_parasut_search_payload(), '7001');
+
+	pg_assert_same(array('5003', '5002'), array_map('strval', array_keys($matches)), 'the order\'s records only');
+	pg_assert_same('', $matches['5003']['edoc_id'], 'a draft');
+	pg_assert_same('57.92', $matches['5003']['attributes']['net_total'], 'with its attributes for the total check');
+	pg_assert_same('9100', $matches['5002']['edoc_id'], 'already issued');
+	pg_assert_same(array(), parasut_order_invoice_matches(array('data' => null), pg_test_parasut_search_payload(), '7001'), 'an empty answer');
+}
+
+// The search an unsure press makes before it writes: the order's contact
+// and issue date, newest first, with the e-document named, page by page.
+function test_parasut_order_invoice_find_reads_the_contact_s_invoices_of_the_day()
+{
+	$asked = array();
+	$get = function ($path) use (&$asked) {
+		$asked[] = $path;
+		return array('http_code' => 200, 'raw' => '{}', 'body' => array(
+			'data' => (count($asked) === 2) ? array(pg_test_parasut_listed_invoice('5003')) : array(pg_test_parasut_listed_invoice('4990', array('description' => 'Order #1179'))),
+			'meta' => array('total_pages' => 3),
+		));
+	};
+
+	$found = parasut_order_invoice_find(pg_test_parasut_search_payload(), '7001', $get);
+
+	pg_assert_same('', $found['error']);
+	pg_assert_same(array('5003'), array_map('strval', array_keys($found['records'])), 'found on the second page');
+	pg_assert_same(3, count($asked), 'every page read');
+	pg_assert_contains('/sales_invoices?filter[contact_id]=7001&filter[issue_date]=2026-10-22&sort=-id&include=active_e_document', $asked[0]);
+	pg_assert_contains('&page[number]=2&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, $asked[1]);
+}
+
+// None found is an answer (the press then writes the invoice); a page
+// Paraşüt does not answer, or pages left unread with nothing matched, is
+// not, and the mark stays.
+function test_parasut_order_invoice_find_tells_none_from_unknown()
+{
+	$none = parasut_order_invoice_find(pg_test_parasut_search_payload(), '7001', function ($path) {
+		return array('http_code' => 200, 'raw' => '{}', 'body' => array('data' => array(), 'meta' => array('total_pages' => 1)));
+	});
+	pg_assert_same(array('records' => array(), 'error' => ''), $none, 'none written');
+
+	$timeout = parasut_order_invoice_find(pg_test_parasut_search_payload(), '7001', function ($path) {
+		return array('http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => 'Operation timed out after 30001 milliseconds');
+	});
+	pg_assert_same(array(), $timeout['records']);
+	pg_assert_contains('Operation timed out', $timeout['error'], 'no answer to the search');
+
+	$refused = parasut_order_invoice_find(pg_test_parasut_search_payload(), '7001', function ($path) {
+		return array('http_code' => 503, 'body' => null, 'raw' => '<html>');
+	});
+	pg_assert_true($refused['error'] !== '', 'a 5xx');
+
+	$pages = 0;
+	$crowded = parasut_order_invoice_find(pg_test_parasut_search_payload(), '7001', function ($path) use (&$pages) {
+		$pages++;
+		return array('http_code' => 200, 'raw' => '{}', 'body' => array('data' => array(), 'meta' => array('total_pages' => 999)));
+	});
+	pg_assert_same((int) ERP_EDOC_PARASUT_FIND_PAGES, $pages, 'stops at the page limit');
+	pg_assert_same(array(), $crowded['records']);
+	pg_assert_true($crowded['error'] !== '', 'pages left unread');
+}
+
+// The order screen's badge for the invoice: "Sent" with the record's id,
+// and for the unsure mark a warning to check Paraşüt, never "Sent" or the
+// mark shown as an id.
+function test_parasut_order_invoice_status_badge()
+{
+	$sent = parasut_order_invoice_status_badge('5001');
+	pg_assert_contains(lang('Sent') . '</span>', $sent);
+	pg_assert_contains(lang('Parasut ID') . ': 5001', $sent);
+	pg_assert_contains(lang('Parasut ID') . ': 5001', parasut_order_invoice_status_badge('5001', true));
+
+	pg_assert_contains(lang('Not Sent'), parasut_order_invoice_status_badge(''));
+	pg_assert_same('', parasut_order_invoice_status_badge('', true), 'no badge on a button not pressed');
+
+	foreach (array(false, true) as $in_button) {
+		$unsure = parasut_order_invoice_status_badge(ERP_EDOC_PARASUT_UNSURE, $in_button);
+
+		pg_assert_contains('bg-warning', $unsure);
+		pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
+		pg_assert_false(strpos($unsure, '>' . lang('Sent') . '<') !== false, 'not "Sent"');
+		pg_assert_false(strpos($unsure, lang('Parasut ID')) !== false, 'the mark is not an id');
+	}
+}
+
+// Create Invoice on an order with the mark looks at Paraşüt before it
+// writes: the search goes before the mark and the request, which go only
+// when nothing was found; only a real id refuses the press outright.
+function test_parasut_create_invoice_looks_before_it_writes_again()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_create_invoice(');
+	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
+	$end = strpos($source, "\nfunction ", (int) $start + 1);
+	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
+
+	$unsure = strpos($body, '$unsure = parasut_order_invoice_unsure($existing_invoice_id);');
+	$refused = strpos($body, "if ((\$existing_invoice_id !== '') && !\$unsure) {");
+	$searched = strpos($body, 'parasut_order_invoice_find($invoice_body, $parasut_contact_id,');
+	$kept = strpos($body, "SET parasut_invoice_id = '\" . escape(\$sales_invoice_id)");
+	$none = strpos($body, "if (\$sales_invoice_id === '') {");
+	$marked = strpos($body, 'escape(ERP_EDOC_PARASUT_UNSURE)');
+	$posted = strpos($body, "'/sales_invoices', \$invoice_body");
+	$answered = strpos($body, 'parasut_order_invoice_id_after_create($inv_result)');
+	$checked = strpos($body, 'erp_edoc_parasut_total_check($attributes,');
+
+	pg_assert_true(($unsure !== false) && ($refused !== false) && ($unsure < $refused), 'a real id refuses, the mark does not');
+	pg_assert_true(($searched !== false) && ($kept !== false) && ($searched < $kept), 'a record found is kept on the order');
+	pg_assert_true(($none !== false) && ($kept < $none) && ($none < $marked), 'the create goes only when none was found');
+	pg_assert_true(($marked !== false) && ($posted !== false) && ($marked < $posted), 'the mark is written before the request');
+	pg_assert_true(($answered !== false) && ($posted < $answered), 'the answer decides what the order keeps');
+	pg_assert_true(($checked !== false) && ($answered < $checked), 'a record found or written meets the total check');
+}
+
+// The order screen draws the invoice's badges from that one helper and
+// offers Create Invoice again on the mark (the press looks for the record).
+function test_parasut_order_screen_reads_the_mark()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+
+	pg_assert_contains('$parasut_invoice_sent = ($parasut_invoice_id !== \'\') && !$parasut_invoice_unsure;', $source);
+	pg_assert_contains('$output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);', $source);
+	pg_assert_contains('$invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);', $source);
+	pg_assert_contains('$output_parasut_invoice_action = $parasut_invoice_sent', $source, 'only a record disables the button');
+}
+
+// The buyer card the order's invoice goes on keeps the identity number in
+// tax_number, the one field Paraşüt has for a company's VKN and a person's
+// TCKN; contact_type says which. An 11-digit number is a TCKN, so a sole
+// proprietor who gave a trade name is a person too, as the ERP's driver
+// opens such a card (erp_edoc_parasut_contact_attributes()).
+function test_parasut_order_contact_attributes_keep_the_identity_in_tax_number()
+{
+	$order = array(
+		'billing_company' => '',
+		'billing_first_name' => 'Ayşe',
+		'billing_last_name' => 'Kaya',
+		'billing_email_address' => 'a@example.test',
+		'billing_phone_number' => '',
+		'billing_address_1' => 'Cad. 1',
+		'billing_city' => 'İstanbul',
+		'billing_country' => 'TR',
+	);
+
+	$person = parasut_order_contact_attributes($order, '10000000146');
+	pg_assert_same(array(
+		'account_type' => 'customer',
+		'contact_type' => 'person',
+		'name' => 'Ayşe Kaya',
+		'email' => 'a@example.test',
+		'phone' => '',
+		'tax_number' => '10000000146',
+		'address' => 'Cad. 1, İstanbul, TR',
+	), $person);
+	pg_assert_false(isset($person['tckn']), 'no attribute the documentation does not list');
+
+	$order['billing_company'] = 'Kaya Ticaret A.Ş.';
+	$company = parasut_order_contact_attributes($order, '1234567808');
+	pg_assert_same('company', $company['contact_type']);
+	pg_assert_same('Kaya Ticaret A.Ş.', $company['name']);
+	pg_assert_same('1234567808', $company['tax_number']);
+
+	$order['billing_company'] = 'Kaya Kırtasiye';
+	$proprietor = parasut_order_contact_attributes($order, '10000000146');
+	pg_assert_same('person', $proprietor['contact_type']);
+	pg_assert_same('Kaya Kırtasiye', $proprietor['name']);
+	pg_assert_same('10000000146', $proprietor['tax_number']);
+
+	// No number configured or filled in: the card is opened without one.
+	pg_assert_false(array_key_exists('tax_number', parasut_order_contact_attributes($order, '')));
+}
+
+// The order screen's buttons open the buyer card with those attributes.
+function test_parasut_sync_contact_writes_the_card_with_the_order_attributes()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_sync_contact(');
+	pg_assert_true($start !== false, 'parasut_sync_contact() is found');
+
+	$end = strpos($source, "\n}\n", $start);
+	$body = substr($source, $start, $end - $start);
+
+	pg_assert_contains('parasut_order_contact_attributes($order, _parasut_order_identity($order))', $body);
+	pg_assert_false(strpos($body, "'tckn'") !== false, 'no tckn attribute');
+}

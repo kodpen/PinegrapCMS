@@ -1,6 +1,6 @@
 ---
 name: cart-express-order-warnings
-description: Why the cart and express order pages (built-in and custom layouts) write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
+description: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 ---
 
 ## Which values do the cart and express order pages start before use?
@@ -39,14 +39,24 @@ removed from your order." and the total no longer counts it. The same
 fallback guards the redemption step (race between check and charge). Before,
 both reads were `null` and warned; the message was already shown.
 
+## What does the plain-text receipt e-mail start? (#1421)
+`get_order_receipt_in_plain_text()` uses the same ship to 0 fallback, reads
+country names and the billing information page's labels with `?? ''` (an
+express order has no `billing_information_page_id`), and starts the card
+type/number and each recipient's `$output_shipping` as `''`. Same text.
+
 ## How was it checked?
 Sandbox (`tools/setup_sandbox.sh`), cart, quote cart and express order in
 both layouts, quick add groups with and without recipient/quantity/donation
 products, product-form and recurring items, rejected and filled submits,
 signed in with and without a contact, and a deleted gift card: 942 warning
 lines on the old code, 0 after; HTML equal except ids and cart codes.
-Tests: `tests/cart_layout_warnings_test.php`.
+Plain-text receipt: a read-only render of dev's placed orders in three
+session shapes, 780 warning lines before and 0 after, text identical.
+Tests: `tests/cart_layout_warnings_test.php`,
+`tests/order_receipt_plain_text_warnings_test.php`.
 
 PRs: #456 (custom layouts, quick add off), #475 (built-in layouts, express
 quick add, recurring field title, deleted gift card), #485 (quick add fields
-not posted). Givex cards: see givex-gift-card.md.
+not posted), #1421 (plain-text receipt e-mail). Givex cards: see
+givex-gift-card.md.
