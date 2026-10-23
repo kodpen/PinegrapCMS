@@ -25,9 +25,9 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 - Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md). Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
 - Optimize, the file manager's buttons, `edit_file.php`: one sentence per reason ("is an animated image ... left alone" and the orientation one), file untouched.
 - Product and API uploads: the file is stored byte for byte.
-- Image editor Replace (`image_editor_save.php`): refused with a JSON message for any animated file (`pg_image_is_animated()`, bytes not name); Save as new file still works. The footer hides Replace only for `.gif` names, so an APNG or animated WebP learns it on save (PR #NNNN).
+- Image editor Replace (`image_editor_save.php`): refused with a JSON message for any animated file (`pg_image_is_animated()`, bytes not name); Save as new file still works. The footer hides Replace only for `.gif` names, so an APNG or animated WebP learns it on save (PR #1340).
 - Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
-- Until PR #NNNN the image editor's Replace checked only `.gif` names and wrote one frame over an APNG or animated WebP.
+- Until PR #1340 the image editor's Replace checked only `.gif` names and wrote one frame over an APNG or animated WebP.
