@@ -245,8 +245,10 @@ function pg_image_is_animated_png($file_path)
                 break;
             }
 
-            // The chunk's data and its CRC.
-            if (($length < 0) || ($length > 0x7FFFFFFF) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
+            // The chunk's data and its CRC. A length that would overflow the
+            // offset on 32-bit PHP ends the search: fseek() throws a TypeError
+            // on a float, and no real PNG chunk comes near that size.
+            if (($length < 0) || ($length > 0x7FFFFFFF) || ($length > PHP_INT_MAX - 4) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
                 break;
             }
         }

@@ -10,9 +10,9 @@ description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) a
 
 ## How is an animated file told apart?
 - By its bytes, never its name or extension (an APNG named `.jpg` still counts).
-- GIF: two or more image descriptors (`pg_image_is_animated_gif()`).
-- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only chunk headers are read; data is skipped with `fseek()`. An `acTL` after `IDAT` is a still PNG to every reader.
-- WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`).
+- GIF: two or more Graphic Control Extension blocks (`00 21 F9 04`) (`pg_image_is_animated_gif()`).
+- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only the 8-byte chunk headers are read; each chunk's data is skipped with `fseek()`, so a large text chunk costs nothing. An `acTL` after `IDAT` is a still PNG to every reader. A chunk length near 2 GB ends the search instead of overflowing the `fseek()` offset on 32-bit PHP (a `TypeError` there, a 500 on upload, Optimize, `?w=` and page render).
+- WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
 
 ## How is a JPEG's orientation read?
 - `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else Imagick (ping); else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG).

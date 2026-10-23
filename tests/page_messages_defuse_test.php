@@ -141,8 +141,9 @@ function test_page_message_raw_sinks_are_defused()
 
 // A refused upload's sentence names the file as the visitor sent it. A
 // liveform message is HTML, so every door that keeps that sentence in a
-// liveform hands it over escaped.
-function test_page_message_upload_refusal_is_escaped_in_liveforms()
+// liveform escapes the name first (and with ENT_SUBSTITUTE, so a name that
+// is not valid UTF-8 does not empty the whole sentence).
+function test_page_message_upload_refusal_escapes_the_name_in_liveforms()
 {
 	$unescaped = array();
 	$escaped = 0;
@@ -150,13 +151,111 @@ function test_page_message_upload_refusal_is_escaped_in_liveforms()
 	foreach (array('add_comment.php', 'custom_form.php', 'add_submitted_form.php', 'edit_submitted_form.php') as $name) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $name);
 
-		if (preg_match('/->(?:mark_error|add_error|add_notice|add_warning)\([^;]*(?<!h\()pg_upload_blocked_message\(/', $source)) {
+		if (preg_match('/->(?:mark_error|add_error|add_notice|add_warning)\(\s*[^;]*pg_upload_blocked_message\(\s*\$_FILES/', $source)) {
 			$unescaped[] = $name;
 		}
 
-		$escaped += preg_match_all('/->mark_error\([^;]*h\(pg_upload_blocked_message\(/', $source);
+		$escaped += preg_match_all('/->mark_error\([^;]*pg_upload_blocked_message\(htmlspecialchars\([^;]*ENT_QUOTES \| ENT_SUBSTITUTE/', $source);
 	}
 
-	pg_assert_same(array(), $unescaped, 'liveform doors that keep the refusal unescaped');
-	pg_assert_same(4, $escaped, 'the four liveform doors escape the refusal');
+	pg_assert_same(array(), $unescaped, 'liveform doors that pass the raw file name to the message');
+	pg_assert_same(4, $escaped, 'the four liveform doors escape the file name');
+}
+
+// A message is HTML; shown in a field's inline feedback (a text context) it is
+// reduced to its text, read once, so the tags do not show and a double escape
+// does not leave entities on screen.
+function test_page_message_text_for_inline_feedback()
+{
+	pg_assert_same('Sorry, <script>x</script>.php was not accepted.', pg_liveform_message_text('Sorry, &lt;script&gt;x&lt;/script&gt;.php was not accepted.'));
+	pg_assert_same('rock&roll\'s.php', pg_liveform_message_text('rock&amp;roll&#039;s.php'));
+	pg_assert_same('sign in', pg_liveform_message_text('<a href="/login">sign in</a>'));
+	pg_assert_same('', pg_liveform_message_text(null));
+	pg_assert_same('', pg_liveform_message_text(''));
+}
+
+// The inline text is what the alert shows of the same message: a "<" that is
+// not the start of a tag is text there and stays (strip_tags() dropped the
+// rest of the sentence after it), what a browser hides goes, and a line break
+// reads as a space instead of joining two words.
+function test_page_message_text_keeps_what_the_alert_shows()
+{
+	pg_assert_same('Quantity must be <5 and >0', pg_liveform_message_text('Quantity must be <5 and >0'));
+	pg_assert_same('Use 1 < 2 always', pg_liveform_message_text('Use 1 < 2 always'));
+	pg_assert_same('a <= b, c <- d', pg_liveform_message_text('a <= b, c <- d'));
+	pg_assert_same('2 line(s) could not be used: line 1: x line 2: y', pg_liveform_message_text('2 line(s) could not be used:<br>line 1: x<br />line 2: y'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- note --> <a class="alert-link" href="e.php?id=1&amp;x=2" onclick="return a > b;">Open the expense</a>'));
+	pg_assert_same('Sorry, x was not accepted.', pg_liveform_message_text('Sorry, <?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Sorry, <?php echo 1; ?>x was not accepted.', pg_liveform_message_text('Sorry, &lt;?php echo 1; ?>x was not accepted.'));
+	pg_assert_same('Mail rejected', pg_liveform_message_text('Mail <info@example.com> rejected'));
+	pg_assert_same('Footer', pg_liveform_message_text('<cregion>Footer</cregion>'));
+}
+
+// A quote or a comment that is never closed runs to the end, as a browser
+// reads it, and an outsized one is read in one pass: an unclosed quote after
+// many tags rescanned the rest of the message from every tag, and a comment
+// over a megabyte ran PCRE out of backtracking and came back as null.
+function test_page_message_text_unclosed_quote_and_comment()
+{
+	pg_assert_same('Sorry', pg_liveform_message_text('Sorry<a title="x>more text'));
+	pg_assert_same('Saved.', pg_liveform_message_text('Saved.<!-- note that never closes'));
+	pg_assert_same('', pg_liveform_message_text(str_repeat('<br ', 20000) . '"'));
+	pg_assert_same('x', pg_liveform_message_text('x<!--' . str_repeat('a', 1000100)));
+}
+
+// A tag inside a comment or inside another tag's quoted attribute is part of
+// that comment or attribute, and an empty comment ends where it opens: the
+// text after them stays, as the alert shows it.
+function test_page_message_text_tags_inside_comments_and_attributes()
+{
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- <p --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!-- old <br here --> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved. <a title="<p class=\'x>">Open</a> the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!--> Open the expense'));
+	pg_assert_same('Saved. Open the expense', pg_liveform_message_text('Saved.<!---> Open the expense'));
+	pg_assert_same('ab', pg_liveform_message_text('a<!---->b'));
+}
+
+// The two inline-feedback consumers (output_field and the per-field JS map)
+// take the message through pg_liveform_message_text(), not the raw stored
+// string, so an escaped file name is not escaped a second time.
+function test_page_message_inline_feedback_consumers_use_text_helper()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/liveform.class.php');
+
+	pg_assert_same(0, preg_match('/htmlspecialchars\(\$session_field\[\x27error_message\x27\]/', $source), 'output_field escapes the raw message');
+	pg_assert_same(0, preg_match('/\$field_errors_for_js\[\$field_name\] = \$field_data\[\x27error_message\x27\];/', $source), 'the JS map carries the raw message');
+	pg_assert_true(strpos($source, 'pg_liveform_message_text($session_field[\'error_message\'])') !== false, 'output_field uses the text helper');
+	pg_assert_true(strpos($source, 'pg_liveform_message_text($field_data[\'error_message\'])') !== false, 'the JS map uses the text helper');
+}
+
+// A posted field named after a message bucket does not reach that bucket:
+// add_fields_to_session() keeps it out, so the store-time defuse is not
+// bypassed and the page printers read only defused messages.
+function test_page_message_reserved_request_keys_are_not_fields()
+{
+	_test_page_messages_with_session(function () {
+		$saved_request = $_REQUEST;
+		$_REQUEST = array(
+			'warnings' => '<?php echo 1; ?>',
+			'notices' => array('x' => '<cregion>a</cregion>'),
+			'__prefill' => 'x',
+			'_form_error_0' => 'y',
+			'real_field' => 'kept',
+		);
+
+		try {
+			$form = new liveform('reserved_keys_test');
+			$form->add_fields_to_session();
+			$stored = $_SESSION['software']['liveforms']['reserved_keys_test'][0];
+
+			pg_assert_false(isset($stored['warnings']['value']), 'a posted "warnings" field is not stored');
+			pg_assert_false(isset($stored['notices']['value']), 'a posted "notices" field is not stored');
+			pg_assert_false(isset($stored['_form_error_0']['value']), 'a posted "_form_error_0" field is not stored');
+			pg_assert_same('kept', $stored['real_field']['value'], 'an ordinary field is still stored');
+			pg_assert_false(isset($stored['warnings'][0]), 'the warnings list stays empty');
+		} finally {
+			$_REQUEST = $saved_request;
+		}
+	});
 }

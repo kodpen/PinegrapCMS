@@ -1,17 +1,17 @@
 ---
 name: catalog-listing-system-widget
-description: catalog_listing system widget defaults, group card behavior (browse/select), group scope rules, subtree helper and group price range rules.
+description: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
 ---
 
 ## What are the catalog_listing defaults?
-These must be identical in PHP and designer JS:
-- `group_navigation` = `'drill_down'`: in `functions.php` + `style_designer.js` (3 places).
+These must agree in PHP (`_render_system_widget_catalog_listing()`, `includes/fn/widgets_catalog.php`) and the designer (`_swTypeDefaults()` and the settings panel, `style_designer.js`):
+- `group_navigation` = `'drill_down'` (what the legacy catalog page always did; an explicit `'none'` / `'page'` is kept).
 - `order_by_field` = `'sort_order'`.
-- `empty_message` = `'Ürün bulunamadı.'`.
+- `empty_message`: a new widget gets `_sdT('Product not found.')` written into its config; the renderer's fallback for an empty setting is `lang('No products found.')`. The two texts differ.
 
 ## How do group cards behave per `display_type`?
-- `browse`: link `{liste_sayfası}/{address_name}` (expands on the same page); Add to Cart stripped.
-- `select`: link `{detail_page}/{address_name}` (opens in product detail); Add to Cart stripped.
+- `browse`: link `{listing page}/{address_name}` (the group opens on the same page; with `group_navigation = 'page'` on the chosen page); Add to Cart stripped.
+- `select`: link `{detail page}/{address_name}` (opens in product detail); Add to Cart stripped.
 - `select` group and product links become `#` when the `detail_page_id` setting is missing. That is a missing setting, not a code bug.
 
 ## Which groups are in scope?
@@ -20,8 +20,8 @@ These must be identical in PHP and designer JS:
 - Price range and filter options: ALWAYS the whole subtree.
 
 ## How is the subtree computed?
-- Shared helper `_pg_catalog_group_subtree_ids($root_ids)` → `root => [self + all descendant groups]`.
-- The walk is done in PHP, not a recursive SQL CTE (runs on every render, and CTE support must not be required). The CTE in the search branch is the exception.
+- Shared helper `_pg_catalog_group_subtree_ids($root_ids)` → `root => [self + all descendant groups]`; cycles and depth are guarded.
+- Every place that needs a subtree (listing scope, attribute filter panel, group search, price ranges, feeds) walks `product_groups` in PHP through this helper and an `IN (...)` list. There is no recursive SQL CTE in the code: it runs on every render, and MySQL 5.7 has no CTEs.
 
 ## How is the group price range computed?
 Same three rules as legacy `get_price_range()`: subtree recursion + discount application + exclude `selection_type='donation'`.

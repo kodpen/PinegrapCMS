@@ -1,6 +1,6 @@
 ---
 name: order-cancellation-flow
-description: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, restore cleanup.
+description: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, the one restore path, what the API status moves call.
 ---
 
 ## What is the single cancel entry point?
@@ -22,6 +22,9 @@ description: process_order_cancellation as the only cancel path, admin cancel UI
 - The detail-page cancel button must not depend on `ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay' && $transaction_id` (it hid the button for bank transfer / cash on delivery).
 
 ## Restore
-- Restoring a cancelled order also CLEARS `cancelled_at`/`cancelled_by`/`cancellation_reason` and (unless refunded) `refund_status`/`refunded_at`/`refund_reference`; otherwise the order_view timeline keeps a dangling "İptal Edildi" step. The gift cards the cancellation expired get their date back (`pg_order_restore_gift_cards()`).
+- One path: `pg_order_restore_cancelled($order_id, $status)` (ecommerce.php), called by the order screen's Restore and by `POST /orders/{id}` moving a cancelled order to `complete`/`exported` (#877, PR #1258). It moves only a cancelled row (`AND status = 'cancelled'`, false otherwise), CLEARS `cancelled_at`/`cancelled_by`/`cancellation_reason` and (unless refunded) `refund_status`/`refunded_at`/`refund_reference`, and gives the expired gift cards their date back (`pg_order_restore_gift_cards()`). Callers write the audit row and announce `order.status_changed`.
+- Before, the API wrote the status alone: the order timeline kept "Order Cancelled", the refund banner stayed and the gift cards stayed expired.
+
+- The external API's status moves (which go through it, which are refused): docs/memory/commerce/api-order-status-moves.md
 
 Related: docs/memory/commerce/order-cancellation-config.md, docs/memory/commerce/order-cancel-shipping-gate.md, docs/memory/commerce/order-cancel-gift-cards.md

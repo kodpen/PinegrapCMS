@@ -11,13 +11,12 @@ description: Order VAT at checkout and on the ERP invoice (per rate, again after
 - Demo data broke the rule: `_seed_demo.php` fixed; `_seed_fix_discount_tax.php` repaired old rows (only error-signature rows; rerunnable).
 
 ## How does `erp_order_lines()` build a discounted line?
-- Discount spread by line value (`erp_allocate()`), then VAT retaken per rate on the rest (`erp_rate_vat()`, #1168): checkout's figure.
-- Then tied to the header VAT: a gap ≤ 1 kuruş per VAT-bearing line (per-line-taxed orders before #1168) is spread over them; wider fails the gate.
+- Discount spread by line value (`erp_allocate()`), then VAT retaken per rate on the rest (`erp_rate_vat()`, #1168): checkout's figure. The rate is the legal one (`erp_line_tax_rate()`, erp-return-documents).
+- Then tied to the header VAT (`orders.tax`): a gap ≤ 1 kuruş per VAT-bearing line (per-line-taxed orders before #1168) is spread over them, largest first; wider fails the gate.
 - The gate runs BEFORE `erp_next_number()`: rejections use no number.
 
 ## Why are order header amounts not line items?
-- `orders.shipping`, `discount`, `surcharge`, `gift_card_discount` are header-only; the `order_items` sum is NOT the order total. Invoices/exports handle each separately.
-- `discount` also lowers the header VAT (`orders.tax`); line tax stays undiscounted, so lines sent as-is over-invoice.
+- They live only on the header; the invoice header, the charge lines, the gift card and the total check: erp-order-invoice-header.md.
 
 ## Which order lines does the invoice carry?
 - Only charged ones: `erp_order_charged_items($order, $items)` (`order_bridge.php`) drops a recurring line (`order_items.recurring_payment_period` set) starting after the **order day** (any recurring line on ClearCommerce), as `submit_order.php` totals (`pg_order_line_charged_today()`). `erp_order_lines()` spreads discount and shipping tax over the rest.
@@ -27,4 +26,4 @@ description: Order VAT at checkout and on the ERP invoice (per rate, again after
 
 ## When can the filter differ from checkout?
 - It reads today's gateway and the line snapshot (`recurring_payment_period`, `recurring_start_date`); `submit_order.php` used `products.recurring` and the submit-time gateway. They differ after an unrecorded ClearCommerce period, a later recurring/start change on the product, or a switch to non-recurring between cart update (which writes `recurring_payment_period`) and submit.
-- Still unfiltered (follow-up): old Paraşüt export `parasut_create_invoice()` (`includes/fn/parasut.php` ~1620) sends every non-saved row.
+- The order screen's old Paraşüt button takes the same filter since #1268 (`parasut_order_invoice_lines()`).

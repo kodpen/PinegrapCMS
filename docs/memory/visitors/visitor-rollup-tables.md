@@ -14,11 +14,11 @@ Aggregated at write time (the `waf_log` pattern: bucket key + `INSERT ... ON DUP
 - The query string never enters the key: the payload changes every request, so pagination/filter combos would defeat aggregation exactly when needed.
 
 ## How is the content item identified (not by title)?
-- Old `landing_page_name` was written only on the FIRST page, after the slug was stripped (`get_page.php:92` catalog detail, `:122` form item view): every product was `urun-detay`, every article `blog-gorunum`, so "which article at 15:00" had no answer.
+- Old `landing_page_name` was written only on the FIRST page, after `get_page.php` stripped the slug (catalog detail, form item view): every product was `urun-detay`, every article `blog-gorunum`, so "which article at 15:00" had no answer.
 - Render code reports the item it resolved with `pg_track_content($type, $id)`; `pg_record_visitor_page_view()` reads it. FIRST report wins: with several system widgets on a page, the item the URL points to must not be overwritten by a "similar products" widget below.
 - Record points: product / product group (legacy catalog) `get_catalog_item_from_url()`; product (system widget `/b/<slug>`) `_render_system_widget_catalog_item_view()`; form / blog (legacy) `get_form_item_view.php`; form / blog (system widget) `_render_system_widget_form_item_view()`.
 - The title is NOT copied into the row: store `item_type` + `item_id`; `pg_visitor_label_content_rows()` resolves them at report time with a batch JOIN (one query per type). A renamed product updates all history; a deleted record falls back to the page name (traffic does not vanish).
-- `get_catalog_item_from_url()` is memoized: one catalog detail render called it from 5 places (`get_page_content.php` 2172, 3074, 3409, 3431, 5043), re-running the same two queries each time.
+- `get_catalog_item_from_url()` is memoized: one catalog detail render calls it from several places in `get_page_content.php`, and each call used to re-run the same two queries.
 
 ## Does the rollup skip crawlers?
 - No, and it also counts not-found record addresses. It feeds the dashboard, the API top content, llms.txt and the SEO impact column. The public "most read" order reads the form counters instead (`designer/record-view-counts.md`).
