@@ -2452,6 +2452,11 @@ function pg_return_amount_cents($value)
  * the order discount with the tax taken again on what is left, the way the
  * ERP spreads the discount (erp_order_lines()). Shipping is not included.
  *
+ * A line below zero (a product priced below zero) lowers what the goods cost
+ * the way the discount does: left out of the return, it comes back with the
+ * goods in proportion to their price, as the ERP brings it back
+ * (erp_return_credit_quantities()).
+ *
  * @param array $lines      order item id => price (a unit, minor units),
  *                          quantity, tax_total (the line's)
  * @param array $quantities order item id => how many go back
@@ -2468,30 +2473,56 @@ function pg_return_refund_estimate($lines, $quantities, $discount)
         $subtotal += (int) $line['price'] * max(0, (int) $line['quantity']);
     }
 
+    // What a number of a line comes to.
+    $worth = function ($line, $count) use ($discount, $subtotal) {
+        $sold = max(1, (int) $line['quantity']);
+        $base = (int) $line['price'] * $count;
+        $tax = (int) round((int) $line['tax_total'] * $count / $sold);
+        $share = (($discount > 0) && ($subtotal > 0)) ? (int) round($discount * $base / $subtotal) : 0;
+
+        // Never more off than the line: a line below zero takes its share
+        // below zero too, and no further down than the line itself.
+        $share = ($base < 0) ? max($base, $share) : min($base, $share);
+
+        if (($share !== 0) && ($base !== 0)) {
+            $tax = (int) round($tax * ($base - $share) / $base);
+        }
+
+        return $base - $share + $tax;
+    };
+
     $amount = 0;
+    $chosen = array();
 
     foreach ((array) $quantities as $id => $count) {
         if (!isset($lines[$id])) {
             continue;
         }
 
-        $line = $lines[$id];
-        $sold = max(1, (int) $line['quantity']);
-        $count = min(max(0, (int) $count), $sold);
+        $count = min(max(0, (int) $count), max(1, (int) $lines[$id]['quantity']));
 
-        if ($count === 0) {
-            continue;
+        if ($count > 0) {
+            $chosen[$id] = $count;
+            $amount += $worth($lines[$id], $count);
         }
+    }
 
-        $base = (int) $line['price'] * $count;
-        $tax = (int) round((int) $line['tax_total'] * $count / $sold);
-        $share = (($discount > 0) && ($subtotal > 0)) ? min($base, (int) round($discount * $base / $subtotal)) : 0;
+    $goods = 0;
+    $back = 0;
 
-        if (($share > 0) && ($base > 0)) {
-            $tax = (int) round($tax * ($base - $share) / $base);
+    foreach ($lines as $id => $line) {
+        if ((int) $line['price'] > 0) {
+            $goods += (int) $line['price'] * max(0, (int) $line['quantity']);
+            $back += isset($chosen[$id]) ? (int) $line['price'] * $chosen[$id] : 0;
         }
+    }
 
-        $amount += $base - $share + $tax;
+    if (($back > 0) && ($goods > 0)) {
+        foreach ($lines as $id => $line) {
+            if (((int) $line['price'] < 0) && !isset($chosen[$id])) {
+                $amount += (int) round($worth($line, max(1, (int) $line['quantity'])) * $back / $goods);
+            }
+        }
     }
 
     return $amount;
