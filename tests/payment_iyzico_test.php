@@ -585,7 +585,8 @@ function test_payment_iyzico_installment_without_a_higher_price_adds_nothing()
 // Where the quoted instalment charge would leave a rate's total one the VAT,
 // taken on the whole, never reaches, the card is charged the fewest kurus
 // less (pg_order_installment_charge()): 57.92 at 20% with the bank's 59.97 is
-// charged 59.96, and the 3-D Secure row and the order keep 2.04.
+// charged 59.96, and the 3-D Secure row and the order keep 2.04
+// (pg_payment_threeds_state_totals() on the bank's return).
 function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
 {
 	$quote = array('installmentDetails' => array(array('installmentPrices' => array(
@@ -622,6 +623,10 @@ function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
 	pg_assert_same('59.96', $http->posts[1]['body']['paidPrice']);
 	pg_assert_same(204, $kept[0]['installment_charge_cents']);
 	pg_assert_same(5792, $kept[0]['base_total_cents']);
+	pg_assert_same(
+		array('total' => 5996, 'installment_charge' => 204, 'total_without_installment_charge' => 5792),
+		pg_payment_threeds_state_totals($kept[0]),
+		'the bank\'s return records the same figures');
 
 	// Where the checkout does not settle its rates, the bank's figure stands.
 	$http = payment_iyzico_test_http(array(
