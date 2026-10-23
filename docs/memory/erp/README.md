@@ -78,7 +78,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-isbasi-poll-documents-screens.md: İşbaşı poll status mapping, fetch_document pitfalls and the e-Arşiv portal printer, taking a document back, the invoice card and list column, the edoc_changed event, 4.62 schema.
 - erp-late-fee.md: ERP late payment fee (10.61): the rate setting, the pure day-by-day calculation, what lowers what is owed, draft-only writing, late_fee_through so no day is charged twice, the API.
 - erp-line-quantity-places.md: Line quantities are priced at the four places they are stored with: erp_quantity_round(), erp_decimal_units() (float units, 32-bit safe), the editor's quantityRound(), the e-invoice inbox fold.
-- erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version, 32-bit and 64-bit, the invoice editor.
+- erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version and width, the editor, the checkout (#1329).
 - erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight), which lists must not be DataTables and how they sort, list filters.
 - erp-local-sale.md: Counter sale (add_order.php) and the ERP: customer in the session, walk-in account opened on first need, VAT per rate, invoice from the order screen, waybill from an invoice and its write-back.
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), the issue transaction and its refusals, what may change after issue, invoice_manual.php functions, FX drafts.
@@ -121,6 +121,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-inactive-payments.md: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then
 - erp-translation-traps.md: Short tr.json keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
+- erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
