@@ -82,7 +82,7 @@ if (isset($_POST['submit_release'])) {
             $_SESSION['sessionusername']
         );
 
-        $liveform->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => $release_ip)));
+        $liveform->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => h($release_ip))));
     }
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');

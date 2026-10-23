@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $msg = lang('Add record failed');
             if (!empty($resp['json']['errors'][0]['message'])) {
-                $msg .= ': ' . $resp['json']['errors'][0]['message'];
+                $msg .= ': ' . h($resp['json']['errors'][0]['message']);
             }
             $liveform->mark_error('error', $msg);
         } else {
@@ -192,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $msg = lang('Edit record failed');
             if (!empty($resp['json']['errors'][0]['message'])) {
-                $msg .= ': ' . $resp['json']['errors'][0]['message'];
+                $msg .= ': ' . h($resp['json']['errors'][0]['message']);
             }
             $liveform->mark_error('error', $msg);
         } else {
@@ -261,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $msg = lang('Rocket Loader toggle failed (feature may be deprecated)');
             if (!empty($resp['json']['errors'][0]['message'])) {
-                $msg .= ': ' . $resp['json']['errors'][0]['message'];
+                $msg .= ': ' . h($resp['json']['errors'][0]['message']);
             }
             $liveform->mark_error('error', $msg);
         } else {
@@ -296,7 +296,7 @@ if (!($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))) {
     if ($resp_dns['status'] === 403 && (stripos($err, 'Authentication') !== false || stripos($err, 'permission') !== false)) {
         $permission_errors[] = lang('This token does not have the required permission for DNS Management (Zone.DNS.Edit).');
     } else {
-        $permission_errors[] = lang(array('string' => 'DNS records request failed: {var:1}', 'vars' => $err));
+        $permission_errors[] = lang(array('string' => 'DNS records request failed: {var:1}', 'vars' => h($err)));
     }
 }
 

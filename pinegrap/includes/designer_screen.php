@@ -2663,7 +2663,7 @@ function pg_designer_screen_post($ctx)
             ));
             exit();
         }
-        foreach ($errors as $e) $liveform->add_error($e);
+        foreach ($errors as $e) $liveform->add_error(h($e));
         $back = ($mode === 'edit')
             ? 'edit_system_style.php?id=' . $style_id . '&send_to=' . urlencode($liveform->get_field_value('send_to'))
             : 'add_system_style.php';
