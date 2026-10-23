@@ -1,6 +1,6 @@
 ---
 name: product-price-history-retention
-description: product_price_history keeps 13 months (396 days): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
+description: product_price_history keeps 13 months (396 days, PR #1425): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
 ---
 
 ## How long are rows kept?
