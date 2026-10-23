@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-legacy-order-buttons
-description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): the ERP's lines (#1268), e-document attributes (#1278), buyer card (#PR); when they give way to the ERP's documents card
+description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): the ERP's lines (#1268), e-document attributes (#1278), buyer card (#1408); when they give way to the ERP's documents card
 ---
 
 ## What are the legacy Paraşüt buttons?
@@ -19,7 +19,7 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 - Stores with the buttons on settle their checkout charges like ERP stores (`pg_order_charges_settle_rates()`).
 - Dev, demo company: #1182 (discount) 150.32, #1181 625.82, #1180 57.92, #1176 (57.93) 57.92.
 
-## Which buyer card does it open? (#PR)
+## Which buyer card does it open? (#1408)
 - `parasut_sync_contact()` opens it once per order (`orders.parasut_contact_id`) with `parasut_order_contact_attributes()`: the VKN/TCKN (`_parasut_order_identity()`) in `tax_number`; a person without a billing company or with 11 digits, as the driver. A person's TCKN used to go as an unlisted `tckn`; a card opened so may lack the number.
 
 ## What does its e-document carry? (#1278)

@@ -100,7 +100,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-connection.md: How Pinegrap is connected to Paraşüt (authorization code or password grant), where the token and secrets live, the Connect endpoint, company id discovery
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live
-- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): the ERP's lines (#1268), e-document attributes (#1278), buyer card (#PR); when they give way to the ERP's documents card
+- erp-parasut-legacy-order-buttons.md: The order screen's own Paraşüt buttons (Create Invoice, E-Shipment): the ERP's lines (#1268), e-document attributes (#1278), buyer card (#1408); when they give way to the ERP's documents card
 - erp-parasut-send-failures.md: What the ERP does when a step of a Paraşüt send goes wrong (no answer to the create, a record that would not be deleted, a failed conversion job) so that no second sales invoice is opened there
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
