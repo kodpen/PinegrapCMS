@@ -971,6 +971,373 @@ function api_order_document_schema() {
 
 }
 
+// A customer return (includes/fn/returns.php): one request to send back goods
+// of one delivery of the order, as pg_return_load() and pg_returns_of_order()
+// read it. The lines are the order's own line ids and how many of each go
+// back; their names are in GET /orders/{id}.
+//
+// Each status reached keeps its own time, null until it is reached. decided_at
+// is the approval's or the rejection's. carrier is null until staff named the
+// carrier the goods go back with (a key such as yurtici when the site knows
+// it, otherwise the text given). reason_label is null for a code this version
+// has no name for.
+function api_order_return_present($row, $reasons = null) {
+
+	if ($reasons === null) {
+
+		$reasons = pg_return_reasons();
+
+	}
+
+	$items = array();
+
+	foreach ((array)(isset($row['items']) ? $row['items'] : array()) as $item) {
+
+		$items[] = array(
+			'order_item_id' => (int)$item['order_item_id'],
+			'quantity'      => (int)$item['quantity']
+		);
+
+	}
+
+	$reason = (string)$row['reason'];
+
+	return array(
+		'id'              => (int)$row['id'],
+		'order_id'        => (int)$row['order_id'],
+		'ship_to_id'      => (int)$row['ship_to_id'],
+		'status'          => (string)$row['status'],
+		'status_label'    => pg_return_status_label((string)$row['status']),
+		'reason'          => $reason,
+		'reason_label'    => isset($reasons[$reason]) ? $reasons[$reason] : null,
+		'customer_note'   => (string)$row['customer_note'],
+		'decision_note'   => (string)$row['decision_note'],
+		'source'          => (string)$row['source'],
+		'carrier'         => ((string)$row['carrier'] !== '') ? (string)$row['carrier'] : null,
+		'carrier_code'    => (string)$row['carrier_code'],
+		'tracking_number' => (string)$row['tracking_number'],
+		'items'           => $items,
+		'requested_at'    => api_time($row['requested_at']),
+		'decided_at'      => api_time($row['decided_at']),
+		'shipped_at'      => api_time($row['shipped_at']),
+		'received_at'     => api_time($row['received_at']),
+		'refunded_at'     => api_time($row['refunded_at']),
+		'closed_at'       => api_time($row['closed_at'])
+	);
+
+}
+
+// GET /orders/{id}/returns
+//
+// One page, newest first: an order has a handful of returns at most, so there
+// is no cursor. A site not yet updated to the version that keeps returns
+// answers an empty list, as an order without returns does
+// (pg_returns_of_order() reads nothing before the tables are there).
+function api_orders_returns($params) {
+
+	$id = (int)$params['id'];
+
+	$order = api_row("SELECT id FROM orders WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($order === null) {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	$reasons = pg_return_reasons();
+
+	$out = array();
+
+	foreach (pg_returns_of_order($id) as $row) {
+
+		$out[] = api_order_return_present($row, $reasons);
+
+	}
+
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
+// The lines POST /orders/{id}/returns names, as pg_return_create() takes them:
+// order item id => quantity. Only the shape is judged here - an object with a
+// whole order_item_id of 1 or more and a single quantity, each line once; the
+// quantity itself, and whether the line is the delivery's, are the return
+// model's to judge (pg_return_check_lines()), so the API and My Account meet
+// one set of refusals. An empty list is the model's too.
+//
+// Returns ok, error and quantities.
+function api_order_returns_lines($items) {
+
+	$refuse = function ($error) {
+
+		return array('ok' => false, 'error' => $error, 'quantities' => array());
+
+	};
+
+	$quantities = array();
+
+	foreach ((array)$items as $item) {
+
+		if (!is_array($item) || !isset($item['order_item_id']) || !array_key_exists('quantity', $item)
+			|| !is_scalar($item['order_item_id']) || !(is_scalar($item['quantity']) || ($item['quantity'] === null))) {
+
+			return $refuse(lang('Each item is an object of order_item_id and quantity.'));
+
+		}
+
+		$line = $item['order_item_id'];
+
+		if (!(is_int($line) || (is_string($line) && ctype_digit($line))) || ((int)$line < 1)) {
+
+			return $refuse(lang('order_item_id is the id of one of the order\'s lines.'));
+
+		}
+
+		if (isset($quantities[(int)$line])) {
+
+			return $refuse(lang('Name each order line once.'));
+
+		}
+
+		$quantities[(int)$line] = $item['quantity'];
+
+	}
+
+	return array('ok' => true, 'error' => '', 'quantities' => $quantities);
+
+}
+
+// Answers a refusal of pg_return_create_check() or pg_return_create(), by its
+// code and field rather than by its sentence. $ship_to says how the delivery
+// was chosen: sent (the caller named it), one (the order's only one), several
+// or none (none was named and the order's goods went to several addresses, or
+// to none). Never returns.
+function api_orders_returns_refuse($result, $ship_to) {
+
+	$code = (string)$result['code'];
+
+	if ($code === 'not_installed') {
+
+		api_fail(503, 'service_unavailable', $result['error']);
+
+	}
+
+	if ($code === 'order_missing') {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	if ($code === 'order_not_returnable') {
+
+		api_fail(409, 'order_not_returnable', $result['error']);
+
+	}
+
+	if ($code === 'busy') {
+
+		api_fail(409, 'return_in_progress', $result['error']);
+
+	}
+
+	// No delivery was named and none could be taken for granted.
+	if (($code === 'delivery_not_in_order') && ($ship_to === 'several')) {
+
+		api_fail_validation(lang('This order\'s goods went to more than one address: say which delivery the return is for.'), 'ship_to_id');
+
+	}
+
+	if (($code === 'delivery_not_in_order') && ($ship_to === 'none')) {
+
+		api_fail(409, 'no_shipping_address', lang('None of this order\'s goods went to an address, so there is nothing to send back.'));
+
+	}
+
+	api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+
+}
+
+// POST /orders/{id}/returns
+//
+// Recorded the way My Account records a customer's request
+// (pg_return_create()), with source api and the application's owner as the
+// person who asked. A request recorded for the shop is not held to the
+// customer's withdrawal period, as a staff member's is not: the panel shows
+// whether it came in time and staff decide. Every other check is the
+// model's, run once before the rehearsal stops (pg_return_create_check()) and
+// again by pg_return_create() itself, which checks the lines once more under
+// the order's lock.
+//
+// What follows a new request is what follows one from My Account: the staff's
+// bell, an activity line and an audit line; the customer's mail only when
+// notify is true, because a request a shop records for its customer may have
+// been agreed with them already. The webhook comes from pg_return_create().
+// The same request sent again within PG_RETURN_REPEAT_SECONDS (a retry after
+// a timeout) answers 200 with the return it repeats and does nothing else.
+function api_orders_returns_create($params) {
+
+	$id = (int)$params['id'];
+
+	$order = api_row("SELECT id, order_number FROM orders WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($order === null) {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	$app = api_current_app();
+
+	$lines = api_order_returns_lines($params['items']);
+
+	if (!$lines['ok']) {
+
+		api_fail_validation($lines['error'], 'items');
+
+	}
+
+	// Which delivery. One is the normal case and naming it would be ceremony;
+	// several is exactly the case where guessing sends back the wrong parcel,
+	// so there the caller has to say. The deliveries are the ones goods can be
+	// returned from, as the return model reads them: lines sent to an address
+	// and not kept aside in the cart.
+	if (isset($params['ship_to_id'])) {
+
+		$ship_to_id = (int)$params['ship_to_id'];
+
+		$ship_to = 'sent';
+
+	} else {
+
+		$deliveries = api_rows("SELECT DISTINCT ship_to_id FROM order_items
+			WHERE (order_id = '" . $id . "') AND (ship_to_id > 0) AND (saved_for_later = 0)
+			ORDER BY ship_to_id ASC");
+
+		$ship_to_id = (count($deliveries) === 1) ? (int)$deliveries[0]['ship_to_id'] : 0;
+
+		$ship_to = (count($deliveries) === 1) ? 'one' : (empty($deliveries) ? 'none' : 'several');
+
+	}
+
+	$note = isset($params['note']) ? $params['note'] : '';
+
+	$options = array(
+		'source'  => 'api',
+		'user_id' => (int)$app['owner']['id']
+	);
+
+	$checked = pg_return_create_check($id, $ship_to_id, $lines['quantities'], $params['reason'], $note, $options);
+
+	if (!$checked['ok']) {
+
+		api_orders_returns_refuse($checked, $ship_to);
+
+	}
+
+	// The same request again: nothing is written, so a rehearsal gets the same
+	// answer as the call.
+	if ($checked['repeat'] > 0) {
+
+		$repeated = pg_return_load($checked['repeat']);
+
+		if ($repeated !== null) {
+
+			api_ok(api_order_return_present($repeated));
+
+		}
+
+	}
+
+	$detail = array(
+		'order_id'   => $id,
+		'ship_to_id' => $ship_to_id,
+		'reason'     => $checked['reason'],
+		'items'      => array()
+	);
+
+	foreach ($checked['lines'] as $item_id => $quantity) {
+
+		$detail['items'][] = array('order_item_id' => (int)$item_id, 'quantity' => (int)$quantity);
+
+	}
+
+	api_dry_run_stop('created', 'order_return', $detail);
+
+	$created = pg_return_create($id, $ship_to_id, $lines['quantities'], $params['reason'], $note, $options);
+
+	if (!$created['ok']) {
+
+		api_orders_returns_refuse($created, $ship_to);
+
+	}
+
+	$row = pg_return_load($created['id']);
+
+	if ($row === null) {
+
+		api_fail_server();
+
+	}
+
+	if ($created['repeat']) {
+
+		api_ok(api_order_return_present($row));
+
+	}
+
+	// The request stands whatever happens to the bell, the log or the mail.
+	pg_return_notify_staff($created['id'], 'requested');
+
+	log_activity(lang(array(
+		'string' => 'Return request {var:1} was recorded for order {var:2} through the API by the application {var:3} (key {var:4}).',
+		'vars'   => array($created['id'], $order['order_number'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	pg_audit('create', 'order_return', (int)$created['id'], array(), pg_return_audit_create_fields($row),
+		lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int)$created['id'], $order['order_number']))));
+
+	if (isset($params['notify']) && $params['notify']) {
+
+		pg_return_send_request_mail($created['id']);
+
+	}
+
+	api_ok(api_order_return_present($row), 201);
+
+}
+
+// What api_order_return_present() returns, declared for the OpenAPI document.
+function api_order_return_schema() {
+
+	return array(
+		'id'              => 'integer',
+		'order_id'        => 'integer',
+		'ship_to_id'      => 'integer',
+		'status'          => 'string',
+		'status_label'    => 'string',
+		'reason'          => 'string',
+		'reason_label'    => 'string?',
+		'customer_note'   => 'string',
+		'decision_note'   => 'string',
+		'source'          => 'string',
+		'carrier'         => 'string?',
+		'carrier_code'    => 'string',
+		'tracking_number' => 'string',
+		'items'           => array(array(
+			'order_item_id' => 'integer',
+			'quantity'      => 'integer'
+		)),
+		'requested_at'    => 'string',
+		'decided_at'      => 'string?',
+		'shipped_at'      => 'string?',
+		'received_at'     => 'string?',
+		'refunded_at'     => 'string?',
+		'closed_at'       => 'string?'
+	);
+
+}
+
 // What api_order_present() returns, declared for the OpenAPI document. items
 // and shipments are carried by the single-order endpoint only.
 function api_order_schema() {

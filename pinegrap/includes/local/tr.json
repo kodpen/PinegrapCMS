@@ -26144,5 +26144,11 @@
     "To change your article or take it back, write to the desk below; an editor makes the change.": "Haberinizi değiştirmek ya da geri çekmek için aşağıdan masaya yazın; değişikliği bir editör yapar.",
     "jane.cooper": "ayse.yilmaz",
     "A return is requested": "İade talep edildi",
-    "When a return is requested": "İade talep edildiğinde"
+    "When a return is requested": "İade talep edildiğinde",
+    "Each item is an object of order_item_id and quantity.": "Her kalem, order_item_id ve quantity alanlarından oluşan bir nesnedir.",
+    "order_item_id is the id of one of the order's lines.": "order_item_id, siparişin satırlarından birinin numarasıdır.",
+    "Name each order line once.": "Her sipariş satırını bir kez yazın.",
+    "This order's goods went to more than one address: say which delivery the return is for.": "Bu siparişin ürünleri birden fazla adrese gitti: iadenin hangi teslimat için olduğunu belirtin.",
+    "None of this order's goods went to an address, so there is nothing to send back.": "Bu siparişin hiçbir ürünü bir adrese gönderilmedi, geri gönderilecek bir şey yok.",
+    "Return request {var:1} was recorded for order {var:2} through the API by the application {var:3} (key {var:4}).": "{var:2} numaralı sipariş için {var:1} numaralı iade talebi API üzerinden {var:3} uygulaması (anahtar {var:4}) tarafından kaydedildi."
 }
