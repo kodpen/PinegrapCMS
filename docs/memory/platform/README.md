@@ -84,3 +84,4 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; gateways and carriers use it, Stripe, iyzico and the package download do not.
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked
+- zip-entry-php-versions.md: Why pg_zip_entry_contents() watches the read's warning and compares the CRC itself: fread() and getFromIndex() answer a damaged entry differently by PHP version
