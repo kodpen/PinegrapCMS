@@ -15,7 +15,7 @@ description: ERP bank statement import (4.102): readers, the PHPExcel libxml tra
 - Before, the most frequent character in the first ten lines won: a Turkish `;` export with commas in descriptions and decimal commas split on the commas (amount in two cells). Column counts alone still let a comma title block or a heading-less tab file tip it to `,`.
 - `str_getcsv()` gets its escape argument (PHP 8.4+ deprecation).
 
-## Can the operator choose the separator? (PR #NNNN)
+## Can the operator choose the separator? (PR #1343)
 - Yes, on the column screen of a CSV statement: Automatic (the guess above), `;`, `,`, tab, `|`. The form posts a name (`erp_bank_csv_separators()`), not the character (a tab could be trimmed).
 - A CSV statement keeps its lines until the columns are chosen (`raw_rows` = `{"csv": [lines]}`); `erp_bank_statement_rows()` splits them and cuts the title block on every read. A workbook, or a CSV taken in before, keeps its cells (a list): no select.
 - The name is stored in the statement's `mapping` (`separator`): the import uses the split shown, and the bank account's next statement starts with it.
