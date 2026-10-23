@@ -7,6 +7,38 @@ window.pgLang = function (key) {
     return (v !== undefined && v !== null) ? String(v) : key;
 };
 
+// Panel money boxes use the Inputmask "currency" alias with the separators of
+// the panel language (pg_money_mask_attributes()). The numeric alias turns
+// whichever of "." and "," is not its decimal point into the decimal point as
+// it is typed, so "12.500" on a Turkish panel became 12,50 and "1,234.56" on
+// an English one 1.23. A typed thousands separator stays a thousands
+// separator: the mask passes over it and groups the digits itself. Defined
+// before the binding masks the page's boxes on document ready.
+(function () {
+    var Inputmask = window.Inputmask;
+    var numeric = (Inputmask && Inputmask.prototype && Inputmask.prototype.aliases) ? Inputmask.prototype.aliases.numeric : null;
+
+    if (!numeric || (typeof numeric.mask !== 'function') || (typeof Inputmask.extendAliases !== 'function')) {
+        return;
+    }
+
+    var numericMask = numeric.mask;
+
+    Inputmask.extendAliases({
+        currency: {
+            mask: function (opts) {
+                var mask = numericMask.call(this, opts);
+
+                if (opts.substitutes && (opts.groupSeparator !== '') && (opts.groupSeparator !== opts.radixPoint)) {
+                    delete opts.substitutes[opts.groupSeparator];
+                }
+
+                return mask;
+            }
+        }
+    });
+})();
+
 (() => {
     "use strict";
 

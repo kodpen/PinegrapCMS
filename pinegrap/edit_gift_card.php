@@ -59,11 +59,10 @@ if (!$_POST) {
 
     // If the form has not been submitted yet, then pre-populate fields with data.
     if ($liveform->field_in_session('id') == false) {
-        // The field's input mask reads "." as the decimal point and "," as
-        // the thousands separator, whatever the panel language, so it is
-        // filled the way the mask reads it; a "50,00" written for a Turkish
-        // panel would show as 5,000.00 and be saved as such.
-        $liveform->assign_field_value('balance', sprintf('%01.2f', $gift_card['balance'] / 100));
+        // The money mask takes the panel language's separators
+        // (pg_money_mask_attributes()), so the balance is filled with
+        // pg_format_input_amount() and read back with pg_normalize_amount().
+        $liveform->assign_field_value('balance', pg_format_input_amount($gift_card['balance'] / 100));
 
         // The balance the screen opened with, so a save that leaves the
         // balance as it was does not write it back over an amount an order
@@ -306,7 +305,7 @@ if (!$_POST) {
                                         <div class="col-12 col-sm-4 col-lg-3 col-xl-2 my-2">
                                             <label for="balance" class="form-label">' . lang('Balance') . '</label>
                                             <div class="input-group">
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'currency', 'data-inputmask-groupSeparator'=>',', 'data-inputmask-digits'=>'2','data-inputmask-digitsOptional'=>'false', 'data-inputmask-placeholder'=>'0', 'required'=>'required')) . '
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
                                                 <label class="input-group-text" for="balance">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                             <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) ))) . '</div>
