@@ -4169,21 +4169,26 @@ function submit_order($type) {
             $username = strtok($billing_email_address, '@');
             $username = get_unique_username($username);
 
-            $random_password = get_random_string(array(
-                'type' => 'lowercase_letters',
-                'length' => 10));
-
-            // Auto-registration: create the member with a modern password hash.
+            // Created without a password (algo 3, which no password matches):
+            // the customer sets one through the set password link issued
+            // below, or on the change password screen while still signed in.
             $user_id = create_member_user(array(
                 'username'   => $username,
                 'email'      => $billing_email_address,
                 'contact_id' => $contact_id,
-                'password'   => $random_password,
             ));
 
-            // Remember email and password in the session, so we can show it on the order receipt.
-            $_SESSION['software']['auto_registration']['email_address'] = $billing_email_address;
-            $_SESSION['software']['auto_registration']['password'] = $random_password;
+            pg_set_password_link_issue($user_id);
+
+            // Remember the account in the session, so the receipt can name it
+            // and give the customer its set password link. A staff member
+            // ordering for the customer (ghosting) is not the customer: their
+            // receipt page names the account only (pg_order_new_account_link()).
+            $_SESSION['software']['auto_registration'] = array(
+                'email_address' => $billing_email_address,
+                'user_id'       => (int) $user_id,
+                'ghost'         => (bool) $ghost,
+            );
 
             // If there is a contact for this user, and there is a registration contact group,
             // then add contact to registration contact group.  There should probably always
@@ -5942,59 +5947,74 @@ function submit_order($type) {
             }
         }        
 
-        // if the format of the e-mail should be plain text, then prepare that
-        if ($order_receipt_email_format == 'plain_text') {
-            $body = '';
+        // An order that opened an account sends the customer's copy on its
+        // own: it carries the set password link, which the store's BCC
+        // addresses must not receive. They get a copy each that only names
+        // the account. Any other order goes out once, with the BCC.
+        $receipt_copies = pg_order_receipt_copies($billing_email_address, $bcc_email_addresses, pg_order_new_account_email() !== '');
 
-            // if there is a header, then start body with header and a blank line for spacing
-            if ($order_receipt_email_header != '') {
-                $body .=
-                    $order_receipt_email_header . "\n" .
-                    "\n";
+        foreach ($receipt_copies as $receipt_copy) {
+            pg_order_receipt_audience($receipt_copy['audience']);
+
+            // if the format of the e-mail should be plain text, then prepare that
+            if ($order_receipt_email_format == 'plain_text') {
+                $body = '';
+
+                // if there is a header, then start body with header and a blank line for spacing
+                if ($order_receipt_email_header != '') {
+                    $body .=
+                        $order_receipt_email_header . "\n" .
+                        "\n";
+                }
+
+                include_once('get_order_receipt_in_plain_text.php');
+
+                $body .= get_order_receipt_in_plain_text(($_SESSION['ecommerce']['order_id'] ?? ''));
+
+                // if there is a footer, then end body with a blank line for spacing and then the footer
+                if ($order_receipt_email_footer != '') {
+                    $body .=
+                        "\n" .
+                        "\n" .
+                        $order_receipt_email_footer;
+                }
+
+            // else the format of the e-mail should be HTML, so prepare that
+            } else {
+
+                require_once(dirname(__FILE__) . '/get_page_content.php');
+
+                // get order receipt page HTML for e-mail; a page built in the
+                // visual editor draws the order with its order view widget, which
+                // is told the order here (there is no ?order_id= in an e-mail)
+                $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
+                    array('order_id' => (int)($_SESSION['ecommerce']['order_id'] ?? 0)));
+
+                // The receipt reads in the language the order was placed in.
+                if (function_exists('pg_tr_email')) {
+                    $body = pg_tr_email($body);
+                }
+
             }
-            
-            include_once('get_order_receipt_in_plain_text.php');
 
-            $body .= get_order_receipt_in_plain_text(($_SESSION['ecommerce']['order_id'] ?? ''));
+            pg_order_receipt_audience('screen');
 
-            // if there is a footer, then end body with a blank line for spacing and then the footer
-            if ($order_receipt_email_footer != '') {
-                $body .=
-                    "\n" .
-                    "\n" .
-                    $order_receipt_email_footer;
-            }
-
-        // else the format of the e-mail should be HTML, so prepare that
-        } else {
-
-            require_once(dirname(__FILE__) . '/get_page_content.php');
-
-            // get order receipt page HTML for e-mail; a page built in the
-            // visual editor draws the order with its order view widget, which
-            // is told the order here (there is no ?order_id= in an e-mail)
-            $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
-                array('order_id' => (int)($_SESSION['ecommerce']['order_id'] ?? 0)));
-
-            // The receipt reads in the language the order was placed in.
-            if (function_exists('pg_tr_email')) {
-                $body = pg_tr_email($body);
-            }
-            
+            email(array(
+                'to' => $receipt_copy['to'],
+                'bcc' => $receipt_copy['bcc'],
+                'from_name' => ORGANIZATION_NAME,
+                'from_email_address' => EMAIL_ADDRESS,
+                'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
+                'format' => $order_receipt_email_format,
+                'body' => $body,
+                // The customer's copy may carry the set password link, which
+                // must stay out of the failure log and the delivery-failed notice.
+                'secret' => (($receipt_copy['audience'] === 'customer') && (pg_order_new_account_email() !== '')),
+                // The checkout documents the customer accepted go with the
+                // receipt as they were kept with the order.
+                'attachments' => pg_legal_documents_attachments((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_number),
+                'queue' => true));
         }
-        
-        email(array(
-            'to' => $billing_email_address,
-            'bcc' => $bcc_email_addresses,
-            'from_name' => ORGANIZATION_NAME,
-            'from_email_address' => EMAIL_ADDRESS,
-            'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
-            'format' => $order_receipt_email_format,
-            'body' => $body,
-            // The checkout documents the customer accepted go with the
-            // receipt as they were kept with the order.
-            'attachments' => pg_legal_documents_attachments((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_number),
-            'queue' => true));
     }
 
     // If shipping is enabled, then update ship date & delivery date, and user's address book (for
