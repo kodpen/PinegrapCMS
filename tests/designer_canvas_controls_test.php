@@ -186,6 +186,123 @@ function test_designer_canvas_controls_dropdown_guard_on_window()
 	pg_assert_contains('_sdShortcutKeydown(e)', $keys, 'the editor shortcuts still see the other keys');
 }
 
+// The dropdown key guard of the canvas window run under Node: ArrowDown and
+// Escape typed into a dropdown item being written in place go to the edit's
+// own key handler and never on to the document, where Bootstrap's handler
+// cancelled the caret move and threw "Cannot read properties of undefined
+// (reading 'parentNode')"; outside an edit the guard still closes the menus
+// on Escape and hands the arrows to the editor's shortcuts.
+function test_designer_canvas_controls_dropdown_keys_while_editing_in_place()
+{
+	$js = _test_canvas_controls_js();
+	$keys = _test_canvas_controls_listener('_cvWin', 'keydown');
+	pg_assert_true($keys !== '', 'the canvas window guards the dropdown keys');
+	$helper = '';
+	$from = strpos($js, 'function _sdDdEditKey(');
+	$to = strpos($js, 'var _cvWin = canvasDoc.defaultView;');
+	if ($from !== false && $to !== false && $to > $from) {
+		$helper = substr($js, $from, $to - $from);
+	}
+
+	$script = <<<'JS'
+var canvasDoc = { querySelector: function (s) { return s === '.dropdown-menu.show' ? {} : null; } };
+function El(tag, cls, parent, editable) {
+	this.tagName = tag; this.cls = cls || ''; this.parentNode = parent || canvasDoc;
+	this.ownerDocument = canvasDoc; this.isContentEditable = !!editable;
+}
+El.prototype.matchesOne = function (s) {
+	if (s === '[data-bs-toggle="dropdown"]') return / toggle /.test(' ' + this.cls + ' ');
+	return s.charAt(0) === '.' && (' ' + this.cls + ' ').indexOf(' ' + s.slice(1) + ' ') !== -1;
+};
+El.prototype.closest = function (sel) {
+	var list = sel.split(',').map(function (s) { return s.trim(); });
+	for (var e = this; e && e !== canvasDoc; e = e.parentNode) {
+		if (list.some(function (s) { return e.matchesOne(s); })) return e;
+	}
+	return null;
+};
+var log = [];
+function _sdShortcutKeydown(e) { log.push('shortcut:' + e.key); }
+function _sdDdCloseAll() { log.push('closeAll'); }
+var listener = null;
+var _cvWin = { addEventListener: function (t, f, cap) { if (t === 'keydown' && cap) listener = f; } };
+HELPER
+KEYS}, true);
+
+var menu = new El('UL', 'dropdown-menu show');
+var wrap = new El('DIV', 'sd-wrap', menu);
+var item = new El('A', 'dropdown-item', wrap, false);
+var toggle = new El('A', 'nav-link toggle');
+var text = new El('P', '', null, false);
+// The edit's handler as the editor writes it: Escape ends the edit and
+// bubbles, every other key stays with the text.
+function editHandler(e) {
+	log.push('edit:' + e.key);
+	if (e.key === 'Escape') { this.isContentEditable = false; return; }
+	e.stopPropagation();
+}
+function press(target, key) {
+	var ev = { key: key, target: target, cancelBubble: false, defaultPrevented: false,
+		stopPropagation: function () { this.cancelBubble = true; },
+		preventDefault: function () { this.defaultPrevented = true; } };
+	log = [];
+	listener(ev);
+	return { reachesDocument: !ev.cancelBubble, prevented: ev.defaultPrevented, log: log.slice() };
+}
+var out = {};
+item.isContentEditable = true; item._sdEditKeydown = editHandler;
+out.editDown = press(item, 'ArrowDown');
+out.editUp = press(item, 'ArrowUp');
+out.editEsc = press(item, 'Escape');
+item.isContentEditable = false;
+out.itemEsc = press(item, 'Escape');
+out.toggleDown = press(toggle, 'ArrowDown');
+toggle.isContentEditable = true; toggle._sdEditKeydown = editHandler;
+out.toggleEditDown = press(toggle, 'ArrowDown');
+text.isContentEditable = true; text._sdEditKeydown = editHandler;
+out.textEditDown = press(text, 'ArrowDown');
+console.log(JSON.stringify(out));
+JS;
+	$script = str_replace(array('HELPER', 'KEYS'), array($helper, $keys), $script);
+	$r = _test_canvas_controls_node($script);
+	if ($r === null) {
+		return;
+	}
+
+	foreach (array('editDown' => 'ArrowDown', 'editUp' => 'ArrowUp', 'toggleEditDown' => 'ArrowDown') as $case => $key) {
+		pg_assert_false($r[$case]['reachesDocument'], $case . ': Bootstrap never sees the key typed into the edit');
+		pg_assert_false($r[$case]['prevented'], $case . ': the caret still moves');
+		pg_assert_same(array('edit:' . $key), $r[$case]['log'], $case . ': the edit handles the key, the menu stays as it is');
+	}
+	pg_assert_false($r['editEsc']['reachesDocument'], 'Escape in an edit never reaches Bootstrap');
+	pg_assert_false($r['editEsc']['prevented'], 'the guard does not cancel Escape in an edit');
+	pg_assert_same(array('edit:Escape', 'shortcut:Escape'), $r['editEsc']['log'], 'Escape ends the edit and goes on to the shortcuts, the menu stays open');
+
+	pg_assert_false($r['itemEsc']['reachesDocument'], 'outside an edit Escape is still kept from Bootstrap');
+	pg_assert_true($r['itemEsc']['prevented'], 'outside an edit Escape is taken by the guard');
+	pg_assert_same(array('closeAll'), $r['itemEsc']['log'], 'outside an edit Escape closes the open menus');
+	pg_assert_false($r['toggleDown']['reachesDocument'], 'an arrow on a toggle is kept from Bootstrap');
+	pg_assert_same(array('shortcut:ArrowDown'), $r['toggleDown']['log'], 'an arrow on a toggle goes on to the shortcuts');
+
+	pg_assert_true($r['textEditDown']['reachesDocument'], 'a text edited outside a dropdown is left to its own listeners');
+	pg_assert_same(array(), $r['textEditDown']['log'], 'the guard does not touch a text outside a dropdown');
+}
+
+// Both in-place editors hand their key handler to the guard, and the
+// handler of an ended session lets the keys go: a dropdown item (a link)
+// keeps the focus after its edit, and the old listener stopped Ctrl+Z.
+function test_designer_canvas_controls_edit_key_handlers_wired()
+{
+	$js = _test_canvas_controls_js();
+	pg_assert_contains('item.el._sdEditKeydown = _ieKeydown;', $js, 'the element edit gives the guard its key handler');
+	pg_assert_contains('s._sdEditKeydown = _vtKeydown;', $js, 'the button label edit gives the guard its key handler');
+	$at = strpos($js, 'var _ieKeydown = function (ke) {');
+	pg_assert_true($at !== false, 'the element edit names its key handler');
+	$head = substr($js, (int) $at, 600);
+	$ended = strpos($head, 'if (isCommitted) return;');
+	pg_assert_true($ended !== false && $ended < strpos($head, "if (ke.key === 'Escape')"), 'an ended edit leaves the keys alone');
+}
+
 // A click inside a control the canvas runs is let through to it, on its icon
 // or its label too: the theme toggle's moon icon did nothing (the icon's
 // wrapper stopped the click before the button's own listener), and the

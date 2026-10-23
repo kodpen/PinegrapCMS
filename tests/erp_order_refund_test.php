@@ -163,3 +163,52 @@ function test_erp_order_refund_of_a_piece_is_bounded_by_the_line_tax()
 	pg_assert_same(1050, $both['amount']);
 	pg_assert_true($both['is_full']);
 }
+
+// An order with a credit line (a product priced below zero) and 7.00 off: 2 x
+// 50.00 and 2 x -15.00 come to 75.60, and so does the refund of everything;
+// half of each line is half of it, and so are the goods alone, which bring
+// their share of the credit. The credit line's net and VAT were taken down to
+// zero and everything came to 108.00.
+function test_erp_order_refund_of_an_order_with_a_credit_line()
+{
+	list($order, $items) = pg_test_erp_order_refund_cart(array(array(2, 5000), array(2, -1500)), 700);
+	pg_assert_same(7560, $order['total']);
+	pg_assert_same(7560, erp_order_lines($order, $items)['totals']['grand_total']);
+
+	$source = pg_test_erp_order_refund_source($order, $items);
+	$refund = pg_test_erp_order_refund_everything($source);
+	pg_assert_same('', $refund['error']);
+	pg_assert_same(7560, $refund['amount']);
+	pg_assert_same(array(100 => 10800, 101 => -3240), $refund['lines']);
+
+	pg_assert_same(3780, erp_order_refund_amount($source, array(100 => 1, 101 => 1))['amount']);
+	pg_assert_same(3780, erp_order_refund_amount($source, array(100 => 1))['amount']);
+
+	$goods = erp_order_refund_amount($source, array(100 => 2));
+	pg_assert_same(7560, $goods['amount']);
+	pg_assert_same(array(100 => 10800, 101 => -3240), $goods['lines']);
+
+	// Each line priced alone, for the dialog's first answer: the credit line
+	// at its own figure, below zero.
+	pg_assert_same(array(1 => 5400, 2 => 10800), erp_order_refund_line_prices($source['lines'][0]));
+	pg_assert_same(array(1 => -1620, 2 => -3240), erp_order_refund_line_prices($source['lines'][1]));
+}
+
+// The dialog marks a credit row, and its Everything button leaves it at 0:
+// the server then brings the credit back whole with the last of the goods.
+// Set to its whole-number maximum after a partial return, it was a credit
+// quantity out of step with the goods, and the refund was refused.
+function test_erp_order_refund_dialog_leaves_the_credit_row_to_the_goods()
+{
+	if (!defined('BASE_CURRENCY_SYMBOL')) {
+		define('BASE_CURRENCY_SYMBOL', '$');
+	}
+
+	list($order, $items) = pg_test_erp_order_refund_cart(array(array(2, 5000), array(2, -1500)), 0);
+	$html = erp_order_refund_dialog(pg_test_erp_order_refund_source($order, $items), 7, 0, 8400);
+
+	pg_assert_contains('data-refund-line="100" min="0"', $html);
+	pg_assert_contains('data-refund-line="101" data-refund-credit="1"', $html);
+	pg_assert_true(strpos($html, 'data-refund-line="100" data-refund-credit') === false);
+	pg_assert_contains('input.hasAttribute("data-refund-credit") ? 0 : input.max', $html);
+}

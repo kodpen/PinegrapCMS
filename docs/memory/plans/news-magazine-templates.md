@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4, 5, 6, 7a, 7p, 7q, 7s done): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1-6, 1b, 7a, 7p, 7q, 7s, 7u done): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -26,6 +26,7 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4
 7q. Done (#1287): the 7 built-in templates printed `submitter` (the login username) as the visible author of a blog post; a `submitter_name` field and those bylines.
 7r. Follow-up (not started): a member whose comment form gives no name choice is stored and shown under the login username (`add_comment.php`); every site's comments, so a product decision first.
 7s. Done (#1299): designed lists fail closed when a filter's field is gone, its operator is unknown or it is past the fifty-row cap (a renamed Status field listed drafts).
+7u. Done (#1320): files uploaded through designed forms (covers, photos) open for readers when a public designed record view or list prints the field for a record its filters let through; they were closed to every reader ([[designer-form-uploads-for-readers]]).
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
 

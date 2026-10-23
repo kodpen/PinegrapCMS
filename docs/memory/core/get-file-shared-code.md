@@ -1,6 +1,6 @@
 ---
 name: get-file-shared-code
-description: get_file.php never loads functions.php: the shared single copies in includes/authentication.php and includes/image_engine.php, what they may call, and the intended copies check_copies.php allows.
+description: get_file.php never loads functions.php: the shared files (authentication.php, image_engine.php, record_files.php), what they may call, and the copies check_copies.php allows.
 ---
 
 ## Why does get_file.php need its own arrangement?
@@ -9,6 +9,7 @@ description: get_file.php never loads functions.php: the shared single copies in
 ## Which files are shared, and what may they call?
 - `includes/authentication.php`: sign-in and folder access, one copy (`pg_auth_token_verify()`, `pg_auth_token_revoke()`, `pg_load_user_row()`, `pg_session_sign_in()`, the session token binding, `get_access_control_type()`, `check_view_access()`, `check_edit_access()`, `pg_folder_edit_access()`, `check_private_access()`; the folder functions since 2026.4.8). Contract in its header: only `db()`, `db_value()`, `db_item()`, `db_items()`, `escape()` and PHP itself; no `lang()`, no `output_error()`; anything else behind `function_exists()` (pattern: `pg_auth_token_revoke()`).
 - `includes/image_engine.php`: `pg_process_image_file()` (the one place that touches image pixels), `pg_ini_bytes()` and the responsive derivatives. Its functions call only each other and PHP: no `db()`, no `lang()`, no `output_error()`. Reading the operator's settings stays in `includes/fn/image.php` (`pg_image_settings()`); a derivative gets what it needs passed in. Gate: `PG_FUNCTIONS_DIR` or `PG_GET_FILE`.
+- `includes/record_files.php`: whether a designed record view or list shows a submitted form's upload (`pg_record_file_designed_access()`). Loaded by `get_file.php` only, on its attachment refusal path; its copies of widget helpers are held to their originals by `tests/record_files_test.php`. Contract: itself, `escape()`, `check_view_access()`, `pg_auth_column_exists()`, PHP (`designer/designer-form-uploads-for-readers.md`).
 - Breaking a contract brings back the dependency the file exists to avoid: the function is missing on the `get_file.php` side (a fatal error on a file request), not on the panel.
 
 ## Which copies are allowed?

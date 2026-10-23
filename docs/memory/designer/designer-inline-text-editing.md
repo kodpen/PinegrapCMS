@@ -1,6 +1,6 @@
 ---
 name: designer-inline-text-editing
-description: Canvas in-place text editing: spaces typed into a button label, labels of colour/date/file inputs, no edit hint on bound text, the canvas <html lang> for Turkish capitals.
+description: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 ---
 
 ## Why does the editor write the space in a button label itself?
@@ -21,6 +21,12 @@ description: Canvas in-place text editing: spaces typed into a button label, lab
 ## Why does the canvas document carry `<html lang>`?
 - `text-transform: uppercase` follows the document language: without `lang` the canvas drew a Turkish "i" as "I" ("MARKA KIMLIĞI") while the preview and the page, which carry `lang="tr"`, show "İ".
 - `_sdDocLang()` (the panel's `<html lang>`, `en` without one) is the one source: the canvas `doc.write()`, the HTML export in `generateHTML()` and the code view document (`_sdCodeDocument()`).
+
+## Why does an ended edit's key handler return at once?
+- `setupInlineEditing()` adds its `keydown` listener per session and never removes it; a link or button keeps the focus when the edit ends. The listener stopped every key, so Ctrl+Z after editing a dropdown item did nothing, and a later Escape replayed the old session's cancel. It now returns once `isCommitted` is set (commit or Escape).
+
+## How does an in-place edit inside a shared component get saved?
+- Both commit paths (the virtual label's blur, the `setupInlineEditing()` commit) call `_sdSharedMarkEdited(node)`; a double-click selects the node through `_sdInlineSelect()`. Details and the save-time catch: `shared-component-editor-cache.md`.
 
 ## Where is it tested?
 - `tests/designer_inline_text_test.php` runs the helpers under Node with stub documents and checks where they are wired in.

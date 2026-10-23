@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-links
-description: Canvas links never navigate in the designer, including #fragment, because of the <base> tag; Bootstrap-bound links; why the editor opens dropdowns itself, guarded on the canvas window.
+description: Canvas links never navigate in the designer, even #fragment, because of the <base> tag; Bootstrap-bound links; the editor opens dropdowns itself, guarded on the canvas window, edited items too.
 ---
 
 ## Why can no link navigate on the canvas, even `#fragment`?
@@ -18,5 +18,6 @@ description: Canvas links never navigate in the designer, including #fragment, b
 ## Why is the dropdown guard on the canvas window, not the document?
 - Bootstrap 5.3 registers its delegated data-api handlers on `document` with **capture = true**. A capture listener of the editor on the document sat beside them: `stopPropagation()` never stops another listener on the same node, so Bootstrap still ran and threw "Cannot read properties of null (reading 'classList')" on every toggle click and every Escape. Where toggle and menu are siblings in one node (the language switcher component) Bootstrap opened the menu and the editor closed it in the same click.
 - The guard is a capture listener on `canvasDoc.defaultView`, which runs before any document listener; stopping the event there keeps Bootstrap out.
-- The same window guard takes `keydown` Escape / ArrowUp / ArrowDown on a toggle or inside a `.dropdown-menu`: Escape closes the open menus, other keys go on to the editor's shortcuts (`_sdShortcutKeydown()`, called directly because the document listener no longer sees the event). A text being edited in place (`isContentEditable`) is left alone.
+- The same window guard takes `keydown` Escape / ArrowUp / ArrowDown on a toggle or inside a `.dropdown-menu`: Escape closes the open menus, other keys go on to the editor's shortcuts (`_sdShortcutKeydown()`, called directly because the document listener no longer sees the event).
+- A dropdown item or toggle being edited in place (`isContentEditable`) is stopped there too (`_sdDdEditKey()`), but its own key handler runs first: the editors store it on the element as `_sdEditKeydown` (`setupInlineEditing()`, `_createVirtualText()`), and what it lets bubble goes on to `_sdShortcutKeydown()`. Left to the document, Bootstrap cancelled the key (the caret did not move, typing replaced the whole text) and threw "Cannot read properties of undefined (reading 'parentNode')": it looks for the toggle beside the menu, inside its wrapper there is none. Escape ends the edit and leaves the menu open; a second Escape closes it.
 - A click on a dropdown toggle does not select it; a `<button>` toggle is still selected on mousedown.
