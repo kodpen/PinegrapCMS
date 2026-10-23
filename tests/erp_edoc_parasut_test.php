@@ -459,6 +459,36 @@ function test_erp_edoc_parasut_detail_ids()
 	pg_assert_same(array(), erp_edoc_parasut_detail_ids(array('data' => array())));
 }
 
+// The sales invoice has a line for each ERP line, then the rounding lines of
+// erp_edoc_parasut_vat_shift(). The hand-over checks Paraşüt's line ids
+// against that count, so a withheld invoice with a rounding line still goes.
+function test_erp_edoc_parasut_detail_count()
+{
+	pg_assert_same(2, erp_edoc_parasut_detail_count(array(pg_test_parasut_vat_line(3995, 799), pg_test_parasut_vat_line(1250, 250))));
+	pg_assert_same(0, erp_edoc_parasut_detail_count(array()));
+
+	// A withheld line at 20% (601, 4/10) and two lines of 5 x 0.19 at 10%
+	// with their VAT taken line by line: 0.10 + 0.10 against 0.19 on 1.90,
+	// so the 10% rate needs a rounding line.
+	$lines = array(
+		pg_test_parasut_vat_line(10000, 2000, array('withholding_rate' => '40.000', 'withholding_code' => '601')),
+		pg_test_parasut_vat_line(95, 10, array('quantity' => '5.0000', 'unit_price' => 19, 'tax_rate' => '10.000')),
+		pg_test_parasut_vat_line(95, 10, array('quantity' => '5.0000', 'unit_price' => 19, 'tax_rate' => '10.000')),
+	);
+	$details = erp_edoc_parasut_invoice_payload(pg_test_parasut_invoice(array('invoice_type' => 'TEVKIFAT')), $lines, '555')['data']['relationships']['details']['data'];
+	pg_assert_same(4, count($details), 'the rounding line is written');
+	pg_assert_same(4, erp_edoc_parasut_detail_count($lines), 'and counted');
+
+	// The ERP lines keep the first ids; the rounding line's comes last.
+	$attributes = erp_edoc_parasut_edoc_attributes(pg_test_parasut_invoice(), $lines, 'einvoice', 'urn:mail:defaultpk@example.com', array('5002', '5003', '5004', '5005'));
+	pg_assert_same(array(array('detail_id' => 5002, 'vat_withholding_code' => '601')), $attributes['vat_withholding_params'] ?? null);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+	$from = (int) strpos($source, 'function erp_edoc_parasut_submit_invoice(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+	pg_assert_contains('count($detail_ids) !== erp_edoc_parasut_detail_count($lines)', $section, 'the hand-over counts the rounding lines');
+}
+
 // The e-document request: scenario and alias for e-Fatura; the internet
 // sale block for an e-Arşiv invoice; one exemption, and each withheld line's
 // code against Paraşüt's line id.
