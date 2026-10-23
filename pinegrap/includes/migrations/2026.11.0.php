@@ -49,6 +49,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_item_tax_rate(); // 11.0.59
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
 	upgrade_2026_11_0_passkeys();               // 11.0.13
+	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
 
 }
 
@@ -1085,5 +1086,18 @@ function upgrade_2026_11_0_passkeys() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Passkeys: the table that will keep the passkeys of accounts is added. Nothing changes on the site with this update.');
+
+}
+
+// The page cache's generation number (2026.11.0, 11.0.29;
+// includes/fn/page_cache.php). Pages kept on disk live in the folder of one
+// generation; a change that may alter what pages show raises the number, so
+// no copy made before it is served again. The router reads it from the config
+// row it reads anyway. The cache itself is off until switched on.
+function upgrade_2026_11_0_page_cache_generation() {
+
+	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
 
 }

@@ -34,6 +34,13 @@ function pg_announce($event, $data = array())
     // a site with no webhooks still wants the new order in its channel.
     pg_event_record($event, (array) $data);
 
+    // A changed page, product, product group or file makes every page the
+    // page cache keeps old once the request ends, whoever made the change
+    // (the panel, the API, the MCP server, the workspace).
+    if (function_exists('pg_page_cache_announce_dirties') && pg_page_cache_announce_dirties($event)) {
+        pg_page_cache_mark_dirty();
+    }
+
     if (!function_exists('api_webhook_enqueue')) {
 
         $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';

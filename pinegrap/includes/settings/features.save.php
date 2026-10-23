@@ -134,6 +134,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             if (is_string($page_cache_config) && (trim($page_cache_config) !== '')
                 && pg_write_config_file(update_config_define($page_cache_config, 'PAGE_CACHE_TTL', (string) $page_cache_ttl_new))) {
 
+                // Copies kept under the old setting are never served again.
+                if (function_exists('pg_page_cache_bump')) {
+                    pg_page_cache_bump();
+                }
+
                 log_activity(($page_cache_ttl_new > 0)
                     ? lang(array('string' => 'the page cache was turned on with a lifetime of {var:1} seconds', 'vars' => array($page_cache_ttl_new)))
                     : lang('the page cache was turned off'), $_SESSION['sessionusername']);

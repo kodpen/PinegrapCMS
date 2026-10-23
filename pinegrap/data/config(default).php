@@ -164,6 +164,19 @@ define('TRUST_PROXY_SSL_HEADERS', false);
 define('CLOUDFLARE_API_TOKEN', '');
 define('CLOUDFLARE_ZONE_ID', '');
 
+// ── Page cache ──────────────────────────────────────────────────────────
+//
+// Site Settings, Features, Page Cache writes PAGE_CACHE_TTL: the lifetime, in
+// seconds, of a page kept for anonymous visitors. Undefined or 0 is off.
+// While it is on, Pinegrap keeps those pages under data/cache/page and the
+// router answers from them, and sends the standard cache headers so a CDN or
+// reverse proxy may keep them too.
+// define('PAGE_CACHE_TTL', 120);
+
+// Set to false to send only the headers and keep no copies on this server
+// (a site with a CDN or reverse proxy in front that does the caching).
+// define('PAGE_CACHE_FILE', false);
+
 // ── Performance monitor ─────────────────────────────────────────────────
 //
 // Writes one row per request to perf_log after the response has been sent.
