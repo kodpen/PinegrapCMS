@@ -81,6 +81,24 @@ function test_order_quick_edit_parasut_mark_names_what_happened()
 	pg_assert_same(false, strpos(pg_order_list_status_html(order_quick_edit_row(), true), 'parasut') !== false, 'no mark otherwise');
 }
 
+// The unsure mark Create Invoice leaves after a create that got no answer
+// is no invoice: the list says to check Paraşüt instead of drawing the
+// emblem, and a spreadsheet export keeps its own emblem beside it.
+function test_order_quick_edit_parasut_unsure_mark_is_not_an_invoice()
+{
+	$unsure = pg_order_list_status_html(order_quick_edit_row(array('parasut_invoice_id' => '?')), true);
+	$exported = pg_order_list_status_html(order_quick_edit_row(array('parasut_invoice_id' => '?', 'parasut_exported' => '1')), true);
+
+	pg_assert_false(strpos($unsure, 'parasut-emblem.png') !== false, 'no emblem');
+	pg_assert_false(strpos($unsure, h(lang('An invoice was created for this order in Parasut'))) !== false, 'not called invoiced');
+	pg_assert_contains('bg-warning', $unsure);
+	pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
+
+	pg_assert_contains(h(lang('This order has been exported for upload to parasut.com')), $exported, 'the file emblem');
+	pg_assert_false(strpos($exported, h(lang('An invoice was created for this order in Parasut'))) !== false);
+	pg_assert_contains(h(lang('Check Paraşüt')), $exported);
+}
+
 function test_order_quick_edit_cell_carries_the_status_to_open_with()
 {
 	$cell = pg_list_edit_cell(pg_order_quick_edit_columns(), 'status', 12, 'exported');
