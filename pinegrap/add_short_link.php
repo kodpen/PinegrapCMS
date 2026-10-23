@@ -25,6 +25,18 @@ $liveform = new liveform('add_short_link');
 
 // if the form has not been submitted
 if (!$_POST) {
+    // Opened from the 404 log (pg_not_found_log_redirect_url()): the missing
+    // address as the name, answering 301. Only a form not filled in yet takes
+    // it, and the save checks the name as it checks any other.
+    if (($liveform->get_field_value('name') == '') && isset($_GET['name']) && is_string($_GET['name'])) {
+        $liveform->assign_field_value('name', pg_short_link_name_from_address($_GET['name']));
+
+        if (pg_short_link_redirects_ready() && isset($_GET['redirect_code']) && is_string($_GET['redirect_code'])
+            && in_array((int) $_GET['redirect_code'], pg_short_link_answer_codes(), true)) {
+            $liveform->assign_field_value('redirect_code', (string) (int) $_GET['redirect_code']);
+        }
+    }
+
     $destination_type_options = array(
         '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('destination type'))) . '-' => '',
         lang('Page') => 'page',

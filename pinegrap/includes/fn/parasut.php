@@ -243,6 +243,41 @@ function _parasut_order_identity($order)
 }
 
 /**
+ * Say why an order cannot get an e-shipment for want of the buyer's VKN/TCKN.
+ *
+ * Under a custom-field setting (custom_field_1/2) the number is the order's
+ * field, which the shipment's buyer card is opened with; a number on the
+ * contact card never reaches Paraşüt then, so it does not count. The refusal
+ * names the field as the order screen labels it ("Custom Field #1"). Under
+ * "do not use" (the default) and tax_number the linked contact's tax_number
+ * is checked.
+ *
+ * @param string $field               PARASUT_TC_IN_FIELD
+ * @param array  $order               Order row (custom_field_1, custom_field_2)
+ * @param string $contact_tax_number  The linked contact's tax_number
+ * @return string  Empty when the number is there, otherwise the refusal
+ */
+function _parasut_shipment_identity_refusal($field, $order, $contact_tax_number)
+{
+    if (($field === 'custom_field_1') || ($field === 'custom_field_2')) {
+        if (trim((string) ($order[$field] ?? '')) !== '') {
+            return '';
+        }
+
+        return lang(array(
+            'string' => 'The buyer\'s VKN/TCKN is read from the order\'s "{var:1}" field (Paraşüt card of the commerce settings), and that field is empty on this order.',
+            'vars' => array(lang('Custom Field') . ' #' . (($field === 'custom_field_1') ? '1' : '2')),
+        ));
+    }
+
+    if (trim((string) $contact_tax_number) !== '') {
+        return '';
+    }
+
+    return lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.');
+}
+
+/**
  * Decide whether an order is billed by e-invoice or by e-archive.
  *
  * The rule is the tax authority's, not ours: a buyer registered for e-invoice
@@ -1368,6 +1403,63 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
 }
 
 /**
+ * The attributes the buyer card of an order is opened with at Paraşüt.
+ *
+ * The identity number goes in tax_number, the one field Paraşüt keeps for
+ * a company's VKN and a person's TCKN; contact_type says which. The buyer
+ * is a company when the order names a billing company, a person otherwise,
+ * and a person whenever the number has 11 digits (a TCKN, also that of a
+ * sole proprietor trading under a name), as the ERP's Paraşüt driver opens
+ * a card (erp_edoc_parasut_contact_attributes()).
+ *
+ * @param array  $order      Order row (billing_* fields)
+ * @param string $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
+ * @return array
+ */
+function parasut_order_contact_attributes($order, $id_number)
+{
+    $id_number = trim((string) $id_number);
+    $billing_company = trim($order['billing_company'] ?? '');
+
+    if (($billing_company !== '') && (strlen($id_number) !== 11)) {
+        $contact_type = 'company';
+    } else {
+        $contact_type = 'person';
+    }
+
+    $name = ($billing_company !== '')
+        ? $billing_company
+        : trim(trim($order['billing_first_name'] ?? '') . ' ' . trim($order['billing_last_name'] ?? ''));
+
+    $attributes = [
+        'account_type' => 'customer',
+        'contact_type' => $contact_type,
+        'name' => $name,
+        'email' => $order['billing_email_address'] ?? '',
+        'phone' => $order['billing_phone_number'] ?? '',
+    ];
+
+    if ($id_number !== '') {
+        $attributes['tax_number'] = $id_number;
+    }
+
+    // Build address string.
+    $addr_parts = array_filter([
+        $order['billing_address_1'] ?? '',
+        $order['billing_address_2'] ?? '',
+        $order['billing_city'] ?? '',
+        $order['billing_state'] ?? '',
+        $order['billing_zip_code'] ?? '',
+        $order['billing_country'] ?? '',
+    ]);
+    if ($addr_parts) {
+        $attributes['address'] = implode(', ', $addr_parts);
+    }
+
+    return $attributes;
+}
+
+/**
  * @param array $order Full order row from DB (billing_* fields, contact_id, id)
  * @return array ['success' => bool, 'parasut_contact_id' => string|null, 'error' => string]
  */
@@ -1384,51 +1476,7 @@ function parasut_sync_contact($order)
         return ['success' => true, 'parasut_contact_id' => $order['parasut_contact_id'], 'error' => ''];
     }
 
-    // Determine name and contact type.
-    $billing_company = trim($order['billing_company'] ?? '');
-    $billing_first = trim($order['billing_first_name'] ?? '');
-    $billing_last = trim($order['billing_last_name'] ?? '');
-
-    if ($billing_company !== '') {
-        $contact_type = 'company';
-        $name = $billing_company;
-    } else {
-        $contact_type = 'person';
-        $name = trim($billing_first . ' ' . $billing_last);
-    }
-
-    // Identification number (TC / VKN).
-    $id_number = _parasut_order_identity($order);
-
-    $attributes = [
-        'account_type' => 'customer',
-        'contact_type' => $contact_type,
-        'name' => $name,
-        'email' => $order['billing_email_address'] ?? '',
-        'phone' => $order['billing_phone_number'] ?? '',
-    ];
-
-    if ($id_number !== '') {
-        // VKN for companies, TCKN for persons.
-        if ($contact_type === 'company') {
-            $attributes['tax_number'] = $id_number;
-        } else {
-            $attributes['tckn'] = $id_number;
-        }
-    }
-
-    // Build address string.
-    $addr_parts = array_filter([
-        $order['billing_address_1'] ?? '',
-        $order['billing_address_2'] ?? '',
-        $order['billing_city'] ?? '',
-        $order['billing_state'] ?? '',
-        $order['billing_zip_code'] ?? '',
-        $order['billing_country'] ?? '',
-    ]);
-    if ($addr_parts) {
-        $attributes['address'] = implode(', ', $addr_parts);
-    }
+    $attributes = parasut_order_contact_attributes($order, _parasut_order_identity($order));
 
     $body = [
         'data' => [
@@ -1598,6 +1646,167 @@ function parasut_order_edoc_attributes($sale, $lines, $kind, $alias, $issue_date
 }
 
 /**
+ * What orders.parasut_invoice_id keeps after the order's POST sales_invoices:
+ * the record's id when Paraşüt names one, '' when it refused the request (a
+ * 4xx wrote nothing), and the unsure mark (ERP_EDOC_PARASUT_UNSURE) when no
+ * answer, a 5xx or a success naming no record leaves open that it wrote one
+ * (erp_edoc_parasut_answer_unsure()). Needs the driver loaded
+ * (_parasut_order_invoice_load()).
+ *
+ * @param array $result  _parasut_request() answer
+ * @return string
+ */
+function parasut_order_invoice_id_after_create($result)
+{
+    $id = trim((string) ($result['body']['data']['id'] ?? ''));
+
+    if (in_array((int) ($result['http_code'] ?? 0), array(200, 201), true) && ($id !== '')) {
+        return $id;
+    }
+
+    return erp_edoc_parasut_answer_unsure($result) ? ERP_EDOC_PARASUT_UNSURE : '';
+}
+
+/**
+ * Whether orders.parasut_invoice_id holds the unsure mark rather than a
+ * record's id: the order's last POST sales_invoices got no answer that
+ * settled it (parasut_order_invoice_id_after_create()), so Paraşüt may or
+ * may not hold the record. The mark is the driver's ERP_EDOC_PARASUT_UNSURE;
+ * a record's id is digits. Readable without the driver loaded, for the
+ * order list and the order screen.
+ *
+ * @param string|null $value  orders.parasut_invoice_id
+ * @return bool
+ */
+function parasut_order_invoice_unsure($value)
+{
+    $mark = defined('ERP_EDOC_PARASUT_UNSURE') ? ERP_EDOC_PARASUT_UNSURE : '?';
+
+    return strpos(trim((string) $value), $mark) === 0;
+}
+
+/**
+ * The order screen's badge for the order's Paraşüt invoice, beside Create
+ * Invoice ($in_button) or in the Order Information card's status row:
+ * "Sent" with the record's id, "Not Sent" in the row, and for the unsure
+ * mark a warning that the last create got no answer, so Paraşüt is to be
+ * checked. The mark is never shown as "Sent" or as an id.
+ *
+ * @param string|null $value      orders.parasut_invoice_id
+ * @param bool        $in_button
+ * @return string HTML
+ */
+function parasut_order_invoice_status_badge($value, $in_button = false)
+{
+    $value = trim((string) $value);
+
+    if (parasut_order_invoice_unsure($value)) {
+        return ($in_button ? ' ' : '')
+            . '<span class="badge bg-warning text-dark' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
+            . h(lang('Check Paraşüt')) . '</span>';
+    }
+
+    if ($value !== '') {
+        return $in_button
+            ? ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($value) . '">' . lang('Sent') . '</span>'
+            : '<span class="badge bg-success">' . lang('Sent') . '</span>'
+                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
+    }
+
+    return $in_button ? '' : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+}
+
+/**
+ * The sales invoices in a list answer that are the order's: the driver's
+ * match (erp_edoc_parasut_written_matches(): the same description, issue
+ * date and contact, not cancelled), with a record that is already an
+ * e-document kept in. The driver leaves those out because its own issued
+ * record of a rejected invoice is not an unanswered try's; an order has one
+ * sales invoice only, and one converted on Paraşüt's screen after the
+ * unanswered press is still the order's. Needs the driver loaded.
+ *
+ * @param array  $body        The decoded answer of GET sales_invoices (include=active_e_document)
+ * @param array  $payload     The sales_invoices body the order goes with
+ * @param string $contact_id  The order's Paraşüt contact
+ * @return array id => ['attributes' => array, 'edoc_id' => string ('' while a draft)]
+ */
+function parasut_order_invoice_matches($body, $payload, $contact_id)
+{
+    $body = is_array($body) ? $body : array();
+    $issued = array();
+
+    if (is_array($body['data'] ?? null)) {
+        foreach ($body['data'] as $index => $item) {
+            $edoc_id = is_array($item) ? trim((string) ($item['relationships']['active_e_document']['data']['id'] ?? '')) : '';
+
+            if ($edoc_id !== '') {
+                $issued[trim((string) ($item['id'] ?? ''))] = $edoc_id;
+                unset($body['data'][$index]['relationships']['active_e_document']);
+            }
+        }
+    }
+
+    $matches = array();
+
+    foreach (erp_edoc_parasut_written_matches($body, $payload, $contact_id) as $id => $attributes) {
+        $matches[$id] = array('attributes' => (array) $attributes, 'edoc_id' => (string) ($issued[(string) $id] ?? ''));
+    }
+
+    return $matches;
+}
+
+/**
+ * Looks at Paraşüt for the sales invoice an unanswered Create Invoice may
+ * have written, the way the ERP's driver looks for its own
+ * (erp_edoc_parasut_find_written()): the contact's sales invoices of the
+ * issue date, newest first, up to ERP_EDOC_PARASUT_FIND_PAGES pages,
+ * matched by parasut_order_invoice_matches(). A page that is not answered,
+ * or nothing matched with pages left unread
+ * (erp_edoc_parasut_search_incomplete()), is an error: the order is then
+ * not taken for never invoiced. Needs the driver loaded.
+ *
+ * @param array    $payload     The sales_invoices body the order goes with (description, issue date)
+ * @param string   $contact_id  The order's Paraşüt contact
+ * @param callable $get         function (string $path): the _parasut_request() answer of
+ *                              GET _parasut_prefix() . $path
+ * @return array ['records' => id => ['attributes' => array, 'edoc_id' => string], 'error' => string]
+ */
+function parasut_order_invoice_find($payload, $contact_id, $get)
+{
+    $records = array();
+    $date = (string) ($payload['data']['attributes']['issue_date'] ?? '');
+    $page = 0;
+    $total_pages = 1;
+
+    while ($page < (int) ERP_EDOC_PARASUT_FIND_PAGES) {
+        $page++;
+        $list = $get('/sales_invoices?filter[contact_id]=' . rawurlencode((string) $contact_id)
+            . '&filter[issue_date]=' . rawurlencode($date) . '&sort=-id&include=active_e_document'
+            . '&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE);
+
+        if (!erp_edoc_parasut_ok($list) || !is_array($list['body'] ?? null)) {
+            return array('records' => array(), 'error' => lang(array(
+                'string' => 'The last try got no answer from Paraşüt, and Paraşüt could not be asked whether it kept the invoice: {var:1}. Nothing was sent; try again in a minute.',
+                'vars' => array(_parasut_extract_error($list)),
+            )));
+        }
+
+        $records += parasut_order_invoice_matches($list['body'], $payload, $contact_id);
+        $total_pages = max(1, (int) ($list['body']['meta']['total_pages'] ?? 1));
+
+        if ($page >= $total_pages) {
+            break;
+        }
+    }
+
+    if (erp_edoc_parasut_search_incomplete($records, $page, $total_pages)) {
+        return array('records' => array(), 'error' => lang('The last try got no answer from Paraşüt, and the buyer has more invoices on that day than can be looked through. Nothing was sent; look for the record on Paraşüt\'s screen.'));
+    }
+
+    return array('records' => $records, 'error' => '');
+}
+
+/**
  * Create a Paraşüt sales invoice for an order and turn it into its
  * e-document: an e-invoice for a buyer registered with GİB, an e-archive
  * invoice otherwise (_parasut_resolve_edoc_kind()).
@@ -1636,15 +1845,21 @@ function parasut_create_invoice($order_id)
         return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang('Order not found.')];
     }
 
+    _parasut_order_invoice_load();
+
     // One sales invoice per order. The id is kept as soon as the sales invoice
     // exists, also when its e-document failed or is still being converted; a
     // second press would raise another sales invoice and, while the first
     // conversion runs, a second document for the same sale at GİB. Whether
     // that conversion finished cannot be told from here (its job id is not
-    // kept), so the rest is finished on the record in Paraşüt.
+    // kept), so the rest is finished on the record in Paraşüt. A create that
+    // got no answer leaves the unsure mark instead of an id
+    // (parasut_order_invoice_id_after_create()): that press goes on, and
+    // looks at Paraşüt for the record before it writes one.
     $existing_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+    $unsure = parasut_order_invoice_unsure($existing_invoice_id);
 
-    if ($existing_invoice_id !== '') {
+    if (($existing_invoice_id !== '') && !$unsure) {
         return [
             'success' => false,
             'parasut_invoice_id' => $existing_invoice_id,
@@ -1654,8 +1869,6 @@ function parasut_create_invoice($order_id)
             )),
         ];
     }
-
-    _parasut_order_invoice_load();
 
     // The lines, read the way the ERP reads them for the order's invoice.
     $items = (array) db_items("SELECT order_items.*, products.short_description,
@@ -1767,20 +1980,85 @@ function parasut_create_invoice($order_id)
 
     $invoice_body['data']['attributes']['description'] = lang('Order') . ' #' . $order_number;
 
-    $inv_result = _parasut_request('POST', _parasut_prefix() . '/sales_invoices', $invoice_body, $token);
+    $sales_invoice_id = '';
+    $attributes = array();
 
-    if (!in_array($inv_result['http_code'], [200, 201]) || empty($inv_result['body']['data']['id'])) {
-        $msg = _parasut_extract_error($inv_result);
-        return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array('string' => 'Invoice create failed: {var:1}', 'vars' => array($msg)))];
+    // After a create that got no answer the record may be at Paraşüt all the
+    // same. It is looked for with the description, issue date and contact
+    // this request carries, which are the unanswered one's (the order holds
+    // its date and its contact). One found is the order's sales invoice and
+    // goes on as if just created; none found, the invoice is written now; a
+    // search that fails or finds several keeps the mark, and nothing is
+    // written beside what may be there.
+    if ($unsure) {
+        $found = parasut_order_invoice_find($invoice_body, $parasut_contact_id, function ($path) use ($token) {
+            return _parasut_request('GET', _parasut_prefix() . $path, null, $token);
+        });
+
+        if ($found['error'] !== '') {
+            return ['success' => false, 'parasut_invoice_id' => null, 'error' => $found['error']];
+        }
+
+        if (count($found['records']) > 1) {
+            return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array(
+                'string' => 'Paraşüt holds {var:1} records of this invoice from earlier tries (ids {var:2}). Delete all but one of them on Paraşüt\'s screen, then send again; the one left is taken over.',
+                'vars' => array(count($found['records']), implode(', ', array_keys($found['records']))),
+            ))];
+        }
+
+        foreach ($found['records'] as $found_id => $record) {
+            $sales_invoice_id = (string) $found_id;
+            $attributes = (array) $record['attributes'];
+
+            db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+
+            // Already an e-document (issued on Paraşüt's screen): the order
+            // keeps the record and nothing is converted again.
+            if ((string) $record['edoc_id'] !== '') {
+                return ['success' => false, 'parasut_invoice_id' => $sales_invoice_id, 'error' => lang(array(
+                    'string' => 'Paraşüt already holds this order\'s sales invoice (ID: {var:1}), issued there as an e-document. The order keeps it now, and nothing was sent again.',
+                    'vars' => array($sales_invoice_id),
+                ))];
+            }
+        }
     }
 
-    $sales_invoice_id = (string) $inv_result['body']['data']['id'];
+    if ($sales_invoice_id === '') {
+        // Marked before the request goes: a request whose answer never comes
+        // (a timeout, a dropped connection, a 5xx) may still have written the
+        // record, and so may one whose process dies waiting. The order row
+        // already holds the date and the buyer card the request carries, so
+        // the mark is the bare one.
+        db("UPDATE orders SET parasut_invoice_id = '" . escape(ERP_EDOC_PARASUT_UNSURE) . "' WHERE id = '" . escape($order_id) . "'");
+
+        $inv_result = _parasut_request('POST', _parasut_prefix() . '/sales_invoices', $invoice_body, $token);
+        $sales_invoice_id = parasut_order_invoice_id_after_create($inv_result);
+
+        // A definite answer replaces the mark: the record's id, kept from
+        // here on whatever the later steps do, or nothing after a refusal.
+        if ($sales_invoice_id !== ERP_EDOC_PARASUT_UNSURE) {
+            db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+        }
+
+        if ($sales_invoice_id === '') {
+            $msg = _parasut_extract_error($inv_result);
+            return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array('string' => 'Invoice create failed: {var:1}', 'vars' => array($msg)))];
+        }
+
+        if ($sales_invoice_id === ERP_EDOC_PARASUT_UNSURE) {
+            return ['success' => false, 'parasut_invoice_id' => null, 'error' => lang(array(
+                'string' => 'Paraşüt did not say whether it took the invoice ({var:1}). The next send looks for it at Paraşüt first, so it is not written twice.',
+                'vars' => array(_parasut_extract_error($inv_result)),
+            ))];
+        }
+
+        $attributes = (array) ($inv_result['body']['data']['attributes'] ?? array());
+    }
 
     // What Paraşüt made of the lines against what the customer was charged.
     // A record that differs is deleted again before it becomes a document;
     // one that cannot be deleted stays on the order, so the button does not
     // raise a second record beside it.
-    $attributes = (array) ($inv_result['body']['data']['attributes'] ?? array());
     $check = erp_edoc_parasut_total_check($attributes, array('grand_total' => $built['expected']));
 
     if (!$check['ok']) {
@@ -1789,12 +2067,12 @@ function parasut_create_invoice($order_id)
         $gone = (($deleted_code >= 200) && ($deleted_code < 300)) || ($deleted_code === 404);
 
         if ($gone) {
+            db("UPDATE orders SET parasut_invoice_id = '' WHERE id = '" . escape($order_id) . "'");
             $message = lang(array(
                 'string' => 'Paraşüt computed {var:1} for the invoice where the order comes to {var:2}; the record was deleted there and nothing was issued.',
                 'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency($built['expected'], $currency)),
             ));
         } else {
-            db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
             $message = lang(array(
                 'string' => 'Paraşüt computed {var:1} for the invoice where the order comes to {var:2}, and the record could not be deleted there ({var:3}): it is still at Paraşüt as id {var:4}, not issued. Delete it on Paraşüt\'s screen.',
                 'vars' => array(erp_money_out_currency($check['total'], $currency), erp_money_out_currency($built['expected'], $currency), _parasut_extract_error($deleted), $sales_invoice_id),
@@ -1848,14 +2126,13 @@ function parasut_create_invoice($order_id)
         $doc_result = _parasut_request('POST', _parasut_prefix() . '/e_archives', $doc_body, $token);
     }
 
-    // Even if the e-invoice/e-archive step fails, we keep the sales invoice ID.
+    // Even if the e-invoice/e-archive step fails, the order keeps the sales
+    // invoice ID (stored when the record was created or found).
     if (!in_array($doc_result['http_code'], [200, 201])) {
         $msg = _parasut_extract_error($doc_result);
-        // Keep the sales invoice ID so the e-document step can be retried, but do
-        // not flag the order as exported: the flag drives the badge in the order
-        // list, and marking it here would show a document as filed that never
-        // reached the tax authority.
-        db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
+        // The order is not flagged as exported: the flag drives the badge in
+        // the order list, and marking it here would show a document as filed
+        // that never reached the tax authority.
         return ['success' => false, 'parasut_invoice_id' => $sales_invoice_id, 'edoc_kind' => $edoc_kind, 'error' => lang(array('string' => 'Sales invoice created (ID: {var:1}) but e-document failed: {var:2}', 'vars' => array($sales_invoice_id, $msg)))];
     }
 
@@ -1863,8 +2140,6 @@ function parasut_create_invoice($order_id)
     // whether it actually ran before telling the operator the document is filed.
     $job_id = (string) ($doc_result['body']['data']['id'] ?? '');
     $job = _parasut_track_job($job_id, $token);
-
-    db("UPDATE orders SET parasut_invoice_id = '" . escape($sales_invoice_id) . "' WHERE id = '" . escape($order_id) . "'");
 
     if ($job['state'] === 'failed') {
         return [
@@ -1897,12 +2172,6 @@ function parasut_create_invoice($order_id)
  */
 function parasut_create_shipment($order_id)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
-
     // Fetch full order.
     $query = "SELECT orders.*
               FROM orders
@@ -1914,6 +2183,30 @@ function parasut_create_shipment($order_id)
     if (!$order) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
     }
+
+    // One outgoing shipment document per order, refused before any request.
+    // Every create takes the stock-tracked lines out of Paraşüt's stock again
+    // and shipment_documents has no idempotency key, so a second press would
+    // leave a second waybill for the same sale and overwrite the stored id
+    // of the first.
+    $existing_shipment_id = trim((string) ($order['parasut_shipment_id'] ?? ''));
+
+    if ($existing_shipment_id !== '') {
+        return [
+            'success' => false,
+            'parasut_shipment_id' => $existing_shipment_id,
+            'error' => lang(array(
+                'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.',
+                'vars' => array($existing_shipment_id),
+            )),
+        ];
+    }
+
+    $token_result = parasut_get_token();
+    if (!$token_result['success']) {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
+    }
+    $token = $token_result['token'];
 
     // Sync contact.
     $contact_result = parasut_sync_contact($order);

@@ -1,6 +1,6 @@
 ---
 name: seo-toolkit-redirects
-description: Plan (approved 2026-10-19, in progress: steps 1-4, 6 and 7 done; redirects are short link options with CSV, the File Manager choice and the rename 301): 404 log, 404 API
+description: Plan (approved 2026-10-19, in progress: steps 1-7 done; redirects are short link options with CSV, the File Manager choice, the rename 301 and the 404 log): the 404 API left
 ---
 
 ## Why?
@@ -10,7 +10,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-4, 6 and 7 done; re
 - Owner decision 2026-10-19: no separate redirect manager (PR #654 closed). A redirect is a short link that answers 301 or 302; old addresses, Turkish letters and `*` patterns are short link names: `docs/memory/platform/short-link-redirects.md`.
 - CSV on the short link list: `docs/memory/platform/short-link-csv.md`.
 - Automatic redirect (built, #1403): a renamed page's old name is offered as a 301 short link to the page (checked by default), every language prefix covered: `docs/memory/platform/page-rename-redirect.md`. Folders have no address, so a folder rename needs none.
-- 404 log: `not_found_log` (path, referrer, count, first/last seen, user agent class) written by `output_error()` for 404s only, after `pg_short_link_not_found()` had its chance, grouped by path, with "Create redirect" per row (a 301 short link); retention 90 days and a row cap like the WAF log; bot hits excluded by the WAF classification.
+- 404 log (built, #1420): `not_found_log`, one row per missing address with Create redirect, 90 days, a row cap, bots out and verified crawlers counted apart: `docs/memory/platform/not-found-log.md`.
 - Per-page SEO extras in page settings: canonical override (URL), optional `noarchive`/`max-snippet` directives. The `custom_jsonld` editor with validation is in the visual designer since #582 (`pg_page_custom_jsonld_check()`); the classic `edit_page.php` can reuse the same check.
 - `llms.txt`: generated like `robots.txt` (`get_robots.txt.php` pattern) from site name, description and the sitemap's top pages; editable extra text. robots.txt gains a UI section "AI crawlers" that writes `User-agent` blocks for training, agent and search bots consistent with the WAF toggles, plus the `Content-Signal` line.
 - API: short links carry `redirect_code` and `is_pattern` (step 1); `/seo/not-found` read.
@@ -20,7 +20,7 @@ description: Plan (approved 2026-10-19, in progress: steps 1-4, 6 and 7 done; re
 2. Done (#699): CSV import and export on the short link list.
 3. Done (#799): File Manager short link window offers the answer, with the classic screens' name and address checks.
 4. Done (#1403): the rename 301 in the designer save and the page edit screen.
-5. 404 logging with retention (S).
+5. Done (#1420): the 404 log, its screen and retention.
 6. Done (#802): page canonical address, noarchive and max-snippet in the classic page screen and the designer, drawn by `get_page_content()` (11.0.22, `docs/memory/visitors/page-canonical-robots-directives.md`).
 7. Done (#739): `llms.txt`, robots AI section, Content-Signal (`docs/memory/visitors/ai-crawlers-llms-txt.md`, 11.0.21).
 8. API `/seo/not-found` (S).
@@ -31,4 +31,4 @@ description: Plan (approved 2026-10-19, in progress: steps 1-4, 6 and 7 done; re
 - Should a rename keep the addresses below the page too (`/old-catalog/<product>`, `/old-blog/<record>`)? Not decided: a `old/*` URL pattern loses the language prefix, a page destination with captures is new router behaviour. Today only the page's own address is kept.
 
 ## Where to start?
-- Step 5 (the `not_found_log` table needs the owner's go for the schema step), then 8; read `docs/memory/platform/short-link-redirects.md`, `output_error()` and `pg_short_link_not_found()`.
+- Step 8: `GET /seo/not-found` over `not_found_log` (`docs/memory/platform/not-found-log.md`), next to `seo.issues` in `includes/api/schema.php` and `includes/api/resources/seo.php`.
