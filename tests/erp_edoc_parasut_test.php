@@ -820,6 +820,41 @@ function test_erp_edoc_parasut_vat_rate_refusal()
 	pg_assert_contains('0%, 1%, 10%, 20%', $refusal);
 }
 
+// Paraşüt takes no line below zero: a sales invoice with a -0.52 line was
+// answered 422 ("the unit price must be equal to or greater than 0", the same
+// for its VAT and discount). Such an invoice is refused before anything is
+// sent, naming the line.
+function test_erp_edoc_parasut_negative_line_refusal()
+{
+	$goods = pg_test_parasut_vat_line(103, 21, array('description' => 'Deri Kalem Kılıfı'));
+	$credit = pg_test_parasut_vat_line(-52, -10, array('description' => 'Sadakat indirimi'));
+
+	pg_assert_same('', erp_edoc_parasut_negative_line_refusal(array($goods)));
+	pg_assert_same('', erp_edoc_parasut_negative_line_refusal(array()));
+	pg_assert_same('', erp_edoc_parasut_negative_line_refusal(array(pg_test_parasut_vat_line(0, 0))), 'a free line');
+
+	$refusal = erp_edoc_parasut_negative_line_refusal(array($goods, $credit));
+	pg_assert_contains('"Sadakat indirimi"', $refusal);
+	pg_assert_true(strpos($refusal, 'Deri Kalem') === false, 'only the line below zero is named');
+
+	// A discount below zero is refused as well (a credit's share of the
+	// order discount), even on a line priced above zero.
+	$share = pg_test_parasut_vat_line(1000, 199, array('discount_amount' => -3));
+	pg_assert_true(erp_edoc_parasut_negative_line_refusal(array($share)) !== '');
+}
+
+// The send stops at that refusal: no buyer card is looked for or opened.
+function test_erp_edoc_parasut_send_invoice_refuses_a_line_below_zero()
+{
+	$invoice = array('id' => 1, 'direction' => 'sales', 'doc_type' => 'invoice', 'invoice_type' => 'SATIS', 'currency' => 'TRY');
+	$lines = array(pg_test_parasut_vat_line(103, 21), pg_test_parasut_vat_line(-52, -10, array('description' => 'Kupon')));
+
+	$result = erp_edoc_parasut_send_invoice($invoice, $lines);
+
+	pg_assert_same(false, $result['success']);
+	pg_assert_same(erp_edoc_parasut_negative_line_refusal($lines), $result['error']);
+}
+
 // A line without a Pinegrap product goes on the default product/service;
 // with none set the invoice is refused before anything reaches Paraşüt.
 function test_erp_edoc_parasut_product_refusal()

@@ -30,4 +30,4 @@ description: How many units of a cart line an offer discounts (cheapest item: on
 ## What still depends on the order of adding?
 - A gift placed before the shopper adds the same product stays its own `added_by_offer` row (Y×5 paid + Y×1 free); a gift placed after takes one unit of the paid line (Y×5, one of them free). Either way one Y is free.
 
-Related: docs/memory/ui/offer-editor.md, docs/memory/commerce/cart-widget-rows-and-groups.md
+Related: docs/memory/ui/offer-editor.md, docs/memory/commerce/cart-widget-rows-and-groups.md, docs/memory/commerce/offer-donation-lines.md (donations are never the cheapest item)

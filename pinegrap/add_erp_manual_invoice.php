@@ -162,7 +162,7 @@ if (!$_POST) {
         $result = erp_invoice_create_manual($data);
 
         if (!$result['success']) {
-            $liveform->mark_error($result['field'] ?? '_error', $result['error']);
+            $liveform->mark_error($result['field'] ?? '_error', h($result['error']));
             go($self_url);
         }
 
@@ -172,7 +172,7 @@ if (!$_POST) {
         // document itself rather than the register.
         $liveform->remove_form();
         $liveform_document = new liveform('edit_erp_invoice');
-        $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
+        $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => h($result['full_number']))));
 
         if (function_exists('erp_credit_issued_warning') && (($credit_warning = erp_credit_issued_warning((int) $result['invoice_id'])) !== '')) {
             $liveform_document->add_warning(h($credit_warning));
@@ -184,7 +184,7 @@ if (!$_POST) {
     $result = erp_invoice_draft_save($data, 0);
 
     if (!$result['success']) {
-        $liveform->mark_error($result['field'] ?? '_error', $result['error']);
+        $liveform->mark_error($result['field'] ?? '_error', h($result['error']));
         go($self_url);
     }
 

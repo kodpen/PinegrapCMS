@@ -628,7 +628,7 @@ $("#expense_date' . ($paid ? '-none' : '') . ', #paid_date, #due_date, #repeat_e
             } else {
                 $liveform->mark_error('exchange_rate', lang(array(
                     'string' => 'No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.',
-                    'vars' => array($currency, prepare_form_data_for_output($expense_date, 'date')),
+                    'vars' => array(h($currency), prepare_form_data_for_output($expense_date, 'date')),
                 )));
                 go($back);
             }

@@ -65,7 +65,7 @@ if ($_POST) {
 
         log_activity(lang(array('string' => 'erp reconciliation letter for account ({var:1}) was e-mailed to {var:2}', 'vars' => array($account['title'], $to))), $_SESSION['sessionusername']);
 
-        $liveform->add_notice(lang(array('string' => 'The reconciliation letter was e-mailed to {var:1}.', 'vars' => $to)));
+        $liveform->add_notice(lang(array('string' => 'The reconciliation letter was e-mailed to {var:1}.', 'vars' => h($to))));
     }
 
     go($self_url);
