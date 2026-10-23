@@ -1897,12 +1897,6 @@ function parasut_create_invoice($order_id)
  */
 function parasut_create_shipment($order_id)
 {
-    $token_result = parasut_get_token();
-    if (!$token_result['success']) {
-        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
-    }
-    $token = $token_result['token'];
-
     // Fetch full order.
     $query = "SELECT orders.*
               FROM orders
@@ -1914,6 +1908,30 @@ function parasut_create_shipment($order_id)
     if (!$order) {
         return ['success' => false, 'parasut_shipment_id' => null, 'error' => lang('Order not found.')];
     }
+
+    // One outgoing shipment document per order, refused before any request.
+    // Every create takes the stock-tracked lines out of Paraşüt's stock again
+    // and shipment_documents has no idempotency key, so a second press would
+    // leave a second waybill for the same sale and overwrite the stored id
+    // of the first.
+    $existing_shipment_id = trim((string) ($order['parasut_shipment_id'] ?? ''));
+
+    if ($existing_shipment_id !== '') {
+        return [
+            'success' => false,
+            'parasut_shipment_id' => $existing_shipment_id,
+            'error' => lang(array(
+                'string' => 'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.',
+                'vars' => array($existing_shipment_id),
+            )),
+        ];
+    }
+
+    $token_result = parasut_get_token();
+    if (!$token_result['success']) {
+        return ['success' => false, 'parasut_shipment_id' => null, 'error' => $token_result['error']];
+    }
+    $token = $token_result['token'];
 
     // Sync contact.
     $contact_result = parasut_sync_contact($order);
