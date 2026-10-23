@@ -26682,5 +26682,8 @@
     "{var:1} address(es), {var:2} request(s), {var:3} of them from search engines.": "{var:1} adres, {var:2} istek; bunların {var:3} tanesi arama motorlarından.",
     "First asked for": "İlk istenme",
     "Last asked for": "Son istenme",
-    "What the analysis found across the site and the addresses visitors did not find, as lists to work through": "Analizin sitede bulduğu sorunlar ve ziyaretçilerin bulamadığı adresler, üzerinde çalışılacak listeler olarak"
+    "What the analysis found across the site and the addresses visitors did not find, as lists to work through": "Analizin sitede bulduğu sorunlar ve ziyaretçilerin bulamadığı adresler, üzerinde çalışılacak listeler olarak",
+    "Sorry, {var:1} was not accepted. Office files with macros cannot be added here; save it without macros (.docx, .xlsx or .pptx) and try again.": "Üzgünüz, {var:1} kabul edilmedi. Makro içeren Office dosyaları buraya eklenemez; dosyayı makrosuz (.docx, .xlsx veya .pptx) kaydedip yeniden deneyin.",
+    "Workspace messages": "Çalışma Alanı mesajları",
+    "Workspace tasks": "Çalışma Alanı görevleri"
 }
