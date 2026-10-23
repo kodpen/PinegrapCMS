@@ -65,7 +65,8 @@ function erp_order_flow_edoc_kind($invoice, $account)
  * @param int $order_id
  * @return array|null  null for an order that is not there; otherwise
  *                     ['order', 'account', 'invoice', 'waybill', 'provider',
- *                      'steps' => key => [label, state, title, facts, action, reason, links],
+ *                      'steps' => key => [label, state, title, facts, action, reason, links,
+ *                                         warn (optional: offered, but read as held)],
  *                      'next' => step key or '']
  *                     state: done | ready | waiting | blocked | unavailable | later
  */
@@ -149,6 +150,35 @@ function erp_order_flow_state($order_id)
                 $step['disabled_action'] = 'invoice';
                 $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}.', 'vars' => array($gaps['label'], erp_edoc_fix_summary($gaps['fields']))));
                 $step['links'][] = array('label' => lang('Complete the account card'), 'url' => 'edit_erp_account.php?id=' . (int) $account['id']);
+            }
+        }
+
+        // A contact card whose tax number is not the account's holds the
+        // automatic invoice (erp_auto_invoice_decision()); the step says so
+        // with both numbers and stays offered: issuing by hand is the
+        // operator's call. The contact is offered for editing only when the
+        // account is the contact's own, not one the order was billed to.
+        $difference = erp_order_tax_number_difference($order);
+
+        if (!empty($difference)) {
+            $text = erp_order_tax_number_difference_text($difference,
+                defined('ERP_AUTO_INVOICE_ON') && in_array((string) ERP_AUTO_INVOICE_ON, array('order_paid', 'order_shipped'), true));
+
+            if ($step['action'] === 'invoice') {
+                $step['warn'] = true;
+                $step['reason'] = $text;
+            } else {
+                $step['facts'][] = array('text' => $text);
+            }
+
+            $account_url = 'edit_erp_account.php?id=' . (int) $difference['account_id'];
+
+            if (!in_array($account_url, array_column($step['links'], 'url'), true)) {
+                $step['links'][] = array('label' => lang('Edit the account'), 'url' => $account_url);
+            }
+
+            if (!empty($difference['own'])) {
+                $step['links'][] = array('label' => lang('Edit Contact'), 'url' => 'edit_contact.php?id=' . (int) $difference['contact_id']);
             }
         }
     }
@@ -826,7 +856,10 @@ function erp_order_flow_card($order_id, $state = null)
 
     foreach ($state['steps'] as $key => $step) {
         $number++;
-        $tone = $tones[$step['state']] ?? $tones['later'];
+        // A step that warns (a tax number difference) still offers its action
+        // but reads like a held one.
+        $warn = !empty($step['warn']);
+        $tone = $warn ? $tones['blocked'] : ($tones[$step['state']] ?? $tones['later']);
         $is_next = ($key === $state['next']);
 
         $facts = '';
@@ -865,7 +898,7 @@ function erp_order_flow_card($order_id, $state = null)
                             <span class="fw-semibold">' . $number . '. ' . h($step['label']) . '</span>
                             ' . (($step['title'] !== '') ? '<span class="text-nowrap">' . h($step['title']) . '</span>' : '') . $facts . '
                         </div>
-                        ' . (($step['reason'] !== '') ? '<div class="small ' . (($step['state'] === 'blocked') ? 'text-warning-emphasis' : 'text-body-secondary') . '">' . h($step['reason']) . '</div>' : '') . '
+                        ' . (($step['reason'] !== '') ? '<div class="small ' . ((($step['state'] === 'blocked') || $warn) ? 'text-warning-emphasis' : 'text-body-secondary') . '">' . h($step['reason']) . '</div>' : '') . '
                         ' . (($links !== '') ? '<div class="d-flex flex-wrap gap-2 mt-2">' . $links . '</div>' : '') . '
                     </div>
                     ' . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '') . '

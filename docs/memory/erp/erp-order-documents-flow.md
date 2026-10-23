@@ -14,6 +14,7 @@ description: The order screen's documents card (includes/erp/order_flow.php): th
 
 ## Which order do the steps follow?
 - `next` is the first unfinished step that can run; a blocked step stops the chain. A document waiting for GİB does not hold the delivery note back (the answer can take hours). Nothing runs by itself; every step is a click (the automatic invoice reuses the invoice step: erp-auto-invoice.md).
+- The invoice step warns, and stays offered, when the contact card's tax number is not the account's (erp-order-tax-number-difference.md).
 - The invoice step is blocked before a number is spent when the provider would refuse the buyer (`erp_edoc_account_missing()`); the e-document step shows missing fields, the send gate or the date order and links to the repair on the invoice (`#edoc_fix`, `#edoc_date`; erp-edoc-send-readiness.md).
 - A delivery note written before the invoice is tied to it when the invoice is issued, and its ship date and carrier fill the invoice's empty fields (`erp_waybill_write_back()`).
 - No driver sends e-Delivery Notes yet, so with a provider that step reads unavailable.

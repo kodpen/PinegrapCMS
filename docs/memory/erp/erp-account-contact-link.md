@@ -16,7 +16,7 @@ description: ERP account to contact/user link: contact_id is the truth, mirror c
 - `add_erp_account.php?contact_id=N` opens pre-filled via `erp_account_data_from_contact()` (the bridge `erp_account_for_contact()` uses the same read); if the contact already has an account it redirects there.
 
 ## How is an account opened from an order?
-- Pass the order: `erp_account_for_contact($contact_id, $created_by, $order)`. An account the contact already has is returned untouched.
+- Pass the order: `erp_account_for_contact($contact_id, $created_by, $order)`. An account the contact already has is returned untouched: a later number on the card is not copied; the order's automatic invoice is held instead (erp-order-tax-number-difference.md).
 - A new one starts from the card (`erp_account_data_from_contact()`); `erp_account_data_with_order()` fills only what the card leaves empty from the order's billing block: the name only when the card would give "#<contact id>", the address as a whole (street, city/district/state via `erp_address_from_checkout()`, postcode, country), e-mail, phone. A customer who did not update the card at checkout still gets a named, addressed account.
 - Without the order a bare card opens as "#<contact id>" with no address.
 - A Turkish VKN registered at GİB then replaces the name (erp-taxpayer-lookup.md).

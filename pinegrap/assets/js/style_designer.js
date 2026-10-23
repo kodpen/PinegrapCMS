@@ -272,7 +272,8 @@ const StyleDesigner = (function () {
     var _sharedDirty      = {};  // id → true  — unsaved inline edits awaiting flush
     var _editingSharedSid = 0;   // sid of shared component currently being edited (0 = none)
     var _sdSharedContentReady = false;  // the schema can open components to content editors
-    var _sharedSnapshots  = {};  // id → JSON string snapshot taken before first edit this session
+    var _sharedSnapshots  = {};  // id → JSON of the stored row (taken when the tree is first drawn or edited)
+    var _sharedWarned     = {};  // id → true once the "editing a shared component" toast was shown
 
     // Pre-save hook for the assets panel. Default no-op so saveAjax can call
     // it unconditionally; initAssetsPanel() reassigns to a real implementation
@@ -794,7 +795,9 @@ const StyleDesigner = (function () {
                             // tab - or the layout a template leaves to the editor -
                             // went back to the stored row as soon as another page
                             // showing it was opened, and the save wrote that back.
-                            if (_sharedDirty[sid] && _sharedCache[sid] && _sharedCache[sid].tree) return;
+                            // A tree that differs from its snapshot counts as
+                            // unsaved too: not every edit path marks it.
+                            if (_sdSharedChanged(sid)) { _sharedDirty[sid] = true; return; }
                             var parsed = null;
                             try { parsed = JSON.parse(item.tree_json); } catch (e) {}
                             // Object slots the PHP round trip turned into arrays.
@@ -843,7 +846,7 @@ const StyleDesigner = (function () {
                                 if (tcfg && tcfg.template_origin && _swIsType(tcfg.regionType)) {
                                     var st = _buildStarterTree(tcfg.regionType);
                                     _sdTreeObjects(st); _backfillIds(st); _normalizeToggleableShowState(st);
-                                    _sharedSnapshots[sid] = JSON.stringify(parsed);
+                                    _sharedSnapshots[sid] = _sdSharedTreeJSON(parsed);
                                     _sharedCache[sid].tree = st;
                                     _sharedDirty[sid] = true;
                                     repaired.push(item.name || ('#' + sid));
@@ -2094,7 +2097,7 @@ const StyleDesigner = (function () {
                 if (!rec.ids || typeof rec.ids !== 'object' || Array.isArray(rec.ids)) rec.ids = {};
                 rec.ids[String(p.page_id)] = byKey[key];
             });
-            if (_sharedSnapshots[w.sid]) _sharedSnapshots[w.sid] = JSON.stringify(w.tree);
+            if (_sharedSnapshots[w.sid]) _sharedSnapshots[w.sid] = _sdSharedTreeJSON(w.tree);
         });
     }
 
@@ -2778,7 +2781,7 @@ const StyleDesigner = (function () {
             }
             var cached = _sharedCache[sid];
             if (!cached) { if (afterDone) afterDone(false); return; }
-            if (!_sharedSnapshots[sid]) _sharedSnapshots[sid] = cached.tree ? JSON.stringify(cached.tree) : '{}';
+            if (!_sharedSnapshots[sid]) _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
             if (typeof saveState === 'function') saveState();
             var name = (res.settings && res.settings.form_name) ? String(res.settings.form_name) : '';
             // Same message area the starter tree carries (_ensureMessagesNode
@@ -8530,6 +8533,53 @@ const StyleDesigner = (function () {
         applyIssueBadges();
         scheduleValidation();
         _sdLivePreviewSchedule();
+        _sdSharedBaseline();
+    }
+
+    // Every cached component tree gets a snapshot of what its row holds the
+    // first time it is drawn, so _sdSharedCatchEdits() sees a change made by
+    // any path: an in-place edit of a button label, for one, writes the node
+    // without selecting it, and a widget added in the session had no
+    // snapshot to compare with, so its edit was never saved. Taken after the
+    // canvas is drawn (the draw may mirror canvas state into the tree), and
+    // never for an entry already marked dirty: its row may hold something
+    // else, and the flush sends a dirty entry without a snapshot as it is.
+    function _sdSharedBaseline() {
+        for (var k in _sharedCache) {
+            if (!Object.prototype.hasOwnProperty.call(_sharedCache, k)) continue;
+            if (_sharedSnapshots[k] || _sharedDirty[k]) continue;
+            var c = _sharedCache[k];
+            if (c && c.tree) _sharedSnapshots[k] = _sdSharedTreeJSON(c.tree);
+        }
+    }
+
+    // True when a cached component holds a change its row does not: marked
+    // dirty, or its tree differs from the snapshot.
+    function _sdSharedChanged(sid) {
+        var c = _sharedCache[sid];
+        if (!c || !c.tree) return false;
+        if (_sharedDirty[sid]) return true;
+        return !!_sharedSnapshots[sid] && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[sid];
+    }
+
+    // A component tree as its snapshot is written and compared. The keys a
+    // selection writes without changing anything (the Layers panel's
+    // `_expanded`, an empty `_attrs`) are read past, as for a page
+    // (_pgBaselineTreeKey()): selecting inside a widget is not an edit.
+    function _sdSharedTreeJSON(t) {
+        return t ? JSON.stringify(t, _pgBaselineTreeKey) : '{}';
+    }
+
+    // Marks the component holding `node` as changed. Called by the paths
+    // that write a node without going through a selection (the in-place
+    // text edits). Returns the component id, 0 for a page node or a
+    // component this operator does not write.
+    function _sdSharedMarkEdited(node) {
+        var sid = _resolveSharedSid(node);
+        if (!(sid > 0)) return 0;
+        if (_sdIsContentLevel() && !_sdSharedOpenToContent(sid)) return 0;
+        _sharedDirty[sid] = true;
+        return sid;
     }
 
     // Track whether the current selection is inside a shared component;
@@ -8543,10 +8593,15 @@ const StyleDesigner = (function () {
             _editingSharedSid = 0;
         }
         if (_editingSharedSid > 0) {
-            _sharedDirty[_editingSharedSid] = true;
-            if (_editingSharedSid !== _prevSid && !_sharedSnapshots[_editingSharedSid]) {
+            // A snapshot only of a tree nothing has changed yet: one taken
+            // after a change would let the save skip it as unchanged.
+            if (!_sharedSnapshots[_editingSharedSid] && !_sharedDirty[_editingSharedSid]) {
                 var _sc = _sharedCache[_editingSharedSid];
-                _sharedSnapshots[_editingSharedSid] = _sc ? JSON.stringify(_sc.tree) : '{}';
+                _sharedSnapshots[_editingSharedSid] = _sdSharedTreeJSON(_sc && _sc.tree);
+            }
+            _sharedDirty[_editingSharedSid] = true;
+            if (_editingSharedSid !== _prevSid && !_sharedWarned[_editingSharedSid]) {
+                _sharedWarned[_editingSharedSid] = true;
                 sdToast(
                     '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
                     _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
@@ -8712,6 +8767,7 @@ const StyleDesigner = (function () {
         renderAttrsPanel();
         renderStylesPanel();
         updateCtxBar();
+        _sdSharedBaseline();
     }
 
     // The <details> the operator opened or closed on the canvas. A render
@@ -11714,6 +11770,10 @@ const StyleDesigner = (function () {
         // Double-click → contenteditable
         s.addEventListener('dblclick', function(e) {
             e.preventDefault(); e.stopPropagation();
+            // The label is the button's text: the button is selected, and
+            // the same edit right is asked as for any in-place text.
+            _sdInlineSelect(node);
+            if (!_sdMayEdit(node, 'text')) return;
             // Bound text can't be edited here — the binding overwrites it on
             // the next render, so the edit would vanish without explanation.
             if (_sdTextIsBound(node)) {
@@ -11735,6 +11795,7 @@ const StyleDesigner = (function () {
             if (node.props.text !== t) {
                 saveState();
                 node.props.text = t;
+                _sdSharedMarkEdited(node);
                 // Text already in DOM; just refresh panels so tree view / props reflect it.
                 try { renderHtmlTree(); } catch (e) {}
                 try { renderProperties(); } catch (e) {}
@@ -12914,6 +12975,14 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // The node an in-place edit starts on becomes the selection. The canvas
+    // is not redrawn (it would drop the element about to be edited), so the
+    // shared component tracking that render() runs is run here.
+    function _sdInlineSelect(node) {
+        if (selectedNode !== node) { selectedNode = node; renderTree(); renderProperties(); }
+        _sdTrackSharedEditing();
+    }
+
     function setupInlineEditing(wrapper, innerEl, node) {
         // Icon double-click → open the icon picker
         if (node.type === 'content' && node.props.contentType === 'icon') {
@@ -13076,7 +13145,7 @@ const StyleDesigner = (function () {
                 e.stopPropagation();
                 e.preventDefault();
                 // Ensure node is selected on double click
-                if (selectedNode !== node) { selectedNode = node; renderTree(); renderProperties(); }
+                _sdInlineSelect(node);
 
                 // Somebody else holds this page — or the operator edits
                 // content rather than design. This is the call that answers
@@ -13234,6 +13303,7 @@ const StyleDesigner = (function () {
                         // start of the session captured the BEFORE state, so
                         // there's nothing else to do here.
                         node.props[item.prop] = newText;
+                        _sdSharedMarkEdited(node);
                         renderProperties();
                         renderTree();
                         _sdLivePreviewSchedule();
@@ -51567,7 +51637,7 @@ const StyleDesigner = (function () {
         }
         // Snapshot before first change so undo can recover the original state.
         if (!_sharedSnapshots[sid]) {
-            _sharedSnapshots[sid] = cached.tree ? JSON.stringify(cached.tree) : '{}';
+            _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
         }
         var newTree = _buildStarterTree(regionType);
         _sharedCache[sid].tree = newTree;
@@ -58538,7 +58608,7 @@ const StyleDesigner = (function () {
         Object.keys(_sharedSnapshots).forEach(function (k) {
             if (_sharedDirty[k]) return;
             var c = _sharedCache[k];
-            if (c && c.tree && JSON.stringify(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
+            if (c && c.tree && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
         });
     }
 
@@ -58564,13 +58634,15 @@ const StyleDesigner = (function () {
             if (!cached || !cached.tree) { delete _sharedDirty[sid]; return; }
             if (contentLevel && !_sdSharedOpenToContent(sid)) { delete _sharedDirty[sid]; return; }
             var currentJson = JSON.stringify(cached.tree);
+            var currentCmp  = _sdSharedTreeJSON(cached.tree);
             // Skip if tree is unchanged since the snapshot (no real edit happened).
             // The snapshot stays: it is still what the stored row holds.
-            if (_sharedSnapshots[sid] && currentJson === _sharedSnapshots[sid]) {
+            if (_sharedSnapshots[sid] && currentCmp === _sharedSnapshots[sid]) {
                 delete _sharedDirty[sid];
                 return;
             }
-            delete _sharedSnapshots[sid];
+            // The snapshot stays until the answer: a refused or unanswered
+            // push keeps it, so the next save still sees the change.
             delete _sharedDirty[sid];
             pending.push(fetch(apiBase, {
                 method: 'POST',
@@ -58599,7 +58671,7 @@ const StyleDesigner = (function () {
                         if (storedJson !== currentJson && _sharedCache[sid] && _sharedCache[sid].tree === cached.tree) {
                             if (selectedNode && _nodeInTree(selectedNode, cached.tree)) { selectedNode = null; selectedNodes = []; }
                             _sharedCache[sid].tree = stored;
-                            _sharedSnapshots[sid] = storedJson;
+                            _sharedSnapshots[sid] = _sdSharedTreeJSON(stored);
                             redraw = true;
                             return;
                         }
@@ -58608,7 +58680,7 @@ const StyleDesigner = (function () {
                 // Written: what was sent is the stored row now. Kept as the
                 // snapshot so an edit made after this save is found by
                 // _sdSharedCatchEdits() even when no new selection marks it.
-                _sharedSnapshots[sid] = currentJson;
+                _sharedSnapshots[sid] = currentCmp;
             }).catch(function () {
                 // Not answered: keep it dirty so the next save tries again.
                 _sharedDirty[sid] = true;
