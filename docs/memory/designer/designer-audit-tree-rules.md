@@ -20,7 +20,7 @@ description: Designer audit's tree rules for empty links/buttons, image alt, for
 ## What is a submit control (`form_no_submit`)?
 - Read as the browser reads the printed type: keyword in any case, not trimmed. A `<button>` submits unless its type is `button` or `reset`; a missing, blank or invalid type falls back to Submit. An `<input>` submits only with `submit` or `image`.
 - The printed type: a semantic `<button>`/`<input>` or a text node drawn as `button` print only the `_attrs` type; a Button component drawn as `<button>`/`<input>` prints `btnType` (`button` when unset; `''` prints `type=""`, which submits). There is no `inputType` prop. Drawn as a link (`btnElement` `a`, the default) it does not submit, nor does the old content button (`contentType: 'button'`, no renderer).
-- 13 ready-made blocks whose form button is a link Button component are rightly flagged (navbar-search, footer-newsletter(-2), newsletter-inline/split/card, contact-form/info/map, login-centered/split/minimal, error-404-search); their builders are a separate fix.
+- The ready-made block forms all have a real submit now (designer-block-forms.md). A form that is sent nowhere is the page-level `form_no_action` hint (designer-audit-form-action.md).
 
 ## When is a heading empty (`heading_empty`)?
 - A text (heading) node only when it prints as `h1`–`h6`: its `tag` in any case, or `h2` when the tag is missing or malformed (the renderer's fallback). Drawn as a button, span, div or `p` it is not one: the carousel's indicators and arrows and the toast's dismiss button gave 6 false "Empty heading" warnings. A semantic `h1`–`h6` is empty with no children, text or bound text.
