@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-links
-description: Canvas links never navigate in the designer, including #fragment, because of the <base> tag; Bootstrap-bound links; why the editor opens dropdowns itself.
+description: Canvas links never navigate in the designer, including #fragment, because of the <base> tag; Bootstrap-bound links; why the editor opens dropdowns itself, guarded on the canvas window.
 ---
 
 ## Why can no link navigate on the canvas, even `#fragment`?
@@ -11,6 +11,12 @@ description: Canvas links never navigate in the designer, including #fragment, b
 
 ## Why does the editor open dropdowns instead of Bootstrap?
 - Bootstrap Dropdown looks for the menu as the trigger's **sibling**; on the canvas `.sd-wrap` sits in between, so it finds none and throws (`display:contents` does not change DOM sibling relations; this is the sibling version of a direct-child assumption).
-- For `[data-bs-toggle="dropdown"]` the click handler finds the menu via scope, toggles `show` itself, and `stopPropagation()`s so Bootstrap never sees it.
+- For `[data-bs-toggle="dropdown"]` the editor finds the menu via scope and toggles `show` itself; one menu is open at a time.
 - **The menu stays open** so the operator can select and edit items inside; Bootstrap would close it on the next click.
 - When adding a new Bootstrap JS component, check whether it depends on a sibling/child relationship.
+
+## Why is the dropdown guard on the canvas window, not the document?
+- Bootstrap 5.3 registers its delegated data-api handlers on `document` with **capture = true**. A capture listener of the editor on the document sat beside them: `stopPropagation()` never stops another listener on the same node, so Bootstrap still ran and threw "Cannot read properties of null (reading 'classList')" on every toggle click and every Escape. Where toggle and menu are siblings in one node (the language switcher component) Bootstrap opened the menu and the editor closed it in the same click.
+- The guard is a capture listener on `canvasDoc.defaultView`, which runs before any document listener; stopping the event there keeps Bootstrap out.
+- The same window guard takes `keydown` Escape / ArrowUp / ArrowDown on a toggle or inside a `.dropdown-menu`: Escape closes the open menus, other keys go on to the editor's shortcuts (`_sdShortcutKeydown()`, called directly because the document listener no longer sees the event). A text being edited in place (`isContentEditable`) is left alone.
+- A click on a dropdown toggle does not select it; a `<button>` toggle is still selected on mousedown.

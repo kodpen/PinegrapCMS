@@ -21,7 +21,7 @@ description: Maintenance, news and creative blocks (2026.11.0): palette groups, 
 - Notify forms are samples like the newsletter blocks: they have no action until the operator wires them. Their submit is a semantic `<button type="submit">` (form rules: `designer-block-forms.md`).
 
 ## Which block details are deliberate?
-- `scroller-cards`' scroll hint is the two-headed `bi-arrow-left-right`: a one-way arrow points wrong on RTL pages.
+- `scroller-cards`' header has previous / next buttons run by a platform script (`designer-scroller-controls.md`).
 - `news-weather-strip`'s cities are outlined chips (`bg-body border rounded`), so corners and border width follow the look; the band stays on `bg-body` (small primary text on `bg-body-tertiary` fails AA).
 - `showcase-floating`'s cards float over the picture from 992 px (`pg-float`), below that they stack; the canvas places them as the page does (`designer-canvas-style-designer.md`).
 

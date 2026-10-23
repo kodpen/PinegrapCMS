@@ -1,6 +1,6 @@
 ---
 name: image-files-left-alone
-description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) and a JPEG whose Exif orientation cannot be read (PR #1242); how each is told and what each path does
+description: Images the engine refuses to process: animated GIF/APNG/WebP (PR #1234) and a JPEG with unreadable Exif orientation (PR #1242); how each is told from its bytes and what each path does
 ---
 
 ## Which images does pg_process_image_file() leave alone?
@@ -18,13 +18,13 @@ description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) a
 - `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG); Imagick (ping) only when those bytes say 0 or exif is missing.
 - Why: with exif and Imagick both loaded, a JPEG without Exif would otherwise cost an Imagick ping on every page render.
 - 0 only for a broken block (unknown byte order, IFD0 or entries outside it, a TIFF header cut short, odd type). An empty Exif APP1 (`Exif\0\0` alone) and a value outside 1–8 count as 1, as browsers do.
-- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754; exif is off by default on Windows PHP and absent in the upstream php Docker images; Pinegrap's own docker/ image installs it).
+- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754, fixed in PR #1242; exif is off by default on Windows PHP and absent in the upstream php Docker images; Pinegrap's own docker/ image installs it).
 
 ## What happens to such a file on each path?
-- Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it. Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
-- Optimize, rotate, WebP conversion (`optimize_image.php`, file manager, `edit_file.php`): one sentence per reason, file untouched.
+- Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md). Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
+- Optimize, the file manager's buttons, `edit_file.php`: one sentence per reason ("is an animated image ... left alone" and the orientation one), file untouched.
 - Product and API uploads: the file is stored byte for byte.
-- Markup: `pg_img_responsive()` returns null: no `srcset` or `<source>`.
+- Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.

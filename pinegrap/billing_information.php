@@ -71,12 +71,12 @@ $form = $row['form'] ?? '';
 
 // if there is a custom field 1 label and custom field 1 is required, then validate required field
 if (($custom_field_1_label != '') && ($custom_field_1_required == 1)) {
-    $liveform->validate_required_field('custom_field_1', $custom_field_1_label . ' is required.');
+    $liveform->validate_required_field('custom_field_1', h($custom_field_1_label) . ' is required.');
 }
 
 // if there is a custom field 2 label and custom field 2 is required, then validate required field
 if (($custom_field_2_label != '') && ($custom_field_2_required == 1)) {
-    $liveform->validate_required_field('custom_field_2', $custom_field_2_label . ' is required.');
+    $liveform->validate_required_field('custom_field_2', h($custom_field_2_label) . ' is required.');
 }
 
 $liveform->validate_required_field('billing_first_name', lang('First Name is required.'));

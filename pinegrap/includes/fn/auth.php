@@ -4377,6 +4377,147 @@ function pg_password_reset_deny($retry_after)
 }
 
 /**
+ * The token of a set password link for an account whose password nobody was
+ * told: one a form's auto-registration opened. It is an HMAC of the account
+ * and the second the link was issued, under the site's encryption key, so a
+ * later request of the same session (the confirmation page) draws the same
+ * link from the account id alone and no copy of the token is kept anywhere.
+ * Only its sha256 is stored, in user.token, where set_password.php and the
+ * set password widget look it up; setting the password clears it, and a
+ * forgot password request replaces it, so each link works once.
+ *
+ * @param int    $user_id
+ * @param int    $issued_at unix time the link was issued (user.token_timestamp)
+ * @param string $key       the site's ENCRYPTION_KEY
+ * @return string 64 hex characters, or '' without an account, a time or a key
+ */
+function pg_set_password_link_token($user_id, $issued_at, $key)
+{
+    $user_id = (int) $user_id;
+    $issued_at = (int) $issued_at;
+    $key = (string) $key;
+
+    if (($user_id <= 0) || ($issued_at <= 0) || ($key === '')) {
+        return '';
+    }
+
+    return hash_hmac('sha256', 'set-password:' . $user_id . ':' . $issued_at, $key);
+}
+
+/**
+ * Whether a set password link issued at $issued_at is still accepted at $now.
+ * Mirrors the 24 hour check of set_password.php and the set password widget,
+ * so no link is shown that those would refuse.
+ *
+ * @param int $issued_at
+ * @param int $now
+ * @return bool
+ */
+function pg_set_password_link_live($issued_at, $now)
+{
+    $issued_at = (int) $issued_at;
+
+    return ($issued_at > 0) && (($issued_at + 86400) >= (int) $now);
+}
+
+/**
+ * The address of a set password link: the set password page with the token in
+ * "k", the parameter set_password.php and the widget read.
+ *
+ * @param string $origin scheme and host, e.g. URL_SCHEME . HOSTNAME_SETTING
+ * @param string $path   root-relative path of the set password page
+ * @param string $token
+ * @return string '' without a path or a token
+ */
+function pg_set_password_link_url($origin, $path, $token)
+{
+    $path = (string) $path;
+    $token = (string) $token;
+
+    if (($path === '') || ($token === '')) {
+        return '';
+    }
+
+    return (string) $origin . $path . ((strpos($path, '?') === false) ? '?' : '&') . 'k=' . rawurlencode($token);
+}
+
+/**
+ * Issues a set password link for an account: stores the hash of its token and
+ * the issue time on the user row (the columns forgot_password.php uses).
+ *
+ * @param int $user_id
+ * @return bool false when the site has no encryption key to sign with
+ */
+function pg_set_password_link_issue($user_id)
+{
+    $issued_at = time();
+    $token = pg_set_password_link_token($user_id, $issued_at, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+    if ($token === '') {
+        return false;
+    }
+
+    return (bool) db(
+        "UPDATE user
+        SET
+            token = '" . e(hash('sha256', $token)) . "',
+            token_timestamp = '" . $issued_at . "'
+        WHERE user_id = '" . (int) $user_id . "'");
+}
+
+/**
+ * The set password link issued for an account by pg_set_password_link_issue(),
+ * or '' once it was used, replaced by a forgot password request or expired.
+ * The page is the site's set password page (the panel's set_password.php,
+ * which draws its own form on a GET, when there is none), in the language of
+ * the request; the host is the configured one, as for every link that leaves
+ * the request.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function pg_set_password_link($user_id)
+{
+    $user_id = (int) $user_id;
+    $key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+
+    if (($user_id <= 0) || ($key === '')) {
+        return '';
+    }
+
+    $row = db_item(
+        "SELECT token, token_timestamp
+        FROM user
+        WHERE user_id = '" . $user_id . "'");
+
+    if (!is_array($row) || empty($row['token']) || !pg_set_password_link_live($row['token_timestamp'], time())) {
+        return '';
+    }
+
+    $token = pg_set_password_link_token($user_id, $row['token_timestamp'], $key);
+
+    if (($token === '') || !hash_equals((string) $row['token'], hash('sha256', $token))) {
+        return '';
+    }
+
+    $path = pg_sign_in_screen_url('set password', 'set_password.php');
+
+    if (!is_string($path) || ($path === '')) {
+        $path = PATH . SOFTWARE_DIRECTORY . '/set_password.php';
+    }
+
+    // A form sent from a page in another language links to that language's
+    // set password page; the software directory is left as it is.
+    if (function_exists('pg_tr_active') && pg_tr_active()) {
+        pg_tr_load();
+        $path = html_entity_decode(pg_tr_rewrite_url($path, pg_tr_prefix(pg_tr_language()), true), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    return pg_set_password_link_url(URL_SCHEME . HOSTNAME_SETTING, $path, $token);
+}
+
+
+/**
  * Is this account locked out of signing in, and until when?
  *
  * Both the user name and the email address are checked, because the counter is
