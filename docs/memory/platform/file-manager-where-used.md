@@ -1,6 +1,6 @@
 ---
 name: file-manager-where-used
-description: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #TBD), the 40 per source cap, the answer, the JS
+description: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
 ---
 
 ## What does "Where used" scan?

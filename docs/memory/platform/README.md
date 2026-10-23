@@ -36,7 +36,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
-- file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #TBD), the 40 per source cap, the answer, the JS
+- file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-color-profile.md: ICC colour profiles in the image engine (PR #1267): Imagick keeps a non-sRGB profile, GD refuses such a file (color_profile); how a profile is read, what each path does
