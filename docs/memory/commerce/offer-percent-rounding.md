@@ -1,6 +1,6 @@
 ---
 name: offer-percent-rounding
-description: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (#1362)
+description: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
 ---
 
 ## How does an offer's percentage become a figure?
@@ -16,7 +16,7 @@ description: An offer's percentage as a figure (order discount, product, gift, s
 - The shipping discount in `apply_offers_to_cart()`, `get_best_offer_id()`, `shipping.php` (the recipient's cost and the method list), `shipping_method.php`, `shopping_cart.php` and `get_shipping_method.php` (the cost a method list shows).
 - `tests/offer_percent_test.php` reads the product tree and fails on a `discount_...percentage ... / 100` left anywhere.
 
-## What did it fix?
+## What did it fix? (PR #1367)
 - PHP 8.4 and later no longer pre-round in `round()`: 1310 x 0.35 = 458.4999... gave 4.58 where PHP 8.3 gave 4.59 (35% of 13.10); 29% of 14.50 (4.21) and 55% off 6.50 (2.93) were a kurus lower too. About one amount and percentage pair in 1,700 moved (one in 2,800 of what is left), at percentages such as 29, 35, 55 and 57; the same cart was charged differently by server version.
 - Now no figure depends on the PHP version or the build's width (a 32-bit build takes the float steps of `pg_multiply_units()`).
 - On PHP 8.3 no figure moved: the test holds the old float formulas equal there (CI runs 8.3) over 20,000 random amounts to 2^31, half of them at a half minor unit, and both helpers against an exact integer reference on every version.
