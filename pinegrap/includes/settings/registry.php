@@ -213,6 +213,7 @@ function pg_settings_categories()
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
+                'pgset-captcha'    => lang('Spam Protection'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
@@ -220,6 +221,7 @@ function pg_settings_categories()
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
+                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
@@ -610,9 +612,14 @@ function pg_settings_status($key, $row)
             return array('ok', $on('chat_enabled') ? lang('Chat is on') : lang('Chat is off'));
 
         case 'security':
+            $captcha_provider = ($on('captcha') && function_exists('pg_captcha_provider')) ? pg_captcha_provider() : '';
             return array(
                 'ok',
-                ($on('captcha') ? lang('CAPTCHA is on') : lang('CAPTCHA is off'))
+                ($on('captcha')
+                    ? (($captcha_provider !== '')
+                        ? lang(array('string' => 'CAPTCHA is on ({var:1})', 'vars' => array(h(pg_captcha_provider_definition($captcha_provider)['label']))))
+                        : lang('CAPTCHA is on'))
+                    : lang('CAPTCHA is off'))
                 . ' · ' . ($on('oauth_google_enabled') ? lang('Google sign-in is on') : lang('Google sign-in is off')));
 
         case 'firewall':

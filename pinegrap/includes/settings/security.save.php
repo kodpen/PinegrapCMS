@@ -56,6 +56,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The Spam Protection card's CAPTCHA provider: checked, and its keys
+    // asked about, before anything is written, like Apple's application.
+    $captcha_settings_post = function_exists('pg_captcha_settings_check') ? pg_captcha_settings_check($_POST, $liveform) : null;
+
+    if ($liveform->check_form_errors()) {
+        return;
+    }
+
 
 
     // ── Firewall settings ────────────────────────────────────────────────
@@ -126,6 +134,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             membership_expiration_warning_email_days_before_expiration = '" . escape(post_value('membership_expiration_warning_email_days_before_expiration')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if (function_exists('pg_captcha_settings_save')) {
+        pg_captcha_settings_save($captcha_settings_post, USER_ID, $liveform);
+    }
 
 
     // Device limit lives in a column a not-yet-upgraded database may not have

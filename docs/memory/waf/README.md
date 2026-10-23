@@ -21,6 +21,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 
 ## Files
 
+- form-captcha-providers.md: Turnstile and hCaptcha beside the built-in maths question - where the keys live, render and server check, fail closed, staff-only exemption, CSP and the cookie notice.
 - form-submission-checks.md: custom_form.php protections other than the limits - order of the checks, signed fill time and its retry rule, StopForumSpam over https, the staff-only exemption and the gaps still open.
 - form-submission-limits.md: custom_form.php per visitor address, per e-mail and per domain limits in waf_rate - atomic counting before the hook, inbox folding, settings, why the domain limit is off by default, known weak spots.
 - waf-ai-bots-ranges.md: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() verification by published IP ranges (waf_bot_ranges), verdict ladder, refresh path (2026.4.4).
