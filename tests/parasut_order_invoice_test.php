@@ -431,3 +431,43 @@ function test_parasut_order_edoc_names_the_exemption_of_a_zero_rated_line()
 	pg_assert_same(array(), $edoc['attributes']);
 	pg_assert_contains('350', $edoc['error']);
 }
+
+// What the order keeps after Create Invoice's POST sales_invoices: the
+// record's id when Paraşüt names one, nothing when it refused the request,
+// and the unsure mark when no answer, a 5xx or a success without a record
+// leaves open that Paraşüt wrote it.
+function test_parasut_order_invoice_id_after_create()
+{
+	$written = array('http_code' => 201, 'body' => array('data' => array('id' => '5001', 'type' => 'sales_invoices')), 'raw' => '{}');
+	pg_assert_same('5001', parasut_order_invoice_id_after_create($written));
+	pg_assert_same('5001', parasut_order_invoice_id_after_create(array('http_code' => 200, 'body' => array('data' => array('id' => 5001)), 'raw' => '{}')));
+
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 0, 'body' => null, 'raw' => '', 'curl_error' => 'Operation timed out after 30001 milliseconds')), 'a timeout');
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 502, 'body' => null, 'raw' => '<html>')), 'a gateway error');
+	pg_assert_same(ERP_EDOC_PARASUT_UNSURE, parasut_order_invoice_id_after_create(array('http_code' => 201, 'body' => null, 'raw' => '<html>')), 'a success without a record');
+
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 422, 'body' => array('errors' => array()), 'raw' => '{}')), 'a refusal');
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 429, 'body' => null, 'raw' => '')), 'refused unprocessed');
+	pg_assert_same('', parasut_order_invoice_id_after_create(array('http_code' => 401, 'body' => null, 'raw' => '')));
+}
+
+// Create Invoice marks the order before the sales invoice request goes, so
+// that a press whose answer never comes leaves the next press the mark to
+// refuse on, and it keeps what the answer settles.
+function test_parasut_create_invoice_marks_the_order_before_the_create()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function parasut_create_invoice(');
+	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
+	$end = strpos($source, "\nfunction ", (int) $start + 1);
+	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
+
+	$guard = strpos($body, 'erp_edoc_parasut_unsure_read($existing_invoice_id)');
+	$marked = strpos($body, 'escape(ERP_EDOC_PARASUT_UNSURE)');
+	$posted = strpos($body, "'/sales_invoices', \$invoice_body");
+	$kept = strpos($body, 'parasut_order_invoice_id_after_create($inv_result)');
+
+	pg_assert_true($guard !== false, 'an unanswered earlier press is refused');
+	pg_assert_true(($marked !== false) && ($posted !== false) && ($marked < $posted), 'the mark is written before the request');
+	pg_assert_true(($kept !== false) && ($posted < $kept), 'the answer decides what the order keeps');
+}
