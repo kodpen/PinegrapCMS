@@ -249,6 +249,26 @@ if ($_POST) {
 
     if (($_POST['erp_action'] ?? '') === 'cancel') {
 
+        // What erp_invoice_cancel() refuses is asked again on the row as it is
+        // now, before the provider: money allocated or a return written after
+        // the page was drawn would otherwise leave the document taken back
+        // there (a draft deleted, an e-Archive cancelled at GİB) while it
+        // stays issued here.
+        if ((string) $invoice['status'] === 'cancelled') {
+            $cancel_refusal = lang('That invoice has been cancelled.');
+        } elseif (erp_invoice_receipt_count($invoice_id) > 0) {
+            $cancel_refusal = lang('Money has been allocated to this invoice, so it cannot be cancelled. Undo the settlement first.');
+        } elseif (!empty(erp_invoice_returns($invoice_id))) {
+            $cancel_refusal = lang('There is a return against this invoice, so it cannot be cancelled.');
+        } else {
+            $cancel_refusal = '';
+        }
+
+        if ($cancel_refusal !== '') {
+            $liveform->mark_error('_error', $cancel_refusal);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        }
+
         // A document the provider has is taken back there first, the way the
         // driver says (erp_edoc_invoice_cancellable()); a refusal leaves both
         // sides as they were. The period lock is asked before the provider
@@ -1150,6 +1170,9 @@ if (((string) $invoice['direction'] === 'sales')
                             : '') . '
                         ' . ((!$edoc_gate['ok'] && in_array($edoc_status, array('none', 'error'), true))
                             ? '<div class="col-12 my-2"><div class="form-text">' . h($edoc_gate['reason']) . '</div></div>'
+                            : '') . '
+                        ' . (erp_edoc_invoice_send_stalled($invoice)
+                            ? '<div class="col-12 my-2"><div class="form-text">' . h(lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $edoc_carrier_label))) . '</div></div>'
                             : '') . '
                     </div>
                     ' . $output_edoc_date . '

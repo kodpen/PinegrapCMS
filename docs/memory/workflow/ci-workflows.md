@@ -4,7 +4,7 @@ description: GitHub Actions workflows: what each runs and when, the PHP versions
 ---
 
 ## Which workflows are there?
-- `php-checks.yml` (every pull request, pushes to main and development): the checks listed under "When a task is done" in CLAUDE.md and `node --check` of three large panel scripts. Static analysis: docs/memory/workflow/static-analysis.md.
+- `php-checks.yml` (every pull request, pushes to main and development): the checks listed under "When a task is done" in CLAUDE.md and `node --check` of three large panel scripts. Static analysis: docs/memory/workflow/static-analysis.md. `tools/pre_push.sh` runs its fast steps before a push (pre-push-checks.md); a fast step added here is added there too.
 - `install-check.yml` (same triggers): the installer and every upgrade step on six MySQL/MariaDB images (docs/memory/release/database-server-compatibility.md).
 - `docker-check.yml`: the compose stack end to end, on pull requests that touch `docker/` or the files the images depend on and on every push to development (docs/memory/platform/docker.md).
 - `docker-publish.yml`: GHCR images when a release is published (docs/memory/platform/docker-image-publishing.md).

@@ -9,9 +9,9 @@ use Iyzipay\Request\AmountBaseRefundRequest;
 
 class AmountBaseRefund extends IyzipayResource
 {
-    private string $paymentId;
-    private float $price;
-    private string $ip;
+    private $paymentId;
+    private $price;
+    private $ip;
 
     public static function create(AmountBaseRefundRequest $request, Options $options): AmountBaseRefund
     {

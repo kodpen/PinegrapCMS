@@ -7,7 +7,7 @@ use Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class RetrieveBlacklistedCardRequest extends Request {
-    private string $cardNumber = '';
+    private $cardNumber = '';
 
     public function getCardNumber(): string {
         return $this->cardNumber;

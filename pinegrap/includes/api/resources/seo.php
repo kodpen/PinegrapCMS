@@ -8,7 +8,9 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// What the SEO analysis found, across the whole site.
+// What the SEO analysis found, across the whole site, and the addresses
+// visitors asked for that nothing answers (the 404 log,
+// includes/fn/not_found_log.php).
 //
 // The findings are already on every record this API returns - a page, a product
 // and a group each carry their own seo block with their own issues. What was
@@ -210,6 +212,144 @@ function api_seo_issues_list($params) {
 	}
 
 	api_ok_list($out, $limit, $next_cursor);
+
+}
+
+// One address of the 404 log. path is a short link name as it is stored, so it
+// is the name to give POST /short-links to make the address a redirect; what
+// answers it now, if anything, is in answered_by. path and referrer are what
+// visitors asked for and came from: text from outside the site.
+function api_seo_not_found_present($row, $base, $answers) {
+
+	$path = (string)$row['path'];
+
+	return array(
+		'id'           => (int)$row['id'],
+		'path'         => $path,
+		'url'          => $base . encode_url_path($path),
+		'hits'         => (int)$row['hit_count'],
+		'crawler_hits' => (int)$row['crawler_hits'],
+		'referrer'     => ((string)$row['referrer'] !== '') ? (string)$row['referrer'] : null,
+		'answered_by'  => api_seo_not_found_answered_by(isset($answers[$path]) ? $answers[$path] : null),
+		'first_seen'   => api_time($row['first_seen']),
+		'last_seen'    => api_time($row['last_seen'])
+	);
+
+}
+
+// What answers a logged address now, as the API names it, from
+// pg_not_found_log_answers(): null while nothing does.
+function api_seo_not_found_answered_by($answer) {
+
+	$names = array('redirect' => 'short_link', 'pattern' => 'short_link_pattern', 'binned' => 'recycled_short_link', 'page' => 'page', 'file' => 'file');
+
+	return (is_array($answer) && isset($names[$answer['state']])) ? $names[$answer['state']] : null;
+
+}
+
+// A cursor of GET /seo/not-found starts with the sort it was made for (h., l.
+// or f.; base64url has no dot): its value is a hit count or a time, and read
+// under another sort it would end the list early or start it again.
+function api_seo_not_found_cursor_mark($sort) {
+
+	$marks = array('hits' => 'h.', 'last_seen' => 'l.', 'first_seen' => 'f.');
+
+	return isset($marks[$sort]) ? $marks[$sort] : 'h.';
+
+}
+
+// The cursor without its sort mark, or null when it was made for another sort.
+function api_seo_not_found_cursor_parts($cursor, $sort) {
+
+	$cursor = (string)$cursor;
+
+	$mark = api_seo_not_found_cursor_mark($sort);
+
+	return (strpos($cursor, $mark) === 0) ? (string)substr($cursor, strlen($mark)) : null;
+
+}
+
+// GET /seo/not-found: the 404 log, keyset paged on the sort the caller chose.
+function api_seo_not_found_list($params) {
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	// The table arrives with the 2026.11.0 step (11.0.30); before it there is
+	// nothing to report, which is not an error.
+	if (!function_exists('pg_not_found_log_ready') || !pg_not_found_log_ready()) {
+
+		api_ok_list(array(), $limit, null);
+
+	}
+
+	$sort = isset($params['sort']) ? (string)$params['sort'] : 'hits';
+
+	$cursor = null;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$parts = api_seo_not_found_cursor_parts($params['cursor'], $sort);
+
+		$cursor = ($parts === null) ? null : api_cursor_decode($parts);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+	}
+
+	$rows = api_rows(pg_not_found_log_page_sql($sort, isset($params['since']) ? (int)$params['since'] : 0, $cursor, $limit + 1));
+
+	$has_more = (count($rows) > $limit);
+
+	if ($has_more) {
+
+		array_pop($rows);
+
+	}
+
+	$base = URL_SCHEME . HOSTNAME_SETTING . PATH;
+
+	$answers = pg_not_found_log_answers(array_column($rows, 'path'));
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_seo_not_found_present($row, $base, $answers);
+
+	}
+
+	$next_cursor = null;
+
+	if ($has_more && !empty($rows)) {
+
+		$last = $rows[count($rows) - 1];
+
+		$next_cursor = api_seo_not_found_cursor_mark($sort) . api_cursor_encode((int)$last[pg_not_found_log_sort_column($sort)], (int)$last['id']);
+
+	}
+
+	api_ok_list($out, $limit, $next_cursor);
+
+}
+
+// What api_seo_not_found_present() returns, declared for the OpenAPI document.
+function api_seo_not_found_schema() {
+
+	return array(
+		'id'           => 'integer',
+		'path'         => 'string',
+		'url'          => 'string',
+		'hits'         => 'integer',
+		'crawler_hits' => 'integer',
+		'referrer'     => 'string?',
+		'answered_by'  => 'string?',
+		'first_seen'   => 'string',
+		'last_seen'    => 'string'
+	);
 
 }
 

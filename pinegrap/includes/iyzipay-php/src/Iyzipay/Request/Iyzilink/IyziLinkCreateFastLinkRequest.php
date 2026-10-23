@@ -6,10 +6,10 @@ use Iyzipay\JsonBuilder;
 use Iyzipay\Request;
 
 class IyziLinkCreateFastLinkRequest extends Request {
-    private string $description;
+    private $description;
     private $price;
-    private string $currencyCode;
-    private string $sourceType;
+    private $currencyCode;
+    private $sourceType;
 
     public function getDescription(): string {
         return $this->description;
