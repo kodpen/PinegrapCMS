@@ -165,6 +165,11 @@ function test_api_order_returns_lines_of_a_request()
 	$twice = api_order_returns_lines(array(array('order_item_id' => 9009, 'quantity' => 1), array('order_item_id' => 9009, 'quantity' => 1)));
 
 	pg_assert_false($twice['ok'], 'a line named twice');
+
+	$null_first = api_order_returns_lines(array(array('order_item_id' => 9009, 'quantity' => null), array('order_item_id' => 9009, 'quantity' => 1)));
+
+	pg_assert_false($null_first['ok'], 'a line named twice, the first time with no quantity');
+	pg_assert_same(array(9009 => null), api_order_returns_lines(array(array('order_item_id' => 9009, 'quantity' => null)))['quantities'], 'a lone null goes on to the return model, which refuses it');
 	pg_assert_same(true, api_order_returns_lines(array())['ok'], 'an empty list is the return model\'s to refuse');
 }
 
@@ -180,6 +185,8 @@ function test_api_order_returns_list_route()
 	pg_assert_true(function_exists($route['handler']), 'the handler is declared');
 	pg_assert_same(array('list' => 'OrderReturn'), $route['returns']);
 	pg_assert_same(1, count($route['params']), 'the order id and nothing else: one page, no cursor');
+	pg_assert_contains('order.return.refunded', $route['description'], 'says where the refund\'s amount and method are');
+	pg_assert_contains('refund_method', $route['description']);
 }
 
 function test_api_order_returns_create_route()
@@ -223,6 +230,10 @@ function test_api_order_returns_create_route()
 
 	foreach (array('order_not_returnable', 'no_shipping_address', 'return_in_progress', 'order.return.requested') as $named) {
 		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
+	}
+
+	foreach (array('withdrawal period', 'goods have left', 'delivery date is known') as $skipped) {
+		pg_assert_contains($skipped, $route['description'], 'the description says the customer\'s rule is not checked: ' . $skipped);
 	}
 
 	pg_assert_contains('ship_to_id', $items['description'], 'lines are matched to the delivery by their ship_to_id');

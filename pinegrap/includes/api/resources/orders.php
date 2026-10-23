@@ -1099,7 +1099,9 @@ function api_order_returns_lines($items) {
 
 		}
 
-		if (isset($quantities[(int)$line])) {
+		// array_key_exists(): a quantity left null is stored as null, and the
+		// line is named all the same.
+		if (array_key_exists((int)$line, $quantities)) {
 
 			return $refuse(lang('Name each order line once.'));
 
@@ -1174,10 +1176,12 @@ function api_orders_returns_refuse($result, $ship_to) {
 // again by pg_return_create() itself, which checks the lines once more under
 // the order's lock.
 //
-// What follows a new request is what follows one from My Account: the staff's
-// bell, an activity line and an audit line; the customer's mail only when
-// notify is true, because a request a shop records for its customer may have
-// been agreed with them already. The webhook comes from pg_return_create().
+// A new request rings the staff's bell and writes an activity line, as one
+// from My Account does. Unlike My Account it also writes an audit line (the
+// API's writes are audited), and it mails the customer only when notify is
+// true, because a request a shop records for its customer may have been
+// agreed with them already; My Account always mails. The webhook comes from
+// pg_return_create().
 // The same request sent again within PG_RETURN_REPEAT_SECONDS (a retry after
 // a timeout) answers 200 with the return it repeats and does nothing else.
 function api_orders_returns_create($params) {
