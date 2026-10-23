@@ -11,7 +11,7 @@ description: Product import price cells (price, extra shipping, compare-at): one
 - `null`: words or other characters (`12/50`), a minus sign, no digit, more than 15 digits, more than the INT top (2147483647). The top is checked on the float before the int cast: on 32-bit PHP the cast wraps `25.000.000,00` to a negative figure.
 
 ## Where do the readers live?
-- The three `pg_products_import_*` readers below end `includes/fn/ecommerce.php` (moved from `import_products_f.php`, PR #PRNUM; older spreadsheet readers stay there). `pg_pb_price_figure()` is in `product_builder.php`, not loaded by `functions.php`: a caller requires it.
+- The three `pg_products_import_*` readers below end `includes/fn/ecommerce.php` (moved from `import_products_f.php`, PR #1349; older spreadsheet readers stay there). `pg_pb_price_figure()` is in `product_builder.php`, not loaded by `functions.php`: a caller requires it.
 
 ## How does a row get its amounts?
 - `pg_products_import_row_prices($row, $positions)` reads the row's money cells before the database is touched: `array('prices' => column => cents, 'refused' => bool)`. An empty cell (or spaces) is left out, as is a compare-at cell starting with `-`.
