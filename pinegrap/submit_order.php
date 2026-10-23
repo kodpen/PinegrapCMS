@@ -970,12 +970,14 @@ function submit_order($type) {
         $nonrecurring_transaction = TRUE;
 
         // If a credit card surcharge is enabled and the credit card payment method
-        // was selected, then calculate surcharge and add it to total.
+        // was selected, then calculate surcharge and add it to total: the
+        // exact product rounded half away from zero, the same figure on every
+        // PHP version (pg_percent_of()).
         if (
             (ECOMMERCE_SURCHARGE_PERCENTAGE > 0)
             && ($liveform->get_field_value('payment_method') == 'Credit/Debit Card')
         ) {
-            $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total);
+            $surcharge = pg_percent_of($total, ECOMMERCE_SURCHARGE_PERCENTAGE);
 
             // Like the shipping, a minor unit lower where it would leave a
             // rate's total no amount reaches (pg_order_charges_reachable()).

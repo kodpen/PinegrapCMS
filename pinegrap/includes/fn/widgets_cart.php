@@ -1951,9 +1951,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * their subtotal (pg_order_charged_discount()) with the tax taken again per
  * rate on what it leaves of the lines (pg_order_charged_tax()), the
  * shipping, the applied gift cards at most the total (none on an order of
- * gift cards alone), and the card surcharge on what is left. Where the
- * shipping and the surcharge hold tax on the order's invoice, each is a minor
- * unit lower when it would leave a rate's total no amount reaches
+ * gift cards alone), and the card surcharge on what is left (pg_percent_of(),
+ * the same figure on every PHP version). Where the shipping and the
+ * surcharge hold tax on the order's invoice, each is a minor unit lower when
+ * it would leave a rate's total no amount reaches
  * (pg_order_charges_reachable()), as submit_order() charges it. The express
  * order widget shows and posts these.
  *
@@ -1963,7 +1964,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
  * @param int    $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
  * @param int    $shipping
  * @param int    $gift_card_balance the applied gift cards' balance
- * @param float  $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE
+ * @param float  $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE, or the decimal string it holds
  * @param string $today             Y-m-d
  * @param bool   $clearcommerce     the gateway charges recurring lines itself
  * @param bool   $settle_rates      keep each rate's total reachable (pg_order_charges_settle_rates())
@@ -2016,7 +2017,7 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     }
 
     $total = max(0, $total - $gift_card_discount);
-    $surcharge = ((float) $surcharge_percent > 0) ? (int) round((float) $surcharge_percent / 100 * $total) : 0;
+    $surcharge = ((float) $surcharge_percent > 0) ? pg_percent_of($total, $surcharge_percent) : 0;
 
     if ($settle_rates && ($surcharge > 0)) {
         $surcharge = pg_order_charges_reachable($charged, $discount, array('shipping' => $shipping, 'surcharge' => $surcharge))['surcharge'];
