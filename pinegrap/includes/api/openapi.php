@@ -659,6 +659,7 @@ function api_openapi_objects()
         'FormField'      => 'api_form_field_schema',
         'FormSubmission' => 'api_form_submission_schema',
         'SeoIssue'       => 'api_seo_issue_schema',
+        'SeoNotFound'    => 'api_seo_not_found_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'Design'         => 'api_design_schema',

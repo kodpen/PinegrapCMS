@@ -462,6 +462,23 @@ if (!$_POST) {
                 </div>
             </div>';
     }
+
+    // A manager may have a renamed page's old address send visitors on: a
+    // 301 short link from it (pg_short_link_page_renamed()). The box is on by
+    // default and shown while the name differs from the stored one
+    // (bindPageRenameRedirect() in assets/js/backend.src.js).
+    $output_name_redirect_row = '';
+
+    if (($user['role'] < 3) && pg_short_link_redirects_ready()) {
+        $output_name_redirect_row =
+            '<div class="col-12 d-none" id="name_redirect_row" data-current-name="' . h($page_name) . '">
+                <div class="form-check">
+                    <input type="hidden" name="name_redirect" value="0" />
+                    <input value="1" checked="checked" id="name_redirect" name="name_redirect" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="name_redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="text-body-secondary">' . OUTPUT_PATH . h($page_name) . '</span></label>
+                </div>
+            </div>';
+    }
     
     $sitemap_row_style = 'display: none';
     
@@ -747,6 +764,7 @@ if (!$_POST) {
                                                         <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                                     </div>
                                                 </div>
+                                                ' . $output_name_redirect_row . '
                                                 ' . $output_home_page_rows . '
                                             </div>
                                         </div>
@@ -1015,6 +1033,9 @@ if (!$_POST) {
 
     // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
+
+    // The old address of a renamed page — logic in assets/js/backend.src.js
+    bindPageRenameRedirect();
     </script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
@@ -1389,7 +1410,7 @@ if (!$_POST) {
         $name = str_replace("&", "_", $name);
         
 
-        if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'page')) == false) {
+        if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $_POST['id'])) == false) {
             $liveform->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
@@ -1888,6 +1909,14 @@ if (!$_POST) {
                 comments_watchers_managed_by_submitter = '" . escape($_POST['comments_watchers_managed_by_submitter'] ?? '') . "'
             WHERE page_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // A new name is a new address: a redirect of the page's own that held
+        // the name goes, and the old name sends visitors here when a manager
+        // left the box under the name on.
+        if ((string) $name !== (string) $current_page_name) {
+            pg_short_link_page_renamed($page_id, $current_page_name, $name,
+                ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder);
+        }
 
         // If this page is a custom form, and pretty URLs were disabled before this update,
         // and now they are enabled, then update address names for submitted forms for pretty URLs feature.
