@@ -1267,14 +1267,16 @@ function pg_og_default_image()
 /**
  * Who wrote a submitted form, for the BlogPosting author.
  *
- * The linked contact wins because it carries a human name; the account only
- * has a username. An anonymous submission (the software allows forms with no
- * login) returns nothing, and the caller falls back to naming the site.
+ * Only the linked contact's name is used. The account's login username is
+ * never printed: it is half of a credential, and the account that signs a
+ * template's sample records (the setup administrator) has no contact. An
+ * anonymous submission, or one whose contact has no name, returns nothing,
+ * and the caller falls back to naming the site.
  */
 function pg_submitted_form_author_name($submitted_form_id)
 {
     $form = db_item(
-        "SELECT user_id, contact_id FROM forms
+        "SELECT contact_id FROM forms
         WHERE id = '" . (int) $submitted_form_id . "'
         LIMIT 1");
 
@@ -1298,14 +1300,6 @@ function pg_submitted_form_author_name($submitted_form_id)
             if ($name !== '') {
                 return $name;
             }
-        }
-    }
-
-    if ((int) ($form['user_id'] ?? 0) > 0) {
-        $username = db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $form['user_id'] . "'");
-
-        if (trim((string) $username) !== '') {
-            return trim((string) $username);
         }
     }
 

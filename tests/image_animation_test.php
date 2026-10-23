@@ -42,6 +42,14 @@ function image_animation_test_remove($path)
 	}
 }
 
+// imagedestroy() frees nothing since PHP 8.0 and is deprecated in 8.5.
+function image_animation_test_destroy($image)
+{
+	if (PHP_VERSION_ID < 80000) {
+		imagedestroy($image);
+	}
+}
+
 function image_animation_test_chunk($type, $data)
 {
 	return pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
@@ -74,7 +82,7 @@ function image_animation_test_png($width, $height)
 	ob_start();
 	imagepng($image, null, 0);
 	$png = ob_get_clean();
-	imagedestroy($image);
+	image_animation_test_destroy($image);
 
 	return $png;
 }
@@ -166,7 +174,7 @@ function test_image_animation_detects_apng_and_animated_webp()
 		if (function_exists('imagewebp')) {
 			$image = imagecreatetruecolor(16, 16);
 			imagewebp($image, $folder . '/gd.webp', 80);
-			imagedestroy($image);
+			image_animation_test_destroy($image);
 
 			pg_assert_false(pg_image_is_animated($folder . '/gd.webp'), 'a plain VP8 WebP');
 		}
@@ -259,6 +267,43 @@ function test_image_animation_engine_leaves_animated_webp()
 
 		pg_assert_same('skipped', $report['status']);
 		pg_assert_same('animated', $report['reason']);
+
+	} finally {
+		image_animation_test_remove($folder);
+	}
+}
+
+// A chunk length near 2 GB right after IHDR ends the PNG search. On 32-bit
+// PHP the seek offset past such a chunk no longer fits an int, and fseek()
+// throws a TypeError for the float instead of failing.
+function test_image_animation_huge_png_chunk_length_ends_search()
+{
+	if (!function_exists('imagepng')) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = image_animation_test_folder();
+	$source = $folder . '/files/huge-chunk.png';
+
+	try {
+		$png = image_animation_test_png(40, 30);
+		file_put_contents($source, substr($png, 0, 33) . pack('N', 0x7FFFFFFD) . 'zTXt' . substr($png, 33));
+
+		try {
+			pg_assert_false(pg_image_is_animated_png($source), 'pg_image_is_animated_png()');
+			pg_assert_false(pg_image_is_animated($source), 'pg_image_is_animated()');
+		} catch (Throwable $throwable) {
+			pg_assert_true(false, 'the animation check threw ' . get_class($throwable) . ': ' . $throwable->getMessage());
+		}
+
+		try {
+			$report = @pg_process_image_file($source, array('write' => false));
+			pg_assert_true(is_array($report), 'a report comes back');
+			pg_assert_true(!is_array($report) || !isset($report['reason']) || ($report['reason'] !== 'animated'), 'not reported as animated');
+		} catch (Throwable $throwable) {
+			pg_assert_true(false, 'pg_process_image_file() threw ' . get_class($throwable) . ': ' . $throwable->getMessage());
+		}
 
 	} finally {
 		image_animation_test_remove($folder);

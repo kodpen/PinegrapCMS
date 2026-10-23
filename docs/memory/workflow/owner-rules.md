@@ -1,6 +1,6 @@
 ---
 name: owner-rules
-description: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, templates, language, the shelved mobile app and who edits which notes
+description: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (no skills), language, the shelved mobile app and who edits which notes
 ---
 
 ## Where does user documentation go?
@@ -11,6 +11,9 @@ description: Standing rules from the owner (Erdal) on docs, how changes are reco
 
 ## How are plans kept?
 - As English memory files in `docs/memory/plans/` (owner rule 2026-10-14): remaining work, decisions made, open questions, where to start; not a full plan text. A finished plan is deleted after its lasting decisions move to the topic folder. The old Turkish plans are in git history (`git show 41aea113:docs/_plan_<name>.md`). A plan gets no changelog line. `docs/_erp_devir_notu.md` is updated by the owner only.
+
+## Where do the area rules live?
+- Only in `docs/memory`: each folder README's key rules and its topic files. `.claude/skills` was removed and is never recreated (owner decision 2026-10-22, PR #1052). `CLAUDE.md` lists which memory folder to read for which work; a sub-agent's task names that folder README, not a skill path.
 
 ## Which language?
 - Talk to the owner in Turkish. Code comments in English. Memory files in English (fewer tokens).

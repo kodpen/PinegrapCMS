@@ -15,8 +15,15 @@ description: Liveform messages (errors, notices, warnings) are HTML printed into
 - On print: each error, notice and warning line in the two printers above, so a message written into the session some other way is covered as well.
 
 ## What must a new message do?
-- Text a visitor or user typed or sent goes into a message through `h()`; a message is HTML, not text. The four liveform doors that refuse an upload (`add_comment.php`, `custom_form.php`, `add_submitted_form.php`, `edit_submitted_form.php`) pass `h(pg_upload_blocked_message($name))`; the panel doors that print the sentence with `h()` themselves or send it as JSON keep the plain sentence.
+- Text a visitor or user typed or sent goes into a message escaped; a message is HTML, not text. The four liveform doors that refuse an upload (`add_comment.php`, `custom_form.php`, `add_submitted_form.php`, `edit_submitted_form.php`) escape the file name with `htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')` (the whole message is not wrapped in `h()`: a field's inline feedback escapes again, and a name that is not valid UTF-8 would empty the sentence); the panel doors that print the sentence with `h()` themselves or send it as JSON keep the plain sentence.
 - A new place that prints session messages before the eval calls `pg_defuse_page_message()` per line.
+
+## Where is a message shown as text, not as the alert HTML?
+- A field's inline feedback: `liveform::output_field()` and the `window.__pgFieldErrors` JS map. Both read `pg_liveform_message_text()` (`core.php`), then escape for their own context, so the HTML of a message is shown as its text and an escaped name is not escaped twice.
+- `pg_liveform_message_text()` gives what the alert shows: tags, comments, `<!…>` and `<?…>` go, `<br>` and block tags become a space, entities are resolved once. A `<` that starts no tag ("must be <5", "a <= b") stays; `strip_tags()` dropped the rest of the sentence after it. One pass: a tag inside a comment or a quoted attribute belongs to it. An unclosed quote or comment runs to the end, so the scan is linear (an unclosed quote after many tags once took seconds); `strip_tags()` is the fallback when PCRE hits a limit (#1283).
+
+## Why does add_fields_to_session() skip some keys?
+- It copies every `$_REQUEST` key into the form's session entry as a field value. `notices`, `warnings`, `__prefill` and `_form_error_*` name that entry's own buckets, so a posted field by one of those names would sit in a message list without `add_notice()`/`add_warning()`'s defuse; those keys are skipped.
 
 ## Tests
 - `tests/page_messages_defuse_test.php`: the function, the liveform setters, the designer node, a source scan of the two printers (three defused lines each) and of the four upload doors.

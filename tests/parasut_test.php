@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure helpers of the Paraşüt client (includes/fn/parasut.php):
- * the authorization page address, the owner stamp of the sealed token and
- * the reading of the /v4/me answer.
+ * the authorization page address, the owner stamp of the sealed token, the
+ * reading of the /v4/me answer and the words of a refusal.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -142,4 +142,17 @@ function test_parasut_order_documents_in_erp()
 	pg_assert_false(_parasut_order_documents_in_erp(true, false));
 	pg_assert_false(_parasut_order_documents_in_erp(false, true));
 	pg_assert_false(_parasut_order_documents_in_erp(false, false));
+}
+
+// A refusal reads in Paraşüt's own words: the title before the detail, once
+// when Paraşüt repeats the detail as the title (its e-Archive answer).
+function test_parasut_extract_error_says_a_repeated_title_once()
+{
+	$said = 'Bu firmaya ait aktif bir e-Arşiv entegrasyonu bulunmamaktadır.';
+
+	pg_assert_same($said, _parasut_extract_error(array('http_code' => 422, 'body' => array('errors' => array(array('source' => array('pointer' => '/data/attributes/base'), 'title' => $said, 'detail' => $said))))));
+	pg_assert_same('Record was not found: SalesInvoice-1', _parasut_extract_error(array('http_code' => 404, 'body' => array('errors' => array(array('title' => 'Record was not found', 'detail' => 'SalesInvoice-1'))))));
+	pg_assert_same('Müşteri/tedarikçi ismi doldurulmalı | Eksik', _parasut_extract_error(array('http_code' => 422, 'body' => array('errors' => array(array('detail' => 'Müşteri/tedarikçi ismi doldurulmalı'), array('title' => 'Eksik'))))));
+	pg_assert_same('Geçersiz', _parasut_extract_error(array('http_code' => 422, 'body' => array('errors' => array('Geçersiz')))));
+	pg_assert_same('HTTP 500', _parasut_extract_error(array('http_code' => 500, 'body' => null)));
 }
