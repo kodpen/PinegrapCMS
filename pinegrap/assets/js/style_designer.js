@@ -5277,6 +5277,17 @@ const StyleDesigner = (function () {
     var _SD_BX = '\u0001';
     // The element inside a wrapper: any child that is not editor chrome.
     var _SD_FX_EL = ':not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge)';
+    // A selected element inside a see-through container is lifted above its
+    // neighbours (position:relative + z-index) so its outline shows. An
+    // element its own classes place is left where it is: lifting the close
+    // button of a dismissible alert moved it out of its corner on mousedown,
+    // so the click landed on the alert and never dismissed it; a stretched
+    // link would stretch over itself only, a sticky or fixed bar would scroll
+    // away.
+    var _SD_SEL_LIFT = ':not(' + ['.btn-close', '.position-absolute', '.position-fixed', '.position-sticky',
+        '.fixed-top', '.fixed-bottom', '.stretched-link', '.sticky-top', '.sticky-bottom']
+        .concat(['sm', 'md', 'lg', 'xl', 'xxl'].map(function (b) { return '.sticky-' + b + '-top, .sticky-' + b + '-bottom'; }))
+        .join(', ') + ')';
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -5661,7 +5672,10 @@ const StyleDesigner = (function () {
         _SD_BX + '.btn-group > .sd-wrap.sd-selected > *, .btn-group-vertical > .sd-wrap.sd-selected > *, ' +
             '.input-group > .sd-wrap.sd-selected > *, .nav > .sd-wrap.sd-selected > *, ' +
             '.list-group > .sd-wrap.sd-selected > *, .accordion > .sd-wrap.sd-selected > * ' +
-            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
+            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + ['.btn-group', '.btn-group-vertical', '.input-group', '.nav', '.list-group', '.accordion'].map(function (c) {
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+        }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.btn-group > .sd-wrap:hover:not(.sd-selected) > *, .btn-group-vertical > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.input-group > .sd-wrap:hover:not(.sd-selected) > *, .nav > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.list-group > .sd-wrap:hover:not(.sd-selected) > *, .accordion > .sd-wrap:hover:not(.sd-selected) > * ' +
@@ -5733,7 +5747,13 @@ const StyleDesigner = (function () {
             '.navbar > .sd-wrap.sd-selected > *, .navbar-nav > .sd-wrap.sd-selected > *, .nav-item > .sd-wrap.sd-selected > *, ' +
             '.form-floating > .sd-wrap.sd-selected > *, .form-check > .sd-wrap.sd-selected > *, ' +
             '.figure > .sd-wrap.sd-selected > * ' +
-            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; position:relative; z-index:2; }',
+            '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + ['.accordion-item', '.accordion-header', '.card-body', '.card-header', '.card-footer',
+            '.modal-content', '.modal-header', '.modal-body', '.modal-footer', '.offcanvas-header', '.offcanvas-body',
+            '.toast-header', '.toast-body', '.alert', '.breadcrumb', '.pagination', '.dropdown-menu',
+            '.navbar', '.navbar-nav', '.nav-item', '.form-floating', '.form-check', '.figure'].map(function (c) {
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+        }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.card-body > .sd-wrap:hover:not(.sd-selected) > *, .card-header > .sd-wrap:hover:not(.sd-selected) > *, .card-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.modal-content > .sd-wrap:hover:not(.sd-selected) > *, .modal-header > .sd-wrap:hover:not(.sd-selected) > *, .modal-body > .sd-wrap:hover:not(.sd-selected) > *, .modal-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
@@ -5829,11 +5849,11 @@ const StyleDesigner = (function () {
         // `background: #1c1e26 !important`, which `!important`-overrode
         // user classes like `bg-primary` AND wiped the grid overlay's
         // `background-image` (the shorthand resets it to `none`). The
-        // toolbar dark-theme button sets `data-bs-theme="dark"` which
+        // toolbar dark-theme button sets `data-bs-theme="dark"` on <html>, which
         // Bootstrap honours via CSS variables — that already handles the
         // dark canvas colour without nuking user styles. The class is
         // gone; the dropzone tweak below still applies for parity.
-        'body[data-bs-theme="dark"] .sd-dz { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.4); }',
+        'html[data-bs-theme="dark"] .sd-dz { border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.4); }',
         // Grid overlay — toggled by sd-vb-grid button
         // Grid overlay — accent-tinted so it stays legible on both light
         // and dark backgrounds. Earlier the lines were rgba(0,0,0,.1)
@@ -6111,49 +6131,51 @@ const StyleDesigner = (function () {
     }
 
     // ========================= CANVAS THEME =========================
-    // Single point of control for the canvas iframe's color mode. Called
-    // from THREE places that all need to stay in sync:
+    // Single point of control for the canvas iframe's color mode, the
+    // editor's view of the design. Called from:
     //   1. Toolbar dark/light button (sd-vb-theme)
     //   2. Themes panel mode tabs (sd-theme-mode-tab) — they pass
     //      source='themes' to skip the redundant tab-state update.
-    //   3. saveAjax / load — to apply the persisted dark state on init
+    //   3. A theme switcher clicked on the canvas (source='canvas'), through
+    //      the pg-theme-change listener of _sdInitCanvasDoc().
     //
-    // What it does:
-    //   • Sets/removes <body data-bs-theme="dark"> on the iframe
-    //   • Sets/removes the legacy `sd-dark-theme` class (for any custom
-    //     CSS that already hooks it)
-    //   • Updates the toolbar button (icon + label + active class)
-    //   • Updates the Themes panel mode tab (active class) + re-renders
-    //     so values reflect the active mode's variable block
-    //   • Triggers any iframe-side theme switchers (Bootstrap docs pattern:
-    //     buttons with [data-bs-theme-value]). User-built switchers stay
-    //     in step. If the iframe doesn't have any switchers, this is a
-    //     silent no-op — nothing breaks.
+    // One state, on the canvas <html>, as on the published page: the view
+    // is data-bs-theme on the documentElement (dark, or no attribute for
+    // light), the attribute the switchers' engine writes too. It used to sit
+    // on <body>, where it overrode whatever a canvas switcher put on <html>,
+    // so the canvas stayed dark after the switcher chose light.
+    //
+    // The switchers are never clicked from here: the engine runs on the
+    // canvas with window.pgThemeNoStore (_sdThemeSwitchers()), and is told
+    // the view with pgSetTheme(), which redraws them and keeps the choice in
+    // memory. Clicking them stored the editor's view as the visitor's theme
+    // in the site's localStorage (the canvas shares the site's origin), and
+    // the admin's own site then opened dark.
     function applyCanvasTheme(mode, opts) {
         opts = opts || {};
         var dark = (mode === 'dark');
+        mode = dark ? 'dark' : 'light';
         canvasDarkTheme = dark;
 
-        // 1. Iframe body attribute — Bootstrap reads this and applies the
-        //    dark colour scheme via CSS variables. We deliberately DO NOT
-        //    add the legacy `sd-dark-theme` body class anymore: that class
-        //    used to set `background: #1c1e26 !important` which
-        //    !important-overrode user backgrounds (e.g. `body.bg-primary`)
-        //    AND wiped the grid overlay's background-image. With
-        //    data-bs-theme alone, the toolbar dark button now behaves
-        //    identically to a user-placed `[data-bs-theme-value="dark"]`
-        //    switcher inside the iframe.
-        if (canvasDoc && canvasDoc.body) {
-            if (dark) canvasDoc.body.setAttribute('data-bs-theme', 'dark');
-            else canvasDoc.body.removeAttribute('data-bs-theme');
-            // Defensive: scrub any stale legacy class left from earlier
-            // page loads where the previous code path added it.
-            canvasDoc.body.classList.remove('sd-dark-theme');
+        // 1. The canvas <html>. Bootstrap reads data-bs-theme and applies
+        //    the dark colour scheme through its CSS variables; the legacy
+        //    `sd-dark-theme` body class (it forced a background with
+        //    !important) and a body attribute left by an older canvas are
+        //    scrubbed. Light is no attribute, or the "light" a switcher's
+        //    engine wrote (as on the published page).
+        if (canvasDoc && canvasDoc.documentElement) {
+            var _html = canvasDoc.documentElement;
+            if (dark) _html.setAttribute('data-bs-theme', 'dark');
+            else if (_html.getAttribute('data-bs-theme') !== 'light') _html.removeAttribute('data-bs-theme');
+            if (canvasDoc.body) {
+                canvasDoc.body.removeAttribute('data-bs-theme');
+                canvasDoc.body.classList.remove('sd-dark-theme');
+            }
         }
 
-        // 2. Toolbar button — even when called from the Themes panel,
-        //    the toolbar button's UI must follow the mode (so the user
-        //    sees the same state from both surfaces).
+        // 2. Toolbar button — even when called from the Themes panel or the
+        //    canvas, the toolbar button's UI must follow the mode (so the
+        //    user sees the same state from every surface).
         var tb = document.getElementById('sd-vb-theme');
         if (tb) {
             tb.classList.toggle('active', dark);
@@ -6176,33 +6198,29 @@ const StyleDesigner = (function () {
             }
         }
 
-        // 4. Trigger user-built iframe theme switchers — Bootstrap's docs
-        //    pattern is `[data-bs-theme-value="dark|light|auto"]` buttons
-        //    that update <html data-bs-theme>. Click the matching one so
-        //    custom switcher UI updates its active state. We also flip
-        //    any `.theme-toggle`/`#themeToggle` checkbox the user might
-        //    have wired manually. Wrap in try/catch — third-party
-        //    switcher scripts can throw on click in unexpected ways.
-        if (canvasDoc) {
-            try {
-                var btns = canvasDoc.querySelectorAll('[data-bs-theme-value]');
-                btns.forEach(function (b) {
-                    if (b.getAttribute('data-bs-theme-value') === mode) {
-                        // Use synthetic click so any onClick wiring fires.
-                        try { b.click(); } catch (e) {}
-                    }
-                });
-                // Form-switch variant: a checkbox where checked = dark.
-                canvasDoc.querySelectorAll('.theme-toggle, #themeToggle').forEach(function (el) {
-                    if (el.tagName === 'INPUT' && el.type === 'checkbox') {
-                        if (el.checked !== dark) {
-                            el.checked = dark;
-                            try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
-                        }
-                    }
-                });
-            } catch (e) {}
-        }
+        // 4. The switchers on the canvas show the view. A switcher that
+        //    started the change already shows it.
+        if (opts.source !== 'canvas') _sdThemeEngineShow(mode);
+    }
+
+    // The canvas switchers' engine, when it runs there in its no-store mode
+    // (an engine a page brought along itself would store the choice: it is
+    // left alone), is told the editor's view; it puts it on <html> and
+    // redraws every switcher.
+    function _sdThemeEngineShow(mode) {
+        var win = canvasDoc ? canvasDoc.defaultView : null;
+        if (!win || !win.pgThemeNoStore || typeof win.pgSetTheme !== 'function') return;
+        try {
+            if (win.pgGetTheme() !== mode) win.pgSetTheme(mode);
+        } catch (e) {}
+    }
+
+    // The view a switcher on the canvas chose: what its engine put on
+    // <html> ("System" resolves to light or dark there).
+    function _sdCanvasThemeChanged() {
+        if (!canvasDoc || !canvasDoc.documentElement) return;
+        var mode = (canvasDoc.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light';
+        if (mode !== (canvasDarkTheme ? 'dark' : 'light')) applyCanvasTheme(mode, { source: 'canvas' });
     }
 
     // ========================= IFRAME SETUP =========================
@@ -6311,12 +6329,9 @@ const StyleDesigner = (function () {
         });
 
         // Dark theme toggle — flips the canvas iframe to a real Bootstrap
-        // dark theme (`data-bs-theme="dark"` on <body>), syncs with the
-        // Themes panel mode tabs, and triggers any theme-switcher
-        // components inside the iframe (`[data-bs-theme-value]` buttons,
-        // `.theme-toggle` checkboxes etc.) so user-built switchers stay in
-        // step. The legacy `sd-dark-theme` class is still toggled for
-        // backward compat with any custom CSS that hooks it.
+        // dark theme (`data-bs-theme="dark"` on the canvas <html>), syncs
+        // with the Themes panel mode tabs and shows the view on the theme
+        // switchers of the canvas, without storing it (applyCanvasTheme()).
         var themeBtn = document.getElementById('sd-vb-theme');
         if (themeBtn) themeBtn.addEventListener('click', function() {
             canvasDarkTheme = !canvasDarkTheme;
@@ -6425,6 +6440,16 @@ const StyleDesigner = (function () {
         });
     }
 
+    // Controls that run on the canvas as on the page: Bootstrap's data-api
+    // hooks and the platform scripts' own controls (the theme toggle's
+    // button, a scroller's previous / next buttons; the theme switch is an
+    // input and the theme menu's items carry data-bs-theme-value). A click
+    // inside one, on an icon or a label too, is let through to it: the
+    // wrappers select without stopping the click.
+    var _SD_CANVAS_CONTROLS = '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
+        '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value], ' +
+        '[data-pg-theme-switcher] button, [data-pg-scroll]';
+
     // The canvas document: written into the iframe, its listeners, the
     // framework bundle and the assets. Runs once when the canvas is built and
     // again for every fresh document (_sdCanvasRealmReset()).
@@ -6452,14 +6477,15 @@ const StyleDesigner = (function () {
         var _bodyCls = [];
         if (_sdMotionPaused()) _bodyCls.push('sd-motion-paused');
         if (canvasOutlineGrid) _bodyCls.push('sd-outline-grid');
-        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
+        // The editor's view of the design sits on <html>, where the theme
+        // switchers' engine writes it too (applyCanvasTheme()).
+        doc.write('<!DOCTYPE html><html' + (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '><head><meta charset="utf-8"><base href="' + _canvasBase + '">' +
             '<meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script>' + _sdMotionShim(_sdMotionPaused()) + '<\/script>' +
             (_fwInfo.css ? '<link rel="stylesheet" crossorigin="anonymous" href="' + esc(_fwInfo.css) + '">' : '') +
             '<link rel="stylesheet" id="sd-icons-css" crossorigin="anonymous" href="' + esc(_sdIconsUrl()) + '">' +
             '<style id="sd-canvas-css">' + _sdIframeCss() + '</style></head><body' +
-            (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') +
-            (canvasDarkTheme ? ' data-bs-theme="dark"' : '') + '></body></html>');
+            (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') + '></body></html>');
         doc.close();
         canvasDoc = doc;
         if (canvasZoom !== 1.0 && doc.documentElement) doc.documentElement.style.zoom = canvasZoom;
@@ -6509,6 +6535,9 @@ const StyleDesigner = (function () {
             _sdChromeRaf = requestAnimationFrame(function () { _sdChromeRaf = 0; _sdPlaceSelectedChrome(); });
         }, true);
         if (canvasDoc.defaultView) canvasDoc.defaultView.addEventListener('resize', _sdFxSoon);
+        // A theme switcher clicked on the canvas changes the editor's view:
+        // the toolbar button and the Themes panel follow it.
+        canvasDoc.addEventListener('pg-theme-change', _sdCanvasThemeChanged);
 
         // Stop the browser navigating when a drag is dropped inside the iframe (the real reason elements went missing)
         canvasDoc.addEventListener('dragover', function(e) {
@@ -6559,40 +6588,8 @@ const StyleDesigner = (function () {
                     return;
                 }
             }
-            // ── Dropdowns are opened by the editor, not by Bootstrap ─────────
-            // Bootstrap's Dropdown finds its menu as a SIBLING of the toggle
-            // (next, then previous, then inside the toggle's parentNode). On the
-            // canvas every node is wrapped in its own .sd-wrap, so the menu is a
-            // sibling of the WRAPPER, never of the toggle: all three lookups
-            // return nothing, `this._menu` is undefined and Bootstrap throws
-            // "Cannot read properties of null (reading 'classList')" — the
-            // dropdown simply never opened. `display: contents` does not help
-            // here; it changes the box, not the DOM relationship.
-            //
-            // Toggling it here also fits the editor better than Bootstrap would:
-            // the menu stays open while the operator selects and edits the items
-            // inside it, instead of closing on the next click.
-            var _ddTog = e.target.closest ? e.target.closest('[data-bs-toggle="dropdown"]') : null;
-            if (_ddTog) {
-                e.preventDefault();
-                // Keep it from reaching Bootstrap's delegated handler, which
-                // would throw on the same missing menu.
-                e.stopPropagation();
-                var _ddScope = _ddTog.closest('.dropdown, .dropup, .dropend, .dropstart, .btn-group, .nav-item, .navbar-nav') ||
-                               _ddTog.parentElement;
-                var _ddMenu = _ddScope ? _ddScope.querySelector('.dropdown-menu') : null;
-                if (_ddMenu) {
-                    var _wasOpen = _ddMenu.classList.contains('show');
-                    // One open menu at a time, so the canvas does not fill up.
-                    canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
-                    canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
-                    if (!_wasOpen) {
-                        _ddMenu.classList.add('show');
-                        _ddTog.setAttribute('aria-expanded', 'true');
-                    }
-                }
-                return;
-            }
+            // Dropdown toggles never get here: the canvas window's guard
+            // below opens them and stops the click first.
 
             var a = e.target.closest ? e.target.closest('a') : null;
             if (a && a.hasAttribute('href')) {
@@ -6630,6 +6627,73 @@ const StyleDesigner = (function () {
                 if (btn.type === 'submit') { e.preventDefault(); }
             }
         }, true); // capture phase
+
+        // ── Dropdowns are opened by the editor, not by Bootstrap ─────────
+        // Bootstrap's Dropdown finds its menu as a SIBLING of the toggle
+        // (next, then previous, then inside the toggle's parentNode). On the
+        // canvas every node is wrapped in its own .sd-wrap, so the menu is a
+        // sibling of the WRAPPER, never of the toggle: all three lookups
+        // return nothing and Bootstrap throws "Cannot read properties of
+        // null (reading 'classList')". Where toggle and menu are siblings in
+        // one node (the language switcher component) Bootstrap opened the
+        // menu and the editor closed it again in the same click.
+        //
+        // The guard sits on the canvas WINDOW in the capture phase: Bootstrap
+        // 5.3 registers its delegated data-api handlers on the document with
+        // capture = true, so a capture listener on the document runs beside
+        // them (stopPropagation() never stops a listener on the same node).
+        // The window comes before the document, and stopping the event there
+        // keeps Bootstrap out entirely.
+        //
+        // The editor toggles the menu itself, which also fits it better than
+        // Bootstrap would: the menu stays open while the operator selects and
+        // edits the items inside it, instead of closing on the next click.
+        function _sdDdScopeMenu(tog) {
+            var scope = tog.closest('.dropdown, .dropup, .dropend, .dropstart, .btn-group, .nav-item, .navbar-nav') || tog.parentElement;
+            return scope ? scope.querySelector('.dropdown-menu') : null;
+        }
+        function _sdDdCloseAll() {
+            canvasDoc.querySelectorAll('.dropdown-menu.show').forEach(function (m) { m.classList.remove('show'); });
+            canvasDoc.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+        }
+        var _cvWin = canvasDoc.defaultView;
+        if (_cvWin) {
+            _cvWin.addEventListener('click', function (e) {
+                var tog = (e.target && e.target.closest) ? e.target.closest('[data-bs-toggle="dropdown"]') : null;
+                if (!tog || !canvasDoc || tog.ownerDocument !== canvasDoc) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var menu = _sdDdScopeMenu(tog);
+                if (!menu) return;
+                var wasOpen = menu.classList.contains('show');
+                // One open menu at a time, so the canvas does not fill up.
+                _sdDdCloseAll();
+                if (!wasOpen) {
+                    menu.classList.add('show');
+                    tog.setAttribute('aria-expanded', 'true');
+                }
+            }, true);
+            // Bootstrap's keydown data-api (Escape, ArrowUp, ArrowDown on a
+            // toggle or inside a menu) builds a Dropdown on the same missing
+            // menu and throws as well. Escape closes the open menus here; the
+            // editor's own shortcuts still see the key. A text being written
+            // in place is left alone: its own key handling sits on the element
+            // and would not run once the event is stopped at the window.
+            _cvWin.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                var t = e.target;
+                if (!t || !t.closest || !canvasDoc || t.ownerDocument !== canvasDoc || t.isContentEditable) return;
+                if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && e.key !== 'Escape') return;
+                if (!t.closest('[data-bs-toggle="dropdown"], .dropdown-menu')) return;
+                e.stopPropagation();
+                if (e.key === 'Escape' && canvasDoc.querySelector('.dropdown-menu.show')) {
+                    e.preventDefault();
+                    _sdDdCloseAll();
+                    return;
+                }
+                _sdShortcutKeydown(e);
+            }, true);
+        }
 
         // Middle-click (and any browser that routes it through auxclick) would
         // open the href in a new tab. Same surprise as navigation, different
@@ -9764,11 +9828,15 @@ const StyleDesigner = (function () {
     // to a visitor page that shows one). The canvas loads the same file into
     // its frame once, and binds the switchers again after every render, when
     // the elements are new; the file binds what is there when it loads.
+    // pgThemeNoStore is set first: a switcher clicked on the canvas changes
+    // the editor's view (the pg-theme-change listener of _sdInitCanvasDoc()),
+    // never the theme stored for the site's visitors.
     function _sdThemeSwitchers() {
         if (!canvasDoc || !canvasDoc.querySelector('[data-pg-theme-switcher]')) return;
         var win = canvasDoc.defaultView;
         if (win && typeof win.pgThemeSwitcherBind === 'function') { win.pgThemeSwitcherBind(canvasDoc); return; }
         if (canvasDoc.getElementById('pg-theme-switcher-js') || !canvasDoc.head) return;
+        if (win) win.pgThemeNoStore = true;
         var scr = canvasDoc.createElement('script');
         scr.id = 'pg-theme-switcher-js';
         try { scr.src = new URL('assets/js/pg_theme_switcher.js', document.baseURI).href; } catch (e) { return; }
@@ -10417,10 +10485,7 @@ const StyleDesigner = (function () {
                     return;
                 }
             }
-            if (_tgt && _tgt.closest && _tgt.closest(
-                '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
-                '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value]'
-            )) {
+            if (_tgt && _tgt.closest && _tgt.closest(_SD_CANVAS_CONTROLS)) {
                 return;
             }
             e.stopPropagation();
@@ -11388,8 +11453,7 @@ const StyleDesigner = (function () {
             var isInteractive = !!e.target.closest(
                 'input, select, textarea, label, ' +
                 '[contenteditable="true"], ' +
-                '[data-bs-toggle], [data-bs-target], [data-bs-dismiss], ' +
-                '[data-bs-slide], [data-bs-slide-to], [data-bs-theme-value], ' +
+                _SD_CANVAS_CONTROLS + ', ' +
                 '.accordion-button, ' +
                 '.carousel-control-prev, .carousel-control-next, .carousel-indicators button'
             );
@@ -11495,7 +11559,15 @@ const StyleDesigner = (function () {
         s.textContent = _vtText;
         // Don't let wrapper click-select the parent button on a mousedown inside the virtual.
         s.addEventListener('mousedown', function(e) { e.stopPropagation(); });
-        s.addEventListener('click', function(e) { e.stopPropagation(); });
+        // A click on the label of a control the canvas runs (a popover or
+        // collapse button, the theme toggle) has to reach the control:
+        // Bootstrap's Popover and Tooltip listen on the element itself, not
+        // by delegation, and stopping the click here starved them. The
+        // wrappers still leave the selection alone, as for a plain label.
+        s.addEventListener('click', function(e) {
+            if (s.parentElement && s.parentElement.closest(_SD_CANVAS_CONTROLS)) { e._sdHandled = true; return; }
+            e.stopPropagation();
+        });
         // Double-click → contenteditable
         s.addEventListener('dblclick', function(e) {
             e.preventDefault(); e.stopPropagation();

@@ -175,6 +175,55 @@ function erp_quantity_text($quantity)
 }
 
 /**
+ * A decimal as a whole number of its smallest unit at the given places
+ * (1.15 at four places is 11500), half away from zero.
+ *
+ * The rounding is done on the decimal digits the number is written with -
+ * sprintf() writes the same digits as JavaScript's toFixed() - and not on a
+ * product of floats: 1.15 * 10000 is 11499.999... in binary, and how round()
+ * treats that has changed between PHP versions. The invoice editor applies
+ * the same rule (decimalUnits(), assets/js/erp_invoice_editor.js).
+ *
+ * The units are a whole number held in a float: a float is exact up to 2^53,
+ * far above the 999999999999999 units a DECIMAL(15,4) quantity can hold,
+ * while an int stops at PHP_INT_MAX, which on a 32-bit build is 214748.3647
+ * at four places.
+ *
+ * @param float|int|string $value
+ * @param int              $places  0 to 10
+ * @return float
+ */
+function erp_decimal_units($value, $places)
+{
+    $value = (float) $value;
+    $places = max(0, min(10, (int) $places));
+    $parts = explode('.', sprintf('%.10F', abs($value)));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
+
+    if ((int) substr($parts[1], $places, 1) >= 5) {
+        $units += 1;
+    }
+
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
+}
+
+/**
+ * A quantity at the four places it is stored with (DECIMAL(15,4)).
+ *
+ * A line is priced with the quantity it is saved with, so the draft, the
+ * preview and the issued invoice, which is worked out again from the stored
+ * lines, all come to the same amount.
+ *
+ * @param float|int|string $quantity
+ * @return float
+ */
+function erp_quantity_round($quantity)
+{
+    return erp_decimal_units($quantity, 4) / 10000.0;
+}
+
+/**
  * The separators figures are written with on screen and on documents, by the
  * panel language: 1.234,56 in Turkish, German, Spanish and the like; 1 234,56
  * in French, Russian and the Nordic languages; 1,234.56 in English and the
