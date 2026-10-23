@@ -564,6 +564,51 @@ function pg_not_found_log_sweep($seconds = 5)
 }
 
 /**
+ * The column GET /seo/not-found sorts by: hits (most first), last_seen or
+ * first_seen (newest first); hits for anything else.
+ *
+ * @param string $sort
+ * @return string
+ */
+function pg_not_found_log_sort_column($sort)
+{
+    $columns = array('hits' => 'hit_count', 'last_seen' => 'last_seen', 'first_seen' => 'first_seen');
+
+    return isset($columns[$sort]) ? $columns[$sort] : 'hit_count';
+}
+
+/**
+ * One page of GET /seo/not-found, keyset paged on the sort column with the id
+ * as the tie, both descending: the rows inside the retention period and asked
+ * for at or after $since. $rows is the page plus one, so the caller knows
+ * whether there is more.
+ *
+ * @param string     $sort   pg_not_found_log_sort_column()
+ * @param int        $since  a unix time, 0 for the whole period
+ * @param array|null $cursor api_cursor_decode(): array('v' => the sort value, 'i' => the id)
+ * @param int        $rows
+ * @param int        $now
+ * @return string
+ */
+function pg_not_found_log_page_sql($sort, $since = 0, $cursor = null, $rows = 51, $now = 0)
+{
+    $column = pg_not_found_log_sort_column($sort);
+    $where = array("last_seen >= '" . max((int) $since, pg_not_found_log_since($now)) . "'");
+
+    if (is_array($cursor) && isset($cursor['v'], $cursor['i'])) {
+        $value = (int) $cursor['v'];
+        $id = (int) $cursor['i'];
+        $where[] = "(" . $column . " < '" . $value . "' OR (" . $column . " = '" . $value . "' AND id < '" . $id . "'))";
+    }
+
+    return "SELECT id, path, referrer, hit_count, crawler_hits, first_seen, last_seen
+        FROM not_found_log
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY " . $column . " DESC, id DESC
+        LIMIT " . max(1, (int) $rows);
+}
+
+/**
  * The WHERE of a list of the log: the retention period always, then who
  * asked ('visitors': at least one request that was not a verified crawler,
  * 'crawlers': at least one that was) and the part of the address searched
@@ -600,9 +645,12 @@ function pg_not_found_log_where($filters)
  * What answers each logged name now, by the router's comparison
  * (pg_short_link_keys()): name => array('state' => 'redirect' (a short link
  * has it, so the router answers before any 404), 'binned' (a short link in
- * the Recycle Bin holds the name, so no new one can take it), 'page' or
- * 'file' (one has the name now), 'id' => the short link's id or 0). A name
- * nothing answers is left out.
+ * the Recycle Bin holds the name, so no new one can take it, and the address
+ * still answers 404), 'page' or 'file' (one has the name now), 'pattern' (a
+ * live short link with a * matches it, pg_short_link_match_in()), 'id' =>
+ * the short link's id or 0). A name nothing answers is left out. A pattern is
+ * asked last, as the router asks it: an exact link made for a name a pattern
+ * already answers would take the address from the pattern.
  *
  * @param string[] $names
  * @return array
@@ -656,6 +704,37 @@ function pg_not_found_log_answers($names)
                     }
                 }
             }
+        }
+    }
+
+    $open = array_values(array_diff($names, array_keys($out)));
+
+    if (!$open) {
+        return $out;
+    }
+
+    // The live patterns, as pg_short_link_not_found() reads them: not in the
+    // Recycle Bin, not expired, at most PG_SHORT_LINK_PATTERN_LIMIT.
+    $live = $recycled ? " AND recycled = '0'" : "";
+    $unexpired = pg_short_link_modes_ready() ? " AND (expires_at = '0' OR expires_at > '" . time() . "')" : "";
+    $patterns = pg_short_link_redirects_ready()
+        ? db_items("SELECT id, name FROM short_links
+            WHERE is_pattern = '1' AND destination_type <> 'workspace_guest'" . $live . $unexpired . "
+            ORDER BY id
+            LIMIT " . PG_SHORT_LINK_PATTERN_LIMIT)
+        : array();
+
+    if (!$patterns) {
+        return $out;
+    }
+
+    $index = array('exact' => array(), 'patterns' => pg_short_link_sort_patterns($patterns));
+
+    foreach ($open as $name) {
+        $match = pg_short_link_match_in($name, $index, false);
+
+        if ($match !== null) {
+            $out[$name] = array('state' => 'pattern', 'id' => (int) $match['link']['id']);
         }
     }
 

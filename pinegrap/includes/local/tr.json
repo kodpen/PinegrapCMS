@@ -26667,5 +26667,6 @@
     "general job removed {var:1} address(es) from the 404 log": "genel görev 404 kaydından {var:1} adresi sildi",
     "{var:1} address(es), {var:2} request(s), {var:3} of them from search engines.": "{var:1} adres, {var:2} istek; bunların {var:3} tanesi arama motorlarından.",
     "First asked for": "İlk istenme",
-    "Last asked for": "Son istenme"
+    "Last asked for": "Son istenme",
+    "What the analysis found across the site and the addresses visitors did not find, as lists to work through": "Analizin sitede bulduğu sorunlar ve ziyaretçilerin bulamadığı adresler, üzerinde çalışılacak listeler olarak"
 }
