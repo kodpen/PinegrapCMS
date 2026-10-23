@@ -22,4 +22,4 @@ description: A renamed page's old address as a 301 short link to the page (2026.
 ## What does it not cover?
 - Addresses below the page (`/old-catalog/<product>`, `/old-blog/<record>`): only the page's own address is kept. A `old/*` pattern to `new/$1` can be added by hand; a URL destination keeps no language prefix.
 
-Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). Plan step: `plans/seo-toolkit-redirects.md` 4.
+Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). PR: #1403 (plan `seo-toolkit-redirects` step 4).
