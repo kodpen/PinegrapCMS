@@ -1,6 +1,6 @@
 ---
 name: unit-test-runner
-description: tools/test.php: what it loads, which PHP errors fail a test and which are let through (vendored deprecations), what a run on another PHP version needs, and how a test runs editor JavaScript under Node
+description: tools/test.php: what it loads, which PHP errors fail a test (vendored deprecations pass), what a run on another PHP version needs, how a test measures peak memory or runs editor JavaScript under Node
 ---
 
 ## What does tools/test.php load?
@@ -13,6 +13,9 @@ description: tools/test.php: what it loads, which PHP errors fail a test and whi
 ## What does a run on another PHP version need?
 - `-d memory_limit=-1`: the official Docker images default to 128M and the full suite needs more (it ran out in `designer_blocks_test.php` on 7.1 and in `office_dom_ceiling_test.php` on 8.5). Also the extensions some tests use: `intl` (short link names fold "Ürün" through `Normalizer`), `zip` (office tests), `pdo_mysql` (the mysqldump settings test). Without them those tests fail for the missing extension, not for the PHP version.
 - CI runs PHP 8.3 only (docs/memory/workflow/ci-workflows.md).
+
+## How does a test measure a function's peak memory?
+- In a PHP process of its own (`PHP_BINARY`, as `backup_restore_test_copy_alone()` in `tests/backup_restore_test.php` does), never with `memory_get_peak_usage()` in the runner: before PHP 8.2 (`memory_reset_peak_usage()`) that peak still holds what the test built and what earlier tests used. The archive copy test measured its own 22 MB dump twice over (44.4 MB) on PHP 7.1; the copy alone takes 2 MB.
 
 ## How does a test run editor JavaScript under Node?
 - It cuts functions out of the source (`style_designer.js`), appends its own steps that `console.log(JSON.stringify(...))`, runs the file with `node` and decodes the output. Skip (return) only when `node --version` fails; output that is not JSON must fail with the output shown, never be treated as a skip.
