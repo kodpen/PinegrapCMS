@@ -1,6 +1,6 @@
 ---
 name: forms-subscription-double-opt-in
-description: Plan (approved 2026-10-23; step a done in PR #1386, b-d open): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
+description: Plan (approved 2026-10-23; step a done in PR #1386, d in PR #1401, b-c open): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
 ---
 
 ## Where does this come from?
@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-23; step a done in PR #1386, b-d open): form
 a. Done, PR #1386: `waf_rate` limits in `custom_form.php` per visitor address (10/hour), per recipient (3/day) and per domain (off by default, `waf/form-submission-limits.md`), set on the Security screen (config columns, step 11.0.28); signed minimum fill time on every form, CAPTCHA on or off; StopForumSpam over https; CAPTCHA and sensitive WAF limits skipped only for staff.
 b. `^^email_preferences_url^^` (signed, `pg_email_preferences_query()`) and `^^confirm_subscription_url^^` in submitter subject, body and e-mail page, beside `key_code`.
 c. Double opt-in: the submission keeps the contact, not the group. Link: HMAC with ENCRYPTION_KEY (own prefix) over contact, group, time; 7 days; no stored state. GET shows a button, POST confirms (mail scanners open links). Confirm joins the group and logs `granted` (ip, UA); submission logs `pending`. A per-form switch needs `custom_form_pages.double_opt_in`: one 2026.11.0 step, label from the owner; the designer form settings get it too.
-d. Turnstile/hCaptcha: keys in `connect_apps` `captcha_<provider>` like `sms_<key>` (no schema); `get_captcha_fields()`/`get_captcha_info()` print the widget, so the designer `captcha` section binding stays; server-side verify; host into `waf_csp_policy()`.
+d. Done, PR #1401 (`waf/form-captcha-providers.md`): Turnstile/hCaptcha: keys in `connect_apps` `captcha_<provider>` like `sms_<key>` (no schema); `get_captcha_fields()`/`get_captcha_info()` print the widget, so the designer `captcha` section binding stays; server-side verify; host into `waf_csp_policy()`.
 
 ## What must the owner decide?
 1. Per-form switch (schema) or automatic for groups with `email_subscription` on (no schema, behaviour change)?

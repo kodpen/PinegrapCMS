@@ -25,7 +25,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
-- forms-subscription-double-opt-in.md: Plan (approved 2026-10-23; step a done in PR #1386, b-d open): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
+- forms-subscription-double-opt-in.md: Plan (approved 2026-10-23; step a done in PR #1386, d in PR #1401, b-c open): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6

@@ -4,7 +4,7 @@ description: Turnstile and hCaptcha beside the built-in maths question - where t
 ---
 
 ## What is it?
-- PR (step d of the form subscription plan): `includes/fn/captcha.php`. The built-in maths question stays the default and needs no account; Cloudflare Turnstile or hCaptcha can replace it (Security settings, Spam Protection card). Not tied to Cloudflare: any provider is optional.
+- PR #1401: `includes/fn/captcha.php`. The built-in maths question stays the default and needs no account; Cloudflare Turnstile or hCaptcha can replace it (Security settings, Spam Protection card). Not tied to Cloudflare: any provider is optional.
 
 ## Where are the keys?
 - `connect_apps` rows `captcha_turnstile` / `captcha_hcaptcha` (`pg_captcha_app_key()`), like `sms_<key>`: site key in `client_id`, secret sealed with `ENCRYPTION_KEY` and never drawn back, `enabled` = the chosen provider. No schema.
