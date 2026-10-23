@@ -46,5 +46,5 @@ function test_translate_product_answer_wiring()
 
 	$from = strpos($content, 'function pg_tr_render_json_strings(');
 	$json = substr($content, $from, 1600);
-	pg_assert_contains('pg_tr_render_html_value($decoded)', $json, 'a rich-text value by its blocks');
+	pg_assert_contains('pg_tr_render_html_value($decoded, $lookup)', $json, 'a rich-text value by its blocks');
 }

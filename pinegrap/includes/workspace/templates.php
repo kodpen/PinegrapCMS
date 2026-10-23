@@ -1323,6 +1323,6 @@ function ws_templates_settings_post($viewer, $liveform)
     }
 
     $liveform->add_notice($archive
-        ? lang(array('string' => 'The template was archived: {var:1}. The channels made from it keep what they were given.', 'vars' => $result['name']))
-        : lang(array('string' => 'The template is back: {var:1}.', 'vars' => $result['name'])));
+        ? lang(array('string' => 'The template was archived: {var:1}. The channels made from it keep what they were given.', 'vars' => h($result['name'])))
+        : lang(array('string' => 'The template is back: {var:1}.', 'vars' => h($result['name']))));
 }
