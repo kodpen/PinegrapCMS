@@ -18,7 +18,7 @@ description: A form's auto-registered account is created without a password and 
 - The sender's copy is sent with `'secret' => true` while an account was opened, so a failed delivery keeps the link out of the activity log and the failure notice (`pg_mail_failure_body_shown()`).
 - `pg_cf_new_account_for_submitter()` is false while `pg_tr_suspend()` holds the request (the administrator's HTML copy; keep that wrapper in `custom_form.php`) and while `pg_cf_new_account_recipient(false)` marks a watcher's HTML copy. The administrator's plain text says only "A new account was created with this submission: <email>".
 - Helpers in `includes/fn/custom_form.php`: `pg_cf_new_account_email()`, `_link()`, `_plain_text()`, `_html()` (system layouts of the form item view and the confirmation screen), `_password_note()`.
-- Orders: same link, same passwordless account; the store's receipt copy is split off (`commerce/order-auto-registration-set-password-link.md`, #1220).
+- Orders: the same; the customer's receipt copy is secret, the store gets its own copy without the link (`commerce/order-auto-registration-set-password-link.md`, #1220).
 
 ## What does $auto_registration_password carry now?
 - Layouts in `data/backups/*/layouts/` (untouchable) and their modified copies print it with `h()` under "Password" / "Geçici Şifre". It now holds `pg_cf_new_account_password_note()`: "Set it with this link: <url>" for the sender, the "Forgot password" sentence when there is no live link, '' for anyone else, so those layouts stay harmless unedited.
@@ -27,6 +27,5 @@ description: A form's auto-registered account is created without a password and 
 
 ## What is still open?
 - `add_user.php` mails an administrator-created account's password: #1214 / #1217.
-- `reset_password.php` mails the new random password and shows it in the panel notice.
-- `import_users.php` mails each imported account's password.
+- `reset_password.php` (also in its panel notice) and `import_users.php` still mail a plain password.
 - Tests: `tests/auto_registration_set_password_test.php`.

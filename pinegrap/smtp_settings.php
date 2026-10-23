@@ -120,9 +120,9 @@ if (!$_POST) {
 
     if ($connect_flash) {
         if ($connect_flash['kind'] === 'error') {
-            $liveform->add_error($connect_flash['text']);
+            $liveform->add_error(h($connect_flash['text']));
         } else {
-            $liveform->add_notice($connect_flash['text']);
+            $liveform->add_notice(h($connect_flash['text']));
         }
     }
 
@@ -453,7 +453,7 @@ if (!$_POST) {
         ]);
 
         if ($result) {
-            $liveform_settings->add_notice(lang(['string'=>'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars'=>[EMAIL_ADDRESS]]));
+            $liveform_settings->add_notice(lang(['string'=>'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars'=>[h(EMAIL_ADDRESS)]]));
             log_activity(lang(['string'=>'Test email accepted by SMTP server. Mailbox: {var:1}', 'vars'=>[EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
         } else {
             $liveform_settings->add_warning(lang('Test email could not be sent. Check logs for details.'));

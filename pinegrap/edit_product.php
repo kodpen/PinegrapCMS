@@ -109,20 +109,21 @@ if ($_POST) {
 
             pg_audit_record('recycle', 'products', $product_id, $audit_before);
 
-            $deleted_message = lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($deleted_name)));
+            $deleted_message = array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => array($deleted_name));
 
         } else {
 
             pg_pb_delete_product($product_id);
 
-            $deleted_message = lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name)));
+            $deleted_message = array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name));
         }
 
-        log_activity($deleted_message, $_SESSION['sessionusername']);
+        // The activity log is plain text; only the notice is HTML.
+        log_activity(lang($deleted_message), $_SESSION['sessionusername']);
 
         if ($send_to_list) {
             $liveform_target = new liveform('view_products');
-            $liveform_target->add_notice($deleted_message);
+            $liveform_target->add_notice(lang(array('string' => $deleted_message['string'], 'vars' => array(h($deleted_name)))));
         }
 
         go($send_to);
@@ -149,7 +150,7 @@ if ($_POST) {
         lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))),
         $_SESSION['sessionusername']);
 
-    $notice = lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name'])));
+    $notice = lang(array('string' => 'product ({var:1}) was updated', 'vars' => array(h($result['name']))));
 
     // Back to the list, the same place the create screen ends, unless the
     // operator asked to stay — editing a photo and a price in one sitting is

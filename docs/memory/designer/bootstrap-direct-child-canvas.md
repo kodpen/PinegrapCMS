@@ -1,6 +1,6 @@
 ---
 name: bootstrap-direct-child-canvas
-description: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule) and the td display:flex ban.
+description: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 ---
 
 ## Why do Bootstrap direct-child rules break on the canvas?
@@ -19,5 +19,10 @@ The canvas needs BOTH:
 - In (2) do NOT copy Bootstrap's size rules (`width`/`max-width`/`flex`): `X > .sd-wrap > *` is more specific than `.col-md-6` and copying would override column widths. Carry only padding/margin.
 - A size taken from the parent (`h-100`, an inline `height:100%`) breaks the same way: the wrapper has no height, so the percentage resolves to auto (round panels in a square box collapsed to ovals on the canvas). The canvas passes the height on with `.sd-wrap:has(> .h-100) { height:100% }` (an `_SD_BX` rule in `style_designer.js`); the front end is never changed for it.
 - NEVER give a `<td>`/`<th>` `display:flex`: the cell leaves table layout and `colspan` is cancelled. Put the flexbox on a `<div>` inside the cell.
+
+## Why does a selected close button keep its place?
+- In the see-through containers (`.alert`, `.card-body`, `.navbar`, `.btn-group` …) the outline of a selected wrapper is drawn on its child, and the child is lifted (`position:relative; z-index:2`) so the outline shows above its neighbours.
+- That lift beat Bootstrap's `.alert-dismissible .btn-close { position:absolute }`: on mousedown the X was selected, jumped out of its corner, mouseup landed on the alert and the X never dismissed it on the canvas (alert-info, alert-success-toast, notice-promo).
+- The lift is a separate rule now, limited by `_SD_SEL_LIFT`: `.btn-close`, `position-*`, `fixed-*`, `sticky-*` (responsive ones too) and `.stretched-link` are not lifted, nor editor chrome (`_SD_FX_EL`: toolbar, note, issue badge). The outline still applies to every child. Test: `tests/designer_canvas_controls_test.php`.
 
 Related: docs/memory/designer/designer-canvas-style-designer.md
