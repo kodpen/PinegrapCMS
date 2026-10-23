@@ -10,9 +10,9 @@ use Iyzipay\Request\UpdateBlackListedCardRequest;
 use Iyzipay\Options;
 
 class BlacklistedCard extends IyzipayResource {
-    private string $cardUserKey;
-    private string $cardToken;
-    private string $cardNumber;
+    private $cardUserKey;
+    private $cardToken;
+    private $cardNumber;
     const URL = '/cardstorage/blacklist/card';
 
     public static function create(CreateBlackListedCardRequest $request, Options $options): BlacklistedCard {

@@ -14,7 +14,7 @@ description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent down
 
 ## Are payment and carrier calls covered?
 - Yes, all but two SDKs. The card gateways written in `submit_order.php` (Authorize.Net, ClearCommerce, First Data, PayPal Payflow Pro / Payments Pro / Express Checkout, Sage; every `curl_init()` there), PayPal in `recurring_payment_job.php`, Givex (`send_givex_request()`) and the carriers (`pg_carrier_api_http()`: every USPS, UPS and FedEx call) go through `pg_curl_tls()`.
-- Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`, not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
+- Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`; their HTTP clients are not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
 
 ## Which other calls go through pg_curl_tls()?
 - The version and licence checks, the CA bundle download, the integrity reference from GitHub, the site importers (`import_design.php`, `migration.php`), the AI bot ranges, the location database, S3 backups, signature time stamps, currency rates, SMS, Paraşüt and e-document providers. A new outgoing call uses it too.

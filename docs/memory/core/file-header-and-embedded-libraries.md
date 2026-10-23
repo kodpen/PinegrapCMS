@@ -25,5 +25,6 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 ## What PHP base must an embedded library respect?
 - Before putting a library under `includes/`, check the `php` constraint in its `composer.json` and PIN the version accordingly: the base must stay at 7.1 or below.
 - Raising the PHP base is the owner's (Erdal's) decision, never a side effect of a library choice. Example: html5-php 2.11 needs PHP 7.4, so it is pinned at 2.10.1.
+- The exception: `includes/iyzipay-php` (2.0.59) asks for PHP 7.4 and is patched to load on 7.1 instead; an update re-applies the patch (commerce/iyzipay-sdk-php71-patch.md).
 
 Related: docs/memory/core/dompdf-embedding.md
