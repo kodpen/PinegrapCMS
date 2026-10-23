@@ -8,7 +8,7 @@ description: When an ERP invoice can be cancelled, what the screen asks before t
 - Drafts are deleted, not cancelled (erp-manual-invoice-draft-issue). Whether an order's invoice is cancelled or answered with a return: erp-order-cancel-and-refund.
 
 ## What does the invoice screen ask before the provider?
-- Cancel on `edit_erp_invoice.php` asks the refusals of `erp_invoice_cancel()` again on the row at the POST (cancelled already, money allocated, a return against it) in its words, then `erp_edoc_invoice_provider_cancel()` asks the lock, and only then is the provider asked (#PR).
+- Cancel on `edit_erp_invoice.php` asks the refusals of `erp_invoice_cancel()` again on the row at the POST (cancelled already, money allocated, a return against it) in its words, then `erp_edoc_invoice_provider_cancel()` asks the lock, and only then is the provider asked (#1410).
 - Before, a receipt allocated or a return written after the page was drawn reached the provider first: the e-Archive was cancelled at GİB (or the draft there deleted) while the invoice stayed issued and paid here.
 - The receipt check is not in `erp_edoc_invoice_provider_cancel()`: the order card removes the allocations only after the provider step.
 
