@@ -19,4 +19,8 @@ Fields e-Arşiv treats as mandatory live on `erp_invoices`. `erp_order_sale_fiel
 - `shipping_methods.carrier_title` / `carrier_vkn` are edited on the shipping-method screens; VKN is digits only, at most 11.
 - A waybill fills an empty shipment date and carrier on its invoice later (`erp_waybill_write_back()`, erp-local-sale); a filled field is never overwritten.
 
+## What of an internet sale with nothing to ship (downloads, services)?
+- Its e-Archive is refused before sending while it names no carrier: `erp_edoc_parasut_document_missing()`, `erp_edoc_isbasi_document_missing()`, and the order screen's old Create Invoice (#1278). VUK 509 asks for the carrier's name and VKN/TCKN and the date the goods were sent or the service performed.
+- Whether a sale without a shipment may go without the carrier is with the owner's accountant (owner, 2026-10-23): the refusal stays until the answer comes; do not change the rule before.
+
 Related: docs/memory/erp/erp-awaiting-transfer-orders.md
