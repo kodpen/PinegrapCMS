@@ -1386,26 +1386,42 @@ function erp_order_tax_number_difference($order)
  * kept and pushed to phones, take erp_auto_invoice_tax_number_reason().
  * Values go in raw; the screen escapes the text.
  *
- * @param array $difference  contact_tax_number, account_tax_number, account_title
+ * An account the order is billed to, not the contact's own, may rightly
+ * carry another number, and the text says so. Where the store invoices its
+ * orders on its own, the text adds that it holds this one and does not try
+ * again once the numbers agree: nothing retries, the card's button issues it.
+ *
+ * @param array $difference  contact_tax_number, account_tax_number, account_title, own
+ * @param bool  $automatic   The store issues invoices on its own (ERP_AUTO_INVOICE_ON)
  * @return string
  */
-function erp_order_tax_number_difference_text($difference)
+function erp_order_tax_number_difference_text($difference, $automatic = false)
 {
     $contact_number = trim((string) ($difference['contact_tax_number'] ?? ''));
     $account_number = trim((string) ($difference['account_tax_number'] ?? ''));
     $title = trim((string) ($difference['account_title'] ?? ''));
 
     if (erp_edoc_account_norm('tax_number', $account_number) === '') {
-        return lang(array(
-            'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, has none. Issued now, the invoice goes out without one; it is not issued automatically while the two differ.',
+        $text = lang(array(
+            'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, holds none. Issued now, the invoice goes out without one.',
             'vars' => array($contact_number, $title),
+        ));
+    } else {
+        $text = lang(array(
+            'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, holds {var:3}. Issued now, the invoice carries {var:3}.',
+            'vars' => array($contact_number, $title, $account_number),
         ));
     }
 
-    return lang(array(
-        'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, gives {var:3}. Issued now, the invoice carries {var:3}; it is not issued automatically while the two differ.',
-        'vars' => array($contact_number, $title, $account_number),
-    ));
+    if (array_key_exists('own', (array) $difference) && empty($difference['own'])) {
+        $text .= ' ' . lang('The order is billed to this account, not to the contact\'s own, so a different number may be right.');
+    }
+
+    if ($automatic) {
+        $text .= ' ' . lang('The store does not issue it on its own while the two differ, and does not try again once they agree: issue it here.');
+    }
+
+    return $text;
 }
 
 /**
@@ -1418,7 +1434,7 @@ function erp_order_tax_number_difference_text($difference)
  */
 function erp_auto_invoice_tax_number_reason()
 {
-    return lang('The tax number on the contact card is not the one on the account the invoice would be written to. Correct the one that is wrong, then issue the invoice from the order\'s documents card.');
+    return lang('The tax number on the contact card is not the one on the account the invoice would be written to. Check them, then issue the invoice from the order\'s Invoice and delivery documents card.');
 }
 
 /**

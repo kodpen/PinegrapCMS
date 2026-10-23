@@ -311,16 +311,26 @@ function test_erp_auto_invoice_tax_number_differs_comes_last()
 // the bell, which are kept and pushed to phones, name neither.
 function test_erp_auto_invoice_tax_number_difference_texts()
 {
-	$other = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '313 055 7669', 'account_title' => 'DSM Grup A.Ş.'));
+	$own = array('contact_tax_number' => '1234567808', 'account_tax_number' => '313 055 7669', 'account_title' => 'DSM Grup A.Ş.', 'own' => true);
+	$other = erp_order_tax_number_difference_text($own);
 	pg_assert_contains('1234567808', $other);
 	pg_assert_contains('313 055 7669', $other, 'as stored');
 	pg_assert_contains('DSM Grup A.Ş.', $other);
 
-	$none = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '', 'account_title' => 'Pg Testci'));
-	$final = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '11111111111', 'account_title' => 'Pg Testci'));
+	$none = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '', 'account_title' => 'Pg Testci', 'own' => true));
+	$final = erp_order_tax_number_difference_text(array('contact_tax_number' => '1234567808', 'account_tax_number' => '11111111111', 'account_title' => 'Pg Testci', 'own' => true));
 	pg_assert_same($none, $final, 'the final consumer is no number');
 	pg_assert_true(strpos($none, '11111111111') === false);
 	pg_assert_true($none !== $other);
+
+	// An account the order is billed to may rightly hold another number; a
+	// store that invoices on its own is told it holds the order and does not
+	// try again. Neither is said otherwise.
+	$billed = erp_order_tax_number_difference_text(array_merge($own, array('own' => false)));
+	pg_assert_true((strpos($billed, $other) === 0) && (strlen($billed) > strlen($other)), 'billed to another account');
+	$automatic = erp_order_tax_number_difference_text($own, true);
+	pg_assert_contains('does not try again', $automatic);
+	pg_assert_true(strpos($other, 'on its own') === false, 'nothing about the automatic invoice when it is off');
 
 	$bell = erp_auto_invoice_tax_number_reason();
 	pg_assert_true(preg_match('/\d/', $bell) === 0, 'no number in the log or the bell');

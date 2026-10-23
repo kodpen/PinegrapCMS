@@ -161,7 +161,8 @@ function erp_order_flow_state($order_id)
         $difference = erp_order_tax_number_difference($order);
 
         if (!empty($difference)) {
-            $text = erp_order_tax_number_difference_text($difference);
+            $text = erp_order_tax_number_difference_text($difference,
+                defined('ERP_AUTO_INVOICE_ON') && in_array((string) ERP_AUTO_INVOICE_ON, array('order_paid', 'order_shipped'), true));
 
             if ($step['action'] === 'invoice') {
                 $step['warn'] = true;
