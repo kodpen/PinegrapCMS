@@ -4,7 +4,7 @@ description: custom_form.php protections - signed fill time, per address/e-mail/
 ---
 
 ## Why do they exist?
-- Subscription bombing (kodpen.com, Oct 2026): scripts typed strangers' real addresses into a subscription form; the maths CAPTCHA did not stop them, and each victim got the submitter mail.
+- Subscription bombing (kodpen.com, Oct 2026): scripts typed strangers' real addresses into a subscription form; the maths CAPTCHA did not stop them, and each victim got the submitter mail. PR #1386.
 
 ## What does custom_form.php check, in order?
 - Only for `action == 'submit'` and a visitor who is not staff (`pg_user_has_panel_access()`), and only while the form has no error yet.
