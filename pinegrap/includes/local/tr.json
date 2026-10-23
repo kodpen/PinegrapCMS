@@ -26629,6 +26629,5 @@
     "trains, rail travel, the plains": "trenler, tren yolculuğu, ovalar",
     "Rank Number": "Sıra Numarası",
     "Search engines are also given the name on your account, not only the name you give on your story.": "Arama motorlarına yazınızda verdiğiniz adın yanı sıra hesabınızdaki ad da verilir.",
-    "The buyer's VKN/TCKN is read from the order's {var:1} field (Paraşüt card of the commerce settings), and that field is empty on this order.": "Alıcının VKN/TCKN'si siparişin {var:1} alanından okunuyor (ticaret ayarlarının Paraşüt kartı) ve bu siparişte o alan boş.",
-    "No field is chosen for the buyer's VKN/TCKN on the Paraşüt card of the commerce settings, so the e-shipment cannot carry it.": "Ticaret ayarlarının Paraşüt kartında alıcının VKN/TCKN'si için bir alan seçilmemiş, bu yüzden e-İrsaliye bu numarayı taşıyamaz."
+    "The buyer's VKN/TCKN is read from the order's \"{var:1}\" field (Paraşüt card of the commerce settings), and that field is empty on this order.": "Alıcının VKN/TCKN'si siparişin \"{var:1}\" alanından okunuyor (ticaret ayarlarının Paraşüt kartı) ve bu siparişte bu alan boş."
 }

@@ -52,9 +52,8 @@ if (isset($_POST['parasut_action'])) {
             go($redirect);
         }
 
-        // Validate that a contact is linked before invoicing. The full row is
-        // what parasut_sync_contact() reads the buyer's number from.
-        $parasut_order = db_item("SELECT * FROM orders WHERE id = '$order_id'");
+        // Validate that a contact is linked before invoicing.
+        $parasut_order = db_item("SELECT contact_id, custom_field_1, custom_field_2 FROM orders WHERE id = '$order_id'");
         $parasut_contact_id = $parasut_order['contact_id'] ?? '';
 
         if (!$parasut_contact_id) {
@@ -65,13 +64,14 @@ if (isset($_POST['parasut_action'])) {
         // A missing tax number is not a reason to refuse. A buyer without one is
         // not registered for e-invoice, which is exactly the case an e-archive
         // covers - blocking here left ordinary consumer orders with no way to be
-        // invoiced at all. Only the e-shipment path needs the number, read from
-        // the field the Paraşüt settings name for it (custom_field_1/2 on the
-        // order or the contact's tax_number), as the buyer card is opened with.
+        // invoiced at all. Only the e-shipment path needs the number: the
+        // order's custom field when the Paraşüt settings name one for it, the
+        // linked contact's tax_number otherwise.
         if ($parasut_action === 'e_irsaliye') {
             $parasut_identity_refusal = _parasut_shipment_identity_refusal(
                 defined('PARASUT_TC_IN_FIELD') ? PARASUT_TC_IN_FIELD : 'do not use',
-                _parasut_order_identity($parasut_order)
+                $parasut_order,
+                (string) db_value("SELECT tax_number FROM contacts WHERE id = '" . e($parasut_contact_id) . "'")
             );
             if ($parasut_identity_refusal !== '') {
                 $liveform->mark_error('_error', $parasut_identity_refusal);
