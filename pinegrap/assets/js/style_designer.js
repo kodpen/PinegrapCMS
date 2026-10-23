@@ -5911,6 +5911,14 @@ const StyleDesigner = (function () {
         // or blue ring on non-.sd-tb children — sd-system-wrap overrides are on the wrapper
         // only, so we explicitly flatten descendants here.
         '.sd-system-wrap > *:not(.sd-tb) { box-shadow:none !important; outline:none !important; }',
+        // On the page _render_system_widget_express_order() draws the widget
+        // inside `.container.py-4.pg-eo-wrap`, whose side padding takes in the
+        // negative margins of the starter's top-level `.row` (-8px with g-3).
+        // The canvas draws the tree without that frame, so the grid stuck out
+        // of the canvas on both sides and the canvas scrolled sideways. Only
+        // the container's side padding (.75rem in Bootstrap 5) is mirrored;
+        // its max-width and py-4 stay page-only.
+        _SD_BX + '.sd-system-wrap[data-sd-sys-type="express_order"] > .sd-shared-inner { padding-left:.75rem; padding-right:.75rem; }',
         '.sd-system-placeholder { padding:.75rem 1rem; font-size:.8rem; color:#6366f1; border:2px dashed rgba(99,102,241,.45); border-radius:.35rem; text-align:center; background:rgba(99,102,241,.04); min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; }',
         '.sd-system-tb-name { font-size:.68rem; color:#6366f1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; padding:0 .25rem; pointer-events:none; }',
         // The widget's name tag hangs above its frame, out of the layout, and
@@ -10306,6 +10314,9 @@ const StyleDesigner = (function () {
         var _isSysWidget = !!(cached && cached.system_region_config);
         var _sysCfg = null;
         if (_isSysWidget) { try { _sysCfg = JSON.parse(cached.system_region_config); } catch(e) {} }
+        // The widget's kind, for canvas rules that mirror the frame its page
+        // renderer draws around the tree (express_order's container).
+        if (_sysCfg && _sysCfg.regionType) wrapper.setAttribute('data-sd-sys-type', String(_sysCfg.regionType));
 
         // NOTE: The wrapper is intentionally NOT draggable. Nested draggable elements
         // (inner drag handles of heading/paragraph/container within a system widget's
