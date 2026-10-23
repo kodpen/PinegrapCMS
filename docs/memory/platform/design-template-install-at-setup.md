@@ -25,4 +25,7 @@ description: Install wizard step "Site Tasarımı": two-request template install
 - `pg_design_template_install()` passes the template's `assets` 'css' through `pg_design_template_asset_sentinels()`: a list without a `bootstrap-css` row gets that row and `bootstrap-icons` in front, as the editor's `_ensureBootstrapSentinels()` adds them on load.
 - Without them `get_page_content.php` adds Bootstrap, the look and the palette before `</head>` after `pg-user-styles`, so a template's own `body { font-family }` lost to Bootstrap on the installed site while the preview showed it. A template made from a design already has the rows; the `custom` framework gets none.
 
+## Why does a one-story band preview three stories?
+- The DB-less preview repeats every loop three times; a template whose band shows one record hides rows 2-3 with its own CSS (`pinegrap-magazine`: `.pm-one`).
+
 Related: docs/memory/designer/design-templates-file-format.md, docs/memory/designer/design-templates-rows.md

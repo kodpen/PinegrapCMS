@@ -1461,3 +1461,63 @@ function _pg_design_thumb_news()
         . '<rect x="216" y="189" width="30" height="1.8" rx=".9" fill="#adb5bd"/><rect x="216" y="194" width="22" height="1.8" rx=".9" fill="#adb5bd"/>'
         . '<rect x="272" y="189" width="28" height="1.8" rx=".9" fill="#adb5bd"/><rect x="272" y="194" width="20" height="1.8" rx=".9" fill="#adb5bd"/>';
 }
+
+// The long-read magazine: a quiet top row with the subscribe button, the
+// name centred over its line, the sections over a double rule, the cover
+// (a picture beside a large title, with no words on the picture), the
+// latest stories as three portrait cards, the editor's letter on a paper
+// tint, and the footer. Every colour but the greys follows the palette, the
+// paper as the template's own CSS mixes it. Same variables as the home page
+// drawing.
+function _pg_design_thumb_magazine()
+{
+    // The section links, centred.
+    $nav = '';
+    for ($i = 0; $i < 6; $i++) {
+        $nav .= '<rect x="' . (87 + $i * 26) . '" y="36" width="16" height="2" rx="1" fill="#475569"/>';
+    }
+
+    // The latest: a 4:5 picture cut to the band, a kicker and two lines.
+    $cards = '';
+    foreach (array(12, 114, 216) as $i => $x) {
+        $cards .= '<rect x="' . $x . '" y="124" width="92" height="34" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.25"/>'
+            . '<rect x="' . $x . '" y="161" width="16" height="1.5" rx=".75" style="fill:var(--ts)"/>'
+            . '<rect x="' . $x . '" y="164.5" width="' . (80 - $i * 6) . '" height="2.4" rx="1.2" fill="#1f2937"/>'
+            . '<rect x="' . $x . '" y="168" width="' . (58 + $i * 5) . '" height="2.4" rx="1.2" fill="#1f2937"/>';
+    }
+
+    // The footer's link groups.
+    $footer = '';
+    foreach (array(12, 92, 172, 252) as $i => $x) {
+        $footer .= '<rect x="' . $x . '" y="194.4" width="' . (28 - $i * 2) . '" height="1.2" rx=".6" fill="#adb5bd"/>'
+            . '<rect x="' . $x . '" y="197.2" width="' . (18 + $i * 2) . '" height="1.2" rx=".6" fill="#adb5bd"/>';
+    }
+
+    return '<rect width="320" height="200" fill="#fff"/>'
+        // the top row: quick links on the left, Subscribe on the right
+        . '<rect x="12" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/><rect x="30" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/>'
+        . '<rect x="48" y="3.25" width="14" height="1.5" rx=".75" fill="#94a3b8"/>'
+        . '<rect x="288" y="1.5" width="22" height="5" rx="2" style="rx:var(--tbr);fill:var(--tp)"/>'
+        . '<rect y="7.6" width="320" height=".4" fill="#e5e7eb"/>'
+        // the name, centred, and its line
+        . '<rect x="112" y="14" width="96" height="9" rx="4.5" fill="#111827"/>'
+        . '<rect x="133" y="27" width="54" height="2" rx="1" fill="#94a3b8"/>'
+        // the sections over the double rule
+        . '<rect y="33.6" width="320" height=".4" fill="#e5e7eb"/>' . $nav
+        . '<rect y="40.4" width="320" height=".8" fill="#111827"/><rect y="42.6" width="320" height="1.6" fill="#111827"/>'
+        // the cover: the picture, then the kicker, the title, the standfirst and the byline beside it
+        . '<rect x="12" y="50" width="170" height="68" rx="2" style="rx:var(--tr);fill:var(--ts);opacity:.35"/>'
+        . '<rect x="192" y="56" width="26" height="2" rx="1" style="fill:var(--ts)"/>'
+        . '<rect x="192" y="62" width="110" height="7" rx="1.5" fill="#111827"/><rect x="192" y="72" width="96" height="7" rx="1.5" fill="#111827"/>'
+        . '<rect x="192" y="82" width="70" height="7" rx="1.5" fill="#111827"/>'
+        . '<rect x="192" y="94" width="100" height="2" rx="1" fill="#64748b"/><rect x="192" y="99" width="100" height="2" rx="1" fill="#64748b"/>'
+        . '<rect x="192" y="107" width="40" height="2" rx="1" fill="#64748b"/>'
+        // the latest
+        . $cards
+        // the editor's letter on paper: the portrait and two lines
+        . '<rect y="174" width="320" height="18" fill="#fff"/><rect y="174" width="320" height="18" style="fill:var(--ts);opacity:.06"/>'
+        . '<circle cx="40" cy="183" r="7" style="fill:var(--ts);opacity:.4"/>'
+        . '<rect x="54" y="179" width="120" height="3" rx="1.5" fill="#1f2937"/><rect x="54" y="185" width="90" height="2" rx="1" fill="#64748b"/>'
+        // the footer
+        . '<rect y="192" width="320" height="8" fill="#f1f3f5"/>' . $footer;
+}
