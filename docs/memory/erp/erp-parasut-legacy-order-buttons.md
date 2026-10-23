@@ -11,7 +11,7 @@ description: The order screen's own Paraşüt buttons (Create Invoice, E-Shipmen
 - Without the ERP, or with the ERP and no provider (paper invoices), the buttons work. The orders list's Paraşüt Excel export is not affected.
 
 ## What do the buttons do on an order already sent?
-- Nothing: each refuses before any request when its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) is set, and is drawn disabled. The invoice id is kept once the sales invoice exists, even if its e-document failed or is converting (job id not kept): finish it in Paraşüt. Before #1084 each press raised another sales invoice and e-document (#759); before #PR each E-Shipment press posted another outgoing `shipment_documents` (stock out twice, first id overwritten).
+- Nothing: each refuses before any request when its id (`orders.parasut_invoice_id`, `parasut_shipment_id`) is set, and is drawn disabled. The invoice id is kept once the sales invoice exists, even if its e-document failed or is converting (job id not kept): finish it in Paraşüt. Before #1084 each press raised another sales invoice and e-document (#759); before #1407 each E-Shipment press posted another outgoing `shipment_documents` (stock out twice, first id overwritten).
 
 ## How does "Create Invoice" build the invoice? (#1268, #1274)
 - Lines of the order's ERP invoice (`parasut_order_invoice_lines()`: `erp_order_lines()` on the charged lines, the ERP code loaded with or without the ERP on): the discount spread over the lines, VAT per rate on their sum, shipping, surcharge and instalment charge with their VAT inside at the goods' rate, a charge that leaves a rate's total out of reach a kurus lower. Written by the driver's `erp_edoc_parasut_invoice_payload()` in the base currency.
