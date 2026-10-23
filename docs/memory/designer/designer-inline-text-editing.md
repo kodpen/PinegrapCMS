@@ -11,7 +11,7 @@ description: Canvas in-place text editing: spaces typed into a button label, lab
 
 ## Why does a click on a colour or date label not open the picker on the canvas?
 - A click on a `<label>` activates its control. For `color`, `date`, `time`, `datetime-local`, `month`, `week` and `file` that opens the browser's chooser, which keeps the keyboard: the first click of the double-click that starts editing the label opened it, and every typed character was lost (the label stayed "Renk").
-- The canvas click guard (capture listener in `_sdInitCanvasDoc()`) calls `preventDefault()` when `e.target.closest('label')` passes `_sdLabelOpensChooser()` (it reads `label.control`).
+- The canvas click guard (capture listener in `_sdInitCanvasDoc()`) calls `preventDefault()` when `e.target.closest('label')` passes `_sdLabelOpensChooser()` (it reads `label.control`). A click on the control itself inside a wrapping label is left alone.
 - Checkbox and radio labels keep their native click: the theme switch block depends on the synthetic `change` event. `setupInlineEditing()` still takes `for` off a label while it is being edited.
 
 ## Why does bound text show no "double-click to edit" hint?

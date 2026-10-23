@@ -114,8 +114,8 @@ function test_designer_inline_text_space_in_button()
 function test_designer_inline_text_plain_spaces()
 {
 	$answer = designer_inline_text_test_run(array(
-		'_sdInlinePlainText("Hemen Ara")',
-		'_sdInlinePlainText("A  B ")',
+		'_sdInlinePlainText("Hemen\u00a0Ara")',
+		'_sdInlinePlainText("A\u00a0\u00a0B ")',
 		'_sdInlinePlainText(null)',
 		'_sdInlinePlainText("Ara")',
 	));
@@ -217,5 +217,5 @@ function test_designer_inline_text_wiring()
 	$value = designer_inline_text_test_fn($source, '_sdInlineEditValue');
 	pg_assert_contains('_sdInlinePlainText(src.textContent).trim()', $value, 'plain text edits are read with plain spaces');
 
-	pg_assert_contains("if (_cLab && _sdLabelOpensChooser(_cLab)) e.preventDefault();", $source, 'the canvas click guard keeps a chooser closed');
+	pg_assert_contains("if (_cLab && t !== _cLab.control && _sdLabelOpensChooser(_cLab)) e.preventDefault();", $source, 'the canvas click guard keeps a chooser closed, but not for a click on the control itself');
 }

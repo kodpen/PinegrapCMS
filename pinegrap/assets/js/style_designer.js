@@ -6594,9 +6594,10 @@ const StyleDesigner = (function () {
             var t = e.target;
             // A label of a colour, date or file input: its click would open
             // the browser's chooser, which takes the keyboard from the label
-            // being edited in place (_sdLabelOpensChooser()).
+            // being edited in place (_sdLabelOpensChooser()). A click on the
+            // control itself, inside a wrapping label, keeps its own action.
             var _cLab = (t && t.closest) ? t.closest('label') : null;
-            if (_cLab && _sdLabelOpensChooser(_cLab)) e.preventDefault();
+            if (_cLab && t !== _cLab.control && _sdLabelOpensChooser(_cLab)) e.preventDefault();
             if (t && t.tagName) {
                 var ttn = t.tagName.toLowerCase();
                 // Form controls — bail early; never touch their native click behavior except for
@@ -11628,7 +11629,7 @@ const StyleDesigner = (function () {
         } catch (e) {}
         var win = doc.defaultView;
         var sel = (win && win.getSelection) ? win.getSelection() : null;
-        var sp = doc.createTextNode(' ');
+        var sp = doc.createTextNode('\u00a0');
         if (sel && sel.rangeCount) {
             var rg = sel.getRangeAt(0);
             rg.deleteContents();
@@ -11646,7 +11647,7 @@ const StyleDesigner = (function () {
     // editor above or by the browser) turned back into plain ones: the
     // saved label is the one that was typed.
     function _sdInlinePlainText(s) {
-        return String(s == null ? '' : s).replace(/ /g, ' ');
+        return String(s == null ? '' : s).replace(/\u00a0/g, ' ');
     }
 
     // Inputs whose activation opens a chooser of the browser's own: the
