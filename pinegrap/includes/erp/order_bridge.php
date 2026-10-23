@@ -1166,6 +1166,14 @@ function erp_invoice_from_order_locked($order_id, $options = array())
  * e-Archive invoice carries for a buyer who gave none
  * (erp_edoc_final_consumer_tckn()).
  *
+ * A contact card whose tax number is not the one on the account the invoice
+ * would be written to holds the invoice (erp_order_tax_number_difference()):
+ * the checkout writes a number typed later to the card, while the account,
+ * and so the invoice and its e-document, keeps the one it was opened with.
+ * Which of the two is right is the operator's to say, on the order screen.
+ * It is the last word, so an order the store would not invoice anyway, or
+ * not yet, says that first.
+ *
  * @param string $setting           ERP_AUTO_INVOICE_ON
  * @param string $trigger           What just happened: 'order_paid' | 'order_shipped'
  * @param array  $order             orders row: status, type, paid_at, erp_on_account, total,
@@ -1175,11 +1183,14 @@ function erp_invoice_from_order_locked($order_id, $options = array())
  * @param string $buyer_tax_number  The number the invoice would carry
  *                                  (erp_auto_invoice_buyer_tax_number()); read only when
  *                                  tax_number_only is on
+ * @param bool   $tax_number_differs  The contact card names a tax number the account does not
+ *                                    (erp_order_tax_number_difference())
  * @return string  '' to invoice it now; otherwise the reason it is left alone:
  *                 off | trigger | status | counter_sale | marketplace |
- *                 invoiced | cancelled_before | below_minimum | no_tax_number | unpaid
+ *                 invoiced | cancelled_before | below_minimum | no_tax_number | unpaid |
+ *                 tax_number_differs
  */
-function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, $filters = array(), $buyer_tax_number = '')
+function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, $filters = array(), $buyer_tax_number = '', $tax_number_differs = false)
 {
     $setting = (string) $setting;
 
@@ -1224,7 +1235,9 @@ function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, 
         return 'below_minimum';
     }
 
-    if (!empty($filters['tax_number_only'])) {
+    // An account without a number under a card that names one is the
+    // difference below, not a buyer without a number.
+    if (!empty($filters['tax_number_only']) && !$tax_number_differs) {
         $number = preg_replace('/\s+/u', '', (string) $buyer_tax_number);
 
         if (($number === '') || ($number === '11111111111')) {
@@ -1237,6 +1250,10 @@ function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, 
         && ((int) ($order['erp_on_account'] ?? 0) !== 1)
         && ((int) ($order['total'] ?? 0) > 0)) {
         return 'unpaid';
+    }
+
+    if ($tax_number_differs) {
+        return 'tax_number_differs';
     }
 
     return '';
@@ -1270,12 +1287,8 @@ function erp_auto_invoice_filters()
  */
 function erp_auto_invoice_buyer_tax_number($order)
 {
-    $account_id = (int) ($order['erp_account_id'] ?? 0);
+    $account_id = erp_order_invoice_account_id($order);
     $contact_id = (int) ($order['contact_id'] ?? 0);
-
-    if (($account_id <= 0) && ($contact_id > 0)) {
-        $account_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
-    }
 
     if ($account_id > 0) {
         return trim((string) db_value("SELECT tax_number FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"));
@@ -1289,6 +1302,126 @@ function erp_auto_invoice_buyer_tax_number($order)
 }
 
 /**
+ * The account an order's invoice would be written to, as
+ * erp_invoice_from_order_locked() picks it, without opening one: the account
+ * the order names, else the contact's account. 0 when there is none yet, and
+ * a first invoice then opens it from the contact card.
+ *
+ * @param array $order  orders row: erp_account_id, contact_id
+ * @return int
+ */
+function erp_order_invoice_account_id($order)
+{
+    $account_id = (int) ($order['erp_account_id'] ?? 0);
+    $contact_id = (int) ($order['contact_id'] ?? 0);
+
+    if (($account_id <= 0) && ($contact_id > 0)) {
+        $account_id = (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' LIMIT 1");
+    }
+
+    return max(0, $account_id);
+}
+
+/**
+ * Whether a contact card's tax number is not the one on an account, as tax
+ * numbers are matched (erp_edoc_account_norm(): letters and digits only,
+ * upper case, the final consumer's 11111111111 as none). Only a card that
+ * names a number can differ: an empty card says nothing, while an account
+ * without a number under a card with one differs.
+ *
+ * @param string $contact_number  contacts.tax_number
+ * @param string $account_number  erp_accounts.tax_number
+ * @return bool
+ */
+function erp_tax_numbers_differ($contact_number, $account_number)
+{
+    $contact = erp_edoc_account_norm('tax_number', $contact_number);
+
+    return ($contact !== '') && ($contact !== erp_edoc_account_norm('tax_number', $account_number));
+}
+
+/**
+ * An order whose contact card names a tax number other than the account its
+ * invoice would be written to (erp_order_invoice_account_id()). The checkout
+ * writes a number typed later to the card ("Update my contact info"), and an
+ * existing account is used as it is (erp_account_for_contact()), so the
+ * invoice and its e-document would carry the account's. Nothing differs
+ * before the account exists: the first invoice opens it from the card.
+ *
+ * @param array $order  orders row: erp_account_id, contact_id
+ * @return array  empty when they agree; otherwise contact_id, contact_tax_number,
+ *                account_id, account_tax_number, account_title, and own (the
+ *                account is the contact's own, not one the order was billed to)
+ */
+function erp_order_tax_number_difference($order)
+{
+    $contact_id = (int) ($order['contact_id'] ?? 0);
+    $account_id = erp_order_invoice_account_id($order);
+
+    if (($contact_id <= 0) || ($account_id <= 0)) {
+        return array();
+    }
+
+    $contact_number = trim((string) db_value("SELECT tax_number FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1"));
+    $account = db_item("SELECT id, title, tax_number, contact_id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+
+    if (!is_array($account) || !erp_tax_numbers_differ($contact_number, (string) $account['tax_number'])) {
+        return array();
+    }
+
+    return array(
+        'contact_id' => $contact_id,
+        'contact_tax_number' => $contact_number,
+        'account_id' => $account_id,
+        'account_tax_number' => trim((string) $account['tax_number']),
+        'account_title' => trim((string) $account['title']),
+        'own' => ((int) $account['contact_id'] === $contact_id),
+    );
+}
+
+/**
+ * What the order screen says of a tax number difference
+ * (erp_order_tax_number_difference()): both numbers as stored and the
+ * account's name. For the order screen only: the log and the bell, which are
+ * kept and pushed to phones, take erp_auto_invoice_tax_number_reason().
+ * Values go in raw; the screen escapes the text.
+ *
+ * @param array $difference  contact_tax_number, account_tax_number, account_title
+ * @return string
+ */
+function erp_order_tax_number_difference_text($difference)
+{
+    $contact_number = trim((string) ($difference['contact_tax_number'] ?? ''));
+    $account_number = trim((string) ($difference['account_tax_number'] ?? ''));
+    $title = trim((string) ($difference['account_title'] ?? ''));
+
+    if (erp_edoc_account_norm('tax_number', $account_number) === '') {
+        return lang(array(
+            'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, has none. Issued now, the invoice goes out without one; it is not issued automatically while the two differ.',
+            'vars' => array($contact_number, $title),
+        ));
+    }
+
+    return lang(array(
+        'string' => 'The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, gives {var:3}. Issued now, the invoice carries {var:3}; it is not issued automatically while the two differ.',
+        'vars' => array($contact_number, $title, $account_number),
+    ));
+}
+
+/**
+ * Why an order with a tax number difference was not invoiced on its own, for
+ * the site log and the panel bell. It names neither number: the log is never
+ * deleted and the bell is pushed to phones, and a TCKN is a person's identity
+ * number. The order screen shows both (erp_order_tax_number_difference_text()).
+ *
+ * @return string
+ */
+function erp_auto_invoice_tax_number_reason()
+{
+    return lang('The tax number on the contact card is not the one on the account the invoice would be written to. Correct the one that is wrong, then issue the invoice from the order\'s documents card.');
+}
+
+/**
  * Issue an order's invoice on its own, when this is the moment the store
  * chose (erp_auto_invoice_decision()).
  *
@@ -1296,8 +1429,11 @@ function erp_auto_invoice_buyer_tax_number($order)
  * its gates: an order the screen would not offer it for - a buyer whose
  * account card lacks what the e-document provider needs, nobody to bill -
  * waits there with its reason, and the panel bell says which order and why
- * (erp_alert_auto_invoice_refused()). The e-document is not sent from here:
- * making it official stays the order screen's next step.
+ * (erp_alert_auto_invoice_refused()). An order whose contact card names a
+ * tax number the account does not is held the same way, its answer skipped
+ * 'tax_number_differs' with the reason set (erp_order_tax_number_difference()).
+ * The e-document is not sent from here: making it official stays the order
+ * screen's next step.
  *
  * Run where nothing else is half written: pg_erp_auto_invoice() keeps it out
  * of an open ERP transaction, because a refused invoice rolls back the whole
@@ -1332,8 +1468,17 @@ function erp_auto_invoice_for_order($order_id, $trigger)
         $order,
         is_array($last) ? (string) $last['status'] : '',
         $filters,
-        $filters['tax_number_only'] ? erp_auto_invoice_buyer_tax_number($order) : ''
+        $filters['tax_number_only'] ? erp_auto_invoice_buyer_tax_number($order) : '',
+        !empty(erp_order_tax_number_difference($order))
     );
+
+    // Held for the operator: said in the log and on the bell, which name
+    // neither number; the order screen shows both.
+    if ($answer['skipped'] === 'tax_number_differs') {
+        $answer['error'] = erp_auto_invoice_tax_number_reason();
+
+        return erp_auto_invoice_refuse($answer, $order);
+    }
 
     if ($answer['skipped'] !== '') {
         return $answer;

@@ -25472,5 +25472,8 @@
     "Line \"{var:1}\" has an amount below zero, and Paraşüt takes no such line: a line's price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.": "\"{var:1}\" satırının tutarı sıfırın altında; Paraşüt eksi tutarlı satır kabul etmiyor: satırın fiyatı, indirimi ve KDV'si sıfır ya da daha büyük olmalı. Paraşüt'e hiçbir şey gönderilmedi.",
     "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
     "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin.",
-    "Scroller Controls": "Kaydırıcı Kontrolleri"
+    "Scroller Controls": "Kaydırıcı Kontrolleri",
+    "The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, has none. Issued now, the invoice goes out without one; it is not issued automatically while the two differ.": "Kişi kartında vergi numarası {var:1}, faturanın kesileceği cari {var:2} ise vergi numarası taşımıyor. Şimdi kesilirse fatura vergi numarasız çıkar; ikisi farklıyken fatura otomatik kesilmez.",
+    "The contact card gives the tax number {var:1}, but the account the invoice is written to, {var:2}, gives {var:3}. Issued now, the invoice carries {var:3}; it is not issued automatically while the two differ.": "Kişi kartında vergi numarası {var:1}, faturanın kesileceği cari {var:2} ise {var:3} diyor. Şimdi kesilirse faturada {var:3} yazar; ikisi farklıyken fatura otomatik kesilmez.",
+    "The tax number on the contact card is not the one on the account the invoice would be written to. Correct the one that is wrong, then issue the invoice from the order's documents card.": "Kişi kartındaki vergi numarası, faturanın kesileceği caridekiyle aynı değil. Yanlış olanı düzeltip faturayı siparişin belge kartından kesin."
 }
