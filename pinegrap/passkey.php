@@ -7,7 +7,15 @@
  * names its action; every answer is JSON:
  *
  *   register_options  creation options for a new passkey of the signed-in
- *                     account: {"ok": true, "options": {...}}
+ *                     account: {"ok": true, "options": {...}}. Only for an
+ *                     account with two-step verification on, and only after
+ *                     the person proves it again: the current password
+ *                     (field current_password; none for a Google-only
+ *                     account) and a code from the authenticator app or a
+ *                     recovery code (field code), with the limits of turning
+ *                     two-step verification off (pg_mfa_reauth_refusal()):
+ *                     refused as mfa_off, password or code (403), attempts
+ *                     or locked (429)
  *   register          the new credential (field credential: the JSON of
  *                     PublicKeyCredential.toJSON()) and its name (field name),
  *                     checked and kept: {"ok": true, "passkey": {...}}
@@ -78,7 +86,7 @@ if (pg_post_body_discarded()) {
     passkey_answer(array('ok' => false, 'error' => 'request', 'message' => lang('The request was too large.')), 413);
 }
 
-pg_request_single_values(array('action', 'token', 'credential', 'name'));
+pg_request_single_values(array('action', 'token', 'credential', 'name', 'current_password', 'code'));
 
 $action = (string) ($_POST['action'] ?? '');
 
@@ -95,12 +103,6 @@ switch ($action) {
 
     case 'register_options':
     case 'register':
-
-        // Adding a passkey is refused until the account screen asks for the
-        // current password and the second factor first, and lists and removes
-        // passkeys: a session alone must not plant a passkey that answers the
-        // second step.
-        passkey_answer(array('ok' => false, 'error' => 'denied', 'message' => lang('Passkeys cannot be added yet.')), 403);
 
         if (!pg_session_signed_in() || !defined('USER_ID') || ((int) USER_ID <= 0)) {
             passkey_answer(array('ok' => false, 'error' => 'session', 'message' => lang('You are not signed in. Sign in and try again.')), 401);
@@ -119,6 +121,30 @@ switch ($action) {
         );
 
         if ($action === 'register_options') {
+
+            // A passkey answers the second step in place of the code, which
+            // is asked only of an account with two-step verification on.
+            if (!pg_mfa_table_exists() || !pg_mfa_enabled($account['id'])) {
+                passkey_answer(array('ok' => false, 'error' => 'mfa_off', 'message' => lang('Turn on two-step verification before adding a passkey.')), 403);
+            }
+
+            // The person proves the account again, so a session alone cannot
+            // plant a passkey that answers the second step. The ceremony
+            // begun below is the only way to a registration, and it is begun
+            // only here, after the proofs.
+            $refusal = pg_mfa_reauth_refusal($account['id'], $account['username'],
+                (string) ($_POST['current_password'] ?? ''), (string) ($_POST['code'] ?? ''));
+
+            if ($refusal !== '') {
+                log_activity(lang(array('string' => 'passkey not added ({var:1})', 'vars' => $refusal)), USER_USERNAME);
+
+                if (($refusal === 'locked') && !headers_sent()) {
+                    header('Retry-After: ' . (int) pg_login_throttle_limits()['lockout']);
+                }
+
+                passkey_answer(array('ok' => false, 'error' => $refusal, 'message' => pg_mfa_reauth_message($refusal)),
+                    in_array($refusal, array('attempts', 'locked'), true) ? 429 : 403);
+            }
 
             $result = pg_passkey_registration_begin($account);
 
