@@ -275,7 +275,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $custom_form_confirmation_type_row_style = '';
             
             // If confirmation type is message, then show rows for it.
-            if (($custom_form_properties['confirmation_type'] ?? '') == 'message') {
+            if (($custom_form_properties['confirmation_type'] ?? '') != 'page') {
                 // Enable rich-text editor.
                 $activate_editors = true;
             }
@@ -669,8 +669,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             break;
     }
 
-    // If confirmation type is set to message, then select the message radio button.
-    if (($custom_form_properties['confirmation_type'] ?? '') == 'message') {
+    // If confirmation type is not set to page, then select the message radio
+    // button: a submission without a next page ends on the message
+    // (pg_cf_confirmation_shows_message()).
+    if (($custom_form_properties['confirmation_type'] ?? '') != 'page') {
         $custom_form_confirmation_type_message_checked = ' checked="checked"';
         $custom_form_confirmation_type_page_checked = '';
 

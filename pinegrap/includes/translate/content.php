@@ -344,6 +344,22 @@ function pg_tr_worded_attrs()
 }
 
 /**
+ * Whether an element shows its value attribute as its label: only an input
+ * of type submit, button or reset. Any other input's value is what the form
+ * posts and stays as it is; so is a <button>'s value, whose label is its
+ * content. One rule for a node's attributes and for tags in HTML.
+ *
+ * @param string $tag  the element's tag name
+ * @param string $type its type attribute
+ * @return bool
+ */
+function pg_tr_input_value_is_label($tag, $type)
+{
+    return (strtolower(trim((string) $tag)) === 'input')
+        && in_array(strtolower(trim((string) $type)), array('submit', 'button', 'reset'), true);
+}
+
+/**
  * Goes over the worded attributes (pg_tr_worded_attrs()) of the tags in a
  * piece of HTML and lets a callback replace each value. The content of a
  * script, style, text area, pre or code element and comments are passed
@@ -351,8 +367,11 @@ function pg_tr_worded_attrs()
  * marked translate="no" or with the class notranslate is passed over with
  * its whole subtree, as the word walk (pg_tr_html_text_segments()) does:
  * translate is inherited in HTML. A marked element that is never closed
- * leaves the rest of the HTML untouched. Values are read whole, so the words
- * of one attribute are never taken for another attribute.
+ * leaves the rest of the HTML untouched. The value of a submit, button or
+ * reset input is its label and is gone over as well
+ * (pg_tr_input_value_is_label()); the input's first type attribute decides,
+ * as in a browser. Values are read whole, so the words of one attribute are
+ * never taken for another attribute.
  *
  * Extraction and drawing both go through here, so the value a page looks up
  * is the value extraction stored.
@@ -412,10 +431,25 @@ function pg_tr_html_attrs_map($html, $callback)
             return $source;
         }
 
-        $attrs = preg_replace_callback($attr_pattern, function ($m) use ($worded, $callback) {
+        // Read before the values, so a type written after value counts. A
+        // browser keeps the first of a repeated attribute, so the first
+        // type decides; one without a value is not a button type.
+        $value_is_label = false;
+
+        if ((strtolower($parts[1]) === 'input') && preg_match_all($attr_pattern, $parts[2], $found, PREG_SET_ORDER)) {
+            foreach ($found as $attr) {
+                if (strtolower($attr[2]) === 'type') {
+                    $value_is_label = isset($attr[4])
+                        && pg_tr_input_value_is_label($parts[1], html_entity_decode(trim($attr[4], '"\''), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    break;
+                }
+            }
+        }
+
+        $attrs = preg_replace_callback($attr_pattern, function ($m) use ($worded, $callback, $value_is_label) {
             $name = strtolower($m[2]);
 
-            if (!isset($worded[$name]) || !isset($m[4])) {
+            if ((!isset($worded[$name]) && (($name !== 'value') || !$value_is_label)) || !isset($m[4])) {
                 return $m[0];
             }
 

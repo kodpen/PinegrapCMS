@@ -1949,7 +1949,7 @@
     function currentDefaults() {
         return {
             baseSku:       $('#name').val(),
-            price:         $('#price').val() || '0',
+            price:         matrixPrice($('#price').val()),
             stock:         $('#inventory_quantity').val() || '',
             /* The advanced panel starts from the product-wide schedule, so a
                variant the operator never opens matches what the main form says. */
@@ -2147,6 +2147,16 @@
         }
 
         return parseFloat(value);
+    }
+
+    /* The product price as a matrix row's number box takes it (1234.56): the
+       price box writes it in the panel language (1.234,56 on a Turkish
+       panel), which a number box refuses and leaves empty. */
+    function matrixPrice(value) {
+
+        var number = priceToNumber(value);
+
+        return isNaN(number) ? '0' : number.toFixed(2);
     }
 
     /* Formatted the way prepare_amount() formats, because that is what the
@@ -2591,7 +2601,7 @@
             return;
         }
 
-        $('#pg_pb_matrix .pg-pb-v-price').val($('#price').val() || '0');
+        $('#pg_pb_matrix .pg-pb-v-price').val(matrixPrice($('#price').val()));
         $('#pg_pb_matrix .pg-pb-variant').removeAttr('data-price-manual data-price-auto');
         updatePreview();
     });
