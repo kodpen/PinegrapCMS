@@ -176,11 +176,11 @@ if (!$_POST) {
         if ((string) ($_POST['from_order_screen'] ?? '') === '1') {
             $liveform->remove_form();
             $liveform_order = new liveform('view_order');
-            $liveform_order->mark_error('_error', $result['error']);
+            $liveform_order->mark_error('_error', h($result['error']));
             go(PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id);
         }
 
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error('_error', h($result['error']));
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_invoice.php');
     }
 
@@ -190,7 +190,7 @@ if (!$_POST) {
     // itself rather than the register.
     $liveform->remove_form();
     $liveform_document = new liveform('edit_erp_invoice');
-    $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
+    $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => h($result['full_number']))));
 
     // The invoice was raised from an order whose bank transfer has not
     // arrived; its payment date stays empty until the receipt is posted, and

@@ -81,7 +81,7 @@ foreach ($wanted as $code) {
     if (!isset($fetched[$code])) {
         $liveform->mark_error('currency_' . $code, lang(array(
             'string' => 'Failed to update exchange rate for currency {var:1}',
-            'vars' => array($code)
+            'vars' => array(h($code))
         )));
         continue;
     }

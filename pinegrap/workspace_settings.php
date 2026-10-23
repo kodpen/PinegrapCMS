@@ -257,7 +257,7 @@ if ($_POST) {
             }
 
             log_activity(lang(array('string' => 'workspace department ({var:1}) was saved', 'vars' => $name)), $username);
-            $liveform->add_notice(lang(array('string' => 'The department was saved: {var:1}.', 'vars' => $name)));
+            $liveform->add_notice(lang(array('string' => 'The department was saved: {var:1}.', 'vars' => h($name))));
             $anchor = '#ws-departments';
             break;
 
@@ -272,8 +272,8 @@ if ($_POST) {
                     ? lang(array('string' => 'workspace department ({var:1}) was archived', 'vars' => $department['name']))
                     : lang(array('string' => 'workspace department ({var:1}) was brought back', 'vars' => $department['name'])), $username);
                 $liveform->add_notice($archive
-                    ? lang(array('string' => 'The department was archived: {var:1}. Its tasks keep it; new ones cannot choose it.', 'vars' => $department['name']))
-                    : lang(array('string' => 'The department is back: {var:1}.', 'vars' => $department['name'])));
+                    ? lang(array('string' => 'The department was archived: {var:1}. Its tasks keep it; new ones cannot choose it.', 'vars' => h($department['name'])))
+                    : lang(array('string' => 'The department is back: {var:1}.', 'vars' => h($department['name']))));
             }
 
             $anchor = '#ws-departments';
