@@ -13,7 +13,7 @@ description: tools/test.php: what it loads, which PHP errors fail a test (vendor
 
 ## What does a run on another PHP version need?
 - `-d memory_limit=-1`: the official Docker images default to 128M and the full suite needs more (it ran out in `designer_blocks_test.php` on 7.1 and in `office_dom_ceiling_test.php` on 8.5). Also the extensions some tests use: `intl` (short link names fold "Ürün" through `Normalizer`), `zip` (office tests), `pdo_mysql` (the mysqldump settings test). Without them those tests fail for the missing extension, not for the PHP version.
-- CI runs the unit tests on PHP 8.3 and 7.1 (docs/memory/workflow/ci-workflows.md). A run without `gd` skips the image tests and hides their failures: on 7.1 one read WebP with `imagecreatefromstring()`, which reads it only from PHP 7.3.
+- CI runs the unit tests on PHP 8.3 and 7.1 (docs/memory/workflow/ci-workflows.md). A run without `gd` skips the image tests and hides their failures: on 7.1 two read WebP with `imagecreatefromstring()` (only from PHP 7.3) and one wrote lossless WebP, a fatal error before PHP 8.1.
 
 ## How does a test measure a function's peak memory?
 - In a PHP process of its own (`PHP_BINARY`, as `backup_restore_test_copy_alone()` in `tests/backup_restore_test.php` does), never with `memory_get_peak_usage()` in the runner: before PHP 8.2 (`memory_reset_peak_usage()`) that peak still holds what the test built and what earlier tests used. The archive copy test measured its own 22 MB dump twice over (44.4 MB) on PHP 7.1; the copy alone takes 2 MB.
