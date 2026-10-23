@@ -1169,12 +1169,14 @@ function api_orders_returns_refuse($result, $ship_to) {
 //
 // Recorded the way My Account records a customer's request
 // (pg_return_create()), with source api and the application's owner as the
-// person who asked. A request recorded for the shop is not held to the
-// customer's withdrawal period, as a staff member's is not: the panel shows
-// whether it came in time and staff decide. Every other check is the
-// model's, run once before the rehearsal stops (pg_return_create_check()) and
-// again by pg_return_create() itself, which checks the lines once more under
-// the order's lock.
+// person who asked. A request recorded for the shop skips the customer's
+// timing rules, as a staff member's does: the withdrawal period, that the
+// goods have left, that a delivery date is known. Staff decide on the panel,
+// which shows whether the request came in time; a delivery not yet sent is
+// normally cancelled instead. The other checks are the model's, run once
+// before the rehearsal stops (pg_return_create_check()) and again by
+// pg_return_create() itself, which checks the lines once more under the
+// order's lock.
 //
 // A new request rings the staff's bell and writes an activity line, as one
 // from My Account does. Unlike My Account it also writes an audit line (the
