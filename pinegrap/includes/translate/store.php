@@ -740,10 +740,12 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
     $status = ($status === 'reviewed') ? 'reviewed' : 'machine';
     $now = time();
 
-    $current = db_value("SELECT status FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "' LIMIT 1");
+    if (!$force && ($status === 'machine')) {
+        $current = db_value("SELECT status FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "' LIMIT 1");
 
-    if (!$force && ($status === 'machine') && ($current === 'reviewed')) {
-        return false;
+        if ($current === 'reviewed') {
+            return false;
+        }
     }
 
     db("INSERT INTO translations (string_id, language, text, engine, status, suspicious, updated_by, created_at, updated_at)
