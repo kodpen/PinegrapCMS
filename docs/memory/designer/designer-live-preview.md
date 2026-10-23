@@ -14,4 +14,7 @@ description: The designer's Preview and live preview: blob page, system widgets 
 - Hooks: the end of `render()`, `scheduleAutosave()`, the `pg-design-theme-change` event, `_setCustomField()`, `_pgTabsSwitch()`, the settings modal's `hidden.bs.modal`, inline text editing on the canvas (`liveTextObs`, commit, Escape) and the properties panel's `[data-prop]` text boxes (these two pass through neither `render()` nor `saveState()`).
 - With the window closed a hook costs one property read. A new state that reaches the preview through a path none of these hooks sees gets the call added.
 
-Related: docs/memory/designer/designer-widget-ghosts-and-edit-chips.md
+## Where do the Preview's scripts come from?
+- A platform script that a page gets from a marker (theme switcher, tooltips/popovers `pg_bs_tips.js`) is written twice: on the page by `pg_*_inject()` (`get_page_content.php`), in the Preview by a `_SD_PAGE_SCRIPTS` row. The Bootstrap bundle is added only when no `bootstrap-js` row is there; the `#` link guard and the switcher engine sit in `_sdPreviewHarness()`, the dark view in `_sdPreviewDarkView()`. `_sdInsertBeforeBodyEnd()` finds the last `</body>` on the markup itself: an index from `html.toLowerCase()` moves one place per `İ`.
+
+Related: docs/memory/designer/designer-widget-ghosts-and-edit-chips.md, docs/memory/designer/designer-preview-page-scripts.md

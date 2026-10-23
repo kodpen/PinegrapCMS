@@ -901,20 +901,22 @@ if ($liveform->check_form_errors() == false) {
             $username = strtok($submitter_email_address, '@');
             $username = get_unique_username($username);
 
-            $random_password = get_random_string(array(
-                'type' => 'lowercase_letters',
-                'length' => 10));
-
-            // Auto-registration: create the member with a modern password hash.
+            // Created without a password (algo 3, which no password matches):
+            // the visitor sets one through the set password link issued below,
+            // or on the change password screen while still signed in.
             $user_id = create_member_user(array(
                 'username' => $username,
                 'email'    => $submitter_email_address,
-                'password' => $random_password,
             ));
 
-            // Remember email and password in the session, so we can show it on confirmation page.
-            $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] = $submitter_email_address;
-            $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'] = $random_password;
+            pg_set_password_link_issue($user_id);
+
+            // Remember the account in the session, so the sender's e-mail and
+            // the confirmation page can name it and draw its set password link.
+            $_SESSION['software']['custom_form_auto_registration'][$form_id] = array(
+                'email_address' => $submitter_email_address,
+                'user_id'       => (int) $user_id,
+            );
 
             // If there is a registration contact group, then add the user to it.
             if (REGISTRATION_CONTACT_GROUP_ID) {
@@ -1360,20 +1362,9 @@ if ($liveform->check_form_errors() == false) {
 
                     // If a user account was created via the auto-registration feature,
                     // and this is the email for the submitter (i.e. not the email for the watcher)
-                    // then show user account info.
-                    if (
-                        ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '')
-                        && ($to_email_address == $submitter_email_address)
-                    ) {
-                        $body .=
-                            "\n" .
-                            "\n" .
-                            lang('New Account') . ':' . "\n" .
-                            '------------' . "\n" .
-                            lang('We have created a new account for you on our site. You can find your login info below.') . "\n" .
-                            "\n" .
-                            lang('Email') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] . "\n" .
-                            lang('Password') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'];
+                    // then name the account and give the link to set its password.
+                    if ($to_email_address == $submitter_email_address) {
+                        $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), pg_cf_new_account_link($form_id), true);
                     }
 
                 // else the format of the e-mail should be HTML, so prepare that
@@ -1381,7 +1372,12 @@ if ($liveform->check_form_errors() == false) {
 
                     require_once(dirname(__FILE__) . '/get_page_content.php');
 
+                    // A new account's set password link goes into the sender's copy only.
+                    pg_cf_new_account_recipient($to_email_address == $submitter_email_address);
+
                     $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+                    pg_cf_new_account_recipient(true);
 
                     // The sender's copy reads in the language they wrote in.
                     if (function_exists('pg_tr_email')) {
@@ -1409,6 +1405,9 @@ if ($liveform->check_form_errors() == false) {
                     'subject' => $submitter_email_subject,
                     'format' => $submitter_email_format,
                     'body' => $body,
+                    // The sender's copy may carry the set password link, which must
+                    // stay out of the failure log and the delivery-failed notice.
+                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== '')),
                     'queue' => true));
 
             }
@@ -1456,18 +1455,8 @@ if ($liveform->check_form_errors() == false) {
             }
 
             // If a user account was created via the auto-registration feature,
-            // then show user account info.
-            if ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '') {
-                $body .=
-                    "\n" .
-                    "\n" .
-                    lang('New Account') . ':' . "\n" .
-                    '------------' . "\n" .
-                    lang('A new account was created for this user. You can find the login info below.') . "\n" .
-                    "\n" .
-                    lang('Email') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] . "\n" .
-                    lang('Password') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'];
-            }
+            // then say so. The set password link belongs to the visitor alone.
+            $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), '', false);
 
         // else the format of the e-mail should be HTML, so prepare that
         } else {

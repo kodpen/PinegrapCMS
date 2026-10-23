@@ -89,7 +89,7 @@ function pg_parasut_credentials_for_save()
             $legal_unknown = pg_legal_document_unknown_placeholders($legal_value);
 
             if ($legal_unknown) {
-                $liveform->mark_error($legal_field, lang(array('string' => '{var:1}: unknown field {var:2}.', 'vars' => array($legal_label, '^^' . implode('^^, ^^', $legal_unknown) . '^^'))));
+                $liveform->mark_error($legal_field, lang(array('string' => '{var:1}: unknown field {var:2}.', 'vars' => array($legal_label, '^^' . implode('^^, ^^', array_map('h', $legal_unknown)) . '^^'))));
             } elseif (strlen($legal_value) > 65535) {
                 $liveform->mark_error($legal_field, lang(array('string' => '{var:1} is too long.', 'vars' => array($legal_label))));
             }

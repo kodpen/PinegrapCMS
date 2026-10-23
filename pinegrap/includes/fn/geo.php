@@ -202,7 +202,7 @@ function pg_geo_db_refresh_for_screen($liveform, $forced, $wanted)
     } else {
         $liveform->add_notice(lang(array(
             'string' => 'The location database could not be downloaded: {var:1}. The country Cloudflare sends is still used.',
-            'vars'   => array(($refresh['reason'] !== '') ? $refresh['reason'] : lang('unknown error')))));
+            'vars'   => array(($refresh['reason'] !== '') ? h($refresh['reason']) : lang('unknown error')))));
     }
 }
 

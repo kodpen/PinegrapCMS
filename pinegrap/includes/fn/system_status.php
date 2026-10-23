@@ -1472,12 +1472,23 @@ function pg_php_build_date_text($build_time)
         : gmdate('Y-m-d', (int) $build_time);
 }
 
-// When the PHP serving this request was built. phpinfo() is the only place
-// PHP says it; a host that disables phpinfo() (disable_functions) leaves it
-// unknown, and function_exists() is false for a disabled function on PHP 7
-// and 8 alike. The @ keeps a warning from phpinfo() itself off the page.
+// When the PHP serving this request was built. PHP 8.5 says it in
+// PHP_BUILD_DATE; before that phpinfo() is the only place, and a host that
+// disables phpinfo() (disable_functions) leaves it unknown: function_exists()
+// is false for a disabled function on PHP 7 and 8 alike. The @ keeps a
+// warning from phpinfo() itself off the page.
 function pg_php_build_time()
 {
+    if (defined('PHP_BUILD_DATE')) {
+        // Read through constant(): the static analysers run on an older PHP
+        // and would report the name as unknown.
+        $from_constant = pg_php_build_time_from_info('Build Date => ' . constant('PHP_BUILD_DATE'));
+
+        if ($from_constant !== null) {
+            return $from_constant;
+        }
+    }
+
     if (!function_exists('phpinfo')) {
         return null;
     }
@@ -2281,9 +2292,10 @@ function get_system_status_checks()
         );
         $score -= $weights['php_security'] * 0.5;
     } elseif ($php2shell['state'] === 'likely_fixed') {
-        // Grey and not scored: an older number built after the fixes were
-        // published is a distribution's patched package far more often than
-        // not, and a yellow chip would sit on every patched Ubuntu 24.04.
+        // Grey, with no points off (the row counts as passed in the score):
+        // an older number built after the fixes were published is a
+        // distribution's patched package far more often than not, and a
+        // yellow chip would sit on every patched Ubuntu 24.04.
         $output .= $makeIcon(
             'bi-bug-fill',
             'text-secondary',
