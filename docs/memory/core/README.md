@@ -49,7 +49,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - fn-module-errors-mail-backup-consent.md: The 2026.4.8 modules errors, mail_queue, backup and consent in includes/fn/: entry functions, gates, storage keys and behaviour rules.
 - fn-module-map.md: Which includes/fn/ module holds which kind of function (core, auth, forms, ecommerce, seo, content, designer, widgets, output, system_status ...).
 - functions-php-split-rules.md: Why functions.php became a manifest over includes/fn/ modules (2026-09-12), what it loads, and the rules for adding a function or a module, paths, PHPMailer use and old line references.
-- get-file-shared-code.md: get_file.php never loads functions.php: the shared single copies in includes/authentication.php and includes/image_engine.php, what they may call, and the intended copies check_copies.php allows.
+- get-file-shared-code.md: get_file.php never loads functions.php: the shared files (authentication.php, image_engine.php, record_files.php), what they may call, and the copies check_copies.php allows.
 - important-files-and-js-twins.md: Key product files and their roles; which scripts have a .src/.min twin chosen by ENVIRONMENT_SUFFIX (edit both) and which are served as written; where front-end JS lives.
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
