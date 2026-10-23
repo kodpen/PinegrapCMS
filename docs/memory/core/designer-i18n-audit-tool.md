@@ -1,7 +1,10 @@
 ---
 name: designer-i18n-audit-tool
-description: docs/_tools/designer_i18n.php check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
+description: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 ---
+
+## Where is the tool?
+- `docs/_tools/designer_i18n.php` and its map `docs/_tools/designer_i18n_map.tsv` are not in the repository; ask the owner for them. The check CI runs on every PR is `tools/check_lang.php` (`translation-rules.md`).
 
 ## How do I audit or convert designer text?
 - Audit: `php docs/_tools/designer_i18n.php check`. It reports keys missing from tr.json, remaining Turkish literals, text embedded in HTML, Turkish comments, and PHP trees.

@@ -24,3 +24,5 @@ description: Install wizard step "Site Tasarımı": two-request template install
 ## Why does the installed design get Bootstrap rows in its CSS list?
 - `pg_design_template_install()` passes the template's `assets` 'css' through `pg_design_template_asset_sentinels()`: a list without a `bootstrap-css` row gets that row and `bootstrap-icons` in front, as the editor's `_ensureBootstrapSentinels()` adds them on load.
 - Without them `get_page_content.php` adds Bootstrap, the look and the palette before `</head>` after `pg-user-styles`, so a template's own `body { font-family }` lost to Bootstrap on the installed site while the preview showed it. A template made from a design already has the rows; the `custom` framework gets none.
+
+Related: docs/memory/designer/design-templates-file-format.md, docs/memory/designer/design-templates-rows.md

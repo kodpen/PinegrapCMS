@@ -32,6 +32,9 @@ $output_product_id_to_url = '';
 $output_rss_table_heading = '';
 $output_office_use_only_table_heading = '';
 $output_preview_button  = '';
+$output_designer_form_notice = '';
+// A form drawn in the visual designer: its fields are listed, never changed here.
+$designer_form = false;
 // if there is a page_id supplied in the query string, then this is a page form
 if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     validate_area_access($user, 'user');
@@ -87,6 +90,14 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
             break;
     }
 
+    // A form drawn in the visual designer keeps its page's type ('standard').
+    // Its fields are custom form fields, derived from the canvas on every
+    // design save.
+    if (($form_type === '') && pg_page_has_designer_form($_GET['page_id'])) {
+        $designer_form = true;
+        $form_type = 'custom';
+    }
+
     // Get the form type name that we will output to user
 
     $form_type_name = '';
@@ -127,14 +138,16 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $form_name = '';
 
     // If this is a page and form type that supports a form name, then get it
-    if ($page_type != 'express order' or $form_type != 'shipping') {
+    $form_settings_table = pg_form_settings_table($page_type, $form_type);
+
+    if (($form_settings_table !== '') && ($page_type != 'express order' or $form_type != 'shipping')) {
 
         // get form name for page
-        $query = "SELECT form_name FROM " . str_replace(' ', '_', $page_type) . "_pages WHERE page_id = '" . escape($_GET['page_id']) . "'";
+        $query = "SELECT form_name FROM " . $form_settings_table . " WHERE page_id = '" . escape($_GET['page_id']) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
-        $form_name = $row['form_name'];
+
+        $form_name = $row['form_name'] ?? '';
     }
     
     // if form name is blank, use page name for form name
@@ -189,7 +202,22 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     }
     $output_cancel_onclick = 'window.location.href=\'' . h(escape_javascript(pg_safe_back_url(($_GET['send_to'] ?? ''), 'view_pages.php'))) . '\'';
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1}{var:2} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
-    
+
+    // The canvas is the record of a designer form: a field added, changed or
+    // deleted here would be undone by the next design save. The list stays
+    // (it is where the ^^name^^ variables are read), the screen points to the
+    // editor, and Create / Delete Selected are not offered.
+    if ($designer_form) {
+        $output_form_designer_content_subheading = lang('The fields of this form are edited in the visual editor.');
+        $output_form_designer_footer = '';
+        $output_designer_form_notice =
+            '<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 mb-0" role="note">
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+                <span class="flex-grow-1">' . lang('This form was drawn in the visual editor. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field\'s variable (^^name^^) puts its value into the form\'s e-mails.') . '</span>
+                <a class="btn btn-sm btn-outline-secondary" href="' . h(pg_page_edit_url_by_id($_GET['page_id'])) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in Visual Editor') . '</a>
+            </div>';
+    }
+
 // else if there is a product_id supplied in the query string, this is a product form
 } elseif ((isset($_GET['product_id'])) && ($_GET['product_id'] != '')) {
     validate_ecommerce_access($user);
@@ -381,15 +409,27 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
     
     $number_of_results++;
-    
+
+    // A designer form's field is only viewed (edit_field.php shows it read-only),
+    // and its name is shown as the variable the form's e-mails use.
+    if ($designer_form) {
+        $output_select_cell = '<td class="align-middle text-start"></td>';
+        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
+        $output_name_cell = h($name) . '<br><code class="user-select-all">^^' . h($name) . '^^</code>';
+    } else {
+        $output_select_cell = '<td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="fields[]" value="' . $id . '" class="checkbox" /></td>';
+        $output_open_button = '<button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>';
+        $output_name_cell = h($name);
+    }
+
     $output_rows .=
-        '<tr> 
-            <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="fields[]" value="' . $id . '" class="checkbox" /></td>
+        '<tr>
+            ' . $output_select_cell . '
 			<td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                ' . $output_open_button . '
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="chart_label">' . h($name) . '</td>
+            <td class="chart_label">' . $output_name_cell . '</td>
             <td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
             ' . $output_rss_field_cell . '
             <td>' . h($type) . '</td>
@@ -397,6 +437,20 @@ while ($row = mysqli_fetch_assoc($result)) {
             ' . $office_use_only . '
             <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($username) ) ) ) . '</td>
         </tr>';
+}
+
+// A designer form gets no Create button and no selection column (see above).
+if ($designer_form) {
+    $output_create_button = '';
+    $output_select_all_heading = '<th class="noVis"></th>';
+} else {
+    $output_create_button = '<a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_select_all_heading =
+        '<th class="noVis">
+            <div class="form-check form-switch">
+                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+            </div>
+        </th>';
 }
 
 $liveform = new liveform('view_fields');
@@ -418,12 +472,13 @@ pg_page_shell(array(
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        ' . $output_create_button . '
                         ' . $output_layout_buttons . '
                         ' . $output_preview_button . '
                     </nav>
                 </div>
             </div>
+            ' . $output_designer_form_notice . '
             <div class="card my-4">
                 <div class="card-body p-0 position-relative">
                     <form name="form"  action="delete_fields.php" method="post"  class="disable_shortcut"> 
@@ -434,11 +489,7 @@ pg_page_shell(array(
                         <table class="chart table-hover table " style="width:100%;display:none">
                            <thead>
                                 <tr>
-                                    <th class="noVis">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
-                                        </div>
-                                    </th>
+                                    ' . $output_select_all_heading . '
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                     <th>' . lang('Name') . '</th>
                                     <th>' . lang('Label / Information') . '</th>
@@ -466,59 +517,3 @@ pg_page_shell(array(
 ' . output_footer();
 
 $liveform->remove_form();
-
-function get_field_type_name($field_type)
-{
-    switch ($field_type) {
-        case 'text box':
-            return lang('Text Box');
-            break;
-            
-        case 'text area':
-            return lang('Text Area');
-            break;
-        
-        case 'pick list':
-            return lang('Pick List');
-            break;
-        
-        case 'radio button':
-            return lang('Radio Button');
-            break;
-        
-        case 'check box':
-            return lang('Check Box');
-            break;
-            
-        case 'file upload':
-            return lang('File Upload');
-            break;
-            
-        case 'date':
-            return lang('Date');
-            break;
-            
-        case 'date and time':
-            return lang('Date & Time');
-            break;
-            
-        case 'email address':
-            return lang('E-mail Address');
-            break;
-        
-        case 'information':
-            return lang('Information');
-            break;
-            
-        case 'time':
-            return lang('Time');
-            break;
-
-        case 'signature':
-            return lang('Signature');
-            break;
-
-        default:
-            return h($field_type);
-    }
-}

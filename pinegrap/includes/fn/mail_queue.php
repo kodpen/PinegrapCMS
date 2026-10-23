@@ -68,6 +68,115 @@ function pg_mail_last_error($set = null)
     return $error;
 }
 
+// Whether the last email() call in this request failed in a way that no
+// later attempt can change: the message as stored has no content, no
+// recipient, or an address PHPMailer refuses. Set next to
+// pg_mail_last_error(); the queue gives such a message up at once instead of
+// trying it again over a day and a half.
+function pg_mail_last_error_permanent($set = null)
+{
+    static $permanent = false;
+
+    if ($set !== null) {
+        $permanent = (bool) $set;
+    }
+
+    return $permanent;
+}
+
+// What rules a message out before anything is built from it, read from the
+// email() properties alone: 'no_recipient' when 'to' holds no address,
+// 'empty_body' when the body is empty or only white space, '' otherwise.
+// The recipient comes first: a message to nobody is wrong whatever it says.
+// Whether an address is well formed is left to PHPMailer, which knows
+// internationalised domains; email() marks its refusal permanent as well.
+function pg_mail_permanent_problem(array $properties)
+{
+    $to = isset($properties['to']) ? $properties['to'] : '';
+
+    $recipients = is_array($to) ? $to : array($to);
+
+    $has_recipient = false;
+
+    foreach ($recipients as $recipient) {
+        if (is_string($recipient) && (trim($recipient) !== '')) {
+            $has_recipient = true;
+            break;
+        }
+    }
+
+    if (!$has_recipient) {
+        return 'no_recipient';
+    }
+
+    $body = isset($properties['body']) ? $properties['body'] : '';
+
+    if (!is_scalar($body) || (trim((string) $body) === '')) {
+        return 'empty_body';
+    }
+
+    return '';
+}
+
+// Whether the queue stops trying a message that failed on attempt number
+// $attempt: at once when the failure is permanent, otherwise once the
+// attempts run out or the retry schedule has no further step.
+function pg_mail_queue_gives_up($attempt, $max_attempts, $permanent)
+{
+    if ($permanent) {
+        return true;
+    }
+
+    return ((int) $attempt >= (int) $max_attempts) || (pg_mail_backoff($attempt) === 0);
+}
+
+// Whether a mail_outbox row was given up because of a permanent failure: a
+// failed row that did not use up its attempts. The retry button resets the
+// count, so the reading holds after a manual retry too.
+function pg_mail_failed_permanently($status, $attempts)
+{
+    return ((string) $status === 'failed') && ((int) $attempts < pg_mail_max_attempts());
+}
+
+// The panel notifications for the messages one queue run gave up on, as
+// create_notification() properties. Each message is told once: one row per
+// message, recipient in order_total, the outbox id in form_id and the reason
+// in title. More than $limit in one run (an SMTP server down for a day lets a
+// whole day's mail run out of attempts together) become a single row whose
+// title is the count and whose form_id is empty, so the bell is not flooded.
+function pg_mail_given_up_notices(array $given_up, $limit = 3)
+{
+    if (!$given_up) {
+        return array();
+    }
+
+    if (count($given_up) > (int) $limit) {
+        return array(array(
+            'action' => 'mail_failed',
+            'type'   => 'error',
+            'title'  => (string) count($given_up),
+            'user'   => 'system',
+        ));
+    }
+
+    $notices = array();
+
+    foreach ($given_up as $message) {
+        $reason = isset($message['reason']) ? trim((string) $message['reason']) : '';
+
+        $notices[] = array(
+            'action'      => 'mail_failed',
+            'type'        => 'error',
+            'title'       => pg_mail_clip(($reason !== '') ? $reason : '-', 255),
+            'order_total' => pg_mail_clip(isset($message['recipient']) ? (string) $message['recipient'] : '', 100),
+            'form_id'     => (int) $message['id'],
+            'user'        => 'system',
+        );
+    }
+
+    return $notices;
+}
+
 // Cut a string for a VARCHAR column without splitting a UTF-8 sequence: a
 // broken sequence makes a strict-mode INSERT fail outright.
 function pg_mail_clip($text, $length)
@@ -262,6 +371,9 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
 
     $max_attempts = pg_mail_max_attempts();
 
+    // The messages given up on in this run, told on the panel bell at the end.
+    $given_up = array();
+
     // A run that died while sending (fatal error, killed process) leaves its
     // row in 'sending'. Fifteen minutes is far longer than any send takes, so
     // such a row goes back to the queue. If the message did leave before the
@@ -310,16 +422,20 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
         $properties = pg_mail_properties_decode($row['properties']);
 
         if ($properties === false) {
+            $error = lang('The stored message could not be read.');
+
             db(
                 "UPDATE mail_outbox
                 SET
                     status = 'failed',
                     attempts = '" . $attempt . "',
-                    last_error = '" . e(lang('The stored message could not be read.')) . "',
+                    last_error = '" . e($error) . "',
                     claimed_at = 0
                 WHERE id = '" . $id . "'");
 
             $result['failed']++;
+
+            $given_up[] = array('id' => $id, 'recipient' => $row['recipient'], 'reason' => $error);
 
             continue;
         }
@@ -327,10 +443,16 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
         unset($properties['queue']);
 
         // The sender hears about a failure once, when the message is given
-        // up on, rather than after every attempt.
+        // up on, rather than after every attempt. Before the last attempt
+        // email() is asked to tell only a permanent failure, which ends the
+        // message as well.
         $notify_sender = array_key_exists('notify_sender', $properties) ? (bool) $properties['notify_sender'] : true;
 
-        $properties['notify_sender'] = ($notify_sender && ($attempt >= $max_attempts));
+        if (!$notify_sender) {
+            $properties['notify_sender'] = false;
+        } else {
+            $properties['notify_sender'] = ($attempt >= $max_attempts) ? true : 'permanent';
+        }
 
         if (email($properties)) {
             db(
@@ -352,9 +474,11 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
 
         $error = pg_mail_clip(pg_mail_last_error(), 500);
 
+        $permanent = pg_mail_last_error_permanent();
+
         $retry_in = pg_mail_backoff($attempt);
 
-        if (($attempt >= $max_attempts) || ($retry_in === 0)) {
+        if (pg_mail_queue_gives_up($attempt, $max_attempts, $permanent)) {
             db(
                 "UPDATE mail_outbox
                 SET
@@ -369,6 +493,8 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
                 'vars'   => array($row['recipient'], $attempt, $error),
             )), 'UNKNOWN');
 
+            $given_up[] = array('id' => $id, 'recipient' => $row['recipient'], 'reason' => $error);
+
         } else {
             db(
                 "UPDATE mail_outbox
@@ -380,6 +506,10 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
                     claimed_at = 0
                 WHERE id = '" . $id . "'");
         }
+    }
+
+    foreach (pg_mail_given_up_notices($given_up) as $notice) {
+        create_notification($notice);
     }
 
     // Sent rows are kept a week and failed ones a month, so the mail queue

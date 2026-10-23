@@ -20,7 +20,7 @@ description: A visit's IP address set to 0 after config.visitor_ip_days (default
 - Visitor report IP filter: 0 reads as empty (`CASE WHEN ip_address = 0 THEN ""`), like the order report.
 - Database Engine › Visitor records: row "IP addresses" = "Taken out after N days" / "Kept as long as the record". Result text and the activity log name the count ("general job took the IP address out of N visitor record(s) older than D days").
 
-## Measured (sandbox, MariaDB 10.11, 300,000 rows over 120 days)
+## How fast is it? (sandbox, MariaDB 10.11, 300,000 rows over 120 days)
 - 220,000 addresses in two runs of the 2–3 s budget on InnoDB split and unsplit, three runs on MyISAM; the next day's pass 0.04 s. Simulated visits during the pass: max wait 9.6 ms (InnoDB), 16.4 ms (MyISAM).
 
 Related: visitor-retention-and-cleanup, visitor-counter-dedup-key, visitor-monthly-partitions

@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-style-designer
-description: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, .sd-loop-area width, two wrapper models, shared component cycle guard.
+description: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, .sd-loop-area width, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), cycle guard.
 ---
 
 ## What are the canvas pitfalls in style_designer.js?
@@ -10,14 +10,15 @@ description: style_designer.js canvas rules: widget tree root, lockstep cfg, tab
 - `.sd-loop-area` must have `width:100%`: unwrapped inside `.row` it shrinks as a flex item.
 
 ## What are the two wrapper models (2026.4.8)?
-- Bundled Bootstrap design: every node sits in a `.sd-wrap` box; Bootstrap 5's direct-child rules are rebuilt with imitation rules marked `_SD_BX`.
-- Other frameworks (`_sdFxFlatOn()`): the wrapper is `display:contents` (`.sd-fx-flat`) and the framework's structural selectors are bridged through the wrapper in the canvas CSSOM by `_sdBridgeSheets()` (specificity unchanged).
-- Measurement-dependent fixes for both models live in `_sdCanvasFidelityPass()`: `sd-fx-block`, `sd-fx-inline` (block wrapper of an inline element is transparent), loop area's parent layout, card image placeholder (height of the first ghost image).
-- Measure the wrapper with `_sdBoxRect()`.
+- Bundled Bootstrap design: every node sits in a `.sd-wrap` box; Bootstrap 5's direct-child rules are rebuilt with imitation rules marked `_SD_BX` (a leading `\u0001`).
+- Other frameworks (`_sdFxFlatOn()`): the wrapper is `display:contents` (`.sd-fx-flat`) and the framework's structural selectors are bridged through the wrapper in the canvas CSSOM by `_sdBridgeSheets()`, specificity unchanged (designer-canvas-selector-bridge.md).
+- `IFRAME_CSS` is an array; `_sdIframeCss()` joins it for the model: the `_SD_BX` rules only for the boxed one, marker stripped.
+- Measurement-dependent fixes for both models live in `_sdCanvasFidelityPass()`, measured first and written after: `sd-fx-block`, `sd-fx-inline` (block wrapper of an inline element is transparent), loop area's parent layout, card image placeholder (height of the first ghost image), absolutely positioned elements (designer-canvas-absolute-position.md).
+- Measure a wrapper with `_sdBoxRect(w)`: a see-through wrapper's `getBoundingClientRect()` is empty, so it reads its element's box. Its toolbar, note dot and issue badge are positioned against whatever ancestor is positioned, so `_sdPlaceWrapChrome(w)` puts them at the element each time they show.
+- No padding on a column wrapper inside a row (`.row > .sd-wrap[data-sd-type="col"]`): it replaced Bootstrap's gutter and every column read wider on the canvas than on the page. Only a column outside a row gets the 4px inset.
+- Content and component wrappers keep `margin:3px 0`; inline-tag (`sd-wrap-inline`) and span/text wrappers have none, as their elements on the page. With it, each caption line grew 6px (showcase-floating cards 10-12px taller).
 
 ## How are nested shared components guarded (2026.4.8)?
-- Code walking component trees is guarded against cycles by `_sdSharedOpen`.
-- A cyclic save is rejected in three places: `canDrop`, `_validateTree`, `pg_shared_component_cycle()`.
-- Remaining markers in widget output are expanded by `pg_expand_nested_components()`.
+- Nesting, the three loop checks (`canDrop`, `_validateTree`, `pg_shared_component_cycle()`), `_sdSharedOpen` and `pg_expand_nested_components()`: `shared-component-model.md`.
 
-Related: docs/memory/designer/bootstrap-direct-child-canvas.md
+Related: docs/memory/designer/bootstrap-direct-child-canvas.md, docs/memory/designer/designer-canvas-absolute-position.md
