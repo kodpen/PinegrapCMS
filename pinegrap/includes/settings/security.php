@@ -45,7 +45,7 @@ if ($form_limits_ready) {
     $output_form_limits = '
                                         <div class="col-12">
                                             <div class="form-label fw-bold mb-1">' . lang('Form Submission Limits') . '</div>
-                                            <div class="form-text mt-0">' . lang('How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off.') . '</div>
+                                            <div class="form-text mt-0">' . lang('How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off. The e-mail domain limit is off by default: every visitor with an address at that domain shares it, so a few submissions could refuse a whole provider such as gmail.com for an hour.') . '</div>
                                             <div class="row gy-3 mt-0">' . $form_limit_inputs . '
                                             </div>
                                         </div>

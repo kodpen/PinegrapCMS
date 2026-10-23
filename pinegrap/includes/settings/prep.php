@@ -222,7 +222,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $form_limits_ready        = isset($row['form_limit_ip_hour']);
     $form_limit_ip_hour       = isset($row['form_limit_ip_hour']) ? (int)$row['form_limit_ip_hour'] : 10;
     $form_limit_recipient_day = isset($row['form_limit_recipient_day']) ? (int)$row['form_limit_recipient_day'] : 3;
-    $form_limit_domain_hour   = isset($row['form_limit_domain_hour']) ? (int)$row['form_limit_domain_hour'] : 30;
+    $form_limit_domain_hour   = isset($row['form_limit_domain_hour']) ? (int)$row['form_limit_domain_hour'] : 0;
     $form_spam_blacklist      = isset($row['form_spam_blacklist']) ? (int)$row['form_spam_blacklist'] : 0;
 
     // Security headers, the plain-text block log, the concurrency and ban

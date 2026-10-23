@@ -1,6 +1,6 @@
 ---
 name: form-submission-limits
-description: custom_form.php per visitor address, per e-mail and per domain limits in waf_rate - atomic counting before the hook, inbox folding, settings, known weak spots.
+description: custom_form.php per visitor address, per e-mail and per domain limits in waf_rate - atomic counting before the hook, inbox folding, settings, why the domain limit is off by default, known weak spots.
 ---
 
 ## What are they?
@@ -16,9 +16,11 @@ description: custom_form.php per visitor address, per e-mail and per domain limi
 - Works with the firewall off; sweeps itself (1 in 50). `waf_rate_sweep_queries()` keeps `|cfr` keys 24 h (`waf_rate_long_scopes()`).
 
 ## Where are the numbers set?
-- `config.form_limit_ip_hour` 10, `form_limit_recipient_day` 3, `form_limit_domain_hour` 30 (2026.11.0 step 11.0.28); Site Settings, Security, Session & Password card. 0 turns a limit off; clamped 0..10000. Before the step, `waf_setting()` gives the same defaults.
+- `config.form_limit_ip_hour` 10, `form_limit_recipient_day` 3, `form_limit_domain_hour` 0, off (2026.11.0 step 11.0.28); Site Settings, Security, Session & Password card. 0 turns a limit off; clamped 0..10000. Before the step, `waf_setting()` gives the same defaults.
+
+## Why is the domain limit off by default?
+- `cfd` is one site-wide counter per domain: anyone can send a few submissions naming gmail.com addresses and refuse every Gmail user on every form for the hour (a denial of service), and a busy site's real traffic can reach it alone. The per-address day limit and the per-visitor hour limit already stop one inbox from being flooded, so the default is 0 (PR #1386). An operator can switch it on in the Security settings; the help text there gives the reason.
 
 ## What are the known weak spots?
 - Fixed windows: `cfr` starts at UTC midnight, so "3 per day" allows 3 at 23:59 and 3 more at 00:00.
-- `cfd` is site-wide: a few addresses at 10/hour can fill gmail.com's 30/hour for every form for the hour, and a busy site's real traffic can reach it alone. Raise it or set 0 on such a site.
 - `cfi` is skipped for a private or reserved address (`pg_cf_visitor_address_counted()`) and for the Trusted Proxies (`waf_ip_is_infrastructure()`): behind a proxy that is not in Trusted Proxies every visitor would share one bucket. A proxy on a public address that is not listed still does that: set Trusted Proxies.

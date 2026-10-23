@@ -3420,7 +3420,11 @@ function pg_cf_issued_field()
 
 /**
  * The three limits from the Security settings, each 0..10000; 0 turns one
- * off. The defaults apply until the 2026.11.0 step adds the columns.
+ * off. The defaults apply until the 2026.11.0 step adds the columns. The
+ * domain limit is off by default: its counter is shared by every visitor at
+ * that domain, so a few submissions naming gmail.com addresses would refuse
+ * every Gmail user for the hour; the per-address and per-visitor limits
+ * already stop one inbox from being flooded.
  *
  * @return array ip_hour, recipient_day, domain_hour
  */
@@ -3431,7 +3435,7 @@ function pg_cf_throttle_limits()
     foreach (array(
         'ip_hour'       => array('form_limit_ip_hour', 10),
         'recipient_day' => array('form_limit_recipient_day', 3),
-        'domain_hour'   => array('form_limit_domain_hour', 30),
+        'domain_hour'   => array('form_limit_domain_hour', 0),
     ) as $name => $setting) {
         $value = function_exists('waf_setting') ? waf_setting($setting[0], $setting[1]) : $setting[1];
 

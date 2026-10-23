@@ -104,6 +104,28 @@ function test_form_protection_subjects_zero_and_empty()
 	pg_assert_same(array(), $rows, 'every limit off');
 }
 
+// Out of the box the domain counter is off: one counter for every visitor at
+// gmail.com would let a few submissions refuse all of Gmail for the hour, so
+// only the visitor and the address are counted until the setting is raised.
+function test_form_protection_domain_off_by_default()
+{
+	// No database here: a config without the form_limit_* columns, as before
+	// the 2026.11.0 step, so waf_setting() returns the code defaults.
+	waf_config(array('waf_trusted_proxies' => ''));
+
+	$limits = pg_cf_throttle_limits();
+
+	pg_assert_same(array('ip_hour' => 10, 'recipient_day' => 3, 'domain_hour' => 0), $limits, 'defaults');
+
+	$rows = pg_cf_throttle_subjects('victim@gmail.com', '203.0.113.7', $limits);
+
+	pg_assert_same(array('cfi', 'cfr'), array_column($rows, 'scope'), 'no domain row');
+
+	$rows = pg_cf_throttle_subjects('a@b.example', '203.0.113.7', array('ip_hour' => 10, 'recipient_day' => 3, 'domain_hour' => 1));
+
+	pg_assert_same(array('cfi', 'cfr', 'cfd'), array_column($rows, 'scope'), 'switched on');
+}
+
 // The domain is what follows the last @.
 function test_form_protection_subjects_last_at()
 {
