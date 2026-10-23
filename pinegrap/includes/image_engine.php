@@ -547,6 +547,15 @@ function pg_process_image_file($file_path, $options = array())
         return $report;
     }
 
+    // GD writes no colour profile, and pixels written without theirs are
+    // shown as sRGB: a Display P3 (phone) or Adobe RGB photo comes out
+    // washed out, and on Optimize for good. Imagick carries the profile
+    // over, so only the GD half leaves such a file as it is.
+    if (!$use_imagick && pg_image_has_foreign_color_profile($file_path)) {
+        $report['reason'] = 'color_profile';
+        return $report;
+    }
+
     $resize = (($max_dimension > 0) && (max($width, $height) > max(1, $resize_trigger)));
 
     list($target_width, $target_height) = $resize
@@ -700,7 +709,27 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         // and on its side on another.
         pg_image_apply_imagick_orientation($image);
 
+        // stripImage() drops the ICC profile with the rest of the metadata,
+        // and pixels without their profile are shown as sRGB: a Display P3
+        // or Adobe RGB photo turned pale. The profile is taken first and put
+        // back after the strip, unless the pixels are CMYK and are converted
+        // below (a CMYK profile no longer describes them then).
+        // setImageProfile() attaches the bytes on every build; profileImage()
+        // attaches nothing on an ImageMagick built without lcms. An sRGB
+        // profile is not put back: untagged pixels are shown as sRGB anyway,
+        // and it would add about 3 KB to every derivative and Optimize result.
+        $icc = '';
+
+        if ($image->getImageColorspace() != Imagick::COLORSPACE_CMYK) {
+            $profiles = $image->getImageProfiles('icc', true);
+            $icc = isset($profiles['icc']) ? (string) $profiles['icc'] : '';
+        }
+
         $image->stripImage();
+
+        if (($icc !== '') && !pg_image_icc_is_srgb($icc)) {
+            $image->setImageProfile('icc', $icc);
+        }
 
         // Only converted when it has to be. A CMYK JPEG shown in a browser is
         // the classic "colours went wrong after optimizing" report; tagging an
@@ -1730,13 +1759,39 @@ function pg_image_jpeg_orientation($file_path)
  */
 function pg_image_jpeg_exif_orientation($file_path)
 {
+    $segments = pg_image_jpeg_app_segments($file_path, 0xE1, "Exif\x00");
+
+    if ($segments === false) {
+        return 0;
+    }
+
+    // An APP1 segment is also where XMP lives; only the Exif one holds the
+    // orientation, and the first one counts.
+    return $segments ? pg_image_exif_tiff_orientation(substr($segments[0], 6)) : 1;
+}
+
+
+/**
+ * The data of a JPEG's APPn segments of one marker that start with $prefix,
+ * in file order, prefix included.
+ *
+ * The marker segments are walked from the start of the file; every other
+ * segment's data is skipped with a seek. The walk ends at the start of the
+ * image data (SOS), which no metadata segment follows.
+ *
+ * @param string $file_path
+ * @param int    $marker 0xE1 for APP1, 0xE2 for APP2 ...
+ * @param string $prefix
+ * @return array|false false when a matching segment is cut short by the end of the file
+ */
+function pg_image_jpeg_app_segments($file_path, $marker, $prefix)
+{
+    $segments = array();
     $handle = @fopen($file_path, 'rb');
 
     if (!$handle) {
-        return 1;
+        return $segments;
     }
-
-    $orientation = 1;
 
     if (@fread($handle, 2) === "\xFF\xD8") {
 
@@ -1757,15 +1812,15 @@ function pg_image_jpeg_exif_orientation($file_path)
                 break;
             }
 
-            $marker = ord($byte);
+            $code = ord($byte);
 
             // RSTn and TEM stand alone, without a length.
-            if ((($marker >= 0xD0) && ($marker <= 0xD7)) || ($marker === 0x01)) {
+            if ((($code >= 0xD0) && ($code <= 0xD7)) || ($code === 0x01)) {
                 continue;
             }
 
-            // Start of scan or end of image: no Exif block before the pixels.
-            if (($marker === 0xDA) || ($marker === 0xD9)) {
+            // Start of scan or end of image.
+            if (($code === 0xDA) || ($code === 0xD9)) {
                 break;
             }
 
@@ -1782,15 +1837,19 @@ function pg_image_jpeg_exif_orientation($file_path)
                 break;
             }
 
-            if (($marker === 0xE1) && ($length >= 6)) {
+            if (($code === $marker) && ($length >= strlen($prefix))) {
 
                 $data = (string) @fread($handle, $length);
 
-                // An APP1 segment is also where XMP lives; only the Exif one
-                // holds the orientation.
-                if (strncmp($data, "Exif\x00", 5) === 0) {
-                    $orientation = (strlen($data) === $length) ? pg_image_exif_tiff_orientation(substr($data, 6)) : 0;
-                    break;
+                if (strncmp($data, $prefix, strlen($prefix)) === 0) {
+
+                    if (strlen($data) !== $length) {
+                        $segments = false;
+                        break;
+                    }
+
+                    $segments[] = $data;
+                    continue;
                 }
 
                 if (strlen($data) !== $length) {
@@ -1808,7 +1867,292 @@ function pg_image_jpeg_exif_orientation($file_path)
 
     fclose($handle);
 
-    return $orientation;
+    return $segments;
+}
+
+
+/**
+ * The ICC colour profile embedded in an image file: its bytes, '' when there
+ * is none, false when the file announces one that cannot be read.
+ *
+ * Told by the file's own first bytes: a JPEG's APP2 "ICC_PROFILE" chunks
+ * (joined in their sequence order), a PNG's iCCP chunk (an sRGB chunk means
+ * sRGB, no profile), a WebP's ICCP chunk. Any other file has none here.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_icc_profile($file_path)
+{
+    $head = @file_get_contents($file_path, false, null, 0, 12);
+
+    if (!is_string($head) || (strlen($head) < 12)) {
+        return '';
+    }
+
+    if (substr($head, 0, 2) === "\xFF\xD8") {
+
+        $segments = pg_image_jpeg_app_segments($file_path, 0xE2, "ICC_PROFILE\x00");
+
+        if ($segments === false) {
+            return false;
+        }
+
+        $chunks = array();
+
+        foreach ($segments as $segment) {
+
+            if (strlen($segment) < 14) {
+                return false;
+            }
+
+            $chunks[ord($segment[12])] = substr($segment, 14);
+        }
+
+        ksort($chunks);
+
+        return implode('', $chunks);
+    }
+
+    if (substr($head, 0, 8) === "\x89PNG\r\n\x1A\n") {
+        return pg_image_png_icc_profile($file_path);
+    }
+
+    if ((substr($head, 0, 4) === 'RIFF') && (substr($head, 8, 4) === 'WEBP')) {
+        return pg_image_webp_icc_profile($file_path);
+    }
+
+    return '';
+}
+
+
+/**
+ * A PNG's ICC profile from its iCCP chunk (zlib-compressed): '' when there is
+ * none or an sRGB chunk says the pixels are sRGB; false when the chunk cannot
+ * be read. Only chunk headers are read on the way; the search ends at IDAT.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_png_icc_profile($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return '';
+    }
+
+    $profile = '';
+
+    if (@fread($handle, 8) === "\x89PNG\r\n\x1A\n") {
+
+        while (true) {
+
+            $header = @fread($handle, 8);
+
+            if (!is_string($header) || (strlen($header) !== 8)) {
+                break;
+            }
+
+            $length = unpack('N', substr($header, 0, 4));
+            $length = $length[1];
+            $type = substr($header, 4, 4);
+
+            if (($type === 'sRGB') || ($type === 'IDAT') || ($type === 'IEND')) {
+                break;
+            }
+
+            if ($type === 'iCCP') {
+
+                $profile = false;
+
+                // A profile is a few kilobytes; 16 MB keeps a hostile length
+                // from being read into memory.
+                $data = (($length > 0) && ($length <= 16777216)) ? (string) @fread($handle, $length) : '';
+                $name_end = strpos($data, "\x00");
+
+                // Name, NUL, compression method, then the zlib stream.
+                if ((strlen($data) === $length) && ($name_end !== false) && function_exists('gzuncompress')) {
+                    // A real profile inflates to a few kilobytes, a few hundred at
+                    // most. A larger stream counts as unreadable (and so foreign)
+                    // instead of being inflated: a small zlib bomb would otherwise
+                    // exhaust memory, which @ does not stop.
+                    $icc = @gzuncompress(substr($data, $name_end + 2), 4194304);
+
+                    if (is_string($icc) && ($icc !== '')) {
+                        $profile = $icc;
+                    }
+                }
+
+                break;
+            }
+
+            // The chunk's data and its CRC; a length that would overflow the
+            // offset on 32-bit PHP ends the search, as in pg_image_is_animated_png().
+            if (($length < 0) || ($length > 0x7FFFFFFF) || ($length > PHP_INT_MAX - 4) || (@fseek($handle, $length + 4, SEEK_CUR) !== 0)) {
+                break;
+            }
+        }
+    }
+
+    fclose($handle);
+
+    return $profile;
+}
+
+
+/**
+ * A WebP's ICC profile from its ICCP chunk: '' when there is none; false when
+ * the VP8X header announces one (flag 0x20) that is not there or cut short.
+ * The ICCP chunk follows VP8X, before the image or animation data.
+ *
+ * @param string $file_path
+ * @return string|false
+ */
+function pg_image_webp_icc_profile($file_path)
+{
+    $handle = @fopen($file_path, 'rb');
+
+    if (!$handle) {
+        return '';
+    }
+
+    $profile = '';
+    $head = @fread($handle, 12);
+
+    if (is_string($head) && (strlen($head) === 12) && (substr($head, 0, 4) === 'RIFF') && (substr($head, 8, 4) === 'WEBP')) {
+
+        $announced = false;
+
+        while (true) {
+
+            $header = @fread($handle, 8);
+
+            if (!is_string($header) || (strlen($header) !== 8)) {
+                break;
+            }
+
+            $type = substr($header, 0, 4);
+            $size = unpack('V', substr($header, 4, 4));
+            $size = $size[1];
+
+            if (($size < 0) || ($size > 16777216)) {
+                break;
+            }
+
+            if ($type === 'ICCP') {
+                $data = ($size > 0) ? (string) @fread($handle, $size) : '';
+                $profile = (($size > 0) && (strlen($data) === $size)) ? $data : false;
+                $announced = false;
+                break;
+            }
+
+            if ($type === 'VP8X') {
+                $data = (string) @fread($handle, $size);
+                $announced = (strlen($data) >= 1) && ((ord($data[0]) & 0x20) !== 0);
+
+                if (!$announced || (($size % 2) && (@fseek($handle, 1, SEEK_CUR) !== 0))) {
+                    break;
+                }
+
+                continue;
+            }
+
+            // The image or animation data: no profile comes after it.
+            break;
+        }
+
+        if ($announced) {
+            $profile = false;
+        }
+    }
+
+    fclose($handle);
+
+    return $profile;
+}
+
+
+/**
+ * Whether an ICC profile describes sRGB: an RGB profile whose description
+ * ('desc' tag, a v2 text or a v4 multi-language record) names sRGB.
+ *
+ * A profile that cannot be read counts as not sRGB.
+ *
+ * @param string $icc
+ * @return bool
+ */
+function pg_image_icc_is_srgb($icc)
+{
+    $icc = (string) $icc;
+    $length = strlen($icc);
+
+    if (($length < 132) || (substr($icc, 16, 4) !== 'RGB ') || (substr($icc, 36, 4) !== 'acsp')) {
+        return false;
+    }
+
+    $count = unpack('N', substr($icc, 128, 4));
+    $count = $count[1];
+
+    if (($count < 0) || (132 + ($count * 12) > $length)) {
+        return false;
+    }
+
+    for ($i = 0; $i < $count; $i++) {
+
+        $entry = substr($icc, 132 + ($i * 12), 12);
+
+        if (substr($entry, 0, 4) !== 'desc') {
+            continue;
+        }
+
+        $offset = unpack('N', substr($entry, 4, 4));
+        $offset = $offset[1];
+        $size = unpack('N', substr($entry, 8, 4));
+        $size = $size[1];
+
+        if (($offset < 0) || ($size < 12) || ($offset + $size > $length)) {
+            return false;
+        }
+
+        $tag = substr($icc, $offset, $size);
+        $text = '';
+
+        if (substr($tag, 0, 4) === 'desc') {
+            $text_length = unpack('N', substr($tag, 8, 4));
+            $text = substr($tag, 12, max(0, min($text_length[1], $size - 12)));
+
+        } elseif ((substr($tag, 0, 4) === 'mluc') && ($size >= 28)) {
+            // The first record: UTF-16BE; an ASCII name reads with the NULs
+            // taken out.
+            $text_length = unpack('N', substr($tag, 20, 4));
+            $text_offset = unpack('N', substr($tag, 24, 4));
+            $text = str_replace("\x00", '', (string) substr($tag, max(0, $text_offset[1]), max(0, $text_length[1])));
+        }
+
+        return (stripos($text, 'srgb') !== false);
+    }
+
+    return false;
+}
+
+
+/**
+ * Whether an image file carries a colour profile other than sRGB (or one
+ * that cannot be read). A file without a profile is shown as sRGB.
+ *
+ * @param string $file_path
+ * @return bool
+ */
+function pg_image_has_foreign_color_profile($file_path)
+{
+    $icc = pg_image_icc_profile($file_path);
+
+    if ($icc === '') {
+        return false;
+    }
+
+    return ($icc === false) || !pg_image_icc_is_srgb($icc);
 }
 
 
@@ -2171,10 +2515,12 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     // is scaled or turned into WebP, and the point of a derivative is fewer
     // bytes. Both depend on the source's bytes only, so they are remembered.
     // A missing library is the server's state instead, which can change while
-    // the file does not, so that is not.
+    // the file does not, so that is not. Nor is a colour-profile refusal: it
+    // depends on which library writes the format, and it is checked before any
+    // decode, so repeating it is cheap.
     if (($data === '') || (strlen($data) >= $size)) {
 
-        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif'), true)) {
+        if (!in_array($report['reason'], array('no_library', 'no_webp', 'no_avif', 'color_profile'), true)) {
             pg_image_derivative_put($path . '.skip', '');
             pg_image_derivative_prune($folder, $width, $extension, $name);
         }

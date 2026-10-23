@@ -1,11 +1,12 @@
 ---
 name: image-files-left-alone
-description: Images the engine refuses to process: animated GIF/APNG/WebP (PR #1234) and a JPEG with unreadable Exif orientation (PR #1242); how each is told from its bytes and what each path does
+description: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), non-sRGB ICC profile under GD (PR #1267); how each is told from its bytes and what each path does
 ---
 
 ## Which images does pg_process_image_file() leave alone?
 - Animated images, reason `animated` (`pg_image_is_animated()` in `includes/image_engine.php`). GD and Imagick read one frame and write a still back, so a derivative, an Optimize or a product upload would end the animation for good.
 - A JPEG with an Exif block whose orientation cannot be read, reason `orientation_unreadable`, GD half only (Imagick reads the tag itself). Which way up a browser shows it is not known, and the written copy has no tag.
+- A colour profile other than sRGB, reason `color_profile`, GD half only: docs/memory/platform/image-color-profile.md.
 - Other refusals (too large, missing, no library) are in docs/memory/platform/image-processing-engine.md.
 
 ## How is an animated file told apart?
