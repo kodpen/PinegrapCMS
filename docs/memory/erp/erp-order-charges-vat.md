@@ -28,4 +28,4 @@ description: Order shipping, surcharge and instalment charge on the invoice (VAT
 ## Tests
 - `tests/order_charges_test.php` (1,500 random orders meet the invoice), `erp_order_lines_test.php` (charges settled on random orders), `payment_iyzico_test.php`, `express_order_totals_test.php`, `legal_documents_test.php`.
 
-Related: docs/memory/erp/erp-parasut-invoice-lines.md, docs/memory/erp/erp-discounted-order-vat.md, docs/memory/plans/erp-vat-per-rate.md
+Related: docs/memory/erp/erp-parasut-invoice-lines.md, docs/memory/erp/erp-discounted-order-vat.md, docs/memory/erp/erp-vat-per-rate-group.md
