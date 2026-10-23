@@ -1208,6 +1208,22 @@ function erp_edoc_parasut_detail_ids($body)
 }
 
 /**
+ * How many lines the sales invoice of these ERP lines has at Paraşüt: one
+ * for each ERP line, then the rounding lines erp_edoc_parasut_invoice_payload()
+ * writes after them (erp_edoc_parasut_vat_shift()). The ERP lines keep the
+ * first line ids in their order.
+ *
+ * @param array $lines  erp_invoice_items rows, in the invoice's order
+ * @return int
+ */
+function erp_edoc_parasut_detail_count($lines)
+{
+    $lines = array_values((array) $lines);
+
+    return count($lines) + count(erp_edoc_parasut_vat_shift($lines)['extra']);
+}
+
+/**
  * Whether a refused or unanswered create leaves it open that Paraşüt wrote
  * the record: no answer at all (a timeout, a dropped connection), a 5xx
  * (a gateway that gave up while the server went on), or a success that
@@ -1911,7 +1927,8 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
         }
     }
 
-    // A withheld line's code is sent against Paraşüt's own line id.
+    // A withheld line's code is sent against Paraşüt's own line id. The
+    // record holds the ERP lines in order, then any rounding line.
     foreach ($lines as $line) {
         if (((float) ($line['withholding_rate'] ?? 0) > 0) && (trim((string) ($line['withholding_code'] ?? '')) !== '')) {
             $read = erp_edoc_parasut_request('GET', '/sales_invoices/' . rawurlencode($external_id) . '?include=details', null, $context);
@@ -1926,7 +1943,7 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
 
             $detail_ids = erp_edoc_parasut_detail_ids($read['body']);
 
-            if (count($detail_ids) !== count($lines)) {
+            if (count($detail_ids) !== erp_edoc_parasut_detail_count($lines)) {
                 return $fail(lang('The invoice at Paraşüt does not have the same lines as the ERP invoice; nothing was converted.'));
             }
 
