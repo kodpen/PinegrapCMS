@@ -7739,8 +7739,8 @@ function pg_design_template_prepare($template_id, $user)
 
     // Second pass, once every row exists: a widget or shared component
     // placed inside another one's tree is pointed at its row the way the
-    // pages are below, and the row is written again. The shipped templates
-    // place none there, so for them nothing changes.
+    // pages are below, and the row is written again (the News template
+    // nests most_read in its article view and two lists in a shared strip).
     foreach ($row_trees as $rkey => $rtree) {
         $linked = _pg_tpl_link_widgets($rtree, $widgets, $shared);
         if ($linked === $rtree) continue;
