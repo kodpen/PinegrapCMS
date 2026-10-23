@@ -7376,8 +7376,9 @@ function submit_order($type) {
                                 // if the format of the e-mail should be plain text, then prepare that
                                 if ($submitter_email_format == 'plain_text') {
 
-                                    // check the body for variable data and replace any variables with content from the submitted form
-                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $submitter_email_body, $prepare_for_html = FALSE);
+                                    // Check the body for variable data and replace any variables with content from the submitted form.
+                                    // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
 
                                 // else the format of the e-mail should be HTML, so prepare that
                                 } else {
@@ -7413,8 +7414,9 @@ function submit_order($type) {
                             // if the format of the e-mail should be plain text, then prepare that
                             if ($administrator_email_format == 'plain_text') {
 
-                                // check the body for variable data and replace any variables with content from the submitted form
-                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $administrator_email_body, $prepare_for_html = FALSE);
+                                // Check the body for variable data and replace any variables with content from the submitted form.
+                                // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), $prepare_for_html = FALSE);
 
                             // else the format of the e-mail should be HTML, so prepare that
                             } else {

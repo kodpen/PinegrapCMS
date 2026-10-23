@@ -6613,6 +6613,55 @@ function pg_format_input_amount($amount)
 }
 
 /**
+ * The attributes of a panel money box with the currency input mask
+ * (Inputmask "currency", bound by data attributes): two decimals and the
+ * decimal and thousands separators the panel writes figures with
+ * (pg_number_separators()), so a Turkish panel reads "12.500" as twelve
+ * thousand five hundred and "1.234,56" as 1234.56. The mask on its own reads
+ * "." as the decimal point in every language. backend.src.js keeps a typed
+ * thousands separator from being taken as the decimal point.
+ *
+ * The box is filled with pg_format_input_amount() (the mask reads a value
+ * written with its own decimal separator; "1234.56" on a Turkish panel would
+ * be 123456,00) and read back with pg_normalize_amount() or
+ * pg_pb_price_to_cents(), which take either way of writing.
+ *
+ * @param array|null $separators pg_number_separators(); null for the panel's
+ * @return array attribute => value, as $liveform->output_field() takes them
+ */
+function pg_money_mask_attributes($separators = null)
+{
+    $s = is_array($separators) ? $separators : pg_number_separators();
+
+    return array(
+        'data-inputmask-alias'          => 'currency',
+        'data-inputmask-radixPoint'     => (string) $s['decimal'],
+        'data-inputmask-groupSeparator' => (string) $s['thousands'],
+        'data-inputmask-digits'         => '2',
+        'data-inputmask-digitsOptional' => 'false',
+        'data-inputmask-placeholder'    => '0',
+    );
+}
+
+/**
+ * pg_money_mask_attributes() written into a tag, each value escaped, with a
+ * space in front of each attribute.
+ *
+ * @param array|null $separators pg_number_separators(); null for the panel's
+ * @return string HTML
+ */
+function pg_money_mask_html($separators = null)
+{
+    $html = '';
+
+    foreach (pg_money_mask_attributes($separators) as $name => $value) {
+        $html .= ' ' . $name . '="' . h($value) . '"';
+    }
+
+    return $html;
+}
+
+/**
  * An amount of money for display: the minus sign, the symbol, the figure.
  *
  * The amount is in major units (lira, not kuruş) and already in the currency

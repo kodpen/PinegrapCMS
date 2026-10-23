@@ -29,6 +29,7 @@ function get_custom_form_screen_content($properties) {
     $membership_days = $properties['membership_days'];
     $confirmation_type = $properties['confirmation_type'];
     $confirmation_message = $properties['confirmation_message'];
+    $confirmation_page_id = $properties['confirmation_page_id'] ?? 0;
     $return_type = $properties['return_type'];
     $return_message = $properties['return_message'];
     $return_page_id = $properties['return_page_id'];
@@ -58,12 +59,13 @@ function get_custom_form_screen_content($properties) {
                 ' . lang('Your form has been saved for later.') . '
             </div>';
 
-    // If the confirmation type is message and the message should be shown, then show it.
+    // If the message should be shown, then show it. custom_form.php shows it
+    // as well when the next page was never chosen or no longer exists.
     } else if (
-        ($confirmation_type == 'message')
-        && (($_GET[$current_page_id . '_confirmation'] ?? '') == 'true')
+        (($_GET[$current_page_id . '_confirmation'] ?? '') == 'true')
+        && pg_cf_confirmation_shows_message($confirmation_type, $confirmation_page_id)
     ) {
-        $output = '<div class="confirmation_message">' . $confirmation_message . '</div>';
+        $output = '<div class="confirmation_message">' . pg_cf_confirmation_message_or_default($confirmation_message) . '</div>';
 
     // Otherwise the confirmation message should not be shown, so determine what should be shown.
     } else {
