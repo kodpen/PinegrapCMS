@@ -121,6 +121,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-inactive-payments.md: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then
 - erp-translation-traps.md: Short tr.json keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
+- erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
