@@ -13622,6 +13622,9 @@
             } else if (meta.kind === 'datetime') {
                 // "YYYY-MM-DD HH:MM:SS" as the record keeps it, "YYYY-MM-DDTHH:MM" as the field takes it.
                 input.value = value ? String(value).replace(' ', 'T').slice(0, 16) : '';
+            } else if (meta.kind === 'date') {
+                // The zero date is no date; the input would refuse it anyway.
+                input.value = (value === undefined || value === null || String(value).indexOf('0000-00-00') === 0) ? '' : String(value);
             } else {
                 input.value = (value === undefined || value === null) ? '' : String(value);
             }
@@ -17562,6 +17565,16 @@
 
         if (meta.kind === 'datetime') {
             return String(original || '').replace(' ', 'T').slice(0, 16) !== String(value || '').replace(' ', 'T').slice(0, 16);
+        }
+
+        // A date column keeps "no date" as the zero date, which a date input
+        // cannot show: it empties itself, so the two are the same value.
+        if (meta.kind === 'date') {
+            var day = function (text) {
+                text = String(text === null || text === undefined ? '' : text).trim();
+                return (text.indexOf('0000-00-00') === 0) ? '' : text;
+            };
+            return day(original) !== day(value);
         }
 
         if (meta.kind === 'long' || meta.kind === 'text') {

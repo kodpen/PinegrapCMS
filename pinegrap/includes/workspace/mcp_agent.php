@@ -2190,7 +2190,7 @@ function ws_mcp_agent_settings_save($server, $rules, $liveform)
         if (!isset($candidates[$wanted]) || !in_array($rule, $allowed, true)) {
             $liveform->add_error(lang(array('string' => $approve
                 ? 'The tool {var:1} cannot take the messages: it must take a text and be turned on. Pinegrap AI answers @{var:2} meanwhile.'
-                : 'The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.', 'vars' => array($wanted, $server['alias']))));
+                : 'The tool {var:1} cannot take the messages: it must take a text and be turned on as one that reads only. Pinegrap AI answers @{var:2} meanwhile.', 'vars' => array(h($wanted), $server['alias']))));
             $wanted = '';
             $ok = false;
         }

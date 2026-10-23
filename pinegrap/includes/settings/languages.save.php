@@ -101,6 +101,10 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     }
 
     // ── config ──
+    // What the source language was, to tell below whether the pages' kept
+    // answers still hold.
+    $translation_source_before = (string) db_value("SELECT translation_source_language FROM config");
+
     $translation_sets = array(
         "translation_source_language = '" . e($translation_source) . "'",
         "translation_style_note = '" . e(mb_substr(trim((string) post_value('translation_style_note')), 0, 2000)) . "'",
@@ -119,6 +123,8 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     }
 
     // ── the target languages ──
+    $translation_policy_changed = false;
+
     foreach ($translation_existing as $translation_code => $translation_row) {
 
         if (!isset($translation_posted[$translation_code]) || !is_array($translation_posted[$translation_code])) {
@@ -153,6 +159,10 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
 
         if (!in_array($translation_policy, array('reviewed', 'all', 'none'), true)) {
             $translation_policy = 'reviewed';
+        }
+
+        if ((string) ($translation_row['index_policy'] ?? '') !== $translation_policy) {
+            $translation_policy_changed = true;
         }
 
         $translation_og = trim((string) ($translation_values['og_locale'] ?? ''));
@@ -193,11 +203,17 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     }
 
     // The router reads one column; it is rewritten from the rows as they are
-    // now. The drawn bodies are derived data and are dropped, because the
-    // source language or a prefix may have changed.
+    // now. The drawn bodies are derived data and always go, because a prefix
+    // may have changed. The pages' kept "index" answers go only when the
+    // source language or an index policy changed: they are kept per page and
+    // language, not per prefix, and with "no answer means not offered"
+    // (pg_tr_index_decide()) dropping them on every save would take every
+    // language address out of sitemap.xml and the alternates until each page
+    // is drawn again. A removed language lost its rows in
+    // pg_tr_language_purge().
     $translation_panel_language = (string) db_value("SELECT software_language FROM config");
     pg_tr_prefixes_rewrite(($translation_source !== '') ? $translation_source : (($translation_panel_language !== '') ? $translation_panel_language : 'en'));
-    pg_tr_invalidate_pages();
+    pg_tr_invalidate_pages('', 0, ($translation_source !== $translation_source_before) || $translation_policy_changed);
 }
 
 // ── the automatic language redirect (2026.4.10) ──

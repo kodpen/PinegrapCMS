@@ -110,6 +110,11 @@ function optimize_image($file_id, $mode = 'optimize') {
                 'string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.',
                 'vars'   => $file['name']));
 
+        } elseif ($report['reason'] === 'orientation_unreadable') {
+            $message = lang(array(
+                'string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.',
+                'vars'   => $file['name']));
+
         } elseif ($report['reason'] === 'too_large_to_process') {
             $message = lang(array(
                 'string' => 'Sorry, {var:1} needs more memory than this server allows. Please resize it on your computer and upload it again.',

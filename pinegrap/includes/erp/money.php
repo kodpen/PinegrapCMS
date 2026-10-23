@@ -175,6 +175,55 @@ function erp_quantity_text($quantity)
 }
 
 /**
+ * A decimal as a whole number of its smallest unit at the given places
+ * (1.15 at four places is 11500), half away from zero.
+ *
+ * The rounding is done on the decimal digits the number is written with -
+ * sprintf() writes the same digits as JavaScript's toFixed() - and not on a
+ * product of floats: 1.15 * 10000 is 11499.999... in binary, and how round()
+ * treats that has changed between PHP versions. The invoice editor applies
+ * the same rule (decimalUnits(), assets/js/erp_invoice_editor.js).
+ *
+ * The units are a whole number held in a float: a float is exact up to 2^53,
+ * far above the 999999999999999 units a DECIMAL(15,4) quantity can hold,
+ * while an int stops at PHP_INT_MAX, which on a 32-bit build is 214748.3647
+ * at four places.
+ *
+ * @param float|int|string $value
+ * @param int              $places  0 to 10
+ * @return float
+ */
+function erp_decimal_units($value, $places)
+{
+    $value = (float) $value;
+    $places = max(0, min(10, (int) $places));
+    $parts = explode('.', sprintf('%.10F', abs($value)));
+    $units = (float) ($parts[0] . substr($parts[1], 0, $places));
+
+    if ((int) substr($parts[1], $places, 1) >= 5) {
+        $units += 1;
+    }
+
+    // A negative value that rounds to nothing is 0.0, not -0.0.
+    return (($value < 0) && ($units > 0)) ? -$units : $units;
+}
+
+/**
+ * A quantity at the four places it is stored with (DECIMAL(15,4)).
+ *
+ * A line is priced with the quantity it is saved with, so the draft, the
+ * preview and the issued invoice, which is worked out again from the stored
+ * lines, all come to the same amount.
+ *
+ * @param float|int|string $quantity
+ * @return float
+ */
+function erp_quantity_round($quantity)
+{
+    return erp_decimal_units($quantity, 4) / 10000.0;
+}
+
+/**
  * The separators figures are written with on screen and on documents, by the
  * panel language: 1.234,56 in Turkish, German, Spanish and the like; 1 234,56
  * in French, Russian and the Nordic languages; 1,234.56 in English and the
@@ -230,19 +279,99 @@ function erp_percent_text($rate)
 }
 
 /**
+ * An amount times a decimal held as whole units of 1/$scale, rounded half
+ * away from zero: $amount x $units / $scale, in whole numbers only.
+ *
+ * A product of floats lands a hair beside a half (1310 * 1.15 is
+ * 1506.4999...), and round() treats that differently on PHP 8.3 and on 8.4
+ * and later, as JavaScript's Math.round() does. Both factors are split at
+ * the scale, so no partial product outgrows an integer while the result
+ * fits, and the only division is of a remainder below the scale squared.
+ * The invoice editor works the same way (multiplyUnits(),
+ * assets/js/erp_invoice_editor.js), where every step also stays within the
+ * integers a JavaScript number holds exactly.
+ *
+ * On a 32-bit build the remainder product reaches the scale squared (10^10
+ * for a rate) and the units of a quantity past 214,748.3647 are already a
+ * float (erp_decimal_units()), so there the same steps run on floats, which
+ * hold every whole number below 2^53 exactly: fmod() of whole floats and the
+ * division of a multiple of the scale have no rounding error.
+ *
+ * @param int|float $amount  A whole number
+ * @param int|float $units   A whole number
+ * @param int       $scale   10000 for four places, 100000 for a percentage with three
+ * @return int|float  An int; a float only on a 32-bit build, for a result past PHP_INT_MAX
+ */
+function erp_multiply_units($amount, $units, $scale)
+{
+    $amount = is_int($amount) ? $amount : (float) $amount;
+    $units = is_int($units) ? $units : (float) $units;
+    $scale = max(1, (int) $scale);
+    $negative = (($amount < 0) xor ($units < 0));
+
+    $amount = abs($amount);
+    $units = abs($units);
+
+    // Whole units held in a float (erp_decimal_units()) take the integer
+    // steps when they fit a 64-bit int.
+    if ((PHP_INT_SIZE >= 8) && is_float($amount) && ($amount < PHP_INT_MAX)) {
+        $amount = (int) $amount;
+    }
+
+    if ((PHP_INT_SIZE >= 8) && is_float($units) && ($units < PHP_INT_MAX)) {
+        $units = (int) $units;
+    }
+
+    if (is_int($amount) && is_int($units) && (PHP_INT_SIZE >= 8)) {
+        $amount_rest = $amount % $scale;
+        $amount_whole = intdiv($amount, $scale);
+        $units_rest = $units % $scale;
+        $units_whole = intdiv($units, $scale);
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = $rest % $scale;
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + intdiv($rest, $scale);
+    } else {
+        $amount = (float) $amount;
+        $units = (float) $units;
+        $amount_rest = fmod($amount, $scale);
+        $amount_whole = ($amount - $amount_rest) / $scale;
+        $units_rest = fmod($units, $scale);
+        $units_whole = ($units - $units_rest) / $scale;
+        $rest = $amount_rest * $units_rest;
+        $rest_rest = fmod($rest, $scale);
+
+        $result = ($amount_whole * $units_whole * $scale) + ($amount_whole * $units_rest)
+            + ($amount_rest * $units_whole) + (($rest - $rest_rest) / $scale);
+    }
+
+    if (($rest_rest * 2) >= $scale) {
+        $result += 1;
+    }
+
+    if (is_float($result) && ($result < PHP_INT_MAX)) {
+        $result = (int) $result;
+    }
+
+    return ($negative && ($result > 0)) ? -$result : $result;
+}
+
+/**
  * Apply a percentage to an amount.
  *
- * The module's only multiplication of money by a rate. Rounding is half away
- * from zero, which is what round() does and what the order side has always
- * done, so a figure worked out here matches the one on the order it came from.
+ * The module's only multiplication of money by a rate. The rate is taken at
+ * the three places the rate columns keep, and the result rounds half away
+ * from zero on the exact product (erp_multiply_units()): 4.35% of 30.00 is
+ * 1.305, so 1.31, on every PHP version and in the invoice editor.
  *
  * @param int   $kurus
  * @param float $rate   Percentage, e.g. 20 for 20%
- * @return int  Kurus
+ * @return int|float  Kurus; a float only on a 32-bit build, past PHP_INT_MAX
  */
 function erp_apply_rate($kurus, $rate)
 {
-    return (int) round(((int) $kurus) * ((float) $rate) / 100);
+    return erp_multiply_units((int) $kurus, erp_decimal_units($rate, 3), 100000);
 }
 
 /**
@@ -326,15 +455,17 @@ function erp_to_base($kurus, $exchange_rate)
  * A line's amount from its unit price and quantity.
  *
  * Quantities are decimals (1.5 metres), so this is the module's one
- * multiplication of money by a quantity.
+ * multiplication of money by a quantity. The quantity is taken at the four
+ * places it is stored with, and the result rounds half away from zero on the
+ * exact product (erp_multiply_units()): 13.10 x 1.15 is 15.065, so 15.07.
  *
  * @param int   $unit_price  Kurus
  * @param float $quantity
- * @return int  Kurus
+ * @return int|float  Kurus; a float only on a 32-bit build, past PHP_INT_MAX
  */
 function erp_line_total($unit_price, $quantity)
 {
-    return (int) round(((int) $unit_price) * ((float) $quantity));
+    return erp_multiply_units((int) $unit_price, erp_decimal_units($quantity, 4), 10000);
 }
 
 /**

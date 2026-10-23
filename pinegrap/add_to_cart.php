@@ -76,7 +76,7 @@ function add_to_cart($request) {
     }
 
     if ($form and $notice) {
-        $form->add_notice($notice);
+        $form->add_notice(h($notice));
     }
     
     // Initialize arrays and counters

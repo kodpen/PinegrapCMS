@@ -709,7 +709,7 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             }
 
             log_activity(lang(array('string' => 'workspace holiday ({var:1}) was added', 'vars' => trim((string) ($_POST['name'] ?? '')))), $username);
-            $liveform->add_notice(lang(array('string' => 'The holiday was added: {var:1}.', 'vars' => trim((string) ($_POST['name'] ?? '')))));
+            $liveform->add_notice(lang(array('string' => 'The holiday was added: {var:1}.', 'vars' => h(trim((string) ($_POST['name'] ?? ''))))));
             return;
 
         case 'holiday_remove':
@@ -740,7 +740,7 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             if ($added['ok']) {
                 $liveform->add_notice(lang(array('string' => 'The calendar was read: {var:1} days off.', 'vars' => $added['events'])));
             } else {
-                $liveform->add_warning(lang(array('string' => 'The calendar was added, but it could not be read: {var:1}', 'vars' => $added['error'])));
+                $liveform->add_warning(lang(array('string' => 'The calendar was added, but it could not be read: {var:1}', 'vars' => h($added['error']))));
             }
 
             return;
@@ -751,7 +751,7 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             if ($read['ok']) {
                 $liveform->add_notice(lang(array('string' => 'The calendar was read: {var:1} days off.', 'vars' => $read['events'])));
             } else {
-                $liveform->add_error(lang(array('string' => 'The calendar could not be read: {var:1}', 'vars' => $read['error'])));
+                $liveform->add_error(lang(array('string' => 'The calendar could not be read: {var:1}', 'vars' => h($read['error']))));
             }
 
             return;
@@ -776,10 +776,10 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
 
             if ($skip) {
                 log_activity(lang(array('string' => 'workspace holiday ({var:1}) is no longer counted', 'vars' => $when)), $username);
-                $liveform->add_notice(lang(array('string' => 'The day is left out of the working calendar: {var:1}.', 'vars' => $when)));
+                $liveform->add_notice(lang(array('string' => 'The day is left out of the working calendar: {var:1}.', 'vars' => h($when))));
             } else {
                 log_activity(lang(array('string' => 'workspace holiday ({var:1}) is counted again', 'vars' => $when)), $username);
-                $liveform->add_notice(lang(array('string' => 'The day counts as a day off again: {var:1}.', 'vars' => $when)));
+                $liveform->add_notice(lang(array('string' => 'The day counts as a day off again: {var:1}.', 'vars' => h($when))));
             }
 
             return;

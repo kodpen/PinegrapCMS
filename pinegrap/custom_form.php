@@ -901,20 +901,22 @@ if ($liveform->check_form_errors() == false) {
             $username = strtok($submitter_email_address, '@');
             $username = get_unique_username($username);
 
-            $random_password = get_random_string(array(
-                'type' => 'lowercase_letters',
-                'length' => 10));
-
-            // Auto-registration: create the member with a modern password hash.
+            // Created without a password (algo 3, which no password matches):
+            // the visitor sets one through the set password link issued below,
+            // or on the change password screen while still signed in.
             $user_id = create_member_user(array(
                 'username' => $username,
                 'email'    => $submitter_email_address,
-                'password' => $random_password,
             ));
 
-            // Remember email and password in the session, so we can show it on confirmation page.
-            $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] = $submitter_email_address;
-            $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'] = $random_password;
+            pg_set_password_link_issue($user_id);
+
+            // Remember the account in the session, so the sender's e-mail and
+            // the confirmation page can name it and draw its set password link.
+            $_SESSION['software']['custom_form_auto_registration'][$form_id] = array(
+                'email_address' => $submitter_email_address,
+                'user_id'       => (int) $user_id,
+            );
 
             // If there is a registration contact group, then add the user to it.
             if (REGISTRATION_CONTACT_GROUP_ID) {
@@ -1343,8 +1345,9 @@ if ($liveform->check_form_errors() == false) {
                 // if the format of the e-mail should be plain text, then prepare that
                 if ($submitter_email_format == 'plain_text') {
 
-                    // check the body for variable data and replace any variables with content from the submitted form
-                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $submitter_email_body, $prepare_for_html = FALSE);
+                    // Check the body for variable data and replace any variables with content from the submitted form.
+                    // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
 
                     // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                     // with the key code that was created, or a blank value if no key code was created.
@@ -1360,20 +1363,9 @@ if ($liveform->check_form_errors() == false) {
 
                     // If a user account was created via the auto-registration feature,
                     // and this is the email for the submitter (i.e. not the email for the watcher)
-                    // then show user account info.
-                    if (
-                        ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '')
-                        && ($to_email_address == $submitter_email_address)
-                    ) {
-                        $body .=
-                            "\n" .
-                            "\n" .
-                            lang('New Account') . ':' . "\n" .
-                            '------------' . "\n" .
-                            lang('We have created a new account for you on our site. You can find your login info below.') . "\n" .
-                            "\n" .
-                            lang('Email') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] . "\n" .
-                            lang('Password') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'];
+                    // then name the account and give the link to set its password.
+                    if ($to_email_address == $submitter_email_address) {
+                        $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), pg_cf_new_account_link($form_id), true);
                     }
 
                 // else the format of the e-mail should be HTML, so prepare that
@@ -1381,7 +1373,12 @@ if ($liveform->check_form_errors() == false) {
 
                     require_once(dirname(__FILE__) . '/get_page_content.php');
 
+                    // A new account's set password link goes into the sender's copy only.
+                    pg_cf_new_account_recipient($to_email_address == $submitter_email_address);
+
                     $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+                    pg_cf_new_account_recipient(true);
 
                     // The sender's copy reads in the language they wrote in.
                     if (function_exists('pg_tr_email')) {
@@ -1409,6 +1406,9 @@ if ($liveform->check_form_errors() == false) {
                     'subject' => $submitter_email_subject,
                     'format' => $submitter_email_format,
                     'body' => $body,
+                    // The sender's copy may carry the set password link, which must
+                    // stay out of the failure log and the delivery-failed notice.
+                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== '')),
                     'queue' => true));
 
             }
@@ -1440,8 +1440,9 @@ if ($liveform->check_form_errors() == false) {
 
         // if the format of the e-mail should be plain text, then prepare that
         if ($administrator_email_format == 'plain_text') {
-            // check the body for variable data and replace any variables with content from the submitted form
-            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $administrator_email_body, $prepare_for_html = FALSE);
+            // Check the body for variable data and replace any variables with content from the submitted form.
+            // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $administrator_email_body), $prepare_for_html = FALSE);
 
             // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
             // with the key code that was created, or a blank value if no key code was created.
@@ -1456,18 +1457,8 @@ if ($liveform->check_form_errors() == false) {
             }
 
             // If a user account was created via the auto-registration feature,
-            // then show user account info.
-            if ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '') {
-                $body .=
-                    "\n" .
-                    "\n" .
-                    lang('New Account') . ':' . "\n" .
-                    '------------' . "\n" .
-                    lang('A new account was created for this user. You can find the login info below.') . "\n" .
-                    "\n" .
-                    lang('Email') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] . "\n" .
-                    lang('Password') . ': ' . $_SESSION['software']['custom_form_auto_registration'][$form_id]['password'];
-            }
+            // then say so. The set password link belongs to the visitor alone.
+            $body .= pg_cf_new_account_plain_text(pg_cf_new_account_email($form_id), '', false);
 
         // else the format of the e-mail should be HTML, so prepare that
         } else {
@@ -1667,8 +1658,27 @@ if ($liveform->check_form_errors() == false) {
         }
     }
 
-    // If the confirmation type is message, then forward visitor to send to with confirmation parameter in query string, so that message can be outputted.
-    if ($confirmation_type == 'message') {
+    // If the confirmation type is page, the visitor is logged in,
+    // an alternative confirmation page is enabled,
+    // and the user is in the alternative page contact group,
+    // then set confirmation page to alternative page.
+    if (
+        ($confirmation_type == 'page')
+        && (USER_LOGGED_IN == true)
+        && ($confirmation_alternative_page == 1)
+        && ($confirmation_alternative_page_contact_group_id != 0)
+        && ($confirmation_alternative_page_id != 0)
+        && (db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '$confirmation_alternative_page_contact_group_id'") > 0)
+        && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '$confirmation_alternative_page_id'") > 0)
+        && (db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE (contact_id = '" . USER_CONTACT_ID . "') AND (contact_group_id = '$confirmation_alternative_page_contact_group_id')") > 0)
+    ) {
+        $confirmation_page_id = $confirmation_alternative_page_id;
+    }
+
+    // If the confirmation type is message, or the next page was never chosen
+    // or no longer exists, then forward visitor to send to with confirmation
+    // parameter in query string, so that message can be outputted.
+    if (pg_cf_confirmation_shows_message($confirmation_type, $confirmation_page_id)) {
         $url = build_url(array(
             'url' => $send_to,
             'scheme' => URL_SCHEME,
@@ -1679,22 +1689,6 @@ if ($liveform->check_form_errors() == false) {
 
     // Otherwise the confirmation type is page, so forward visitor to page.
     } else {
-        // If the visitor is logged in,
-        // and an alternative confirmation page is enabled,
-        // and the user is in the alternative page contact group,
-        // then set confirmation page to alternative page.
-        if (
-            (USER_LOGGED_IN == true)
-            && ($confirmation_alternative_page == 1)
-            && ($confirmation_alternative_page_contact_group_id != 0)
-            && ($confirmation_alternative_page_id != 0)
-            && (db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '$confirmation_alternative_page_contact_group_id'") > 0)
-            && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '$confirmation_alternative_page_id'") > 0)
-            && (db_value("SELECT COUNT(*) FROM contacts_contact_groups_xref WHERE (contact_id = '" . USER_CONTACT_ID . "') AND (contact_group_id = '$confirmation_alternative_page_contact_group_id')") > 0)
-        ) {
-            $confirmation_page_id = $confirmation_alternative_page_id;
-        }
-
         // get the confirmation page's page type to see if we need to pass a reference code to it
         $query = "SELECT page_type FROM page WHERE page_id = '" . escape($confirmation_page_id) . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

@@ -6,7 +6,7 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 ## How is a derivative asked for?
 - On the file's own address: `/photo.jpg?w=960`, `?w=960&f=webp`, `?f=avif`. `pg_image_derivative_request()` reads only `w` (1–5 digits) and `f` (`webp`/`avif`); anything else serves the original as before. Made on the first such request, never in the upload path.
 - Widths are fixed (480, 960, 1440, 1920). A requested width rounds UP to the next step, never above the source width, so any number lands on an existing file and a crawler cannot fill the disk.
-- Width counts the displayed picture: EXIF orientation 5–8 swaps the edges (`pg_image_oriented_size()`); the engine's longest-edge ceiling comes from the width (`pg_image_derivative_long_edge()`).
+- Width counts the displayed picture: EXIF orientation 5–8 swaps the edges, an unreadable one gives none (`pg_image_oriented_size()`); the engine's longest-edge ceiling comes from the width (`pg_image_derivative_long_edge()`).
 
 ## Which formats does a server make?
 - `pg_image_derivative_formats()`: each format a library claims (`pg_image_format_writer()`: Imagick `queryFormats()`, else GD) is test-encoded once on a 16 px PNG and kept in `data/cache/img/formats.json` (key: PHP/GD/ImageMagick versions + claims; re-tested after a week). Why: Ubuntu's ImageMagick lists AVIF but cannot write it without `libheif-plugin-aomenc`; trusted, every `?f=avif` sent the full-size original.
@@ -17,7 +17,7 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 - Signature = md5 of recipe `1`, source mtime, size and quality. Optimize, rotate, replace or a new quality give a new name; the next derivative of that width and format prunes the old one.
 
 ## What does get_file.php send when there is no derivative?
-- `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated GIF, too large, unreadable), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`. A missing library is not remembered.
+- `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated, too large, unreadable), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`. A missing library is not remembered.
 - `busy` (`Cache-Control: no-store`): another request holds `<name>.lock` (non-blocking flock) or the folder cannot be written (checked before decoding).
 - Made after the session and DB connection are closed, with `ignore_user_abort` and a 120 s limit; sent with `readfile()`, never X-Sendfile.
 
