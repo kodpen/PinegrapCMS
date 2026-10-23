@@ -122,14 +122,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $state['result'] = array('text' => $run['text'], 'is_error' => $run['is_error']);
 
                     if ($run['message_id'] > 0) {
-                        $liveform->add_notice(lang(array('string' => 'The answer was posted in {var:1}.', 'vars' => '#' . $channel['name'])));
+                        $liveform->add_notice(lang(array('string' => 'The answer was posted in {var:1}.', 'vars' => '#' . h($channel['name']))));
                     } elseif (!$run['is_error']) {
                         $liveform->add_notice(lang(array('string' => '@{var:1} answered.', 'vars' => $server['alias'])));
                     }
                 }
 
                 if ($run['error'] !== '') {
-                    $liveform->add_error($run['error']);
+                    $liveform->add_error(h($run['error']));
                 }
             }
 
@@ -153,9 +153,9 @@ if ((int) ($_GET['mcp_connected'] ?? 0) > 0) {
     $flash = pg_connect_flash_take();
 
     if ($flash && ($flash['kind'] === 'error')) {
-        $liveform->add_error($flash['text']);
+        $liveform->add_error(h($flash['text']));
     } elseif ($flash) {
-        $liveform->add_notice($flash['text']);
+        $liveform->add_notice(h($flash['text']));
     }
 }
 

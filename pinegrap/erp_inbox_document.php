@@ -65,7 +65,7 @@ if ($_POST) {
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . (int) $result['invoice_id']);
         }
 
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error('_error', h($result['error']));
 
     } elseif ($action === 'link') {
 
@@ -74,7 +74,7 @@ if ($_POST) {
         if ($result['success']) {
             $liveform->add_notice(lang('The e-invoice is now marked as taken in by that purchase invoice.'));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
     } elseif (($action === 'aside') || ($action === 'restore')) {
@@ -86,7 +86,7 @@ if ($_POST) {
                 ? lang('The e-invoice has been set aside. It stays in the register and can be brought back.')
                 : lang('The e-invoice is waiting to be taken in again.'));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
     } elseif ($action === 'refresh') {
@@ -96,7 +96,7 @@ if ($_POST) {
         if ($result['success']) {
             $liveform->add_notice(lang('The document has been read again from the provider.'));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
     }
 

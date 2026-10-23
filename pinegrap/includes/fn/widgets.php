@@ -1211,15 +1211,16 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 // depends on its type, so the editor lists only those that fit.
 //
 // A filter naming a field the form no longer has, or an operator outside the
-// classic list, is skipped rather than failing the query. Every filter must
-// match (AND), as on the classic screen.
+// classic list, is left out of the SQL rather than failing the query, and
+// counted: the caller then shows no record (pg_sw_filter_sql_closed()).
+// Every filter must match (AND), as on the classic screen.
 //
 // Returns the SQL to add to the listing's WHERE, the standard fields it
 // reads (name => true) so the caller joins the tables they live in,
-// `missing`, how many filters were skipped for naming a field the form does
-// not have, and `invalid`, how many named a field with an operator outside
-// the list (a record view's filters fail closed on either). A row with no
-// field is blank and counts in neither.
+// `missing`, how many filters were left out for naming a field the form
+// does not have, and `invalid`, how many named a field with an operator
+// outside the list (lists and record views fail closed on either). A row
+// with no field is blank and counts in neither.
 //
 // The dynamic value 'url parameter' (lists only) takes the value from the
 // query parameter its dynamic_value_attribute names (pg_sw_url_param_name():
@@ -1254,12 +1255,15 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     $standard = pg_sw_standard_fields();
     $custom   = null;
 
-    foreach (array_slice(array_values($filters), 0, 50) as $filter) {
+    // At most 50 filters are applied. A filter past them cannot be applied
+    // and is counted in `invalid`, so the set closes rather than showing the
+    // records it would hold back.
+    foreach (array_values($filters) as $position => $filter) {
         if (!is_array($filter)) continue;
         $field    = isset($filter['field'])    ? trim((string)$filter['field']) : '';
         $operator = isset($filter['operator']) ? (string)$filter['operator']    : '';
         if ($field === '') continue;
-        if (!in_array($operator, $operators, true)) {
+        if ($position >= 50 || !in_array($operator, $operators, true)) {
             $out['invalid']++;
             continue;
         }
@@ -1386,6 +1390,25 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     }
 
     return $out;
+}
+
+// Whether a set of filters, as pg_sw_form_list_filter_sql() returned it,
+// shows no record at all. A filter that names a field the form no longer
+// has (renamed or deleted) or an operator outside the list cannot be
+// applied, and leaving it out would show the records it holds back: a
+// "Status is equal to Published" list would list the drafts. So the list,
+// its feeds, the sitemap and the search index show none, as the record view
+// does. $record_view also closes on a filter valued from the page address,
+// which a record view never reads; a list leaves such a filter out when the
+// address carries no value (`address` counts only the contexts without one).
+function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
+{
+    if (!is_array($filter_sql)) return false;
+    $missing = isset($filter_sql['missing']) ? (int)$filter_sql['missing'] : 0;
+    $invalid = isset($filter_sql['invalid']) ? (int)$filter_sql['invalid'] : 0;
+    $address = isset($filter_sql['address']) ? (int)$filter_sql['address'] : 0;
+    if ($missing > 0 || $invalid > 0) return true;
+    return $record_view && $address > 0;
 }
 
 // Render a system widget's form_list_view. Loop-area aware:
@@ -1718,6 +1741,12 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
     // ── Filters the designer set (every record must match all of them) ────
     $filter_sql   = pg_sw_form_list_filter_sql($custom_form_page_id, isset($cfg['filters']) ? $cfg['filters'] : array(), $request);
+    // A filter that cannot be applied (its field gone, its operator unknown)
+    // lists nothing rather than everything it was meant to hold back.
+    if (pg_sw_filter_sql_closed($filter_sql)) {
+        $filter_sql['where']  = ' AND (0 = 1)';
+        $filter_sql['tokens'] = array();
+    }
     $filter_where = $filter_sql['where'];
     // The value from the address, printed only once records match it
     // exactly, so the page never repeats text that names nothing in the
@@ -2103,8 +2132,8 @@ function pg_sw_record_view_filters($cfg)
 
 // The filters a list's records go through when each is addressed on the
 // list's detail page: the record view's own first (they decide what the
-// page shows, and pg_sw_form_list_filter_sql() reads at most fifty), then
-// the list's.
+// page shows), then the list's. pg_sw_form_list_filter_sql() applies at
+// most fifty and closes on a filter past them.
 function pg_sw_merge_record_filters($list_cfg, $view_cfg)
 {
     $list = (is_array($list_cfg) && isset($list_cfg['filters']) && is_array($list_cfg['filters']))
@@ -2140,12 +2169,12 @@ function pg_sw_record_filter_bypass($email, $form_id)
 // for a query over `forms`. The detail page is the one whose view counters
 // a standard field reads. Both parts are '' when no filter applies.
 //
-// $strict is for a record view's filters, which keep records from the
-// public: a filter naming a field the form no longer has (renamed or
-// deleted), an operator outside the list (a translated "eşittir" in a
-// hand-written config), or a value taken from the address (a list-only
-// dynamic value; a record view never reads the address) matches no record
-// (`closed`), where a list skips it.
+// A filter naming a field the form no longer has (renamed or deleted) or an
+// operator outside the list (a translated "eşittir" in a hand-written
+// config) matches no record (`closed`, pg_sw_filter_sql_closed()). $strict
+// is for a record view's filters: a value taken from the address (a
+// list-only dynamic value; a record view never reads the address) closes
+// it too, where a list leaves that filter out.
 //
 // $request is the query the list's URL filters read (pg_sw_filter_request());
 // null leaves them out. `params`, `inexact` and `exact` say what was applied
@@ -2155,7 +2184,7 @@ function pg_sw_record_filter_clause($custom_form_page_id, $filters, $detail_page
     $out = array('join' => '', 'where' => '', 'closed' => false, 'params' => array(), 'inexact' => false, 'exact' => '');
     if (!is_array($filters) || !$filters) return $out;
     $filter_sql = pg_sw_form_list_filter_sql((int)$custom_form_page_id, $filters, $request);
-    if ($strict && ($filter_sql['missing'] > 0 || $filter_sql['invalid'] > 0 || $filter_sql['address'] > 0)) {
+    if (pg_sw_filter_sql_closed($filter_sql, $strict)) {
         $out['where']  = ' AND (0 = 1)';
         $out['closed'] = true;
         return $out;
@@ -2174,7 +2203,8 @@ function pg_sw_record_filter_clause($custom_form_page_id, $filters, $detail_page
 
 // The JOIN and WHERE for a list's records as its detail page shows them:
 // the record view's filters and the list's (pg_sw_merge_record_filters()),
-// and no record at all when the record view's own filters fail closed.
+// and no record at all when the record view's own filters fail closed or a
+// filter of the list cannot be applied (pg_sw_filter_sql_closed()).
 // For the list's feed and the sitemap, whose links lead to that page.
 // $request: the feed passes the address its list's URL filters read; the
 // sitemap passes none, so those filters are left out and every record the
@@ -2795,9 +2825,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
 
         // An account the form's auto-registration just opened for this
         // visitor: the confirmation page tells them how to sign in, as the
-        // legacy custom form confirmation screen did.
-        $new_account = isset($_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']])
-            ? (array)$_SESSION['software']['custom_form_auto_registration'][(int)$form_row['id']] : array();
+        // legacy custom form confirmation screen did. No password is handed
+        // out; the password token carries the set password link instead
+        // (pg_cf_new_account_password_note()), for the visitor alone.
+        $new_account_email = pg_cf_new_account_email((int)$form_row['id']);
+        $new_account_note  = ($new_account_email !== '')
+            ? pg_cf_new_account_password_note(pg_cf_new_account_link((int)$form_row['id']), pg_cf_new_account_for_submitter()) : '';
 
         $extra = array(
             'form_item_view'         => $self_url !== '' ? $self_url : '#',
@@ -2805,8 +2838,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'submitter_user_id'      => (string)$form_row['user_id'],
             'not_found'              => '',  // empty when found — the not_found region renders empty
             '__not_found_message'    => '',
-            '__new_account_email'    => h(isset($new_account['email_address']) ? (string)$new_account['email_address'] : ''),
-            '__new_account_password' => h(isset($new_account['password']) ? (string)$new_account['password'] : ''),
+            '__new_account_email'    => h($new_account_email),
+            '__new_account_password' => h($new_account_note),
             // The record's edit screen, for whoever may edit this form's
             // submissions (the legacy form item view's Edit button).
             '__edit_url'             => pg_sw_can_edit_submitted_forms($custom_form_page_id)

@@ -122,9 +122,9 @@ $just_connected = false;
 if (is_array($flash)) {
 
 	if ($flash['kind'] === 'error') {
-		$liveform->add_error($flash['text']);
+		$liveform->add_error(h($flash['text']));
 	} else {
-		$liveform->add_notice($flash['text']);
+		$liveform->add_notice(h($flash['text']));
 		$just_connected = (isset($_GET['connected']) && ($_GET['connected'] === '1'));
 	}
 
