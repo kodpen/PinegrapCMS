@@ -14,8 +14,8 @@ description: custom_form options live on the element, page_type is not the form 
 
 ## What other rules apply?
 - **Validation in two places:** `pattern` in the browser, `custom_form.php` with `/^(?:…)$/u` on the server; a broken expression is ignored. Form is `novalidate` + `needs-validation`; `pg_cf_validation_script()` once per page.
-- **Next page** belongs to the form record (`confirmation_type='page'` + `confirmation_page_id`), not a widget setting; a nonexistent page falls back to the message.
-- **An empty email body means an empty email.** `pg_cf_default_email_body()` builds it from the fields; the moment the operator changes one letter the body is theirs.
+- **Next page** belongs to the form record (`confirmation_type='page'` + `confirmation_page_id`), not a widget setting. A missing page: the designer save falls back to the message, the legacy screen refuses it, a submit (also a binned page) shows the message; an empty message, the thank-you text.
+- **The editor writes the email body** with `pg_cf_default_email_body()` from the fields; the moment the operator changes one letter the body is theirs. A plain text body still empty at send time becomes the field list (`pg_cf_email_body_or_default()`). Both: custom-form-email-and-confirmation-fallbacks.md.
 - **Do not redraw the form after submit** (`?<page_id>_confirmation=true`).
 - **Errors come from liveform**, narrowed to this form (`_pg_inject_messages_node($tree, (string)$page_id)`).
 - **CAPTCHA is a section binding**; if it returns empty the container drops too.
