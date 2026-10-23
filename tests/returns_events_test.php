@@ -7,7 +7,8 @@
  * the webhook catalogue, the Workspace trigger order.return.requested and the
  * record it is about, where each event is announced (after the order's lock,
  * never from the move to refunded), and the fields the audit trail keeps of a
- * new return.
+ * new return. Also the create check's second look for the same request sent
+ * again before it refuses the lines.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -190,6 +191,23 @@ function test_returns_events_announce_points()
 	pg_assert_true(($announce !== false) && ($announce > strrpos($refund, '$release();')), 'after the lock is let go');
 	pg_assert_true(($announce !== false) && ($announce > strpos($refund, "status = 'received', refunded_at = 0")), 'after the refusal has gone back');
 	pg_assert_contains("'unclear'       => (\$unclear !== null)", $refund, 'an unclear answer is announced as such');
+}
+
+// The check reads the repeat and the held lines one after the other, outside
+// the order's lock: the request this one repeats may be committed between
+// the two reads, and its units then count as held. Before a line refusal
+// stands, the repeat is looked for once more, so a repeated request is
+// answered as the repeat, never refused with "at most 0".
+function test_returns_events_check_looks_for_the_repeat_again_before_refusing_lines()
+{
+	$check = returns_events_test_body(returns_events_test_source('includes/fn/returns.php'), 'pg_return_create_check');
+	$lines = strpos($check, 'pg_return_check_lines(');
+	$again = strrpos($check, 'pg_return_find_repeat(');
+	$refuse = strpos($check, "\$refuse(\$checked['error'], 'lines', 'items')");
+
+	pg_assert_same(2, substr_count($check, 'pg_return_find_repeat('), 'looked for before the lines and once more');
+	pg_assert_true(($lines !== false) && ($again > $lines), 'again after the line check');
+	pg_assert_true(($refuse !== false) && ($again < $refuse), 'before the line refusal');
 }
 
 // What the audit trail keeps of a new return: the request, not the time

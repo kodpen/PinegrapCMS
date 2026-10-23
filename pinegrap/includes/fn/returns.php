@@ -1185,6 +1185,18 @@ function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $n
     $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
 
     if (!$checked['ok']) {
+        // The two reads above are not taken together: the request this one
+        // repeats may have been committed between them, and its units then
+        // count as held. Asked once more, it answers as the repeat it is,
+        // as it would under the lock.
+        $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
+
+        if ($result['repeat'] > 0) {
+            $result['ok'] = true;
+
+            return $result;
+        }
+
         return $refuse($checked['error'], 'lines', 'items');
     }
 
