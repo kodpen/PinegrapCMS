@@ -16,7 +16,7 @@ description: Order view (My Account) and receipt page/e-mail show a placed order
 - The visitor's cart (the session's `order_id`) shows the session's `order_discount`, which `apply_offers_to_cart()` worked out for it, and its tax and total are worked out from the lines (`pg_order_items_charged_tax()`) as before.
 - Any other `incomplete` order, a cart saved on the account and opened from My Account, shows no discount: offers are worked out again when it is retrieved as the cart.
 
-## What was the symptom? (claim #1361)
+## What was the symptom? (#1361, PR #1366)
 - The pages took the order from `?id=` or `completed_order_id` but the discount from `$_SESSION['ecommerce']['order_discount']`, and worked the tax out again from it. A placed discounted order showed no discount and the undiscounted tax once the session's discount was gone; a visitor with a discounted cart open saw that cart's discount on every order and receipt.
 - Checked on the sandbox by rendering the pages from the command line against its database: order 1182 (129.95, 13.00 off, 9.98 shipping) showed tax 25.99 and total 165.92 with no discount, or 50.00 off, tax 15.99 and total 105.92 with another cart's discount in the session. It now shows 13.00 off, tax 23.39 and total 150.32 either way, in both layouts and the e-mail.
 
