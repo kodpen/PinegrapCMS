@@ -13,7 +13,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-agent-prompts.md: Plan (2026-10-21, step 1 done #1124, other answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
-- anonymous-page-cache.md: Proposal (2026-10-21, awaiting owner decision): short full-page cache for anonymous GETs; a cacheability gate first, then a Cloudflare Cache Rule (A) or a Pinegrap file cache (B)
+- anonymous-page-cache.md: Plan (approved 2026-10-23; steps 1-2 claimed, open): cacheability gate with standard CDN headers, then Pinegrap's own file cache for anonymous GET pages, off by default
 - checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
@@ -25,7 +25,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, session split; index of the plan files
 - files-office-documents.md: Plan (2026-10-19) for docx and xlsx in the file manager and the Workspace: viewing, channel use, xlsx cell and docx paragraph edits done; hygiene (D5) left
-- forms-subscription-double-opt-in.md: Proposal (2026-10-21, awaiting owner decision): forms that add to a contact group get bot limits, signed link variables, double opt-in and a Turnstile/hCaptcha option
+- forms-subscription-double-opt-in.md: Plan (approved 2026-10-23; steps a-d claimed, open): forms that add to a contact group get throttling, signed link variables, per-form double opt-in and an optional Turnstile/hCaptcha provider
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
 - legacy-layouts-in-designer.md: Plan (2026-10-19, not started): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
