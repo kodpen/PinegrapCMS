@@ -1,6 +1,6 @@
 ---
 name: ci-workflows
-description: GitHub Actions workflows: what each runs and when, action versions (major tags, node24) and how to bump them, the Node line of the JavaScript checks, runner labels
+description: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 ---
 
 ## Which workflows are there?
@@ -8,6 +8,11 @@ description: GitHub Actions workflows: what each runs and when, action versions 
 - `install-check.yml` (same triggers): the installer and every upgrade step on six MySQL/MariaDB images (docs/memory/release/database-server-compatibility.md).
 - `docker-check.yml`: the compose stack end to end, on pull requests that touch `docker/` or the files the images depend on and on every push to development (docs/memory/platform/docker.md).
 - `docker-publish.yml`: GHCR images when a release is published (docs/memory/platform/docker-image-publishing.md).
+
+## Which PHP versions do the checks run on?
+- `php-checks.yml` has two jobs: `checks` on PHP 8.3 (every step) and `php71` on 7.1, the oldest PHP the product supports: `php tools/lint.php --vendored` (the bundled libraries too) and the unit tests (`-d memory_limit=-1`).
+- Why 7.1: 8.3 and PHPCompatibility (product tree only) missed what a run by hand on 7.1 found: a bundled SDK that did not parse (#1353), and code that behaves differently there (#1354, #1355, #1356, #1371; tests #1357).
+- Tests run on 7.1 too: no PHP 7.2+ syntax or function in `tests/` (PHPCompatibility does not read it); a check that needs a newer PHP skips itself. `imagecreatefromstring()` reads WebP only from 7.3: a test decodes WebP with `imagecreatefromwebp()`.
 
 ## Which action versions, and how is one bumped?
 - Major tags (`actions/checkout@v7`), all on the node24 runtime since PR #872: checkout v7, setup-node v7, shivammathur/setup-php v2 (its moving v2 tag is on node24; there is no v3), docker/setup-buildx-action v4, docker/login-action v4, docker/build-push-action v7, upload-artifact v7, download-artifact v8.

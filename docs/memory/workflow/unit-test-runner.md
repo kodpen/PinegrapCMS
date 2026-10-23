@@ -12,7 +12,7 @@ description: tools/test.php: what it loads, which PHP errors fail a test and whi
 
 ## What does a run on another PHP version need?
 - `-d memory_limit=-1`: the official Docker images default to 128M and the full suite needs more (it ran out in `designer_blocks_test.php` on 7.1 and in `office_dom_ceiling_test.php` on 8.5). Also the extensions some tests use: `intl` (short link names fold "Ürün" through `Normalizer`), `zip` (office tests), `pdo_mysql` (the mysqldump settings test). Without them those tests fail for the missing extension, not for the PHP version.
-- CI runs PHP 8.3 only (docs/memory/workflow/ci-workflows.md).
+- CI runs the unit tests on PHP 8.3 and 7.1 (docs/memory/workflow/ci-workflows.md). A run without `gd` skips the image tests and hides their failures: on 7.1 one read WebP with `imagecreatefromstring()`, which reads it only from PHP 7.3.
 
 ## How does a test run editor JavaScript under Node?
 - It cuts functions out of the source (`style_designer.js`), appends its own steps that `console.log(JSON.stringify(...))`, runs the file with `node` and decodes the output. Skip (return) only when `node --version` fails; output that is not JSON must fail with the output shown, never be treated as a skip.
