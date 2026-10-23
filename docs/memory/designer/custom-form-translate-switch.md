@@ -4,7 +4,7 @@ description: Per-field "Include in translation" switch of custom forms (form_fie
 ---
 
 ## What does the switch do?
-- `form_fields.translate_values` (TINYINT, default 1; migration step 11.0.26, PR #PRNUM). 0 on a text box or text area: the answers visitors give in that field are not listed in Translations, not sent to an engine and not looked up when a form list or item view widget that includes its records draws them, so they never count toward a page's noindex under the "reviewed" policy.
+- `form_fields.translate_values` (TINYINT, default 1; migration step 11.0.26, PR #1347). 0 on a text box or text area: the answers visitors give in that field are not listed in Translations, not sent to an engine and not looked up when a form list or item view widget that includes its records draws them, so they never count toward a page's noindex under the "reviewed" policy.
 - Field labels, help texts, validation messages and option labels stay translatable; the switch covers record values only.
 - Why: `pg_tr_translatable()` guesses data from the value (`core/translation-translatable-text.md`, PR #1171); a field that always holds icon names, codes or JSON is better marked once. Owner decision (2026-10-23): a per-field switch; existing and new fields stay included.
 
