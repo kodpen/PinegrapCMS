@@ -2,13 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for four rules of the visual designer's audit (_validationRules in
- * assets/js/style_designer.js): an empty link or button (empty_btn), an
- * image without an alt decision (img_alt), a form without a submit control
- * (form_no_submit) and an empty heading (heading_empty). The designer's
- * own validateTree(), its rules and their helpers are cut out of the file
- * and run under Node on node trees, with the editor's page-level and canvas
- * passes stubbed; on a machine without Node the run is skipped.
+ * Tests for five rules of the visual designer's audit (assets/js/
+ * style_designer.js): an empty link or button (empty_btn), an image without
+ * an alt decision (img_alt), a form without a submit control
+ * (form_no_submit) and an empty heading (heading_empty) from
+ * _validationRules, and a form sent nowhere (form_no_action) from the
+ * page-level pass. The designer's own validateTree(), its rules and their
+ * helpers are cut out of the file and run under Node on node trees, with
+ * the canvas pass stubbed and the page-level pass stubbed unless a case
+ * asks for it; on a machine without Node the run is skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,8 +60,10 @@ function designer_audit_rules_test_rules($source)
 }
 
 // Runs $script after the audit's code and returns the JSON it prints; null
-// when there is no Node.
-function designer_audit_rules_test_run($script)
+// when there is no Node. With $page_level the editor's page-level pass
+// (_pageLevelIssues()) runs too, over the shared components a case puts in
+// _sharedCache; _swIsType() knows the kinds in swTypes.
+function designer_audit_rules_test_run($script, $page_level = false)
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -76,7 +80,13 @@ function designer_audit_rules_test_run($script)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$code_js = '';
 
-	foreach (array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', 'validateTree') as $name) {
+	$names = array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', '_sdAuditFormGoesNowhere', 'validateTree');
+	if ($page_level) {
+		$names[] = '_pageLevelIssues';
+		$names[] = '_cfWidgetOwnsPageForm';
+	}
+
+	foreach ($names as $name) {
 		$found = designer_audit_rules_test_function($source, $name);
 		pg_assert_true($found !== '', $name . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -88,7 +98,12 @@ function designer_audit_rules_test_run($script)
 	// _sdT() answers from sdTMap, so a case can set the editor language.
 	$stubs = 'var sdTMap = {}; function _sdT(s) { return sdTMap.hasOwnProperty(s) ? sdTMap[s] : s; }'
 		. 'function getNodeLabel(n) { return (n && n.props && n.props.customName) || ""; }'
-		. 'function _pageLevelIssues() { return []; }'
+		. ($page_level
+			? 'var _sharedCache = {}, _sdSharedOpen = {}, swTypes = ["custom_form", "login_form", "catalog_listing"];'
+				. 'function _swIsType(t) { return swTypes.indexOf(t) !== -1; }'
+				. 'function _cfIsFormControl() { return false; }'
+				. 'function _cfControlName() { return ""; }'
+			: 'function _pageLevelIssues() { return []; }')
 		. 'function _sdCanvasAuditIssues() { return []; }'
 		// Every case is one tree under a root; the result is the names of
 		// the nodes the given rule flags.
@@ -329,4 +344,46 @@ function test_designer_audit_rules_empty_heading()
 	pg_assert_same(array(
 		'empty h2', 'capital tag', 'markup only', 'no tag', 'malformed tag', 'blank tag', 'semantic heading',
 	), $result, 'only the text nodes printed as an empty h1-h6');
+}
+
+// A form outside every system widget that has no action is sent nowhere:
+// submitting it reloads the page and nothing keeps what was typed (the
+// Components tab's Form item dropped on a page, a block's sample form). The
+// page-level pass names it on the form, in the page and in a plain shared
+// component; a written action, a bound action, or a system widget around it
+// (custom_form wraps it in its own <form>) takes the hint away.
+function test_designer_audit_rules_form_without_action()
+{
+	$result = designer_audit_rules_test_run(
+		'function form(name, attrs, b) { var p = { tag: "form", customName: name, _attrs: attrs || [] }; if (b) p._bindings = b; return N("semantic", p, [N("semantic", { tag: "input", _attrs: [{ name: "type", value: "email" }] })]); }'
+		. 'function shared(sid, type, kids) { _sharedCache[sid] = { tree: N("root", {}, kids), system_region_config: type === null ? "" : JSON.stringify({ regionType: type }) }; return N("shared_ref", { sharedId: sid }); }'
+		. 'var post = [{ name: "method", value: "post" }];'
+		. 'console.log(JSON.stringify(flagged("form_no_action", ['
+		// Flagged.
+		. 'form("form item", [{ name: "method", value: "post" }, { name: "novalidate", value: "" }]),'
+		. 'form("no attributes"),'
+		. 'form("blank action", [{ name: "action", value: "  " }].concat(post)),'
+		. 'N("semantic", { tag: "section" }, [N("semantic", { tag: "div" }, [form("block form", post)])]),'
+		. 'N("semantic", { tag: "FORM", customName: "capital tag", _attrs: post }),'
+		. 'shared(3, null, [form("in a shared header", [{ name: "role", value: "search" }])]),'
+		. 'shared(5, "", [form("in an empty widget", post)]),'
+		// Not flagged.
+		. 'form("with action", [{ name: "action", value: "/thanks" }].concat(post)),'
+		. 'form("bound action", [], { action: "search_form" }),'
+		. 'shared(1, "custom_form", [form("in a custom form widget", post)]),'
+		. 'shared(2, "login_form", [form("in a login widget")]),'
+		. 'shared(4, "custom_form", [shared(6, null, [form("in a component inside a widget", post)])]),'
+		. 'N("semantic", { tag: "div", customName: "not a form" })'
+		. '])));',
+		true
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same(array(
+		'form item', 'no attributes', 'blank action', 'block form', 'capital tag', 'in a shared header', 'in an empty widget',
+	), $result, 'only the forms outside a system widget that go nowhere');
 }

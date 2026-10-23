@@ -25515,5 +25515,6 @@
     "Line \"{var:1}\" has an amount below zero, and Paraşüt takes no such line: a line's price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.": "\"{var:1}\" satırının tutarı sıfırın altında; Paraşüt eksi tutarlı satır kabul etmiyor: satırın fiyatı, indirimi ve KDV'si sıfır ya da daha büyük olmalı. Paraşüt'e hiçbir şey gönderilmedi.",
     "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
     "This operator is not known, so no record is shown. Choose the operator again.": "Bu operatör bilinmiyor, bu yüzden hiçbir kayıt gösterilmiyor. Operatörü yeniden seçin.",
-    "Scroller Controls": "Kaydırıcı Kontrolleri"
+    "Scroller Controls": "Kaydırıcı Kontrolleri",
+    "This form has no action and is not in a Custom Form widget: what the visitor enters is neither stored nor sent (Form → Action)": "Bu formun eylemi yok ve bir Özel Form widget'ında durmuyor: ziyaretçinin girdikleri ne kaydedilir ne de gönderilir (Form → Eylem)"
 }
