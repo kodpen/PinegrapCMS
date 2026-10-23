@@ -9,7 +9,8 @@ description: Per-field "Include in translation" switch of custom forms (form_fie
 - Why: `pg_tr_translatable()` guesses data from the value (`core/translation-translatable-text.md`, PR #1171); a field that always holds icon names, codes or JSON is better marked once. Owner decision (2026-10-23): a per-field switch; existing and new fields stay included.
 
 ## Where is it set?
-- Designer: Form Field panel switch "Include in translation" (`sd-cf-translate`) for controls of type text box / text area, written as `props._cf.translate`. Three-state like `wysiwyg`: absent = `null`, `pg_cf_translate_flag()` keeps the stored row's flag (1 for a new row); true/false = the canvas wins. Any other field type is always 1. `_cfTranslateOn()` shows `_cf.translate` or the row flag from `_formFieldsCache` (`list_form_fields` returns `translate_values`); `_cfBuildFromFields()` copies `translate` from `pg_cf_load_page_fields()`.
+- Designer: Form Field panel switch "Include in translation" (`sd-cf-translate`) for controls of type text box / text area, written as `props._cf.translate`. Three-state like `wysiwyg`: absent = `null`, `pg_cf_translate_flag()` keeps the stored row's flag (1 for a new row); true/false = the canvas wins. Any other field type is always 1, so a field changed to another type and back with no `_cf.translate` returns included. `_cfTranslateOn()` shows `_cf.translate` or the row flag from `_formFieldsCache` (`list_form_fields` returns `translate_values`); `_cfBuildFromFields()` copies `translate` from `pg_cf_load_page_fields()`.
+- Duplicate page (`duplicate_page_f.php`) copies the column when the `SELECT *` row has it.
 - Classic screens (`add_field.php`, `edit_field.php`): a "Include in translation" row for custom forms, shown for text box / text area by `change_field_type()` (`backend.src.js`). Designer forms stay read-only on `edit_field.php`. Product, shipping and billing forms never write the column.
 
 ## Where is it read?

@@ -1019,8 +1019,9 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             $set['validation_message'] = mb_substr((string)(isset($f['regex_message']) ? $f['regex_message'] : ''), 0, 255);
         }
         if ($has_translate) {
-            // Three-state like `wysiwyg`: a field whose control does not say
-            // keeps the row's flag, so a save never resets it.
+            // Three-state like `wysiwyg`: a text field whose control does not
+            // say keeps the row's flag, so a save never resets it. A field
+            // saved as another type is written as 1 and comes back included.
             $set['translate_values'] = pg_cf_translate_flag(
                 array_key_exists('translate', $f) ? $f['translate'] : null, $type,
                 ($id > 0 && isset($existing[$id])) ? $existing[$id] : null);
