@@ -47,7 +47,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - main-menu-icons.md: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a drawing is needed, the 24-unit grid, module colour and accent colour classes, hover motion, what stays a Bootstrap icon.
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
-- money-field-input-mask.md: Panel money fields with the currency input mask (data-inputmask-alias currency): fill them in machine format, read them with pg_normalize_amount(), require them; the gift card balance symptom
+- money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .dropdown-menu: Bootstrap's capture-phase keydown handler throws on it, so its keys are taken on the window; closing on scroll and a long press
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.

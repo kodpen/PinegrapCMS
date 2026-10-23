@@ -416,6 +416,46 @@ function pg_tr_auto_update_page($page_id, $user_id = 0)
 }
 
 /**
+ * After a page, or a shared component or widget, was saved: what the pages
+ * drawing it answered the search engines in the other languages is dropped
+ * with their drawn bodies (pg_tr_invalidate_pages()). A new or changed text
+ * has no reviewed translation yet, so a page that answered "index" may now
+ * answer noindex; until it is drawn in the language again, sitemap.xml and
+ * the alternates leave that language's address out. The pages placing a
+ * component are the ones the last extraction found (translation_uses rows
+ * of owner type page_ref).
+ *
+ * @param string $owner_type page | shared
+ * @param int    $owner_id
+ */
+function pg_tr_owner_saved($owner_type, $owner_id)
+{
+    $owner_id = (int) $owner_id;
+
+    if (!pg_tr_ready() || ($owner_id <= 0) || !pg_tr_languages()) {
+        return;
+    }
+
+    pg_tr_load();
+
+    if ($owner_type === 'page') {
+        pg_tr_invalidate_pages('', $owner_id);
+        return;
+    }
+
+    if ($owner_type !== 'shared') {
+        return;
+    }
+
+    $rows = db_items("SELECT DISTINCT owner_id FROM translation_uses
+                      WHERE owner_type = 'page_ref' AND node_id = 'shared' AND field = '$owner_id'");
+
+    foreach ((array) $rows as $row) {
+        pg_tr_invalidate_pages('', (int) $row['owner_id']);
+    }
+}
+
+/**
  * What the visual editor needs for its Translate section: the target
  * languages and where translations are read and written. Null on a site with
  * one language or before the 2026.4.6 upgrade.

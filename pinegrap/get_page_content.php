@@ -3173,6 +3173,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 'membership_days' => $properties['membership_days'],
                                 'confirmation_type' => $properties['confirmation_type'],
                                 'confirmation_message' => $properties['confirmation_message'],
+                                'confirmation_page_id' => $properties['confirmation_page_id'] ?? 0,
                                 'return_type' => $properties['return_type'],
                                 'return_message' => $properties['return_message'],
                                 'return_page_id' => $properties['return_page_id'],

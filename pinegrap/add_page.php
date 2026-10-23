@@ -243,6 +243,24 @@ if (!$_POST) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
             exit();
         }
+
+        // An e-mail switched on with nothing to send, or a "Next Page"
+        // confirmation without a page (pg_cf_legacy_settings_errors()).
+        $custom_form_setting_errors = pg_cf_legacy_settings_errors(
+            pg_page_form_type_properties_from_post('custom form', 0),
+            function ($page_id) {
+                return ($page_id > 0)
+                    && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0)
+                    && !(function_exists('pg_recycle_page_binned') && pg_recycle_page_binned((int) $page_id));
+            });
+
+        if ($custom_form_setting_errors) {
+            foreach ($custom_form_setting_errors as $custom_form_setting_field => $custom_form_setting_error) {
+                $liveform_add_page->mark_error($custom_form_setting_field, $custom_form_setting_error);
+            }
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
+            exit();
+        }
     }
 
     $sql_style_fields = "";
