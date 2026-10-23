@@ -26686,5 +26686,12 @@
     "Sorry, {var:1} was not accepted. Office files with macros cannot be added here; save it without macros (.docx, .xlsx or .pptx) and try again.": "Üzgünüz, {var:1} kabul edilmedi. Makro içeren Office dosyaları buraya eklenemez; dosyayı makrosuz (.docx, .xlsx veya .pptx) kaydedip yeniden deneyin.",
     "Workspace messages": "Çalışma Alanı mesajları",
     "Workspace tasks": "Çalışma Alanı görevleri",
-    "An animated image cannot be replaced. Save it as a new file instead.": "Hareketli bir görsel değiştirilemez. Bunun yerine yeni dosya olarak kaydedin."
+    "An animated image cannot be replaced. Save it as a new file instead.": "Hareketli bir görsel değiştirilemez. Bunun yerine yeni dosya olarak kaydedin.",
+    "Only an active repeat can change its till.": "Yalnız süren bir tekrarın hesabı değiştirilebilir.",
+    "Only a repeat written as paid takes money from a till.": "Yalnız ödenmiş olarak yazılan bir tekrar bir hesaptan para çıkarır.",
+    "The repeat could not be found.": "Tekrar bulunamadı.",
+    "erp expense repeat till was changed": "erp gider tekrarının hesabı değiştirildi",
+    "The next ones are paid from the chosen till. A date still waiting is written on the next run.": "Sonrakiler seçilen hesaptan ödenecek. Bekleyen bir tarih bir sonraki çalışmada yazılır.",
+    "Change the till": "Hesabı değiştir",
+    "Only the next ones change; the expenses it wrote keep their till.": "Yalnız sonrakiler değişir; tekrarın yazdığı giderler kendi hesaplarında kalır."
 }
