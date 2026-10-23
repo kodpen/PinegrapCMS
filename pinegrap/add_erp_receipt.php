@@ -379,7 +379,7 @@ if (!$_POST) {
             } else {
                 $liveform->mark_error('exchange_rate', lang(array(
                     'string' => 'No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.',
-                    'vars' => array($currency, prepare_form_data_for_output($doc_date_sql, 'date')),
+                    'vars' => array(h($currency), prepare_form_data_for_output($doc_date_sql, 'date')),
                 )));
                 go($back);
             }
@@ -409,7 +409,7 @@ if (!$_POST) {
     ));
 
     if (!$result['success']) {
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error('_error', h($result['error']));
         go($back);
     }
 

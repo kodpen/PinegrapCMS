@@ -1,6 +1,6 @@
 ---
 name: news-magazine-templates
-description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4, 5, 6, 7a, 7p done): News and Magazine design templates with author submissions, after the platform steps they need first
+description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4, 5, 6, 7a, 7p, 7q, 7s done): News and Magazine design templates with author submissions, after the platform steps they need first
 ---
 
 ## Why?
@@ -23,7 +23,9 @@ description: Plan (owner decisions 2026-10-22, in progress: steps 1, 1b, 2, 3, 4
 6. Done (#1241): designed record pages count views; lists order by views, comments or views in recent days (most read).
 7a. Done (#1199): templates ship User Styles (block rules read from the editor); the installer preview prints template CSS.
 7p. Done (#1275): record-page privacy guards before the news template: the BlogPosting author never falls back to the login username; a list never redirects into a closed record page.
-7q. Follow-up: the 7 built-in templates print `submitter` (the login username) as the visible author of a blog post; a contact-name token and those bylines.
+7q. Done (#1287): the 7 built-in templates printed `submitter` (the login username) as the visible author of a blog post; a `submitter_name` field and those bylines.
+7r. Follow-up (not started): a member whose comment form gives no name choice is stored and shown under the login username (`add_comment.php`); every site's comments, so a product decision first.
+7s. Done (#1299): designed lists fail closed when a filter's field is gone, its operator is unknown or it is past the fifty-row cap (a renamed Status field listed drafts).
 7. News template (`pinegrap-news`), thumbnail.
 8. Magazine template (`pinegrap-magazine`).
 

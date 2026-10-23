@@ -184,7 +184,7 @@ if (post_value('submit_test_tsa')) {
         if ($test_stamp === false) {
             $liveform->add_error(lang(array(
                 'string' => 'The time stamp authority could not be reached: {var:1}',
-                'vars' => $test_reason,
+                'vars' => h($test_reason),
             )));
 
         } else {

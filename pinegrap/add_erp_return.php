@@ -247,7 +247,7 @@ if (!$_POST) {
     ));
 
     if (!$result['success']) {
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error('_error', h($result['error']));
         go($back);
     }
 
@@ -259,12 +259,12 @@ if (!$_POST) {
     // step (the money) is waiting.
     if ((int) ($_POST['back_order'] ?? 0) > 0) {
         $liveform_order = new liveform('view_order');
-        $liveform_order->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => $result['full_number'])));
+        $liveform_order->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => h($result['full_number']))));
         go(PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $_POST['back_order'] . '#erp_order_documents');
     }
 
     $liveform_document = new liveform('edit_erp_invoice');
-    $liveform_document->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => $result['full_number'])));
+    $liveform_document->add_notice(lang(array('string' => 'Return {var:1} created.', 'vars' => h($result['full_number']))));
 
     go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . (int) $result['invoice_id']);
 }
