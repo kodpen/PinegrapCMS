@@ -335,13 +335,31 @@ function test_image_jpeg_exif_orientation_read_by_hand()
 		'IFD0 outside the block'             => array(image_derivatives_test_exif_segment('II' . pack('v', 42) . pack('V', 4000) . str_repeat("\x00", 20)), 0),
 		'entries running past the block'     => array(image_derivatives_test_exif_segment('II' . pack('v', 42) . pack('V', 8) . pack('v', 50) . str_repeat("\x00", 12)), 0),
 		'an orientation of an unknown type'  => array(image_derivatives_test_exif_segment(image_derivatives_test_tiff(false, 0x0112, 7, 6)), 0),
+		'an empty Exif block'                => array(image_derivatives_test_exif_segment(''), 1),
+		'a TIFF header cut short'            => array(image_derivatives_test_exif_segment('II*'), 0),
 	);
+
+	// What pg_image_jpeg_orientation() gives with or without the exif
+	// extension; Imagick reads a broken block its own way.
+	$engine = array(
+		'little endian, 6'    => 6,
+		'no Exif block'       => 1,
+		'an empty Exif block' => 1,
+	);
+
+	if (!class_exists('Imagick')) {
+		$engine['unknown byte order'] = 0;
+	}
 
 	try {
 		foreach ($cases as $label => $case) {
 			image_derivatives_test_jpeg_with($path, $case[0]);
 
 			pg_assert_same($case[1], pg_image_jpeg_exif_orientation($path), $label);
+
+			if (isset($engine[$label])) {
+				pg_assert_same($engine[$label], pg_image_jpeg_orientation($path), 'engine: ' . $label);
+			}
 		}
 
 		// The Exif segment says it is longer than the file.

@@ -15,9 +15,10 @@ description: Images the engine leaves alone: animated GIF/APNG/WebP (PR #1234) a
 - WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
 
 ## How is a JPEG's orientation read?
-- `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else Imagick (ping); else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG).
-- 0 only for a broken block (unknown byte order, IFD0 or entries outside it, cut short, odd type). A value outside 1–8 counts as 1, as browsers do.
-- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754; exif is off by default on Windows PHP and absent in the official Docker image).
+- `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG); Imagick (ping) only when those bytes say 0 or exif is missing.
+- Why: with exif and Imagick both loaded, a JPEG without Exif would otherwise cost an Imagick ping on every page render.
+- 0 only for a broken block (unknown byte order, IFD0 or entries outside it, a TIFF header cut short, odd type). An empty Exif APP1 (`Exif\0\0` alone) and a value outside 1–8 count as 1, as browsers do.
+- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754; exif is off by default on Windows PHP and absent in the upstream php Docker images; Pinegrap's own docker/ image installs it).
 
 ## What happens to such a file on each path?
 - Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it. Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.

@@ -1089,8 +1089,8 @@ function pg_image_apply_gd_orientation($image, $file_path)
     }
 
     // The exif extension when there is one, else the file's own bytes: a
-    // server without exif (Windows PHP and the official Docker image leave
-    // it out) used to keep every phone photo on its side.
+    // server without exif (Windows PHP and the upstream php Docker images
+    // leave it out) used to keep every phone photo on its side.
     $orientation = pg_image_jpeg_orientation($file_path);
     $rotated     = null;
     $flip        = false;
@@ -1659,9 +1659,10 @@ function pg_image_format_probe($format, $directory)
  * an Exif block whose orientation cannot be read.
  *
  * Read with the exif extension when it is loaded and it read the first IFD;
- * else Imagick is asked, which is then also what the engine uses; else the
- * file's own bytes are read (pg_image_jpeg_exif_orientation()). The GD half
- * of the engine turns the pixels by this number.
+ * else from the file's own bytes (pg_image_jpeg_exif_orientation()). Imagick
+ * (a header ping) is asked only for a block those bytes cannot read, or when
+ * the exif extension is missing; it is then also what the engine uses. The
+ * GD half of the engine turns the pixels by this number.
  *
  * @param string $file_path
  * @return int
@@ -1680,6 +1681,14 @@ function pg_image_jpeg_orientation($file_path)
         // IFD0 was read and holds no orientation.
         if (is_array($exif) && isset($exif['SectionsFound']) && in_array('IFD0', explode(',', str_replace(' ', '', (string) $exif['SectionsFound'])), true)) {
             return 1;
+        }
+
+        // exif read no IFD0: the file's own bytes tell "no Exif block" (1)
+        // from a broken one (0) without an Imagick ping on every page render.
+        $own = pg_image_jpeg_exif_orientation($file_path);
+
+        if (($own !== 0) || !class_exists('Imagick')) {
+            return $own;
         }
     }
 
@@ -1816,6 +1825,12 @@ function pg_image_exif_tiff_orientation($tiff)
 {
     $tiff = (string) $tiff;
     $length = strlen($tiff);
+
+    // An Exif header followed by no TIFF block holds no orientation, and
+    // browsers show the file as stored.
+    if ($length === 0) {
+        return 1;
+    }
 
     if ($length < 8) {
         return 0;
