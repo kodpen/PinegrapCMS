@@ -243,6 +243,41 @@ function _parasut_order_identity($order)
 }
 
 /**
+ * Say why an order cannot get an e-shipment for want of the buyer's VKN/TCKN.
+ *
+ * Under a custom-field setting (custom_field_1/2) the number is the order's
+ * field, which the shipment's buyer card is opened with; a number on the
+ * contact card never reaches Paraşüt then, so it does not count. The refusal
+ * names the field as the order screen labels it ("Custom Field #1"). Under
+ * "do not use" (the default) and tax_number the linked contact's tax_number
+ * is checked.
+ *
+ * @param string $field               PARASUT_TC_IN_FIELD
+ * @param array  $order               Order row (custom_field_1, custom_field_2)
+ * @param string $contact_tax_number  The linked contact's tax_number
+ * @return string  Empty when the number is there, otherwise the refusal
+ */
+function _parasut_shipment_identity_refusal($field, $order, $contact_tax_number)
+{
+    if (($field === 'custom_field_1') || ($field === 'custom_field_2')) {
+        if (trim((string) ($order[$field] ?? '')) !== '') {
+            return '';
+        }
+
+        return lang(array(
+            'string' => 'The buyer\'s VKN/TCKN is read from the order\'s "{var:1}" field (Paraşüt card of the commerce settings), and that field is empty on this order.',
+            'vars' => array(lang('Custom Field') . ' #' . (($field === 'custom_field_1') ? '1' : '2')),
+        ));
+    }
+
+    if (trim((string) $contact_tax_number) !== '') {
+        return '';
+    }
+
+    return lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.');
+}
+
+/**
  * Decide whether an order is billed by e-invoice or by e-archive.
  *
  * The rule is the tax authority's, not ours: a buyer registered for e-invoice
