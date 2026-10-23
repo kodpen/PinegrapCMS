@@ -20,13 +20,14 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 ## Files
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule (panel and external API owner).
+- admin-new-account-email-link.md: The "New Account" e-mail an administrator sends from add user or import users carries a single-use set password link, never the random password (PR #1217)
 - ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124): writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which columns are left out, which paths are not hooked yet
-- auto-registration-set-password-link.md: A form's auto-registered account is created without a password and gets a signed single-use set password link; who sees it, and what $auto_registration_password carries now.
+- auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, bundle build
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap

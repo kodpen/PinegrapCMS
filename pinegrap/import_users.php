@@ -930,19 +930,20 @@ if (!$_POST) {
                     URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($_POST['home_page'])) . "\n";
             }
             
-            // e-mail user random password
+            // The e-mail never carries the password: the user sets their own
+            // through a single-use set password link (pg_set_password_link()).
+            // The link works for whoever reads it, so the e-mail is 'secret':
+            // a failed delivery keeps its body out of the activity log and the
+            // delivery-failed notice.
+            $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
+
             email(array(
                 'to' => $email_address,
                 'from_name' => ORGANIZATION_NAME,
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject' => lang('New Account'),
-                'body' =>
-lang('An administrator has created a new account for you.  You can find your login info below.') . "
-
-" . lang('Email') . ": $email_address
-" . lang('Password') . ": $random_password
-                
-$login"));
+                'body' => pg_new_user_email_body($email_address, $set_password_url, $login),
+                'secret' => true));
 
         }
         

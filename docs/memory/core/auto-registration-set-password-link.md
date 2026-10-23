@@ -1,11 +1,11 @@
 ---
 name: auto-registration-set-password-link
-description: A form's auto-registered account is created without a password and gets a signed single-use set password link; who sees it, and what $auto_registration_password carries now.
+description: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 ---
 
 ## Why is the password no longer written anywhere?
-- `custom_form.php` (auto_registration = 1) used to keep the random password in the session and print it in the sender's e-mail, the administrator's copy (same request), watchers' HTML copies, the confirmation page and old layouts. Reported on kodpen.com, 2026-10-21. Fixed in PR #1172.
-- The account is created without a password (`create_member_user()` without `'password'`: algo 3, empty hash, which `pg_password_verify()` rejects). The signed-in visitor's change password screen and widget then ask for no current password, so the starter templates' Change Password button works. `set_password.php` writes algo 2 when the link is used. The session entry holds only `email_address` and `user_id`.
+- `custom_form.php` (auto_registration = 1) used to keep the random password in the session and print it in the sender's e-mail, the administrator's copy, watchers' HTML copies, the confirmation page and old layouts. Reported on kodpen.com, 2026-10-21. Fixed in PR #1172.
+- The account is created without a password (`create_member_user()` without `'password'`: algo 3, empty hash, which `pg_password_verify()` rejects). The change password screen and widget then ask for no current password. `set_password.php` writes algo 2. The session entry holds only `email_address` and `user_id`.
 
 ## How is the link made and checked?
 - `includes/fn/auth.php`: `pg_set_password_link_issue($user_id)` writes `user.token = sha256(T)` and `user.token_timestamp`, the columns `forgot_password.php` uses, so `set_password.php` and the set password widget accept it unchanged. No schema change.
@@ -25,7 +25,9 @@ description: A form's auto-registered account is created without a password and 
 - `includes/templates/form_item_view.php` gets `$auto_registration_set_password_url` and `$auto_registration_for_submitter` and shows a "Set your password" button.
 - The designer token `__new_account_password` (widgets.php) carries the same note; no separate link token or new designer label yet.
 
+## What does an administrator's "New Account" e-mail carry?
+- A set password link, never the password (`add_user.php`, `import_users.php`): `core/admin-new-account-email-link.md` (#1217).
+
 ## What is still open?
-- `add_user.php` mails an administrator-created account's password: #1214 / #1217.
-- `reset_password.php` (also in its panel notice) and `import_users.php` still mail a plain password.
+- `reset_password.php` still mails the password an administrator resets and repeats it in the notice: separate fix.
 - Tests: `tests/auto_registration_set_password_test.php`.

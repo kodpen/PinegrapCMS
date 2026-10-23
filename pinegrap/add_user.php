@@ -696,19 +696,20 @@ if (!$_POST) {
                 URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($_POST['home_page'])) . "\n";
         }
 
-        // e-mail user random password
+        // The e-mail never carries the password: the user sets their own
+        // through a single-use set password link (pg_set_password_link()).
+        // The link works for whoever reads it, so the e-mail is 'secret':
+        // a failed delivery keeps its body out of the activity log and the
+        // delivery-failed notice.
+        $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
+
         email(array(
             'to' => $_POST['email'],
             'from_name' => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
             'subject' => lang('New Account'),
-            'body' =>
-lang('An administrator has created a new account for you.  You can find your login info below.') . "
-
-" . lang('Email') . ": $_POST[email]
-" . lang('Password') . ": $random_password
-
-$login"));
+            'body' => pg_new_user_email_body($_POST['email'], $set_password_url, $login),
+            'secret' => true));
         
     }
 
@@ -718,7 +719,9 @@ $login"));
 
     // If the user was notified, then prepare password message related to that.
     if ($_POST['notify_user'] == 1) {
-        $password_message = lang(array('string'=>'A password, \'{var:1}\', has been emailed to the user.','vars'=>h($random_password)));
+        $password_message = ($set_password_url !== '')
+            ? lang('A link to set a password has been emailed to the user.')
+            : lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');
 
     // Otherwise the user was not notified, so prepare different password message for that.
     } else {
