@@ -521,7 +521,7 @@ if (!$_POST) {
                     // if there is a log message, then log it and add notice
                     if ($log_message != '') {
                         log_activity(lang(array('string'=>'{var:1} page(s) {var:2}','vars'=>array($number_of_pages,$log_message) )), $_SESSION['sessionusername']);
-                        $liveform->add_notice(lang(array('string'=>'{var:1} page(s) {var:2}','vars'=>array($number_of_pages,$log_message) )) );
+                        $liveform->add_notice(lang(array('string'=>'{var:1} page(s) {var:2}','vars'=>array($number_of_pages,h($log_message)) )) );
                     }
                 }
                 

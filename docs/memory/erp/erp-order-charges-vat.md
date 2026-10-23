@@ -23,7 +23,7 @@ description: Order shipping, surcharge and instalment charge on the invoice (VAT
 
 ## What can still miss Paraşüt's figures?
 - Marketplace and API orders are settled only on the invoice (a kurus below the payment).
-- A negative-price line is taxed alone at the checkout (`pg_tax_by_rate()`) and grouped at Paraşüt.
+- A negative-price line never reaches Paraşüt (#1297): erp-negative-price-lines.md.
 
 ## Tests
 - `tests/order_charges_test.php` (1,500 random orders meet the invoice), `erp_order_lines_test.php` (charges settled on random orders), `payment_iyzico_test.php`, `express_order_totals_test.php`, `legal_documents_test.php`.

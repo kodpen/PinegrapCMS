@@ -20,24 +20,31 @@ if (!defined('PG_INIT_LOADED')) {
 <?=$messages?>
 <?=$content?>
 <?php if ($auto_registration): ?>
-<h2>New Account</h2>
-<p>We have created a new account for you on our site. You can find your login info below.</p>
+<h2><?=lang('New Account')?></h2>
+<?php if ($auto_registration_for_submitter): ?>
+<p><?=lang('We have created a new account for you on our site.')?></p>
 <dl class="dl-horizontal">
-	<dt>Email</dt>
+	<dt><?=lang('Email')?></dt>
 	<dd><?=h($auto_registration_email_address)?></dd>
-	<dt>Password</dt>
-	<dd><?=h($auto_registration_password)?></dd>
 </dl>
+<?php if ($auto_registration_set_password_url): ?>
+<p><a href="<?=h($auto_registration_set_password_url)?>" class="btn btn-primary"><?=lang('Set your password')?></a></p>
+<?php else: ?>
+<p><?=h(lang('You can set a password with "Forgot password" on the sign-in page.'))?></p>
+<?php endif ?>
+<?php else: ?>
+<p><?=lang(array('string' => 'A new account was created with this submission: {var:1}', 'vars' => array(h($auto_registration_email_address))))?></p>
+<?php endif ?>
 <?php endif ?>
 <div class="form-group">
 	<?php if ($back_button_url): ?>
 	<a href="<?=h($back_button_url)?>" class="btn btn-default btn-secondary">
-	Back
+	<?=lang('Back')?>
 	</a>
 	<?php endif ?>
 	<?php if ($edit_button_url): ?>
 	<a href="<?=h($edit_button_url)?>" class="btn btn-primary">
-	Edit
+	<?=lang('Edit')?>
 	</a>
 	<?php endif ?>
 </div>

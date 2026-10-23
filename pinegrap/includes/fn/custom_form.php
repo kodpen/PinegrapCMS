@@ -2989,3 +2989,173 @@ function pg_cf_variables_help($page_id)
 
     return $help;
 }
+
+/**
+ * Who the form's output is being drawn for, within the request that handles
+ * a submission: true while the copy for the person who sent the form is
+ * drawn, false while a watcher's copy is. Pass a bool to set it, nothing to
+ * ask. Outside custom_form.php (the confirmation page) it stays true: the
+ * page is the visitor's own.
+ *
+ * @param bool|null $submitter
+ * @return bool
+ */
+function pg_cf_new_account_recipient($submitter = null)
+{
+    static $is_submitter = true;
+
+    if ($submitter !== null) {
+        $is_submitter = (bool) $submitter;
+    }
+
+    return $is_submitter;
+}
+
+/**
+ * Whether the account a form's auto-registration opened may be handed over
+ * in what is being drawn now: the copy for the person who sent the form and
+ * their confirmation page, never a watcher's copy or the administrator's
+ * e-mail (drawn while pg_tr_suspend() holds the request for the site's own
+ * people).
+ *
+ * @return bool
+ */
+function pg_cf_new_account_for_submitter()
+{
+    if (function_exists('pg_tr_suspend') && pg_tr_suspend()) {
+        return false;
+    }
+
+    return pg_cf_new_account_recipient();
+}
+
+/**
+ * The e-mail address of the account a form's auto-registration opened in
+ * this session for a submitted form, or ''.
+ *
+ * @param int $form_id the submitted form (forms.id)
+ * @return string
+ */
+function pg_cf_new_account_email($form_id)
+{
+    $entry = $_SESSION['software']['custom_form_auto_registration'][(int) $form_id] ?? null;
+
+    return (is_array($entry) && isset($entry['email_address'])) ? (string) $entry['email_address'] : '';
+}
+
+/**
+ * The set password link of that account for the person who sent the form,
+ * or '' (someone else's copy, no account, or the link was used or expired).
+ *
+ * @param int $form_id the submitted form (forms.id)
+ * @return string
+ */
+function pg_cf_new_account_link($form_id)
+{
+    $entry = $_SESSION['software']['custom_form_auto_registration'][(int) $form_id] ?? null;
+
+    if (!is_array($entry) || empty($entry['user_id']) || !pg_cf_new_account_for_submitter()) {
+        return '';
+    }
+
+    return pg_set_password_link((int) $entry['user_id']);
+}
+
+/**
+ * The "new account" block a plain-text form e-mail ends with. The person who
+ * sent the form gets the address and the link to set a password; anyone else
+ * only learns that an account was opened for the address. No password is
+ * ever written: the account's password is random and nobody is told it.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when there is no live link
+ * @param bool   $for_submitter
+ * @return string '' without an account
+ */
+function pg_cf_new_account_plain_text($email_address, $set_password_url, $for_submitter)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    $text = "\n\n" . lang('New Account') . ':' . "\n" . '------------' . "\n";
+
+    if (!$for_submitter) {
+        return $text . lang(array('string' => 'A new account was created with this submission: {var:1}', 'vars' => array($email_address)));
+    }
+
+    $text .=
+        lang('We have created a new account for you on our site.') . "\n" .
+        "\n" .
+        lang('Email') . ': ' . $email_address . "\n";
+
+    if ($set_password_url !== '') {
+        return $text . lang(array('string' => 'Set your password: {var:1}', 'vars' => array($set_password_url)));
+    }
+
+    return $text . lang('You can set a password with "Forgot password" on the sign-in page.');
+}
+
+/**
+ * The same block for the built-in (system) layouts of the form item view and
+ * the confirmation screen.
+ *
+ * @param string $email_address
+ * @param string $set_password_url
+ * @param bool   $for_submitter
+ * @return string HTML, '' without an account
+ */
+function pg_cf_new_account_html($email_address, $set_password_url, $for_submitter)
+{
+    $email_address = (string) $email_address;
+    $set_password_url = (string) $set_password_url;
+
+    if ($email_address === '') {
+        return '';
+    }
+
+    $html = '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>' . "\n" . '<div class="account data">' . "\n";
+
+    if (!$for_submitter) {
+        return $html . '<p>' . lang(array('string' => 'A new account was created with this submission: {var:1}', 'vars' => array(h($email_address)))) . '</p>' . "\n" . '</div>';
+    }
+
+    $html .=
+        '<p>' . lang('We have created a new account for you on our site.') . '</p>' . "\n" .
+        '<p>' . lang('Email') . ': ' . h($email_address) . '</p>' . "\n";
+
+    if ($set_password_url !== '') {
+        $html .= '<p><a href="' . h($set_password_url) . '">' . lang('Set your password') . '</a></p>' . "\n";
+    } else {
+        $html .= '<p>' . h(lang('You can set a password with "Forgot password" on the sign-in page.')) . '</p>' . "\n";
+    }
+
+    return $html . '</div>';
+}
+
+/**
+ * What a layout's $auto_registration_password (and the designer's
+ * __new_account_password token) shows now that no password is handed out.
+ * Layouts written before - the ones in data/backups and every layout an
+ * operator modified from them - print it as text under a "Password" label,
+ * so it carries a sentence with the set password link instead of the secret.
+ *
+ * @param string $set_password_url
+ * @param bool   $for_submitter
+ * @return string plain text ('' for anyone but the person who sent the form)
+ */
+function pg_cf_new_account_password_note($set_password_url, $for_submitter)
+{
+    if (!$for_submitter) {
+        return '';
+    }
+
+    if ((string) $set_password_url !== '') {
+        return lang(array('string' => 'Set it with this link: {var:1}', 'vars' => array((string) $set_password_url)));
+    }
+
+    return lang('You can set a password with "Forgot password" on the sign-in page.');
+}
