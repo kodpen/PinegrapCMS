@@ -14,7 +14,7 @@ description: How the ERP takes a document's VAT, withholding and second tax per 
 - Issued documents keep their figures; the driver's shift stays for them.
 
 ## Does the PHP version change which line gets a kurus?
-- Not in `erp_allocate()`: equal remainders take the kurus in the lines' own order, the order `pg_tax_spread()` gives the checkout. It used `arsort()`, stable only from PHP 8.0: on PHP 7 the ties of more than 16 lines went to other lines, so an order's line tax and its invoice's line VAT could be a kurus apart (`tests/erp_money_test.php`).
+- Not in `erp_allocate()`: equal remainders take the kurus in the lines' own order, the order `pg_tax_spread()` gives the checkout. It used `arsort()`, stable only from PHP 8.0: on PHP 7 the ties of more than 16 lines went to other lines, so an order's line tax and its invoice's line VAT could be a kurus apart (#1371, `tests/erp_money_test.php`).
 - Still PHP's own sort: the tie-back of the header tax in `erp_order_lines()` (`order_bridge.php`, which of more than 16 equal lines takes a residual kurus) and the row order of equal totals in the aging and profit reports.
 
 ## Where are the checkout and charge decisions? (2026-10-21, 2026-10-22)
