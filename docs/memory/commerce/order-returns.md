@@ -4,9 +4,9 @@ description: Customer return model (includes/fn/returns.php; order_returns, orde
 ---
 
 ## What is stored?
-- `order_returns`: one request to send back goods of one delivery (`ship_to_id`) of a `complete` or `exported` order: reason code (`pg_return_reasons()`), the customer's words, the decision note, carrier and return code, tracking number, `source` (customer, panel, api), who asked and who decided, one time column per status, and `refund_due_notified_at` / `refund_overdue_notified_at` (11.0.25: when each refund reminder was rung; order-returns-refund.md). `order_return_items`: how many of each order line, one row per line and return.
+- `order_returns`: one request to send back goods of one delivery (`ship_to_id`) of a `complete` or `exported` order: reason code (`pg_return_reasons()`), the customer's words, the decision note, carrier and return code, tracking number, `source` (customer, panel, api), who asked and who decided, one time column per status, and `refund_due_notified_at` / `refund_overdue_notified_at` (11.0.25: refund reminders rung; order-returns-reminders.md). `order_return_items`: how many of each order line, one row per line and return.
 - Both InnoDB; a request is written in one transaction. `status` is a VARCHAR checked in code, not an ENUM.
-- Built with step 1 of `plans/customer-returns-flow.md` (PR #650). The customer's side: commerce/order-returns-customer.md; the panel (PR #808): commerce/order-returns-panel.md; the refund: commerce/order-returns-refund.md.
+- Built in step 1 of `plans/customer-returns-flow.md` (PR #650). Customer: commerce/order-returns-customer.md; panel (PR #808): commerce/order-returns-panel.md; refund: commerce/order-returns-refund.md; API and events: commerce/order-returns-api.md.
 
 ## Which statuses and moves are there?
 - requested → approved, rejected, closed; approved → shipped, received, closed; shipped → received, closed; received → refunded, closed; refunded → closed. Rejected and closed are final: the customer asks again instead.

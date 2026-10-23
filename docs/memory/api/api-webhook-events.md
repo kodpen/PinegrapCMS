@@ -6,6 +6,7 @@ description: Announcing webhook events: pg_announce() from any screen, contact h
 ## How does code announce something?
 - `pg_announce('<event>', array(...))` (`includes/fn/events.php`, loaded everywhere): a screen or form never calls the API's queue itself. It hands the event to the Workspace (`pg_event_record()`, only for the names in `pg_event_workspace_events()`) and queues it for the subscribers (`api_webhook_enqueue($event, $data, true)`). Silent when the API is not installed: an event is never the reason a form fails.
 - Calling `api_webhook_enqueue($event, $payload)` directly also records for the Workspace; its third argument `true` only says the caller already did.
+- A model that writes under a lock or in a transaction announces after COMMIT and the lock (`pg_return_create()`); a status set before an outside call that may undo it (a refund before the payment service answers) is announced where the outcome stands, not by the move (`pg_return_refund()`, commerce/order-returns-api.md).
 - A new contact: `pg_announce_contact_created($id)`, which reads the e-mail address back itself; a caller that already has it may pass it second (`includes/workspace/changes.php` does). Contacts put into or taken out of a contact group: `pg_announce_contact_group_members()`, one event per change, none when nobody moved.
 
 ## What must the event name be?
