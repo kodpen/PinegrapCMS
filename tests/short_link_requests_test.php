@@ -202,6 +202,21 @@ function test_short_link_classic_delete_goes_to_the_bin()
 	pg_assert_contains("' AND ' . pg_short_link_live_filter()", short_link_requests_test_source('view_short_links.php'), 'the classic list leaves binned links out');
 }
 
+// A link restored from the bin passes the loop and chain check first: links
+// saved while it sat there were checked without it. One that fails stays in
+// the bin and the restore says why.
+function test_short_link_restore_checks_loops_before_the_link_goes_live()
+{
+	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$start = strpos($explorer, "case 'explorer_recycle_restore':");
+	$restore = ($start === false) ? '' : (string) substr($explorer, $start, (int) strpos($explorer, "case 'explorer_hard_delete':", $start) - $start);
+	$check = strpos($restore, '$restore_short_link_check = pg_short_link_redirect_columns(array(');
+	$live = strpos($restore, "SET recycled = '0',");
+
+	pg_assert_true(($check !== false) && ($live !== false) && ($check < $live), 'the check comes before the flag is cleared');
+	pg_assert_contains("lang(array('string' => 'The short link {var:1} stays in the recycle bin: {var:2}'", $restore, 'the reason is reported');
+}
+
 // The File Manager's window offers the answer the classic screens offer
 // (shown at the short address, 301 or 302), sends it only when it draws the
 // field, and the create and the change save it through the same check; a
