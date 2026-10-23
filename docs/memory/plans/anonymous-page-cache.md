@@ -1,6 +1,6 @@
 ---
 name: anonymous-page-cache
-description: Plan (approved 2026-10-23; steps 1-2 claimed, open): cacheability gate with standard CDN headers, then Pinegrap's own file cache for anonymous GET pages, off by default
+description: Plan (approved 2026-10-23; step 1 done in PR #1382, step 2 claimed, open): cacheability gate with standard CDN headers, then Pinegrap's own file cache for anonymous GET pages, off by default
 ---
 
 ## Where does this come from?
@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-23; steps 1-2 claimed, open): cacheability g
 - Schema label: step 2 = 11.0.29 (`config.page_cache_generation`).
 
 ## Steps?
-- 1 — cacheability gate and standard `Cache-Control` / `s-maxage` headers for any CDN or proxy, setting off by default (claim #1379, open)
+- 1 — cacheability gate and standard `Cache-Control` / `s-maxage` headers for any CDN or proxy, setting off by default (done, PR #1382; `platform/page-cache-gate.md`)
 - 2 — Pinegrap file cache served from the router, purge by generation number (11.0.29), visitor beacon; after 1 (claim #1380, open)
 
 ## How does the file cache work?

@@ -151,6 +151,39 @@ function test_page_cache_decide_reasons()
 	pg_assert_same('access', pg_page_cache_decide(page_cache_test_request(array('access_control_type' => '')))['reason'], 'unknown access type');
 	pg_assert_same('status', pg_page_cache_decide(page_cache_test_request(array('status' => false)))['reason'], 'no status');
 	pg_assert_same('query', pg_page_cache_decide(page_cache_test_request(array('get' => array('t' => 'abc'))))['reason'], 'short link tracking code');
+	pg_assert_same('query', pg_page_cache_decide(page_cache_test_request(array('query_string' => '?page=zzz')))['reason'], 'the router key typed in the address');
+	pg_assert_same('query', pg_page_cache_decide(page_cache_test_request(array('query_string' => '?')))['reason'], 'a bare question mark');
+	pg_assert_true(pg_page_cache_decide(page_cache_test_request(array('query_string' => '')))['cacheable'], 'no question mark');
+}
+
+// The request address from its first question mark on.
+function test_page_cache_query_string()
+{
+	pg_assert_same('', pg_page_cache_query_string('/about'), 'none');
+	pg_assert_same('', pg_page_cache_query_string(''), 'empty address');
+	pg_assert_same('?', pg_page_cache_query_string('/about?'), 'a bare question mark');
+	pg_assert_same('?page=zzz', pg_page_cache_query_string('/about?page=zzz'));
+	pg_assert_same('?a=1?b=2', pg_page_cache_query_string('/x?a=1?b=2'), 'from the first one');
+}
+
+// Only staff learn why a page was not cacheable.
+function test_page_cache_bypass_header()
+{
+	pg_assert_same('X-Pinegrap-Cache: bypass', pg_page_cache_bypass_header('personal_php_region', false), 'visitor');
+	pg_assert_same('X-Pinegrap-Cache: bypass; reason=personal_php_region', pg_page_cache_bypass_header('personal_php_region', true), 'staff');
+	pg_assert_same('X-Pinegrap-Cache: bypass; reason=sessionx', pg_page_cache_bypass_header('Session ' . chr(13) . chr(10) . 'X', true), 'header-safe');
+	pg_assert_same('X-Pinegrap-Cache: bypass', pg_page_cache_bypass_header('', true), 'no reason');
+}
+
+// The marker lives as long as the session cookie and on the same path.
+function test_page_cache_marker_cookie_params()
+{
+	pg_assert_same(array(0, '/'), pg_page_cache_marker_cookie_params(array('lifetime' => 0, 'path' => '/'), 1000), 'browser session');
+	pg_assert_same(array(1000 + 86400, '/'), pg_page_cache_marker_cookie_params(array('lifetime' => 86400, 'path' => '/'), 1000), 'outlives the browser');
+	pg_assert_same(array(0, '/shop/'), pg_page_cache_marker_cookie_params(array('lifetime' => 0, 'path' => '/shop/'), 1000), 'site in a folder');
+	pg_assert_same(array(0, '/'), pg_page_cache_marker_cookie_params(array(), 1000), 'nothing known');
+	pg_assert_same(array(0, '/'), pg_page_cache_marker_cookie_params(array('path' => '/; domain=x'), 1000), 'unsafe path');
+	pg_assert_same(array(0, '/'), pg_page_cache_marker_cookie_params(array('path' => 'shop'), 1000), 'relative path');
 }
 
 // Browsers ask again every time; a shared cache keeps it for the lifetime.
@@ -174,10 +207,12 @@ function test_page_cache_marker_action()
 // The first reason given is kept, cleaned to a header-safe word.
 function test_page_cache_personal_keeps_the_first_reason()
 {
-	pg_assert_same('', pg_page_cache_personal(), 'none yet');
+	// The reason is kept for the whole process, so a test that ran earlier
+	// may have given the first one already.
+	$before = pg_page_cache_personal();
 	pg_page_cache_personal('Language Redirect!');
 	pg_page_cache_personal('php_region');
-	pg_assert_same('languageredirect', pg_page_cache_personal(), 'the first, cleaned');
+	pg_assert_same(($before !== '') ? $before : 'languageredirect', pg_page_cache_personal(), 'the first, cleaned');
 }
 
 // Callbacks are kept once each, in the order added.

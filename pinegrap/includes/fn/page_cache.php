@@ -199,11 +199,27 @@ function pg_page_cache_set_cookie_names(array $headers)
 }
 
 /**
+ * The query part of a request address, from its first '?' on ('' when it
+ * has none): a bare '?' is a query too, since a cache keys /about? apart from
+ * /about.
+ *
+ * @param string $uri
+ * @return string
+ */
+function pg_page_cache_query_string($uri)
+{
+    $at = strpos((string) $uri, '?');
+
+    return ($at === false) ? '' : (string) substr((string) $uri, $at);
+}
+
+/**
  * Whether a page answer may be kept by a shared cache. The checks run in a
  * fixed order and the first that fails gives the reason.
  *
- * Keys of $r: ttl, method, status, get (the query parameters),
- * rendered_html_page, toolbar, access_control_type, mobile, cookies (as
+ * Keys of $r: ttl, method, status, query_string (the request address from
+ * its first '?' on), get (the query parameters), rendered_html_page, toolbar,
+ * access_control_type, mobile, cookies (as
  * $_COOKIE holds them), session, set_cookies (names), session_name,
  * token_left, personal.
  *
@@ -222,7 +238,9 @@ function pg_page_cache_decide(array $r)
         $reason = 'method';
     } elseif ((int) ($r['status'] ?? 0) !== 200) {
         $reason = 'status';
-    } elseif (array_diff(array_map('strval', array_keys($get)), array('page')) !== array()) {
+    } elseif (((string) ($r['query_string'] ?? '') !== '') || (array_diff(array_map('strval', array_keys($get)), array('page')) !== array())) {
+        // The router writes $_GET['page'] itself, so only the request address
+        // tells /about from /about?page=x, which would be one more cache entry.
         $reason = 'query';
     } elseif (empty($r['rendered_html_page'])) {
         $reason = 'not_html';
@@ -251,6 +269,22 @@ function pg_page_cache_decide(array $r)
     }
 
     return array('cacheable' => false, 'reason' => $reason);
+}
+
+/**
+ * The X-Pinegrap-Cache line of an answer that is not cacheable. The reason
+ * tells what the page runs and what the visitor's session holds, so only
+ * staff see it; everyone else gets the bare word.
+ *
+ * @param string $reason
+ * @param bool   $staff
+ * @return string
+ */
+function pg_page_cache_bypass_header($reason, $staff)
+{
+    $reason = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $reason));
+
+    return 'X-Pinegrap-Cache: bypass' . (($staff && ($reason !== '')) ? '; reason=' . $reason : '');
 }
 
 /**
@@ -395,27 +429,56 @@ function pg_page_cache_marker_hook()
         pg_page_cache_cacheable());
 
     if ($action === 'set') {
-        pg_page_cache_marker_cookie('1', 0);
+        pg_page_cache_marker_cookie('1', null);
     } elseif ($action === 'clear') {
         pg_page_cache_marker_cookie('', time() - 86400);
     }
 }
 
 /**
- * Writes the marker cookie: for the browser session, the whole site,
- * HttpOnly, SameSite Lax, Secure over https.
+ * The lifetime and path of the marker cookie, taken from the session cookie's
+ * so the marker lives exactly as long as the session it stands for: a session
+ * cookie that outlives the browser (session.cookie_lifetime > 0) keeps the
+ * marker too, and both cover the same paths.
  *
- * @param string $value
- * @param int    $expires
+ * @param array $params session_get_cookie_params()
+ * @param int   $now
+ * @return array [expires, path]
+ */
+function pg_page_cache_marker_cookie_params(array $params, $now)
+{
+    $lifetime = (int) ($params['lifetime'] ?? 0);
+    $path = (string) ($params['path'] ?? '');
+
+    if (($path === '') || ($path[0] !== '/') || preg_match('/[;,\s]/', $path)) {
+        $path = '/';
+    }
+
+    return array(($lifetime > 0) ? ((int) $now + $lifetime) : 0, $path);
+}
+
+/**
+ * Writes the marker cookie: as long and as wide as the session cookie,
+ * HttpOnly, SameSite Lax, Secure over https. $expires null sets it, a past
+ * time clears it.
+ *
+ * @param string   $value
+ * @param int|null $expires
  */
 function pg_page_cache_marker_cookie($value, $expires)
 {
     $secure = function_exists('pg_request_is_https') && pg_request_is_https();
 
+    list($session_expires, $path) = pg_page_cache_marker_cookie_params(session_get_cookie_params(), time());
+
+    if ($expires === null) {
+        $expires = $session_expires;
+    }
+
     if (PHP_VERSION_ID >= 70300) {
         setcookie(PG_PAGE_CACHE_MARKER, $value, array(
             'expires' => $expires,
-            'path' => '/',
+            'path' => $path,
             'secure' => $secure,
             'httponly' => true,
             'samesite' => 'Lax',
@@ -423,7 +486,7 @@ function pg_page_cache_marker_cookie($value, $expires)
     } else {
         // Before 7.3 setcookie() has no SameSite parameter; the attribute
         // rides on the path, which is printed as it is.
-        setcookie(PG_PAGE_CACHE_MARKER, $value, $expires, '/; samesite=Lax', '', $secure, true);
+        setcookie(PG_PAGE_CACHE_MARKER, $value, $expires, $path . '; samesite=Lax', '', $secure, true);
     }
 }
 
@@ -455,6 +518,7 @@ function pg_page_cache_apply($content, array $context)
         'ttl' => $ttl,
         'method' => isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '',
         'status' => http_response_code(),
+        'query_string' => pg_page_cache_query_string(isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : ''),
         'get' => $_GET,
         'rendered_html_page' => !empty($context['rendered_html_page']),
         'toolbar' => !empty($context['toolbar']),
@@ -469,7 +533,9 @@ function pg_page_cache_apply($content, array $context)
     ));
 
     if (!$decision['cacheable']) {
-        header('X-Pinegrap-Cache: bypass; reason=' . $decision['reason']);
+        header(pg_page_cache_bypass_header($decision['reason'],
+            !empty($context['toolbar'])
+            || (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ROLE') && ((int) USER_ROLE < 3))));
 
         return $content;
     }
