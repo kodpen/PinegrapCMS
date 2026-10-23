@@ -18,7 +18,7 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 - The minimum compares the whole sale (`total + gift_card_discount`); the tax number is the invoice's (`erp_auto_invoice_buyer_tax_number()`): the order's account, else the contact's, else the contact (the order keeps none). Empty or 11111111111 does not count.
 
 ## What does it write?
-- `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (the provider's fields on the account the invoice goes to, #1363; nobody to bill), the waybill tie-back, `created_by = 0`, a log line.
+- `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (the provider's fields on the account the invoice goes to or opens, #1363/#PR; nobody to bill), the waybill tie-back, `created_by = 0`, a log line.
 - The e-document is not sent: there is no `erp_edoc_queue` worker, so it stays the order screen's next step.
 
 ## What happens when it cannot?

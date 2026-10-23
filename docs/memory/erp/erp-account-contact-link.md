@@ -18,6 +18,7 @@ description: ERP account to contact/user link: contact_id is the truth, mirror c
 ## How is an account opened from an order?
 - Pass the order: `erp_account_for_contact($contact_id, $created_by, $order)`. An account the contact already has is returned untouched: a later number on the card is not copied; the order's automatic invoice is held instead (erp-order-tax-number-difference.md).
 - A new one starts from the card (`erp_account_data_from_contact()`); `erp_account_data_with_order()` fills only what the card leaves empty from the order's billing block: the name only when the card would give "#<contact id>", the address as a whole (street, city/district/state via `erp_address_from_checkout()`, postcode, country), e-mail, phone. A customer who did not update the card at checkout still gets a named, addressed account.
+- `erp_account_data_for_contact($contact_id, $order)` is those two reads, unsaved; the order card holds a first order to the provider's fields with it (erp-order-documents-flow.md).
 - Without the order a bare card opens as "#<contact id>" with no address.
 - A Turkish VKN registered at GİB then replaces the name (erp-taxpayer-lookup.md).
 
