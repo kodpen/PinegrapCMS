@@ -128,12 +128,34 @@ function erp_returnable_lines($invoice_id)
  * the line. An order's lines (erp_order_refund_lines()) carry nothing given
  * back yet, so a line given back whole takes the tax the order charged on it.
  *
+ * A line below zero (a credit, from a product priced below zero) has its
+ * figures below zero, and so are its pieces and what is left of it: each is
+ * held between zero and what is left, on the side of zero the line is on
+ * (erp_return_within()). Not chosen, it comes back with the goods in
+ * proportion (erp_return_credit_quantities()). A return that would give back
+ * more than is left of the sale, or less than nothing, is refused, and so is
+ * a credit quantity typed by hand out of step with the goods at its VAT rate
+ * (erp_return_credit_refusal()).
+ *
  * @param array $parent_lines  from erp_returnable_lines()
  * @param array $quantities    line id => quantity
  * @return array ['lines' => array, 'totals' => array, 'is_full' => bool, 'error' => string]
  */
 function erp_return_build($parent_lines, $quantities)
 {
+    $quantities = (array) $quantities;
+    // Credit lines given a quantity by the caller, before the ones left out
+    // are filled in with the goods' share: only those are held per VAT rate.
+    $typed_credits = array();
+    foreach ($parent_lines as $parent) {
+        $line_id = (int) $parent['id'];
+        if (((int) $parent['line_total'] < 0) && ((float) $parent['remaining_qty'] > 0.00001)
+            && isset($quantities[$line_id]) && ((float) $quantities[$line_id] > 0)) {
+            $typed_credits[] = $line_id;
+        }
+    }
+
+    $quantities = erp_return_credit_quantities($parent_lines, $quantities);
     $lines = array();
     // What erp_rate_vat() takes for the lines given back in part, and what is
     // left on each line, under the line's key in $lines.
@@ -175,16 +197,16 @@ function erp_return_build($parent_lines, $quantities)
         $empties = ($wanted >= ($remaining - 0.00001));
 
         if (isset($parent['returned_line_total'])) {
-            $line_left = max(0, (int) $parent['line_total'] - (int) $parent['returned_line_total']);
-            $line_total = $empties ? $line_left : min($line_total, $line_left);
+            $line_left = erp_return_within((int) $parent['line_total'] - (int) $parent['returned_line_total'], $parent['line_total']);
+            $line_total = $empties ? $line_left : erp_return_within($line_total, $line_left);
         }
 
         if (isset($parent['returned_discount'])) {
-            $discount_left = max(0, (int) $parent['discount_amount'] - (int) $parent['returned_discount']);
-            $discount = $empties ? $discount_left : min($discount, $discount_left);
+            $discount_left = erp_return_within((int) $parent['discount_amount'] - (int) $parent['returned_discount'], $parent['discount_amount']);
+            $discount = $empties ? $discount_left : erp_return_within($discount, $discount_left);
         }
 
-        $discount = min($discount, $line_total);
+        $discount = erp_return_within($discount, $line_total);
         $tax2_rate = (float) ($parent['tax2_rate'] ?? 0);
         $withholding_rate = (float) ($parent['withholding_rate'] ?? 0);
 
@@ -198,11 +220,11 @@ function erp_return_build($parent_lines, $quantities)
         $known = isset($parent['returned_tax']);
         $left[count($lines)] = array(
             'empties' => $known && $empties,
-            'tax' => $known ? max(0, (int) $parent['tax_total'] - (int) $parent['returned_tax']) : null,
+            'tax' => $known ? erp_return_within((int) $parent['tax_total'] - (int) $parent['returned_tax'], $parent['tax_total']) : null,
             'tax2' => (($tax2_rate > 0) && isset($parent['returned_tax2']))
-                ? max(0, (int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2']) : null,
+                ? erp_return_within((int) ($parent['tax2_amount'] ?? 0) - (int) $parent['returned_tax2'], $parent['tax2_amount'] ?? 0) : null,
             'withholding' => (($withholding_rate > 0) && isset($parent['returned_withholding']))
-                ? max(0, (int) ($parent['withholding_amount'] ?? 0) - (int) $parent['returned_withholding']) : null,
+                ? erp_return_within((int) ($parent['withholding_amount'] ?? 0) - (int) $parent['returned_withholding'], $parent['withholding_amount'] ?? 0) : null,
         );
 
         if (!$left[count($lines)]['empties']) {
@@ -248,27 +270,27 @@ function erp_return_build($parent_lines, $quantities)
             $tax2 = ($cap['tax2'] !== null) ? $cap['tax2'] : 0;
             $tax = $cap['tax'];
             $withholding = ($cap['withholding'] !== null) ? $cap['withholding']
-                : (($line['withholding_rate'] > 0) ? erp_apply_rate(max(0, $tax - $tax2), $line['withholding_rate']) : 0);
+                : (($line['withholding_rate'] > 0) ? erp_apply_rate(erp_return_within($tax - $tax2, $tax), $line['withholding_rate']) : 0);
         } else {
             $tax2 = $taxes['lines'][$index]['tax2'];
             if ($cap['tax2'] !== null) {
-                $tax2 = min($tax2, $cap['tax2']);
+                $tax2 = erp_return_within($tax2, $cap['tax2']);
             }
 
             $tax = $taxes['lines'][$index]['vat'] + $tax2;
             if ($cap['tax'] !== null) {
-                $tax = min($tax, $cap['tax']);
+                $tax = erp_return_within($tax, $cap['tax']);
             }
 
             // Never more than the VAT this piece gives back.
-            $withholding = min($taxes['lines'][$index]['withholding'], max(0, $tax - $tax2));
+            $withholding = erp_return_within($taxes['lines'][$index]['withholding'], erp_return_within($tax - $tax2, $tax));
             if ($cap['withholding'] !== null) {
-                $withholding = min($withholding, $cap['withholding']);
+                $withholding = erp_return_within($withholding, $cap['withholding']);
             }
         }
 
         $lines[$index]['tax_total'] = $tax;
-        $lines[$index]['tax2_amount'] = min($tax2, $tax);
+        $lines[$index]['tax2_amount'] = erp_return_within($tax2, $tax);
         $lines[$index]['withholding_amount'] = $withholding;
     }
 
@@ -297,8 +319,243 @@ function erp_return_build($parent_lines, $quantities)
             'grand_total' => $subtotal - $discount_total + $tax_total - $withholding_total,
         ),
         'is_full' => $is_full,
-        'error' => '',
+        'error' => erp_return_credit_refusal($parent_lines, $lines, $typed_credits),
     );
+}
+
+/**
+ * A figure held between zero and a limit, on whichever side of zero the limit
+ * is: never above a limit of zero or more, never below one under zero, never
+ * across zero. What is left of a line and the pieces given back of it are
+ * held so, a credit line's below zero like the line itself.
+ *
+ * @param int $figure  Kurus
+ * @param int $limit   Kurus
+ * @return int  Kurus
+ */
+function erp_return_within($figure, $limit)
+{
+    $figure = (int) $figure;
+    $limit = (int) $limit;
+
+    return ($limit < 0) ? min(0, max($figure, $limit)) : max(0, min($figure, $limit));
+}
+
+/**
+ * The quantities of a return with each line below zero that was not chosen
+ * brought back with the goods.
+ *
+ * A credit line (from a product priced below zero) lowers what the goods
+ * cost, the way an order discount does, and a discount comes back with the
+ * goods in proportion. So does the credit: the share of its remaining
+ * quantity that the goods given back now are of the value still left of the
+ * goods (amount less discount), rounded to the four places a quantity is
+ * stored with; once the last of the goods comes back, all of it, so the
+ * returns of a sale add up to the sale. The goods are the lines at the
+ * credit's VAT rate when what is left of them covers what is left of the
+ * credit (the credit's VAT lowered the VAT of its rate), and otherwise the
+ * lines of every rate: goods worth less than the credit at its rate could
+ * not carry it, and a return of the other goods alone would give back more
+ * than is left of the sale. Lines without a product (shipping, surcharges)
+ * carry no share, unless no line carries one.
+ *
+ * A quantity chosen for a credit line is kept as chosen.
+ *
+ * @param array $parent_lines  from erp_returnable_lines()
+ * @param array $quantities    line id => quantity
+ * @return array  line id => quantity
+ */
+function erp_return_credit_quantities($parent_lines, $quantities)
+{
+    $goods = array();
+    $credits = array();
+
+    foreach ((array) $parent_lines as $parent) {
+        $line_id = (int) $parent['id'];
+        $remaining = (float) $parent['remaining_qty'];
+        $wanted = isset($quantities[$line_id]) ? (float) $quantities[$line_id] : 0;
+
+        if ($remaining <= 0.00001) {
+            continue;
+        }
+
+        if ((int) $parent['line_total'] < 0) {
+            if ($wanted <= 0) {
+                $credits[] = $parent;
+            }
+            continue;
+        }
+
+        $left = ((int) $parent['line_total'] - (int) ($parent['returned_line_total'] ?? 0))
+            - ((int) $parent['discount_amount'] - (int) ($parent['returned_discount'] ?? 0));
+
+        if ($left > 0) {
+            $goods[] = array(
+                'rate' => sprintf('%.3F', (float) $parent['tax_rate']),
+                'product' => ((int) $parent['product_id'] > 0),
+                'left' => $left,
+                'share' => min(1, max(0, $wanted) / $remaining),
+                'whole' => ($wanted >= ($remaining - 0.00001)),
+            );
+        }
+    }
+
+    if (empty($credits) || empty($goods)) {
+        return $quantities;
+    }
+
+    $products = array_filter($goods, function ($line) {
+        return $line['product'];
+    });
+
+    if (!empty($products)) {
+        $goods = $products;
+    }
+
+    foreach ($credits as $credit) {
+        $rate = sprintf('%.3F', (float) $credit['tax_rate']);
+        $weights = array_filter($goods, function ($line) use ($rate) {
+            return $line['rate'] === $rate;
+        });
+
+        $own_left = 0;
+        foreach ($weights as $line) {
+            $own_left += $line['left'];
+        }
+
+        $credit_left = abs(((int) $credit['line_total'] - (int) ($credit['returned_line_total'] ?? 0))
+            - ((int) $credit['discount_amount'] - (int) ($credit['returned_discount'] ?? 0)));
+
+        if (empty($weights) || ($own_left < $credit_left)) {
+            $weights = $goods;
+        }
+
+        $left = 0;
+        $given = 0.0;
+        $whole = true;
+
+        foreach ($weights as $line) {
+            $left += $line['left'];
+            $given += $line['left'] * $line['share'];
+            $whole = $whole && $line['whole'];
+        }
+
+        if ($given <= 0) {
+            continue;
+        }
+
+        $remaining = (float) $credit['remaining_qty'];
+        $quantity = $whole ? $remaining : min($remaining, erp_quantity_round($remaining * $given / $left));
+
+        if ($quantity > 0) {
+            $quantities[(int) $credit['id']] = $quantity;
+        }
+    }
+
+    return $quantities;
+}
+
+/**
+ * Why a return of a sale with a line below zero cannot be written as chosen;
+ * '' when it can.
+ *
+ * Every piece is held to what is left of its line, so a return of lines at
+ * zero or more stays within the sale on its own. A credit line (from a
+ * product priced below zero) takes the sale below the sum of its other lines.
+ * Left out, it comes back with the goods in proportion
+ * (erp_return_credit_quantities()); chosen by hand it can come back out of
+ * step with them: the goods with too little of it give back more than is
+ * left of the sale, the credit with too few goods less than nothing, which no
+ * ledger takes (erp_account_post() refuses an amount below zero). So while a
+ * credit line has something left, what a return gives back in all lies
+ * between zero and what is left of the sale, and nothing can be given back
+ * of a sale already below zero. A credit quantity typed by hand must also
+ * keep the net and the VAT given back at each VAT rate between zero and what
+ * is left of them. The share worked out for a credit left out is not held
+ * per rate: a credit larger than the goods of its rate, or at a rate where
+ * only the shipping is left, follows the goods of every rate, and no share
+ * of it fits each rate.
+ *
+ * @param array $parent_lines   from erp_returnable_lines()
+ * @param array $lines          the return's lines, from erp_return_build()
+ * @param array $typed_credits  ids of the credit lines given a quantity by the caller
+ * @return string
+ */
+function erp_return_credit_refusal($parent_lines, $lines, $typed_credits = array())
+{
+    $credit = null;
+
+    foreach ($parent_lines as $parent) {
+        if (((int) $parent['line_total'] < 0) && ((float) $parent['remaining_qty'] > 0.00001)) {
+            $credit = $parent;
+            break;
+        }
+    }
+
+    if ($credit === null) {
+        return '';
+    }
+
+    // Net and VAT per rate, and the whole: what is left of the sale, and
+    // what the return gives back.
+    $left = array('total' => 0, 'rates' => array());
+    $back = array('total' => 0, 'rates' => array());
+
+    foreach ($parent_lines as $parent) {
+        $rate = sprintf('%.3F', (float) $parent['tax_rate']);
+        $net = (int) $parent['line_total'] - (int) ($parent['returned_line_total'] ?? 0)
+            - ((int) $parent['discount_amount'] - (int) ($parent['returned_discount'] ?? 0));
+        $tax = (int) $parent['tax_total'] - (int) ($parent['returned_tax'] ?? 0);
+        $withholding = (int) ($parent['withholding_amount'] ?? 0) - (int) ($parent['returned_withholding'] ?? 0);
+
+        $left['rates'][$rate]['net'] = ($left['rates'][$rate]['net'] ?? 0) + $net;
+        $left['rates'][$rate]['tax'] = ($left['rates'][$rate]['tax'] ?? 0) + $tax;
+        $left['total'] += $net + $tax - $withholding;
+    }
+
+    foreach ($lines as $line) {
+        $rate = sprintf('%.3F', (float) $line['tax_rate']);
+        $net = (int) $line['line_total'] - (int) $line['discount_amount'];
+
+        $back['rates'][$rate]['net'] = ($back['rates'][$rate]['net'] ?? 0) + $net;
+        $back['rates'][$rate]['tax'] = ($back['rates'][$rate]['tax'] ?? 0) + (int) $line['tax_total'];
+        $back['total'] += $net + (int) $line['tax_total'] - (int) $line['withholding_amount'];
+    }
+
+    if ($left['total'] < 0) {
+        return lang('What is left of this sale is below zero after an earlier return, so it cannot be returned further. Correct it with a manual document.');
+    }
+
+    $fits = ($back['total'] >= 0) && ($back['total'] <= $left['total']);
+
+    if (!empty($typed_credits)) {
+        foreach ($back['rates'] as $rate => $figures) {
+            foreach ($figures as $name => $amount) {
+                $fits = $fits && (erp_return_within($amount, $left['rates'][$rate][$name] ?? 0) === $amount);
+            }
+        }
+    }
+
+    if ($fits) {
+        return '';
+    }
+
+    if (empty($typed_credits)) {
+        return lang('This return would give back more than is left of the sale, or less than nothing.');
+    }
+
+    // Name the first credit line typed by hand.
+    foreach ($parent_lines as $parent) {
+        if ((int) $parent['id'] === (int) reset($typed_credits)) {
+            $credit = $parent;
+            break;
+        }
+    }
+
+    return lang(array(
+        'string' => 'Line "{var:1}" is below zero and comes back with the goods it was sold with: leave its quantity empty to give back its share. A return can give back neither more than is left of the sale nor less than nothing, in all or at any VAT rate.',
+        'vars' => array((string) $credit['description']),
+    ));
 }
 
 /**
