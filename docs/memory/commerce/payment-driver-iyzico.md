@@ -1,6 +1,6 @@
 ---
 name: payment-driver-iyzico
-description: iyzico drivers (card for Iyzipay, redirect for Pay With Iyzico), the one submit_order.php branch, the 3-D Secure return still in the Iyzipay block, behaviour tests
+description: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the Iyzipay block, no card refund under a protected currency, tests
 ---
 
 ## Which drivers are there?
