@@ -11702,6 +11702,7 @@
     "Cancel the Document": "Belgeyi İptal Et",
     "You cannot return more than was sold.": "Satılandan fazlası iade edilemez.",
     "Choose at least one line to return.": "İade için en az bir kalem seçin.",
+    "Line \"{var:1}\" is below zero, so it has to come back together with the goods it was sold with: a return can give back neither more than is left of the sale nor less than nothing, in all or at any VAT rate.": "\"{var:1}\" satırı sıfırın altında, bu yüzden birlikte satıldığı mallarla beraber iade edilmeli: bir iade, ne toplamda ne de herhangi bir KDV oranında satıştan kalandan fazlasını geri verebilir; sıfırın altına da inemez.",
     "Only an invoice can be returned.": "Yalnızca fatura iade edilebilir.",
     "That invoice has been cancelled.": "Bu fatura iptal edilmiş.",
     "Money has been allocated to this invoice, so it cannot be cancelled. Undo the settlement first.": "Bu faturaya tahsilat işlenmiş, bu yüzden iptal edilemez. Önce kapatmayı geri alın.",

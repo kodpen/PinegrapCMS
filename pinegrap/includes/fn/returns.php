@@ -2485,9 +2485,14 @@ function pg_return_refund_estimate($lines, $quantities, $discount)
 
         $base = (int) $line['price'] * $count;
         $tax = (int) round((int) $line['tax_total'] * $count / $sold);
-        $share = (($discount > 0) && ($subtotal > 0)) ? min($base, (int) round($discount * $base / $subtotal)) : 0;
+        $share = (($discount > 0) && ($subtotal > 0)) ? (int) round($discount * $base / $subtotal) : 0;
 
-        if (($share > 0) && ($base > 0)) {
+        // Never more off than the line: a line below zero (a product priced
+        // below zero) takes its share below zero too, and no further down
+        // than the line itself.
+        $share = ($base < 0) ? max($base, $share) : min($base, $share);
+
+        if (($share !== 0) && ($base !== 0)) {
             $tax = (int) round($tax * ($base - $share) / $base);
         }
 

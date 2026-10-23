@@ -600,6 +600,20 @@ function test_returns_refund_estimate()
 	// 2500 off 25000 of goods: the first unit carries 1000 of it, and its
 	// tax is taken on the 9000 left.
 	pg_assert_same(10800, pg_return_refund_estimate($lines, array(11 => 1), 2500), 'with the order discount');
+
+	// A credit line, from a product priced below zero: 2 x 50.00 and 2 x
+	// -15.00 at 20% with 7.00 off. The credit takes its share of the
+	// discount below zero too (-3.00) and its tax on what is left: 75.60,
+	// what was paid, not the 102.00 that took the whole credit line off as
+	// its discount.
+	$credit = array(
+		21 => array('price' => 5000, 'quantity' => 2, 'tax_total' => 2000),
+		22 => array('price' => -1500, 'quantity' => 2, 'tax_total' => -600),
+	);
+
+	pg_assert_same(8400, pg_return_refund_estimate($credit, array(21 => 2, 22 => 2), 0), 'a credit line');
+	pg_assert_same(7560, pg_return_refund_estimate($credit, array(21 => 2, 22 => 2), 700), 'a credit line with the order discount');
+	pg_assert_same(3780, pg_return_refund_estimate($credit, array(21 => 1, 22 => 1), 700), 'half of it');
 }
 
 // Order lines against the ERP's refund lines: the same ids on the order's
