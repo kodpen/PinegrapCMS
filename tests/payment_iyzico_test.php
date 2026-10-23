@@ -932,11 +932,15 @@ function test_payment_iyzico_card_refund_in_the_protected_currency_is_not_sent()
 
 	pg_assert_same(array(), $http->posts, 'nothing is sent to iyzico');
 	pg_assert_false($answer['success']);
-	pg_assert_false($answer['unclear'], 'a refusal: no money moved, the operator refunds on iyzico\'s screen');
+	pg_assert_false($answer['unclear'], 'a refusal: no money moved, the operator refunds in the iyzico panel');
 	pg_assert_same(lang(array(
-		'string' => 'Card payments are taken in the protected currency ({var:1}), so this refund cannot be made here. Refund it on iyzico\'s own screen.',
+		'string' => 'Card payments are taken in the protected currency ({var:1}), so this refund cannot be sent from here. Refund it in the iyzico panel, then record it on the order\'s return request with "Record a refund made another way"; the order screen has no place to record it.',
 		'vars'   => array('USD'))), $answer['error']);
 	pg_assert_same(array(), $answer['raw'], 'iyzico said nothing: no words of its own for the log');
+
+	// The sentence names the return screen's choice for a refund made outside
+	// the driver; it has to be the label that screen draws.
+	pg_assert_contains("h(lang('Record a refund made another way'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_return.php'), 'the return screen records a refund made in the iyzico panel');
 }
 
 function test_payment_iyzico_card_refund_in_the_base_currency_is_sent()

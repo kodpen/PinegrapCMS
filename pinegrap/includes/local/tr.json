@@ -26629,5 +26629,5 @@
     "trains, rail travel, the plains": "trenler, tren yolculuğu, ovalar",
     "Rank Number": "Sıra Numarası",
     "Search engines are also given the name on your account, not only the name you give on your story.": "Arama motorlarına yazınızda verdiğiniz adın yanı sıra hesabınızdaki ad da verilir.",
-    "Card payments are taken in the protected currency ({var:1}), so this refund cannot be made here. Refund it on iyzico's own screen.": "Kartla ödemeler kur korumalı para biriminde ({var:1}) alınıyor; bu yüzden iade buradan yapılamaz. İadeyi iyzico'nun kendi ekranından yapın."
+    "Card payments are taken in the protected currency ({var:1}), so this refund cannot be sent from here. Refund it in the iyzico panel, then record it on the order's return request with \"Record a refund made another way\"; the order screen has no place to record it.": "Kartla ödemeler kur korumalı para biriminde ({var:1}) alınıyor; bu yüzden bu iade buradan gönderilemez. İadeyi iyzico panelinden yapın, sonra siparişin iade talebinde \"Başka bir yolla yapılan iadeyi kaydet\" ile kaydedin; sipariş ekranında bunu kaydedecek bir yer yok."
 }
