@@ -2629,6 +2629,10 @@ function check_if_pretty_urls_are_enabled($custom_form_page_id)
 //     This is used when editing an item because we don't care if the item
 //     that we are editing already has this name.
 // ignore_item_type: The type of the item that was passed for ignore_item_id.
+// ignore_redirects_to_page: The optional id of a page being renamed. A short
+//     link that redirects to that page stood for one of its old addresses and
+//     does not hold the name; the rename deletes it
+//     (pg_short_link_page_renamed()).
 function check_name_availability($properties)
 {
     $name = '';
@@ -2682,6 +2686,9 @@ function check_name_availability($properties)
     // then prepare SQL to ignore that item.
     if (($ignore_item_id) && ($ignore_item_type == 'short_link')) {
         $sql_ignore = " AND (id != '" . escape($ignore_item_id) . "')";
+    }
+    if (!empty($properties['ignore_redirects_to_page'])) {
+        $sql_ignore .= pg_short_link_not_redirect_to_page_sql($properties['ignore_redirects_to_page']);
     }
     // If a short link exists for that name, then return false.
     if (db_value("SELECT COUNT(*) FROM short_links WHERE (name = '" . escape($name) . "')$sql_ignore") > 0) {
