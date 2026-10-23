@@ -1743,9 +1743,11 @@ function install_heavy_tables() {
 		// 2026.11.0 adds products.compare_at_price (11.0.2), style.style_meta_tags
 		// and page.page_meta_tags (11.0.3), page.publish_at and page.unpublish_at
 		// with an index each (11.0.17), the review columns of `comments` and the
-		// rating of `products` (11.0.14), order_items.tax_rate (11.0.59). Where
+		// rating of `products` (11.0.14), order_items.tax_rate (11.0.59), and
+		// comments.parent_id with two indexes for replies (11.0.31). Where
 		// the server cannot add a column in place, the catalogue, the comments,
-		// the tables holding the page trees and the order lines are copied whole.
+		// the tables holding the page trees and the order lines are copied whole;
+		// on a table still on MyISAM every added index copies it too.
 		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items'),
 	);
 

@@ -53,6 +53,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_invoice_recurring_day(); // 11.0.60
 	upgrade_2026_11_0_form_field_translate();   // 11.0.26
 	upgrade_2026_11_0_form_protection();        // 11.0.28
+	upgrade_2026_11_0_comment_replies();        // 11.0.31
 
 }
 
@@ -1220,5 +1221,63 @@ function upgrade_2026_11_0_form_protection() {
 	install_add_column('config', 'form_spam_blacklist', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Forms: custom form submissions are limited per visitor address (10 an hour) and per e-mail address (3 a day), and the limits can be changed under Site Settings, Security. A limit per e-mail domain and a check against StopForumSpam can be switched on there; both stay off.');
+
+}
+
+// Replies to comments (2026.11.0, 11.0.31).
+//
+// comments.parent_id is the comment a comment answers, 0 for one that answers
+// none. Every comment written before this step reads 0 and stays a top-level
+// comment, so nothing is migrated; the classic comments block does not read
+// the column. idx_parent finds the replies to a comment; idx_thread reads one
+// thread (page, item type, item) in the order it was written, which the
+// existing page_id key leaves to a sort of every comment on the page.
+//
+// The column is added in place where the server can, as 11.0.14 does for the
+// same table. An index added to an InnoDB table is built in place; on a
+// comments table left on MyISAM (2026.4.8 converts it unless it is over the
+// size limits, upgrade_2026_4_8_innodb_limits()) each of the three ALTERs
+// copies the table, so once one of them has run in this pass and the pass
+// budget is spent, the next one waits for the next pass.
+function upgrade_2026_11_0_comment_replies() {
+
+	global $install_runner;
+
+	$executed = (int) $install_runner['executed'];
+
+	$columns = array(
+		'parent_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	$indexes = array(
+		'idx_parent' => "INDEX idx_parent (parent_id)",
+		'idx_thread' => "INDEX idx_thread (page_id, item_type, item_id, created_timestamp)",
+	);
+
+	foreach ($indexes as $index => $definition) {
+
+		if (((int) $install_runner['executed'] > $executed)
+			&& (install_pass_seconds() >= install_pause_budget())
+			&& !install_index_exists('comments', $index)) {
+
+			install_pause(lang(array('string' => 'comments: replies are being added; index {var:1} follows in the next pass', 'vars' => $index)));
+
+		}
+
+		install_add_index('comments', $index, $definition);
+
+	}
+
+	install_note('Comments: a comment can now be stored as a reply to another one. Every comment written before this version stays a comment of its own, and comments are shown as before.');
 
 }

@@ -10,6 +10,7 @@ description: How an upgrade step that may outrun the web server's time limit is 
 ## What does the runner offer?
 - `install_pass_seconds()` against `install_pause_budget()` (30 s): a step that walks many tables stops starting new work once the budget is spent. A single ALTER cannot be cut in two, so a step that rewrites a big table is also listed in `install_heavy_tables()` for the preflight warning.
 - `install_pause($note, $wait)` ends this pass with a note and the version is not written: the loop runs it again (in the same request up to 720 passes; when the screen drives one version per request, in the next request). Pattern: the InnoDB conversion of 2026.4.8 (`upgrade_2026_4_8_innodb_group()`).
+- Pause only after this pass has done work (counted from `$install_runner['executed']` at the start of the step), so every pass moves on and the loop cannot pause for ever. Several ALTERs on one table that may still be MyISAM: `upgrade_2026_11_0_comment_replies()` (`data/comments-table.md`).
 
 ## How is big data work split from the schema?
 - The step does the schema and a bounded slice of the data; the rest runs outside the upgrade request, a few seconds at a time, with its progress in `config` (`*_max_id` as the ceiling, `*_cursor`, `*_done`), saved after every slice. Examples: the visitor rollups (table and bookkeeping in 2026.3.4, `pg_visitor_backfill_step()` for 20 s in 2026.3.5 and 2026.3.8, the general job carrying on), the form view rollup (2026.4.1, `pg_sfv_backfill_step()`), the password wrap columns (2026.4.4).
