@@ -1223,9 +1223,10 @@ function output_error($error_message, $response_code = 0)
 
     // A missing address may be one that a short link with a * in its name
     // stands for (includes/fn/short_link_redirects.php); then this does not
-    // return.
+    // return. Otherwise it goes into the 404 log (includes/fn/not_found_log.php).
     if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
 
     set_response_code($response_code);
@@ -1290,9 +1291,11 @@ function output_error($error_message, $response_code = 0)
 function error($content, $response_code = 0)
 {
     // The classic catalog reports an item it cannot find this way: the
-    // address may be one a short link with a * stands for.
+    // address may be one a short link with a * stands for, else it goes into
+    // the 404 log.
     if (((int) $response_code === 404) && function_exists('pg_short_link_not_found')) {
         pg_short_link_not_found();
+        pg_not_found_log_mark();
     }
 
     set_response_code($response_code);

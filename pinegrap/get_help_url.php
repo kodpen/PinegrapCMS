@@ -141,6 +141,7 @@ function get_help_url($properties = array())
         'edit_form_list_view' => 'pages#edit-form-list-view',
         'edit_form_item_view' => 'pages#edit-form-item-view',
         'view_short_links'    => 'pages-cont#short-links',
+        'view_not_found_log'  => 'pages-cont#short-links',
         'import_short_links'  => 'pages-cont#short-links',
         'add_short_link'      => 'pages-cont#create-edit-short-link',
         'edit_short_link'     => 'pages-cont#create-edit-short-link',
