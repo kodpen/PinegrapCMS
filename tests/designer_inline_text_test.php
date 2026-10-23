@@ -196,7 +196,7 @@ function test_designer_inline_text_wiring()
 {
 	$source = designer_inline_text_test_source();
 
-	pg_assert_contains("doc.write('<!DOCTYPE html><html lang=\"' + esc(_sdDocLang()) + '\"><head>", $source, 'the canvas document carries the page language');
+	pg_assert_contains("doc.write('<!DOCTYPE html><html lang=\"' + esc(_sdDocLang()) + '\"' + (canvasDarkTheme", $source, 'the canvas document carries the page language');
 	pg_assert_contains("<html lang=\"' + esc(_sdDocLang()) + '\">\\n\\n    <head>", $source, 'the HTML export prints the same language');
 	pg_assert_contains("var lang = _sdDocLang();", $source, 'the code view prints the same language');
 	pg_assert_false(strpos($source, "document.documentElement.lang || 'en'") !== false, 'no second copy of the page language');
