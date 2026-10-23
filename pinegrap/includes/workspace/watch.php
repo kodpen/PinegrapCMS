@@ -139,6 +139,7 @@ function ws_events_catalog()
             'order.shipped'        => array('label' => lang('An order is shipped'), 'when' => lang('When an order is shipped'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.delivered'      => array('label' => lang('An order is delivered'), 'when' => lang('When an order is delivered'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.cancelled'      => array('label' => lang('An order is cancelled'), 'when' => lang('When an order is cancelled'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
         );
     }

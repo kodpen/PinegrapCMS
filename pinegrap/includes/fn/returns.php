@@ -1029,10 +1029,181 @@ function pg_return_lock_name($order_id)
 }
 
 /**
+ * The request a new one repeats, read from the database: one of the same
+ * order and delivery, made from the same place (source) by the same person,
+ * still waiting for an answer and recent enough for pg_return_repeat_of().
+ *
+ * @param int    $order_id
+ * @param int    $ship_to_id
+ * @param string $source
+ * @param int    $user_id
+ * @param string $reason     as stored
+ * @param string $note       as stored
+ * @param mixed  $quantities order item id => quantity, as sent
+ * @param int    $now        unix time of the new request
+ * @return int the id of the request it repeats, or 0
+ */
+function pg_return_find_repeat($order_id, $ship_to_id, $source, $user_id, $reason, $note, $quantities, $now)
+{
+    $recent = db_items(
+        "SELECT id, reason, customer_note, requested_at
+        FROM order_returns
+        WHERE
+            order_id = '" . (int) $order_id . "'
+            AND ship_to_id = '" . (int) $ship_to_id . "'
+            AND status = 'requested'
+            AND source = '" . e($source) . "'
+            AND requested_by = '" . (int) $user_id . "'
+            AND requested_at >= '" . ((int) $now - PG_RETURN_REPEAT_SECONDS) . "'
+        ORDER BY id DESC
+        LIMIT 10");
+
+    if (empty($recent)) {
+        return 0;
+    }
+
+    $items = pg_return_items_of(array_column($recent, 'id'));
+
+    foreach ($recent as $index => $row) {
+        $recent[$index]['items'] = isset($items[(int) $row['id']]) ? $items[(int) $row['id']] : array();
+    }
+
+    return pg_return_repeat_of($recent, $reason, $note, $quantities, $now);
+}
+
+/**
+ * Everything pg_return_create() checks before it writes, without writing or
+ * taking the order's lock, in the same order and with the same refusals: the
+ * reason and the note, the order and its status, the delivery, a customer's
+ * timing, then the same form sent again and the lines. pg_return_create()
+ * runs it first; an external API rehearsal (X-Dry-Run) stops after it.
+ *
+ * The repeat and the lines are read again by pg_return_create() under the
+ * lock, where they are final: another request may take the last units
+ * meanwhile. A repeat is looked for before the lines, as there, because the
+ * request it repeats may have taken every unit.
+ *
+ * A refusal names the request field it is about (ship_to_id, reason, note or
+ * items; '' when it is about the order or the delivery's timing) and a code
+ * a caller branches on rather than on the sentence: not_installed,
+ * reason_missing, note_missing, order_missing, order_not_returnable,
+ * delivery_not_in_order, not_sent, delivery_date_unknown, window_closed or
+ * lines.
+ *
+ * @param int    $order_id
+ * @param int    $ship_to_id the delivery the goods came in
+ * @param array  $quantities order item id => quantity
+ * @param string $reason     a code of pg_return_reasons()
+ * @param string $note       the customer's words; needed for "other"
+ * @param array  $options    as pg_return_create() takes them
+ * @return array ok, error, field, code, and what it worked out: source,
+ *               user_id, time, today, reason and note as stored, repeat (the
+ *               request this one repeats, or 0: its lines are not checked
+ *               then), lines (order item id => quantity)
+ */
+function pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $note, $options = array())
+{
+    $order_id = (int) $order_id;
+    $ship_to_id = (int) $ship_to_id;
+    $now = isset($options['time']) ? (int) $options['time'] : time();
+
+    $result = array(
+        'ok'      => false,
+        'error'   => '',
+        'field'   => '',
+        'code'    => '',
+        'source'  => (isset($options['source']) && in_array($options['source'], array('customer', 'panel', 'api'), true)) ? $options['source'] : 'panel',
+        'user_id' => isset($options['user_id']) ? max(0, (int) $options['user_id']) : 0,
+        'time'    => $now,
+        'today'   => (isset($options['today']) && (pg_return_date($options['today']) !== '')) ? $options['today'] : date('Y-m-d', $now),
+        'reason'  => '',
+        'note'    => '',
+        'repeat'  => 0,
+        'lines'   => array(),
+    );
+
+    $refuse = function ($error, $code, $field = '') use (&$result) {
+        return array_merge($result, array('ok' => false, 'error' => $error, 'code' => $code, 'field' => $field));
+    };
+
+    if (!pg_returns_ready()) {
+        return $refuse(lang('Returns are not installed yet: the database has to be updated first.'), 'not_installed');
+    }
+
+    $result['reason'] = pg_return_reason($reason);
+    $result['note'] = pg_return_text($note, PG_RETURN_NOTE_MAX);
+
+    if ($result['reason'] === '') {
+        return $refuse(lang('Choose a reason for the return.'), 'reason_missing', 'reason');
+    }
+
+    if (($result['reason'] === 'other') && ($result['note'] === '')) {
+        return $refuse(lang('Tell us why you are returning the goods.'), 'note_missing', 'note');
+    }
+
+    $order = db_item("SELECT id, status FROM orders WHERE id = '" . $order_id . "'");
+
+    if (!$order) {
+        return $refuse(lang('The order could not be found.'), 'order_missing');
+    }
+
+    if (!in_array((string) $order['status'], array('complete', 'exported'), true)) {
+        return $refuse(lang('Only a completed order can be returned.'), 'order_not_returnable');
+    }
+
+    $state = pg_return_delivery_state($order_id, $ship_to_id, $result['today']);
+
+    if ($state === null) {
+        return $refuse(lang('That delivery is not part of this order.'), 'delivery_not_in_order', 'ship_to_id');
+    }
+
+    if ($result['source'] === 'customer') {
+
+        if (!$state['goods_left']) {
+            return $refuse(lang('This delivery has not been sent yet. The order can be cancelled instead.'), 'not_sent');
+        }
+
+        // No date at all is known for the delivery: the deadline cannot be
+        // worked out, so staff decide rather than the code guessing one.
+        if ($state['window'] === null) {
+            return $refuse(lang('We cannot tell when this delivery arrived. Please contact us to return it.'), 'delivery_date_unknown');
+        }
+
+        if (!$state['window']['open']) {
+            return $refuse(lang('The return period for this delivery has ended.'), 'window_closed');
+        }
+    }
+
+    $result['repeat'] = pg_return_find_repeat($order_id, $ship_to_id, $result['source'], $result['user_id'], $result['reason'], $result['note'], $quantities, $now);
+
+    if ($result['repeat'] > 0) {
+        $result['ok'] = true;
+
+        return $result;
+    }
+
+    $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
+
+    if (!$checked['ok']) {
+        return $refuse($checked['error'], 'lines', 'items');
+    }
+
+    $result['ok'] = true;
+    $result['lines'] = $checked['lines'];
+
+    return $result;
+}
+
+/**
  * Records a return request.
  *
  * The caller has already checked that the person may ask for this order: a
  * customer that it is theirs, staff that they have commerce rights.
+ *
+ * The checks are pg_return_create_check()'s; the same form sent again and
+ * the lines are checked once more under the order's lock. A new request is
+ * announced as order.return.requested once it is written and the lock is
+ * let go; the same form sent again is not.
  *
  * @param int    $order_id
  * @param int    $ship_to_id the delivery the goods came in
@@ -1044,116 +1215,57 @@ function pg_return_lock_name($order_id)
  *                           time (unix time, defaults to now), today (Y-m-d,
  *                           defaults to today)
  * @return array ok, error, id, repeat (true when the request was the same
- *               form sent again and id is the request it repeats)
+ *               form sent again and id is the request it repeats), field and
+ *               code (pg_return_create_check()'s, and busy when another
+ *               return of the order was being saved)
  */
 function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $options = array())
 {
-    $refuse = function ($error) {
-        return array('ok' => false, 'error' => $error, 'id' => 0, 'repeat' => false);
+    $refuse = function ($error, $code, $field = '') {
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'repeat' => false, 'field' => $field, 'code' => $code);
     };
-
-    if (!pg_returns_ready()) {
-        return $refuse(lang('Returns are not installed yet: the database has to be updated first.'));
-    }
 
     $order_id = (int) $order_id;
     $ship_to_id = (int) $ship_to_id;
-    $source = (isset($options['source']) && in_array($options['source'], array('customer', 'panel', 'api'), true)) ? $options['source'] : 'panel';
-    $user_id = isset($options['user_id']) ? max(0, (int) $options['user_id']) : 0;
-    $now = isset($options['time']) ? (int) $options['time'] : time();
-    $today = (isset($options['today']) && (pg_return_date($options['today']) !== '')) ? $options['today'] : date('Y-m-d', $now);
 
-    $reason = pg_return_reason($reason);
-    $note = pg_return_text($note, PG_RETURN_NOTE_MAX);
+    $checked = pg_return_create_check($order_id, $ship_to_id, $quantities, $reason, $note, $options);
 
-    if ($reason === '') {
-        return $refuse(lang('Choose a reason for the return.'));
+    if (!$checked['ok']) {
+        return $refuse($checked['error'], $checked['code'], $checked['field']);
     }
 
-    if (($reason === 'other') && ($note === '')) {
-        return $refuse(lang('Tell us why you are returning the goods.'));
-    }
-
-    $order = db_item("SELECT id, status FROM orders WHERE id = '" . $order_id . "'");
-
-    if (!$order) {
-        return $refuse(lang('The order could not be found.'));
-    }
-
-    if (!in_array((string) $order['status'], array('complete', 'exported'), true)) {
-        return $refuse(lang('Only a completed order can be returned.'));
-    }
-
-    $state = pg_return_delivery_state($order_id, $ship_to_id, $today);
-
-    if ($state === null) {
-        return $refuse(lang('That delivery is not part of this order.'));
-    }
-
-    if ($source === 'customer') {
-
-        if (!$state['goods_left']) {
-            return $refuse(lang('This delivery has not been sent yet. The order can be cancelled instead.'));
-        }
-
-        // No date at all is known for the delivery: the deadline cannot be
-        // worked out, so staff decide rather than the code guessing one.
-        if ($state['window'] === null) {
-            return $refuse(lang('We cannot tell when this delivery arrived. Please contact us to return it.'));
-        }
-
-        if (!$state['window']['open']) {
-            return $refuse(lang('The return period for this delivery has ended.'));
-        }
-    }
+    $source = $checked['source'];
+    $user_id = $checked['user_id'];
+    $now = $checked['time'];
+    $reason = $checked['reason'];
+    $note = $checked['note'];
 
     // A second request for the same order (a double click, the customer and
     // staff at once) waits here, then sees what the first one took.
     $lock = pg_return_lock_name($order_id);
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
-        return $refuse(lang('Another return is being saved for this order. Try again in a moment.'));
+        return $refuse(lang('Another return is being saved for this order. Try again in a moment.'), 'busy');
     }
 
     // The same form sent again while the first one was being saved answers
     // with that request, before the quantity check: the first one may have
     // taken every unit, and the page the customer ends up seeing is the
     // answer to the second.
-    $recent = db_items(
-        "SELECT id, reason, customer_note, requested_at
-        FROM order_returns
-        WHERE
-            order_id = '" . $order_id . "'
-            AND ship_to_id = '" . $ship_to_id . "'
-            AND status = 'requested'
-            AND source = '" . e($source) . "'
-            AND requested_by = '" . $user_id . "'
-            AND requested_at >= '" . ($now - PG_RETURN_REPEAT_SECONDS) . "'
-        ORDER BY id DESC
-        LIMIT 10");
+    $repeat = pg_return_find_repeat($order_id, $ship_to_id, $source, $user_id, $reason, $note, $quantities, $now);
 
-    if (!empty($recent)) {
-        $items = pg_return_items_of(array_column($recent, 'id'));
-
-        foreach ($recent as $index => $row) {
-            $recent[$index]['items'] = isset($items[(int) $row['id']]) ? $items[(int) $row['id']] : array();
-        }
-
-        $repeat = pg_return_repeat_of($recent, $reason, $note, $quantities, $now);
-
-        if ($repeat > 0) {
-            db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
-
-            return array('ok' => true, 'error' => '', 'id' => $repeat, 'repeat' => true);
-        }
-    }
-
-    $checked = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
-
-    if (!$checked['ok']) {
+    if ($repeat > 0) {
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-        return $refuse($checked['error']);
+        return array('ok' => true, 'error' => '', 'id' => $repeat, 'repeat' => true, 'field' => '', 'code' => '');
+    }
+
+    $lines = pg_return_check_lines($quantities, pg_return_order_lines($order_id, $ship_to_id));
+
+    if (!$lines['ok']) {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+        return $refuse($lines['error'], 'lines', 'items');
     }
 
     // Both tables are InnoDB: a failed statement ends the request before the
@@ -1175,7 +1287,7 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
     $return_id = (int) mysqli_insert_id(db::$con);
     $values = array();
 
-    foreach ($checked['lines'] as $item_id => $quantity) {
+    foreach ($lines['lines'] as $item_id => $quantity) {
         $values[] = "('" . $return_id . "', '" . (int) $item_id . "', '" . (int) $quantity . "')";
     }
 
@@ -1185,7 +1297,75 @@ function pg_return_create($order_id, $ship_to_id, $quantities, $reason, $note, $
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-    return array('ok' => true, 'error' => '', 'id' => $return_id, 'repeat' => false);
+    // Outside the transaction and the lock: an event is queued, never sent,
+    // and is never the reason a request fails.
+    pg_return_announce('order.return.requested', $return_id);
+
+    return array('ok' => true, 'error' => '', 'id' => $return_id, 'repeat' => false, 'field' => '', 'code' => '');
+}
+
+/**
+ * What an order.return.* event carries. The order comes first, as in every
+ * order.* event: id is the ORDER's id (the Workspace finds the record an
+ * order.* event is about under id, ws_events_record_of()), then the return.
+ * The lines are ids and quantities; the names are GET /orders/{id}'s.
+ *
+ * @param array  $return       a row of pg_return_load(), with its items
+ * @param string $order_number
+ * @param array  $extra        what the event adds (the refund's amount,
+ *                             refund_method and unclear); never one of the
+ *                             fields above
+ * @return array id, order_number, return_id, ship_to_id, status (after the
+ *               move), source, reason, items (order_item_id, quantity), then
+ *               $extra
+ */
+function pg_return_event_payload($return, $order_number, $extra = array())
+{
+    $items = array();
+
+    foreach ((array) (isset($return['items']) ? $return['items'] : array()) as $item) {
+        $items[] = array(
+            'order_item_id' => (int) $item['order_item_id'],
+            'quantity'      => (int) $item['quantity'],
+        );
+    }
+
+    $payload = array(
+        'id'           => (int) $return['order_id'],
+        'order_number' => (string) $order_number,
+        'return_id'    => (int) $return['id'],
+        'ship_to_id'   => (int) $return['ship_to_id'],
+        'status'       => (string) $return['status'],
+        'source'       => (string) $return['source'],
+        'reason'       => (string) $return['reason'],
+        'items'        => $items,
+    );
+
+    return $payload + (array) $extra;
+}
+
+/**
+ * Announces an event of a return (order.return.*) to the webhooks and the
+ * Workspace through pg_announce(), which is silent without the API and never
+ * the reason a request fails. A return that cannot be read is not announced.
+ *
+ * @param string    $event
+ * @param int|array $return the return's id, or the row pg_return_load() gave
+ * @param array     $extra  what the event adds (pg_return_event_payload())
+ */
+function pg_return_announce($event, $return, $extra = array())
+{
+    if (!is_array($return)) {
+        $return = pg_return_load((int) $return);
+    }
+
+    if (!is_array($return) || !function_exists('pg_announce')) {
+        return;
+    }
+
+    $order_number = db_value("SELECT order_number FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
+
+    pg_announce($event, pg_return_event_payload($return, (string) $order_number, $extra));
 }
 
 /**
@@ -1264,7 +1444,19 @@ function pg_return_move($return_id, $to, $options = array())
         pg_return_reminder_job_switch_on();
     }
 
-    return array('ok' => true, 'error' => '', 'return' => pg_return_load($return['id']));
+    $after = pg_return_load($return['id']);
+
+    // Approved and received are announced here, whoever made the move: one
+    // return's screen or a bulk approval (one event per request it
+    // approves). Refunded is not: pg_return_refund() moves the return there
+    // before the payment service is asked and puts it back on a refusal, so
+    // it announces the refund itself once the outcome stands. A rejection,
+    // the parcel sent back and a closing are not announced.
+    if (in_array($to, array('approved', 'received'), true)) {
+        pg_return_announce('order.return.' . $to, $after);
+    }
+
+    return array('ok' => true, 'error' => '', 'return' => $after);
 }
 
 /**
@@ -2136,6 +2328,34 @@ function pg_return_audit_fields($row)
 }
 
 /**
+ * The fields of a new return the audit trail keeps: the request itself and
+ * its lines, without the time stamps (the trail keeps its own time).
+ *
+ * @param array|null $row a row of pg_return_load(), with its items
+ * @return array status, reason, customer_note, source, ship_to_id, items
+ *               (order item id => quantity)
+ */
+function pg_return_audit_create_fields($row)
+{
+    $fields = array();
+
+    foreach (array('status', 'reason', 'customer_note', 'source') as $field) {
+        $fields[$field] = is_array($row) && isset($row[$field]) ? (string) $row[$field] : '';
+    }
+
+    $fields['ship_to_id'] = (string) (is_array($row) && isset($row['ship_to_id']) ? (int) $row['ship_to_id'] : 0);
+    $fields['items'] = array();
+
+    $items = (is_array($row) && isset($row['items'])) ? (array) $row['items'] : array();
+
+    foreach ($items as $item) {
+        $fields['items'][(int) $item['order_item_id']] = (string) (int) $item['quantity'];
+    }
+
+    return $fields;
+}
+
+/**
  * A move made by staff, with what follows it: the audit trail line, the
  * activity log line and, when the request was approved or rejected, the
  * customer's mail. A rejection needs a note: the customer is told why.
@@ -2925,6 +3145,18 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     pg_audit('update', 'order_return', (int) $return['id'], $old, $after,
         lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int) $return['id'], $plan['order']['order_number']))));
+
+    // Announced once the outcome stands and the lock is let go: a refund the
+    // service made or that was recorded, and one the service gave no clear
+    // answer about (the return stays refunded and the amount is booked). A
+    // refusal put the return back to received above and announces nothing.
+    // The row is the one read right after the move, so the event says
+    // refunded even if somebody closes the return meanwhile.
+    pg_return_announce('order.return.refunded', $moved['return'], array(
+        'amount'        => (int) $amount,
+        'refund_method' => $method,
+        'unclear'       => ($unclear !== null),
+    ));
 
     if ($unclear !== null) {
         // Nothing is mailed and the ERP hand-off is not offered: whether the
