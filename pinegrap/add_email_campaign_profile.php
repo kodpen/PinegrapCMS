@@ -74,6 +74,7 @@ if (!$_POST) {
 
         case 'order_abandoned':
         case 'order_completed':
+        case 'order_review_request':
         case 'order_shipped':
             $standard_schedule_period_and_base_class = 'show';
             break;
@@ -119,6 +120,7 @@ if (!$_POST) {
 
         $action_options[lang('Order Abandoned')] = 'order_abandoned';
         $action_options[lang('Order Completed')] = 'order_completed';
+        $action_options[lang('Order Review Request')] = 'order_review_request';
         $action_options[lang('Order Shipped')] = 'order_shipped';
         $action_options[lang('Product Ordered')] = 'product_ordered';
 
@@ -401,6 +403,7 @@ if (!$_POST) {
         (
             $liveform->get('action') == 'order_abandoned'
             or $liveform->get('action') == 'order_completed'
+            or $liveform->get('action') == 'order_review_request'
             or $liveform->get('action') == 'order_shipped'
             or $liveform->get('action') == 'product_ordered'
         )
@@ -579,6 +582,7 @@ if (!$_POST) {
 
         case 'order_abandoned':
         case 'order_completed':
+        case 'order_review_request':
         case 'order_shipped':
             $action_item_id = '0';
             $schedule_period = 'after';

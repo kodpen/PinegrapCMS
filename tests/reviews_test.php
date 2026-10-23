@@ -5,8 +5,9 @@
  * Tests for includes/fn/reviews.php: which comments are product reviews, what
  * a reader is told when they may not write one, the SQL the purchase check
  * and the rating are read with, the AggregateRating a product's markup gets,
- * when the daily pass is due, and that every path that writes a comment asks
- * the gate or moves the rating.
+ * when the daily pass is due, that every path that writes a comment asks
+ * the gate or moves the rating, what the review request e-mail links to and
+ * when it starts, and Comment Moderation's verified filter.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -216,4 +217,142 @@ function test_reviews_reply_paths()
 	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
 	pg_assert_same(2, substr_count($page, "' . \$output_seller_reply . '"), 'under the review in both markups');
+}
+
+// The review request links to the review form of the item's page: the
+// product page, the item's address on it, and the form's anchor.
+function test_reviews_request_url()
+{
+	pg_assert_same(
+		'https://example.com/urun/mocha-chair#software_add_comment',
+		pg_review_request_url('https://example.com/', 'urun', 'mocha-chair'),
+		'a base with a trailing slash gives no double slash');
+	pg_assert_same(
+		'https://example.com/shop/urun/mocha-chair#software_add_comment',
+		pg_review_request_url('https://example.com/shop', 'urun', " mocha-chair\n"),
+		'the address is trimmed');
+	pg_assert_same(
+		'https://example.com/%C3%9Cr%C3%BCn%20Detay/%C3%87ay%20Barda%C4%9F%C4%B1#software_add_comment',
+		pg_review_request_url('https://example.com/', 'Ürün Detay', 'Çay Bardağı'),
+		'spaces and Turkish letters encoded as encode_url_path() does');
+	pg_assert_same('', pg_review_request_url('https://example.com/', '', 'mocha-chair'), 'no product page');
+	pg_assert_same('', pg_review_request_url('https://example.com/', 'urun', '  '), 'no address');
+	pg_assert_same('', pg_review_request_url('https://example.com/', null, null), 'nothing at all');
+}
+
+// The mail-merge fields of the e-mail: the order number, the first review
+// form, and a line per item to review.
+function test_reviews_request_fields()
+{
+	$fields = pg_review_request_fields(1042, array(
+		array('name' => 'Gone', 'url' => ''),
+		array('name' => 'Mocha Office Chair', 'url' => 'https://example.com/urun/mocha#software_add_comment'),
+		array('name' => '', 'url' => 'https://example.com/urun/cup#software_add_comment'),
+	));
+
+	pg_assert_same(array(
+		array('name' => 'order_number', 'data' => '1042'),
+		array('name' => 'review_url', 'data' => 'https://example.com/urun/mocha#software_add_comment'),
+		array('name' => 'review_links', 'data' => "Mocha Office Chair: https://example.com/urun/mocha#software_add_comment\nhttps://example.com/urun/cup#software_add_comment"),
+	), $fields, 'an item without an address is left out; one without a name is its address alone');
+
+	pg_assert_same(array(
+		array('name' => 'order_number', 'data' => 'A-7'),
+		array('name' => 'review_url', 'data' => ''),
+		array('name' => 'review_links', 'data' => ''),
+	), pg_review_request_fields('A-7', array()), 'nothing to review');
+}
+
+// Each bought line is reviewed on the group of options that sells it, or
+// else on the product; an item is asked about once, and only when its page
+// can be opened.
+function test_reviews_request_targets_from_rows()
+{
+	$row = function ($product_id, $product, $group = array()) {
+		return array(
+			'product_id'                => $product_id,
+			'product_name'              => $product['name'],
+			'product_short_description' => $product['short'],
+			'product_address_name'      => $product['address'],
+			'product_enabled'           => isset($product['enabled']) ? $product['enabled'] : '1',
+			'group_id'                  => isset($group['id']) ? $group['id'] : null,
+			'group_name'                => isset($group['name']) ? $group['name'] : null,
+			'group_short_description'   => isset($group['short']) ? $group['short'] : null,
+			'group_address_name'        => isset($group['address']) ? $group['address'] : null,
+		);
+	};
+
+	$chair = array('id' => '9', 'name' => 'chair-group', 'short' => 'Mocha Office Chair', 'address' => 'mocha-office-chair');
+
+	$targets = pg_review_request_targets_from_rows(array(
+		$row('5', array('name' => 'CH-GRN', 'short' => 'Green', 'address' => 'chair-green'), $chair),
+		$row('6', array('name' => 'CH-ORG', 'short' => 'Orange', 'address' => 'chair-orange'), $chair),
+		$row('7', array('name' => 'CUP-01', 'short' => '', 'address' => ' tea-cup ')),
+		$row('8', array('name' => 'NO-ADDR', 'short' => 'No address', 'address' => '')),
+		$row('7', array('name' => 'CUP-01', 'short' => '', 'address' => ' tea-cup ')),
+		$row('10', array('name' => 'OLD-01', 'short' => 'Retired', 'address' => 'retired', 'enabled' => '0')),
+		$row('11', array('name' => 'LMP-01', 'short' => 'Lamp shade', 'address' => 'lamp-shade', 'enabled' => '0'), array('id' => '12', 'name' => 'Lamp', 'short' => '', 'address' => 'lamp')),
+		$row('13', array('name' => 'BAG-01', 'short' => 'Bag', 'address' => 'bag'), array('id' => '14', 'name' => 'Bags', 'short' => 'Bags', 'address' => '')),
+	));
+
+	pg_assert_same(array(
+		array('item_type' => 'product_group', 'item_id' => 9, 'name' => 'Mocha Office Chair', 'address_name' => 'mocha-office-chair'),
+		array('item_type' => 'product', 'item_id' => 7, 'name' => 'CUP-01', 'address_name' => 'tea-cup'),
+		array('item_type' => 'product_group', 'item_id' => 12, 'name' => 'Lamp', 'address_name' => 'lamp'),
+	), $targets);
+
+	pg_assert_same(array(), pg_review_request_targets_from_rows(array()), 'no lines');
+	pg_assert_same(array(), pg_review_request_targets_from_rows(null), 'a failed query');
+}
+
+// Comment Moderation lists all comments, verified purchases only, or the
+// rest; anything else posted lists all.
+function test_reviews_verified_filter_sql()
+{
+	pg_assert_same('comments.verified_order_id > 0', pg_review_verified_filter_sql('yes'));
+	pg_assert_same('comments.verified_order_id = 0', pg_review_verified_filter_sql('no'));
+	pg_assert_same('', pg_review_verified_filter_sql(''), 'all comments');
+	pg_assert_same('', pg_review_verified_filter_sql("yes' OR '1'='1"), 'nothing but the two choices');
+	pg_assert_same('', pg_review_verified_filter_sql(array('yes')), 'not a string');
+}
+
+// Shipping asks for the review once the order_shipped e-mail is started;
+// the request keeps the purchase rule and its once-per-order check; deleting
+// the order cancels it; the profile screens offer it and the list names it;
+// a link whose address is a mail-merge field reaches the reader as written.
+function test_reviews_request_paths()
+{
+	$root = PG_FUNCTIONS_DIR;
+
+	$update = (string) file_get_contents($root . '/update_order.php');
+	$shipped = strpos($update, "'action' => 'order_shipped'");
+	$request = strpos($update, 'pg_review_request_start(');
+
+	pg_assert_true(($shipped !== false) && ($request !== false) && ($shipped < $request), 'update_order.php asks after the order_shipped campaign');
+
+	$function = new ReflectionFunction('pg_review_request_start');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_contains('pg_review_bought_sql()', $source, 'only a bought order');
+	pg_assert_contains('orders.user_id > 0', $source, 'only an order placed with an account');
+	pg_assert_contains("email_campaigns.action = 'order_review_request'", $source, 'once per order');
+	pg_assert_contains('email_campaigns.order_id', $source, 'once per order');
+
+	pg_assert_contains("'order_review_request'", (string) file_get_contents($root . '/delete_order.php'), 'deleting the order cancels it');
+
+	foreach (array('add_email_campaign_profile.php', 'edit_email_campaign_profile.php') as $screen) {
+		$count = substr_count((string) file_get_contents($root . '/' . $screen), "'order_review_request'");
+
+		pg_assert_true($count >= 4, $screen . ' offers it in all four places (' . $count . ')');
+	}
+
+	pg_assert_contains("case 'order_review_request':", (string) file_get_contents($root . '/view_email_campaign_profiles.php'), 'the profile list names it');
+
+	$mail = (string) file_get_contents($root . '/includes/fn/mail.php');
+
+	pg_assert_contains("case 'order_review_request':", $mail, 'the log names it');
+	pg_assert_contains('mailto:|http:\/\/|\^\^)', $mail, 'a link to a mail-merge field is not made absolute');
+
+	pg_assert_contains('pg_review_verified_filter_sql(', (string) file_get_contents($root . '/view_comments.php'), 'Comment Moderation filters verified purchases');
 }

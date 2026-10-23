@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Product reviews from verified buyers: who may review a product, the rating
- * each product keeps and the aggregateRating its structured data prints.
+ * Product reviews from verified buyers: who may review a product, the e-mail
+ * that asks a buyer for a review, the rating each product keeps and the
+ * aggregateRating its structured data prints.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -512,4 +513,288 @@ function pg_review_product_aggregate_jsonld($product_id)
     }
 
     return pg_review_aggregate_jsonld($row['rating_avg'], $row['rating_count']);
+}
+
+// The review request e-mail.
+//
+// When an order ships, update_order() starts the auto campaigns of the
+// 'order_review_request' action for it: an e-mail that asks the customer to
+// review what they bought, with a link to each item's review form. It goes
+// only where a review could be written - an order placed with an account
+// (the form asks the reader to sign in with it) and bought by the same rule
+// the form checks - and only once per order, whatever came of the first one.
+//
+// Comment Moderation lists verified purchases, or everything else, apart.
+
+/**
+ * The address of an item's review form: the item on the page products open
+ * on, at the form's anchor.
+ *
+ * @param string $base_url     the site's address, e.g. https://example.com/
+ * @param string $detail_page  the page products open on (page.page_name)
+ * @param string $address_name products.address_name or product_groups.address_name
+ * @return string '' when there is no page or no address to link to
+ */
+function pg_review_request_url($base_url, $detail_page, $address_name)
+{
+    $detail_page = (string) $detail_page;
+    $address_name = trim((string) $address_name);
+
+    if (($detail_page === '') || ($address_name === '')) {
+        return '';
+    }
+
+    return rtrim((string) $base_url, '/') . '/' . encode_url_path($detail_page) . '/' . encode_url_path($address_name) . '#software_add_comment';
+}
+
+/**
+ * The mail-merge fields of the review request: ^^order_number^^,
+ * ^^review_url^^ (the first item's review form) and ^^review_links^^ (one
+ * line per item: its name and the address of its form).
+ *
+ * @param string|int $order_number
+ * @param array      $targets list of array('name' => ..., 'url' => ...); one
+ *                            without an address is left out
+ * @return array the fields for create_auto_email_campaigns()
+ */
+function pg_review_request_fields($order_number, $targets)
+{
+    $first_url = '';
+    $lines = array();
+
+    foreach ((array) $targets as $target) {
+        $url = isset($target['url']) ? (string) $target['url'] : '';
+
+        if ($url === '') {
+            continue;
+        }
+
+        if ($first_url === '') {
+            $first_url = $url;
+        }
+
+        $name = isset($target['name']) ? trim((string) $target['name']) : '';
+        $lines[] = ($name !== '') ? $name . ': ' . $url : $url;
+    }
+
+    return array(
+        array('name' => 'order_number', 'data' => (string) $order_number),
+        array('name' => 'review_url', 'data' => $first_url),
+        array('name' => 'review_links', 'data' => implode("\n", $lines)),
+    );
+}
+
+/**
+ * What to ask a review of, from an order's bought lines as
+ * pg_review_request_targets() reads them: the group of options that sells
+ * the product (where the page takes its reviews), or else the product. Each
+ * item is asked about once. An item whose page cannot be opened is left out:
+ * one without an address, and a product taken off sale that no group sells.
+ *
+ * @param array|null $rows product_id, product_name, product_short_description,
+ *                         product_address_name, product_enabled, group_id,
+ *                         group_name, group_short_description, group_address_name
+ * @return array list of array('item_type', 'item_id', 'name', 'address_name')
+ */
+function pg_review_request_targets_from_rows($rows)
+{
+    $targets = array();
+
+    foreach ((array) $rows as $row) {
+        if ((int) $row['group_id'] > 0) {
+            $item_type = 'product_group';
+            $item_id = (int) $row['group_id'];
+            $name = (string) $row['group_short_description'];
+            $fallback_name = (string) $row['group_name'];
+            $address_name = trim((string) $row['group_address_name']);
+        } else {
+            if ((string) $row['product_enabled'] !== '1') {
+                continue;
+            }
+
+            $item_type = 'product';
+            $item_id = (int) $row['product_id'];
+            $name = (string) $row['product_short_description'];
+            $fallback_name = (string) $row['product_name'];
+            $address_name = trim((string) $row['product_address_name']);
+        }
+
+        $key = $item_type . ':' . $item_id;
+
+        if (($item_id <= 0) || ($address_name === '') || isset($targets[$key])) {
+            continue;
+        }
+
+        // The name shoppers know an item by: products.name is the SKU.
+        $targets[$key] = array(
+            'item_type'    => $item_type,
+            'item_id'      => $item_id,
+            'name'         => (trim($name) !== '') ? $name : $fallback_name,
+            'address_name' => $address_name,
+        );
+    }
+
+    return array_values($targets);
+}
+
+/**
+ * What to ask a review of for an order: the items of its bought lines (a
+ * line saved for later was not bought), in the order they were added. A
+ * product sold in more than one group of options is reviewed on the oldest
+ * of them (the lowest id).
+ *
+ * @param int $order_id
+ * @return array see pg_review_request_targets_from_rows()
+ */
+function pg_review_request_targets($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return array();
+    }
+
+    // The groups of options are looked up for this order's products only,
+    // in one statement with the lines.
+    $rows = db_items(
+        "SELECT
+            order_items.product_id,
+            products.name AS product_name,
+            products.short_description AS product_short_description,
+            products.address_name AS product_address_name,
+            products.enabled AS product_enabled,
+            product_groups.id AS group_id,
+            product_groups.name AS group_name,
+            product_groups.short_description AS group_short_description,
+            product_groups.address_name AS group_address_name
+        FROM order_items
+        INNER JOIN products ON products.id = order_items.product_id
+        LEFT JOIN (
+            SELECT products_groups_xref.product, MIN(product_groups.id) AS id
+            FROM products_groups_xref
+            INNER JOIN product_groups ON product_groups.id = products_groups_xref.product_group
+            WHERE
+                (product_groups.display_type = 'select')
+                AND (product_groups.enabled = '1')
+                AND (products_groups_xref.product IN (SELECT order_items.product_id FROM order_items WHERE order_items.order_id = '" . $order_id . "'))
+            GROUP BY products_groups_xref.product
+        ) AS select_groups ON select_groups.product = order_items.product_id
+        LEFT JOIN product_groups ON product_groups.id = select_groups.id
+        WHERE
+            (order_items.order_id = '" . $order_id . "')
+            AND (order_items.product_id > 0)" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC");
+
+    return pg_review_request_targets_from_rows($rows);
+}
+
+/**
+ * Starts the review request e-mail of an order that has just shipped.
+ *
+ * Nothing is started for an order placed without an account or not bought
+ * (pg_review_bought_sql()), for one that already has a review request in any
+ * state (sent, waiting or cancelled), or when no item of it has a review form
+ * to link to. A shipment while no profile of the action is enabled starts
+ * nothing either, so a later shipment of the same order may still start it
+ * once one is. An order that never ships (downloads, services) gets no
+ * request.
+ *
+ * @param int $order_id
+ * @return bool whether create_auto_email_campaigns() was asked to start it
+ */
+function pg_review_request_start($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !pg_reviews_ready()) {
+        return false;
+    }
+
+    $order = db_item(
+        "SELECT
+            orders.id,
+            orders.order_number,
+            orders.user_id,
+            orders.contact_id,
+            orders.billing_email_address
+        FROM orders
+        WHERE
+            (orders.id = '" . $order_id . "')
+            AND (orders.user_id > 0)
+            AND " . pg_review_bought_sql());
+
+    if (!is_array($order)) {
+        return false;
+    }
+
+    $requested = db_value(
+        "SELECT 1 FROM email_campaigns
+        WHERE
+            (email_campaigns.action = 'order_review_request')
+            AND (email_campaigns.order_id = '" . $order_id . "')
+        LIMIT 1");
+
+    if ($requested) {
+        return false;
+    }
+
+    $detail_page = function_exists('pg_sw_catalog_detail_page_name') ? (string) pg_sw_catalog_detail_page_name(0) : '';
+
+    if ($detail_page === '') {
+        return false;
+    }
+
+    // PATH, not OUTPUT_PATH: the fields are escaped for the e-mail's format
+    // when they are filled in, and plain text takes the address as it is.
+    $base_url = URL_SCHEME . HOSTNAME_SETTING . PATH;
+    $targets = pg_review_request_targets($order_id);
+    $links = array();
+
+    foreach ($targets as $target) {
+        $url = pg_review_request_url($base_url, $detail_page, $target['address_name']);
+
+        if ($url !== '') {
+            $links[] = array('name' => $target['name'], 'url' => $url);
+        }
+    }
+
+    if (!$links) {
+        return false;
+    }
+
+    create_auto_email_campaigns(array(
+        'action'        => 'order_review_request',
+        'order_id'      => $order_id,
+        'contact_id'    => $order['contact_id'],
+        'email_address' => $order['billing_email_address'],
+        'fields'        => pg_review_request_fields($order['order_number'], $links),
+        'data'          => array(
+            'order_id'       => $order_id,
+            'review_targets' => $targets,
+        ),
+    ));
+
+    return true;
+}
+
+/**
+ * The SQL condition of Comment Moderation's verified filter.
+ *
+ * @param string $verified 'yes' (verified purchases), 'no' (everything else)
+ * @return string '' for all comments, and for anything but the two choices
+ */
+function pg_review_verified_filter_sql($verified)
+{
+    if (!is_string($verified)) {
+        return '';
+    }
+
+    switch ($verified) {
+        case 'yes':
+            return 'comments.verified_order_id > 0';
+        case 'no':
+            return 'comments.verified_order_id = 0';
+    }
+
+    return '';
 }

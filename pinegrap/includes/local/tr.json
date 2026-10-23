@@ -25533,5 +25533,9 @@
     "This return would give back more than is left of the sale, or less than nothing.": "Bu iade, satıştan kalandan fazlasını ya da sıfırdan azını geri verirdi.",
     "This form has no action and is not in a Custom Form widget: what the visitor enters is neither stored nor sent (Form → Action)": "Bu formun eylemi yok ve bir Özel Form widget'ında durmuyor: ziyaretçinin girdikleri ne kaydedilir ne de gönderilir (Form → Eylem)",
     "There are no events to show.": "Gösterilecek etkinlik yok.",
-    "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}"
+    "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}",
+    "Order Review Request": "Sipariş Değerlendirme İsteği",
+    "order review request": "sipariş değerlendirme isteği",
+    "Verified purchases": "Doğrulanmış satın almalar",
+    "Not verified": "Doğrulanmamış"
 }

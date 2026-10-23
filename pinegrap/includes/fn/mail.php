@@ -750,10 +750,10 @@ function get_email_campaign_profile_options()
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "order_delivered", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
-// order_id: Used by order_abandoned action.
+// order_id: Used by the order_abandoned and order_review_request actions.
 // contact_id: The ID of the contact that generated the action.
 // email_address: You can pass an email address for recipient, instead of the contact above.
 // If you pass both, then the contact email address will be used.
@@ -887,8 +887,10 @@ function create_auto_email_campaigns($properties)
             if (!$base_in_html) {
                 $base = '<head>' . "\n" . '<base href="' . URL_SCHEME . HOSTNAME_SETTING . '/" />';
                 $body = preg_replace('/<head>/i', $base, $body);
-                // Change relative URLs to absolute URLs for links.
-                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+                // Change relative URLs to absolute URLs for links. A link whose address is a
+                // mail-merge field (href="^^review_url^^") is left as written: the field holds a
+                // whole address and is filled in below, after this pass.
+                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/|\^\^)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
                 // Change relative URLs to absolute URLs for images.
                 $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
                 // Change relative URLs to absolute URLs for CSS background images.
@@ -918,6 +920,12 @@ function create_auto_email_campaigns($properties)
                     // remove new lines from the link
                     $url = str_replace("\r\n", '', $url);
                     $url = str_replace("\n", '', $url);
+                    // A link whose address is a mail-merge field gets no tracking code: the
+                    // address is only known once the field is filled in, and a code added
+                    // here would land behind its #fragment.
+                    if (mb_substr($url, 0, 2) == '^^') {
+                        continue;
+                    }
                     $url_parts = @parse_url($url);
                     // if the URL is valid
                     // and if there is not a scheme or the scheme is http or https
@@ -1184,6 +1192,9 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'order_completed':
                     $log_action = lang('order completed');
+                    break;
+                case 'order_review_request':
+                    $log_action = lang('order review request');
                     break;
                 case 'order_shipped':
                     $log_action = lang('order shipped');
