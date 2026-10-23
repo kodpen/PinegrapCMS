@@ -1,6 +1,6 @@
 ---
 name: currency-exchange-rate-box
-description: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335)
+description: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 ---
 
 ## How many decimals does the exchange rate box take?
@@ -14,7 +14,7 @@ description: Exchange rate box on add/edit currency: five decimals like currenci
 - The mask always posts all five decimals, so the three-digits-after-a-single-separator rule of `pg_parse_amount()` never decides a posted rate.
 
 ## What was the symptom?
-- #1335: the box had the two-decimal money mask and was filled with two decimals, so a rate the updater stored as 0.02853 opened as 0,03 and any save of the currency (even of its name) wrote 0.03 back. Rates already saved that way stay rounded until the updater or an admin rewrites them.
+- #1335 (PR #1341): the box had the two-decimal money mask and was filled with two decimals, so a rate the updater stored as 0.02853 opened as 0,03 and any save of the currency (even of its name) wrote 0.03 back. Rates already saved that way stay rounded until the updater or an admin rewrites them.
 
 ## What was checked?
 - `tests/money_mask_test.php`: five digits in the mask attributes and tag form, two stay the default, the five-decimal fill, and `0,02853`, `16.000,00000`, `16,000.12345` read back.
