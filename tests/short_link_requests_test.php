@@ -10,7 +10,7 @@
  * wizard's lists and on save; the classic edit screen's Delete puts the link
  * in the Recycle Bin, as the File Manager does; and the File Manager's window
  * offers the answer and holds the name and the address to the classic
- * screens' checks.
+ * screens' checks; the screens that rename a page keep its old address.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -248,4 +248,28 @@ function test_short_link_wizard_offers_the_answer_and_the_classic_checks()
 	$long = pg_short_link_read_request(array('destination_type' => 'url', 'url' => '/' . str_repeat('a', pg_short_link_url_max())), null);
 
 	pg_assert_same('url', $long['error'] ?? '', 'a longer address is refused, as on the classic screens');
+}
+
+// A renamed page's old address: both screens that rename a page let a
+// redirect of the page's own give its name back and hand the old name to
+// pg_short_link_page_renamed(), the designer only when the editor asks.
+function test_short_link_page_rename_screens_keep_the_old_address()
+{
+	$classic = short_link_requests_test_source('edit_page.php');
+
+	pg_assert_contains("'ignore_redirects_to_page' => \$_POST['id']", $classic, 'the classic name check lets the page\'s own redirect go');
+	pg_assert_contains("pg_short_link_page_renamed(\$page_id, \$current_page_name, \$name,", $classic, 'the classic save keeps the old address');
+	pg_assert_contains("((\$_POST['name_redirect'] ?? '') == 1)", $classic, 'when the box under the name is on');
+	pg_assert_contains('bindPageRenameRedirect();', $classic, 'the box follows the name');
+
+	$save = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/designer.php'), 'pg_designer_save_page');
+
+	pg_assert_contains('pg_designer_page_name_taken_elsewhere($name, $page_id)', $save, 'the designer name check lets the page\'s own redirect go');
+	pg_assert_contains("\$flag('page_name_redirect') === 1", $save, 'the old address is kept when the editor asks');
+
+	$editor = short_link_requests_test_source('assets/js/style_designer.js');
+
+	pg_assert_contains('rec.page_name_redirect = (p.page_name_redirect === 0) ? 0 : 1;', $editor, 'the editor asks unless the box was switched off');
+	pg_assert_contains("document.getElementById('sd-page-name-redirect')", $editor, 'from the box under the name');
+	pg_assert_contains('id="sd-page-name-redirect"', short_link_requests_test_source('includes/designer_screen.php'), 'which the settings draw');
 }
