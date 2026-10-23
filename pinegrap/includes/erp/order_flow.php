@@ -112,19 +112,30 @@ function erp_order_flow_invoice_buyer($order, $invoice)
 
 /**
  * The card the buyer's gaps are put right on: the account card, or, while
- * the account is still to be opened, the contact card it is opened from.
+ * the account is still to be opened, the new account form filled in from
+ * the contact card and the order's billing block, as the invoice would open
+ * it (add_erp_account.php).
  *
- * @param array $buyer  erp_order_flow_invoice_buyer() output
- * @return array ['card' => 'account' | 'contact' | '', 'url' => string]
+ * Not the contact card: it has no district box, its street brings the whole
+ * address with it (erp_account_data_with_order()), so a field typed there
+ * can stay missing, and it is behind the contacts right rather than the
+ * ERP's.
+ *
+ * @param array $buyer     erp_order_flow_invoice_buyer() output
+ * @param int   $order_id  The order being invoiced, 0 for none
+ * @return array ['card' => 'account' | 'new_account' | '', 'url' => string]
  */
-function erp_order_flow_buyer_card($buyer)
+function erp_order_flow_buyer_card($buyer, $order_id)
 {
     if ((int) ($buyer['id'] ?? 0) > 0) {
         return array('card' => 'account', 'url' => 'edit_erp_account.php?id=' . (int) $buyer['id']);
     }
 
     if ((int) ($buyer['contact_id'] ?? 0) > 0) {
-        return array('card' => 'contact', 'url' => 'edit_contact.php?id=' . (int) $buyer['contact_id']);
+        return array(
+            'card' => 'new_account',
+            'url' => 'add_erp_account.php?contact_id=' . (int) $buyer['contact_id'] . (((int) $order_id > 0) ? '&order_id=' . (int) $order_id : ''),
+        );
     }
 
     return array('card' => '', 'url' => '');
@@ -222,15 +233,15 @@ function erp_order_flow_state($order_id)
         if (is_array($buyer)) {
             $gaps = erp_edoc_account_missing($buyer);
             if (!empty($gaps['fields'])) {
-                $card = erp_order_flow_buyer_card($buyer);
+                $card = erp_order_flow_buyer_card($buyer, $order_id);
                 $vars = array($gaps['label'], erp_edoc_fix_summary($gaps['fields']));
                 $step['state'] = 'blocked';
                 $step['action'] = '';
                 $step['disabled_action'] = 'invoice';
 
-                if ($card['card'] === 'contact') {
-                    $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the contact card, which the invoice opens the account from: {var:2}.', 'vars' => $vars));
-                    $step['links'][] = array('label' => lang('Complete the contact card'), 'url' => $card['url']);
+                if ($card['card'] === 'new_account') {
+                    $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}. The customer has no account yet; the invoice would open it from the contact card and the order\'s billing address.', 'vars' => $vars));
+                    $step['links'][] = array('label' => lang('Open an Account'), 'url' => $card['url']);
                 } else {
                     $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}.', 'vars' => $vars));
                     $step['links'][] = array('label' => lang('Complete the account card'), 'url' => $card['url']);

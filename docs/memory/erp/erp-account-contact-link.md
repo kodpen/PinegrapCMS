@@ -13,7 +13,7 @@ description: ERP account to contact/user link: contact_id is the truth, mirror c
 - `erp_account_form_cards($liveform, $with_opening, $currency_locked, $contact)`: the fourth parameter opens the "Bağlı Kişi" card (`erp_account_form_contact_card()`); the fifth is the account row (for the e-invoice state line).
 - Search `get_erp_contacts.php?q=` (ERP gate); `data-erp-own-account` in the result greys out contacts linked to another account.
 - In `edit_erp_account.php` the link is attempted BEFORE saving; a rejection stays on the `contact_id` field and nothing is written.
-- `add_erp_account.php?contact_id=N` opens pre-filled via `erp_account_data_from_contact()` (the bridge `erp_account_for_contact()` uses the same read); if the contact already has an account it redirects there.
+- `add_erp_account.php?contact_id=N` opens pre-filled via `erp_account_data_from_contact()` (the bridge `erp_account_for_contact()` uses the same read); with `&order_id=M` (an order of that contact) the billing block fills the gaps too, as the order's invoice would; if the contact already has an account it redirects there.
 
 ## How is an account opened from an order?
 - Pass the order: `erp_account_for_contact($contact_id, $created_by, $order)`. An account the contact already has is returned untouched: a later number on the card is not copied; the order's automatic invoice is held instead (erp-order-tax-number-difference.md).

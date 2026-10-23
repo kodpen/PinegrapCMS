@@ -26629,6 +26629,5 @@
     "trains, rail travel, the plains": "trenler, tren yolculuğu, ovalar",
     "Rank Number": "Sıra Numarası",
     "Search engines are also given the name on your account, not only the name you give on your story.": "Arama motorlarına yazınızda verdiğiniz adın yanı sıra hesabınızdaki ad da verilir.",
-    "{var:1} will not take the invoice until these are on the contact card, which the invoice opens the account from: {var:2}.": "{var:1} şu alanlar kişi kartında olmadan faturayı almıyor; fatura cari hesabı bu karttan açıyor: {var:2}.",
-    "Complete the contact card": "Kişi kartını tamamla"
+    "{var:1} will not take the invoice until these are on the account card: {var:2}. The customer has no account yet; the invoice would open it from the contact card and the order's billing address.": "{var:1} şu alanlar cari kartında olmadan faturayı almıyor: {var:2}. Müşterinin henüz carisi yok; fatura onu kişi kartından ve siparişin fatura adresinden açar."
 }
