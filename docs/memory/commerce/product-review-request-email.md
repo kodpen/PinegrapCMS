@@ -1,6 +1,6 @@
 ---
 name: product-review-request-email
-description: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #TBD): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
+description: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 ---
 
 ## What starts it?
