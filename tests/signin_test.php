@@ -21,14 +21,31 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// A fresh P-256 key, as the .p8 file Apple hands out holds one.
+// A fresh P-256 key, as the .p8 file Apple hands out holds one: PKCS#8
+// (BEGIN PRIVATE KEY) around the SEC1 key with its curve and public point.
+// The DER is put together here because openssl_pkey_export() writes an EC
+// key in the traditional SEC1 form (BEGIN EC PRIVATE KEY) before PHP 8.1 and
+// in PKCS#8 only from 8.1 on, and pg_signin_pem_private_key() puts any pasted
+// body under the PKCS#8 label, where a SEC1 body cannot be read.
 function signin_test_ec_key()
 {
 	$key = openssl_pkey_new(array('private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'));
-	$pem = '';
-	openssl_pkey_export($key, $pem);
+	$details = openssl_pkey_get_details($key);
+	$curve = "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07";
+	$point = "\x04" . str_pad($details['ec']['x'], 32, "\x00", STR_PAD_LEFT) . str_pad($details['ec']['y'], 32, "\x00", STR_PAD_LEFT);
 
-	return array('pem' => $pem, 'public' => openssl_pkey_get_details($key)['key']);
+	// ECPrivateKey (RFC 5915): version 1, the 32-byte scalar, [0] the curve,
+	// [1] the public point.
+	$sec1 = "\x02\x01\x01\x04\x20" . str_pad($details['ec']['d'], 32, "\x00", STR_PAD_LEFT)
+		. "\xa0\x0a" . $curve . "\xa1\x44\x03\x42\x00" . $point;
+	$sec1 = "\x30" . chr(strlen($sec1)) . $sec1;
+
+	// PrivateKeyInfo (RFC 5208): version 0, id-ecPublicKey on that curve, the
+	// key above.
+	$info = "\x02\x01\x00\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01" . $curve . "\x04" . chr(strlen($sec1)) . $sec1;
+	$pem = "-----BEGIN PRIVATE KEY-----\n" . chunk_split(base64_encode("\x30\x81" . chr(strlen($info)) . $info), 64, "\n") . "-----END PRIVATE KEY-----\n";
+
+	return array('pem' => $pem, 'public' => $details['key']);
 }
 
 // The JWS signature back in the DER form openssl_verify() reads.
