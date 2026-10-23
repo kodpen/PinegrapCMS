@@ -570,8 +570,9 @@ function erp_edoc_parasut_negative_line_refusal($lines)
  * Paraşüt keeps one identity field, tax_number, for the VKN of a company
  * and the TCKN of a person (the "TC Kimlik No" box of a person's card); the
  * contact_type says which. The live API takes a person's TCKN in
- * tax_number and finds the card by it again (the old order path sent a
- * 'tckn' attribute the documentation does not list).
+ * tax_number and finds the card by it again. The order screen's own
+ * Paraşüt buttons open their card the same way
+ * (parasut_order_contact_attributes() in includes/fn/parasut.php).
  *
  * The postal code goes with the address when the buyer has one: the
  * account sync compares it, and a card opened without it would differ from
