@@ -62,3 +62,20 @@ function test_save_shortcut_settings_dialog_takes_the_key()
 		preg_match("/el\\.addEventListener\\('keydown', function \\(event\\) \\{\\s*if \\(\\(event\\.ctrlKey \\|\\| event\\.metaKey\\) && \\(\\(event\\.key === 's'\\) \\|\\| \\(event\\.key === 'S'\\)\\)\\) \\{\\s*event\\.preventDefault\\(\\);\\s*save\\(\\);/", $source) === 1,
 		'the dialog prevents the default and saves');
 }
+
+// The visual designer takes Ctrl+S on the window in the capture phase and
+// stops it there. The code dialog (codemirror_modal.js) saves on the key
+// inside its editor, so the designer has to leave a key typed in the dialog
+// alone; otherwise the whole design was saved and the dialog stayed open with
+// its code unapplied.
+function test_save_shortcut_designer_leaves_the_code_dialog_alone()
+{
+	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$dialog = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+
+	pg_assert_true(
+		preg_match("/ae\.closest\('[^']*#pgCodeEditorModal[^']*'\)\) return;\s*e\.preventDefault\(\);\s*e\.stopPropagation\(\);\s*_sdSaveShortcut\(\);/", $designer) === 1,
+		'the designer returns before it stops the key and saves the design');
+	pg_assert_true(strpos($dialog, 'id="pgCodeEditorModal"') !== false, 'the dialog carries the id the designer checks');
+	pg_assert_true(strpos($dialog, "{ key: 'Mod-s', run: function () { _saveBtn.click(); return true; } }") !== false, 'the dialog presses its own Save on the key');
+}

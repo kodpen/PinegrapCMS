@@ -478,8 +478,11 @@ function mp_order_return_stock($order_id) {
 
 		$product_id = (int) $item['product_id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . "
+			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		db("UPDATE products SET out_of_stock = '0'
@@ -949,8 +952,11 @@ function mp_order_take_stock($matched) {
 
 		$product_id = (int) $product['id'];
 
+		// The stamp lets a system syncing with GET /products?updated_since=
+		// list the product; this path announces no webhook event.
 		db("UPDATE products
-			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . ")
+			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . "),
+				timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . e($product_id) . "'");
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");

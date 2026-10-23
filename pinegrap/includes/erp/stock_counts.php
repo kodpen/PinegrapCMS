@@ -296,8 +296,11 @@ function erp_stock_count_apply($count_id, $user_id)
             WHERE count_id = '" . (int) $count_id . "' AND product_id = '" . (int) $item['product_id'] . "'");
 
         if (($ok !== false) && ($before !== $counted)) {
+            // A count announces no webhook event, so the stamp is what lets
+            // a system syncing with GET /products?updated_since= see it.
             $ok = erp_query("UPDATE products SET inventory_quantity = '" . $counted . "',
-                    out_of_stock = '" . (($counted <= 0) ? 1 : 0) . "'"
+                    out_of_stock = '" . (($counted <= 0) ? 1 : 0) . "',
+                    timestamp = UNIX_TIMESTAMP()"
                 . (($counted <= 0) ? ", out_of_stock_timestamp = UNIX_TIMESTAMP()" : "") . "
                 WHERE id = '" . (int) $item['product_id'] . "'");
             $changed++;

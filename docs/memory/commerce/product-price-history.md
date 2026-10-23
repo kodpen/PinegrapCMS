@@ -17,7 +17,7 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 
 ## Which code paths call it?
 - `pg_pb_create_product()` right after the insert (product screens, variant sets with price rules, API create with `price_source => 'api'`, Workspace create, design templates), `pg_pb_update_product()`, `pg_pb_quick_update()`, `edit_products.php` mass edit, file manager bulk and quick edit, `import_products.php`, `duplicate_product()`, `duplicate_products.php`, API `products.update` and `products.prices`, Workspace `ws_change_write_product()`.
-- ERP writes no `products.price` (account prices are `erp_account_prices`). A new writer must add the call (`pinegrap-yeni-dosya` skill).
+- ERP writes no `products.price` (account prices are `erp_account_prices`). A new writer adds the call, or the reference price misses its change.
 
 ## How is it read back?
 - `GET /products/{id}/price-history`: product-price-history-api.md. No panel screen reads the rows yet.

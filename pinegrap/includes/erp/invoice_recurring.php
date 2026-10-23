@@ -84,6 +84,30 @@ function erp_invoice_recurring_refusal($invoice)
 }
 
 /**
+ * The day of the month a recurrence keeps. It is the first date's day, unless
+ * the first date is the last day of a month shorter than the invoice's day:
+ * an invoice of the 31st, first repeated on 28 February, goes on to 31 March
+ * and 30 April rather than staying on the 28th. A first date moved to another
+ * day keeps that day.
+ *
+ * @param string $issue_date  Y-m-d, the invoice repeated
+ * @param string $first_date  Y-m-d, the first repeat
+ * @return int  1-31
+ */
+function erp_invoice_recurring_day($issue_date, $first_date)
+{
+    $day = (int) substr((string) $first_date, 8, 2);
+    $source_day = (int) substr((string) $issue_date, 8, 2);
+    $month_end = (int) date('t', mktime(0, 0, 0, (int) substr((string) $first_date, 5, 2), 1, (int) substr((string) $first_date, 0, 4)));
+
+    if (($day === $month_end) && ($source_day > $day)) {
+        $day = $source_day;
+    }
+
+    return min(31, max(1, $day));
+}
+
+/**
  * The recurrence started from an invoice that is still running, or null.
  *
  * @param int $invoice_id
@@ -230,7 +254,7 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
             source_invoice_id = '" . (int) $invoice['id'] . "',
             account_id = '" . (int) $invoice['account_id'] . "',
             every_months = '" . $months . "',
-            day_of_month = '" . (int) substr($first, 8, 2) . "',
+            day_of_month = '" . erp_invoice_recurring_day((string) $invoice['issue_date'], $first) . "',
             next_date = '" . escape($first) . "',
             end_date = '" . escape(($end !== '') ? $end : '0000-00-00') . "',
             mode = '" . $mode . "',

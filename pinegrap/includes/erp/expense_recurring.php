@@ -93,6 +93,54 @@ function erp_expense_recurring_step($date, $months, $day)
 }
 
 /**
+ * The first date a recurrence is due. Started for the first time, one period
+ * after the expense. Started again after a stop, it goes on from the date the
+ * stopped one was due, moved on to today or later: the dates before were
+ * written already or passed while it was stopped, and writing them again
+ * would count the same rent twice.
+ *
+ * @param string $expense_date  Y-m-d
+ * @param int    $every_months
+ * @param int    $day           1-31
+ * @param string $resume_date   Y-m-d the stopped recurrence was due, or ''
+ * @param string $today         Y-m-d
+ * @return string  Y-m-d
+ */
+function erp_expense_recurring_first_date($expense_date, $every_months, $day, $resume_date = '', $today = '')
+{
+    $resume_date = (string) $resume_date;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $resume_date) || ($resume_date === '0000-00-00')) {
+        return erp_expense_recurring_step((string) $expense_date, $every_months, $day);
+    }
+
+    $date = $resume_date;
+
+    // Bounded: a hundred years of monthly dates.
+    for ($round = 0; ($date < (string) $today) && ($round < 1200); $round++) {
+        $date = erp_expense_recurring_step($date, $every_months, $day);
+    }
+
+    return $date;
+}
+
+/**
+ * The date a stopped recurrence was due next, the latest among the
+ * recurrences started from the same expense, or '' when none was. A restart
+ * goes on from it (erp_expense_recurring_first_date()).
+ *
+ * @param array $recurrence  The stopped recurrence
+ * @return string  Y-m-d or ''
+ */
+function erp_expense_recurrence_resume_date($recurrence)
+{
+    $date = (string) db_value("SELECT MAX(next_date) FROM erp_expense_recurrences
+        WHERE id = '" . (int) $recurrence['id'] . "' OR source_expense_id = '" . (int) $recurrence['source_expense_id'] . "'");
+
+    return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && ($date !== '0000-00-00')) ? $date : '';
+}
+
+/**
  * One recurrence with its category and till names, or null.
  *
  * @param int $id
@@ -115,8 +163,10 @@ function erp_expense_recurrence($id)
 }
 
 /**
- * The recurrence an expense started or came from, or null: an active one
- * first, then the one it is linked to even if stopped.
+ * The recurrence an expense started or came from, or null. The expenses of
+ * one repeat are the one it started from, those it wrote and those its
+ * restarts wrote (a restart keeps the first expense as its source); the
+ * active recurrence among them comes first, then the latest stopped one.
  *
  * @param array $expense  erp_expenses row
  * @return array|null
@@ -127,20 +177,15 @@ function erp_expense_recurrence_of($expense)
         return null;
     }
 
-    $active = (int) db_value("SELECT id FROM erp_expense_recurrences
-        WHERE status = 'active' AND (source_expense_id = '" . (int) $expense['id'] . "' OR id = '" . (int) ($expense['recurrence_id'] ?? 0) . "')
-        ORDER BY id DESC LIMIT 1");
+    $linked = (int) ($expense['recurrence_id'] ?? 0);
+    $family = "(source_expense_id = '" . (int) $expense['id'] . "' OR id = '" . $linked . "'
+        OR source_expense_id = (SELECT l.source_expense_id FROM erp_expense_recurrences l WHERE l.id = '" . $linked . "'))";
 
-    if ($active > 0) {
-        return erp_expense_recurrence($active);
+    $id = (int) db_value("SELECT id FROM erp_expense_recurrences WHERE status = 'active' AND " . $family . " ORDER BY id DESC LIMIT 1");
+
+    if ($id === 0) {
+        $id = (int) db_value("SELECT id FROM erp_expense_recurrences WHERE " . $family . " ORDER BY id DESC LIMIT 1");
     }
-
-    if ((int) ($expense['recurrence_id'] ?? 0) > 0) {
-        return erp_expense_recurrence((int) $expense['recurrence_id']);
-    }
-
-    $id = (int) db_value("SELECT id FROM erp_expense_recurrences WHERE source_expense_id = '" . (int) $expense['id'] . "'
-        ORDER BY id DESC LIMIT 1");
 
     return ($id > 0) ? erp_expense_recurrence($id) : null;
 }
@@ -167,7 +212,9 @@ function erp_expense_recurrences($active_only = true)
 
 /**
  * Start repeating an expense. The next one is due the given number of months
- * after the expense's date, on the same day of the month.
+ * after the expense's date, on the same day of the month; started again
+ * after a stop, it goes on from where the stopped one was due and does not
+ * write the dates that passed (erp_expense_recurring_first_date()).
  *
  * @param int   $expense_id
  * @param array $options   every_months (1, 3, 6, 12), due_days, pay (bool:
@@ -200,6 +247,12 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
         return $fail(lang('This expense repeats already.'));
     }
 
+    // Started again, from the expense the stopped one started from or from
+    // one it wrote, the recurrence belongs to that first expense: the one
+    // erp_expense_recurrence_of() finds for any of its expenses, so a second
+    // recurrence of the same expenses is refused above.
+    $source_id = is_array($current) ? (int) $current['source_expense_id'] : (int) $expense['id'];
+
     $every = (int) ($options['every_months'] ?? 1);
 
     if (!isset(erp_expense_recurring_periods()[$every])) {
@@ -223,12 +276,19 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
     $end_date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date) ? $end_date : '0000-00-00';
 
     $day = (int) substr((string) $expense['expense_date'], 8, 2);
-    $next = erp_expense_recurring_step((string) $expense['expense_date'], $every, $day);
+    $resume = '';
+
+    if (is_array($current)) {
+        $day = ((int) $current['day_of_month'] > 0) ? (int) $current['day_of_month'] : $day;
+        $resume = erp_expense_recurrence_resume_date($current);
+    }
+
+    $next = erp_expense_recurring_first_date((string) $expense['expense_date'], $every, $day, $resume, date('Y-m-d'));
 
     // What the next one is made of: the amount as the receipt printed it, so
     // the tax is worked out again at the same rate.
     $ok = db("INSERT INTO erp_expense_recurrences SET
-            source_expense_id = '" . (int) $expense['id'] . "',
+            source_expense_id = '" . $source_id . "',
             category_id = '" . (int) $expense['category_id'] . "',
             supplier = '" . escape((string) $expense['supplier']) . "',
             supplier_tax_number = '" . escape((string) $expense['supplier_tax_number']) . "',

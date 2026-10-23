@@ -3160,8 +3160,10 @@ function _pg_render_order_item_form_data_readonly($order_item_id, $product_id, $
             // the visitor, while printing it as-is would trust whatever was
             // stored (rows saved before the store path filtered, or written
             // by any other route). Same treatment as the other order views.
+            // Printed raw, so PHP open tags are defused before the page's
+            // PHP_REGIONS eval.
             $output_data = !empty($f['wysiwyg'])
-                ? prepare_form_data_for_output(pg_sanitize_rich_text($data), $type, false)
+                ? prepare_form_data_for_output(pg_defuse_php_tags(pg_sanitize_rich_text($data)), $type, false)
                 : prepare_form_data_for_output($data, $type, true);
 
             // No grid opinion here — label above, value below, full width.
@@ -5059,7 +5061,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_recipient, $_html)) {
                     $$_target = preg_replace(
                         $_re_recipient,
-                        $variant_picker_html . '<$1 $2>',
+                        pg_regex_replacement($variant_picker_html) . '<$1 $2>',
                         $_html,
                         1
                     );
@@ -5068,7 +5070,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_sepete_row, $_html)) {
                     $$_target = preg_replace(
                         $_re_sepete_row,
-                        $variant_picker_html . '$1',
+                        pg_regex_replacement($variant_picker_html) . '$1',
                         $_html,
                         1
                     );
@@ -5077,7 +5079,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 if (preg_match($_re_sepete_btn, $_html)) {
                     $$_target = preg_replace(
                         $_re_sepete_btn,
-                        $variant_picker_html . '$0',
+                        pg_regex_replacement($variant_picker_html) . '$0',
                         $_html,
                         1
                     );

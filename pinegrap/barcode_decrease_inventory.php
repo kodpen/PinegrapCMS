@@ -323,7 +323,14 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             // A scan is a stock write like any other: inventory.changed (and
             // stock.low on the crossing) is announced and the marketplace
             // queued; a product that does not track stock announces nothing.
-            pg_product_stock_changed((int) $id, (int) $inventory_quantity, (int) $new_inventory_quantity, 'barcode');
+            // A scan that left the stock where it was (a decrease at 0)
+            // announces nothing either, but still queues the marketplace so
+            // a listing that drifted from the stock is pushed again.
+            if ((int) $inventory_quantity !== (int) $new_inventory_quantity) {
+                pg_product_stock_changed((int) $id, (int) $inventory_quantity, (int) $new_inventory_quantity, 'barcode');
+            } else {
+                pg_marketplace_product_changed((int) $id);
+            }
 
             // we get data to use
             $data = array(

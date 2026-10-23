@@ -5,11 +5,11 @@ description: Open ERP work (e-document phase 3): Paraşüt send path, queue work
 
 ## What is left of the ERP plan?
 ERP phases -1 to 9 are done (2026.4.4–2026.4.10). Open, all e-document (phase 3) or outside approval:
-1. Paraşüt driver: the send path is written (send / submit / poll / PDF / cancel) and awaits its first live run with the demo application the owner received on 2026-10-19; the queue worker, the webhook and the title lookup stay open. State and decisions: docs/memory/plans/erp-parasut-driver-design.md
+1. Paraşüt driver: the send path runs live on the owner's demo company since 2026-10-19; its e-document steps wait for a company with an e-document integration. Queue worker open; Paraşüt v4 has no webhook; title lookup done (#625, #806). State and decisions: docs/memory/plans/erp-parasut-driver-design.md
 2. Worker for `erp_edoc_queue` (the table exists, nothing processes it) and the e-document error notification that hangs on it.
 3. Logo İşbaşı live key (the owner enters it). The chain works end to end on the test environment.
 4. Code lists from Logo: return and exemption codes, `eArchivePaymentType` for internet sales. GİB UBL-TR code lists v1.43 took effect 2026-09-14: review exemption and withholding codes.
-5. e-waybill sending, only if the provider offers a "convert to e-document" call (Paraşüt v4 `shipment_documents` has none). Otherwise waybills stay internal and no `erp_waybills.edoc_*` columns are added.
+5. e-waybill sending, only if the provider offers a "convert to e-document" call (Paraşüt v4 `shipment_documents` has none). Otherwise waybills stay internal: no driver implements `send_waybill` (the 4.61 `edoc_*` columns and `erp_edoc_waybill_send()` exist).
 6. Accountant sign-off: VUK 509 fields, the return paths below, the legal note. Questions: `docs/erp_malimusavir_sorulacaklar.md`.
 7. Manual checks on dev (owner): phase 6 tools through the Claude connector, purchase-order PDF and supplier e-mail, My Account → My Invoices in a template and the cart for a customer with account prices.
 

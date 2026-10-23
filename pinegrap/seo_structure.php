@@ -1192,13 +1192,15 @@ function pg_seo_render_context($page_type, $page_id, $page_name)
 // The address parameters a designed page needs to show the record its
 // widget displays, picked the way pg_seo_render_context() picks one for the
 // legacy page types: the newest record the widget would show an anonymous
-// visitor.
+// visitor, so the newest one its filters let through
+// (pg_sw_record_view_filters(); a draft under "Status is equal to
+// Published" would be scored as the not-found screen).
 //
 // Returns array() when the page carries no record widget, FALSE when it
-// carries one and there is nothing to score: no record yet, or a widget
-// that shows its record only to the submitter or to signed-in visitors (the
-// same reason the legacy form item view is skipped when submitter_security
-// is on).
+// carries one and there is nothing to score: no record yet, none that
+// passes the widget's filters, or a widget that shows its record only to
+// the submitter or to signed-in visitors (the same reason the legacy form
+// item view is skipped when submitter_security is on).
 function pg_seo_widget_record_query($page_id)
 {
     $widget = pg_sw_page_widget($page_id, 'form_item_view');
@@ -1218,13 +1220,21 @@ function pg_seo_widget_record_query($page_id)
             return FALSE;
         }
 
+        $clause = pg_sw_record_filter_clause($custom_form_page_id, pg_sw_record_view_filters($cfg), (int) $page_id, TRUE);
+
+        if ($clause['closed']) {
+            return FALSE;
+        }
+
         $reference_code = db_value(
-            "SELECT reference_code
+            "SELECT forms.reference_code
             FROM forms
+            {$clause['join']}
             WHERE
-                (page_id = '" . $custom_form_page_id . "')
-                AND (reference_code != '')
-            ORDER BY id DESC
+                (forms.page_id = '" . $custom_form_page_id . "')
+                AND (forms.reference_code != '')
+                {$clause['where']}
+            ORDER BY forms.id DESC
             LIMIT 1");
 
         if (($reference_code === NULL) || ((string) $reference_code === '')) {

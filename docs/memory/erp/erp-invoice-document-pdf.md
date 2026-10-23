@@ -4,11 +4,14 @@ description: ERP invoice document layer (includes/erp/document.php): template sy
 ---
 
 ## What does `includes/erp/document.php` provide?
-- `erp_template_render($template, $data)`: mustache-style; `{{field}}` escaped, `{{{field}}}` raw, `{{#section}}…{{/section}}` loop/condition, `{{^section}}…{{/section}}` inverse, dotted keys (`satici.vkn`).
+- `erp_template_render($template, $data)`: mustache-style; `{{field}}` escaped, `{{{field}}}` raw, `{{#section}}…{{/section}}` loop/condition, `{{^section}}…{{/section}}` inverse, dotted keys (`seller.title`).
 - `erp_invoice_document_data($invoice_id)`: what the template sees: `seller` / `account` / `invoice` / `lines` / `totals` / `label` / `language` / `generated_at`.
 - `erp_invoice_document_labels()`: the `label.*` placeholders, every heading/column/footnote label via `lang()` in the site language. The two labels naming the home currency (`label.exchange_rate`, `label.grand_total_base`) resolve `{var:1}` here, since a template placeholder takes no argument. The same array feeds the *Etiketler* group of the placeholder reference in `erp_settings.php`.
 - `erp_invoice_template()`: `config.erp_invoice_template` if filled, else `includes/erp/templates/invoice_default.html`.
 - `erp_invoice_html($invoice_id)` and `erp_invoice_pdf($invoice_id)`; the latter loads dompdf via `includes/dompdf/autoload.inc.php` (needs PHP 7.1).
+
+## Which documents are PDFs made on the server?
+- ERP documents only, with dompdf (docs/memory/core/dompdf-embedding.md): invoice, delivery note, reconciliation letter, quote, purchase order and the customer's copies (`get_account_document.php`). The customer's order receipt (`order_invoice_print.php`) and the signature receipt stay browser print (docs/memory/commerce/order-view-timeline-invoice-card.md).
 
 ## What is the PDF endpoint?
 `get_erp_invoice_pdf.php`: `?id=` inline PDF, `&download=1` download, `&html=1` shows HTML. A POST `template` field previews an UNSAVED template and requires CSRF + the `settings` right. The *PDF* and *İndir* buttons in the top toolbar of `edit_erp_invoice.php` go here.

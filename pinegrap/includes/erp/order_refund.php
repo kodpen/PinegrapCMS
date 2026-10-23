@@ -30,9 +30,17 @@ if (!defined('PG_ERP_ENTRY')) {
  * Shipping and the surcharge have no order_items row, so on the order's own
  * lines they carry the ids -1 and -2.
  *
+ * left_out names the order_items rows the order did not charge
+ * (erp_order_charged_items()), which no refund line stands for, so a caller
+ * matching order lines to refund lines (pg_return_erp_line_map()) can pass
+ * over them. On an invoice it is worked out from today's rows and gateway
+ * setting: an invoice issued while such lines were still put on it may carry
+ * them.
+ *
  * @param int $order_id
  * @return array|null  ['source' => 'invoice'|'order', 'invoice_id' => int,
- *                      'invoice_number' => string, 'lines' => array]
+ *                      'invoice_number' => string, 'lines' => array,
+ *                      'left_out' => int[] order_items ids]
  *                     null when the order cannot be read
  */
 function erp_order_refund_lines($order_id)
@@ -44,6 +52,19 @@ function erp_order_refund_lines($order_id)
         return null;
     }
 
+    $items = (array) db_items("SELECT order_items.*, products.short_description,
+            products.tax_rate AS product_tax_rate, products.start AS product_start
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
+        ORDER BY order_items.id ASC");
+
+    // Only what the order charged can be given back: a recurring line that
+    // had not started yet took no money (erp_order_charged_items()).
+    $charged = erp_order_charged_items($order, $items);
+    $left_out = array_values(array_diff(array_map('intval', array_column($items, 'id')),
+        array_map('intval', array_column($charged, 'id'))));
+
     $invoice = ((int) ($order['erp_invoice_id'] ?? 0) > 0)
         ? db_item("SELECT id, full_number, status, doc_type FROM erp_invoices WHERE id = '" . (int) $order['erp_invoice_id'] . "' LIMIT 1")
         : null;
@@ -54,23 +75,15 @@ function erp_order_refund_lines($order_id)
             'invoice_id' => (int) $invoice['id'],
             'invoice_number' => (string) $invoice['full_number'],
             'lines' => erp_returnable_lines((int) $invoice['id']),
+            'left_out' => $left_out,
         );
     }
 
-    $items = (array) db_items("SELECT order_items.*, products.short_description,
-            products.tax_rate AS product_tax_rate, products.start AS product_start
-        FROM order_items
-        LEFT JOIN products ON order_items.product_id = products.id
-        WHERE order_items.order_id = '" . $order_id . "' AND order_items.saved_for_later = 0
-        ORDER BY order_items.id ASC");
-
-    // Only what the order charged can be given back: a recurring line that
-    // had not started yet took no money (erp_order_charged_items()).
-    $items = erp_order_charged_items($order, $items);
-    $built = erp_order_lines($order, $items);
+    $built = erp_order_lines($order, $charged);
 
     return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '',
-        'lines' => erp_order_refund_order_lines($built['lines'], $items));
+        'lines' => erp_order_refund_order_lines($built['lines'], $charged),
+        'left_out' => $left_out);
 }
 
 /**

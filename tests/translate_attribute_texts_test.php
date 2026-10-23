@@ -263,6 +263,16 @@ function test_translate_attribute_texts_button_input_values()
 		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'value', 'value' => 'Gönder')))), 'node input');
 	pg_assert_same(array(),
 		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'value', 'value' => 'Ahmet Yılmaz')))), 'node text input');
+
+	// A repeated type: the browser keeps the first, so both paths do.
+	pg_assert_same(array(), pg_tr_html_attr_texts('<input type="hidden" type="submit" name="islem" value="Kayıt formu">'), 'first type hidden');
+	pg_assert_same(array(array('Gönder', 'text', 'value')), pg_tr_html_attr_texts('<input type="submit" type="text" value="Gönder">'), 'first type submit');
+	pg_assert_same(array(), pg_tr_html_attr_texts('<input type type="submit" value="Gönder">'), 'first type without a value');
+	pg_assert_same(array(array('Gönder', 'text', 'value')), pg_tr_html_attr_texts('<input type="&#115;ubmit" value="Gönder">'), 'type with an entity');
+	pg_assert_same(array(),
+		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'hidden'), array('name' => 'type', 'value' => 'submit'), array('name' => 'value', 'value' => 'Kayıt formu')))), 'node first type hidden');
+	pg_assert_same(array(array('_attrs:value', 'text')),
+		pg_tr_node_fields('semantic', array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'type', 'value' => 'text'), array('name' => 'value', 'value' => 'Gönder')))), 'node first type submit');
 }
 
 // Drawn: a button-type input's label is swapped; a posted value is not.
@@ -326,4 +336,93 @@ function test_translate_attribute_texts_button_value_is_posted_data()
 	)));
 
 	pg_assert_same(array(array('Gönder', 'text', '_attrs:value')), translate_attribute_texts_rows(pg_tr_node_segments($input)), 'node submit input: its value');
+}
+
+// An element marked translate="no" or notranslate keeps its whole subtree
+// out of extraction, as the word walk does: translate is inherited.
+function test_translate_attribute_texts_marked_subtree_not_extracted()
+{
+	pg_assert_same(array(),
+		pg_tr_html_segments('<div translate="no"><p>Kodpen</p><img alt="Kodpen Yazılım logosu"></div>'), 'translate="no" wrapper');
+
+	pg_assert_same(array(),
+		pg_tr_html_segments('<div class="x notranslate"><p><a href="/" title="Kodpen Yazılım">Kodpen</a></p></div>'), 'notranslate wrapper');
+
+	pg_assert_same(array(array('Ayrıntılar', 'text', 'title')),
+		pg_tr_html_attr_texts('<div class="notranslate-x"><a title="Ayrıntılar">x</a></div>'), 'notranslate only as a whole class name');
+
+	$node = array('type' => 'content', 'props' => array(
+		'contentType' => 'paragraph',
+		'text'        => 'Ürünlerimiz <span class="notranslate"><a href="/" title="Kodpen Yazılım">Kodpen</a></span> markasıyla <a href="/x" title="Ayrıntılar">satılır</a>.',
+	));
+
+	$fields = array();
+
+	foreach (pg_tr_node_texts('content', $node['props']) as $text) {
+		$fields[] = array($text[0], $text[1]);
+	}
+
+	pg_assert_same(array(
+		array('text', $node['props']['text']),
+		array('text@title#0', 'Ayrıntılar'),
+	), $fields, 'notranslate span inside inline text');
+}
+
+// Drawn the same way: the marked subtree as it is, the HTML after it drawn,
+// a nested element of the same name counted, an unclosed one leaving the
+// rest alone.
+function test_translate_attribute_texts_marked_subtree_not_drawn()
+{
+	$lookup = 'translate_attribute_texts_lookup';
+
+	pg_assert_same('<div translate="no"><p>Ekip</p><img alt="Ekip fotoğrafı"></div><img alt="Team photo">',
+		pg_tr_render_attrs('<div translate="no"><p>Ekip</p><img alt="Ekip fotoğrafı"></div><img alt="Ekip fotoğrafı">', $lookup), 'wrapper, then a sibling');
+
+	pg_assert_same('<div translate="no"><div></div><img alt="Ekip fotoğrafı"></div><img alt="Team photo">',
+		pg_tr_render_attrs('<div translate="no"><div></div><img alt="Ekip fotoğrafı"></div><img alt="Ekip fotoğrafı">', $lookup), 'nested same-name element');
+
+	pg_assert_same('<p>Bir <span class="a notranslate"><a title="Ayrıntılar">x</a></span> <a title="Details">y</a></p>',
+		pg_tr_render_attrs('<p>Bir <span class="a notranslate"><a title="Ayrıntılar">x</a></span> <a title="Ayrıntılar">y</a></p>', $lookup), 'inline notranslate span');
+
+	pg_assert_same('<img translate="no" alt="Ekip fotoğrafı"><img alt="Team photo">',
+		pg_tr_render_attrs('<img translate="no" alt="Ekip fotoğrafı"><img alt="Ekip fotoğrafı">', $lookup), 'a marked void element covers only itself');
+
+	pg_assert_same('<div translate="no"><pre><div></pre><img alt="Ekip fotoğrafı"></div><img alt="Team photo">',
+		pg_tr_render_attrs('<div translate="no"><pre><div></pre><img alt="Ekip fotoğrafı"></div><img alt="Ekip fotoğrafı">', $lookup), 'a tag inside protected content is not counted');
+
+	$unclosed = '<section translate="no"><img alt="Ekip fotoğrafı"><img alt="Ekip fotoğrafı">';
+
+	pg_assert_same($unclosed, pg_tr_render_attrs($unclosed, $lookup), 'never closed: the rest alone');
+}
+
+// Rich text with no words (an image-only description) still has its
+// attributes drawn: extraction stored the alt.
+function test_translate_attribute_texts_wordless_rich_text_drawn()
+{
+	$position = 0;
+	$html = '<p><img src="/b.jpg" alt="Ekip fotoğrafı"></p>';
+
+	pg_assert_same(array(array('Ekip fotoğrafı', 'text', 'description@alt#0')),
+		translate_attribute_texts_rows(pg_tr_field_segments('description', $html, $position)), 'stored');
+
+	pg_assert_same('<p><img src="/b.jpg" alt="Team photo"></p>',
+		pg_tr_render_html_value($html, 'translate_attribute_texts_lookup'), 'drawn');
+}
+
+// A variant's inline value in the data script: the worded attributes its
+// tags carry are drawn, since the finished-page pass leaves scripts alone.
+function test_translate_attribute_texts_variant_inline_value()
+{
+	$lookup = 'translate_attribute_texts_lookup';
+	// Encoded the way the page prints the variant data.
+	$data = function ($description) {
+		return '<script>window.pgCivVariants = ' . json_encode(array('1' => array('description' => $description, 'sku' => 'A-1')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) . ';</script>';
+	};
+
+	pg_assert_same($data('Yumuşak <a href="#" title="Details">pamuk</a> kumaş'),
+		pg_tr_render_json_strings($data('Yumuşak <a href="#" title="Ayrıntılar">pamuk</a> kumaş'), $lookup), 'inline value');
+
+	$plain = '<script>window.pgCivVariants = {"1":{"description":"Yumuşak kumaş"}};</script>';
+
+	pg_assert_same($plain, pg_tr_render_json_strings($plain, $lookup), 'a value without a translation is left as it is');
 }

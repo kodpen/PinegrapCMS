@@ -824,3 +824,30 @@ function test_product_feeds_writer_errors_and_empty()
 
 	product_feeds_test_remove($folder);
 }
+
+// A privacy policy address longer than 255 characters was cut there on save
+// and the feeds carried the shortened address; names keep their 255 cap.
+function test_product_feeds_seller_from_input_keeps_long_addresses()
+{
+	$long = 'https://shop.example/privacy-policy?' . str_repeat('utm_campaign=autumn&', 13) . 'ref=footer&lang=tr';
+
+	pg_assert_true(strlen($long) > 255, 'fixture is over 255');
+
+	$seller = pg_product_feed_seller_from_input(array(
+		'seller_name'        => '  ' . str_repeat('ş', 300) . ' ',
+		'seller_url'         => ' https://shop.example/ ',
+		'privacy_policy_url' => $long,
+		'terms_url'          => 'javascript:alert(1)',
+		'default_brand'      => 'Kodpen',
+	));
+
+	pg_assert_same($long, $seller['privacy_policy_url'], 'address stored whole');
+	pg_assert_same('https://shop.example/', $seller['seller_url'], 'trimmed');
+	pg_assert_same('', $seller['terms_url'], 'an address the check refuses is not stored');
+	pg_assert_same(255, mb_strlen($seller['seller_name'], 'UTF-8'), 'name cut at 255 characters');
+	pg_assert_same('Kodpen', $seller['default_brand']);
+
+	$too_long = 'https://shop.example/?q=' . str_repeat('a', 2000);
+	pg_assert_same('', pg_product_feed_seller_from_input(array('terms_url' => $too_long))['terms_url'], 'over 2000 is refused, not cut');
+	pg_assert_same('', pg_product_feed_seller_from_input(array())['seller_name'], 'missing keys read as empty');
+}

@@ -66,9 +66,18 @@ if (!defined('ERP_EDOC_PARASUT_PAGE_SIZE')) {
     define('ERP_EDOC_PARASUT_PAGE_SIZE', 25);
 }
 
-// What erp_invoices.parasut_invoice_id holds while a sales invoice request
-// is out, and after one whose answer never came: Paraşüt may have written
-// the record, so the next send looks for it before writing one. A real id
+// How many pages of the contact's sales invoices of a day the search for an
+// unanswered try reads (newest first) before it gives up without writing.
+if (!defined('ERP_EDOC_PARASUT_FIND_PAGES')) {
+    define('ERP_EDOC_PARASUT_FIND_PAGES', 20);
+}
+
+// What erp_invoices.parasut_invoice_id starts with while a sales invoice
+// request is out, and after one whose answer never came: Paraşüt may have
+// written the record, so the next send looks for it before writing one.
+// The mark is followed by the issue date and the contact id the request
+// carried ('?2026-10-19:7001', erp_edoc_parasut_unsure_mark()), because
+// the invoice's date and buyer can change before the next send. A real id
 // is digits.
 if (!defined('ERP_EDOC_PARASUT_UNSURE')) {
     define('ERP_EDOC_PARASUT_UNSURE', '?');
@@ -780,9 +789,8 @@ function erp_edoc_parasut_no_product_text($line)
 /**
  * The amount before VAT that comes to the total once Paraşüt adds the VAT
  * at the rate on the whole of it, half up to the kurus; null when no amount
- * does. There is one at most: a kurus more on the amount puts one or two on
- * the total, so at 20% one total in six (3 kurus off a multiple of 6, such
- * as 57.93) is never reached.
+ * does (erp_rate_amount(): at 20% one total in six, such as 57.93, is never
+ * reached). The ERP's own documents take their VAT the same way.
  *
  * @param int   $total  Kurus, VAT included
  * @param float $rate   The VAT rate in percent
@@ -790,16 +798,7 @@ function erp_edoc_parasut_no_product_text($line)
  */
 function erp_edoc_parasut_rate_amount($total, $rate)
 {
-    $total = (int) $total;
-    $near = (int) round($total * 100 / (100 + (float) $rate));
-
-    foreach (array($near, $near - 1, $near + 1) as $amount) {
-        if (($amount >= 0) && (($amount + erp_apply_rate($amount, $rate)) === $total)) {
-            return $amount;
-        }
-    }
-
-    return null;
+    return erp_rate_amount($total, $rate);
 }
 
 /**
@@ -1203,20 +1202,112 @@ function erp_edoc_parasut_answer_unsure($result)
 }
 
 /**
+ * The value parasut_invoice_id takes before a create goes: the unsure mark
+ * with the issue date and the contact the request carries. A part that is
+ * malformed, or a contact id that would not fit the column (VARCHAR(32)),
+ * is left out rather than cut, so the search never asks for a wrong one.
+ *
+ * @param string $date        YYYY-MM-DD
+ * @param string $contact_id  Paraşüt's contact id
+ * @return string
+ */
+function erp_edoc_parasut_unsure_mark($date, $contact_id)
+{
+    $date = (string) $date;
+    $contact_id = (string) $contact_id;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $date = '';
+    }
+
+    $mark = ERP_EDOC_PARASUT_UNSURE . $date . ':';
+
+    if (preg_match('/^\d+$/', $contact_id) && (strlen($mark . $contact_id) <= 32)) {
+        $mark .= $contact_id;
+    }
+
+    return $mark;
+}
+
+/**
+ * Reads parasut_invoice_id: null when it holds no unsure mark (empty, or a
+ * real id), otherwise the date and contact the unanswered request carried.
+ * A bare '?' (written before the mark carried them) gives both empty, and
+ * the caller then searches with the invoice's current ones.
+ *
+ * @param string|null $value
+ * @return array|null ['date' => string, 'contact_id' => string]
+ */
+function erp_edoc_parasut_unsure_read($value)
+{
+    $value = (string) $value;
+
+    if (($value === '') || (strpos($value, ERP_EDOC_PARASUT_UNSURE) !== 0)) {
+        return null;
+    }
+
+    $parts = explode(':', substr($value, strlen(ERP_EDOC_PARASUT_UNSURE)), 2);
+    $date = (string) $parts[0];
+    $contact_id = (string) ($parts[1] ?? '');
+
+    return array(
+        'date' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : '',
+        'contact_id' => preg_match('/^\d+$/', $contact_id) ? $contact_id : '',
+    );
+}
+
+/**
+ * Whether a search that found nothing has to stop short of "never written":
+ * Paraşüt has pages of the contact's invoices of that day that were not
+ * read, and the record may be on one of them.
+ *
+ * @param array $records     What the pages read matched
+ * @param int   $read_pages  The last page read
+ * @param int   $total_pages What Paraşüt reported (meta.total_pages)
+ * @return bool
+ */
+function erp_edoc_parasut_search_incomplete($records, $read_pages, $total_pages)
+{
+    return empty($records) && ((int) $read_pages < (int) $total_pages);
+}
+
+/**
+ * Why a row may not be handed to GİB through Paraşüt: only a draft waiting
+ * there ('created') is converted. An 'error' row can still carry a record
+ * whose total is not the ERP's (one Paraşüt would not delete, or one poll
+ * found to differ); a rejected or sent one is already a document.
+ *
+ * @param array $invoice  An erp_invoices row
+ * @return string  '' when it may be submitted
+ */
+function erp_edoc_parasut_submit_refusal($invoice)
+{
+    if ((string) ($invoice['edoc_status'] ?? '') === 'created') {
+        return '';
+    }
+
+    return lang('Only a draft waiting at the provider is handed to GİB; ask after its status first.');
+}
+
+/**
  * The sales invoices in a list answer that are this invoice's record: the
  * same description (the ERP number, with the order's), the same issue date
- * and the same contact, not cancelled.
+ * and the same contact, not cancelled. A record that is already an
+ * e-document, and the row's own earlier record ($skip_id: the issued one of
+ * a rejected invoice sent again), are not an unanswered try's.
  *
  * @param array  $body        The decoded answer of GET sales_invoices
  * @param array  $payload     The request erp_edoc_parasut_invoice_payload() built
  * @param string $contact_id
+ * @param string $skip_id     A record id that is never a match
  * @return array  id => attributes
  */
-function erp_edoc_parasut_written_matches($body, $payload, $contact_id)
+function erp_edoc_parasut_written_matches($body, $payload, $contact_id, $skip_id = '')
 {
     $wanted = (array) ($payload['data']['attributes'] ?? array());
     $description = trim((string) ($wanted['description'] ?? ''));
     $date = (string) ($wanted['issue_date'] ?? '');
+    $skip_id = trim((string) $skip_id);
     $matches = array();
 
     if ($description === '') {
@@ -1225,6 +1316,11 @@ function erp_edoc_parasut_written_matches($body, $payload, $contact_id)
 
     foreach ((array) ($body['data'] ?? array()) as $item) {
         if (!is_array($item) || (trim((string) ($item['id'] ?? '')) === '')) {
+            continue;
+        }
+
+        if ((($skip_id !== '') && (trim((string) $item['id']) === $skip_id))
+            || (trim((string) ($item['relationships']['active_e_document']['data']['id'] ?? '')) !== '')) {
             continue;
         }
 
@@ -1246,22 +1342,30 @@ function erp_edoc_parasut_written_matches($body, $payload, $contact_id)
 
 /**
  * Looks at Paraşüt for the record an earlier try of this invoice may have
- * written: the contact's sales invoices of the issue date, matched by
- * erp_edoc_parasut_written_matches().
+ * written: the contact's sales invoices of the issue date, newest first
+ * (the unanswered try is among the latest), matched by
+ * erp_edoc_parasut_written_matches(). The final consumer's card is shared,
+ * so a day can hold many; when pages are left unread and nothing matched,
+ * the search refuses rather than call the invoice never written.
  *
- * @param array  $payload     The request about to be sent
- * @param string $contact_id
+ * @param array  $payload     The request the unanswered try carried (its issue date)
+ * @param string $contact_id  The contact that request carried
  * @param array  $context     For the log
+ * @param string $skip_id     The row's own earlier record, never a match
  * @return array ['records' => id => attributes, 'error' => string]
  */
-function erp_edoc_parasut_find_written($payload, $contact_id, $context)
+function erp_edoc_parasut_find_written($payload, $contact_id, $context, $skip_id = '')
 {
     $records = array();
     $date = (string) ($payload['data']['attributes']['issue_date'] ?? '');
+    $page = 0;
+    $total_pages = 1;
 
-    for ($page = 1; $page <= 4; $page++) {
+    while ($page < (int) ERP_EDOC_PARASUT_FIND_PAGES) {
+        $page++;
         $list = erp_edoc_parasut_request('GET', '/sales_invoices?filter[contact_id]=' . rawurlencode((string) $contact_id)
-            . '&filter[issue_date]=' . rawurlencode($date) . '&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, null, $context);
+            . '&filter[issue_date]=' . rawurlencode($date) . '&sort=-id&include=active_e_document'
+            . '&page[number]=' . $page . '&page[size]=' . ERP_EDOC_PARASUT_PAGE_SIZE, null, $context);
 
         if (((string) $list['login_error'] !== '') || !erp_edoc_parasut_ok($list)) {
             return array('records' => array(), 'error' => lang(array(
@@ -1270,11 +1374,16 @@ function erp_edoc_parasut_find_written($payload, $contact_id, $context)
             )));
         }
 
-        $records += erp_edoc_parasut_written_matches($list['body'], $payload, $contact_id);
+        $records += erp_edoc_parasut_written_matches($list['body'], $payload, $contact_id, $skip_id);
+        $total_pages = max(1, (int) ($list['body']['meta']['total_pages'] ?? 1));
 
-        if ($page >= (int) ($list['body']['meta']['total_pages'] ?? 1)) {
+        if ($page >= $total_pages) {
             break;
         }
+    }
+
+    if (erp_edoc_parasut_search_incomplete($records, $page, $total_pages)) {
+        return array('records' => array(), 'error' => lang('The last try got no answer from Paraşüt, and the buyer has more invoices on that day than can be looked through. Nothing was sent; look for the record on Paraşüt\'s screen.'));
     }
 
     return array('records' => $records, 'error' => '');
@@ -1401,10 +1510,21 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     $external_id = '';
     $attributes = array();
 
+    $date_now = (string) ($payload['data']['attributes']['issue_date'] ?? '');
+    $contact_now = (string) $contact['id'];
+    $unsure = erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '');
+
     // An earlier try had no answer (a timeout, a 5xx) and may have written
-    // the record all the same: it is looked for before a second is written.
-    if ((string) ($invoice['parasut_invoice_id'] ?? '') === ERP_EDOC_PARASUT_UNSURE) {
-        $found = erp_edoc_parasut_find_written($payload, $contact['id'], $context);
+    // the record all the same: it is looked for before a second is written,
+    // with the date and contact that try carried (a redate or a party fix
+    // may have changed the invoice's since).
+    if ($unsure !== null) {
+        $date_then = ($unsure['date'] !== '') ? $unsure['date'] : $date_now;
+        $contact_then = ($unsure['contact_id'] !== '') ? $unsure['contact_id'] : $contact_now;
+        $search = $payload;
+        $search['data']['attributes']['issue_date'] = $date_then;
+
+        $found = erp_edoc_parasut_find_written($search, $contact_then, $context, trim((string) ($invoice['edoc_external_id'] ?? '')));
 
         if ($found['error'] !== '') {
             return $fail($found['error']);
@@ -1421,13 +1541,32 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
             $external_id = (string) $found_id;
             $attributes = $found_attributes;
         }
+
+        // The record carries what the invoice was, not what it is: it is
+        // deleted (it is no e-document yet) and the invoice written afresh.
+        // One that will not go keeps the mark, so the next send asks again.
+        if (($external_id !== '') && (($date_then !== $date_now) || ($contact_then !== $contact_now))) {
+            $deleted = erp_edoc_parasut_request('DELETE', '/sales_invoices/' . rawurlencode($external_id), null, $context);
+            $gone = ((string) $deleted['login_error'] === '') && (erp_edoc_parasut_ok($deleted) || ((int) $deleted['http_code'] === 404));
+
+            if (!$gone) {
+                return $fail(lang(array(
+                    'string' => 'Paraşüt holds the record of an earlier try (id {var:1}) with the date or buyer the invoice had then, and it could not be deleted there ({var:2}). Delete it on Paraşüt\'s screen, then send again.',
+                    'vars' => array($external_id, erp_edoc_parasut_error_text($deleted)),
+                )));
+            }
+
+            $external_id = '';
+            $attributes = array();
+        }
     }
 
     if ($external_id === '') {
         // Marked before the request goes, so that a request whose answer
         // never comes (or a process that dies waiting) leaves the next try
-        // the question to ask instead of a second record.
-        $mark(ERP_EDOC_PARASUT_UNSURE);
+        // the question to ask instead of a second record, with the date and
+        // contact to ask it with.
+        $mark(erp_edoc_parasut_unsure_mark($date_now, $contact_now));
 
         $result = erp_edoc_parasut_request('POST', '/sales_invoices', $payload, $context);
 
@@ -1695,6 +1834,15 @@ function erp_edoc_parasut_submit_invoice($invoice, $external_id = '')
 
     if ($external_id === '') {
         return $fail(lang('The invoice has no Paraşüt id.'));
+    }
+
+    // Every screen offers the hand-over only for a draft; a stale tab or a
+    // replayed request must not convert an 'error' row's record whose total
+    // is not the ERP's into a legal document.
+    $submit_refusal = erp_edoc_parasut_submit_refusal($invoice);
+
+    if ($submit_refusal !== '') {
+        return $fail($submit_refusal);
     }
 
     $context = array('doc_type' => 'invoice', 'doc_id' => (int) $invoice['id']);

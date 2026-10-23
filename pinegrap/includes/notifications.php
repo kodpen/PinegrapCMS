@@ -112,6 +112,12 @@ function pg_notification_visible($notification, $rights)
 		return ($rights['role'] < 3);
 	}
 
+	// An e-mail the mail queue gave up on (includes/fn/mail_queue.php): for
+	// whoever may open the mail queue screen, manager and above.
+	if ($action == 'mail_failed') {
+		return ($rights['role'] < 3);
+	}
+
 	if ($action == 'new_comment') {
 		return pg_notification_comment_visible($notification, $rights);
 	}
@@ -498,6 +504,34 @@ function pg_notification_display($notification)
 		$display['icon']        = 'assets/images/notification-order.png';
 		$display['badge']       = 'assets/images/notification-order-badge.png';
 		$display['action']      = $action;
+
+	} elseif ($action == 'mail_failed') {
+
+		// One message: form_id the mail_outbox row, order_total the
+		// recipient, title the reason. Several given up in one run: title is
+		// their count and form_id empty (pg_mail_given_up_notices()). The
+		// subject is read from the row while the queue still keeps it.
+		$outbox_id = (int) ($notification['form_id'] ?? 0);
+
+		if ($outbox_id > 0) {
+			$subject = (function_exists('pg_mail_queue_ready') && pg_mail_queue_ready())
+				? (string) db_value("SELECT subject FROM mail_outbox WHERE id = '" . $outbox_id . "' LIMIT 1")
+				: '';
+
+			$display['title']       = lang('An e-mail could not be sent');
+			$display['description'] = ($subject !== '')
+				? lang(array('string' => 'To {var:1}: {var:2}', 'vars' => array(h($notification['order_total'] ?? ''), h($subject))))
+				: lang(array('string' => 'To {var:1}', 'vars' => array(h($notification['order_total'] ?? ''))));
+			$display['details']     = h($notification['title'] ?? '');
+		} else {
+			$display['title']       = lang('E-mails could not be sent');
+			$display['description'] = lang(array('string' => '{var:1} e-mail(s) were given up and will not be sent.', 'vars' => array((int) ($notification['title'] ?? 0))));
+		}
+
+		$display['url']    = 'mail_queue.php';
+		$display['icon']   = 'assets/images/notification-general.png';
+		$display['badge']  = 'assets/images/notification-general-badge.png';
+		$display['action'] = $action;
 
 	} elseif ($action == 'ops') {
 

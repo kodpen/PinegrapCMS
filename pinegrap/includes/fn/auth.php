@@ -342,6 +342,25 @@ function pg_member_email_repeat_ok($email, $repeat)
     return ((string) $repeat === (string) $email);
 }
 
+// Whether an address someone gave (typed into a form, or reported by a
+// sign-in provider) is an account's stored address, letter case aside.
+// A lookup on user.user_email compares under the column's collation, which
+// also folds accents: "jane@şirket.com" finds the account of
+// "jane@sirket.com" and the other way round, two different domains. A flow
+// that sends a secret to the address, or ties an identity to the account,
+// asks this after the lookup and treats any other row as not found.
+function pg_email_address_matches($given, $stored)
+{
+    $given  = is_scalar($given) ? trim((string) $given) : '';
+    $stored = is_scalar($stored) ? trim((string) $stored) : '';
+
+    if (($given === '') || ($stored === '')) {
+        return false;
+    }
+
+    return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same
@@ -3656,8 +3675,10 @@ function initialize_user()
         // If the user has a timezone set that is not the default,
         // and the PHP version is high enough to support a user timezone,
         // then set user timezone.
+        // An old zone name is read as its current one, and one this PHP does
+        // not know as none (the site's zone): new DateTimeZone() throws for it.
         if (($user['timezone'] != '') && (version_compare(PHP_VERSION, '5.2.0', '>=') == true)) {
-            define('USER_TIMEZONE', $user['timezone']);
+            define('USER_TIMEZONE', pg_timezone_canonical($user['timezone']));
         } else {
             define('USER_TIMEZONE', '');
         }

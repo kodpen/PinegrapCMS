@@ -881,6 +881,10 @@ function pg_ai_write_messages($args)
         $lines[] = 'Style note from the site\'s owner: ' . mb_substr($note, 0, 2000);
     }
 
+    // The rules every prompt ends with (includes/fn/ai_prompts.php), before
+    // the shape of the answer, which stays the last word.
+    $lines = array_merge($lines, pg_ai_prompt_rules('writer', ''));
+
     $lines[] = 'Answer with one JSON object only, no words around it and no code fence: {"text": "..."}';
 
     if ($form) {
