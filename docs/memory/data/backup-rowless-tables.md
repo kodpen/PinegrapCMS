@@ -16,7 +16,7 @@ description: Tables every backup dumps without rows, the SEO, search and log tab
 - `log`, `erp_audit_log`, `erp_edoc_log`, `audit_log`, `consent_log`: who did what (a consent row is the proof the consent was given). `cron_runs`: the jobs' watermarks.
 - `seo_issue`, `seo_link`: findings and link graph behind the `seo_*_score` columns on every page and product; without rows the scores would point at nothing until each item is checked again. They grow with content.
 - `search_items`: the advanced site search index, rebuilt only by `update_search_index.php`. `search_results_pages`: page settings.
-- There is no 404 or site-search query log table.
+- `not_found_log`: the 404 log is the operator's list of redirects still to make, capped at 10000 short rows (`platform/not-found-log.md`). There is no site-search query log table.
 
 ## How does Search Console refill after a restore?
 - The rows are gone but `config.search_console` still says how far the download had come (`synced_to`). `pg_gsc_sync()` asks `pg_gsc_resume_day()`: an empty `seo_search_daily` means start over, so the next `seo_search_job.php` run (or "Download now") reads the whole 90-day window, as on first link.

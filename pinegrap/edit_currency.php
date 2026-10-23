@@ -52,7 +52,7 @@ if (!$_POST) {
         $liveform->assign_field_value('base', $row['base']);
         $liveform->assign_field_value('code', $row['code']);
         $liveform->assign_field_value('symbol', $row['symbol']);
-        $liveform->assign_field_value('exchange_rate', pg_format_input_amount($row['exchange_rate']));
+        $liveform->assign_field_value('exchange_rate', pg_format_input_amount($row['exchange_rate'], 5));
     }
 
     print
@@ -102,7 +102,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 col-md-3 my-2">
                                             <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control', 'maxlength'=>'11','inputmode'=>'numeric','style'=>'text-align: right;') + pg_money_mask_attributes()) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control', 'maxlength'=>'12','inputmode'=>'decimal','style'=>'text-align: right;') + pg_money_mask_attributes(null, 5)) . '
                                         </div>
 
                                         <div class="col-12 my-3">
@@ -189,6 +189,12 @@ if (!$_POST) {
 
         // The mask posts the rate in the panel language (1.234,56 or 1,234.56).
         $exchange_rate = pg_normalize_amount($liveform->get_field_value('exchange_rate'));
+
+        // Five decimals, the column's scale and what update_exchange_rates.php
+        // writes; a plain float cast would write a small rate as "6.0E-5".
+        if (is_numeric($exchange_rate)) {
+            $exchange_rate = number_format((float) $exchange_rate, 5, '.', '');
+        }
 
         // If this currency was set as the base currency then set exchange rate to 1.
         if ($liveform->get_field_value('base') == 1) {

@@ -6,7 +6,9 @@
 # JavaScript syntax check of the large panel scripts, whether every .min.js
 # and the code editor bundle still match their sources and whether the memory
 # index (docs/memory/README.md) matches the files it lists. None of them needs
-# a database.
+# a database. tools/pre_push.sh runs the fast ones before a push
+# (docs/memory/workflow/pre-push-checks.md): a step or a node --check file
+# added here that takes seconds is added there too.
 #
 # The two analysers are not part of the product: tools/static_analysis.sh
 # downloads the pinned releases on each run (PHPStan and PHP_CodeSniffer as

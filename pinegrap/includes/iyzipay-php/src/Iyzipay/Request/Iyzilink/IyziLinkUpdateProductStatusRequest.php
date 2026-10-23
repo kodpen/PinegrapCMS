@@ -6,8 +6,8 @@ use Iyzipay\JsonBuilder;
 use Iyzipay\Request;
 
 class IyziLinkUpdateProductStatusRequest extends Request {
-    private string $token;
-    private string $productStatus;
+    private $token;
+    private $productStatus;
 
     public function getToken(): string {
         return $this->token;

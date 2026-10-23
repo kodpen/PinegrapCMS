@@ -514,3 +514,16 @@ function test_passkeys_refusal_words()
 	pg_assert_false(in_array($plain, $own, true));
 	pg_assert_true(pg_passkey_refusal('signature', 'register') !== $plain, 'registration has its own sentence');
 }
+
+// -- the account screen --------------------------------------------------------------
+
+// A change to an account's passkeys asks for the proofs the account has: its
+// password unless it is Google-only (algo 3), a code while two-step
+// verification is on.
+function test_passkeys_reauth_fields()
+{
+	pg_assert_same(array('password' => true, 'code' => true), pg_passkey_reauth_fields(1, true), 'password and two-step');
+	pg_assert_same(array('password' => true, 'code' => false), pg_passkey_reauth_fields(1, false), 'password only');
+	pg_assert_same(array('password' => false, 'code' => true), pg_passkey_reauth_fields(3, true), 'Google-only with two-step');
+	pg_assert_same(array('password' => false, 'code' => false), pg_passkey_reauth_fields('3', 0), 'Google-only without two-step');
+}

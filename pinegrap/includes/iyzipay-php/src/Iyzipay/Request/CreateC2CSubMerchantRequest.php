@@ -7,14 +7,14 @@ use Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class CreateC2CSubMerchantRequest extends Request {
-    private string $name;
-    private string $surname;
-    private string $email;
-    private string $gsmNumber;
-    private string $tckNo;
-    private string $birthDate;
-    private string $address;
-    private string $externalId;
+    private $name;
+    private $surname;
+    private $email;
+    private $gsmNumber;
+    private $tckNo;
+    private $birthDate;
+    private $address;
+    private $externalId;
 
     public function getName(): string {
         return $this->name;

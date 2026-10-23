@@ -21,7 +21,12 @@ function get_order_receipt_in_plain_text($order_id)
     // get order info that we will need to use below
     $query =
         "SELECT
+            id,
+            status,
             order_date,
+            discount,
+            tax,
+            total,
             gift_card_discount,
             surcharge,
             payment_installment,
@@ -36,10 +41,14 @@ function get_order_receipt_in_plain_text($order_id)
     $payment_installment = (int) $row['payment_installment'];
     $installment_charges = $row['installment_charges'] / 100;
 
+    // The discount, tax and total the order was charged (pg_order_page_figures()).
+    $figures = pg_order_page_figures($row, $_SESSION['ecommerce'] ?? array());
+
     // Both are only accumulated by non-recurring items, but they are always read
     // when the totals are assembled below.
     $subtotal = 0;
     $grand_tax = 0;
+    $grand_shipping = 0;
     // The lines charged today, for their tax after the order discount
     // (pg_order_items_charged_tax()).
     $charged_item_ids = array();
@@ -118,7 +127,8 @@ function get_order_receipt_in_plain_text($order_id)
                 WHERE ship_tos.id = $ship_to_id";
             
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
+            // Items that are not shipped sit under ship to 0, which has no row.
+            $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
             $ship_to_name = $row['ship_to_name'];
             $salutation = $row['salutation'];
             $first_name = $row['first_name'];
@@ -144,7 +154,8 @@ function get_order_receipt_in_plain_text($order_id)
             $query = "SELECT name FROM countries WHERE code = '" . escape($country) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
-            $country = $row['name'];
+            // No row for ship to 0 or for a code the countries table does not have.
+            $country = $row['name'] ?? '';
             
             // if this shipping address is verified, then convert salutation and country to all uppercase
             if ($address_verified == 1) {
@@ -195,6 +206,9 @@ function get_order_receipt_in_plain_text($order_id)
 
             $output_products = '';
             $output_recurring_products = '';
+            // Only a shipped recipient has a shipping line; items that are not
+            // shipped (ship to 0) have none.
+            $output_shipping = '';
 
             // loop through order items
             foreach ($order_items as $order_item) {
@@ -215,8 +229,6 @@ function get_order_receipt_in_plain_text($order_id)
                 $original_product_price = $order_item['product_price'] / 100;
                 $recurring = $order_item['recurring'];
                 $recurring_schedule_editable_by_customer = $order_item['recurring_schedule_editable_by_customer'];
-                $start = $order_item['start'];
-                $payment_period = $order_item['payment_period'];
                 $selection_type = $order_item['selection_type'];
                 $gift_card = $order_item['gift_card'];
                 $form = $order_item['form'];
@@ -750,12 +762,15 @@ function get_order_receipt_in_plain_text($order_id)
     // start grand total off with just the subtotal (we will add tax and shipping later, if necessary)
     $grand_total = $subtotal;
 
+    // Only set for an order that has the row, but always printed.
     $output_discount = '';
+    $output_grand_tax = '';
+    $output_grand_shipping = '';
 
     // if there is an order discount from an offer, prepare order discount
-    if (!empty($_SESSION['ecommerce']['order_discount'])) {
-        $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
-        
+    $order_discount = $figures['discount'] / 100;
+
+    if ($order_discount > 0) {
         $grand_total = $subtotal - $order_discount;
         
         if ($grand_total < 0) {
@@ -766,10 +781,14 @@ function get_order_receipt_in_plain_text($order_id)
             'Discount: -' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
     }
 
-    // if tax is on, update grand total and prepare tax row
-    if (ECOMMERCE_TAX == true) {
+    // if tax is on or the order was charged tax, update grand total and prepare tax row
+    if ((ECOMMERCE_TAX == true) || ($figures['tax'] > 0)) {
+        // A placed order shows the tax it was charged.
+        if ($figures['tax'] !== null) {
+            $grand_tax = $figures['tax'] / 100;
+
         // if there is an order discount, adjust tax
-        if (($subtotal > 0) && ($order_discount > 0)) {
+        } elseif (($subtotal > 0) && ($order_discount > 0)) {
             // Taken again per rate on what the discount leaves of the lines,
             // as submit_order.php charges it.
             $grand_tax = pg_order_items_charged_tax($charged_item_ids, (int) round($order_discount * 100)) / 100;
@@ -865,6 +884,12 @@ function get_order_receipt_in_plain_text($order_id)
             "\n";
     }
 
+    // A placed order shows the total it was charged, the one the order
+    // history lists.
+    if ($figures['total'] !== null) {
+        $grand_total = $figures['total'] / 100;
+    }
+
     $output_recurring_charges = '';
 
     // if there is a recurring product
@@ -931,7 +956,12 @@ function get_order_receipt_in_plain_text($order_id)
     $po_number = $row['po_number'];
     $tax_exempt = $row['tax_exempt'];
     $payment_method = $row['payment_method'];
-    
+
+    // Only a card order has a card, but the number is protected below for
+    // every order.
+    $card_type = '';
+    $card_number = '';
+
     if ($payment_method == 'Credit/Debit Card') {
         $card_type = $row['card_type'];
         $card_number = $row['card_number'];
@@ -974,7 +1004,8 @@ function get_order_receipt_in_plain_text($order_id)
     $query = "SELECT name FROM countries WHERE code = '" . escape($billing_country) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $billing_country = $row['name'];
+    // No row for a code the countries table does not have.
+    $billing_country = $row['name'] ?? '';
     
     // if the credit card number is not already protected, then protect it
     if (mb_substr($card_number, 0, 1) != '*') {
@@ -1018,14 +1049,15 @@ function get_order_receipt_in_plain_text($order_id)
             custom_field_2_label,
             custom_field_2_required
         FROM billing_information_pages
-        WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id']) . "'";
+        WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
-    $custom_field_1_label = $row['custom_field_1_label'];
-    $custom_field_1_required = $row['custom_field_1_required'];
-    $custom_field_2_label = $row['custom_field_2_label'];
-    $custom_field_2_required = $row['custom_field_2_required'];
+    // An express order has no billing information page, so there is no row.
+    $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+    $custom_field_1_required = $row['custom_field_1_required'] ?? '';
+    $custom_field_2_label = $row['custom_field_2_label'] ?? '';
+    $custom_field_2_required = $row['custom_field_2_required'] ?? '';
 
     // if there is a custom field 1 label and custom field 1 is not blank, then prepare to output data
     if (($custom_field_1_label != '') && ($custom_field_1 != '')) {

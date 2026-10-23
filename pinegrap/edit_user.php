@@ -1302,6 +1302,9 @@ if (!$_POST) {
         
 } else {
     validate_token_field();
+
+    // The account this request changes, as the audit trail names it.
+    $audit_user_id = (isset($_POST['id']) && is_scalar($_POST['id'])) ? (int) $_POST['id'] : 0;
     
     // if create contact was selected, then create contact
     if (($_POST['submit_create_contact'] ?? '') == 'Create Contact') {
@@ -1330,6 +1333,8 @@ if (!$_POST) {
         // A user account that had no contact record now has one.
         pg_announce_contact_created($contact_id);
         
+        $audit_before = pg_audit_fetch('user', $audit_user_id);
+
         // connect contact to user
         $query =
             "UPDATE user
@@ -1339,6 +1344,8 @@ if (!$_POST) {
                 user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        pg_audit_record('update', 'user', $audit_user_id, $audit_before);
         
         // forward user to contact that was just created
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id . '&send_to=' . urlencode($_POST['current_url']));
@@ -1377,6 +1384,10 @@ if (!$_POST) {
 
         // if the user is allowed to be deleted
         if ($allow_delete == true) {
+            // The account as it was, before anything that goes with it is
+            // removed.
+            $audit_before = pg_audit_fetch('user', $audit_user_id);
+
             // Revoke sign-in tokens first, as delete_users.php does, so no token
             // outlives the user row it belongs to.
             pg_auth_token_revoke_user((int) ($_POST['id'] ?? 0));
@@ -1393,6 +1404,8 @@ if (!$_POST) {
             // delete user record
             $query = "DELETE FROM user WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            pg_audit_record('delete', 'user', $audit_user_id, $audit_before);
             
             // delete aclfolder records
             $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id'] ?? '') . "'";
@@ -1592,6 +1605,10 @@ if (!$_POST) {
         // The ERP's read-only right, when its column exists.
         $sql_erp_readonly = pg_user_erp_readonly_sql('set');
 
+        // The only write to the user row in this save; the rest go to the
+        // access lists.
+        $audit_before = pg_audit_fetch('user', $audit_user_id);
+
         // update user
         $query =
             "UPDATE user
@@ -1629,6 +1646,8 @@ if (!$_POST) {
                 user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        pg_audit_record('update', 'user', $audit_user_id, $audit_before);
 
         // Delete current access control records in order to add new ones.
         $query = "DELETE FROM aclfolder WHERE aclfolder_user = '" . escape($_POST['id'] ?? '') . "'";
