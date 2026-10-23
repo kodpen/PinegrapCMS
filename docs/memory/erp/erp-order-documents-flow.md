@@ -21,6 +21,6 @@ description: The order screen's documents card (includes/erp/order_flow.php): th
 
 ## Which account does the invoice step check?
 - The account the invoice is written to: the invoice's own once it exists, before that `erp_order_invoice_account_id()` (the order's account, else the contact's; the writer's rule), picked by `erp_order_flow_invoice_account_id()` (`tests/erp_order_flow_test.php`).
-- Not `orders.erp_account_id`: only the invoice writer, an on-account checkout and a counter sale fill it, so a returning customer's web order holds 0 until it is invoiced. The check read that 0 and was skipped: the step and the automatic invoice issued an invoice the provider then refused at the e-document step.
+- Not `orders.erp_account_id`: only the invoice writer, an on-account checkout and a counter sale fill it, so a returning customer's web order holds 0 until it is invoiced. The check read that 0 and was skipped: the step and the automatic invoice issued an invoice the provider then refused at the e-document step (fixed in #1363).
 - The other steps (e-document kind, reverse steps) and the state's `account` keep the invoice's account, else `orders.erp_account_id`.
 - A first order's account does not exist yet: nothing is checked, the invoice opens the account from the contact card, and a gap shows at the e-document step.
