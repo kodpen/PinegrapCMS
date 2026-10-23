@@ -17,7 +17,7 @@ description: Order shipping, surcharge and instalment charge on the invoice (VAT
 - `pg_tax_rate_amount()` is the checkout's copy of `erp_rate_amount()` (`tests/order_charges_test.php` holds them equal).
 
 ## And the instalment charge? (#1269, owner 2026-10-22)
-- iyzico card form: the card driver takes the quoted charge the fewest kurus lower that keep the rates reachable (`pg_order_installment_charge()`, after the shipping and surcharge as charged; submit_order.php passes `settle_rates`, `charged_lines`, `charges`): 57.92 + 2.05 is charged 59.96, the 3-D Secure row and the order keep 2.04.
+- iyzico card form: the card driver takes the quoted charge the fewest kurus lower that keep the rates reachable (`pg_order_installment_charge()`, after the shipping and surcharge as charged; submit_order.php passes `settle_rates`, `charged_lines`, `charges`): 57.92 + 2.05 is charged 59.96, the 3-D Secure row and the order keep 2.04 (#PR).
 - Pay with iyzico sets the amount itself: the order's invoice (`erp_order_lines()` with `$settle_charges`, the ERP writer, its API check, the old Paraşüt buttons) takes the instalment line a kurus lower; `totals['charges_left']` is the kurus left on the customer's account. Refunds of order lines do not ask for it.
 - The same goes for the shipping and surcharge of an order placed before the rule (#1274, owner 2026-10-22): #1176's 57.93 is invoiced at 57.92.
 
