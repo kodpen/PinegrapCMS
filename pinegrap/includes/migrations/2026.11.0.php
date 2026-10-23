@@ -50,6 +50,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_stripe_payment_intents(); // 11.0.24
 	upgrade_2026_11_0_passkeys();               // 11.0.13
 	upgrade_2026_11_0_not_found_log();          // 11.0.30
+	upgrade_2026_11_0_erp_invoice_recurring_day(); // 11.0.60
 
 }
 
@@ -1118,5 +1119,72 @@ function upgrade_2026_11_0_not_found_log() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('404 log: addresses no page, file or short link answers are now counted with where visitors came from, and a redirect can be made from each of them. Addresses not asked for in 90 days are removed.');
+
+}
+
+// Repeating invoices of a month-end day (2026.11.0, 11.0.60;
+// includes/erp/invoice_recurring.php, #1074).
+//
+// Before erp_invoice_recurring_day() a recurrence kept its first date's day.
+// The invoice screen proposes the first date one month after the issue date,
+// cut to the month end, so an invoice of the 31st started on 28 February and
+// kept the 28th for good; 31 March gave 30 April and the 30th. The first
+// date is not stored (next_date moves on with every run), so a row is moved
+// back to the invoice's own day only when it can be shown to have started on
+// that proposal P = issue_date + 1 month: P was cut (its day is the stored day
+// and below the invoice's day) and next_date is exactly `occurrences` periods
+// after P, which is where every written run leaves it. A first date the
+// operator changed, a period skipped by the lock (next_date ahead of the
+// count) or a deleted source invoice leaves the row as it is; stopping and
+// starting the recurrence again stores the right day.
+//
+// The pending next_date moves to the right day within its own month (28.11
+// becomes 30.11 for an invoice of the 31st), never into another month, so no
+// period is written twice or left out; it stays where it is when the moved
+// date would pass end_date. Both SET expressions read only the source invoice
+// and the old next_date, never day_of_month, so the order MySQL assigns the
+// columns of a multi-table UPDATE in does not matter. Re-runnable: a fixed
+// row has day_of_month equal to the invoice's day and no longer matches.
+function upgrade_2026_11_0_erp_invoice_recurring_day() {
+
+	if (!install_column_exists('erp_invoice_recurrences', 'day_of_month')) {
+
+		install_skipped('erp_invoice_recurrences: the table does not exist, skipped');
+
+		return;
+
+	}
+
+	db("UPDATE erp_invoice_recurrences AS r
+		INNER JOIN erp_invoices AS i ON i.id = r.source_invoice_id
+		SET r.next_date = IF(
+				r.end_date <> '0000-00-00'
+				AND DATE_ADD(r.next_date, INTERVAL LEAST(DAY(i.issue_date), DAY(LAST_DAY(r.next_date))) - DAY(r.next_date) DAY) > r.end_date,
+				r.next_date,
+				DATE_ADD(r.next_date, INTERVAL LEAST(DAY(i.issue_date), DAY(LAST_DAY(r.next_date))) - DAY(r.next_date) DAY)
+			),
+			r.day_of_month = DAY(i.issue_date),
+			r.updated_at = UNIX_TIMESTAMP()
+		WHERE r.status = 'active'
+			AND r.next_date > '0000-00-00'
+			AND i.issue_date > '0000-00-00'
+			AND r.day_of_month IN (28, 29, 30)
+			AND DAY(i.issue_date) > r.day_of_month
+			AND DAY(DATE_ADD(i.issue_date, INTERVAL 1 MONTH)) = r.day_of_month
+			AND r.next_date = DATE_ADD(DATE_ADD(i.issue_date, INTERVAL 1 MONTH), INTERVAL r.occurrences * r.every_months MONTH)");
+
+	$fixed = max(0, (int) mysqli_affected_rows(db::$con));
+
+	if ($fixed > 0) {
+
+		install_ran('erp_invoice_recurrences: ' . $fixed . ' repeating invoice(s) moved back to the day of the month of the invoice they repeat');
+
+	} else {
+
+		install_skipped('erp_invoice_recurrences: no repeating invoice kept a month-end day cut from the day of its invoice');
+
+	}
+
+	install_note('ERP: a repeating invoice started from an invoice dated the 29th, 30th or 31st no longer stays on the 28th, 29th or 30th the first short month cut it to; it goes on to the invoice\'s own day, or the last day of a shorter month. A recurrence whose first date was changed by hand keeps its day: stop it and start it again from the invoice to fix it.');
 
 }
