@@ -60,6 +60,26 @@ function erp_order_flow_edoc_kind($invoice, $account)
 }
 
 /**
+ * The account the invoice step holds against what the e-document provider
+ * would refuse (erp_edoc_account_missing()): the invoice's own once it is
+ * written, before that the account it will be written to.
+ *
+ * orders.erp_account_id is not that account: it is written when the order is
+ * invoiced, put on an account at checkout or sold at the counter, so a
+ * returning customer's web order names none while its invoice goes to the
+ * contact's account. Checked against it, the step would offer an invoice
+ * whose e-document is refused.
+ *
+ * @param array|null $invoice    The order's invoice (not a cancelled one), or null
+ * @param int        $will_bill  erp_order_invoice_account_id() of the order
+ * @return int  0 when there is no account yet: the first invoice opens it from the contact card
+ */
+function erp_order_flow_invoice_account_id($invoice, $will_bill)
+{
+    return is_array($invoice) ? (int) $invoice['account_id'] : max(0, (int) $will_bill);
+}
+
+/**
  * Where an order's four documents stand, and what can be done next.
  *
  * @param int $order_id
@@ -93,6 +113,12 @@ function erp_order_flow_state($order_id)
 
     $account_id = is_array($invoice) ? (int) $invoice['account_id'] : (int) $order['erp_account_id'];
     $account = ($account_id > 0) ? db_item("SELECT * FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1") : null;
+
+    // The invoice step asks the provider's gaps of the account the invoice
+    // is written to; the other steps keep the one above.
+    $invoice_account_id = erp_order_flow_invoice_account_id($invoice, erp_order_invoice_account_id($order));
+    $invoice_account = ($invoice_account_id === $account_id) ? $account
+        : (($invoice_account_id > 0) ? db_item("SELECT * FROM erp_accounts WHERE id = '" . $invoice_account_id . "' LIMIT 1") : null);
 
     $waybill = db_item("SELECT * FROM erp_waybills WHERE order_id = '" . $order_id . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
     $waybill = is_array($waybill) ? $waybill : null;
@@ -142,14 +168,14 @@ function erp_order_flow_state($order_id)
 
         // The buyer's gaps, said before the number is spent: issuing checks
         // the same list when a provider is active and refuses.
-        if (($provider !== '') && is_array($account)) {
-            $gaps = erp_edoc_account_missing($account);
+        if (($provider !== '') && is_array($invoice_account)) {
+            $gaps = erp_edoc_account_missing($invoice_account);
             if (!empty($gaps['fields'])) {
                 $step['state'] = 'blocked';
                 $step['action'] = '';
                 $step['disabled_action'] = 'invoice';
                 $step['reason'] = lang(array('string' => '{var:1} will not take the invoice until these are on the account card: {var:2}.', 'vars' => array($gaps['label'], erp_edoc_fix_summary($gaps['fields']))));
-                $step['links'][] = array('label' => lang('Complete the account card'), 'url' => 'edit_erp_account.php?id=' . (int) $account['id']);
+                $step['links'][] = array('label' => lang('Complete the account card'), 'url' => 'edit_erp_account.php?id=' . (int) $invoice_account['id']);
             }
         }
 

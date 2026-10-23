@@ -18,12 +18,12 @@ description: An order's invoice issued on its own once it is paid or shipped (co
 - The minimum compares the whole sale (`total + gift_card_discount`); the tax number is the invoice's (`erp_auto_invoice_buyer_tax_number()`): the order's account, else the contact's, else the contact (the order keeps none). Empty or 11111111111 does not count.
 
 ## What does it write?
-- `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (account fields the provider needs, nobody to bill), the waybill tie-back, `created_by = 0`, a log line.
+- `erp_auto_invoice_for_order()` runs the order card's own step: `erp_order_flow_state()` must offer `invoice`, then `erp_order_flow_run($id, 'invoice', 0)`. Same gates (the provider's fields on the account the invoice goes to; nobody to bill), the waybill tie-back, `created_by = 0`, a log line.
 - The e-document is not sent: there is no `erp_edoc_queue` worker, so it stays the order screen's next step.
 
 ## What happens when it cannot?
 - A log line and a bell row `action = 'erp_auto_invoice'` (title = the reason, `order_id`, `order_total` = order number), once per order and reason (`erp_alert_auto_invoice_refused()`, under the order's lock), for `manage_erp`, linking to `view_order.php?id=N#erp_order_documents`. The reason is in the language of the request that tried.
-- Said only while the order has no invoice (`erp_auto_invoice_refuse()`): two tries at once used to report "faturası zaten kesilmiş" / "ekran yenilendi" for an invoiced order, the bell twice (#862); now skipped `invoiced`.
+- Said only while the order has no invoice (`erp_auto_invoice_refuse()`): of two tries at once, the one that finds the order invoiced is skipped `invoiced`, with no bell (#862).
 
 ## How is a second invoice for one order prevented?
 - `erp_invoice_from_order()` holds the named lock `erp_order_invoice_lock_sql()` (database + order, MD5) for up to 10 s around the check and the write (`erp_invoice_from_order_locked()`); without named locks it writes as before. It also covers a double click.
