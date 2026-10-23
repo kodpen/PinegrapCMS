@@ -2814,6 +2814,42 @@ function pg_order_items_charged_tax($item_ids, $discount)
 }
 
 /**
+ * The order discount, tax and total an order's page shows (the order view in
+ * My Account, the receipt page and e-mail), in minor units.
+ *
+ * A placed order shows what it was charged: submit_order() writes the
+ * discount, tax and total to the order, and the order history, the panel and
+ * the order view widget read them there. The session's order_discount is the
+ * visitor's cart's, worked out by apply_offers_to_cart(); it is shown only on
+ * that cart while it is not placed, whose tax and total the page works out
+ * from its lines (null here). Any other unplaced order, a cart saved on the
+ * account, has no discount until it is opened as the cart again.
+ *
+ * @param array      $order    the orders row: id, status, discount, tax, total
+ * @param array|null $session  $_SESSION['ecommerce']: order_id, order_discount
+ * @return array  ['discount' => int, 'tax' => int|null, 'total' => int|null]
+ */
+function pg_order_page_figures($order, $session)
+{
+    if ((string) ($order['status'] ?? 'incomplete') !== 'incomplete') {
+        return array(
+            'discount' => (int) ($order['discount'] ?? 0),
+            'tax' => (int) ($order['tax'] ?? 0),
+            'total' => (int) ($order['total'] ?? 0),
+        );
+    }
+
+    $discount = 0;
+    $cart_id = (int) ($session['order_id'] ?? 0);
+
+    if (($cart_id > 0) && ($cart_id === (int) ($order['id'] ?? 0))) {
+        $discount = max(0, (int) round((float) ($session['order_discount'] ?? 0)));
+    }
+
+    return array('discount' => $discount, 'tax' => null, 'total' => null);
+}
+
+/**
  * The tax of each of an order's lines, as the checkout writes it
  * (update_order_item_taxes()).
  *

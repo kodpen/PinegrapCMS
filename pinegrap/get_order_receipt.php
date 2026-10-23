@@ -58,6 +58,10 @@ function get_order_receipt($properties) {
             orders.po_number,
             orders.tax_exempt,
             orders.discount_offer_id,
+            orders.status,
+            orders.discount,
+            orders.tax,
+            orders.total,
             orders.gift_card_discount,
             orders.surcharge,
             orders.payment_installment,
@@ -111,6 +115,10 @@ function get_order_receipt($properties) {
     $card_type = $row['card_type'];
     $card_number = $row['card_number'];
     $cardholder = $row['cardholder'];
+
+    // The discount, tax and total the order was charged, not the ones of the
+    // cart the visitor may have filled since (pg_order_page_figures()).
+    $figures = pg_order_page_figures($row, $_SESSION['ecommerce'] ?? array());
 
     if ($layout_type == 'system') {
 
@@ -1042,9 +1050,9 @@ function get_order_receipt($properties) {
         $grand_total = $subtotal;
 
         // if there is an order discount from an offer, prepare order discount
-        if (!empty($_SESSION['ecommerce']['order_discount'])) {
-            $order_discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
-            
+        $order_discount = $figures['discount'] / 100;
+
+        if ($order_discount > 0) {
             $grand_total = $subtotal - $order_discount;
             
             if ($grand_total < 0) {
@@ -1058,10 +1066,14 @@ function get_order_receipt($properties) {
                     </tr>';
         }
 
-        // if tax is on, update grand total and prepare tax row
-        if (ECOMMERCE_TAX == true) {
+        // if tax is on or the order was charged tax, update grand total and prepare tax row
+        if ((ECOMMERCE_TAX == true) || ($figures['tax'] > 0)) {
+            // A placed order shows the tax it was charged.
+            if ($figures['tax'] !== null) {
+                $grand_tax = $figures['tax'] / 100;
+
             // if there is an order discount, adjust tax
-            if (($subtotal > 0) && ($order_discount > 0)) {
+            } elseif (($subtotal > 0) && ($order_discount > 0)) {
                 // Taken again per rate on what the discount leaves of the lines,
                 // as submit_order.php charges it.
                 $grand_tax = pg_order_items_charged_tax($charged_item_ids, (int) round($order_discount * 100)) / 100;
@@ -1170,6 +1182,12 @@ function get_order_receipt($properties) {
                     <td class="mobile_left" colspan="4" style="text-align: right">Installment Charge:</td>
                     <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
                 </tr>';
+        }
+
+        // A placed order shows the total it was charged, the one the order
+        // history lists.
+        if ($figures['total'] !== null) {
+            $grand_total = $figures['total'] / 100;
         }
 
         // if there is a recurring product
@@ -2062,7 +2080,7 @@ function get_order_receipt($properties) {
 
         $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 
-        $discount = ($_SESSION['ecommerce']['order_discount'] ?? 0) / 100;
+        $discount = $figures['discount'] / 100;
 
         // If there is a discount, then prepare discount info and total.
         if ($discount) {
@@ -2077,10 +2095,14 @@ function get_order_receipt($properties) {
 
         }
 
-        // if tax is on, update grand total and prepare tax row
-        if (ECOMMERCE_TAX) {
+        // if tax is on or the order was charged tax, update grand total and prepare tax row
+        if (ECOMMERCE_TAX or ($figures['tax'] > 0)) {
+            // A placed order shows the tax it was charged.
+            if ($figures['tax'] !== null) {
+                $tax = $figures['tax'] / 100;
+
             // if there is an order discount, adjust tax
-            if ($subtotal and $discount) {
+            } elseif ($subtotal and $discount) {
                 // Taken again per rate on what the discount leaves of the lines,
                 // as submit_order.php charges it.
                 $tax = pg_order_items_charged_tax($charged_item_ids, (int) round($discount * 100)) / 100;
@@ -2171,6 +2193,11 @@ function get_order_receipt($properties) {
             $surcharge_info = prepare_price_for_output($surcharge * 100, false, $discounted_price = '', 'html');
         }
 
+        // A placed order shows the total it was charged, the one the order
+        // history lists.
+        if ($figures['total'] !== null) {
+            $total = $figures['total'] / 100;
+        }
 
         $total_info = prepare_price_for_output($total * 100, false, $discounted_price = '', 'html');
         
