@@ -98,7 +98,7 @@ if (!$_POST) {
                                         <div class="col-12 col-sm-4 col-lg-3 col-xl-2 my-2">
                                             <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                             <div class="input-group">
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'currency', 'data-inputmask-groupSeparator'=>',', 'data-inputmask-digits'=>'2','data-inputmask-digitsOptional'=>'false', 'data-inputmask-placeholder'=>'0', 'required'=>'required')) . '
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
                                                 <label class="input-group-text" for="amount">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                            

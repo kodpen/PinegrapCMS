@@ -86,28 +86,28 @@ if (!$_POST) {
                                         <div class="col-12 col-lg-6 my-2">
                                             <label for="base_rate" class="form-label">' . lang('Base Rate') . '</label>
                                             <div class="input-group">
-                                                <input value="0" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                <input value="0" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 col-lg-6 my-2">
                                             <label for="primary_weight_rate" class="form-label">' . lang('Primary Weight Rate') . '</label>
                                             <div class="input-group">
-                                                <input value="0" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                <input value="0" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 col-lg-6 my-2">
                                             <label for="secondary_weight_rate" class="form-label">' . lang('Secondary Weight Rate') . '</label>
                                             <div class="input-group">
-                                                <input value="0" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                <input value="0" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="secondary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 col-lg-6 my-2">
                                             <label for="item_rate" class="form-label">' . lang('Item Rate') . '</label>
                                             <div class="input-group">
-                                                <input value="0" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric" data-inputmask-alias="currency" data-inputmask-groupSeparator="," data-inputmask-digits="2" data-inputmask-digitsOptional="false" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                <input value="0" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="item_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
