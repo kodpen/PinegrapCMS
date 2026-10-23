@@ -57,7 +57,7 @@ if (!$_POST) {
 
         if ($existing_for_invoice) {
             $liveform_document = new liveform('edit_erp_waybill');
-            $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} already has delivery note {var:2}.', 'vars' => array($invoice['full_number'], $existing_for_invoice[0]['full_number']))));
+            $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} already has delivery note {var:2}.', 'vars' => array(h($invoice['full_number']), h($existing_for_invoice[0]['full_number'])))));
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_waybill.php?id=' . (int) $existing_for_invoice[0]['id']);
         }
 
@@ -84,7 +84,7 @@ if (!$_POST) {
             // One shipment, one note. The one that exists is where to go.
             $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
             $liveform_document = new liveform('edit_erp_waybill');
-            $liveform_document->add_notice(lang(array('string' => 'Order #{var:1} already has delivery note {var:2}.', 'vars' => array(($order_number !== '') ? $order_number : (string) $order_id, $existing[0]['full_number']))));
+            $liveform_document->add_notice(lang(array('string' => 'Order #{var:1} already has delivery note {var:2}.', 'vars' => array(($order_number !== '') ? $order_number : (string) $order_id, h($existing[0]['full_number'])))));
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_waybill.php?id=' . (int) $existing[0]['id']);
         }
 
@@ -194,7 +194,7 @@ if (!$_POST) {
     $result = erp_waybill_create($read['data']);
 
     if (!$result['success']) {
-        $liveform->mark_error('_error', $result['error']);
+        $liveform->mark_error('_error', h($result['error']));
         go($back_url);
     }
 
@@ -202,7 +202,7 @@ if (!$_POST) {
 
     $liveform->remove_form();
     $liveform_document = new liveform('edit_erp_waybill');
-    $liveform_document->add_notice(lang(array('string' => 'Delivery note {var:1} created.', 'vars' => $result['full_number'])));
+    $liveform_document->add_notice(lang(array('string' => 'Delivery note {var:1} created.', 'vars' => h($result['full_number']))));
 
     // What the note filled in elsewhere, said once.
     $written_back = (array) ($result['written_back'] ?? array());

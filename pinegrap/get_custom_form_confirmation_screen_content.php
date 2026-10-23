@@ -155,21 +155,12 @@ function get_custom_form_confirmation_screen_content($properties)
              </tr>';
     }
 
-    $output_auto_registration = '';
-
     // If a user account was created via the auto-registration feature,
-    // then show user account info.
-    if ($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address'] != '') {
-        $output_auto_registration =
-            '<div class="account heading" style="margin-top: 1em">' . lang('New Account') . '</div>
-            <div class="account data">
-                <p>' . lang('We have created a new account for you on our site. You can find your login info below.') . '</p>
-                <p>
-                    ' . lang('Email') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['email_address']) . '<br>
-                    ' . lang('Password') . ': ' . h($_SESSION['software']['custom_form_auto_registration'][$form_id]['password']) . '
-                </p>
-            </div>';
-    }
+    // then name it and give the visitor the link to set its password.
+    $output_auto_registration = pg_cf_new_account_html(
+        pg_cf_new_account_email($form_id),
+        pg_cf_new_account_link($form_id),
+        pg_cf_new_account_for_submitter());
     
     // if a next page was found prepare continue button
     if ($next_page_name) {

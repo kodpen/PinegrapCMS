@@ -62,7 +62,7 @@ if ($_POST) {
             log_activity(lang(array('string' => 'erp receipt (#{var:1}) was cancelled', 'vars' => $cash_id)), $_SESSION['sessionusername']);
             $liveform->add_notice(lang(array('string' => 'The receipt has been cancelled and {var:1} invoice(s) reopened.', 'vars' => count($result['reopened']))));
         } else {
-            $liveform->mark_error('_error', $result['error']);
+            $liveform->mark_error('_error', h($result['error']));
         }
 
         go($self_url);
@@ -126,7 +126,7 @@ if ($_POST) {
         }
 
         foreach ($errors as $error) {
-            $liveform->mark_error('_error', $error);
+            $liveform->mark_error('_error', h($error));
         }
 
         go($self_url);

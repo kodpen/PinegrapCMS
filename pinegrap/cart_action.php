@@ -517,7 +517,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
         $qa_desc = trim(((string)$qa_product['name'] !== '' ? (string)$qa_product['name'] : '')
                  . (((string)$qa_product['name'] !== '' && (string)$qa_product['short_description'] !== '') ? ' - ' : '')
                  . (string)$qa_product['short_description']);
-        $lf->mark_error('quick_add_product_id', lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => $qa_desc)));
+        $lf->mark_error('quick_add_product_id', lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($qa_desc))));
     } else {
         // A shippable product on a multi-recipient site has to say who it is
         // for; everywhere else the question does not exist.

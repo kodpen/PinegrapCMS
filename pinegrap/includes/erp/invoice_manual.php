@@ -82,6 +82,8 @@ function erp_invoice_series($direction = 'sales')
  * Pure: reads nothing and writes nothing, so a screen can show the result
  * before anything is saved and the same call is made again when a draft is
  * issued. Rows with nothing typed in them are skipped rather than refused.
+ * A quantity is taken at the four places it is stored with
+ * (erp_quantity_round()), so a line is priced with what is saved.
  *
  * Per line two discounts may apply, in this order: the store's campaign on
  * the product (offer_discount_rate, a rate on the line total) and the
@@ -152,7 +154,9 @@ function erp_manual_lines_build($lines_in)
         };
 
         $description = mb_substr(trim((string) ($line['description'] ?? '')), 0, 255);
-        $quantity = (float) ($line['quantity'] ?? 0);
+        // Priced at the places the line is stored with: an issue rebuilds
+        // the lines from what was stored (erp_invoice_issue()).
+        $quantity = erp_quantity_round($line['quantity'] ?? 0);
         $unit_price = (int) ($line['unit_price'] ?? 0);
         $tax_rate = (float) ($line['tax_rate'] ?? 0);
         $tax2_rate = $tax2_on ? (float) ($line['tax2_rate'] ?? 0) : 0.0;
