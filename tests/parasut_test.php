@@ -156,3 +156,37 @@ function test_parasut_extract_error_says_a_repeated_title_once()
 	pg_assert_same('Geçersiz', _parasut_extract_error(array('http_code' => 422, 'body' => array('errors' => array('Geçersiz')))));
 	pg_assert_same('HTTP 500', _parasut_extract_error(array('http_code' => 500, 'body' => null)));
 }
+
+// E-Shipment needs the buyer's VKN/TCKN from the field the Paraşüt settings
+// name for it, the number the shipment's buyer card is opened with, and the
+// refusal points at that field.
+function test_parasut_shipment_identity_refusal_reads_the_configured_field()
+{
+	pg_assert_same('', _parasut_shipment_identity_refusal('custom_field_1', '10000000146'));
+	pg_assert_same('', _parasut_shipment_identity_refusal('custom_field_2', ' 1234567890 '));
+	pg_assert_same('', _parasut_shipment_identity_refusal('tax_number', '1234567890'));
+
+	pg_assert_same(lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.'), _parasut_shipment_identity_refusal('tax_number', ''));
+
+	$custom = _parasut_shipment_identity_refusal('custom_field_1', '  ');
+	pg_assert_contains('custom_field_1', $custom);
+	pg_assert_false(strpos($custom, lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.')) !== false);
+	pg_assert_contains('custom_field_2', _parasut_shipment_identity_refusal('custom_field_2', ''));
+
+	pg_assert_same(lang('No field is chosen for the buyer\'s VKN/TCKN on the Paraşüt card of the commerce settings, so the e-shipment cannot carry it.'), _parasut_shipment_identity_refusal('do not use', ''));
+}
+
+// The order screen's E-Shipment check reads the number from the configured
+// field of the order, not the contact card's tax_number whatever the setting.
+function test_parasut_view_order_shipment_check_reads_the_order_identity()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+	$start = strpos($source, "if (isset(\$_POST['parasut_action']))");
+	$end = strpos($source, "if (\$parasut_action === 'invoice')", (int) $start);
+	pg_assert_true(($start !== false) && ($end !== false));
+	$handler = substr($source, (int) $start, (int) $end - (int) $start);
+
+	pg_assert_contains('_parasut_shipment_identity_refusal(', $handler);
+	pg_assert_contains('_parasut_order_identity(', $handler);
+	pg_assert_false(strpos($handler, 'SELECT tax_number FROM contacts') !== false);
+}

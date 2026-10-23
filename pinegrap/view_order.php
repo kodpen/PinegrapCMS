@@ -52,11 +52,10 @@ if (isset($_POST['parasut_action'])) {
             go($redirect);
         }
 
-        // Validate that a contact is linked and has a tax number before invoicing.
-        $parasut_contact_id = db_value("SELECT contact_id FROM orders WHERE id = '$order_id'");
-        $parasut_tax_number = $parasut_contact_id
-            ? db_value("SELECT tax_number FROM contacts WHERE id = '" . e($parasut_contact_id) . "'")
-            : '';
+        // Validate that a contact is linked before invoicing. The full row is
+        // what parasut_sync_contact() reads the buyer's number from.
+        $parasut_order = db_item("SELECT * FROM orders WHERE id = '$order_id'");
+        $parasut_contact_id = $parasut_order['contact_id'] ?? '';
 
         if (!$parasut_contact_id) {
             $liveform->mark_error('_error', lang('No contact is linked to this order. Please ensure billing information is complete.'));
@@ -66,10 +65,18 @@ if (isset($_POST['parasut_action'])) {
         // A missing tax number is not a reason to refuse. A buyer without one is
         // not registered for e-invoice, which is exactly the case an e-archive
         // covers - blocking here left ordinary consumer orders with no way to be
-        // invoiced at all. Only the e-shipment path needs the number.
-        if (($parasut_action === 'e_irsaliye') && (trim($parasut_tax_number) === '')) {
-            $liveform->mark_error('_error', lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.'));
-            go($redirect);
+        // invoiced at all. Only the e-shipment path needs the number, read from
+        // the field the Paraşüt settings name for it (custom_field_1/2 on the
+        // order or the contact's tax_number), as the buyer card is opened with.
+        if ($parasut_action === 'e_irsaliye') {
+            $parasut_identity_refusal = _parasut_shipment_identity_refusal(
+                defined('PARASUT_TC_IN_FIELD') ? PARASUT_TC_IN_FIELD : 'do not use',
+                _parasut_order_identity($parasut_order)
+            );
+            if ($parasut_identity_refusal !== '') {
+                $liveform->mark_error('_error', $parasut_identity_refusal);
+                go($redirect);
+            }
         }
 
         if ($parasut_action === 'invoice') {

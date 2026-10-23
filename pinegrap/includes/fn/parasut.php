@@ -215,10 +215,11 @@ function _parasut_extract_error($result)
  *
  * Which field holds it is an operator setting (PARASUT_TC_IN_FIELD). Two of the
  * three choices are columns on orders; the third, tax_number, is not - it lives
- * on the linked contact, which is where the settings screen sends the operator
- * and what view_order.php checks before offering the button. Reading it off the
- * order row returned nothing, so contacts created from those orders carried no
- * identity number at all and could never be billed by e-invoice.
+ * on the linked contact, which is where the settings screen sends the operator.
+ * Reading it off the order row returned nothing, so contacts created from those
+ * orders carried no identity number at all and could never be billed by
+ * e-invoice. The order screen's E-Shipment check reads the same number
+ * (_parasut_shipment_identity_refusal()).
  *
  * @param array $order  Order row
  * @return string  Empty when not configured or not filled in
@@ -240,6 +241,38 @@ function _parasut_order_identity($order)
     }
 
     return trim((string) ($order[$field] ?? ''));
+}
+
+/**
+ * Say why an order cannot get an e-shipment for want of the buyer's VKN/TCKN.
+ *
+ * The number that counts is the one the shipment's buyer card is opened with:
+ * _parasut_order_identity(), read from the field PARASUT_TC_IN_FIELD names. A
+ * number elsewhere (the contact card under a custom-field setting) never
+ * reaches Paraşüt, and a number in the named field must not be refused.
+ *
+ * @param string $field     PARASUT_TC_IN_FIELD
+ * @param string $identity  The order's number read from that field
+ * @return string  Empty when the number is there, otherwise the refusal
+ */
+function _parasut_shipment_identity_refusal($field, $identity)
+{
+    if (trim((string) $identity) !== '') {
+        return '';
+    }
+
+    if ($field === 'tax_number') {
+        return lang('VKN/TCKN is missing from the linked contact. Please update the contact record before creating a document.');
+    }
+
+    if (($field === 'custom_field_1') || ($field === 'custom_field_2')) {
+        return lang(array(
+            'string' => 'The buyer\'s VKN/TCKN is read from the order\'s {var:1} field (Paraşüt card of the commerce settings), and that field is empty on this order.',
+            'vars' => array($field),
+        ));
+    }
+
+    return lang('No field is chosen for the buyer\'s VKN/TCKN on the Paraşüt card of the commerce settings, so the e-shipment cannot carry it.');
 }
 
 /**
