@@ -26633,5 +26633,17 @@
     "The redirect from {var:1} was removed: the page answers at that address itself now.": "{var:1} adresinden yapılan yönlendirme kaldırıldı: sayfa artık bu adreste kendisi açılıyor.",
     "The old address {var:1} now sends visitors to {var:2} (301).": "Eski adres {var:1} artık ziyaretçileri {var:2} adresine kalıcı olarak yönlendiriyor (301).",
     "The old address {var:1} does not send visitors on: a short link cannot have that name.": "Eski adres {var:1} yönlendirilmiyor: bir kısa link bu adı alamaz.",
-    "The old address {var:1} does not send visitors on: another page, a file or a short link uses it now.": "Eski adres {var:1} yönlendirilmiyor: bu adı artık başka bir sayfa, dosya veya kısa link kullanıyor."
+    "The old address {var:1} does not send visitors on: another page, a file or a short link uses it now.": "Eski adres {var:1} yönlendirilmiyor: bu adı artık başka bir sayfa, dosya veya kısa link kullanıyor.",
+    "Please take a moment to check your entries and submit again.": "Lütfen girdiklerinizi kontrol etmek için biraz zaman ayırın ve yeniden gönderin.",
+    "This form has expired. Please submit it again.": "Bu formun süresi doldu. Lütfen yeniden gönderin.",
+    "Too many submissions. Please try again later.": "Çok fazla gönderim yapıldı. Lütfen daha sonra yeniden deneyin.",
+    "Per visitor address": "Ziyaretçi adresi başına",
+    "Per e-mail address": "E-posta adresi başına",
+    "Per e-mail domain": "E-posta alan adı başına",
+    "per hour": "saatte",
+    "per day": "günde",
+    "Form Submission Limits": "Form Gönderim Sınırları",
+    "How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off.": "Bir ziyaretçi adresinden ve formun e-posta gönderdiği, aboneliğe eklediği ya da kaydettiği bir e-posta adresi veya e-posta alan adı için kaç özel form gönderiminin kabul edileceği. Bir sınıra takılan form, yazılanlarla birlikte yeniden gösterilir. Personel sayılmaz. 0 sınırı kapatır.",
+    "Check visitors against StopForumSpam": "Ziyaretçileri StopForumSpam ile denetle",
+    "Before a form, comment or registration is accepted, the IP address of the visitor is sent to stopforumspam.com, and a listed address is refused. When the service cannot be reached, the submission is accepted.": "Bir form, yorum ya da kayıt kabul edilmeden önce ziyaretçinin IP adresi stopforumspam.com'a gönderilir ve listede olan adres reddedilir. Hizmete ulaşılamazsa gönderim kabul edilir."
 }

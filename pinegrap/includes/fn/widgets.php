@@ -7084,8 +7084,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     _pg_inject_messages_node($tree_decoded, $form_page_id > 0 ? (string)$form_page_id : '');
 
     // Section bindings. `captcha` is the site-wide block, honoured only when
-    // the CAPTCHA setting is on and the visitor is not signed in — the same
-    // gate get_captcha_fields() applies, so an empty container disappears
+    // the CAPTCHA setting is on and the visitor is not staff — the same gate
+    // get_captcha_fields() applies, so an empty container disappears
     // rather than leaving a labelled box with nothing in it.
     $cf_sections = array(
         'captcha' => ($cf_liveform && defined('CAPTCHA') && CAPTCHA && function_exists('get_captcha_fields'))
@@ -7122,6 +7122,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      (function_exists('get_token_field') ? get_token_field() : '') .
                      '<input type="hidden" name="page_id" value="' . $form_page_id . '">' .
                      '<input type="hidden" name="send_to" value="' . h($cf_send_to) . '">' .
+                     pg_cf_issued_field() .
                      ($cf_contact_off ? '<input type="hidden" name="connect_to_contact" value="false">' : '') .
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 

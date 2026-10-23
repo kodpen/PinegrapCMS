@@ -301,6 +301,7 @@ function get_custom_form_screen_content($properties) {
                         '<form class="' . $output_form_class . '" ' . $enctype . ' action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/custom_form.php" method="post" style="margin: 0px">
                             ' . get_token_field() . '
                             <input type="hidden" name="page_id" value="' . $current_page_id . '" />
+                            ' . pg_cf_issued_field() . '
                             ' . $form->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>get_request_uri())) . '
                             ' . $form->output_field(array('type'=>'hidden', 'name'=>'office_use_only', 'value'=>$office_use_only_hidden_field_value)) . '
                             ' . $form->output_field(array('type' => 'hidden', 'name' => 'folder_id', 'value' => $folder_id_for_default_value)) . '
@@ -666,7 +667,8 @@ function get_custom_form_screen_content($properties) {
                         get_token_field() . '
 
                         <input type="hidden" name="page_id" value="' . h($current_page_id) . '">
-                        <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '">';
+                        <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '">' .
+                        pg_cf_issued_field();
 
                     if (!$connect_to_contact) {
                         $system .= '<input type="hidden" name="connect_to_contact" value="false">';
