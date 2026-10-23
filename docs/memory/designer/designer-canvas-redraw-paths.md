@@ -14,7 +14,7 @@ description: Which designer path redraws what: render() for tree changes, _sdSel
 - `_sdEditEpoch` moves in `saveState()` and `render()` (`_sdEditableInvalidate()`). A path that changes the tree without either must call `renderTree()` itself, or the overview keeps marking rows of the old tree.
 
 ## What does a scroll do?
-- Only the viewport moves, not the page. The canvas scroll handler (document scroll only, once per frame) runs `_sdOnCanvasScroll()`: the selected and the hovered wrapper get their toolbar flip (`sd-tb-inside`) and chrome placement, and the size badge follows.
+- Only the viewport moves, not the page. The canvas scroll handler (document scroll only, once per frame) runs `_sdOnCanvasScroll()`: the selected and the hovered wrapper get their toolbar spot (`sd-tb-below` / `sd-tb-inside`, designer-canvas-chrome-placement.md) and chrome placement, and the size badge follows.
 - The full pass `adjustCanvasToolbars()` (fidelity pass, every wrapper measured and re-classed) does not run on scroll. It used to run on every scroll event, the scrolls of inner boxes (a sliding carousel) included.
 
 ## Why is a wrapper's toolbar empty?
