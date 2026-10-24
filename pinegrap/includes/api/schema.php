@@ -597,7 +597,7 @@ function api_schema() {
 				array('name' => 'carrier',          'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Written only when the address has no shipping method code yet: that code is the method the customer chose and paid for, and a fulfilment system naming the carrier it used must not overwrite it. Any text is accepted, but one of yurtici, surat, aras, mng, ptt, ups, fedex or usps is what turns the tracking number into a link the customer can follow.'),
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
-				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
+				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer and, for an order placed with an account, also starts the store\'s review request e-mail. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
 			)
 		),
 

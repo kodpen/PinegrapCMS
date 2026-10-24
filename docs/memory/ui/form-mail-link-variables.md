@@ -21,7 +21,7 @@ description: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form 
 
 ## How is it wired?
 - `pg_cf_mail_links_context(array(email_address, contact_id, custom_form_page_id, form_id))` is set just before the sender's copy is drawn and cleared (`false`) after `email()`. `pg_cf_mail_link_values()` reads it through the pure `pg_cf_mail_link_values_build($context, $suspended, $preferences_url, $confirm_url)`.
-- `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`) is shared with the review link PR #1316; when both are open, merge one and rebase the other so only one definition stays.
+- `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`) is also used by the review request e-mail (`create_auto_email_campaigns()`, `^^review_url^^`, PR #1316).
 
 ## Why are they not standard fields?
 - `get_standard_fields_for_view()` is also read by list views, the search index, sitemap and the designer; a signed link there would leak. The edit screen lists them in their own "E-mail links" group (`pg_cf_variables_help_build()` key `mail`).

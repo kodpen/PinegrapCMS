@@ -26788,5 +26788,9 @@
     "cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control": "önbellek, sayfa önbelleği, cdn, vekil, proxy, varnish, nginx, cloudflare, hız, performans, s-maxage, cache-control",
     "A page that looks the same for every visitor who is not signed in is kept on this server and sent from there, and goes out with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it too. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on. A visit answered from a kept page is counted by a small request the browser sends.": "Oturum açmamış her ziyaretçiye aynı görünen sayfa bu sunucuda saklanır ve oradan gönderilir; standart önbellek başlıklarıyla gittiği için sitenin önündeki bir CDN ya da ters vekil sunucu (Cloudflare, Varnish, nginx) da onu saklayabilir. Form, sepet ya da üye içeriği olan sayfalar, özel sayfalar, PHP çalıştıran sayfalar, sepeti, oturumu ya da çerez tercihi olan ziyaretçiye giden sayfalar ve hata sayfaları hiçbir zaman saklanmaz. Mobil görünümü açık sitede çalışmaz. Saklanan sayfayla yanıtlanan ziyaret, ziyaretçinin tarayıcısından giden küçük bir istekle sayılır.",
     "general job removed {var:1} page cache file(s)": "genel görev {var:1} sayfa önbelleği dosyasını kaldırdı",
-    "general job removed {var:1} product price history row(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ürün fiyat geçmişi satırını sildi"
+    "general job removed {var:1} product price history row(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ürün fiyat geçmişi satırını sildi",
+    "Order Review Request": "Sipariş Değerlendirme İsteği",
+    "order review request": "sipariş değerlendirme isteği",
+    "Verified purchases": "Doğrulanmış satın almalar",
+    "Not verified": "Doğrulanmamış"
 }
