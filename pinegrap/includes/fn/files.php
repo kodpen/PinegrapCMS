@@ -272,13 +272,40 @@ function pg_blocked_upload_extensions()
         'vbs', 'vbe', 'ws', 'wsf', 'wsh', 'ps1', 'psm1', 'psd1', 'reg', 'lnk');
 }
 
+// The last segment of a path, cut at the last "/" by hand, as basename() cuts
+// it on Linux, trailing slashes ignored. For a name a person gave (an upload,
+// an archive entry, a link) basename() itself is not used: before PHP 8.0 it
+// reads the name in the server's locale, and in the "C" locale it drops the
+// non-ASCII letters a segment starts with ("Özet.pdf" becomes "zet.pdf",
+// "отчет.xlsx" becomes ".xlsx"). A caller that also takes "\" as a separator
+// turns it into "/" first.
+function pg_basename($path)
+{
+    $path = rtrim((string) $path, '/');
+    $slash = strrpos($path, '/');
+
+    return ($slash === false) ? $path : substr($path, $slash + 1);
+}
+
+// The last segment without its last extension, as pathinfo($path,
+// PATHINFO_FILENAME) gives it from PHP 8.0: "Özet.tar.gz" is "Özet.tar",
+// ".htaccess" is "". For a name a person gave, for the reason pg_basename()
+// gives.
+function pg_file_name_stem($path)
+{
+    $base = pg_basename($path);
+    $dot = strrpos($base, '.');
+
+    return ($dot === false) ? $base : substr($base, 0, $dot);
+}
+
 // Whether a name, as the operator or the visitor gave it, is one the rule
 // above refuses. Asked before prepare_file_name() so the refusal can name the
 // file as it was sent; a dotfile counts, because a name with nothing in front
 // of its extension is a hidden file, not a file called by its extension.
 function pg_upload_name_blocked($name)
 {
-    $base = mb_strtolower(basename(trim(str_replace('\\', '/', (string) $name))));
+    $base = mb_strtolower(pg_basename(trim(str_replace('\\', '/', (string) $name))));
 
     if (($base == '') or (mb_substr($base, 0, 1) == '.')) {
         return true;

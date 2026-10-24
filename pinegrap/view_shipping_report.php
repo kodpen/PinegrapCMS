@@ -405,7 +405,7 @@ print
                 <div class="col-12 col-sm-12 col-md-6 col-xl-8 text-center text-md-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="view_ship_date_adjustments.php"><span class="bi bi-wrench-adjustable-circle bi-me-2"></span>' . lang('Ship Date Adjustments') . '</a>
+                        ' . (USER_MANAGE_ECOMMERCE ? '<a class="btn btn-sm btn-primary m-1 " href="view_ship_date_adjustments.php"><span class="bi bi-wrench-adjustable-circle bi-me-2"></span>' . lang('Ship Date Adjustments') . '</a>' : '') . '
                     </nav>
                 </div>
  

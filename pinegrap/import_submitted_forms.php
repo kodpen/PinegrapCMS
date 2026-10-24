@@ -159,7 +159,7 @@ if (!$_POST) {
         $handle = fopen($_FILES['file']['tmp_name'], "r");
         
         // get column names from first row of CSV file
-        $columns = fgetcsv($handle, 100000, ",");
+        $columns = fgetcsv($handle, 100000, ",", '"', '\\');
 
         $fields = array();
         
@@ -204,7 +204,7 @@ if (!$_POST) {
             $pretty_urls = check_if_pretty_urls_are_enabled($custom_form_page_id);
 
             // loop through all rows of data in CSV file
-            while ($row = fgetcsv($handle, 100000, ",")) {
+            while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
                 // insert submitted form
                 $query =
                     "INSERT INTO forms (

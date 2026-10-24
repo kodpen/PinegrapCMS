@@ -1,6 +1,6 @@
 ---
 name: design-template-forum
-description: Plan (approved 2026-10-23, not started): Community Forum & Docs design template built only from general features; list, link and form steps first, then the template; waits for designable-comments 1-18
+description: Plan (2026-10-23; 1a done #1473, 2 in #1474): Community Forum & Docs template from general features only; list, link and form steps, then the template on the existing comments block
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -25,5 +25,5 @@ description: Plan (approved 2026-10-23, not started): Community Forum & Docs des
 - Tests `tests/design_template_forum_test.php` on the news and magazine pattern (placeholders, live rules, private views, office fields, CSS, e-mails, CAPTCHA, landmarks); memory files `designer/design-template-forum*.md`; one `[NEW]` changelog line.
 
 ## Where to start?
-- Built so far (branches, PRs pending): 1a `feature/forum-1a-activity-sort`, 2 `feature/forum-2-page-links`; 1b stacks on 1a.
-- Step 3 starts after #1347 merged (same `custom_form.php` and panel lines). Step 4 and the template wait for designable-comments 18.
+- Done: 1a and 1c (#1473). In PRs: 2 #1474; 1b stacks on 1a.
+- Owner (2026-10-24): the template is built now on the existing comments block (`comments_block` region and page `comments` arrays), branch `feature/forum-5-template`; it moves to the comments widget in its own PR after designable-comments E. Step 3 now (#1347 merged); step 4 after designable-comments E.
