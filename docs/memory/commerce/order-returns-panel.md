@@ -10,7 +10,7 @@ description: Panel side of returns (PR #808): list and bulk approve, one return'
 - Order screen: `pg_returns_panel_card()` under Legal Documents. Bell/push row `order_return` opens `view_return.php?id=<form_id>`.
 
 ## What does a staff move do?
-- `pg_return_staff_move($id, $to, $options, $user_id)`: refuses a rejection without a note (the customer is told why); `pg_return_move()` with `by` staff; `pg_audit('update', 'order_return', id, …)` over `pg_return_audit_fields()` (status, decision_note, carrier, carrier_code, tracking_number; no time stamps); one activity log line per target; the decision mail on approved/rejected. A failed mail never undoes the move; the screen says the mail could not be sent.
+- `pg_return_staff_move($id, $to, $options, $user_id)`: refuses a rejection without a note (the customer is told why); `pg_return_move()` with `by` staff under the order's return lock (busy: refused; no close slips into a refund, order-returns-refund-columns.md); `pg_audit('update', 'order_return', id, …)` over `pg_return_audit_fields()` (status, decision_note, carrier, carrier_code, tracking_number; no time stamps); one activity log line per target; the decision mail on approved/rejected. A failed mail never undoes the move; the screen says the mail could not be sent.
 - Sent back by staff: tracking number, carrier only when chosen (empty keeps the approval's). The refund deadline counts from that stamp.
 - Approved and received are announced by `pg_return_move()` itself (`order.return.approved` / `.received`, one per request of a bulk approval); rejected, shipped and closed are not (commerce/order-returns-events.md).
 
