@@ -28058,5 +28058,11 @@
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
     "Archived on {var:1}.": "{var:1} üzerinde arşivde.",
     "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",
-    "On {var:1}": "{var:1} üzerinde"
+    "On {var:1}": "{var:1} üzerinde",
+    "Amount refunded": "İade edilen tutar",
+    "Refund method": "İade yolu",
+    "Through the payment service": "Ödeme hizmeti üzerinden",
+    "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
+    "The payment service gave no clear answer; check the refund on its screen.": "Ödeme hizmeti net bir cevap vermedi; iadeyi hizmetin kendi ekranında kontrol edin.",
+    "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş."
 }

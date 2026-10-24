@@ -437,6 +437,39 @@ if ($window) {
 
 $refund_due = pg_return_refund_due($return);
 
+// The refund the return keeps (11.0.34), once it was refunded: how much, how
+// it was made, the reference and a warning when the payment service gave no
+// clear answer. A return refunded before the refund was kept, whose refund
+// could not be found again, says so.
+$output_refund = '';
+
+if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $return)) {
+    $refund_method = (string) $return['refund_method'];
+    $refund_reference = (string) $return['refund_reference'];
+
+    if (in_array($refund_method, array('driver', 'manual'), true)) {
+        $output_refund = '
+                        <div class="mt-3 small">
+                            <div class="row">
+                                <span class="col text-muted">' . h(lang('Amount refunded')) . ':</span>
+                                <span class="col text-end fw-semibold">' . h(pg_return_money_text((int) $return['refund_amount'])) . '</span>
+                            </div>
+                            <div class="row">
+                                <span class="col text-muted">' . h(lang('Refund method')) . ':</span>
+                                <span class="col text-end">' . h(($refund_method === 'driver') ? lang('Through the payment service') : lang('Recorded, made another way')) . '</span>
+                            </div>
+                            ' . (($refund_reference !== '') ? '<div class="row">
+                                <span class="col text-muted">' . h(lang('Refund reference')) . ':</span>
+                                <span class="col text-end text-break">' . h($refund_reference) . '</span>
+                            </div>' : '') . '
+                            ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert alert-warning small mt-2 mb-0">' . h(lang('The payment service gave no clear answer; check the refund on its screen.')) . '</div>' : '') . '
+                        </div>';
+    } else {
+        $output_refund = '
+                        <p class="small text-muted mt-3 mb-0">' . h(lang('The amount and the way of this refund were not kept.')) . '</p>';
+    }
+}
+
 // Who asked: a person when one is known, else where the request came from.
 $sources = array(
     'customer' => lang('The customer, from their account'),
@@ -560,6 +593,7 @@ echo
                         </div>
                         <ul class="list-unstyled small mb-0">' . $stamp_rows . '
                         </ul>
+                        ' . $output_refund . '
                         ' . (($refund_due !== '') ? '<div class="mt-3"><span class="text-muted">' . h(lang('Refund due by')) . ':</span> <span class="' . ((strcmp(date('Y-m-d'), $refund_due) > 0) ? 'text-danger fw-semibold' : 'fw-semibold') . '">' . h(pg_return_day_text($refund_due)) . '</span></div>' : '') . '
                         ' . $output_close . '
                     </div>
