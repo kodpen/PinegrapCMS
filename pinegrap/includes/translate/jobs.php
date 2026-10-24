@@ -742,7 +742,7 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
 
     $handle = fopen('php://temp', 'r+');
     fwrite($handle, "\xEF\xBB\xBF");
-    fputcsv($handle, array('hash', 'format', 'status', 'source', 'translation'), ';');
+    fputcsv($handle, array('hash', 'format', 'status', 'source', 'translation'), ';', '"', '\\');
 
     if (is_array($rows)) {
         foreach ($rows as $row) {
@@ -752,7 +752,7 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
                 ($row['text'] === null) ? 'pending' : $row['status'],
                 $row['source_text'],
                 ($row['text'] === null) ? '' : $row['text'],
-            ), ';');
+            ), ';', '"', '\\');
         }
     }
 
@@ -784,7 +784,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
     fwrite($handle, $csv);
     rewind($handle);
 
-    $header = fgetcsv($handle, 0, ';');
+    $header = fgetcsv($handle, 0, ';', '"', '\\');
 
     if (!is_array($header)) {
         fclose($handle);
@@ -797,7 +797,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
     if ((count($header) === 1) && (strpos($header[0], ',') !== false)) {
         $delimiter = ',';
         rewind($handle);
-        $header = fgetcsv($handle, 0, ',');
+        $header = fgetcsv($handle, 0, ',', '"', '\\');
     }
 
     $columns = array_flip(array_map('strtolower', array_map('trim', $header)));
@@ -807,7 +807,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
         return $summary;
     }
 
-    while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+    while (($row = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
         $hash = isset($row[$columns['hash']]) ? trim($row[$columns['hash']]) : '';
         $translation = isset($row[$columns['translation']]) ? (string) $row[$columns['translation']] : '';
 

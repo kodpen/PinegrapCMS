@@ -95,7 +95,7 @@ if (!$_POST) {
     fseek($handle, (substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0);
 
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, $separator);
+    $columns = fgetcsv($handle, 100000, $separator, '"', '\\');
 
     // if file is empty
     if (!$columns) {
@@ -124,7 +124,7 @@ if (!$_POST) {
     $next_line = 2;
 
     // loops through all rows of data in CSV file
-    while (($row = fgetcsv($handle, 100000, $separator)) !== false) {
+    while (($row = fgetcsv($handle, 100000, $separator, '"', '\\')) !== false) {
         // The file line the row starts on: a quoted cell can hold line
         // breaks, so a row can take more than one line.
         $line = $next_line;

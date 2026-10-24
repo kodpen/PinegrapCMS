@@ -24,9 +24,11 @@ description: n11 REST API facts for the connector: headers, connection test, asy
 - Prices are decimal and a comma may appear.
 
 ## How far does one order pull read? (`mp_n11_pull_orders()`)
-- At most 20 pages (2,000 packages) a pass, asked in ascending `lastModifiedDate` order. At the cap `read_to` is the last read package's `lastModifiedDate`, not now; the next pass starts there (minus the 5-minute overlap) and reads on.
+- At most 20 requests a pass, asked in ascending `lastModifiedDate` order. At the cap `read_to` is the last read package's `lastModifiedDate`, not now; the next pass starts there (minus the 5-minute overlap) and reads on.
 - Symptom before the fix (#1011): with more than 2,000 packages in the window the cursor jumped to now and packages 2,001+ were never imported.
-- If 20 full pages end inside the overlap (no progress), it reads on up to 100 pages; if even that does not get past the start, `complete` is false and the cursor stays.
+- If 20 full pages end inside the overlap (no progress), it reads on up to 10,000 entries new to the pass (re-read entries are not counted; at most 300 requests); if even that does not get past the start, `complete` is false and the cursor stays.
+- After a full page the window starts again 1 ms before the last moment read, from page 0 (`mp_feed_next_page()`, `connectors/base.php`): inclusive or exclusive `startDate`, that moment comes back, and a package already handed over at the same moment is skipped (`mp_feed_first_time()`). Page numbers only walk a run of pages that all share one moment. Trendyol pages the same way.
+- Symptom before the fix (PR #1459): a package read on one page that changed before the next page was asked for left the window, every later one moved up a place, and one package was never imported.
 - Tests: `tests/marketplace_n11_test.php` (transport parameter, like Trendyol's).
 
 Related: docs/memory/commerce/marketplace-order-status-sync.md
