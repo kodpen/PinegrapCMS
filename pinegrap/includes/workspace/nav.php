@@ -62,6 +62,12 @@ function ws_nav_groups($viewer)
         $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
+    // Flows: staff draw them, and whoever may run a channel's live flow
+    // finds it here too (flows.php).
+    if (function_exists('ws_flows_nav_visible') && ws_flows_nav_visible($viewer)) {
+        $groups['work'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
+    }
+
     // Each person's own accounts on the MCP servers and their tool forms,
     // while a server is on (mcp_form.php).
     if (function_exists('ws_mcp_active_servers') && ws_mcp_active_servers()) {
@@ -92,7 +98,7 @@ function ws_nav_group_titles()
  * The rail and its drawer, for the left edge of a workspace screen.
  *
  * @param array  $viewer
- * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, mcp, settings)
+ * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, flows, mcp, settings)
  * @return string
  */
 function ws_screen_rail($viewer, $current)

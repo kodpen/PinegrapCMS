@@ -29,8 +29,9 @@
  * read that channel. Site members never reach a flow. Publishing is the
  * person's own decision, since a published flow later acts in their name.
  *
- * The runner, the canvas and the boxes beyond start, task and end come later
- * on the same tables (ws_flow_runs, ws_flow_run_steps).
+ * The canvas that draws a flow is workspace_flows.php with
+ * assets/js/workspace_flow.js. The runner and the boxes beyond start, task
+ * and end come later on the same tables (ws_flow_runs, ws_flow_run_steps).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -1066,4 +1067,292 @@ function ws_flow_bin($viewer, $flow)
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was deleted', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return $check;
+}
+
+/* ---------------------------------------------------------------------------
+   The screen (workspace_flows.php, assets/js/workspace_flow.js)
+   --------------------------------------------------------------------------- */
+
+/**
+ * A graph as the screen and the API hand it out: a box's settings always an
+ * object, even an end's empty ones.
+ *
+ * @param array $graph ws_flow_graph_normalize()
+ * @return array
+ */
+function ws_flow_graph_present($graph)
+{
+    return array(
+        'v'     => 1,
+        'nodes' => array_map(function ($node) {
+            $node['config'] = (object) $node['config'];
+
+            return $node;
+        }, $graph['nodes']),
+        'edges' => $graph['edges'],
+        'notes' => $graph['notes'],
+    );
+}
+
+/**
+ * Does the Workspace show Flows to this person? Staff, who build them, and
+ * anybody who may run the live flow of a channel they read.
+ *
+ * @param array $viewer
+ * @return bool
+ */
+function ws_flows_nav_visible($viewer)
+{
+    static $seen = array();
+
+    $key = (int) ($viewer['id'] ?? 0);
+
+    if (isset($seen[$key])) {
+        return $seen[$key];
+    }
+
+    $visible = false;
+
+    if (ws_flows_ready() && !empty($viewer['member'])) {
+        $visible = ws_can_schedule($viewer);
+
+        // The home channels of live flows, asked the way a flow of somebody
+        // else's is: run access, never edit.
+        if (!$visible) {
+            foreach ((array) db_values("SELECT DISTINCT channel_id FROM ws_flows WHERE status = 'live' AND channel_id > 0 LIMIT 500") as $channel_id) {
+                if (ws_flow_access($viewer, array('status' => 'live', 'owner_id' => 0, 'channel_id' => (int) $channel_id)) === 'run') {
+                    $visible = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    $seen[$key] = $visible;
+
+    return $visible;
+}
+
+/**
+ * The version numbers of the flows listed, by version id, in one read.
+ *
+ * @param array[] $rows ws_flows rows
+ * @return array version_id => n
+ */
+function ws_flow_version_numbers($rows)
+{
+    $ids = array();
+
+    foreach ($rows as $row) {
+        if ((int) $row['version_id'] > 0) {
+            $ids[(int) $row['version_id']] = (int) $row['version_id'];
+        }
+    }
+
+    $out = array();
+
+    if (!empty($ids)) {
+        foreach ((array) db_items("SELECT id, n FROM ws_flow_versions WHERE id IN (" . implode(',', $ids) . ")") as $version) {
+            $out[(int) $version['id']] = (int) $version['n'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A flow in the screen's list.
+ *
+ * @param array $viewer
+ * @param array $flow ws_flows row with access
+ * @param int   $n    the number of its live version, 0 for none
+ * @return array
+ */
+function ws_flow_brief($viewer, $flow, $n)
+{
+    return array(
+        'id'         => (int) $flow['id'],
+        'name'       => (string) $flow['name'],
+        'status'     => (string) $flow['status'],
+        'access'     => (string) $flow['access'],
+        'mine'       => ((int) $flow['owner_id'] === (int) $viewer['id']),
+        'channel_id' => (int) $flow['channel_id'],
+        'draft_rev'  => (int) $flow['draft_rev'],
+        'version'    => (int) $n,
+    );
+}
+
+/**
+ * A flow opened on the screen: its owner gets the draft and what stops it
+ * from being published, whoever may run it the live graph only.
+ *
+ * @param array $viewer
+ * @param array $flow ws_flow_for()
+ * @return array
+ */
+function ws_flow_detail($viewer, $flow)
+{
+    $version = ws_flow_version($flow['version_id']);
+    $live = is_array($version) ? ws_flow_graph_of($version) : null;
+    $draft = ((string) $flow['access'] === 'edit') ? ws_flow_graph_of($flow) : null;
+
+    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0) + array(
+        'draft'    => ($draft !== null) ? ws_flow_graph_present($draft) : null,
+        'graph'    => ($live !== null) ? ws_flow_graph_present($live) : null,
+        'problems' => ($draft !== null) ? ws_flow_problems($draft) : array(),
+        // The draft holds something its live version does not.
+        'changed'  => ($draft !== null) && (($live === null) || ($draft !== $live)),
+    );
+}
+
+/**
+ * The texts of the flows screen and its canvas (assets/js/workspace_flow.js),
+ * and the name the channel screen's sidebar gives it.
+ *
+ * @return array key => text
+ */
+function ws_flow_js_strings()
+{
+    return array(
+        'fl_nav'              => lang('Flows'),
+        'fl_toolbar'          => lang('Flow tools'),
+        'fl_settings'         => lang('Settings of what is selected'),
+        'fl_canvas'           => lang('Canvas'),
+        'fl_canvas_help'      => lang('The flow canvas. Tab moves from box to box; C connects the selected box to another, Delete removes it, the arrow keys move it. The outline view lists everything without the canvas.'),
+        'fl_palette'          => lang('Add a box'),
+        'fl_zoom'             => lang('Zoom'),
+        'fl_zoom_in'          => lang('Zoom in'),
+        'fl_zoom_out'         => lang('Zoom out'),
+        'fl_fit'              => lang('Fit to the screen'),
+        'fl_outline'          => lang('Outline view'),
+        'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
+        'fl_new'              => lang('New flow'),
+        'fl_list_mine'        => lang('My flows'),
+        'fl_list_shared'      => lang('Flows of my channels'),
+        'fl_none'             => lang('No flows yet.'),
+        'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
+        'fl_none_run'         => lang('No flows yet. A published flow of a channel you read appears here.'),
+        'fl_not_ready'        => lang('The database has to be updated first.'),
+        'fl_status_draft'     => lang('Draft'),
+        'fl_status_live'      => ws_js_template('Live · v{var:1}', 1),
+        'fl_status_paused'    => ws_js_template('Paused · v{var:1}', 1),
+        'fl_unpublished'      => lang('Changes not published yet'),
+        'fl_name'             => lang('Name of the flow'),
+        'fl_untitled'         => lang('Untitled flow'),
+        'fl_saved'            => lang('Draft saved'),
+        'fl_saving'           => lang('Saving…'),
+        'fl_unsaved'          => lang('Changes not saved'),
+        'fl_retry'            => lang('Try again'),
+        'fl_problems'         => ws_js_template('Problems: {var:1}', 1),
+        'fl_no_problems'      => lang('No problems'),
+        'fl_publish'          => lang('Publish'),
+        'fl_publish_blocked'  => lang('Fix the problems before the flow is published.'),
+        'fl_publish_ask'      => ws_js_template('Publish this draft as version {var:1}? Whoever may run the flow runs this version from now on; runs already started keep theirs.', 1),
+        'fl_publish_do'       => ws_js_template('Publish version {var:1}', 1),
+        'fl_published'        => ws_js_template('Published as version {var:1}.', 1),
+        'fl_pause'            => lang('Pause'),
+        'fl_paused'           => lang('The flow is paused. Publishing it again makes it live.'),
+        'fl_more'             => lang('More actions'),
+        'fl_bin'              => lang('Delete the flow'),
+        'fl_bin_ask'          => ws_js_template('Delete the flow {var:1}? Nobody can open or run it any more.', 1),
+        'fl_binned'           => lang('The flow was deleted.'),
+        'fl_read_only'        => lang('You can see this flow; only its owner changes it.'),
+        'fl_conflict'         => lang('This flow was changed meanwhile, on another screen or device. Load it again.'),
+        'fl_reload'           => lang('Load it again'),
+        'fl_empty_canvas'     => lang('Start with "Start manually" in the palette, add tasks and an end, then drag from the dot on the right of a box to the box that comes after it.'),
+        'fl_kind_manual'      => lang('Started by hand'),
+        'fl_kind_task'        => lang('Task'),
+        'fl_kind_end'         => lang('End'),
+        'fl_add_manual'       => lang('Start manually'),
+        'fl_add_task'         => lang('Task'),
+        'fl_add_end'          => lang('End'),
+        'fl_box'              => lang('Flow box'),
+        'fl_port_out'         => lang('Drag to the box that comes after it'),
+        'fl_untitled_box'     => lang('No title yet'),
+        'fl_manual_meta'      => lang('Starts when somebody runs it'),
+        'fl_starts_on'        => ws_js_template('Started on: {var:1}', 1),
+        'fl_end_meta'         => lang('The flow ends here'),
+        'fl_due_meta'         => ws_js_template('{var:1} · due in {var:2} d', 2),
+        'fl_people_more'      => ws_js_template('{var:1} and {var:2} more', 2),
+        'fl_assign'           => lang('Given to'),
+        'fl_assign_help'      => lang('The task opens for them once the boxes before it are done.'),
+        'fl_assign_creator'   => lang('Whoever starts the run'),
+        'fl_assign_people'    => lang('The people I pick'),
+        'fl_people_filter'    => lang('Search people'),
+        'fl_due_in'           => lang('Due (days after it becomes ready)'),
+        'fl_due_help'         => lang('Left empty, the task has no due date.'),
+        'fl_priority'         => lang('Task priority'),
+        'fl_description'      => lang('Description'),
+        'fl_description_help' => lang('Written into the task when it opens.'),
+        'fl_title'            => lang('Title'),
+        'fl_subject'          => lang('What it starts on'),
+        'fl_subject_help'     => lang('A run can be about one record of this kind, such as an order or a customer.'),
+        'fl_subject_none'     => lang('Nothing in particular'),
+        'fl_after'            => lang('Comes after'),
+        'fl_after_none'       => lang('Nothing; no arrow leads here yet.'),
+        'fl_then'             => lang('Then comes'),
+        'fl_then_none'        => lang('No arrow leaves this box yet.'),
+        'fl_connect_pick'     => lang('Connect to…'),
+        'fl_connect_add'      => lang('Add the arrow'),
+        'fl_connect_title'    => ws_js_template('Connect {var:1} to the box that comes after it', 1),
+        'fl_connect_none'     => lang('There is no box an arrow from here may lead to.'),
+        'fl_connected'        => ws_js_template('Arrow added: {var:1} → {var:2}', 2),
+        'fl_added'            => ws_js_template('Added: {var:1}', 1),
+        'fl_removed'          => ws_js_template('Removed: {var:1}', 1),
+        'fl_remove_box'       => lang('Remove the box'),
+        'fl_remove_arrow'     => lang('Remove the arrow'),
+        'fl_remove_arrow_to'  => ws_js_template('Remove the arrow to {var:1}', 1),
+        'fl_arrow'            => lang('Arrow'),
+        'fl_arrow_text'       => ws_js_template('{var:2} waits for {var:1}.', 2),
+        'fl_on'               => lang('Followed when the task is'),
+        'fl_on_done'          => lang('Done'),
+        'fl_on_cancelled'     => lang('Cancelled'),
+        'fl_one_start'        => lang('A flow has one box that starts it.'),
+        'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
+        'fl_flow_settings'    => lang('The flow'),
+        'fl_flow_help'        => lang('Select a box to change it. Nothing runs until the flow is published.'),
+        'fl_home'             => lang('Home channel'),
+        'fl_home_none'        => lang('No channel (only you)'),
+        'fl_home_help'        => lang('Once the flow is published, the people who read this channel may run it.'),
+        'fl_keys'             => lang('Keyboard'),
+        'fl_key_tab'          => lang('Tab: from box to box, in the order of the arrows'),
+        'fl_key_arrows'       => lang('Arrow keys: move the selected box (with Shift, further)'),
+        'fl_key_connect'      => lang('C: connect the selected box to the one that comes after it'),
+        'fl_key_delete'       => lang('Delete: remove the selected box or arrow'),
+        'fl_key_enter'        => lang('Enter: go to the settings of the selected box'),
+        'fl_key_zoom'         => lang('+ and −: zoom; 0: fit everything on the screen'),
+        'fl_key_pan'          => lang('Space and drag, or drag the empty canvas: move the view; Ctrl and the wheel: zoom'),
+        'fl_key_escape'       => lang('Esc: clear the selection'),
+    );
+}
+
+/**
+ * What the Workspace script is told about flows: whether its menus show
+ * them, and on the flows screen whether the person builds them, the kinds of
+ * record a start box may be about and the limits of a graph.
+ *
+ * @param array $viewer
+ * @param bool  $screen the flows screen is the one drawn
+ * @return array
+ */
+function ws_flow_js_config($viewer, $screen)
+{
+    $config = array('nav' => ws_flows_nav_visible($viewer));
+
+    if (!$screen) {
+        return $config;
+    }
+
+    $subjects = array();
+
+    foreach ((function_exists('ws_scheduled_record_types') ? ws_scheduled_record_types() : array()) as $type => $info) {
+        $subjects[] = array('key' => (string) $type, 'label' => (string) $info['label']);
+    }
+
+    return $config + array(
+        'ready'    => ws_flows_ready(),
+        'build'    => ws_flows_ready() && ws_can_schedule($viewer),
+        'subjects' => $subjects,
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
+    );
 }
