@@ -23,6 +23,57 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 
 /**
+ * A GD image from a picture's bytes, or false.
+ *
+ * Before PHP 8.2 a WebP GD cannot decode (animated, cut short) is a fatal
+ * error, so such bytes are not handed to it (pg_image_webp_gd_readable()).
+ * imagecreatefromstring() reads WebP only from PHP 7.3; before it a WebP is
+ * decoded with imagecreatefromwebp(), from $path when the bytes are that
+ * file's, else from a temporary copy.
+ *
+ * @param string $binary
+ * @param string $path the file the bytes were read from, if any
+ * @return resource|\GdImage|false
+ */
+function pg_image_from_string($binary, $path = '')
+{
+    $binary = (string) $binary;
+
+    if (($binary === '') || !function_exists('imagecreatefromstring')) {
+        return false;
+    }
+
+    $webp = (substr($binary, 0, 4) === 'RIFF') && (substr($binary, 8, 4) === 'WEBP');
+
+    if ($webp && (PHP_VERSION_ID < 80200) && !pg_image_webp_gd_readable($binary)) {
+        return false;
+    }
+
+    $image = @imagecreatefromstring($binary);
+
+    if (($image !== false) || !$webp || (PHP_VERSION_ID >= 70300) || !function_exists('imagecreatefromwebp')) {
+        return $image;
+    }
+
+    if (($path !== '') && is_file($path)) {
+        return @imagecreatefromwebp($path);
+    }
+
+    $copy = @tempnam(sys_get_temp_dir(), 'pg_webp_');
+
+    if ($copy === false) {
+        return false;
+    }
+
+    $image = (@file_put_contents($copy, $binary) === strlen($binary)) ? @imagecreatefromwebp($copy) : false;
+
+    @unlink($copy);
+
+    return $image;
+}
+
+
+/**
  * Get the dominant color area of an image file.
  * Works for raster formats (jpg, png, gif, webp).
  * Returns the most frequent color in hex format (e.g. "#aabbcc").
@@ -41,7 +92,7 @@ function get_dominant_area_color($file_path)
         return $fallback;
     }
 
-    $image = @imagecreatefromstring($image_data);
+    $image = pg_image_from_string($image_data, $file_path);
     if ($image === false) {
         return $fallback;
     }

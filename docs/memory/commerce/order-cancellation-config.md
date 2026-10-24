@@ -21,6 +21,7 @@ description: Order cancel config defines, cancel_order.php endpoint, order_view 
 ## When is the customer e-mailed? (inside `process_order_cancellation`, defensive try/catch)
 - Gated by `ECOMMERCE_CANCEL_EMAIL_NOTIFICATION`. HTML mail to the customer's `billing_email_address` via the `email()` helper (Turkish text: `Order Cancelled`, `Cancellation reason`, refund note).
 - Silently skipped when `EMAIL_ADDRESS` is missing or `billing_email_address` is empty.
+- Never for a marketplace order (`orders.type` `marketplace`, `pg_order_cancellation_mails_customer()`), whichever path cancels it (panel, bulk, API, Workspace, marketplace sync): the marketplace tells its own buyer and the address is its relay (PR #1459, `marketplace-order-status-sync.md`).
 
 ## When is the money given back automatically? (opt-in)
 - When `ECOMMERCE_ORDER_CANCEL_AUTO_REFUND` is true (or the caller forces it): the payment method's driver voids the payment (`pg_payment_call(…, 'cancel', …)`) and the result is written to `orders.refund_status` (`commerce/payment-refunds.md`).

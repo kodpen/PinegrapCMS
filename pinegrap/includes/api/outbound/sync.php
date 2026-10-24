@@ -742,7 +742,7 @@ function mp_sync_orders_account($account, &$summary) {
 
 	$complete = !empty($result['data']['complete']);
 
-	foreach ($packages as $package) {
+	foreach (mp_order_cancellations_first($account, $packages) as $package) {
 
 		$outcome = mp_import_order($account, $package);
 
@@ -789,7 +789,70 @@ function mp_sync_orders_account($account, &$summary) {
 
 	}
 
+	// Packages the webhook receiver imported are accepted here: a request
+	// never calls the marketplace back, so they wait for this pass.
+	mp_sync_approve_pending($account);
+
 	mp_account_outcome($account_id, true);
+
+}
+
+// Accept the open packages that were imported but not accepted.
+//
+// The webhook receiver imports a package while the marketplace waits for its
+// answer, and calls nobody back; a pull that later meets the same package
+// skips it as already imported. So nothing else would ever accept it. Every
+// row of the last day that is imported with an order, not accepted, still
+// Created and without an error is a candidate; a refused acceptance writes
+// last_error, so it is not asked again on every pass.
+//
+// Only while the account accepts orders by itself. Switching that on also
+// accepts what came in during the last day and is still Created, whichever
+// way it came in.
+function mp_sync_approve_pending($account) {
+
+	if (empty($account['auto_approve']) || !mp_can($account['provider'], 'approve_lines')) {
+
+		return;
+
+	}
+
+	// remote_status in the query, not only in mp_sync_approvable(): fifty
+	// packages that moved on (accepted by hand, shipped) would otherwise fill
+	// the page on every pass and hide the Created ones behind them.
+	$rows = (array) db_items("SELECT order_id, remote_order_id, remote_package_id, remote_status, lines_json
+		FROM marketplace_order_map
+		WHERE (account_id = '" . e((int)$account['id']) . "')
+		  AND (status = 'imported')
+		  AND (order_id > 0)
+		  AND (approved = 0)
+		  AND (last_error = '')
+		  AND (remote_status = 'Created')
+		  AND (imported_timestamp >= UNIX_TIMESTAMP() - 86400)
+		ORDER BY id ASC
+		LIMIT 50");
+
+	foreach ($rows as $row) {
+
+		// mp_sync_approve() asks mp_sync_approvable() itself.
+		mp_sync_approve($account, mp_sync_package_from_row($row), (int)$row['order_id']);
+
+	}
+
+}
+
+// The package a map row was imported from, as far as accepting it needs: its
+// ids, the status it was last seen in, and its lines as they were stored.
+function mp_sync_package_from_row($row) {
+
+	$lines = json_decode(isset($row['lines_json']) ? (string)$row['lines_json'] : '', true);
+
+	return array(
+		'remote_order_id'   => isset($row['remote_order_id']) ? (string)$row['remote_order_id'] : '',
+		'remote_package_id' => isset($row['remote_package_id']) ? (string)$row['remote_package_id'] : '',
+		'remote_status'     => isset($row['remote_status']) ? (string)$row['remote_status'] : '',
+		'lines'             => is_array($lines) ? $lines : array()
+	);
 
 }
 
