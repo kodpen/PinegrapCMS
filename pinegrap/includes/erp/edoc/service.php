@@ -1081,6 +1081,21 @@ function erp_edoc_invoice_provider_cancel($invoice_id, $reason = '', $user_id = 
     $external_id = trim((string) $invoice['edoc_external_id']);
 
     if (($external_id === '') && in_array((string) $invoice['edoc_status'], array('none', 'error', 'rejected'), true)) {
+        // A send whose answer never came ends 'error' without an id, yet the
+        // provider may have written the record: the driver looks for it and
+        // takes it back (a driver that keeps no trace of such a try answers
+        // at once). The row names nothing there, so it is not written here.
+        $provider = trim((string) ($invoice['edoc_provider'] ?? ''));
+        $provider = ($provider !== '') ? $provider : erp_edoc_active();
+
+        if (((string) $invoice['edoc_status'] === 'error') && ($provider !== '') && erp_edoc_supports('cancel_invoice', $provider)) {
+            $result = erp_edoc_call('cancel_invoice', array($invoice, (string) $reason), $provider);
+
+            return empty($result['success'])
+                ? array('success' => false, 'message' => '', 'error' => (string) $result['error'])
+                : array('success' => true, 'message' => (string) ($result['message'] ?? ''), 'error' => '');
+        }
+
         return array('success' => true, 'message' => '', 'error' => '');
     }
 
