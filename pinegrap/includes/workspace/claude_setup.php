@@ -210,6 +210,20 @@ function ws_claude_setup_sketch($key, $host)
 }
 
 /**
+ * Where the application's key and secret go on claude.ai: the environment
+ * step of the guide, and the window that shows a new secret once.
+ *
+ * @return string HTML
+ */
+function ws_claude_setup_credentials_text()
+{
+    return ws_claude_setup_text(
+        lang(array('string' => 'The application\'s key and secret: on Team and Enterprise plans write them in {var:1} as two lines, PINEGRAP_KEY=… and PINEGRAP_SECRET=…; everybody who uses the environment can read them. On Pro and Max plans open the environment again with its gear instead and, under {var:2}, press {var:3}: {var:4} {var:5}, this site\'s domain in {var:6}, the key as the user name and the secret as the password, then {var:7}. Claude then works with them without ever seeing them.', 'vars' => ws_claude_setup_marks(7))),
+        array('Environment variables', 'API credentials', 'Add credential', 'Credential type', 'Basic', 'Allowed websites', 'Connect')
+    );
+}
+
+/**
  * The steps, in the order they are done.
  *
  * @param string   $base   the panel's address, for the links
@@ -224,7 +238,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
         array(
             'art'   => 'app',
             'title' => h(lang('An application for Claude')),
-            'text'  => h(lang('In Application Access, create an application named Claude. Give it read and write on Workspace and on Tasks, and read on the records Claude may look at (orders, customers, products…). Copy its key and secret: they are shown once. Then choose it above.')),
+            'text'  => h(lang('Press Create Claude\'s key above: the window that opens shows its key, its secret and the prompt, once. To use another application, make it in Application Access and choose it under Use another application.')),
             'extra' => '<a class="btn btn-sm btn-outline-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
@@ -244,10 +258,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
                 lang(array('string' => 'Under the {var:1} box, press the cloud button that shows the environment\'s name ({var:2}) and choose {var:3}. Set {var:4} to {var:5}, write this site\'s domain in {var:6} and press {var:7}.', 'vars' => ws_claude_setup_marks(7))),
                 array('Instructions', 'Default', 'Add cloud environment', 'Network access', 'Custom', 'Allowed domains', 'Create environment')
             ),
-            'more'  => ws_claude_setup_text(
-                lang(array('string' => 'The application\'s key and secret: on Team and Enterprise plans write them in {var:1} as two lines, PINEGRAP_KEY=… and PINEGRAP_SECRET=…; everybody who uses the environment can read them. On Pro and Max plans open the environment again with its gear instead and, under {var:2}, press {var:3}: {var:4} {var:5}, this site\'s domain in {var:6}, the key as the user name and the secret as the password, then {var:7}. Claude then works with them without ever seeing them.', 'vars' => ws_claude_setup_marks(7))),
-                array('Environment variables', 'API credentials', 'Add credential', 'Credential type', 'Basic', 'Allowed websites', 'Connect')
-            ),
+            'more'  => ws_claude_setup_credentials_text(),
             'extra' => $copy('ws-claude-host', $host),
         ),
         array(

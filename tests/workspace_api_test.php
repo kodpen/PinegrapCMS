@@ -4,10 +4,11 @@
  *
  * Tests for the workspace's route table in the external API
  * (includes/workspace/api.php) that need no database: every route reaches a
- * handler, no two routes answer the same method on the same path, and each
- * action becomes one MCP tool. Also the scopes the search asks of each kind
- * of panel record (includes/workspace/api_day.php), who a call from a
- * device writes as, which of its messages ask an assistant, where what
+ * handler, no two routes answer the same method on the same path, each
+ * action becomes one MCP tool, and the routes only Claude's routine or the
+ * person on the card may use are no tools. Also the scopes the search asks
+ * of each kind of panel record (includes/workspace/api_day.php), who a call
+ * from a device writes as, which of its messages ask an assistant, where what
  * they ask is carried on, how a channel's file is handed out
  * (includes/workspace/files.php), that a handler calls the panel's
  * functions that log in the signed-in person's name as the application's
@@ -35,6 +36,7 @@ if (!defined('PG_API_PANEL')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 
 function test_ws_api_routes_reach_a_handler()
 {
@@ -165,6 +167,88 @@ function test_ws_api_own_words_routes_are_no_tools()
 	foreach (array('workspace.messages.update', 'workspace.messages.delete', 'workspace.messages.hide', 'workspace.messages.pin',
 		'workspace.messages.pin_close', 'workspace.polls.create', 'workspace.polls.update', 'workspace.scheduled_messages.create') as $id) {
 		pg_assert_contains($id, $gated);
+	}
+}
+
+// The queues Claude's routine works through (the Workspace requests and the
+// translation jobs) answer only the key of the application chosen for
+// Claude, never an OAuth connection, and the routine calls them over REST: a
+// route whose handler calls either guard, itself or through a helper, is
+// offered to no MCP client as a tool. The channel context has no guard and
+// stays one.
+function test_ws_api_claude_only_routes_are_no_tools()
+{
+	$guards = array('ws_api_claude_guard', 'translate_api_claude_guard');
+	$gates = array();
+
+	foreach ($guards as $guard) {
+		$gates[] = $guard . '(';
+	}
+
+	foreach (get_defined_functions()['user'] as $name) {
+		if (((strpos($name, 'ws_api_') === 0) || (strpos($name, 'translate_api_') === 0)) && !in_array($name, $guards, true)) {
+			$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($name));
+
+			foreach ($guards as $guard) {
+				if (strpos($source, $guard . '(') !== false) {
+					$gates[] = $name . '(';
+					break;
+				}
+			}
+		}
+	}
+
+	$gated = array();
+	$routes = array();
+
+	foreach (array_merge(ws_api_routes(), translate_api_routes()) as $route) {
+		$routes[$route['id']] = $route;
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($route['handler']));
+
+		foreach ($gates as $gate) {
+			if (strpos($source, $gate) !== false) {
+				$gated[] = $route['id'];
+				pg_assert_same(false, $route['mcp'] ?? null, $route['id'] . ' carries \'mcp\' => false');
+				pg_assert_false(pg_mcp_route_is_offered($route), $route['id'] . ' is no MCP tool');
+				break;
+			}
+		}
+	}
+
+	foreach (array('workspace.claude.requests.list', 'workspace.claude.requests.claim', 'workspace.claude.requests.answer',
+		'workspace.claude.requests.fail', 'workspace.claude.change_types', 'workspace.claude.record', 'translations.jobs.list',
+		'translations.jobs.claim', 'translations.jobs.items', 'translations.jobs.results', 'translations.jobs.fail') as $id) {
+		pg_assert_contains($id, $gated);
+	}
+
+	pg_assert_false(in_array('workspace.channels.context', $gated, true), 'the channel context has no guard');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.channels.context']), 'the channel context stays a tool');
+	pg_assert_true(pg_mcp_route_is_offered($routes['translations.strings.list']), 'the translations themselves stay tools');
+}
+
+// Deciding an approval and applying or setting aside a change an assistant
+// proposed are the person's decisions, made on the card: an MCP client is
+// offered none of them as a tool, so an assistant never decides in the
+// person's name or applies what it proposed. A REST caller keeps them, and
+// asking for an approval and reading the cards stay tools.
+function test_ws_api_card_decisions_are_no_tools()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.approvals.decide', 'workspace.changes.apply', 'workspace.changes.dismiss') as $id) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+		pg_assert_same('POST', $routes[$id]['method'], $id . ' is still a REST write');
+		pg_assert_same(false, $routes[$id]['mcp'] ?? null, $id . ' carries \'mcp\' => false');
+		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
+		pg_assert_contains('ws_api_person_only(', ws_api_test_handler_source($routes[$id]['handler']), $id . ' still refuses an application key');
+	}
+
+	foreach (array('workspace.approvals.list', 'workspace.approvals.create', 'workspace.changes.list') as $id) {
+		pg_assert_true(pg_mcp_route_is_offered($routes[$id]), $id . ' stays a tool');
 	}
 }
 

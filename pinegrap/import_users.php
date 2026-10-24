@@ -312,7 +312,7 @@ if (!$_POST) {
     // get file handle for uploaded CSV file
     $handle = fopen($_FILES['file']['tmp_name'], "r");
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",");
+    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
     
     // if file is empty
     if (!$columns) {
@@ -369,7 +369,7 @@ if (!$_POST) {
     $import_user_error = false;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",")) {
+    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
         $current_import_user_error = false;
 
         // If there is an email address in this row, then continue.

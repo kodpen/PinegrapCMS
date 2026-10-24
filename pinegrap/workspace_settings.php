@@ -17,6 +17,9 @@
 include('init.php');
 $user = validate_user();
 
+// The Claude card makes and rotates an application key (includes/api/keys.php).
+define('PG_API_PANEL', true);
+
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
 $viewer = ws_screen_gate($user);
@@ -353,7 +356,9 @@ if ($_POST) {
         // Asking Claude in the channels (includes/workspace/claude.php).
         case 'claude':
         case 'claude_test':
-            ws_claude_settings_post($viewer, $action, $liveform);
+        case 'claude_key_create':
+        case 'claude_key_reset':
+            ws_claude_settings_post($viewer, $action, $liveform, $user);
             $anchor = '#ws-claude';
             break;
 
@@ -393,6 +398,18 @@ if ($_POST) {
 
 // Back from connecting an MCP server's sign-in (connect.php).
 ws_mcp_settings_returned($viewer, $liveform);
+
+// The key and secret Create or Reset secret on the Claude card handed over,
+// if this request follows one. Read once and removed at once: the window that
+// shows them appears exactly once, and the page carrying the secret is not
+// kept by the browser or a proxy. Nothing has been sent yet, so the header
+// still goes out.
+$assistant_credentials = $_SESSION['software']['ws_assistant_credentials'] ?? null;
+unset($_SESSION['software']['ws_assistant_credentials']);
+
+if ($assistant_credentials !== null) {
+    header('Cache-Control: no-store');
+}
 
 // ── Output ────────────────────────────────────────────────────────────
 
@@ -620,7 +637,7 @@ pg_page_shell([
 
             ' . ws_holidays_settings_card($self_url) . '
 
-            ' . ws_claude_settings_card($self_url, $viewer) . '
+            ' . ws_claude_settings_card($self_url, $viewer, $assistant_credentials) . '
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
 

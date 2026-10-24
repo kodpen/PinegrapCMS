@@ -20,12 +20,13 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
-- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusal texts, no MCP tool, layout writes gated by the owner
+- workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools, layout writes
 - workspace-api-dry-run.md: Every Workspace write in the external API takes X-Dry-Run; the panel's *_check() functions it runs, what each rehearsal answers, and the test that keeps new writes rehearsable
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, what is planned
+- workspace-assistant-keys.md: "Create Claude's key" and "Reset secret" on the Claude card: the key made, its scopes (five reads left out), the config link, who sees it, no-grace reset, one-time window
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
@@ -42,7 +43,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
 - workspace-record-changes.md: How the Workspace writes site records: changes.php pipeline and callers, Recycle Bin guard, stock flag, money ceilings, whose name the sentences carry, writes that die half way
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
-- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, the tokens they use, the colour picker vs the plan board legend class names, Turkish initials in the rail, and the known cosmetic leftovers
+- workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
+- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
