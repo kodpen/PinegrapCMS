@@ -1,17 +1,17 @@
 ---
 name: erp-parasut-product-card
-description: The Paraşüt product card a Pinegrap product gets (parasut_sync_product()): who opens it, what the create sends (list_price, opening stock), why no stock_updates follows (#PR)
+description: The Paraşüt product card a Pinegrap product gets (parasut_sync_product()): who opens it, what the create sends (list_price, opening stock), why no stock_updates follows (#1517)
 ---
 
 ## Who opens a product card?
 - `parasut_sync_product()` (includes/fn/parasut.php), once per product: the id is kept in `products.parasut_product_id` and later calls return it without a request.
 - Callers: the ERP driver's `erp_edoc_parasut_line_product()` (an invoice line with a product, also the legacy Create Invoice's lines; it reads `success` and `parasut_product_id` and falls back to the default product) and E-Shipment (`parasut_create_shipment()`, a tracked line without an id; reads `error` too).
 
-## What does the create send? (#PR)
+## What does the create send? (#1517)
 - `POST products` with `parasut_product_attributes()`: `name` (short description, else the product name), `list_price` (`price` / 100, two decimals), `currency` `TRL`, `vat_rate` (`tax_rate`; none → 0, a card has no "zone decides"), `inventory_tracking` (`products.inventory`), and for a tracked product `initial_stock_count` (`inventory_quantity`, never below 0).
-- Before #PR the price went as `unit_price`. A create with it on 2026-10-24 came back without `list_price`; cards the old code opened earlier do show one, so Paraşüt may have read `unit_price` once. `list_price` is the attribute it takes now. `product_type` (physical/service) went too; v4 products have no such attribute and ignore it.
+- Before #1517 the price went as `unit_price`. A create with it on 2026-10-24 came back without `list_price`; cards the old code opened earlier do show one, so Paraşüt may have read `unit_price` once. `list_price` is the attribute it takes now. `product_type` (physical/service) went too; v4 products have no such attribute and ignore it.
 
-## Why is there no stock_updates request? (#PR)
+## Why is there no stock_updates request? (#1517)
 - `initial_stock_count` in the create already sets the stock (demo: 3 → `stock_count` 3.0). The `POST stock_updates` that followed was answered 422 "Güncellenen stok miktarı bulunamadı." every time and only reached the error log. The warehouse lookup before it (`parasut_ensure_default_warehouse()`, which also writes `config.parasut_default_warehouse_id`) went with it; the helper stays for E-Shipment.
 - `/stock_updates` cannot seed stock from zero either: short stock is seeded by an inflow shipment document (`parasut_ensure_product_stock_tracking()`, erp-parasut-legacy-order-buttons.md).
 
