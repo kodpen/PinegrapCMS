@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 in PR #1503, F2 built): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 done #1503, F2 built): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -21,7 +21,7 @@ description: Plan (2026-10-24, F1 in PR #1503, F2 built): one Flows system: proc
 - From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 moved here; T1, T2, T6, S1, S2 stay.
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
-1. F1 store (schema, ask first): four tables, `flow_id`, graph check, API.
+1. Done (PR #1503): F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
 2. Built: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. Later: from a template, notes/whiteboard, undo/redo, auto-layout, multi-select, Help link.
 3. F3 runner: Run, tasks wait for done, run view, cancel.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
@@ -41,4 +41,4 @@ Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members o
 8. Rules: the scheduled-actions form stays, shared steps, "Open on canvas".
 
 ## Where to start?
-- F1, then F2. Read workspace/README.md, plans/workspace-growth-terms.md.
+- F3 next (plans/workspace-flows-engine.md). Read workspace/README.md, plans/workspace-growth-terms.md.
