@@ -14,9 +14,8 @@ description: What the order screen's legacy Paraşüt "Create Invoice" sends: it
 - `parasut_order_invoice_unsure()`: the list shows "Check Paraşüt", not the emblem; the order screen's button and status row a warning (`parasut_order_invoice_status_badge()`), never "Sent"; the button stays on.
 - The next press searches as the ERP driver does (erp-parasut-send-failures.md): `parasut_order_invoice_find()` (contact, issue date, 20 pages), `_matches()` (the driver's match, issued records kept in). One draft: id kept, then total check and e-document; one issued: id kept, nothing sent; none: created; several or a failed search: refused, mark kept.
 
-## Which buyer card does it open? (#1408, #1518)
-- `parasut_sync_contact()` opens it once per order (`orders.parasut_contact_id`) with `parasut_order_contact_attributes()`: the VKN/TCKN (`_parasut_order_identity()`) in `tax_number`; a person without a billing company or with 11 digits, as the driver. A person's TCKN used to go as an unlisted `tckn`; a card opened so may lack the number.
-- A TR address (no billing country: the store's) as the driver maps it (`erp_address_from_checkout()`): street lines in `address`, state field in `city`, city field in `district`, `postal_code`. Abroad: one folded `address`, kept; nothing refused. Cards opened before stay folded (city, district null).
+## Which buyer card does it use? (#1408, #1518, #PR)
+- The card Paraşüt holds for the buyer's VKN/TCKN, else a new one carrying the order's identity and address: erp-parasut-legacy-buyer-card.md.
 
 ## What does its e-document carry? (#1278)
 - The kind is asked of GİB before the buyer card is opened. `parasut_order_edoc_attributes()` gives the driver's `erp_edoc_parasut_edoc_attributes()` the order's `erp_order_sale_fields()` (erp-vuk-509-fields.md), dated by the sales invoice's day: a zero-rated line's exemption (`erp_vat_line_exemption_code()`), the commercial scenario and mailbox of an e-Invoice, an internet sale's `internet_sale` and `shipment` on e-Archive.
