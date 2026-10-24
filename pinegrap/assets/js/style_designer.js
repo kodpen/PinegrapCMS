@@ -21620,29 +21620,14 @@ const StyleDesigner = (function () {
             });
                     el.addEventListener('dblclick', function () {
                         var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                        var target = selectedNode || tree;
-                        if (!target) return;
                         // Carries the id, so canDrop() can refuse placing a component inside itself.
-                        var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                        if (!canDrop(_dbData, target)) {
-                            if (target.children && target.children.length) {
-                                for (var i = target.children.length - 1; i >= 0; i--) {
-                                    if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                                }
-                            }
-                            if (!canDrop(_dbData, target)) target = tree;
-                            if (!canDrop(_dbData, target)) return;
-                        }
+                        var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                        if (!spot) return;
                         saveState();
                         var n = createFromPalette('shared_ref', extra);
                         if (!n) return;
-                        if (!target.children) target.children = [];
-                        target.children.push(n);
-                        // Placed inside a shared component: that component is saved with the next save.
-                        var _dbOwner = _sdSharedOwnerOf(target);
-                        if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                        _sdInsertAt(spot, n);
                         selectedNode = n;
-                        expandAncestors(n, tree);
                         render();
                         // Safety-net: if tree not yet cached, fetch then re-render
                         var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
@@ -21883,18 +21868,10 @@ const StyleDesigner = (function () {
                 el.addEventListener('dblclick', function () {
                     var label = this.dataset.label || _sdT('System Widget');
                     var rtype = this.dataset.regionType || '';
-                    var target = selectedNode || tree;
-                    if (!target) return;
-                    if (!canDrop({ type: 'shared_ref' }, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop({ type: 'shared_ref' }, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop({ type: 'shared_ref' }, target)) target = tree;
-                        if (!canDrop({ type: 'shared_ref' }, target)) return;
-                    }
-                    _createSystemWidgetNode({ label: label, regionType: rtype }, target, null);
+                    var spot = _sdInsertSpot({ type: 'shared_ref' });
+                    if (!spot) return;
+                    _createSystemWidgetNode({ label: label, regionType: rtype }, spot.parent,
+                        spot.sibling ? { sibling: spot.sibling, after: spot.after } : null);
                 });
             });
 
@@ -21926,29 +21903,14 @@ const StyleDesigner = (function () {
             });
                 el.addEventListener('dblclick', function () {
                     var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
-                    var target = selectedNode || tree;
-                    if (!target) return;
                     // Carries the id, so canDrop() can refuse placing a component inside itself.
-                    var _dbData = { type: 'shared_ref', source: 'palette', extra: extra };
-                    if (!canDrop(_dbData, target)) {
-                        if (target.children && target.children.length) {
-                            for (var i = target.children.length - 1; i >= 0; i--) {
-                                if (canDrop(_dbData, target.children[i])) { target = target.children[i]; break; }
-                            }
-                        }
-                        if (!canDrop(_dbData, target)) target = tree;
-                        if (!canDrop(_dbData, target)) return;
-                    }
+                    var spot = _sdInsertSpot({ type: 'shared_ref', source: 'palette', extra: extra });
+                    if (!spot) return;
                     saveState();
                     var n = createFromPalette('shared_ref', extra);
                     if (!n) return;
-                    if (!target.children) target.children = [];
-                    target.children.push(n);
-                    // Placed inside a shared component: that component is saved with the next save.
-                    var _dbOwner = _sdSharedOwnerOf(target);
-                    if (_dbOwner) _sharedDirty[_dbOwner] = true;
+                    _sdInsertAt(spot, n);
                     selectedNode = n;
-                    expandAncestors(n, tree);
                     render();
                     var _dbSid = extra.sharedId ? parseInt(extra.sharedId, 10) : 0;
                     if (_dbSid > 0 && (!_sharedCache[_dbSid] || !_sharedCache[_dbSid].tree)) {
@@ -39039,6 +39001,56 @@ const StyleDesigner = (function () {
             if (owner) return owner;
         }
         return { parent: tree, sid: 0 };
+    }
+
+    // Where a palette item added without a drag (a double-click, the command
+    // palette) goes, for the drop payload `payload`: { parent, sibling,
+    // after, sid } — the insertCtx shape _swInsertRef() takes — or null when
+    // not even the page root takes it. Into the selection when it holds the
+    // item; else into the last of its children that does (a row's column);
+    // else right after the selection, in the nearest ancestor that takes it,
+    // in the page tree or in the shared tree the selection lives in; else at
+    // the end of the page. `sid` is the shared component whose tree gets the
+    // item (0 for the page). A component or widget (a shared_ref payload)
+    // never goes into a system widget's own tree, where a loop row would
+    // print it once per record: it goes beside the widget's placement.
+    function _sdInsertSpot(payload) {
+        if (!tree) return null;
+        var sel = (selectedNode && selectedNode !== tree) ? selectedNode : tree;
+        if (payload && (payload.type === 'shared_ref' || payload.type === 'system_widget')) {
+            var seen = {};
+            for (var wsid = _isInsideSystemWidget(sel); wsid && !seen[wsid]; wsid = _isInsideSystemWidget(sel)) {
+                seen[wsid] = true;
+                sel = _cfRefOf(wsid) || tree;
+            }
+        }
+        if (canDrop(payload, sel)) return { parent: sel, sid: _sdSharedOwnerOf(sel) };
+        var kids = sel.children || [];
+        for (var i = kids.length - 1; i >= 0; i--) {
+            if (canDrop(payload, kids[i])) return { parent: kids[i], sid: _sdSharedOwnerOf(kids[i]) };
+        }
+        var child = sel;
+        for (var guard = 0; guard < 500; guard++) {
+            var up = _sdAnyParent(child);
+            if (!up || !up.parent) break;
+            if (canDrop(payload, up.parent)) return { parent: up.parent, sibling: child, after: true, sid: up.sid || 0 };
+            child = up.parent;
+        }
+        return (sel !== tree && canDrop(payload, tree)) ? { parent: tree, sid: 0 } : null;
+    }
+
+    // Put `node` where _sdInsertSpot() pointed: right after the sibling, or
+    // last in the parent. A shared tree that gets it is saved with the next
+    // save, and the overview opens down to it.
+    function _sdInsertAt(spot, node) {
+        if (!spot.parent.children) spot.parent.children = [];
+        var kids = spot.parent.children;
+        var at = spot.sibling ? kids.indexOf(spot.sibling) : -1;
+        if (at === -1) kids.push(node);
+        else kids.splice(spot.after ? at + 1 : at, 0, node);
+        if (spot.sid) _sharedDirty[spot.sid] = true;
+        expandAncestorsAnywhere(node);
+        return node;
     }
 
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
@@ -60246,22 +60258,16 @@ const StyleDesigner = (function () {
     }
 
     function _paletteInsert(type, extra) {
-        var target = selectedNode || tree;
-        if (!target) return;
         // The same payload a palette drag carries, so the drop rules see
         // what the item holds (_sdDragTree()), not its type alone.
         var _pd = { source: 'palette', type: type, extra: extra || {} };
-        if (!canDrop(_pd, target)) {
-            target = tree;
-            if (!canDrop(_pd, target)) return;
-        }
+        var spot = _sdInsertSpot(_pd);
+        if (!spot) return;
         saveState();
         var n = createFromPalette(type, extra || {});
         if (!n) return;
-        if (!target.children) target.children = [];
-        target.children.push(n);
+        _sdInsertAt(spot, n);
         selectedNode = n;
-        expandAncestors(n, tree);
         render();
         _trackRecentComp(type, extra || {});
         var _cl = document.getElementById('sd-comp-list');
@@ -61589,31 +61595,17 @@ const StyleDesigner = (function () {
                 var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                 var hintLabel = this.dataset.label || '';
                 var hintIcon  = this.dataset.icon || '';
-                var target = selectedNode || tree;
-                if (!target) return;
                 // The same payload a palette drag carries (see _paletteInsert()).
                 var _pd = { source: 'palette', type: type, extra: extra };
-                if (!canDrop(_pd, target)) {
-                    if (target.children && target.children.length) {
-                        for (var i = target.children.length - 1; i >= 0; i--) {
-                            if (canDrop(_pd, target.children[i])) { target = target.children[i]; break; }
-                        }
-                    }
-                    if (!canDrop(_pd, target)) target = tree;
-                    if (!canDrop(_pd, target)) return;
-                }
+                var spot = _sdInsertSpot(_pd);
+                if (!spot) return;
                 saveState();
                 var n = createFromPalette(type, extra);
                 if (!n) return;
-                if (!target.children) target.children = [];
-                target.children.push(n);
+                _sdInsertAt(spot, n);
                 selectedNode = n;
-                expandAncestors(n, tree);
-                // Inserted into a widget's own tree: that tree has to be
-                // flushed, and — same rule as a drop — a control that lands
-                // inside a custom form widget is a field of it.
-                var _dcOwner = (typeof _sdAnyParent === 'function') ? _sdAnyParent(n) : null;
-                if (_dcOwner && _dcOwner.sid) _sharedDirty[_dcOwner.sid] = true;
+                // Same rule as a drop: a control that lands inside a custom
+                // form widget is a field of it.
                 if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(n);
                 render();
                 _trackRecentComp(type, extra, hintLabel, hintIcon);

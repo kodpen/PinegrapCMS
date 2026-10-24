@@ -43,6 +43,9 @@ function designer_inline_drop_test_run($setup, $cases)
 	$insert_from = strpos($source, 'function _paletteInsert(');
 	$insert_to = strpos($source, 'function _getCpActionItems(', (int) $insert_from);
 	pg_assert_true(($insert_from !== false) && ($insert_to !== false), 'the designer has _paletteInsert()');
+	$spot_from = strpos($source, 'function _sdInsertSpot(');
+	$spot_to = strpos($source, '// One choice of a checkbox/radio group', (int) $spot_from);
+	pg_assert_true(($spot_from !== false) && ($spot_to !== false), 'the designer has _sdInsertSpot() and _sdInsertAt()');
 
 	$script = 'var _sharedCache = {}; var tree = null;'
 		. 'function hasLockedAncestor(n) { var p = _parentOf(n); while (p) { if (p.props && p.props._locked) return true; p = _parentOf(p); } return false; }'
@@ -74,9 +77,11 @@ function designer_inline_drop_test_run($setup, $cases)
 		. 'var COMPONENTS = { language_switcher: { toHTML: function () { return "<div class=\\"dropdown\\"><button type=\\"button\\">EN</button><ul><li><a href=\\"#\\">English</a></li></ul></div>"; } } };'
 		// What _paletteInsert() touches besides the drop rules.
 		. 'var selectedNode = null; function saveState() {} function expandAncestors() {} function render() {}'
+		. 'var _sharedDirty = {}; function expandAncestorsAnywhere() {} function _isInsideSystemWidget() { return 0; } function _cfRefOf() { return null; }'
 		. 'function _trackRecentComp() {} function _renderRecentCompSection() {} var document = { getElementById: function () { return null; } };'
 		. substr($source, $from, $to - $from)
 		. substr($source, $insert_from, $insert_to - $insert_from)
+		. substr($source, $spot_from, $spot_to - $spot_from)
 		. 'var T = {};' . $setup . 'tree = root;'
 		. 'console.log(JSON.stringify([' . implode(',', array_map(function ($c) {
 			return is_array($c) ? 'canDrop(' . $c[0] . ', T.' . $c[1] . ')' : '(' . $c . ')';
@@ -341,22 +346,23 @@ function test_designer_inline_drop_depth_markup_and_hidden_input()
 // Double-click and the command palette insert ask canDrop() with the payload
 // a palette drag carries, so the item is judged by what it holds: a link
 // goes into a selected heading, a block holding links lands on the page and
-// not in a span inside a link.
+// not in a span inside a link, right after the link that holds the span.
 function test_designer_inline_drop_palette_insert_payload()
 {
 	$answer = designer_inline_drop_test_run(designer_inline_drop_test_page(), array(
 		'(function () { var before = root.children.length;'
 		. ' selectedNode = T.h3; _paletteInsert("content", { contentType: "link" });'
 		. ' var inH3 = T.h3.children.length;'
+		. ' var link = _parentOf(T.spanInA);'
 		. ' selectedNode = T.spanInA; _paletteInsert("component", { componentType: "links-block" });'
-		. ' return [inH3, T.spanInA.children.length, root.children.length - before]; })()',
+		. ' return [inH3, T.spanInA.children.length, root.children.length - before, root.children[root.children.indexOf(link) + 1] === selectedNode]; })()',
 	));
 
 	if ($answer === null) {
 		return;
 	}
 
-	pg_assert_same(array(array(1, 0, 1)), $answer, 'a link into the selected h3; a block with links not into the selected span inside a link but onto the page');
+	pg_assert_same(array(array(1, 0, 1, true)), $answer, 'a link into the selected h3; a block with links not into the selected span inside a link but onto the page, after that link');
 
 	// The double-click insert sits in a click handler; no palette check may
 	// go back to the type-only payload.
