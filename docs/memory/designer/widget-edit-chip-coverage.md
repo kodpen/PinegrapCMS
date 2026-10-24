@@ -1,6 +1,6 @@
 ---
 name: widget-edit-chip-coverage
-description: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and why the other widget kinds draw none.
+description: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 ---
 
 ## Which renderers call pg_sw_add_edit_chip()?
@@ -9,7 +9,7 @@ description: Which system widget records carry the front-end edit pencil (produc
 - `form_list_view`: every record row; `form_item_view`: the record when the design places no `^^__edit_url^^` button (`edit_submitted_form.php`, tone `forms`, `pg_sw_can_edit_submitted_forms()`).
 - `calendar_view`: every event row of the loop (month, week and upcoming views); `calendar_event_view`: the event, on the widget's first element (`edit_calendar_event.php`, tone `calendar`, `_pg_sw_calendar_event_edit_chip()`).
 - Comments on a record or classic page: `get_page_content.php` (`edit_comment.php`, tone `page`).
-- None of them draws in a search-index, SEO or designer canvas/Preview render (`pg_sw_edit_chips_on()`; the preview sets `pg_seo_rendering(true)`).
+- None draws in a search-index, SEO, canvas/Preview (`pg_seo_rendering(true)`) or e-mail render (`pg_sw_render_context()['email']`: campaigns, form and order e-mails went out with staff pencils): `pg_sw_edit_chips_on()`, rule `pg_sw_edit_chips_rule()` (`tests/widget_edit_chip_gate_test.php`).
 
 ## Who sees the pencil on a calendar event?
 - The users `edit_calendar_event.php` lets in: role 0-2 always; role 3 only with the calendars right, one of the event's calendars among their own (`users_calendars_xref`) and, since a page shows only published events, the right to publish events.
@@ -23,6 +23,7 @@ description: Which system widget records carry the front-end edit pencil (produc
 - Customer-owned data: `shopping_cart`, `express_order`, `order_view` (lines are the customer's order, staff open it in the panel's order screen), `my_account` (the member's own submissions; their detail page has the pencil), `account_invoices`, `address_book`, `account_profile`, `email_preferences`, `account_security`, `change_password`, `set_password`, `account_email`, `logout`.
 - No record behind them: `login_form`, `login_region`, `forgot_password`, `registration`, `membership`, `cart_link`, `error_page`, `custom_form` (the form is edited in the visual editor itself).
 - `language_switcher`: its rows are the site's languages, a setting, not content.
+- `catalog_item_view`'s cross-sell cards (`_civ_render_cross_sell()`): each opens its product page, which carries the pencil.
 - `search_results`: a row is a link to a page, product or group and carries no record id (`_pg_sw_search_collect()` rows; advanced search keeps only an address in `search_items`); the page it opens carries the pencil, so the list repeats none.
 
 ## Where does a new kind's pencil go?

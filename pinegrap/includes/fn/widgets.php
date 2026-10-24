@@ -8089,16 +8089,31 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
 // brings them back here.
 
 /**
- * Whether this request draws edit chips: a signed-in user, and not a page
- * drawn for the search index or the SEO score inside their request.
+ * Whether a render draws edit chips, from values already read: a signed-in
+ * user's own page view only. A page drawn for the search index or the SEO
+ * score (the designer's canvas and Preview too) draws none, and so does a
+ * page drawn as an e-mail body: a campaign, a form's confirmation or an order
+ * receipt goes to other people even when an editor's request builds it.
+ *
+ * @param bool $signed_in         a user is signed in
+ * @param bool $background_render search index or SEO render
+ * @param bool $email             the page is an e-mail body
  */
+function pg_sw_edit_chips_rule($signed_in, $background_render, $email)
+{
+    return (bool)$signed_in && !$background_render && !$email;
+}
+
+/** Whether this render draws edit chips (pg_sw_edit_chips_rule()). */
 function pg_sw_edit_chips_on()
 {
-    if ((function_exists('pg_seo_rendering') && pg_seo_rendering())
-        || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
-        return false;
-    }
-    return defined('USER_LOGGED_IN') && USER_LOGGED_IN === true && defined('USER_ID') && (int)USER_ID > 0;
+    $ctx = pg_sw_render_context();
+    return pg_sw_edit_chips_rule(
+        defined('USER_LOGGED_IN') && USER_LOGGED_IN === true && defined('USER_ID') && (int)USER_ID > 0,
+        (function_exists('pg_seo_rendering') && pg_seo_rendering())
+            || (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true),
+        !empty($ctx['email'])
+    );
 }
 
 /** Products and product groups: the rule the legacy catalog pencil used. */
