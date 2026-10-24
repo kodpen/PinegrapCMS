@@ -26834,5 +26834,6 @@
     "Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)": "Webhook'u {var:1} üzerinden kaldırılamasa da pazaryerini kaldır (sonra webhook'u satıcı panelinden kaldırın)",
     "Voice message": "Sesli mesaj",
     "Play": "Oynat",
-    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek."
+    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek.",
+    "Reply with voice": "Sesli yanıtla"
 }

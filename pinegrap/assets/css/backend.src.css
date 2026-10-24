@@ -15172,6 +15172,11 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     min-width: 2.5rem;
     min-height: 2.5rem;
   }
+  /* Up to three of those beside the name (speed, reply, download): closer
+     together, so the name keeps room to be read. */
+  .ws-voice {
+    gap: var(--ws-space-1);
+  }
   body.ws-keyboard .ws-center > .ws-brief {
     display: none;
   }

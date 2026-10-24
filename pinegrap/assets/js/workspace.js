@@ -8107,7 +8107,7 @@
                 quote.type = 'button';
                 quote.title = t('reply_go_to');
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.plain(parent.html)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message')));
 
                 // The message answered: brought into view and lit up for a
                 // moment, so which one it was is plain. One deleted since is
@@ -8316,6 +8316,19 @@
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();
             return (text.length > 90) ? text.slice(0, 89) + '…' : text;
+        },
+
+        // What a quote of a message says: its words, or for a file alone its
+        // name - "Voice message" for a recording (workspace_voice.js).
+        quoteText: function (message) {
+            var text = this.plain(message.html);
+            var file = message.file;
+
+            if (text || !file) {
+                return text;
+            }
+
+            return ((file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name)) ? t('voice_message') : (file.name || '');
         },
 
         findMessage: function (id) {
@@ -8759,9 +8772,12 @@
 
             // A sound, a voice message among them: play and pause, the time
             // and the speed (assets/js/workspace_voice.js); the browser's own
-            // player below without it.
+            // player below without it. Any sound may be answered with a
+            // recording from its own microphone (voiceReply()).
             if ((kind === 'audio') && window.PGWsVoice) {
-                return window.PGWsVoice.player(file, featureHelpers());
+                return window.PGWsVoice.player(file, featureHelpers(), {
+                    reply: self.voiceReplyOffered(message) ? function () { self.voiceReply(message); } : null
+                });
             }
 
             if (kind === 'video' || kind === 'audio') {
@@ -11003,25 +11019,15 @@
             // empty; voiceSwap() trades them.
             self.sendNode = sendGroup || send;
             self.voiceMic = null;
+            self.voiceBox = null;
 
             if (window.PGWsVoice && window.PGWsVoice.supported() && !self.era) {
                 var mic = button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-mic', '', 'bi-mic', t('voice_record'));
 
-                mic.addEventListener('click', function () {
-                    window.PGWsVoice.start({
-                        box: box,
-                        send: function (file) { self.uploadFiles([file]); },
-                        done: function () {
-                            self.voiceSwap();
-
-                            if (!touchScreen() && self.input && self.input.isConnected) {
-                                self.input.focus();
-                            }
-                        }
-                    }, featureHelpers());
-                });
+                mic.addEventListener('click', function () { self.voiceRecord(); });
                 tools.appendChild(mic);
                 self.voiceMic = mic;
+                self.voiceBox = box;
             }
 
             box.appendChild(tools);
@@ -11207,8 +11213,9 @@
         },
 
         // The microphone in place of Send while the box is empty. Not while a
-        // message is changed, nor beside a reply bar: a recording is sent by
-        // uploadFiles(), which posts no parent_id.
+        // message is changed; beside a reply bar it answers that message
+        // (voiceSend()), but not several at once, nor an assistant the reply
+        // would ask (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -11216,11 +11223,95 @@
                 return;
             }
 
-            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.reply && !this.era
-                && !!this.channel && !!this.channel.can_post;
+            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.era
+                && !!this.channel && !!this.channel.can_post
+                && (!this.reply || (!(this.replyMore && this.replyMore.length) && this.voiceAnswers(this.reply)));
 
             mic.classList.toggle('d-none', !show);
             this.sendNode.classList.toggle('d-none', show);
+        },
+
+        // Whether a recording may answer this message. An answer to Claude,
+        // Pinegrap AI or an MCP agent asks it, as the reply bar says; a
+        // recording asks nobody, so it does not stand in for one.
+        voiceAnswers: function (message) {
+            var sender = (message && message.sender) || {};
+            var channel = this.channel || {};
+
+            return !((sender.claude && channel.claude && channel.claude.available)
+                || (sender.ai && channel.ai && channel.ai.available) || sender.mcp);
+        },
+
+        // Whether a sound in the conversation gets the microphone that
+        // answers it: where the writing box records, in the conversation
+        // itself (not the Decisions or Files list).
+        voiceReplyOffered: function (message) {
+            return !!(window.PGWsVoice && window.PGWsVoice.supported()) && (this.tab === 'messages') && !this.era
+                && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
+        },
+
+        // Records into the writing box (the microphone in place of Send, or
+        // a sound's own); Stop sends it with voiceSend().
+        voiceRecord: function () {
+            var self = this;
+            var box = self.voiceBox;
+
+            if (!window.PGWsVoice || !box || !box.isConnected) {
+                return;
+            }
+
+            window.PGWsVoice.start({
+                box: box,
+                send: function (file) { self.voiceSend(file); },
+                done: function () {
+                    self.voiceSwap();
+
+                    if (!touchScreen() && self.input && self.input.isConnected) {
+                        self.input.focus();
+                    }
+                }
+            }, featureHelpers());
+        },
+
+        // The microphone on a sound: the sound becomes the message the box
+        // answers, as Reply makes it, and the recording starts at once. A
+        // tap on it while messages are being chosen chooses the message.
+        voiceReply: function (message) {
+            var self = this;
+
+            if (self.selecting || !window.PGWsVoice || window.PGWsVoice.busy() || !self.voiceBox || !self.voiceBox.isConnected) {
+                return;
+            }
+
+            if (self.editing || self.editingScheduled) {
+                toast(t('voice_busy'), 'warning');
+                return;
+            }
+
+            self.reply = self.findMessage(message.id) || message;
+            self.replyMore = null;
+            self.drawReplyBar();
+            self.voiceRecord();
+        },
+
+        // A recording leaves as a file of its own: the words in the box stay
+        // there, and it answers the message the reply bar shows when it is
+        // sent. The bar closes once it is posted.
+        voiceSend: function (file) {
+            var self = this;
+            var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
+
+            self.uploadFiles([file], {
+                body: '',
+                parent_id: parent ? parent.id : 0,
+                sent: function () {
+                    if (parent && (self.reply === parent)) {
+                        self.reply = null;
+                        self.replyMore = null;
+                        self.drawReplyBar();
+                    }
+                }
+            });
         },
 
         clearInput: function () {
@@ -11358,7 +11449,7 @@
             var row = el('div', 'ws-reply-bar');
             row.appendChild(icon(self.editing ? 'bi-pencil' : 'bi-reply'));
             row.appendChild(el('span', '', self.editing ? t('editing_message')
-                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.plain(self.reply.html)))));
+                : ((self.replyMore && self.replyMore.length) ? t('reply_many', self.replyMore.length + 1) : t('replying_to', self.reply.sender ? self.reply.sender.name : '', self.quoteText(self.reply)))));
 
             // An answer to Claude goes to Claude.
             if (!self.editing && self.reply.sender && self.reply.sender.claude && self.channel.claude && self.channel.claude.available) {
@@ -11768,13 +11859,17 @@
         // Files picked, dropped or pasted: one after the other, the text in
         // the composer going with the first. What the file manager refuses
         // (PHP, .htaccess, web.config, shell scripts, programs) the server
-        // refuses here too, and says so.
-        uploadFiles: function (files) {
+        // refuses here too, and says so. options (a recording, voiceSend()):
+        // body sent instead of the box's text, which then stays in the box;
+        // parent_id, the message the files answer; sent(), once any is posted.
+        uploadFiles: function (files, options) {
             var self = this;
+            var settings = options || {};
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
-            var body = self.input ? self.tokens(self.inputText()) : '';
+            var ownBody = (typeof settings.body === 'string');
+            var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
             if (!total || !self.channel || !self.channel.can_post) {
                 return;
@@ -11785,6 +11880,10 @@
 
                 if (!file) {
                     if (done > 0) {
+                        if (settings.sent) {
+                            settings.sent();
+                        }
+
                         self.sync(true);
                     }
 
@@ -11806,13 +11905,17 @@
                         channel_id: self.channel.id,
                         name: file.name || ('image-' + Date.now() + '.png'),
                         data: reader.result,
-                        body: body
+                        body: body,
+                        parent_id: settings.parent_id || 0
                     }).then(function () {
                         done++;
 
                         if (body !== '') {
                             body = '';
-                            self.clearInput();
+
+                            if (!ownBody) {
+                                self.clearInput();
+                            }
                         }
 
                         next();
@@ -13080,6 +13183,7 @@
             rich: null,
             sendNode: null,
             voiceMic: null,
+            voiceBox: null,
             picker: null,
             pickerMode: null,
             pickerItems: null,
