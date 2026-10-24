@@ -19,7 +19,7 @@ description: Workspace flows, first slice (store, graph check, API; runs in work
 - Limits: 100 boxes, 200 notes (problems, so a draft may hold them), 256 KB JSON and 200 flows per owner (refused).
 
 ## How do the writes work?
-- `ws_flow_save_check()` / `ws_flow_save()`: name 1-160, home channel public/private and readable (checked only when it changes), graph normalized; problems are answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
+- `ws_flow_save_check()` / `ws_flow_save()`: name 1-160, home channel public/private and readable (checked only when it changes; not in the draft: it changes at once, runs keep theirs), graph normalized; problems are answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
 - `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; version n = MAX+1 through `@mysqli_query` (db() would end the request on 1062), duplicate → 409; status live. Publishing a paused flow makes it live again (no resume route yet).
 - `ws_flow_pause*()` live → paused (runs going go on); `ws_flow_bin*()` status binned, its open runs cancelled. Create, publish, pause and delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
 
@@ -28,4 +28,4 @@ description: Workspace flows, first slice (store, graph check, API; runs in work
 - Objects WorkspaceFlow, WorkspaceFlowVersion, WorkspaceFlowGraph, WorkspaceFlowProblem. Draft and problems only to the owner on a single read.
 
 ## Why is publish own-words only? (owner, 2026-10-24)
-- Decisions: own vanilla editor, staff build, publishing decides, AI drafts only and a person publishes. A published flow later opens tasks in the owner's name, like a scheduled message, so publish has `ws_api_own_words_only()` and `'mcp' => false`; key, OAuth and MCP may list, read, draft, pause and delete.
+- Decisions: own vanilla editor, staff build, publishing decides, AI drafts only and a person publishes. A published flow later opens tasks in the owner's name, like a scheduled message, so publish has `ws_api_own_words_only()` and `'mcp' => false`; key, OAuth and MCP may list, read, draft, pause and delete. Moving a published flow's home decides at once who may start it: refused to key and OAuth (`ws_api_flow_home_move_gate()`); the change stays a tool.

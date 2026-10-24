@@ -41,7 +41,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
- *                         tells many people in a row and calls ws_push_batch_done()
+ *                         tells many people in a row and calls ws_push_batch_done();
+ *                         separate: always a row of its own, never folded into an
+ *                         unread row of the same kind and ids (a run of a flow that
+ *                         ended, whose ids are all 0: flow_runs.php)
  * @return int the inbox row
  */
 function ws_notify($user_id, $kind, $data)
@@ -64,12 +67,12 @@ function ws_notify($user_id, $kind, $data)
 
     // The same thing twice is one row: an edit that mentions somebody again,
     // a task given to somebody who already had it.
-    $existing = (int) db_value("SELECT id FROM ws_inbox
+    $existing = empty($data['separate']) ? (int) db_value("SELECT id FROM ws_inbox
         WHERE user_id = '" . $user_id . "' AND kind = '" . e($kind) . "' AND read_at = 0
         AND channel_id = '" . $channel_id . "' AND message_id = '" . $message_id . "' AND task_id = '" . $task_id . "'"
         . (($note_id > 0) ? " AND note_id = '" . $note_id . "'" : '')
         . (($event_id > 0) ? " AND event_id = '" . $event_id . "'" : '') . "
-        LIMIT 1");
+        LIMIT 1") : 0;
 
     if ($existing > 0) {
         return $existing;

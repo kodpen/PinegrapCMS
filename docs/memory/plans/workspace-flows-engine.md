@@ -16,7 +16,7 @@ description: Plan (2026-10-24, F1 and F3a built, rest open): Flows engine: table
 - `ws_flow_run_steps`: run, node_id, pass (0, no loops), status (ready, running, waiting, done, failed, skipped, interrupted), outcome, attempt, ready_at, claimed_at, wait_event, wait_key, wake_at, effect, result; UNIQUE (run, node, pass).
 
 ## How does a run move?
-- A start (Run, API, the anchor's step) writes the run (start_key `manual:<token>`, `sched:<scheduled run id>`), its trigger step done.
+- A start (Run, API, the anchor's step) writes the run (start_key `manual:<token hash>`, `sched:<scheduled run id>`), its trigger step done.
 - A step that ends marks itself, then INSERT IGNOREs each next box whose arrows in are all settled; untaken branches skip their boxes, so a join fires once.
 - `ws_flow_advance()` claims a ready step (`UPDATE … AND status='ready'`, affected_rows 1), runs it, follows its outcome.
 - Task, approval: `effect` (`task:12`), then waiting; an approval needs a channel, ends approved, rejected, expired or withdrawn. Delay: a later `ready_at`.

@@ -16,7 +16,7 @@ description: Plan (2026-10-24, F1 in PR #1503, F3a engine and API built, answers
 - Canvas (main): new workspace_flows.php, bundle `assets/js/workspace_flow.min.js` (`pg_js_bundles()`); HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_sync`).
 - Process template: task boxes on "after" arrows; also from a channel template or table rows (workflow mode).
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
-- Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds its runs; table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
+- Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds the runs started there (a run keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is a shared step.
 - From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 moved here; T1, T2, T6, S1, S2 stay.
 

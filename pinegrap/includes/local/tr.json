@@ -26950,7 +26950,7 @@
     "The flow reached its end.": "Akış sonuna ulaştı.",
     "The owner of the flow is no longer on the staff, so the task was not opened.": "Akışın sahibi artık personel arasında değil; bu yüzden görev açılmadı.",
     "This kind of box cannot run yet.": "Bu tür bir kutu henüz çalıştırılamıyor.",
-    "Opened by the flow “{var:1}”, run {var:2}.": "“{var:1}” akışının {var:2} numaralı çalıştırması açtı.",
+    "Opened by the flow “{var:1}”, run {var:2}, at the box {var:3}.": "“{var:1}” akışının {var:2} numaralı çalıştırması {var:3} kutusunda açtı.",
     "with nobody on it: the people it was meant for could not be given it": "kimseye verilmeden: düşünülen kişilere verilemedi",
     "Task {var:1} is done.": "{var:1} görevi bitti.",
     "Task {var:1} is gone.": "{var:1} görevi artık yok.",
@@ -26965,5 +26965,8 @@
     "workspace flow ({var:1}) run {var:2} was cancelled": "çalışma alanı akışı ({var:1}) {var:2} numaralı çalıştırması iptal edildi",
     "Cancelled: the flow was deleted.": "İptal edildi: akış silindi.",
     "A run of your flow ended": "Akışınızın bir çalıştırması bitti",
-    "Flow run": "Akış çalıştırması"
+    "Flow run": "Akış çalıştırması",
+    "The run ended before this box did; its task stays as it is.": "Çalıştırma bu kutudan önce bitti; görevi olduğu gibi kalır.",
+    "An assistant does not start or cancel the runs of a flow; the person does.": "Bir asistan bir akışın çalıştırmalarını başlatmaz ya da iptal etmez; bunu kişi yapar.",
+    "Only the person's own team devices session (POST /auth/login) can move a published flow to another home channel; an application key or an OAuth connection cannot do it for them.": "Yayımlanmış bir akışı başka bir ana kanala yalnız kişinin kendi ekip cihazları oturumu (POST /auth/login) taşıyabilir; uygulama anahtarı ya da OAuth bağlantısı onun adına yapamaz."
 }

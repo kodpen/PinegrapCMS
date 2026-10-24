@@ -13,8 +13,13 @@
  * runs: an assistant can lay a process out for the person to look at.
  * Publishing is the person's own decision, made from their team devices
  * session: a published flow later opens tasks in their name.
- * Starting and cancelling a run are REST calls only for now: an AI app is to
- * ask the person first, which the MCP server cannot do yet.
+ * Moving a published flow to another home channel is the person's own too:
+ * the home decides at once who may start the flow and where its new runs
+ * open their tasks. Starting and cancelling a run are REST calls only for
+ * now, refused to the application an assistant works through: an AI app is
+ * to ask the person first, which the MCP server cannot do yet. The
+ * application Claude works through reads the flows and runs it reaches only
+ * through a channel where Claude may be asked.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -167,6 +172,28 @@ function ws_api_flows_ready()
 }
 
 /**
+ * Whether the current application reaches a flow or a run the owner reaches
+ * through a channel: always, except for the application Claude works
+ * through and a channel where Claude may not be asked (as a note shared
+ * through such a channel, ws_api_note_reachable()). What the owner of its
+ * key owns (access edit) stays readable.
+ *
+ * @param string $access     edit, or run / read through the channel
+ * @param int    $channel_id the flow's home, or the channel the run was started in
+ * @return bool
+ */
+function ws_api_flow_reachable($access, $channel_id)
+{
+    if (((string) $access === 'edit') || !ws_api_is_claude()) {
+        return true;
+    }
+
+    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
+
+    return $channel && ws_claude_channel_allowed($channel);
+}
+
+/**
  * A flow the owner of the application reaches, read again from the table,
  * with access; anything else is a 404.
  *
@@ -178,7 +205,7 @@ function ws_api_flow_or_404($viewer, $id)
 {
     $flow = ws_flow_for($viewer, (int) $id, 'run');
 
-    if (!$flow) {
+    if (!$flow || !ws_api_flow_reachable($flow['access'], $flow['channel_id'])) {
         api_fail_not_found(lang('Flow'));
     }
 
@@ -307,7 +334,9 @@ function ws_api_flows_list($params)
 
     ws_api_flows_ready();
 
-    $rows = ws_flows_list($viewer, (string) ($params['scope'] ?? 'all'));
+    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all')), function ($row) {
+        return ws_api_flow_reachable($row['access'], $row['channel_id']);
+    }));
     $version_ids = array();
 
     foreach ($rows as $row) {
@@ -371,6 +400,28 @@ function ws_api_flows_create($params)
     api_ok(ws_api_flow_answer($viewer, $result['flow_id']), 201);
 }
 
+/**
+ * A published flow moved to another home channel is the person's own
+ * decision, made from their team devices session as a publish is: the home
+ * decides at once who may start the flow and in which channel its new runs
+ * open their tasks, so a draft change from an application key or an OAuth
+ * connection (an assistant drafting) may not make it. Everything else in a
+ * draft stays open to them, and so does the home of a flow never published.
+ *
+ * @param array $flow ws_flows row
+ * @param array $data ws_api_flow_input()
+ */
+function ws_api_flow_home_move_gate($flow, $data)
+{
+    if (!array_key_exists('channel_id', $data) || (max(0, (int) $data['channel_id']) === (int) $flow['channel_id']) || ((int) $flow['version_id'] <= 0)) {
+        return;
+    }
+
+    if (!ws_api_device_writes_as_person(function_exists('api_current_device') ? api_current_device() : null)) {
+        api_fail(403, 'forbidden', lang('Only the person\'s own team devices session (POST /auth/login) can move a published flow to another home channel; an application key or an OAuth connection cannot do it for them.'), 'channel_id');
+    }
+}
+
 function ws_api_flows_update($params)
 {
     $viewer = ws_api_viewer();
@@ -379,6 +430,8 @@ function ws_api_flows_update($params)
 
     $flow = ws_api_flow_editable($viewer, $params['id']);
     $data = ws_api_flow_input($params, $flow);
+
+    ws_api_flow_home_move_gate($flow, $data);
 
     // The checks ws_flow_save() makes, the draft saved meanwhile among them.
     $checked = ws_flow_save_check($viewer, $data, $flow);
@@ -575,6 +628,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'can_cancel'  => ws_flow_run_open($run['status']) && ws_flow_run_cancel_allowed((string) $run['access'], $starter),
         'started_by'  => (int) $run['started_by'],
         'actor_id'    => (int) $run['actor_id'],
+        'channel_id'  => (ws_flow_run_channel_id($run) > 0) ? ws_flow_run_channel_id($run) : null,
         'boxes_run'   => (int) $run['boxes_run'],
         'started_at'  => api_time($run['started_at']),
         'updated_at'  => api_time($run['updated_at']),
@@ -599,6 +653,7 @@ function ws_api_flow_run_schema()
         'can_cancel'  => 'boolean',
         'started_by'  => 'integer',
         'actor_id'    => 'integer',
+        'channel_id'  => 'integer?',
         'boxes_run'   => 'integer',
         'started_at'  => 'string?',
         'updated_at'  => 'string?',
@@ -620,7 +675,7 @@ function ws_api_flow_run_or_404($viewer, $id)
 {
     $run = ws_flow_run_for($viewer, (int) $id);
 
-    if (!$run) {
+    if (!$run || !ws_api_flow_reachable($run['access'], ws_flow_run_channel_id($run))) {
         api_fail_not_found(lang('Flow run'));
     }
 
@@ -676,7 +731,12 @@ function ws_api_flow_runs_list($params)
     }
 
     $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
-    $page = ws_flow_runs_list($flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit));
+
+    // Each run with its own access: its flow's owner reads them all, anybody
+    // else those started in a channel they read.
+    $page = ws_flow_runs_list($viewer, $flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit), function ($run) {
+        return ws_api_flow_reachable($run['access'], ws_flow_run_channel_id($run));
+    });
     $version_ids = array();
 
     foreach ($page['rows'] as $run) {
@@ -691,12 +751,9 @@ function ws_api_flow_runs_list($params)
         }
     }
 
-    // Whoever reaches the flow reads its runs; its editor may cancel them.
-    $access = ((string) $flow['access'] === 'edit') ? 'edit' : 'read';
     $out = array();
 
     foreach ($page['rows'] as $run) {
-        $run['access'] = $access;
         $out[] = ws_api_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0);
     }
 
@@ -714,10 +771,15 @@ function ws_api_flow_runs_get($params)
 
 // A run opens tasks in the flow owner's name; an AI app is to ask the person
 // before it starts one, which the MCP server cannot do yet, so this route is
-// offered to no MCP client as a tool.
+// offered to no MCP client as a tool, and the application an assistant works
+// through is refused here as well: Claude's routine calls REST with its key.
 function ws_api_flow_runs_start($params)
 {
     $viewer = ws_api_viewer();
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not start or cancel the runs of a flow; the person does.'));
+    }
 
     ws_api_flows_ready();
 
@@ -751,10 +813,15 @@ function ws_api_flow_runs_start($params)
 }
 
 // Cancelled, a run stops acting in the owner's name; an AI app is to ask the
-// person first, as for a start, so this is no MCP tool either.
+// person first, as for a start, so this is no MCP tool either, nor a call an
+// assistant's application may make.
 function ws_api_flow_runs_cancel($params)
 {
     $viewer = ws_api_viewer();
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not start or cancel the runs of a flow; the person does.'));
+    }
 
     ws_api_flows_ready();
 

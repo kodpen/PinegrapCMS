@@ -328,9 +328,54 @@ function test_ws_api_flows_are_drafted_by_tools_and_published_by_the_person()
 	pg_assert_same(201, $routes['workspace.flows.create']['status']);
 }
 
+// The home channel of a published flow decides, at once, who may start it
+// and whose channel its new runs open their tasks in: a draft change may
+// make it from any caller, but moving a published flow's home is the
+// person's own, from their team devices session, as publishing is. The
+// change stays a tool for drafts; the gate comes before the rehearsal and
+// its refusal names the team devices session.
+function test_ws_api_flow_home_of_a_published_flow_is_moved_by_the_person()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$update = ws_api_test_handler_source($routes['workspace.flows.update']['handler']);
+
+	pg_assert_true(strpos($update, 'ws_api_flow_home_move_gate(') !== false, 'the change asks the gate');
+	pg_assert_true(strpos($update, 'ws_api_flow_home_move_gate(') < strpos($update, 'api_dry_run_stop('), 'before the rehearsal');
+	pg_assert_true(pg_mcp_route_is_offered($routes['workspace.flows.update']), 'drafting stays a tool');
+
+	$gate = ws_api_test_handler_source('ws_api_flow_home_move_gate');
+
+	pg_assert_true(strpos($gate, "(int) \$flow['version_id'] <= 0") !== false, 'a flow never published is left alone');
+	pg_assert_true(strpos($gate, 'ws_api_device_writes_as_person(') !== false, 'the team devices session');
+	pg_assert_true(strpos($gate, 'team devices session (POST /auth/login)') !== false, 'the refusal names it');
+	pg_assert_true(strpos($gate, 'OAuth connection') !== false);
+}
+
+// The application Claude works through reads the flows and the runs it
+// reaches only through a channel where Claude may be asked; what the owner
+// of its key owns stays readable, as their notes do.
+function test_ws_api_flow_reads_follow_where_claude_may_be_asked()
+{
+	foreach (array('ws_api_flow_or_404', 'ws_api_flows_list', 'ws_api_flow_run_or_404', 'ws_api_flow_runs_list') as $handler) {
+		pg_assert_true(strpos(ws_api_test_handler_source($handler), 'ws_api_flow_reachable(') !== false, $handler . ' asks where Claude may be asked');
+	}
+
+	$reachable = ws_api_test_handler_source('ws_api_flow_reachable');
+
+	pg_assert_true(strpos($reachable, 'ws_api_is_claude()') !== false);
+	pg_assert_true(strpos($reachable, "'edit'") !== false, 'the key owner\'s own flows');
+	pg_assert_true(strpos($reachable, 'ws_claude_channel_allowed(') !== false);
+}
+
 // A run opens tasks in the flow owner's name: starting and cancelling one
 // are REST calls an application key may make, offered to no MCP client as a
-// tool until an AI app can ask the person first; reading runs stays a tool.
+// tool until an AI app can ask the person first, and refused to the
+// application an assistant works through; reading runs stays a tool.
 // A start answers 201, or 200 for the run the same token started.
 function test_ws_api_flow_runs_writes_are_no_tools()
 {
@@ -346,6 +391,13 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 		pg_assert_false(pg_mcp_route_is_offered($routes[$id]), $id . ' is no MCP tool');
 		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
 		pg_assert_false(strpos(ws_api_test_handler_source($routes[$id]['handler']), 'ws_api_own_words_only(') !== false, $id . ' takes an application key');
+
+		// An assistant's application is refused on the server too: it is
+		// not offered as a tool, but Claude's routine calls REST with its key.
+		$source = ws_api_test_handler_source($routes[$id]['handler']);
+
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
 	}
 
 	foreach (array('workspace.flow_runs.list', 'workspace.flow_runs.get') as $id) {

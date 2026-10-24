@@ -5,13 +5,16 @@
  * Tests for the runner of the workspace's flows
  * (includes/workspace/flow_runs.php): the walk that says which boxes become
  * ready and which are skipped as the boxes before them settle (a straight
- * line, a fork, a join, an untaken branch, a failed box, a task outcome no
- * arrow leaves on), how a run ends, how a task's state settles its box,
- * which event wakes which box, what a box that stopped half way does, the
- * limits on starting a run, the result kept for a box, the task text that
- * links the task to its run, who may read and cancel a run; and, read from
- * the source, the conditional writes that keep two requests from running
- * one box twice and the drivers that call the runner.
+ * line, a fork, a join, an untaken branch, a failed box and the boxes
+ * skipped behind it, a task outcome no arrow leaves on), how a run ends, how
+ * a task's state settles its box, which event wakes which box, what a box
+ * that stopped half way does, the limits on starting a run and the start key
+ * a token becomes, the result kept for a box, the task text that links the
+ * task to its run and its box, the channel a run keeps, who may read and
+ * cancel a run; and, read from the source, the conditional writes that keep
+ * two requests from running one box twice, the walk again of a run a request
+ * left half way, a deleted flow's runs, the owner's notice of each run, and
+ * the drivers that call the runner.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,12 +27,14 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // Function definitions only: the templates' assign rules and dates, the
-// store's graph, the runner, and the drivers read from their source.
+// store's graph, the runner, and the drivers and the inbox read from their
+// source.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php');
 
 // A box of the graph.
 function ws_flow_runs_test_node($id, $kind, $config = array())
@@ -169,6 +174,52 @@ function test_workspace_flow_runs_walk_failed_box_stops_what_follows()
 	pg_assert_same(array('c', 'finish'), $walk['skipped']);
 }
 
+// A failure is carried through the boxes skipped behind it: a join two
+// boxes behind a failed box is skipped too, even when its other arrow is
+// taken, whether the box between them is skipped in the same walk or was
+// stored skipped by an earlier one.
+function test_workspace_flow_runs_walk_failure_carries_through_skipped_boxes()
+{
+	$graph = ws_flow_runs_test_graph(
+		array('start' => 'manual', 'x' => 'task', 'y' => 'task', 'w' => 'task', 'z' => 'task'),
+		array(array('start', 'x', 'next'), array('x', 'y', 'done'), array('y', 'z', 'done'), array('start', 'w', 'next'), array('w', 'z', 'done'))
+	);
+
+	pg_assert_same(array(), ws_flow_graph_check($graph), 'a graph that may be published');
+
+	$walk = ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'x' => 'failed', 'w' => 'waiting')));
+
+	pg_assert_same(array('ready' => array(), 'skipped' => array('y')), $walk, 'the box behind the failure first');
+
+	$walk = ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'x' => 'failed', 'y' => 'skipped', 'w' => 'done:done')));
+
+	pg_assert_same(array('ready' => array(), 'skipped' => array('z')), $walk, 'then the join, its other arrow taken');
+
+	$walk = ws_flow_walk($graph, ws_flow_runs_test_steps(array('start' => 'done:next', 'x' => 'failed', 'w' => 'done:done')));
+
+	pg_assert_same(array(), $walk['ready'], 'in one walk too');
+	pg_assert_same(array('y', 'z'), $walk['skipped']);
+
+	// Two boxes in a row behind the failure, the join after them.
+	$graph = ws_flow_runs_test_graph(
+		array('start' => 'manual', 'a' => 'task', 'a2' => 'task', 'b' => 'task', 'c' => 'task', 'finish' => 'end'),
+		array(array('start', 'a', 'next'), array('start', 'b', 'next'), array('a', 'a2', 'done'), array('a2', 'c', 'done'), array('b', 'c', 'done'), array('c', 'finish', 'done'))
+	);
+
+	$steps = ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'failed', 'a2' => 'skipped', 'b' => 'done:done'));
+
+	pg_assert_same(array('ready' => array(), 'skipped' => array('c', 'finish')), ws_flow_walk($graph, $steps));
+
+	$steps += ws_flow_runs_test_steps(array('c' => 'skipped', 'finish' => 'skipped'));
+
+	pg_assert_same('failed', ws_flow_run_state($graph, $steps), 'the run fails');
+
+	// A branch not taken is still no failure: the join behind it fires.
+	$steps = ws_flow_runs_test_steps(array('start' => 'done:next', 'a' => 'done:cancelled', 'a2' => 'skipped', 'b' => 'done:done'));
+
+	pg_assert_same(array('ready' => array('c'), 'skipped' => array()), ws_flow_walk($graph, $steps));
+}
+
 // A task done whose box has an arrow on cancelled only: that arrow is not
 // taken, and the branch ends there without a failure.
 function test_workspace_flow_runs_walk_task_outcome_without_an_arrow()
@@ -280,13 +331,25 @@ function test_workspace_flow_runs_start_limits()
 	pg_assert_same(3, WS_FLOW_BOXES_PER_RUN);
 
 	// The start key fits its column with the longest token a client sends.
-	pg_assert_true(strlen('manual:' . str_repeat('a', WS_FLOW_TOKEN_MAX)) <= 64, 'manual:<token> fits start_key');
 	pg_assert_true(ws_flow_start_token_valid('d3b07384-d9a0-4c9b-8f1e-1a2b3c4d5e6f'));
 	pg_assert_true(ws_flow_start_token_valid(str_repeat('a', WS_FLOW_TOKEN_MAX)));
 	pg_assert_false(ws_flow_start_token_valid(str_repeat('a', WS_FLOW_TOKEN_MAX + 1)), 'too long');
 	pg_assert_false(ws_flow_start_token_valid(''), 'empty');
 	pg_assert_false(ws_flow_start_token_valid('two words'), 'a space');
 	pg_assert_false(ws_flow_start_token_valid(array('x')), 'not a string');
+}
+
+// The start key a token becomes: the same token always the same key, tokens
+// that differ only in letter case two keys, although the column compares
+// without regard to case; always within its VARCHAR(64).
+function test_workspace_flow_runs_start_key()
+{
+	pg_assert_same(ws_flow_start_key('aB3x'), ws_flow_start_key('aB3x'));
+	pg_assert_true(ws_flow_start_key('aB3x') !== ws_flow_start_key('Ab3X'), 'letter case counts');
+	pg_assert_true(strtolower(ws_flow_start_key('aB3x')) !== strtolower(ws_flow_start_key('Ab3X')), 'also where the column ignores it');
+	pg_assert_same(0, strpos(ws_flow_start_key('aB3x'), 'manual:'));
+	pg_assert_true(strlen(ws_flow_start_key(str_repeat('Z', WS_FLOW_TOKEN_MAX))) <= 64, 'fits start_key');
+	pg_assert_true(ws_flow_start_key('a') !== ws_flow_start_key('b'));
 }
 
 // What a box keeps of how it went: its text and, later, the values the
@@ -344,15 +407,89 @@ function test_workspace_flow_runs_task_description()
 	pg_assert_same('Opened by run 12.', mb_substr($long, -17), 'the line is kept');
 }
 
-// Who may read a run and who may cancel it: the flow's editors, the people
-// who may run the flow, and the one who started it while the flow's home is
-// still theirs to read.
+// The line names the flow as the run started it, the run and the box, so a
+// box tried again finds its own task and never a task of another box of
+// the run; a name two boxes share is told apart by the box's id.
+function test_workspace_flow_runs_task_marker()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'label' => '', 'x' => 0, 'y' => 0, 'config' => array()),
+			array('id' => 'legal', 'kind' => 'task', 'label' => 'Review', 'x' => 0, 'y' => 0, 'config' => array('title' => 'Review')),
+			array('id' => 'finance', 'kind' => 'task', 'label' => 'Review', 'x' => 0, 'y' => 0, 'config' => array('title' => 'Review')),
+			array('id' => 'contract', 'kind' => 'task', 'label' => 'Contract', 'x' => 0, 'y' => 0, 'config' => array('title' => 'Contract')),
+			array('id' => 'pay', 'kind' => 'task', 'label' => '', 'x' => 0, 'y' => 0, 'config' => array('title' => 'Pay')),
+		),
+		'edges' => array(),
+	));
+
+	pg_assert_same('Contract', ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'contract')));
+	pg_assert_same('pay', ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'pay')), 'no label: its id');
+	pg_assert_same('Review (legal)', ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'legal')));
+	pg_assert_same('Review (finance)', ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'finance')));
+
+	$legal = ws_flow_task_marker('New customer', 12, ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'legal')));
+	$finance = ws_flow_task_marker('New customer', 12, ws_flow_box_unique_name($graph, ws_flow_graph_node($graph, 'finance')));
+
+	pg_assert_contains('New customer', $legal);
+	pg_assert_contains('12', $legal);
+	pg_assert_contains('Review (legal)', $legal);
+	pg_assert_true($legal !== $finance, 'two boxes of one run, two lines');
+	pg_assert_true($legal !== ws_flow_task_marker('New customer', 13, 'Review (legal)'), 'the same box of another run');
+
+	// The name the run started with, kept in its context: renaming the flow
+	// later changes nothing for the run.
+	$run = array('context' => json_encode(ws_flow_run_context_new(array('name' => 'New customer', 'channel_id' => 7), array('id' => 'start'))));
+
+	pg_assert_same('New customer', ws_flow_run_context($run)['flow_name']);
+}
+
+// A run keeps the home channel its flow had when it started: its tasks open
+// there and its readers are that channel's, whatever the flow's home becomes
+// later (a draft save may change it). A run that names none opens its tasks
+// in no channel and is its flow owner's alone.
+function test_workspace_flow_runs_channel_is_frozen()
+{
+	$context = ws_flow_run_context_new(array('name' => 'Hiring', 'channel_id' => 7), array('id' => 'start'));
+
+	pg_assert_same('manual', $context['trigger']);
+	pg_assert_same('start', $context['node']);
+	pg_assert_same(7, $context['channel_id']);
+
+	$run = array('context' => json_encode($context));
+
+	pg_assert_same(7, ws_flow_run_channel_id($run));
+	pg_assert_same(0, ws_flow_run_channel_id(array('context' => json_encode(ws_flow_run_context_new(array('name' => 'Mine', 'channel_id' => 0), array('id' => 'start'))))), 'a personal flow');
+	pg_assert_same(0, ws_flow_run_channel_id(array('context' => '')), 'no context');
+	pg_assert_same(0, ws_flow_run_channel_id(array('context' => 'not json')));
+	pg_assert_same(0, ws_flow_run_channel_id(array('context' => json_encode(array('channel_id' => -3)))));
+
+	// The task box and the run's readers go by the run's channel, never by
+	// the flow's home as it is now.
+	$task = ws_flow_runs_test_source('ws_flow_step_task');
+
+	pg_assert_contains('ws_flow_run_channel_id($run)', $task);
+	pg_assert_false(strpos($task, "\$flow['channel_id']") !== false, 'not the flow\'s home now');
+
+	$access = ws_flow_runs_test_source('ws_flow_run_access');
+
+	pg_assert_contains('ws_flow_run_channel_readable($viewer, $run)', $access);
+	pg_assert_false(strpos($access, "\$flow['channel_id']") !== false);
+	pg_assert_contains('ws_flow_run_channel_id($run)', ws_flow_runs_test_source('ws_flow_run_channel_readable'));
+	pg_assert_contains('ws_flow_run_context_new($flow', ws_flow_runs_test_source('ws_flow_run_start'));
+}
+
+// Who may read a run and who may cancel it: the flow's editors; the people
+// who may run the flow, or who started the run, while they read the channel
+// the run was started in.
 function test_workspace_flow_runs_access()
 {
 	pg_assert_same('edit', ws_flow_run_access_from('edit', false, false));
 	pg_assert_same('read', ws_flow_run_access_from('run', false, true));
+	pg_assert_same('', ws_flow_run_access_from('run', false, false), 'a reader of the flow\'s home now who does not read the channel the run was started in');
+	pg_assert_same('', ws_flow_run_access_from('run', true, false));
 	pg_assert_same('read', ws_flow_run_access_from('', true, true), 'the starter of a run of a paused flow');
-	pg_assert_same('', ws_flow_run_access_from('', true, false), 'a starter who no longer reads the home');
+	pg_assert_same('', ws_flow_run_access_from('', true, false), 'a starter who no longer reads the run\'s channel');
 	pg_assert_same('', ws_flow_run_access_from('', false, true));
 
 	pg_assert_true(ws_flow_run_cancel_allowed('edit', false), 'the flow\'s editor');
@@ -446,4 +583,101 @@ function test_workspace_flow_runs_drivers()
 
 	// Deleting a flow ends its open runs.
 	pg_assert_contains('ws_flow_runs_cancel_for_flow(', ws_flow_runs_test_source('ws_flow_bin'));
+}
+
+// A request that dies half way never leaves a run nobody looks at again: a
+// box is settled only after its run was marked running, so a run whose next
+// boxes were never written reads running, untouched, and is walked again
+// (ws_flow_runs_heal()), its start box written first when the run has none.
+// The gate of the jobs sees such a run.
+function test_workspace_flow_runs_half_way_runs_are_walked_again()
+{
+	$settle = ws_flow_runs_test_source('ws_flow_step_settle');
+
+	pg_assert_contains('ws_flow_run_touch(', $settle);
+	pg_assert_true(strpos($settle, 'ws_flow_run_touch(') < strpos($settle, 'UPDATE ws_flow_run_steps'), 'the run is marked before the box settles');
+
+	$touch = ws_flow_runs_test_source('ws_flow_run_touch');
+
+	pg_assert_contains("status = 'running'", $touch);
+	pg_assert_contains("status IN ('running', 'waiting')", $touch, 'an ended run stays ended');
+
+	$heal = ws_flow_runs_test_source('ws_flow_runs_heal');
+
+	pg_assert_contains("status = 'running' AND updated_at < '\" . (\$now - WS_FLOW_LOCK) . \"'", $heal);
+	pg_assert_contains('INSERT IGNORE INTO ws_flow_run_steps', $heal, 'the start box of a run that has none');
+	pg_assert_contains('ws_flow_run_refresh(', $heal);
+
+	$advance = ws_flow_runs_test_source('ws_flow_advance');
+
+	pg_assert_contains('ws_flow_runs_heal(', $advance);
+	pg_assert_true(strpos($advance, 'ws_flow_runs_heal(') < strpos($advance, 'ws_flow_step_claim('), 'before the claims');
+
+	pg_assert_contains("FROM ws_flow_runs WHERE status = 'running' AND updated_at < '", ws_flow_runs_test_source('ws_flow_due'));
+}
+
+// A run of a flow deleted meanwhile opens nothing more: its box is let go
+// and the run is cancelled with its open boxes. A start writes its run only
+// while the flow is still live, and deleting a flow cancels every open run,
+// however many.
+function test_workspace_flow_runs_deleted_flow_stops()
+{
+	$step = ws_flow_runs_test_source('ws_flow_step_run');
+
+	pg_assert_contains("(string) \$flow['status'] === 'binned'", $step);
+	pg_assert_true(strpos($step, "'binned'") < strpos($step, 'ws_flow_step_task('), 'before a task is opened');
+	pg_assert_contains('ws_flow_runs_cancel_ids(', $step);
+
+	$start = ws_flow_runs_test_source('ws_flow_run_start');
+
+	pg_assert_contains("FROM ws_flows WHERE id = '\" . \$flow_id . \"' AND status = 'live'", $start, 'the run is written only while the flow is live');
+
+	$cancel = ws_flow_runs_test_source('ws_flow_runs_cancel_for_flow');
+
+	pg_assert_false(strpos($cancel, 'LIMIT " . WS_FLOW_MAX_OPEN_RUNS') !== false, 'no cap on the runs cancelled');
+	pg_assert_contains('ws_flow_runs_cancel_ids(', $cancel);
+
+	// A waiting box of a run that ended is let go when it looks again.
+	pg_assert_contains('ws_flow_run_open($run[\'status\'])', ws_flow_runs_test_source('ws_flow_step_recheck'));
+}
+
+// A retried start answers the run its token started even when the flow was
+// paused, or its owner left, meanwhile: the token is looked up before those
+// refusals.
+function test_workspace_flow_runs_token_answers_before_refusals()
+{
+	$check = ws_flow_runs_test_source('ws_flow_run_start_check');
+
+	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'Only a published flow that is live can be run.'), 'before the live check');
+	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'ws_can_schedule($owner)'), 'before the owner check');
+	pg_assert_true(strpos($check, 'ws_flow_access($viewer, $flow)') < strpos($check, 'start_key = '), 'after the access check');
+	pg_assert_contains('ws_flow_start_key($token)', $check);
+}
+
+// A box tried again that finds the task its first try opened looks at it at
+// once: the task may have been finished while the box was stopped, and the
+// event that said so woke nothing.
+function test_workspace_flow_runs_adopted_task_is_looked_at_at_once()
+{
+	$task = ws_flow_runs_test_source('ws_flow_step_task');
+
+	pg_assert_contains('$adopted ? $now : $now + WS_FLOW_RECHECK', $task);
+
+	$find = ws_flow_runs_test_source('ws_flow_step_task_find');
+
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM ws_flow_run_steps', $find, 'never a task another box of the run holds');
+	pg_assert_contains('ORDER BY id DESC', $find);
+	pg_assert_contains("addcslashes(\$marker, '\\\\%_')", $find, 'a backslash in the line is no escape');
+}
+
+// Every run that ends is a line of its own in its owner's inbox: an unread
+// line about another run is never written over.
+function test_workspace_flow_runs_each_end_is_its_own_line()
+{
+	pg_assert_contains("'separate' => true", ws_flow_runs_test_source('ws_flow_run_tell_owner'));
+
+	$notify = ws_flow_runs_test_source('ws_notify');
+
+	pg_assert_contains("empty(\$data['separate'])", $notify);
+	pg_assert_true(strpos($notify, "empty(\$data['separate'])") < strpos($notify, 'if ($existing > 0)'), 'the same line is looked for only without it');
 }

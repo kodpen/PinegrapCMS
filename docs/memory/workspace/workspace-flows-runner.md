@@ -1,33 +1,39 @@
 ---
 name: workspace-flows-runner
-description: Workspace flow runs (F3a, flow_runs.php, no schema change): start, the walk, task boxes that wait for their task, wake-ups, drivers, budgets, limits, end, cancel, API routes
+description: Workspace flow runs (F3a, flow_runs.php, no schema change): start, the run's own channel, the walk, task boxes, wake-ups, half-way recovery, drivers, limits, end, cancel, API routes
 ---
 
 ## Where is it?
 - `includes/workspace/flow_runs.php`; handlers at the end of `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Columns of 11.0.80 only. No panel action or JavaScript yet (run view: F3b).
 
 ## How does a run start?
-- `ws_flow_run_start_check()` / `ws_flow_run_start()`: live flow with a version, run or edit access, a `manual` start box, owner still staff, under 500 open runs and 60 starts an hour. `start_key` `manual:<token>` (else random): a token used before answers its run (200). Writes the run (`actor_id` = owner), the start box done on `next`, then advances that run so the first task exists at once. `subject_*` stay empty until F4.
+- `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access, then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.
+
+## Which channel is a run's?
+- The one in its context, never the flow's home now: a draft save changes the home at once. Its tasks open there; non-owners read it (`ws_flow_run_access()`) only while they read that channel. An application key or OAuth connection may not move a published flow's home (`ws_api_flow_home_move_gate()`).
 
 ## How does it move?
-- Pure `ws_flow_walk()`: a box whose arrows in have all settled is ready when one was taken and no box before it failed, else skipped (passed on), so a join fires once. `ws_flow_run_state()`: running, waiting, done (no box failed: an end reached or the branches ran out), failed. A failed branch lets a parallel one finish.
-- Every move is a conditional UPDATE with affected rows counted; next boxes `INSERT IGNORE` on (run, node, pass 0).
+- Pure `ws_flow_walk()`: a box whose arrows in have all settled is ready when one was taken and none comes from a blocked box, else skipped. Blocked = failed, or skipped behind a blocked box, worked out from the statuses on every walk, so a join any number of boxes behind a failure is skipped. `ws_flow_run_state()`: running, waiting, done, failed.
+- Conditional UPDATEs, affected rows counted; next boxes `INSERT IGNORE` on (run, node, pass 0).
 
 ## What does a task box do?
-- Owner's rights now; `ws_task_create()` in the home channel (if any), due = day it became ready + `due_in`, description ending "Opened by the flow “X”, run N.". Named people as they are (a refusal fails the box); a rule as templates resolve it, `creator` = the starter, unfound or not assignable = nobody on it.
-- One UPDATE: `effect`/`wait_key` `task:<id>`, `waiting`, `wait_event` `workspace.task.status_changed`, `wake_at` +1 h.
+- Owner's rights now; `ws_task_create()`, due = ready day + `due_in`, last line `ws_flow_task_marker()` (flow name of the context, run, `ws_flow_box_unique_name()`: label, with the id when shared). One UPDATE: effect and wait_key `task:<id>`, waiting, wake_at +1 h.
 
 ## How is a box woken?
-- `ws_events_awaited()` adds waiting `wait_event`s (forgotten when a box starts waiting); `ws_events_process()` calls `ws_flow_wake()`, which reads the task: done → done; cancelled or gone → outcome `cancelled` with an arrow on it, else failed. A passed `wake_at` rechecks (lost events), then +1 h.
-- Running over 600 s: effect → waits again; none → one retry (finds the first try's task by owner, title, run line), then failed. Why: no retry or skip by hand before F5.
+- `ws_events_awaited()` adds waiting `wait_event`s; `ws_events_process()` calls `ws_flow_wake()`: done → done; cancelled or gone → `cancelled` where an arrow leaves on it, else failed. A passed `wake_at` rechecks; a box of an ended run is let go.
+
+## What if a request dies half way?
+- Running over 600 s: effect → waits again; none → one retry, which takes the task whose description ends with its marker, held by no other box of the run (LIKE escapes `\ % _`), and looks at it at once; then failed (no retry or skip by hand before F5).
+- `ws_flow_step_settle()` marks the run running first (`ws_flow_run_touch()`); `ws_flow_runs_heal()` walks again a run running but untouched for 600 s, writing a missing start box. `ws_flow_due()` sees it.
+- A box of a deleted flow's run cancels the run (`ws_flow_runs_cancel_ids()`); deleting cancels every open run.
 
 ## Drivers and limits?
-- `ws_scheduled_run($limit, $flow_budget)` calls `ws_flow_advance()` before its early returns: 10 s on a screen, 25 s from job.php and workspace_recurring_job.php; 3 boxes a run, 30 a call. `ws_scheduled_due()` asks `ws_flow_due()`.
-- 200 boxes a run, result 16 KB JSON `{text, data}` (data for F4), ended runs swept after 30 days (`ws_flow_runs_sweep()`, recurring job).
+- `ws_scheduled_run($limit, $flow_budget)` calls `ws_flow_advance()` before its early returns: 10 s on a screen, 25 s in the jobs; 3 boxes a run, 30 a call. `ws_scheduled_due()` asks `ws_flow_due()`.
+- 200 boxes a run, result 16 KB JSON `{text, data}`, ended runs swept after 30 days (`ws_flow_runs_sweep()`, recurring job).
 
-## End, cancel, delete?
-- End: the owner told once, inbox kind `flow_finished`, sentence in `ws_scheduled_notices` (action_id 0), link workspace_flows.php. Starter not told.
-- Cancel: flow editors and the starter; open boxes skipped, tasks stay. Deleting a flow cancels its runs; pausing stops starts only.
+## End and cancel?
+- End: the owner told once, inbox `flow_finished`, a line of its own per run (`ws_notify()` `separate`: its ids are all 0), sentence in `ws_scheduled_notices`.
+- Cancel: flow editors and the starter; open boxes skipped, tasks stay.
 
 ## Which routes?
-- GET/POST `/workspace/flows/{id}/runs`, GET `/workspace/flow-runs/{id}` (steps, graph of its version), POST `/workspace/flow-runs/{id}/cancel`. Writes rehearse and carry `'mcp' => false`: an AI app must ask the person first (MCP plan). Runs are read by whoever reaches the flow, and by their starter while the home channel is still theirs.
+- GET/POST `/workspace/flows/{id}/runs`, GET `/workspace/flow-runs/{id}` (with `channel_id`), POST `/cancel`. Writes rehearse, carry `'mcp' => false` and refuse `ws_api_is_assistant()`: Claude's routine calls REST. Claude's key reads others' flows and runs only via channels Claude may be asked in (`ws_api_flow_reachable()`).
