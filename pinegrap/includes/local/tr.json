@@ -28244,5 +28244,17 @@
     "I will try this tonight.": "Bu akşam deneyeceğim.",
     "Works well, here is a photo.": "İyi çalışıyor, işte bir fotoğraf.",
     "3 Comments": "3 Yorum",
-    "Be kind and stay on topic.": "Nazik olun ve konudan ayrılmayın."
+    "Be kind and stay on topic.": "Nazik olun ve konudan ayrılmayın.",
+    "Make designable": "Tasarlanabilir yap",
+    "Back to the fixed block": "Sabit bloğa dön",
+    "Puts the design's Comments widget in place of this fixed block: the same comments, watchers and settings, in a layout you design. Back to the fixed block undoes it.": "Bu sabit bloğun yerine tasarımın Yorumlar widget'ını koyar: aynı yorumlar, izleyiciler ve ayarlar, sizin tasarladığınız bir düzende. Sabit bloğa dön bunu geri alır.",
+    "This placement becomes the fixed comments block again; the comments, watchers and settings stay with the page.": "Bu yerleşim yeniden sabit yorum bloğu olur; yorumlar, izleyiciler ve ayarlar sayfada kalır.",
+    "This page already shows a Comments widget.": "Bu sayfada zaten bir Yorumlar widget'ı var.",
+    "The fixed block is now the Comments widget \"{var}\": the same comments, watchers and settings.": "Sabit blok artık \"{var}\" Yorumlar widget'ı: aynı yorumlar, izleyiciler ve ayarlar.",
+    "Its display options are shared with the other pages that show it.": "Görünüm seçenekleri, onu gösteren diğer sayfalarla ortaktır.",
+    "Back to the fixed comments block; the widget stays in the design.": "Sabit yorum bloğuna dönüldü; widget tasarımda kalır.",
+    "The page \"{var:1}\" shows a Comments widget and the fixed comments block: only the widget draws the comments.": "\"{var:1}\" sayfası hem bir Yorumlar widget'ı hem de sabit yorum bloğu gösteriyor: yorumları yalnızca widget gösterir.",
+    "The page \"{var:1}\" shows {var:2} Comments widgets: only the first draws the comments.": "\"{var:1}\" sayfası {var:2} Yorumlar widget'ı gösteriyor: yorumları yalnızca ilki gösterir.",
+    "The page \"{var:1}\" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.": "\"{var:1}\" sayfası bir Form Öğesi Görünümü widget'ını başka bir bileşenin içine yerleştiriyor: Yorumlar widget'ı orada hiçbir şey göstermez. Form Öğesi Görünümü'nü doğrudan sayfaya yerleştirin.",
+    "Comments are off for the page \"{var:1}\": its Comments widget draws nothing. Turn them on in the widget's comment settings.": "\"{var:1}\" sayfasında yorumlar kapalı: Yorumlar widget'ı hiçbir şey göstermez. Widget'ın yorum ayarlarından açın."
 }

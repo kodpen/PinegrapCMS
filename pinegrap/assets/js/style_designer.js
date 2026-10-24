@@ -30773,17 +30773,33 @@ const StyleDesigner = (function () {
         var nameOpts = buildRegionNames(n.props.regionType);
         var show = needsName(n.props.regionType);
 
-        // Comments block: the page's comment settings (_sdCommentSettingsSect()).
+        // Comments block: the page's comment settings (_sdCommentSettingsSect()),
+        // and the way to the Comments widget (_sdCommentsMakeDesignable()).
         var commentsInfo = '';
+        var designableHtml = '';
         if (n.props.regionType === 'comments_block') {
             if (!_allPagesCache && typeof _fetchAllPages === 'function') _fetchAllPages(function () { renderProperties(); });
             commentsInfo = _sdCommentSettingsSect({});
+            if (_sdCommentsSwapOffered(n)) {
+                designableHtml =
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-make-designable">' +
+                            '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('Puts the design\'s Comments widget in place of this fixed block: the same comments, watchers and settings, in a layout you design. Back to the fixed block undoes it.')) +
+                        '</div>' +
+                    '</div>';
+            }
         }
         // commentsInfo is itself a sect() — append AFTER the Region section, not inside it
         return sect('bi-puzzle', _sdT('Region'),
             legacyNote +
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
-            '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>'
+            '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
+            designableHtml
         ) + commentsInfo;
     }
 
@@ -33071,6 +33087,21 @@ const StyleDesigner = (function () {
                         esc(_sdT('Clears every reference and deletes it from the database. This cannot be undone.')) +
                     '</div>' +
                 '</div>';
+            // A Comments widget placed on the page goes back to the fixed
+            // comments block (_sdCommentsBackToBlock()).
+            if (_cfg.regionType === 'comments' && _sdCommentsSwapOffered(n)) {
+                actionHtml =
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
+                            '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Back to the fixed block')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('This placement becomes the fixed comments block again; the comments, watchers and settings stay with the page.')) +
+                        '</div>' +
+                    '</div>' + actionHtml;
+            }
         }
 
         // Where the widget is placed: the pages of this design (open tabs,
@@ -34349,6 +34380,11 @@ const StyleDesigner = (function () {
         var cmtStateEl = document.getElementById('sd-cmt-canvas-state');
         if (cmtStateEl) {
             cmtStateEl.addEventListener('change', function () { _sdSetCommentsCanvasState(this.value, null); });
+        }
+        // A Comments widget placement goes back to the fixed comments block.
+        var cmtBackEl = document.getElementById('sd-cmt-back-to-block');
+        if (cmtBackEl) {
+            cmtBackEl.addEventListener('click', function () { _sdCommentsBackToBlock(selectedNode); });
         }
 
         // ── cart_link settings ────────────────────────────────────────────────
@@ -43638,6 +43674,9 @@ const StyleDesigner = (function () {
                 _sdCommentSettingsChanged(false);
             });
         });
+        // The fixed comments block becomes the design's Comments widget.
+        var cmtDesignBtn = document.getElementById('sd-cmt-make-designable');
+        if (cmtDesignBtn) cmtDesignBtn.addEventListener('click', function () { _sdCommentsMakeDesignable(selectedNode); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
@@ -48778,6 +48817,9 @@ const StyleDesigner = (function () {
     }
     function _swBelongsToDesign(where) {
         if (!where) return false;
+        // Made for every page of the design (the Comments widget that
+        // replaces the fixed comments block).
+        if (where.designWide) return true;
         if (where.target && _sdSharedOwnerOf(where.target)) return true;
         var sid = parseInt(where.sid, 10) || 0;
         if (!sid) return false;
@@ -48991,6 +49033,133 @@ const StyleDesigner = (function () {
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
             sdToast(_sdT('"{var}" added.', esc(newName)) + (type ? '' : ' ' + _sdT('Choose the content type in the right-hand panel.')), 'success');
         });
+    }
+
+    // ── Comments: the fixed block and the Comments widget ─────────────────
+    // A page's comments, watchers and settings are keyed by the page, so the
+    // fixed comments block (a comments_block region) and a placement of the
+    // design's Comments widget show the same thread: "Make designable" puts
+    // one in place of the other, "Back to the fixed block" the other way
+    // round, each one undo step.
+
+    // The design's Comments widget: the first one placed on a page of the
+    // design (inside a component placed there too), else one the design used
+    // by the usage list; 0 for none. Pure: the configs, the component trees
+    // and the usage come from the caller.
+    function _sdCommentsPickWidget(pageTrees, cfgOf, treeOf, usage, styleId) {
+        var isComments = function (sid) {
+            var c = cfgOf(sid);
+            return !!c && c.regionType === 'comments';
+        };
+        var seen = {};
+        var hit = 0;
+        var walk = function (n) {
+            if (hit || !n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid) return;
+                if (isComments(sid)) { hit = sid; return; }
+                if (seen[sid]) return;
+                seen[sid] = true;
+                walk(treeOf(sid));
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        (pageTrees || []).forEach(function (e) { walk((e && e.tree) ? e.tree : e); });
+        if (hit) return hit;
+        var style = parseInt(styleId, 10) || 0;
+        if (style > 0 && usage) {
+            var keys = Object.keys(usage);
+            for (var i = 0; i < keys.length; i++) {
+                var sid = parseInt(keys[i], 10) || 0;
+                if (sid > 0 && isComments(sid) &&
+                    (usage[keys[i]] || []).some(function (u) { return parseInt(u.style_id, 10) === style; })) return sid;
+            }
+        }
+        return 0;
+    }
+
+    function _sdCommentsTreeOf(sid) {
+        var c = _sharedCache[sid];
+        return (c && c.tree) ? c.tree : null;
+    }
+
+    function _sdCommentsDesignWidget() {
+        return _sdCommentsPickWidget(_pgAllPageTrees(), _cfCfgOf, _sdCommentsTreeOf, _sharedUsage,
+            (_design && _design.styleId) ? _design.styleId : 0);
+    }
+
+    // A placement of a widget, and the fixed comments block.
+    function _sdCommentsRefNode(sid, name) {
+        return { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: name }, children: [] };
+    }
+    function _sdCommentsBlockNode() {
+        return { _id: gid(), type: 'region', props: { regionType: 'comments_block', regionName: '' }, children: [] };
+    }
+
+    // Whether the operator may turn this fixed block or this placement into
+    // the other: a designer, on the page's own tree (not inside a component).
+    function _sdCommentsSwapOffered(node) {
+        return !!node && !_sdIsContentLevel() && !!findParent(node, tree);
+    }
+
+    // The fixed comments block becomes a placement of the design's Comments
+    // widget. With none, one is made from the starter layout, showing only
+    // the featured comments while there are some, as the block does. A page
+    // shows one Comments widget.
+    function _sdCommentsMakeDesignable(regionNode) {
+        if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
+            regionNode.props.regionType !== 'comments_block' || !_sdCommentsSwapOffered(regionNode)) return;
+        if (_sdCommentsPickWidget([{ tree: tree }], _cfCfgOf, _sdCommentsTreeOf, {}, 0)) {
+            sdToast(esc(_sdT('This page already shows a Comments widget.')), 'warning');
+            return;
+        }
+        var place = function (sid, name, created) {
+            var parent = findParent(regionNode, tree);
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) return;
+            saveState();
+            var ref = _sdCommentsRefNode(sid, name);
+            parent.children.splice(idx, 1, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            var cfg = _cfCfgOf(sid);
+            var msg = _sdT('The fixed block is now the Comments widget "{var}": the same comments, watchers and settings.', esc(name));
+            if (!created && (!cfg || cfg.featured !== 'filter')) msg += ' ' + _sdT('Its display options are shared with the other pages that show it.');
+            sdToast(msg, 'success', 7000);
+        };
+        var sid = _sdCommentsDesignWidget();
+        if (sid) {
+            var cached = _sharedCache[sid];
+            place(sid, (cached && cached.name) ? cached.name : _swAutoName('comments', null, { designWide: true }), false);
+            return;
+        }
+        var cfg = _swTypeDefaults({}, 'comments');
+        cfg.featured = 'filter';
+        _swCreateRow(_swAutoName('comments', null, { designWide: true }), cfg, _buildStarterTree('comments'), function (newId, newName) {
+            place(newId, newName, true);
+        });
+    }
+
+    // A placement of the Comments widget becomes the fixed comments block
+    // again; the widget stays in the design.
+    function _sdCommentsBackToBlock(refNode) {
+        if (!refNode || refNode.type !== 'shared_ref' || !_sdCommentsSwapOffered(refNode)) return;
+        var parent = findParent(refNode, tree);
+        var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(refNode) : -1;
+        if (idx === -1) return;
+        saveState();
+        var block = _sdCommentsBlockNode();
+        parent.children.splice(idx, 1, block);
+        selectedNode  = block;
+        selectedNodes = [];
+        render();
+        sdToast(esc(_sdT('Back to the fixed comments block; the widget stays in the design.')), 'success');
     }
 
     // Give THIS page its own copy of a widget other pages also place:

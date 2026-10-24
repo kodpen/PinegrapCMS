@@ -936,3 +936,234 @@ function test_comments_widget_designer_canvas_wiring()
 	pg_assert_contains('_sdCommentsStateFor(', comments_widget_designer_test_js_function($js, '_sdSelectionNeedsCanvas'), 'a hidden node picked switches the state');
 	pg_assert_contains('_sdCommentSample', comments_widget_designer_test_js_function($js, '_displayValueForBinding'), 'a sample\'s values are drawn');
 }
+
+// -- turning the fixed block into the widget, and the save warnings ---------------
+
+// One tree: placements of each component and the fixed comments blocks; a
+// placement's own children are not read.
+function test_comments_widget_designer_tree_census()
+{
+	if (!comments_widget_designer_test_has('pg_comments_tree_census')) {
+		return;
+	}
+
+	$ref = function ($sid, $kids = array()) {
+		return array('type' => 'shared_ref', 'props' => array('sharedId' => $sid, 'sharedName' => 'w'), 'children' => $kids);
+	};
+	$region = function ($type) {
+		return array('type' => 'region', 'props' => array('regionType' => $type, 'regionName' => ''), 'children' => array());
+	};
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		$ref(5),
+		array('type' => 'container', 'props' => array(), 'children' => array(
+			array('type' => 'row', 'props' => array(), 'children' => array(
+				array('type' => 'col', 'props' => array(), 'children' => array($ref(5), $region('comments_block'))),
+			)),
+			$region('page'),
+		)),
+		$ref(9, array($ref(11), $region('comments_block'))),
+		$ref('12'),
+		$ref(0),
+	));
+
+	$census = pg_comments_tree_census($tree);
+	pg_assert_same(array(5 => 2, 9 => 1, 12 => 1), $census['refs'], 'placements counted, children of a placement not read');
+	pg_assert_same(1, $census['blocks'], 'a block nested in containers counts; other regions do not');
+	pg_assert_same(array('refs' => array(), 'blocks' => 0), pg_comments_tree_census(null), 'no tree');
+	pg_assert_same(array('refs' => array(), 'blocks' => 0), pg_comments_tree_census('x'), 'not a tree');
+}
+
+// What a page shows, read through the components it places.
+function test_comments_widget_designer_census_facts()
+{
+	if (!comments_widget_designer_test_has('pg_comments_page_census_facts')) {
+		return;
+	}
+
+	$c = function ($type, $refs = array(), $blocks = 0) {
+		return array('type' => $type, 'census' => array('refs' => $refs, 'blocks' => $blocks));
+	};
+	$top = function ($refs, $blocks = 0) {
+		return array('refs' => $refs, 'blocks' => $blocks);
+	};
+	$components = array(
+		5 => $c('comments'),
+		6 => $c('comments'),
+		9 => $c('', array(5 => 1)),
+		20 => $c('catalog_item_view', array(), 1),
+		30 => $c('form_item_view'),
+		40 => $c('', array(30 => 1)),
+	);
+
+	$facts = pg_comments_page_census_facts($top(array(5 => 1)), $components);
+	pg_assert_same(1, $facts['widgets'], 'one widget on the page');
+	pg_assert_same(0, $facts['blocks'], 'no block');
+	pg_assert_false($facts['nested_record'], 'no nested record widget');
+
+	pg_assert_same(2, pg_comments_page_census_facts($top(array(5 => 2)), $components)['widgets'], 'placed twice');
+	pg_assert_same(2, pg_comments_page_census_facts($top(array(5 => 1, 6 => 1)), $components)['widgets'], 'two widgets');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(9 => 1)), $components)['widgets'], 'in a header');
+	pg_assert_same(2, pg_comments_page_census_facts($top(array(9 => 1, 5 => 1)), $components)['widgets'], 'in a header and on the page');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(9 => 2)), $components)['widgets'], 'a header placed twice counts its widget once');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(5 => 1), 1), $components)['blocks'], 'a block on the page');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1)), $components)['blocks'], 'a block in a product widget');
+	pg_assert_true(pg_comments_page_census_facts($top(array(40 => 1)), $components)['nested_record'], 'a record widget in a header');
+	pg_assert_false(pg_comments_page_census_facts($top(array(30 => 1)), $components)['nested_record'], 'a record widget on the page');
+	pg_assert_true(pg_comments_page_census_facts($top(array(30 => 1)), $components)['top_record'], 'which decides the thread');
+	pg_assert_false(pg_comments_page_census_facts($top(array(40 => 1)), $components)['top_record'], 'one in a header does not');
+	pg_assert_same(0, pg_comments_page_census_facts($top(array(77 => 1)), $components)['widgets'], 'a component that is not read');
+	pg_assert_same(array('widgets' => 0, 'blocks' => 0, 'nested_record' => false, 'top_record' => false), pg_comments_page_census_facts(null, null), 'nothing');
+
+	// A chain of components: 8 deep the widget is still counted, 9 deep not.
+	$chain = function ($length) {
+		$list = array(5 => array('type' => 'comments', 'census' => array('refs' => array(), 'blocks' => 0)));
+		for ($i = 1; $i <= $length; $i++) {
+			$list[100 + $i] = array('type' => '', 'census' => array('refs' => array((($i === $length) ? 5 : 101 + $i) => 1), 'blocks' => 0));
+		}
+		return $list;
+	};
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(101 => 1)), $chain(8))['widgets'], 'eight levels down');
+	pg_assert_same(0, pg_comments_page_census_facts($top(array(101 => 1)), $chain(9))['widgets'], 'nine levels down');
+
+	// A loop between two components ends.
+	$loop = array(
+		5 => $c('comments'),
+		60 => $c('', array(61 => 1, 5 => 1)),
+		61 => $c('', array(60 => 1)),
+	);
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(60 => 1)), $loop)['widgets'], 'a loop ends');
+}
+
+// Which warnings a page's save gives, in order, and what they say.
+function test_comments_widget_designer_save_warning_codes_and_text()
+{
+	if (!comments_widget_designer_test_has(array('pg_comments_save_warning_codes', 'pg_comments_save_warning_text', 'pg_comments_save_warnings'))) {
+		return;
+	}
+
+	$f = function ($over) {
+		return $over + array('widgets' => 1, 'blocks' => 0, 'nested_record' => false, 'comments_on' => true);
+	};
+
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array('widgets' => 0, 'blocks' => 2, 'comments_on' => false, 'nested_record' => true))), 'no widget, no warning');
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array())), 'one widget, all well');
+	pg_assert_same(array('block'), pg_comments_save_warning_codes($f(array('blocks' => 1))), 'widget and block');
+	pg_assert_same(array('widgets'), pg_comments_save_warning_codes($f(array('widgets' => 2))), 'two widgets');
+	pg_assert_same(array('nested_record'), pg_comments_save_warning_codes($f(array('nested_record' => true))), 'a nested record widget');
+	pg_assert_same(array(), pg_comments_save_warning_codes($f(array('nested_record' => true, 'top_record' => true))), 'a record widget on the page decides the thread');
+	pg_assert_same(array('off'), pg_comments_save_warning_codes($f(array('comments_on' => false))), 'comments off');
+	pg_assert_same(array('block', 'widgets', 'nested_record', 'off'),
+		pg_comments_save_warning_codes($f(array('blocks' => 1, 'widgets' => 3, 'nested_record' => true, 'comments_on' => false))), 'all four, in order');
+	pg_assert_same(array(), pg_comments_save_warning_codes('x'), 'not facts');
+
+	foreach (array('block', 'widgets', 'nested_record', 'off') as $code) {
+		pg_assert_contains('"topic-page"', pg_comments_save_warning_text($code, 'topic-page', 3), $code . ' names the page');
+	}
+	pg_assert_contains('3 Comments widgets', pg_comments_save_warning_text('widgets', 'topic-page', 3), 'the count');
+	pg_assert_same('', pg_comments_save_warning_text('other', 'topic-page', 1), 'an unknown code');
+
+	// A tree with no comments widget reads no component.
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'region', 'props' => array('regionType' => 'comments_block'), 'children' => array()),
+	));
+	pg_assert_same(array(), pg_comments_save_warnings($tree, false, 'p'), 'a block alone');
+	pg_assert_same(array(), pg_comments_save_warnings(null, true, 'p'), 'no tree');
+}
+
+// The nested record reader and the save share the census.
+function test_comments_widget_designer_census_wiring()
+{
+	$nested = comments_widget_designer_test_php_body('pg_comments_page_nested_record');
+	pg_assert_contains('pg_comments_tree_census(', $nested, 'the nested record reader takes the census');
+	pg_assert_contains('pg_comments_component_census(', $nested, 'and reads the components through it');
+	pg_assert_contains('static $cache', $nested, 'cached per page');
+
+	$census = comments_widget_designer_test_php_body('pg_comments_component_census');
+	pg_assert_contains('500', $census, 'at most 500 components');
+	pg_assert_contains('8', $census, 'at most 8 levels');
+}
+
+// The design's comments widget, the placement and the block the conversion
+// puts in.
+function test_comments_widget_designer_pick_widget_and_nodes()
+{
+	$script = <<<'JS'
+var _seq = 0;
+function gid() { return 'sd_' + (++_seq); }
+function ref(sid, kids) { return { type: 'shared_ref', props: { sharedId: sid, sharedName: 'w' + sid }, children: kids || [] }; }
+function root(kids) { return { type: 'root', props: {}, children: kids }; }
+var cfgs = { 5: { regionType: 'comments' }, 6: { regionType: 'comments' }, 7: { regionType: 'form_item_view' }, 8: { regionType: 'comments' }, 9: { regionType: '' } };
+var trees = { 9: root([ref(6)]), 10: root([ref(11)]), 11: root([ref(10)]) };
+var cfgOf = function (sid) { return cfgs[sid] || null; };
+var treeOf = function (sid) { return trees[sid] || null; };
+var out = {};
+out.page = _sdCommentsPickWidget([{ tree: root([ref(7), { type: 'container', props: {}, children: [ref(5)] }]) }], cfgOf, treeOf, {}, 3);
+out.header = _sdCommentsPickWidget([{ tree: root([ref(9)]) }], cfgOf, treeOf, {}, 3);
+out.second_page = _sdCommentsPickWidget([{ tree: root([ref(7)]) }, { tree: root([ref(5)]) }], cfgOf, treeOf, {}, 3);
+out.usage = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, { 7: [{ style_id: 3 }], 8: [{ style_id: '3' }] }, 3);
+out.usage_other_design = _sdCommentsPickWidget([{ tree: root([ref(7)]) }], cfgOf, treeOf, { 8: [{ style_id: 4 }] }, 3);
+out.nothing = _sdCommentsPickWidget([], cfgOf, treeOf, {}, 3);
+out.loop = _sdCommentsPickWidget([{ tree: root([ref(10)]) }], cfgOf, treeOf, {}, 3);
+out.ref = _sdCommentsRefNode(5, 'design-comments-widget');
+out.block = _sdCommentsBlockNode();
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_sdCommentsPickWidget', '_sdCommentsRefNode', '_sdCommentsBlockNode'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(5, $res['page'], 'a comments placement on a page; a record widget is ignored');
+	pg_assert_same(6, $res['header'], 'one inside a header');
+	pg_assert_same(5, $res['second_page'], 'one on another page of the design');
+	pg_assert_same(8, $res['usage'], 'one the design used, by the usage list');
+	pg_assert_same(0, $res['usage_other_design'], 'not one another design used');
+	pg_assert_same(0, $res['nothing'], 'none');
+	pg_assert_same(0, $res['loop'], 'a loop between components ends');
+
+	pg_assert_same('shared_ref', $res['ref']['type'], 'a placement');
+	pg_assert_same(array('sharedId' => 5, 'sharedName' => 'design-comments-widget'), $res['ref']['props'], 'only the id and the name');
+	pg_assert_same(array(), $res['ref']['children'], 'no children');
+	pg_assert_true(is_string($res['ref']['_id']) && $res['ref']['_id'] !== '', 'an id');
+	pg_assert_same('region', $res['block']['type'], 'the fixed block');
+	pg_assert_same(array('regionType' => 'comments_block', 'regionName' => ''), $res['block']['props']);
+	pg_assert_same(array(), $res['block']['children']);
+}
+
+
+// A template may ship a comments widget with the editor's starter layout.
+function test_comments_widget_designer_templates_ship_the_kind()
+{
+	$tpl = array(
+		'pages' => array(array('key' => 'topic')),
+		'widgets' => array(
+			array('key' => 'comments', 'page' => 'topic', 'tree' => 'starter', 'config' => array('regionType' => 'comments', 'featured' => 'filter')),
+		),
+	);
+	pg_assert_same(array('comments'), pg_design_template_starter_kinds($tpl), 'a comments starter is a starter kind');
+
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$starter = comments_widget_designer_test_js_function($js, '_buildStarterTree');
+	pg_assert_contains("case 'comments':", $starter, 'the editor builds the starter');
+	pg_assert_contains("{ type: 'comments',", $js, 'and knows the kind');
+}
+
+// The conversion buttons and the save's warnings are wired.
+function test_comments_widget_designer_conversion_wiring()
+{
+	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+
+	pg_assert_contains('sd-cmt-make-designable', comments_widget_designer_test_js_function($js, 'propsRegion'), 'the region offers Make designable');
+	pg_assert_contains('sd-cmt-make-designable', comments_widget_designer_test_js_function($js, 'bindPropEvents'), 'and it is wired');
+	pg_assert_contains('sd-cmt-back-to-block', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the widget offers Back to the fixed block');
+	pg_assert_contains('sd-cmt-back-to-block', comments_widget_designer_test_js_function($js, '_wireSystemWidgetProps'), 'and it is wired');
+	pg_assert_contains('where.designWide', comments_widget_designer_test_js_function($js, '_swBelongsToDesign'), 'a widget made for the design is named after it');
+
+	$make = comments_widget_designer_test_js_function($js, '_sdCommentsMakeDesignable');
+	pg_assert_contains("featured = 'filter'", $make, 'a widget made from the starter keeps the fixed block\'s featured filter');
+	pg_assert_contains('saveState()', $make, 'one undo step');
+	pg_assert_contains('saveState()', comments_widget_designer_test_js_function($js, '_sdCommentsBackToBlock'), 'back is one undo step');
+
+	pg_assert_contains('pg_comments_save_warnings(', comments_widget_designer_test_php_body('pg_designer_save_page'), 'the save warns');
+}

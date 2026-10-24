@@ -3154,6 +3154,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $errors[] = ($name !== '' ? $name . ': ' : '') . $vt['error'];
     }
     foreach ((array)$vt['warnings'] as $w) $warnings[] = $w;
+    // Comments the page will not draw as the operator may expect: a comments
+    // widget beside the fixed block, two of them, one whose record widget
+    // sits in another component, one on a page with comments off (the
+    // switch read as the save writes it).
+    if ($vt['ok'] && function_exists('pg_comments_save_warnings')) {
+        $cw_tree = json_decode(!empty($vt['cleaned_json']) ? $vt['cleaned_json'] : $tree_raw, true);
+        $cw_on   = array_key_exists('pg_comments', $page) && in_array($page['pg_comments'], array(1, '1', true), true);
+        foreach (pg_comments_save_warnings($cw_tree, $cw_on, $name) as $w) $warnings[] = $w;
+    }
 
     // The page's own JSON-LD has to be something a search engine can read.
     // Checked here, so the dry run that checks every page refuses the save

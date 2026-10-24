@@ -1081,6 +1081,343 @@ function pg_comments_nested_record_decision($top, $children, $types)
 }
 
 /**
+ * What one tree places: the shared components and widgets (id => number of
+ * placements) and the fixed comments blocks (regions of type comments_block).
+ * A placement is not walked into: what a component places is its own tree's
+ * (pg_comments_component_census()). Pure.
+ *
+ * @param mixed $tree
+ * @return array 'refs' => id => placements, 'blocks' => int
+ */
+function pg_comments_tree_census($tree)
+{
+    $census = array('refs' => array(), 'blocks' => 0);
+    _pg_comments_census_walk($tree, $census, 0);
+
+    return $census;
+}
+
+/**
+ * pg_comments_tree_census()'s walk.
+ *
+ * @param mixed $node
+ * @param array $census
+ * @param int   $depth
+ */
+function _pg_comments_census_walk($node, &$census, $depth)
+{
+    if (!is_array($node) || ($depth > 200)) {
+        return;
+    }
+
+    $type = (isset($node['type']) && is_string($node['type'])) ? $node['type'] : '';
+    $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+
+    if ($type === 'shared_ref') {
+        $sid = (isset($props['sharedId']) && is_scalar($props['sharedId']) && !is_bool($props['sharedId'])) ? (int) $props['sharedId'] : 0;
+
+        if ($sid > 0) {
+            $census['refs'][$sid] = (isset($census['refs'][$sid]) ? $census['refs'][$sid] : 0) + 1;
+        }
+
+        return;
+    }
+
+    if (($type === 'region') && isset($props['regionType']) && ($props['regionType'] === 'comments_block')) {
+        $census['blocks']++;
+    }
+
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            _pg_comments_census_walk($child, $census, $depth + 1);
+        }
+    }
+}
+
+/**
+ * The shared components and widgets a page reaches from its own placements
+ * ($ids), each read once, breadth first: one query per level, at most 8
+ * levels and 500 components, as pg_comments_page_nested_record() always read
+ * them.
+ *
+ * @param mixed $ids the component ids the page places
+ * @return array id => array('type' => its regionType ('' for none),
+ *               'census' => pg_comments_tree_census() of its tree)
+ */
+function pg_comments_component_census($ids)
+{
+    $out = array();
+    $asked = array();
+    $level = array();
+
+    foreach ((is_array($ids) ? $ids : array()) as $id) {
+        $id = (is_scalar($id) && !is_bool($id)) ? (int) $id : 0;
+
+        if ($id > 0) {
+            $level[$id] = true;
+        }
+    }
+
+    $level = array_keys($level);
+    $read = 0;
+
+    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
+        $now = array();
+
+        foreach ($level as $id) {
+            if (!isset($asked[$id])) {
+                $asked[$id] = true;
+                $now[] = (int) $id;
+            }
+        }
+
+        if (!$now) {
+            break;
+        }
+
+        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $now) . ")");
+        $next = array();
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) $row['id'];
+            $cfg = json_decode((string) $row['system_region_config'], true);
+            $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
+            $out[$id] = array(
+                'type' => (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '',
+                'census' => $census,
+            );
+
+            foreach (array_keys($census['refs']) as $child) {
+                if (!isset($asked[$child])) {
+                    $next[$child] = true;
+                }
+            }
+
+            if (++$read >= 500) {
+                break;
+            }
+        }
+
+        $level = array_keys($next);
+    }
+
+    return $out;
+}
+
+/**
+ * What a page shows of comments, from its own tree's census ($top,
+ * pg_comments_tree_census()) and the components it reaches ($components,
+ * pg_comments_component_census()). Pure.
+ *
+ * - widgets: the page's own placements of comments widgets, each counted,
+ *   and the comments widgets placed in each component the page reaches
+ *   (each component read once, at most 8 levels down). Two placements of one
+ *   component that holds a comments widget count that widget once: the
+ *   number is an approximation that errs on the low side.
+ * - blocks: the fixed comments blocks of the page and of the components it
+ *   reaches.
+ * - nested_record: a form_item_view widget below the top level
+ *   (pg_comments_nested_record_decision()).
+ * - top_record: a form_item_view widget placed on the page itself, the one
+ *   whose record the thread is then.
+ *
+ * @param mixed $top
+ * @param mixed $components
+ * @return array 'widgets' (int), 'blocks' (int), 'nested_record' (bool),
+ *               'top_record' (bool)
+ */
+function pg_comments_page_census_facts($top, $components)
+{
+    $top = is_array($top) ? $top : array();
+    $components = is_array($components) ? $components : array();
+    $refs_of = function ($census) {
+        $refs = (is_array($census) && isset($census['refs']) && is_array($census['refs'])) ? $census['refs'] : array();
+        $out = array();
+
+        foreach ($refs as $id => $count) {
+            if ((int) $id > 0) {
+                $out[(int) $id] = (is_scalar($count) && !is_bool($count)) ? max(0, (int) $count) : 0;
+            }
+        }
+
+        return $out;
+    };
+    $blocks_of = function ($census) {
+        return (is_array($census) && isset($census['blocks']) && is_scalar($census['blocks'])) ? max(0, (int) $census['blocks']) : 0;
+    };
+    $types = array();
+    $children = array();
+
+    foreach ($components as $id => $component) {
+        $id = (int) $id;
+        $types[$id] = (is_array($component) && isset($component['type']) && is_string($component['type'])) ? $component['type'] : '';
+        $children[$id] = $refs_of(is_array($component) && isset($component['census']) ? $component['census'] : null);
+    }
+
+    $type = function ($id) use ($types) {
+        return isset($types[$id]) ? $types[$id] : '';
+    };
+    $top_refs = $refs_of($top);
+    $widgets = 0;
+    $blocks = $blocks_of($top);
+    $top_record = false;
+    $queue = array();
+    $seen = array();
+
+    foreach ($top_refs as $id => $count) {
+        if ($type($id) === 'comments') {
+            $widgets += $count;
+        }
+
+        if ($type($id) === 'form_item_view') {
+            $top_record = true;
+        }
+
+        $seen[$id] = true;
+        $queue[] = array($id, 0);
+    }
+
+    for ($i = 0; $i < count($queue); $i++) {
+        list($id, $depth) = $queue[$i];
+
+        if (isset($components[$id]['census'])) {
+            $blocks += $blocks_of($components[$id]['census']);
+        }
+
+        if (($depth >= 8) || !isset($children[$id])) {
+            continue;
+        }
+
+        foreach ($children[$id] as $child => $count) {
+            if ($type($child) === 'comments') {
+                $widgets += $count;
+            }
+
+            if (!isset($seen[$child])) {
+                $seen[$child] = true;
+                $queue[] = array($child, $depth + 1);
+            }
+        }
+    }
+
+    $child_ids = array();
+
+    foreach ($children as $id => $list) {
+        $child_ids[$id] = array_keys($list);
+    }
+
+    return array(
+        'widgets' => $widgets,
+        'blocks' => $blocks,
+        'nested_record' => pg_comments_nested_record_decision(array_keys($top_refs), $child_ids, $types),
+        'top_record' => $top_record,
+    );
+}
+
+/**
+ * The save warnings a page's comments call for, in order. Pure.
+ *
+ * None without a comments widget. Then: 'block' (the fixed comments block
+ * too: the widget claims the page and the block prints nothing), 'widgets'
+ * (more than one: only the first draws), 'nested_record' (a form_item_view
+ * below the top level and none on the page: the widget fails closed),
+ * 'off' (comments are off for the page).
+ *
+ * @param mixed $facts pg_comments_page_census_facts() plus 'comments_on'
+ * @return string[]
+ */
+function pg_comments_save_warning_codes($facts)
+{
+    if (!is_array($facts)) {
+        return array();
+    }
+
+    $widgets = (isset($facts['widgets']) && is_scalar($facts['widgets'])) ? (int) $facts['widgets'] : 0;
+
+    if ($widgets <= 0) {
+        return array();
+    }
+
+    $codes = array();
+
+    if (!empty($facts['blocks'])) {
+        $codes[] = 'block';
+    }
+
+    if ($widgets > 1) {
+        $codes[] = 'widgets';
+    }
+
+    if (!empty($facts['nested_record']) && empty($facts['top_record'])) {
+        $codes[] = 'nested_record';
+    }
+
+    if (empty($facts['comments_on'])) {
+        $codes[] = 'off';
+    }
+
+    return $codes;
+}
+
+/**
+ * The words of a save warning (pg_comments_save_warning_codes()), '' for an
+ * unknown code. Pure but for the translation.
+ *
+ * @param string $code
+ * @param mixed  $page_name
+ * @param mixed  $widgets   the number of comments widgets on the page
+ * @return string
+ */
+function pg_comments_save_warning_text($code, $page_name, $widgets)
+{
+    $name = is_scalar($page_name) ? (string) $page_name : '';
+    $count = is_scalar($widgets) ? (int) $widgets : 0;
+
+    switch ($code) {
+        case 'block':
+            return lang(array('string' => 'The page "{var:1}" shows a Comments widget and the fixed comments block: only the widget draws the comments.', 'vars' => array($name)));
+        case 'widgets':
+            return lang(array('string' => 'The page "{var:1}" shows {var:2} Comments widgets: only the first draws the comments.', 'vars' => array($name, $count)));
+        case 'nested_record':
+            return lang(array('string' => 'The page "{var:1}" places a Form Item View widget inside another component: its Comments widget draws nothing there. Place the Form Item View on the page itself.', 'vars' => array($name)));
+        case 'off':
+            return lang(array('string' => 'Comments are off for the page "{var:1}": its Comments widget draws nothing. Turn them on in the widget\'s comment settings.', 'vars' => array($name)));
+    }
+
+    return '';
+}
+
+/**
+ * The warnings a page's save gives about comments that are not drawn as the
+ * operator may expect: the page's tree (as it is saved), whether the page
+ * takes comments, its name. Reads the components the page reaches only when
+ * it places any.
+ *
+ * @param mixed  $tree
+ * @param mixed  $comments_on
+ * @param string $page_name
+ * @return string[]
+ */
+function pg_comments_save_warnings($tree, $comments_on, $page_name)
+{
+    $census = pg_comments_tree_census($tree);
+
+    if (!$census['refs']) {
+        return array();
+    }
+
+    $facts = pg_comments_page_census_facts($census, pg_comments_component_census(array_keys($census['refs'])))
+        + array('comments_on' => (bool) $comments_on);
+    $out = array();
+
+    foreach (pg_comments_save_warning_codes($facts) as $code) {
+        $out[] = pg_comments_save_warning_text($code, $page_name, $facts['widgets']);
+    }
+
+    return $out;
+}
+
+/**
  * How the visitor names their comment, as add_comment.php decides it. Pure.
  *
  * - 'typed': signed out, staff (a role below 3), a user with access to the
@@ -3009,8 +3346,10 @@ function pg_comments_widget_draw($tree, $data)
 
 /**
  * Whether a page places a form_item_view widget below its top level
- * (pg_comments_nested_record_decision()). One query per level of nesting, at
- * most 8 levels and 500 components; cached per page for the request.
+ * (pg_comments_page_census_facts()'s 'nested_record'), from the page's
+ * stored tree and the components it reaches (pg_comments_component_census():
+ * one query per level of nesting, at most 8 levels and 500 components);
+ * cached per page for the request.
  *
  * @param mixed $page_id
  * @return bool
@@ -3028,65 +3367,10 @@ function pg_comments_page_nested_record($page_id)
         return $cache[$page_id];
     }
 
-    $top_ids = array();
-    $tree = json_decode((string) pg_page_tree_json($page_id), true);
+    $census = pg_comments_tree_census(json_decode((string) pg_page_tree_json($page_id), true));
+    $facts = pg_comments_page_census_facts($census, pg_comments_component_census(array_keys($census['refs'])));
 
-    if (is_array($tree)) {
-        _vt_collect_shared_ids($tree, $top_ids);
-    }
-
-    $top = array_keys($top_ids);
-    $children = array();
-    $types = array();
-    $seen = array();
-    $level = $top;
-    $read = 0;
-
-    for ($depth = 0; ($depth < 8) && $level && ($read < 500); $depth++) {
-        $ids = array();
-
-        foreach ($level as $id) {
-            if (!isset($seen[$id])) {
-                $seen[$id] = true;
-                $ids[] = (int) $id;
-            }
-        }
-
-        if (!$ids) {
-            break;
-        }
-
-        $rows = db_items("SELECT id, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $ids) . ")");
-        $next = array();
-
-        foreach ((is_array($rows) ? $rows : array()) as $row) {
-            $id = (int) $row['id'];
-            $cfg = json_decode((string) $row['system_region_config'], true);
-            $types[$id] = (is_array($cfg) && isset($cfg['regionType']) && is_string($cfg['regionType'])) ? $cfg['regionType'] : '';
-            $placed = array();
-            $component = json_decode((string) $row['tree_json'], true);
-
-            if (is_array($component)) {
-                _vt_collect_shared_ids($component, $placed);
-            }
-
-            $children[$id] = array_keys($placed);
-
-            foreach ($children[$id] as $child) {
-                if (!isset($seen[$child])) {
-                    $next[$child] = true;
-                }
-            }
-
-            if (++$read >= 500) {
-                break;
-            }
-        }
-
-        $level = array_keys($next);
-    }
-
-    return $cache[$page_id] = pg_comments_nested_record_decision($top, $children, $types);
+    return $cache[$page_id] = $facts['nested_record'];
 }
 
 /**
