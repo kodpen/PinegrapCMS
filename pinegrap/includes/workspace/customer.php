@@ -370,12 +370,27 @@ function ws_customer_channels($type, $id)
 }
 
 /**
- * The icon of a channel in the lists: a lock, a customer's kind, a hash.
+ * The icon of a channel in the lists: the one it was given
+ * (channel_icons.php), else the one its kind gives.
  *
  * @param array $channel a row or a brief
  * @return string
  */
 function ws_channel_icon($channel)
+{
+    $chosen = ws_channel_icon_chosen($channel);
+
+    return ($chosen !== '') ? $chosen : ws_channel_kind_icon($channel);
+}
+
+/**
+ * The icon a channel's kind gives: a lock, a guest's door, a customer's
+ * kind, a hash.
+ *
+ * @param array $channel a row or a brief
+ * @return string
+ */
+function ws_channel_kind_icon($channel)
 {
     if ((string) $channel['kind'] === 'private') {
         return 'bi-lock';

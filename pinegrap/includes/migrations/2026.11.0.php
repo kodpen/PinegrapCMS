@@ -57,6 +57,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
 	upgrade_2026_11_0_theme_light_selector();   // 11.0.32
 	upgrade_2026_11_0_comment_replies();        // 11.0.31
+	upgrade_2026_11_0_workspace_channel_icon(); // 11.0.81
 
 }
 
@@ -1562,5 +1563,18 @@ function upgrade_2026_11_0_comment_replies() {
 	}
 
 	install_note('Comments: a comment can now be stored as a reply to another one. Every comment written before this version stays a comment of its own, and comments are shown as before.');
+
+}
+
+// A Workspace channel's own icon (2026.11.0, 11.0.81;
+// includes/workspace/channel_icons.php). The column holds a Bootstrap Icons
+// class from the curated list ws_channel_icon_choices(), empty for none; a
+// channel without one keeps the icon its kind gives, so every existing
+// channel looks the same after the upgrade.
+function upgrade_2026_11_0_workspace_channel_icon() {
+
+	install_add_column('ws_channels', 'icon', "VARCHAR(40) NOT NULL DEFAULT ''");
+
+	install_note('Workspace: a channel can be given an icon of its own, chosen in the channel form. Existing channels keep their icons.');
 
 }

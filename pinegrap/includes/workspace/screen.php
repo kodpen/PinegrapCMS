@@ -674,7 +674,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_templates_js_strings());
 
     // Colours and groups of channels, versions of a conversation.
-    $strings = array_merge($strings, ws_groups_js_strings(), ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings(), ws_quick_edit_js_strings());
+    $strings = array_merge($strings, ws_groups_js_strings(), ws_channel_icon_js_strings(),ws_eras_js_strings(), ws_pins_js_strings(), ws_forward_js_strings(), ws_blocks_js_strings(), ws_customer_js_strings(), ws_quick_edit_js_strings());
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
@@ -748,6 +748,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'scheduled_messages' => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
         'threads'      => ws_threads_ready(),
         'palette'      => ws_channel_colors_ready() ? ws_palette_js() : array(),
+        'channel_icons' => ws_channel_icons_ready() ? ws_channel_icon_choices_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
         'pins'         => ws_pins_ready(),

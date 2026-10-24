@@ -8585,10 +8585,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var tint = /^#[0-9a-f]{3,8}$/i.test(channel.hex || '') ? (' style="color:' + channel.hex + '"') : '';
             var iconName = /^bi-[a-z0-9-]+$/.test(channel.icon || '') ? channel.icon : 'bi-hash';
 
+            // A channel's own icon carries the mark of its kind in its corner
+            // (includes/workspace/channel_icons.php).
+            var badgeName = /^bi-[a-z0-9-]+$/.test(channel.badge || '') ? channel.badge : '';
+            var sign = badgeName
+                ? '<span class="ws-icon-badged" aria-hidden="true"' + tint + '><i class="bi ' + iconName + '"></i><i class="bi ' + badgeName + ' ws-icon-badge"></i></span>'
+                : '<i class="bi ' + iconName + '"' + tint + ' aria-hidden="true"></i>';
+
             html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2' +
                 ((String(channel.id) === String(wsSendState.picked)) ? ' active' : '') +
                 '" data-channel-id="' + Number(channel.id) + '">' +
-                '<i class="bi ' + iconName + '"' + tint + '></i>' +
+                sign +
                 '<span class="text-truncate">' + esc(channel.name) + '</span></button>';
         });
 

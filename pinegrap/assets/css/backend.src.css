@@ -10568,6 +10568,80 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="settings"] > .bi { color: 
   background: var(--bs-tertiary-bg);
   color: var(--bs-secondary-color);
 }
+/* A channel's own icon (includes/workspace/channel_icons.php): the picker
+   beside the colours, a search over a grid of radio buttons; "none" is
+   dashed and shows the icon the channel's kind gives. */
+.ws-icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+}
+.ws-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.1rem, 1fr));
+  gap: .35rem;
+  max-height: 11.5rem;
+  overflow-y: auto;
+  padding: .15rem;
+}
+.ws-icon-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.1rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--ws-radius-sm);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  font-size: 1.05rem;
+}
+.ws-icon-choice:hover {
+  background: rgba(var(--ws-accent-rgb), .1);
+}
+.ws-icon-choice.active {
+  border-color: var(--ws-accent);
+  background: rgba(var(--ws-accent-rgb), .14);
+  color: var(--ws-accent);
+}
+.ws-icon-choice-none {
+  border-style: dashed;
+  border-color: var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+.ws-icon-choice-none.active {
+  border-style: solid;
+  border-color: var(--ws-accent);
+}
+.ws-icon-empty {
+  font-size: .8rem;
+  color: var(--bs-secondary-color);
+}
+/* The mark of a private, guest or customer channel in the corner of an icon
+   chosen for it: a lock, a door, a person (ws_icon_badged_html()). */
+.ws-icon-badged {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+.ws-icon-badge {
+  position: absolute;
+  right: -.3em;
+  bottom: -.3em;
+  padding: .1em;
+  border-radius: 50%;
+  background: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  font-size: .6em;
+  line-height: 1;
+}
+.ws-rail-initial > .bi,
+.ws-rail-initial > .ws-icon-badged {
+  font-size: .9rem;
+}
+.ws-rail-channel[data-ws-colored] .ws-rail-initial .ws-icon-badge {
+  color: var(--ws-ch);
+}
 /* Scheduled actions: days, follow-ups, counts, the words filled in. */
 .ws-sa-days {
   display: flex;
