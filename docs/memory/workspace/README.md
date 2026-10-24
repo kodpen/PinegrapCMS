@@ -30,6 +30,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-assistant-keys.md: "Create Claude's key" and "Reset secret" on the Claude card: the key made, its scopes (five reads left out), the config link, who sees it, no-grace reset, one-time window
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
+- workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, the editor, autosave, leaving and 409, focus, keys, outline view, read-only, what is left

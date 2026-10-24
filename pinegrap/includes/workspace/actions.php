@@ -760,6 +760,8 @@ function ws_handle_action($action, $request)
                 'customer_id'   => $request['customer_id'] ?? 0,
                 'department_id' => $request['department_id'] ?? 0,
                 'members'       => (array) ($request['members'] ?? array()),
+                'color'         => $request['color'] ?? 0,
+                'icon'          => $request['icon'] ?? '',
             ));
 
             if (!$result['ok']) {
@@ -1789,6 +1791,7 @@ function ws_handle_action($action, $request)
                 'department_id' => $request['department_id'] ?? 0,
                 'members'    => (array) ($request['members'] ?? array()),
                 'color'      => $request['color'] ?? 0,
+                'icon'       => $request['icon'] ?? '',
                 'group_id'   => $request['group_id'] ?? 0,
             ));
 
@@ -1867,7 +1870,7 @@ function ws_handle_action($action, $request)
 
             $data = array();
 
-            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'watch') as $field) {
+            foreach (array('name', 'topic', 'contact_id', 'customer_type', 'customer_id', 'department_id', 'color', 'icon', 'watch') as $field) {
                 if (array_key_exists($field, $request)) {
                     $data[$field] = $request[$field];
                 }
