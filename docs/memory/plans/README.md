@@ -69,6 +69,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-2 done #1468, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521; answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
-- workspace-quotes.md: Plan (2026-10-23, 1 built, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+- workspace-quotes.md: Plan (2026-10-23, 1 in #1546, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 in #1499, answer 2a): fix /task (Enter on the preview, Turkish names), a command registry, Tab argument suggestions, more commands, GET /workspace/commands
 - workspace-voice-messages.md: Plan (2026-10-23, V1 in #1457, V2 in #1494, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

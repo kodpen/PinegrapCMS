@@ -1,6 +1,6 @@
 ---
 name: workspace-quotes
-description: Plan (2026-10-23, 1 built, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+description: Plan (2026-10-23, 1 in #1546, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -16,7 +16,7 @@ description: Plan (2026-10-23, 1 built, answers 1, 3 given): Sales quote (ERP) a
 - Candidate: Pinegrap AI drafts a sales or cart quote from channel messages, after slices 3, 5.
 
 ## Slices
-1. Built: the `erp_quote` tag (workspace/workspace-record-kinds.md, erp/erp-quotes.md).
+1. PR #1546: the `erp_quote` tag (workspace/workspace-record-kinds.md, erp/erp-quotes.md).
 2. No schema: "New sales quote" (add_erp_quote.php `?account_id=`) on a channel whose customer (`ws_channel_customer_of()`) is or links to (`ws_customer_link_tokens()`) an ERP account; never `erp_account_for_contact()` (it creates).
 3. No schema, after the MCP plan's slice 3: `erp_quote` change kind in `ws_change_types()`, a structured line kind (`lines` is text), writer `erp_quote_save()`, proposed via `workspace.changes.propose`; direct AI writes per the MCP plan's question.
 4. Schema, ask first (next free ERP label): `erp_quote_templates` (proposed: name, scope, owner, `form_data`); "From template" on add_erp_quote.php, ERP API routes (`dry_run`). Tell the ERP owner (local work: plans/erp-edocument-leftovers.md).
