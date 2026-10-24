@@ -14,17 +14,12 @@ description: Plan (2026-10-23; step 1 in PR #1462, step 2 built; answers 1-4 giv
 - api_settings.php: hashed secret, one-time sheet via the session, removed on Close; rotation keeps the old secret 24 h. Delete removes the row; nothing sets 'revoked'.
 
 ## What was proposed? (approved by answers 1-4)
-- includes/api/keys.php: `api_app_create()`, `api_app_rotate_secret($id, $grace)`, with the screen's audit and log.
-- Scopes (`api_assistant_scopes()`, pure): per group its read, or `workspace:write` / `tasks:write`; no other write; cut to the clicking admin's `api_owner_scopes()`; each call capped by `api_effective_scopes()`.
-- No schema: the id goes in the config link; reset reads it there, never the post.
-- Sheet once after redirect (session, never URL or log): key, secret, domain, prompt; then role 0 sees key, prompt, hint, "Reset secret".
-- Reset: linked 'server' key only, grace 0 (old secrets fail at once), audit, log, shown once.
-- POSTs: role 0, `validate_token_field()`; `lang()` labels.
+- Built in steps 1-2 as workspace/workspace-assistant-keys.md says: helpers in includes/api/keys.php, scopes by code cut to the presser, no schema (id in the config link, reset reads it there, never the post), sheet once via the session, reset grace 0, role 0 POSTs with `validate_token_field()`.
 
 ## Slices
 1. No schema. Claude: helpers, scopes, Create, sheet, reset, guide and hint; the select stays in the Save form under "Use another application".
-2. Built. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; see workspace/workspace-assistant-keys.md.
-3. No schema. api_settings.php uses the helpers, same behaviour.
+2. Built. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; no rotation gives such a row a secret (`api_app_secret_can_rotate()`); see workspace/workspace-assistant-keys.md.
+3. No schema. api_settings.php uses the helpers, same behaviour (keyless refusal included).
 4. Pinegrap AI measurements (question 5).
 
 ## Which questions are answered? (owner, 2026-10-24)
@@ -33,6 +28,7 @@ description: Plan (2026-10-23; step 1 in PR #1462, step 2 built; answers 1-4 giv
 3. Pinegrap AI: (a) no secret (cannot sign in), no reset, (b) a secret, a REST/MCP door nothing uses. Answer: a.
 4. A hand-linked key: (a) kept, reset offered (its other users stop too), Create only with no row linked, (b) replaced. Answer: a.
 Open: 5. Pinegrap AI: (a) measure first, (b) change limits → a; ai.pinegrap.com answered 502 on 2026-10-23/24.
+Open: 6. Application Access (roles 0-2) rotates and re-scopes every row, an administrator's too (Claude's key): a Manager then calls the API with the admin's rights as the cap. Refuse a row whose owner outranks the editor? Today only rows without a secret are refused.
 
 ## What could explain "Pinegrap AI worked inefficiently"? (open)
 - Not the key. Nobody picks the model (`ws_ai_model()`: the first GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or hourly job; timeout 55 s; `max_tokens` 3000; 20-30 context messages; `ws_ai_tools()`, `ws_ai_system_prompt()` size.

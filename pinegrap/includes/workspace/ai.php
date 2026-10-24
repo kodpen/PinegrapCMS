@@ -4092,7 +4092,9 @@ function ws_ai_settings_post($viewer, $action, $liveform, $user)
  * is allowed (ws_ai_readable_types()) and the poster of its answers
  * (ws_ai_owner()). Kind 'server' without a stored secret hash has no door:
  * key and secret need a hash (api_secret_matches()), and tokens are issued
- * only under 'device' and 'oauth' rows. So there is nothing to show once and
+ * only under 'device' and 'oauth' rows. Nor is it ever given a secret:
+ * Application Access's rotation and Claude's Reset secret both refuse such a
+ * row (api_app_secret_can_rotate()). So there is nothing to show once and
  * nothing to reset.
  *
  * Offered only while ws_ai_app() finds no row (none chosen, or the linked

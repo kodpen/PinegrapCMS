@@ -201,8 +201,9 @@ function ws_claude_scopes_of($stored)
 }
 
 /**
- * The active applications Claude could work through: the ones holding every
- * scope the routine needs.
+ * The active applications Claude could work through: 'server' keys with a
+ * secret, since the routine signs in with key and secret, holding every
+ * scope it needs. A key made without a secret (Pinegrap AI's) is never one.
  *
  * @return array[] id, name
  */
@@ -210,7 +211,7 @@ function ws_claude_suitable_apps()
 {
     $out = array();
 
-    foreach ((array) db_items("SELECT id, name, scopes FROM api_apps WHERE status = 'active' ORDER BY name LIMIT 200") as $row) {
+    foreach ((array) db_items("SELECT id, name, scopes FROM api_apps WHERE status = 'active' AND kind = 'server' AND api_secret_hash <> '' ORDER BY name LIMIT 200") as $row) {
         if (empty(array_diff(ws_claude_required_scopes(), ws_claude_scopes_of($row['scopes'])))) {
             $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
         }
@@ -1689,6 +1690,13 @@ function ws_claude_key_post($action, $liveform, $user, $username)
 
     if ((string) $app['kind'] !== 'server') {
         $liveform->add_error(lang('This application has no secret to reset: it signs people in from devices or through OAuth.'));
+        return;
+    }
+
+    // A key made without a secret (Pinegrap AI's, chosen here by hand) is
+    // never given one; api_app_rotate_secret() refuses it too.
+    if (!api_app_secret_can_rotate((array) db_item("SELECT kind, api_secret_hash FROM api_apps WHERE id = '" . (int) $app['id'] . "'"))) {
+        $liveform->add_error(lang('This application was made without a secret and is never given one, so it cannot sign in.'));
         return;
     }
 

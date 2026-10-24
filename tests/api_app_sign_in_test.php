@@ -7,7 +7,8 @@
  * supplied hash (api_secret_hash_accepts(), which api_secret_matches() asks
  * for the current and the previous secret), and a 'server' key made without
  * a secret, as Pinegrap AI's key is, has no way in at all
- * (api_app_can_sign_in()).
+ * (api_app_can_sign_in()) and is never given one (api_app_secret_can_rotate(),
+ * asked by both places that issue a new secret).
  *
  * The runner defines no ENCRYPTION_KEY, so api_secret_hash() is not called
  * here: the hashes below are any 64 hex characters.
@@ -105,4 +106,49 @@ function test_api_app_sign_in_device_and_oauth_rows_can()
 	unset($row['kind']);
 
 	pg_assert_false(api_app_can_sign_in($row, 1700000000), 'no kind, no secret');
+}
+
+// A new secret is issued only for a 'server' key that already has one: a key
+// made without a secret stays without one, and a team devices or OAuth
+// application has none to replace.
+function test_api_app_sign_in_keyless_row_is_never_given_a_secret()
+{
+	$row = api_app_sign_in_test_keyless_row();
+
+	pg_assert_false(api_app_secret_can_rotate($row), 'kind server, no secret');
+
+	$row['api_secret_hash'] = str_repeat('ab', 32);
+
+	pg_assert_true(api_app_secret_can_rotate($row), 'a server key with a secret');
+
+	foreach (array('device', 'oauth') as $kind) {
+		$row = api_app_sign_in_test_keyless_row();
+		$row['kind'] = $kind;
+
+		pg_assert_false(api_app_secret_can_rotate($row), $kind . ' has no secret to replace');
+	}
+
+	// A row read without its kind is taken as the column's default, 'server'.
+	$row = api_app_sign_in_test_keyless_row();
+	unset($row['kind']);
+
+	pg_assert_false(api_app_secret_can_rotate($row), 'no kind, no secret');
+
+	$row['api_secret_hash'] = str_repeat('ab', 32);
+
+	pg_assert_true(api_app_secret_can_rotate($row), 'no kind, a secret');
+}
+
+// Both places that issue a new secret, Application Access's "Issue a new
+// secret" and api_app_rotate_secret() (Claude's "Reset secret"), ask the
+// guard and keep a row without a secret out of their UPDATE, so neither can
+// turn Pinegrap AI's key into a way in carrying its owner's rights.
+function test_api_app_sign_in_both_rotations_refuse_a_keyless_row()
+{
+	foreach (array('includes/api/keys.php', 'api_settings.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains('api_app_secret_can_rotate($existing)', $source, $file . ' asks the guard');
+		pg_assert_contains("AND api_secret_hash <> ''", $source, $file . ' keeps a keyless row out of the UPDATE');
+	}
 }
