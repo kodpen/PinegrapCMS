@@ -138,6 +138,25 @@ function test_workspace_notes_import_upload_extensions_are_one_list()
 	pg_assert_true(strpos($screen, "'types' => ws_note_import_extensions()") !== false, 'the screen config carries it');
 }
 
+// What the stage logs: a part cut short (a cancel) or over a limit is the
+// person's to fix and stays out of the error log; nothing goes to the Site
+// Log.
+function test_workspace_notes_import_upload_stage_logs_server_faults_only()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notes_import.php');
+	$stage = pg_test_notes_upload_between($source, 'function ws_note_import_stage(', "\n}\n");
+
+	pg_assert_true($stage !== '', 'ws_note_import_stage() is found');
+	pg_assert_false(strpos($stage, 'log_activity(') !== false, 'no Site Log line');
+	pg_assert_true(preg_match('/if \(!in_array\(\$error, array\(([^)]*)\), true\)\) \{\s*ws_note_import_log_failure\(/', $stage, $match) === 1, 'the codes left out of the error log are one list');
+
+	foreach (array('UPLOAD_ERR_OK', 'UPLOAD_ERR_INI_SIZE', 'UPLOAD_ERR_FORM_SIZE', 'UPLOAD_ERR_PARTIAL') as $code) {
+		pg_assert_true(strpos($match[1] ?? '', $code) !== false, $code . ' is not logged');
+	}
+
+	pg_assert_same(4, count(explode(',', $match[1] ?? '')), 'and no other code');
+}
+
 // The stage's token is made and kept before the files are read, the session
 // let go, and only then the time limit raised: a file session's lock would
 // hold every other request of the person for as long as staging runs.
@@ -209,6 +228,26 @@ function test_workspace_notes_import_upload_screen_shows_the_steps()
 
 	pg_assert_true($change !== '', 'the picker is found');
 	pg_assert_false(strpos($change, 'upload(') !== false, 'picking does not send');
+}
+
+// The bar of the reading step (and of a size the browser cannot tell) is
+// Bootstrap's striped, animated one inside the shared .ws-progress. The
+// colour rules of .ws-progress set the colour only: the background shorthand
+// would reset the stripes' background-image, and the full bar would stand
+// still and read as finished.
+function test_workspace_notes_import_upload_moving_bar_shows_stripes()
+{
+	pg_assert_true(strpos(pg_test_notes_upload_screen(), "'progress-bar progress-bar-striped progress-bar-animated'") !== false, 'the moving bar is striped and animated');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	foreach (array('.ws-progress .progress-bar {', '.ws-progress.ws-progress-full .progress-bar {') as $selector) {
+		$rule = pg_test_notes_upload_between($css, "\n" . $selector, '}');
+
+		pg_assert_true($rule !== '', $selector . ' is found');
+		pg_assert_true(strpos($rule, 'background-color:') !== false, $selector . ' sets its colour');
+		pg_assert_false(preg_match('/[\s;{]background\s*:/', $rule) === 1, $selector . ' leaves the background image alone');
+	}
 }
 
 // Every text the import screen asks for is defined; a missing key would show

@@ -11845,12 +11845,14 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   height: .45rem;
   background: var(--bs-secondary-bg);
 }
+/* The colour only: the background shorthand would also reset the stripes of
+   .progress-bar-striped (the notes import's reading step). */
 .ws-progress .progress-bar {
-  background: rgb(var(--ws-accent-rgb));
+  background-color: rgb(var(--ws-accent-rgb));
   transition: width .25s ease;
 }
 .ws-progress.ws-progress-full .progress-bar {
-  background: var(--bs-success);
+  background-color: var(--bs-success);
 }
 .ws-progress.ws-progress-sm {
   height: .3rem;
@@ -16453,6 +16455,13 @@ button.ws-home-row:hover,
 .ws-nb-import-drop.ws-nb-import-over {
   border-color: var(--ws-accent);
   background-color: rgba(var(--ws-accent-rgb), .06);
+}
+/* The file picker inside is hidden; a keyboard focus on it shows on the
+   area. A rule of its own: a browser without :has() drops only this one. */
+.ws-nb-import-drop:has(:focus-visible) {
+  border-color: var(--ws-accent);
+  background-color: rgba(var(--ws-accent-rgb), .06);
+  box-shadow: 0 0 0 .2rem rgba(var(--ws-accent-rgb), .25);
 }
 .ws-nb-import-list {
   max-height: 55vh;
