@@ -141,8 +141,7 @@ class pg_notes_import_test_closed_folder
 // A folder that is_writable() calls closed is still where the stage goes: on
 // Windows is_writable() reads the folder's read-only attribute, which
 // Explorer and OneDrive set freely and which stops nothing. The writes that
-// follow are the answer, so only a folder that is not there (and cannot be
-// made) is ''.
+// follow are the answer.
 function test_workspace_notes_import_temp_dir_ignores_is_writable()
 {
 	stream_wrapper_register('pgnotesclosed', 'pg_notes_import_test_closed_folder');
@@ -150,14 +149,25 @@ function test_workspace_notes_import_temp_dir_ignores_is_writable()
 	pg_assert_false(is_writable('pgnotesclosed://temp'), 'that is_writable() calls closed');
 	pg_assert_same('pgnotesclosed://temp', ws_note_import_temp_dir('pgnotesclosed://temp'), 'the stage goes there all the same');
 	stream_wrapper_unregister('pgnotesclosed');
+}
 
+// A folder that is there is used as it is; one that is not is made.
+function test_workspace_notes_import_temp_dir_makes_a_missing_folder()
+{
 	$dir = pg_test_notes_import_dir();
 	pg_assert_same($dir, ws_note_import_temp_dir($dir), 'a folder that is there');
 	pg_assert_same($dir . '/temp', ws_note_import_temp_dir($dir . '/temp'), 'one that is not is made');
 	pg_assert_true(is_dir($dir . '/temp'));
 
-	// A file stands where the folder's parent should be: mkdir() is refused
-	// whoever runs the tests, and what PHP said stays for the log.
+	pg_test_notes_import_clean($dir);
+}
+
+// Only a folder that is not there and cannot be made is '', and what mkdir()
+// said stays for the log. A file stands where the folder's parent should be,
+// so mkdir() is refused whoever runs the tests.
+function test_workspace_notes_import_temp_dir_keeps_what_mkdir_said()
+{
+	$dir = pg_test_notes_import_dir();
 	file_put_contents($dir . '/plain', 'x');
 	error_clear_last();
 	pg_assert_same('', ws_note_import_temp_dir($dir . '/plain/temp'), 'cannot be made');

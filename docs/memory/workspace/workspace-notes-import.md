@@ -18,8 +18,9 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 - A new note keeps the file's dates (else the zip entry's time, else now).
 
 ## Anything fixed alongside?
-- The export wrote people as `@@name` (labels already carry `@`); fixed with this PR (issue #549). Tests: tests/workspace_notes_io_test.php.
+- The export wrote people as `@@name` (labels carry `@`); fixed (issue #549). Tests: tests/workspace_notes_io_test.php.
 
-## Why did every upload say "The file could not be saved." (Dosya kaydedilemedi.) on dev?
-- data/temp had Windows' read-only folder attribute (OneDrive, Explorer set it; it stops nothing), which PHP's `is_writable()` reads; `ws_note_import_temp_dir()` asked it, so every upload failed at once. It asks `is_dir()` only now (issue #1469, platform/windows-folder-is-writable.md).
-- A failed step logs "Notes import: <step> failed: <PHP message>", e.g. `creating the temp folder data/temp`. PR #708's stage.json retries stay. Test: tests/workspace_notes_import_test.php.
+## Why did every upload say "The file could not be saved." on dev?
+- `ws_note_import_temp_dir()` asked `is_writable()` of data/temp (Windows: read-only attribute, ACL); now only `is_dir()` (issue #1469). Unconfirmed on site: platform/windows-folder-is-writable.md.
+- Each failed step logs PHP's message, e.g. `Notes import: creating the stage folder failed: mkdir(): Permission denied`. A missing data/temp logs nothing: php_errors.log is in it.
+- stage.json: `ws_note_import_replace()` renames, else writes in place, retried ~3 s on Windows (PR #708). Test: tests/workspace_notes_import_test.php.

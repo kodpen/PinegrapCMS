@@ -461,7 +461,8 @@ function ws_note_import_stage($viewer, $files)
     $dir = ws_note_import_stage_dir($token);
 
     // data/temp is not there and mkdir() was refused: what it said is the
-    // last error.
+    // last error. php_errors.log lives in data/temp too, so the line is
+    // written only if the log's own attempt to make the folder succeeds.
     if ($dir === '') {
         ws_note_import_log_failure('creating the temp folder data/temp');
 
