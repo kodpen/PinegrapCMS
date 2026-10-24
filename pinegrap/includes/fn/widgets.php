@@ -841,6 +841,10 @@ function pg_sw_index_form_data($data_rows)
                     'data'    => $value,
                     'type'    => $type,
                     'wysiwyg' => (!empty($data_row['field_wysiwyg']) && $type === 'text area') ? 1 : 0,
+                    // Whether the field's answers are translated
+                    // (form_fields.translate_values); read before the column
+                    // existed, they are.
+                    'translate' => (isset($data_row['field_translate']) && (string)$data_row['field_translate'] === '0') ? 0 : 1,
                 );
             }
         }
@@ -1980,7 +1984,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             form_fields.name    AS field_name,
             form_fields.label   AS field_label,
             form_fields.type    AS field_type,
-            form_fields.wysiwyg AS field_wysiwyg,
+            form_fields.wysiwyg AS field_wysiwyg,"
+            . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
             files.name          AS file_name
          FROM form_data
          LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
@@ -2807,7 +2812,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.name    AS field_name,
                 form_fields.label   AS field_label,
                 form_fields.type    AS field_type,
-                form_fields.wysiwyg AS field_wysiwyg,
+                form_fields.wysiwyg AS field_wysiwyg,"
+                . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
              LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id

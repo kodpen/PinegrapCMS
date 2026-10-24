@@ -51,6 +51,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_passkeys();               // 11.0.13
 	upgrade_2026_11_0_not_found_log();          // 11.0.30
 	upgrade_2026_11_0_erp_invoice_recurring_day(); // 11.0.60
+	upgrade_2026_11_0_form_field_translate();   // 11.0.26
 
 }
 
@@ -1186,5 +1187,17 @@ function upgrade_2026_11_0_erp_invoice_recurring_day() {
 	}
 
 	install_note('ERP: a repeating invoice started from an invoice dated the 29th, 30th or 31st no longer stays on the 28th, 29th or 30th the first short month cut it to; it goes on to the invoice\'s own day, or the last day of a shorter month. A recurrence whose first date was changed by hand keeps its day: stop it and start it again from the invoice to fix it.');
+
+}
+
+// A switch on each text field of a custom form: switched off, the answers
+// visitors give in that field (icon names, codes, JSON) are never listed for
+// translation nor looked up when a page shows them. Existing fields stay
+// included, the way they behaved before.
+function upgrade_2026_11_0_form_field_translate() {
+
+	install_add_column('form_fields', 'translate_values', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Forms: each text field can now be left out of translation; existing fields stay included.');
 
 }

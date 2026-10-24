@@ -4217,6 +4217,7 @@ function change_field_type($field_type) {
     $('#contact_field_row').removeClass('show');
     $('#required_row').removeClass('show');
     $('#office_use_only_row').removeClass('show');
+    $('#translate_values_row').removeClass('show');
     $('#upload_folder_id_row').removeClass('show');
     $('#wysiwyg_row').removeClass('show');
     $('#rows_row').removeClass('show');
@@ -4236,6 +4237,7 @@ function change_field_type($field_type) {
             $('#contact_field_row').addClass('show');
             $('#required_row').addClass('show');
             $('#office_use_only_row').addClass('show');
+            $('#translate_values_row').addClass('show');
             $('#quiz_question_row').addClass('show');
             break;
 
@@ -4249,6 +4251,7 @@ function change_field_type($field_type) {
             $('#contact_field_row').addClass('show');
             $('#required_row').addClass('show');
             $('#office_use_only_row').addClass('show');
+            $('#translate_values_row').addClass('show');
             $('#wysiwyg_row').addClass('show');
             $('#rows_row').addClass('show');
             break;
