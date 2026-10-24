@@ -181,7 +181,10 @@ class Mysqldump
 
         // This drops MYSQL dependency, only use the constant if it's defined.
         if ("mysql" === $this->dbType) {
-            $pdoSettingsDefault[PDO::MYSQL_ATTR_USE_BUFFERED_QUERY] = false;
+            // PHP 8.4 gives the MySQL attributes their own class, and the
+            // PDO::MYSQL_ATTR_* names are deprecated from 8.5.
+            $buffered = class_exists('Pdo\Mysql', false) ? \Pdo\Mysql::ATTR_USE_BUFFERED_QUERY : PDO::MYSQL_ATTR_USE_BUFFERED_QUERY; // phpcs:ignore PHPCompatibility.Classes.NewClasses.pdo_mysqlFound -- guarded by class_exists()
+            $pdoSettingsDefault[$buffered] = false;
         }
 
         $this->pdoSettings = array_replace_recursive($pdoSettingsDefault, $pdoSettings);
