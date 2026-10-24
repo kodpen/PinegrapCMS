@@ -14,7 +14,7 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `designer`: system styles, tree validation/expansion, node/component render, page/style save, CSS output.
 - Widgets: `widgets_catalog` (catalog), `widgets_cart` (cart), `widgets_express_order` (`_eo_*` + order view), `widgets` (the others).
 - `custom_form` (`pg_cf_*` + form submission), `files` (file name/upload limits), `cron` (scheduled jobs), `tour` (tours; `PG_TOUR_SHELL_KEY` lives here).
-- `output`: `output_header/footer/menu/toolbar`, `pg_page_shell`, licence, asset versioning.
+- `output`: `output_header/footer/menu/toolbar`, `pg_page_shell`, licence, asset versioning. `dashboard`: card styles, backdrop, refresh time, their gate.
 - Sign-in and identity: `mfa` (two-step sign-in), `signin` (social sign-in), `connect` (connected accounts, the site as an OAuth client), `geo` (IP to country), `qr` (QR codes as inline SVG).
 - Store: `payments` (payment drivers), `carrier_api` (carriers' REST APIs), `returns` (customer returns), `price_history`, `product_feeds`, `currency_rates`, `legal_documents` (checkout legal documents).
 - Pages and designer: `meta_tags`, `design_templates_custom`, `design_themes`, `widgets_account`, `widgets_error`, `widgets_language`, `signature`, `page_revisions`, `page_schedule`, `maintenance_mode`, `language_redirect`, `translate` (front-end translation), `ai_crawlers` (robots.txt AI section), `ai_write`, `short_link_redirects`, `not_found_log` (the 404 log, `docs/memory/platform/not-found-log.md`), `office` / `office_edit` (Word/Excel preview and cell edits), `page_cache` (anonymous page cache gate, file cache the router also loads, visitor beacon, and `pg_header_callback_add()`, the one way to register a header callback).

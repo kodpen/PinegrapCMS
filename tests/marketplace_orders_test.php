@@ -169,6 +169,10 @@ function test_marketplace_orders_pass_applies_cancellations_first()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/sync.php');
 	pg_assert_contains('foreach (mp_order_cancellations_first($account, $packages) as $package)', $source,
 		'the pass imports in that order');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_receiver.php');
+	pg_assert_contains('foreach (mp_order_cancellations_first($account, $packages) as $package)', $source,
+		'so does a webhook delivery');
 }
 
 // The marketplace tells its own buyer; this shop does not mail a cancelled

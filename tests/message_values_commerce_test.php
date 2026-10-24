@@ -39,7 +39,7 @@ function test_message_values_commerce_are_escaped()
 		array('import_users.php', '$combined_errors .= \'<p>\' . lang(array(\'string\'=>\'{var:1} email address(es) were invalid. ({var:2})\',\'vars\'=>array($invalid_emails_count,htmlspecialchars($invalid_email_list, ENT_QUOTES | ENT_SUBSTITUTE, \'UTF-8\')))) . \'</p>\';', 1),
 		array('import_users.php', '$combined_errors .= \'<p>\' . lang(array(\'string\'=>\'{var:1} user name(s) already exist. ({var:2})\',\'vars\'=>array($pre_existing_users_count,htmlspecialchars($pre_existing_user_list, ENT_QUOTES | ENT_SUBSTITUTE, \'UTF-8\')))) . \'</p>\';', 1),
 		array('includes/designer_screen.php', 'foreach ($errors as $e) $liveform->add_error(h($e));', 1),
-		array('marketplace_settings.php', '\'vars\'   => array(h($result[\'error\']))', 1),
+		array('marketplace_settings.php', '\'vars\'   => array(h($result[\'error\']))', 3),
 		array('marketplace_settings.php', '$liveform->add_warning(h($result[\'error\']));', 1),
 		array('marketplace_settings.php', '$liveform->add_warning(h($loaded[\'error\']));', 1),
 		array('marketplace_settings.php', '$liveform->add_warning(h($ready[\'error\']));', 1),
