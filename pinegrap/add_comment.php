@@ -35,6 +35,8 @@ $name = $liveform->get_field_value('name');
 $name_type = $liveform->get_field_value('name_type');
 $message = $liveform->get_field_value('message');
 $watcher = $liveform->get_field_value('watcher');
+// The comment this one answers, if any; checked further down, after the page's gates.
+$parent_id_posted = $liveform->get_field_value('parent_id');
 
 // The stars are one to five, or none (0); whatever else was posted is none.
 $rating = (int) $liveform->get_field_value('rating');
@@ -422,6 +424,52 @@ if ($item_type == 'submitted_form') {
     }
 }
 
+// A reply names the comment it answers in parent_id. Asked only now, after
+// the page's own gates, the thread refusals and the record's view check, so
+// a visitor who may not comment here learns nothing about the comments of
+// the thread. The named comment must sit in this same thread and be one the
+// writer can see: published, their own still waiting in this browser
+// session, or any for staff and the record's form editor
+// (includes/fn/comments.php). Anything else goes back to the form with what
+// was typed and is never stored as a comment that answers none. One sentence
+// answers every refusal, so a comment the writer cannot see reads as one that
+// does not exist. parent_id is dropped from the form state: a hidden field
+// prints the session value first, so the form drawn again would carry the
+// refused parent.
+$comment_parent = pg_comment_parent_row($parent_id_posted);
+$comment_parent_check = pg_comment_parent_ok(
+    $parent_id_posted,
+    $comment_parent,
+    $page_id,
+    $item_type,
+    $item_id,
+    array(
+        'staff' => check_edit_access($folder_id),
+        'form_editor' => (
+            ($item_type == 'submitted_form')
+            && USER_LOGGED_IN
+            && isset($submitted_form['form_editor_user_id'])
+            && ((int) $submitted_form['form_editor_user_id'] > 0)
+            && ((int) USER_ID === (int) $submitted_form['form_editor_user_id'])
+        ),
+        'own_ids' => (isset($_SESSION['software']['added_comments']) && is_array($_SESSION['software']['added_comments'])) ? $_SESSION['software']['added_comments'] : array(),
+    )
+);
+
+if (!$comment_parent_check['accept']) {
+    log_activity(lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
+    $liveform->add_error(lang(array('string' => 'Sorry, the {var:1} was not added, because the one it replies to could not be found.', 'vars' => $output_comment_label_lowercase)));
+    $liveform->set_field('parent_id', array());
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    exit();
+}
+
+$parent_id = $comment_parent_check['parent_id'];
+
+if ($parent_id === 0) {
+    $comment_parent = null;
+}
+
 // A review of a product comes from somebody who bought it
 // (includes/fn/reviews.php): signed in, with a bought order holding the
 // product that no review of it names yet. The page's own form says so before
@@ -581,6 +629,19 @@ if (pg_reviews_ready()) {
         '" . (int) $verified_order_id . "'";
 }
 
+// The comment this one answers, once the column is there (11.0.31). Before
+// that no reply gets this far: pg_comment_parent_row() finds no parent, so
+// the post was refused above.
+$sql_parent_column = '';
+$sql_parent_value = '';
+
+if (pg_comment_replies_ready()) {
+    $sql_parent_column = ",
+        parent_id";
+    $sql_parent_value = ",
+        '" . (int) $parent_id . "'";
+}
+
 // add comment to database
 $query = 
     "INSERT INTO comments (
@@ -597,7 +658,7 @@ $query =
         created_user_id,
         created_timestamp,
         last_modified_user_id,
-        last_modified_timestamp$sql_review_column)
+        last_modified_timestamp$sql_review_column$sql_parent_column)
      VALUES (
         '" . escape($page_id) . "',
         '" . escape($item_id) . "',
@@ -612,7 +673,7 @@ $query =
         '" . escape($user_id) . "',
         UNIX_TIMESTAMP(),
         '" . escape($user_id) . "',
-        UNIX_TIMESTAMP()$sql_review_value)";
+        UNIX_TIMESTAMP()$sql_review_value$sql_parent_value)";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
 // get new comment's id
@@ -822,6 +883,7 @@ if (count($administrator_email_addresses) > 0) {
             "\n" .
             lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
             "\n" .
+            pg_comment_parent_mail_line($comment_parent) .
             $comment_label . ': ' . $message . "\n" .
             $attachment_line;
             
@@ -889,6 +951,7 @@ if (count($administrator_email_addresses) > 0) {
             "\n" .
             lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
             "\n" .
+            pg_comment_parent_mail_line($comment_parent) .
             $comment_label . ': ' . $message . "\n" .
             $attachment_line .
             "\n" .

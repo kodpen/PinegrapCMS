@@ -9,7 +9,7 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 
 ## What is `parent_id`?
 - `INT UNSIGNED NOT NULL DEFAULT 0`, added by `upgrade_2026_11_0_comment_replies()` (2026.11.0, step 11.0.31): the comment this one answers, `0` for a top-level comment.
-- Every comment written before the step reads 0 and stays top-level; no data is migrated. The classic comments block, `add_comment.php`, the API and the moderation screens do not read or write it yet; replies come with the designable comments widget.
+- Every comment written before the step reads 0 and stays top-level; no data is migrated. `add_comment.php` writes it after `pg_comment_parent_ok()`; the API gives it and filters by it ([[comment-replies]]). The classic comments block and the moderation screens do not read it.
 
 ## Which indexes were added with it, and why?
 - `idx_parent (parent_id)`: the replies to one comment.
@@ -23,9 +23,9 @@ description: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14,
 - `comments` is on the 2026.11.0 row of `install_heavy_tables()` for the preflight warning (`release/migration-long-steps.md`).
 
 ## Which code copies or exports whole rows?
-- `duplicate_page_f.php` copies a page's comments with a column list: `parent_id` is not copied, so a copied reply becomes top-level (its parent id would name the original page's comment). Remap it when replies are written.
+- `duplicate_page_f.php` copies a page's comments with a column list: `parent_id` is not remapped, so a copied reply reads as top-level.
 - The privacy export reads `SELECT *` (`includes/fn/privacy_export.php`): the column appears there as a number. Backups dump every column.
-- `add_comment.php`, `submit_order.php` (the comment a product adds when it is ordered) and the copy above insert with column lists, so new rows get 0.
+- `submit_order.php` (the comment a product adds when it is ordered) and the copy above insert without it, so their rows get 0; `add_comment.php` names it once the column is there.
 - The starter dumps under `data/backups/` stay as they are (`workflow/decisions-made-data.md`); the installer's upgrade adds the column.
 
 ## How is the step checked?
