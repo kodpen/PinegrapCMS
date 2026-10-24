@@ -19,7 +19,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 ## What happens with unmatched or code-matched lines?
 - One unmatched line makes the WHOLE order rejected: an order missing a line shows an incomplete shipment and decrements stock from the wrong product.
 - Match order (`mp_order_match_product()`): mapping row by `remote_code = code`; for a barcode-keyed provider (Trendyol) `product_barcodes.barcode = code`; `products.name = sku` when the line has one (Trendyol `stockCode`); `products.name = code` last (n11).
-- A product matched without a mapping is mapped at that moment under `code`; otherwise its stock change would never enter the queue and the product drifts from its first sale. `INSERT IGNORE`: a product already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key.
+- A product matched without a mapping is mapped then under `code`; otherwise its stock change would never enter the queue and the product drifts from its first sale. `INSERT IGNORE`: a product already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key (PR #1452).
 
 ## How is a refused package tried again?
 - A `failed` row with `order_id` 0 (refused before any order was written) is re-claimed when the feed hands the package back: one `UPDATE ... SET status='importing' WHERE status='failed' AND order_id=0`; only the pass that changed the row writes (`mp_import_claimed()`).
