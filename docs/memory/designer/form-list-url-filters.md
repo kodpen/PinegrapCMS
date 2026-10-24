@@ -26,7 +26,7 @@ description: form_list_view filters valued from the page address (author, tag ar
 - Canonical: path + params sorted, RFC 3986 (`pg_sw_url_filter_query()`) + `page_number` > 1 (list applied a value, page as asked, unclamped, not searching); else bare. `query` dropped; `canonical_url` stays bare.
 - Title and og:title: `filter_title` (`{value}` replaced; text without it follows the value; empty = value alone), via `pg_tr_text(…, 'seo')`, only when every value was "is equal to" and a record holds it byte for byte: `=` ignores case/accents under `utf8mb4_unicode_ci`, so list and feed run the `exact` twin (`CAST(… AS BINARY)`); no row = `inexact`. Dates kept stored (`31.12.2024` → `2024-12-31`).
 - Robots: `noindex, follow` when nothing matched or inexact (`pg_sw_url_filter_noindex()`); status 200.
-- Autodiscovery, feed (`/tag?tag=x&rss=true`) and channel link keep the params; channel title as page title.
+- Autodiscovery, feed (`/tag?tag=x&rss=true`), channel link keep the params; channel title = page title.
 - Search-sections JSON-LD title: `pg_search_sections_jsonld_json()` hex-escapes `< > &`.
 - robots.txt: the page's noindex switch writes `Disallow: /<page>?` (every archive address).
 
@@ -40,6 +40,6 @@ description: form_list_view filters valued from the page address (author, tag ar
 - A filter on a hidden field is a yes/no oracle for it.
 
 ## What is deferred?
-- Record links (`_bindParams.href`); per-filter tokens; per-value description/JSON-LD/sitemap; sample preview; "current record" value.
+- Per-filter tokens; per-value description/JSON-LD/sitemap; sample preview; "current record" value. Record links: [[record-value-page-links]].
 
 Tests: `tests/designer_form_list_url_filter_test.php`.

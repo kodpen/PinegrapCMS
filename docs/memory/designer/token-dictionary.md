@@ -28,3 +28,4 @@ The boundary is a rule, not an accident.
 ## What does tools/check_bindings.php check?
 - Compares both ends: is every `__token` the designer offers produced by a renderer, and is every produced token in a dropdown. The second matters: a token missing from the list must be typed by hand under "Custom…", and invented token spellings entered the repo that way.
 - Exempt shapes: `*_inner_html` (section-binding pass writes the tree itself) and `__link_label` (renderer expands it per node to `__link_label_N`).
+- `__page_link` needs no exemption: a sentinel expanded per node to `__page_link_<n>` by concatenation, never in a palette or a literal map key ([[record-value-page-links]]).
