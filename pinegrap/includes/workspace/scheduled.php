@@ -2979,6 +2979,12 @@ function ws_scheduled_due()
         return true;
     }
 
+    // A box of a flow's run that is ready, waits past its next look or
+    // stopped half way (flow_runs.php).
+    if (function_exists('ws_flow_due') && ws_flow_due()) {
+        return true;
+    }
+
     if (!ws_scheduled_ready()) {
         return false;
     }
@@ -2999,12 +3005,16 @@ function ws_scheduled_due()
  * Runs the scheduled actions whose time has come, and then the ones other
  * actions started, a few at a time. The starts are read after the timed
  * runs, so a chain whose next step waits for nothing goes on in the same
- * run.
+ * run. The runs of the flows are carried on first (flow_runs.php), within
+ * the time the caller gives them.
  *
  * @param int $limit
+ * @param int $flow_budget seconds after which no box of a flow starts: 0 for
+ *                         a screen's (WS_FLOW_BUDGET_TICK), WS_FLOW_BUDGET_JOB
+ *                         in a job
  * @return array ran, skipped, failed
  */
-function ws_scheduled_run($limit = WS_SCHEDULED_BATCH)
+function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
 {
     $result = array('ran' => 0, 'skipped' => 0, 'failed' => 0);
 
@@ -3023,6 +3033,12 @@ function ws_scheduled_run($limit = WS_SCHEDULED_BATCH)
 
     if (function_exists('ws_acks_run')) {
         ws_acks_run();
+    }
+
+    // The boxes of the flows' runs that are due, the ones the events above
+    // woke among them (flow_runs.php).
+    if (function_exists('ws_flow_advance')) {
+        ws_flow_advance(((int) $flow_budget > 0) ? (int) $flow_budget : WS_FLOW_BUDGET_TICK);
     }
 
     if (!ws_scheduled_ready()) {
