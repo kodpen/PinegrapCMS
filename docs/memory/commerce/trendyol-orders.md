@@ -27,7 +27,7 @@ description: Trendyol order packages: v2/orders pull, 14-day window and page cap
 - `code` = barcode, `sku` = `stockCode`: mapping, barcode, then sku as the product name (`marketplace-order-import.md`).
 
 ## What is not done yet?
-- Own-carrier shipping (`alternative-delivery`, 4c); `Invoiced` push and invoice link (step 5). Tax number/office are not stored (company only, on `commercial`). Packages also arrive by webhook: `marketplace-webhook-receiver.md`.
+- `Invoiced` push and invoice link (step 5). Tax number/office are not stored (company only, on `commercial`). Packages also arrive by webhook: `marketplace-webhook-receiver.md`; own-carrier shipping: `trendyol-own-carrier-shipping.md`.
 
 ## What is unverified?
 - No live call yet; fixtures follow the docs (`tests/marketplace_trendyol_orders_test.php`).
