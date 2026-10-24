@@ -18,8 +18,13 @@ description: The order screen's Paraşüt Create Invoice and E-Shipment on one o
   - The unsure mark `?` (erp-parasut-legacy-invoice.md) or a read that fails or does not say: refused, nothing guessed. Create Invoice settles the mark first.
 - No invoice on the order: E-Shipment goes as before.
 
-## Why is the link made from the invoice side?
+## Which record carries the link?
 - A shipment document cannot be linked afterwards: `PUT shipment_documents/{id}` with `relationships.invoices` answers 200 and links nothing. So the record written second names the first: the invoice in POST `sales_invoices`, the document in POST `shipment_documents`.
+
+## What is still open?
+- E-Shipment writes a shipment document inside Paraşüt only; nothing converts it to an e-waybill, so an invoice without shipment refers to a waybill GİB has not seen.
+- The ERP driver's sales invoice keeps Paraşüt's default `shipment_included` true, so an order with a legacy E-Shipment that is later invoiced through the ERP is still counted out twice.
+- An invoice deleted on Paraşüt's screen: E-Shipment's read answers 404 and the order stays refused; only clearing `orders.parasut_invoice_id` frees it.
 
 ## How was it checked?
 - Demo company, 2026-10-24, branch code on dev orders: E-Shipment then Create Invoice gave an invoice with `shipment_included` false, linked both ways, stock moved once; Create Invoice then E-Shipment was refused before anything was written; an invoice without shipment then E-Shipment gave a linked document. All records deleted afterwards. The e-document step answers 422 there (no e-Archive integration), so what GİB gets for an invoice without shipment was not seen.
