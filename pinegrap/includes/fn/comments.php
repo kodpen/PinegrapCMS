@@ -4,8 +4,9 @@
  *
  * Comment rules shared by the comment handlers: which thread a comment posted
  * to a page may join, which form record a stored comment is about, the
- * record's comment counters moderation keeps up to date, and the name a
- * signed-in member's comment is stored under.
+ * record's comment counters moderation keeps up to date, the name a
+ * signed-in member's comment is stored under, and which comment a reply may
+ * answer.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -604,4 +605,263 @@ function pg_comment_member_contact($user_id)
     }
 
     return $contact;
+}
+
+// Replies. comments.parent_id (2026.11.0, step 11.0.31) is the comment a
+// comment answers, 0 for one that answers none. A post may name only a
+// comment of its own thread (page_id, item_type, item_id) that the writer can
+// see: a published one, one of their own still waiting in this browser
+// session, or any for staff and the record's form editor. Anything else is
+// refused, never stored as 0, so a reply cannot quietly become a comment of
+// its own. Deleting a comment leaves its replies; they then read as comments
+// of their own. Copying a page gives each copied reply the copy of the
+// comment it answers (pg_comment_copy_parent_id()). The classic comments
+// block does not read the column, so a reply shows there as a later comment.
+
+/**
+ * Whether comments.parent_id is there (2026.11.0, 11.0.31). False before the
+ * step has run, since files land before the upgrade, and without a
+ * connection.
+ *
+ * @return bool
+ */
+function pg_comment_replies_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('comments', 'parent_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The comment id a post names as the one it answers. Pure.
+ *
+ * 0 when it names none (nothing posted, an empty value, 0); the id for a
+ * whole positive number of up to 10 digits, spaces around it allowed; -1 for
+ * anything else (an array, a bool, a sign, a fraction, letters), which the
+ * caller refuses rather than reading as none.
+ *
+ * @param mixed $value the posted parent_id
+ * @return int
+ */
+function pg_comment_parent_posted_id($value)
+{
+    if ($value === null) {
+        return 0;
+    }
+
+    if (!is_scalar($value) || is_bool($value)) {
+        return -1;
+    }
+
+    $text = trim((string) $value);
+
+    if ($text === '') {
+        return 0;
+    }
+
+    if (preg_match('/^[0-9]{1,10}$/', $text) !== 1) {
+        return -1;
+    }
+
+    return (int) $text;
+}
+
+/**
+ * Whether a post to the thread ($page_id, $item_type, $item_id) may name
+ * $posted as the comment it answers. Pure: the caller reads the parent
+ * (pg_comment_parent_row()) and works out the viewer.
+ *
+ * Decided in this order:
+ * - none posted (pg_comment_parent_posted_id() is 0): accepted as a comment
+ *   that answers none;
+ * - a malformed value: refusal 'value';
+ * - no such comment ($parent is not that comment's row): refusal 'missing';
+ * - a comment of another thread (a posted item type that is not a value
+ *   reads as '', an item id as 0): refusal 'thread';
+ * - a comment the writer cannot see: refusal 'hidden'. Visible are a
+ *   published comment, one of the writer's own of this browser session
+ *   ($viewer['own_ids']), and any comment for staff ($viewer['staff']) and
+ *   for the record's form editor ($viewer['form_editor']). A scheduled
+ *   comment is not published yet. A $viewer that is not an array is nobody.
+ * The thread is checked before visibility.
+ *
+ * add_comment.php answers every refusal with the same sentence, so a comment
+ * the writer cannot see reads as one that does not exist.
+ *
+ * @param mixed $posted    the posted parent_id
+ * @param mixed $parent    that comment's row (id, page_id, item_type, item_id,
+ *                         published), null when there is none
+ * @param mixed $page_id   the thread the post joins
+ * @param mixed $item_type
+ * @param mixed $item_id
+ * @param mixed $viewer    array('staff' => bool, 'form_editor' => bool, 'own_ids' => int[])
+ * @return array 'accept' (bool), 'refusal' ('', 'value', 'missing', 'thread'
+ *               or 'hidden') and 'parent_id' (the accepted parent, else 0)
+ */
+function pg_comment_parent_ok($posted, $parent, $page_id, $item_type, $item_id, $viewer)
+{
+    $out = array('accept' => false, 'refusal' => '', 'parent_id' => 0);
+
+    $id = pg_comment_parent_posted_id($posted);
+
+    if ($id === 0) {
+        $out['accept'] = true;
+        return $out;
+    }
+
+    if ($id < 0) {
+        $out['refusal'] = 'value';
+        return $out;
+    }
+
+    if (!is_array($parent) || !isset($parent['id']) || !is_scalar($parent['id']) || ((int) $parent['id'] !== $id)) {
+        $out['refusal'] = 'missing';
+        return $out;
+    }
+
+    $parent_page = (isset($parent['page_id']) && is_scalar($parent['page_id'])) ? (int) $parent['page_id'] : 0;
+    $parent_type = (isset($parent['item_type']) && is_scalar($parent['item_type'])) ? (string) $parent['item_type'] : '';
+    $parent_item = (isset($parent['item_id']) && is_scalar($parent['item_id'])) ? (int) $parent['item_id'] : 0;
+
+    if (
+        ($parent_page !== (is_scalar($page_id) ? (int) $page_id : 0))
+        || ($parent_type !== (is_scalar($item_type) ? (string) $item_type : ''))
+        || ($parent_item !== (is_scalar($item_id) ? (int) $item_id : 0))
+    ) {
+        $out['refusal'] = 'thread';
+        return $out;
+    }
+
+    $viewer = is_array($viewer) ? $viewer : array();
+    $own_ids = array();
+
+    if (isset($viewer['own_ids']) && is_array($viewer['own_ids'])) {
+        foreach ($viewer['own_ids'] as $own_id) {
+            if (is_scalar($own_id) && ((int) $own_id > 0)) {
+                $own_ids[] = (int) $own_id;
+            }
+        }
+    }
+
+    $published = isset($parent['published']) && is_scalar($parent['published']) && ((int) $parent['published'] === 1);
+
+    if (!$published && !in_array($id, $own_ids, true) && empty($viewer['staff']) && empty($viewer['form_editor'])) {
+        $out['refusal'] = 'hidden';
+        return $out;
+    }
+
+    $out['accept'] = true;
+    $out['parent_id'] = $id;
+
+    return $out;
+}
+
+/**
+ * The comment a post names as the one it answers: its id, page_id,
+ * item_type, item_id, published and name, or null when the value is not an
+ * id, there is no such comment, or comments.parent_id is not there yet.
+ * Before 11.0.31 a reply is therefore refused as 'missing' rather than
+ * stored as a comment of its own. A failed query ends the request with an
+ * error page (db_item()), as add_comment.php's own queries do.
+ *
+ * @param mixed $parent_id the posted parent_id
+ * @return array|null
+ */
+function pg_comment_parent_row($parent_id)
+{
+    $id = pg_comment_parent_posted_id($parent_id);
+
+    if (($id <= 0) || !pg_comment_replies_ready()) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT
+            id,
+            page_id,
+            item_type,
+            item_id,
+            published,
+            name
+        FROM comments
+        WHERE id = '" . $id . "'
+        LIMIT 1");
+
+    return (is_array($row) && !empty($row['id'])) ? $row : null;
+}
+
+/**
+ * The comment a ?reply_to= address asks to answer, when the visitor may
+ * answer it in this thread: its row (pg_comment_parent_row()), else null (no
+ * value, not an id, no such comment, another thread, or one the visitor
+ * cannot see: pg_comment_parent_ok()). A comment form asks it before it
+ * prefills anything from ?reply_to=, and again for a parent_id kept in the
+ * form state after a refused post, so the name or text of a comment the
+ * visitor cannot see never reaches the form.
+ *
+ * @param mixed $value     ?reply_to=, or the parent_id kept in the form state
+ * @param mixed $page_id   the thread the form posts to
+ * @param mixed $item_type
+ * @param mixed $item_id
+ * @param mixed $viewer    as pg_comment_parent_ok() takes it
+ * @return array|null
+ */
+function pg_comment_reply_to($value, $page_id, $item_type, $item_id, $viewer)
+{
+    if (pg_comment_parent_posted_id($value) <= 0) {
+        return null;
+    }
+
+    $row = pg_comment_parent_row($value);
+    $check = pg_comment_parent_ok($value, $row, $page_id, $item_type, $item_id, $viewer);
+
+    return ($check['accept'] && ($check['parent_id'] > 0)) ? $row : null;
+}
+
+/**
+ * The line of the staff e-mail about a new comment that names the comment it
+ * answers, "In reply to: <name> (#<id>)" and a blank line, or '' for a
+ * comment that answers none. Plain text: the stored name has its line breaks
+ * turned into spaces, so it cannot add lines of its own to the e-mail.
+ *
+ * @param mixed $parent the parent's row (pg_comment_parent_row()), or null
+ * @return string
+ */
+function pg_comment_parent_mail_line($parent)
+{
+    if (!is_array($parent) || !isset($parent['id']) || !is_scalar($parent['id']) || ((int) $parent['id'] <= 0)) {
+        return '';
+    }
+
+    $name = (isset($parent['name']) && is_scalar($parent['name'])) ? (string) $parent['name'] : '';
+    $name = str_replace(array("\r", "\n"), ' ', $name);
+
+    return lang('In reply to') . ': ' . $name . ' (#' . (int) $parent['id'] . ')' . "\n\n";
+}
+
+/**
+ * The parent_id a reply gets when its page is copied: the new id of the copy
+ * of the comment it answers, or 0 when it answers none or that comment was
+ * not copied (deleted, so the reply already reads as a comment of its own).
+ * Pure. duplicate_page_f.php copies a page's comments oldest first and keeps
+ * old id => new id in $copied; a reply always has a higher id than the
+ * comment it answers, which existed when the reply was stored.
+ *
+ * @param mixed $parent_id the original reply's parent_id
+ * @param mixed $copied    array(original comment id => id of its copy)
+ * @return int
+ */
+function pg_comment_copy_parent_id($parent_id, $copied)
+{
+    $id = (is_scalar($parent_id) && !is_bool($parent_id)) ? (int) $parent_id : 0;
+
+    if (($id <= 0) || !is_array($copied) || !isset($copied[$id]) || !is_scalar($copied[$id])) {
+        return 0;
+    }
+
+    return max(0, (int) $copied[$id]);
 }

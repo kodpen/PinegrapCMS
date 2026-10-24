@@ -23,6 +23,12 @@
 // up to date for the form lists. This is the same on a form item view page
 // and on a page built in the visual designer that shows the record: the
 // comment's own item decides, not the page type (includes/fn/comments.php).
+//
+// A reply names the comment it answers in parent_id: null for a comment that
+// answers none, and for a reply whose comment was removed, which then reads
+// as a comment of its own. Removing a comment never removes its replies. The
+// list can be narrowed to the comments that answer none, or to the replies
+// to one comment.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -30,16 +36,56 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 function api_comment_select() {
 
+	// comments.parent_id arrives with an upgrade (2026.11.0, 11.0.31), so it
+	// is named only when it is there, as api_page_select() does: selecting a
+	// column that does not exist is a failed query. The parent is joined so a
+	// reply whose comment was removed has no row there and reads as a
+	// comment that answers none.
+	$replies = pg_comment_replies_ready();
+
 	return "SELECT comments.id, comments.page_id, comments.item_id, comments.item_type, comments.name,
 			comments.message, comments.rating, comments.published, comments.publish_date_and_time,
 			comments.publish_cancel, comments.featured, comments.file_id, comments.created_user_id,
 			comments.created_timestamp, comments.last_modified_timestamp,
+			" . ($replies ? 'COALESCE(parent_comment.id, 0) AS parent_id,' : '0 AS parent_id,') . "
 			page.page_name, page.page_type, page.comments_submitter_email_page_id,
 			page.comments_watcher_email_page_id,
 			files.name AS file_name
 		FROM comments
 		LEFT JOIN page ON page.page_id = comments.page_id
-		LEFT JOIN files ON files.id = comments.file_id";
+		LEFT JOIN files ON files.id = comments.file_id"
+		. ($replies ? "
+		LEFT JOIN comments AS parent_comment ON parent_comment.id = comments.parent_id" : '');
+
+}
+
+// The comment a row answers, or null when it answers none (the select gives
+// 0 for that, and for a reply whose comment was removed).
+function api_comment_parent_value($row) {
+
+	$id = (isset($row['parent_id']) && is_scalar($row['parent_id'])) ? (int)$row['parent_id'] : 0;
+
+	return ($id > 0) ? $id : null;
+
+}
+
+// The condition of the list's parent_id filter: 0 asks for the comments that
+// answer none (a reply whose comment was removed counts as one), an id for
+// the replies to that comment. Before the column exists every comment
+// answers none, so 0 needs no condition and an id matches nothing ('0').
+function api_comment_parent_filter($parent_id, $ready) {
+
+	$id = (int)$parent_id;
+
+	if (!$ready) {
+
+		return ($id > 0) ? '0' : '';
+
+	}
+
+	return ($id > 0)
+		? "((comments.parent_id = '" . $id . "') AND (parent_comment.id IS NOT NULL))"
+		: '(parent_comment.id IS NULL)';
 
 }
 
@@ -86,6 +132,7 @@ function api_comment_present($row) {
 		'page_name'       => isset($row['page_name']) ? (string)$row['page_name'] : null,
 		'item_type'       => ((string)$row['item_type'] !== '') ? (string)$row['item_type'] : null,
 		'item_id'         => ((int)$row['item_id'] > 0) ? (int)$row['item_id'] : null,
+		'parent_id'       => api_comment_parent_value($row),
 		'name'            => (string)$row['name'],
 		'message'         => (string)$row['message'],
 		'rating'          => ((int)$row['rating'] > 0) ? (int)$row['rating'] : null,
@@ -111,6 +158,7 @@ function api_comment_schema() {
 		'page_name'       => 'string?',
 		'item_type'       => 'string?',
 		'item_id'         => 'integer?',
+		'parent_id'       => 'integer?',
 		'name'            => 'string',
 		'message'         => 'string',
 		'rating'          => 'integer?',
@@ -162,6 +210,18 @@ function api_comments_list($params) {
 	if (isset($params['item_id'])) {
 
 		$where[] = "comments.item_id = '" . (int)$params['item_id'] . "'";
+
+	}
+
+	if (isset($params['parent_id'])) {
+
+		$filter = api_comment_parent_filter($params['parent_id'], pg_comment_replies_ready());
+
+		if ($filter !== '') {
+
+			$where[] = $filter;
+
+		}
 
 	}
 
