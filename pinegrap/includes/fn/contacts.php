@@ -799,7 +799,7 @@ function pg_contact_photo_store($user_id, $data)
     // Drawn again where the server can: square, small, and nothing but the
     // pixels.
     if (function_exists('imagecreatefromstring') && function_exists('imagejpeg')) {
-        $source = @imagecreatefromstring($binary);
+        $source = pg_image_from_string($binary);
 
         if ($source !== false) {
             $width = imagesx($source);

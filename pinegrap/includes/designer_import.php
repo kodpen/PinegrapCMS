@@ -230,7 +230,7 @@ function pg_designer_import_single_html($html, $file_name, $user, $opts = array(
     $ctx->folders  = array();
     $ctx->warnings = array();
     $ctx->root_id  = 0;
-    $ctx->project  = pathinfo($file_name, PATHINFO_FILENAME);
+    $ctx->project  = pg_file_name_stem($file_name);
     $ctx->keep_framework = !empty($opts['keep_framework']);
     $taken = isset($opts['skip_names']) && is_array($opts['skip_names']) ? $opts['skip_names'] : array();
     $seen  = array();
@@ -476,7 +476,7 @@ function pg_designer_import_html($html, $html_path, $ctx)
     $base_dir = str_replace('\\', '/', dirname($html_path));
     if ($base_dir === '.' || $base_dir === '/') $base_dir = '';
     $ctx->base_dir = $base_dir;
-    $ctx->page_slug = pg_di_slug(pathinfo($html_path, PATHINFO_FILENAME));
+    $ctx->page_slug = pg_di_slug(pg_file_name_stem($html_path));
 
     // Strip Pinegrap's own dynamic-code markers left by a previous export.
     $html = preg_replace('/<!--\s*BEGIN\s+DYNAMIC\s+CODE.*?END\s+DYNAMIC\s+CODE\s*-->/is', '', $html);
@@ -1293,7 +1293,7 @@ function pg_di_rewrite_ref($ref, $ctx)
                 if (isset($ctx->page_names[$alt])) $name = $ctx->page_names[$alt];
             }
         }
-        if ($name === null) $name = pg_di_slug(pathinfo($clean, PATHINFO_FILENAME));
+        if ($name === null) $name = pg_di_slug(pg_file_name_stem($clean));
         return OUTPUT_PATH . $name . $frag;
     }
     return $ref;
@@ -1521,7 +1521,7 @@ function pg_di_slug($s)
 // database).
 function pg_di_page_name($path, $taken, &$seen)
 {
-    $base = pg_di_slug(pathinfo($path, PATHINFO_FILENAME));
+    $base = pg_di_slug(pg_file_name_stem($path));
     $dir  = str_replace('\\', '/', dirname($path));
     $cands = array($base);
     if ($dir !== '.' && $dir !== '') {

@@ -550,20 +550,77 @@ const StyleDesigner = (function () {
 
     // ── Toggleable open state (modal / offcanvas / collapse / dropdown-menu) ──
     //
-    // Clicking a data-bs-toggle trigger on the canvas opens its target, and
-    // _syncToggleableShowStateFromDom() copies the live `.show` into
-    // props.cssClass so a re-render keeps it. That is canvas state, not
-    // design: saved as it is, a modal would open by itself on the next load
-    // and an accordion would publish whichever item was last clicked open.
+    // Modal, offcanvas and dropdown-menu have no authored open state: one
+    // opened on the canvas (by its toggle, the context bar, the Options
+    // panel, or as the palette adds it) is open on the canvas only and never
+    // in the tree. renderCanvas() carries it across a rebuild
+    // (_sdCanvasOpenCapture() / _sdCanvasOpenRestore()) and takes a `show`
+    // the tree still holds off the node, so the preview, the code view and
+    // the save see the menu closed whatever the canvas shows. In the tree it
+    // would outlive a close on the canvas (Escape and the toggle change the
+    // DOM only), and the preview would open with the menu shown.
     //
-    // A collapse's authored state lives on its toggle instead: a toggle
-    // written open (aria-expanded="true", no `collapsed` class, which is how
-    // the accordion builders write the first item) means the panel is open,
-    // so `show` is put back or kept; a toggle written closed, or no toggle in
-    // the same tree, means closed. Modal, offcanvas and dropdown-menu have
-    // no authored open state and always lose `show`. The Expanded and
-    // Collapsed switches of the Options panel write the panel and its
-    // toggles together (_sdSetCollapseOpen()).
+    // A collapse is the exception. Clicking its toggle on the canvas opens
+    // it, and _syncToggleableShowStateFromDom() copies the live `.show` into
+    // props.cssClass so a re-render keeps it. That is canvas state too, so
+    // the save sets it back: a collapse's authored state lives on its toggle,
+    // a toggle written open (aria-expanded="true", no `collapsed` class,
+    // which is how the accordion builders write the first item) means the
+    // panel is open, so `show` is put back or kept; a toggle written closed,
+    // or no toggle in the same tree, means closed. Modal, offcanvas and
+    // dropdown-menu always lose `show` there as well (a tree saved before).
+    // The Expanded and Collapsed switches of the Options panel write the
+    // panel and its toggles together (_sdSetCollapseOpen()).
+
+    // True for a class list of a modal, an offcanvas or a dropdown menu: the
+    // toggleables whose `show` is canvas state only.
+    function _sdShowIsCanvasOnly(cssClass) {
+        var cls = String(cssClass || '').split(/\s+/);
+        return cls.indexOf('modal') !== -1 || cls.indexOf('offcanvas') !== -1 || cls.indexOf('dropdown-menu') !== -1;
+    }
+
+    // Each modal / offcanvas / dropdown-menu element of a canvas document
+    // that a tree node draws: fn(el, key, wrap), the key naming the node
+    // across a rebuild ("<widget sid>:<node id>"). Elements of server HTML
+    // and custom markup have no wrapper and are left out.
+    function _sdCanvasOpenEach(doc, fn) {
+        var els = doc.querySelectorAll('.modal, .offcanvas, .dropdown-menu');
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            var wrap = el.hasAttribute('data-sd-self') ? el : el.parentElement;
+            if (!wrap || !wrap.hasAttribute('data-sd-id')) continue;
+            fn(el, (wrap.getAttribute('data-sw-sid') || '') + ':' + wrap.getAttribute('data-sd-id'), wrap);
+        }
+    }
+
+    // The keys of the canvas-only toggleables open in `doc`: { key: true }.
+    function _sdCanvasOpenCapture(doc) {
+        var open = {};
+        if (doc) _sdCanvasOpenEach(doc, function (el, key) { if (el.classList.contains('show')) open[key] = true; });
+        return open;
+    }
+
+    // After a rebuild: the elements open before (`open`, from
+    // _sdCanvasOpenCapture()) open again, and a node that still carries
+    // `show` (its element is drawn open) loses it while its element keeps
+    // it. nodeOf(id, wrap) finds the node of a wrapper (_sdFindNodeForEl());
+    // it is asked for open elements only, a closed one draws a node without
+    // `show`.
+    function _sdCanvasOpenRestore(doc, open, nodeOf) {
+        if (!doc) return;
+        _sdCanvasOpenEach(doc, function (el, key, wrap) {
+            if (open && open[key]) el.classList.add('show');
+            if (!el.classList.contains('show')) return;
+            // A floating menu's Popper mark puts it below its own wrapper on
+            // the canvas (see ctxBarToggle()).
+            if (el.classList.contains('dropdown-menu')) el.removeAttribute('data-bs-popper');
+            var node = nodeOf(wrap.getAttribute('data-sd-id'), wrap);
+            var p = node && node.props;
+            if (p && _sdShowIsCanvasOnly(p.cssClass) && String(p.cssClass).split(/\s+/).indexOf('show') !== -1) {
+                p.cssClass = _sdClassToggled(p.cssClass, 'show', false);
+            }
+        });
+    }
 
     // Element id of a node: props.id, or a legacy `_attrs` id.
     function _sdNodeElementId(node) {
@@ -638,7 +695,7 @@ const StyleDesigner = (function () {
             if (p && typeof p.cssClass === 'string' && p.cssClass.length) {
                 var cls = p.cssClass.split(/\s+/).filter(Boolean);
                 var collapse = cls.indexOf('collapse') !== -1;
-                var other = cls.indexOf('modal') !== -1 || cls.indexOf('offcanvas') !== -1 || cls.indexOf('dropdown-menu') !== -1;
+                var other = _sdShowIsCanvasOnly(p.cssClass);
                 if (collapse || other) {
                     var id = (collapse && !other) ? _sdNodeElementId(node) : '';
                     var keep = id !== '' && open['#' + id] === true;
@@ -1494,6 +1551,10 @@ const StyleDesigner = (function () {
      *                       left out of translation (icon names, codes,
      *                       JSON); absent, the field row keeps its own flag
      *                       (form_fields.translate_values, new fields on)
+     *   url_param           the page-address parameter the field starts with
+     *                       (?topic=…), on the field's first control
+     *                       (_cfFieldLeadOf); read when the page is drawn
+     *                       (pg_cf_url_prefill_values), never stored in a row
      *
      * The server derives the field rows from the widget tree on every save
      * (pg_cf_reconcile_page_form); the editor sends nothing but the
@@ -1832,6 +1893,7 @@ const StyleDesigner = (function () {
                     required: _cfHasAttr(c.node, 'required'),
                     rss_field: rss,
                     contact_field: String(rec.contact_field || ''),
+                    url_param: String(rec.url_param || ''),
                     office_use_only: !!rec.office_use_only,
                     rich: _cfRichOn(c.node) === true,
                     id: _cfRowId(c.node)
@@ -1920,6 +1982,38 @@ const StyleDesigner = (function () {
             if (list[j].fieldset === me.fieldset && list[j].itype === me.itype) return list[j].node;
         }
         return node;
+    }
+
+    // The control the server reads a field's `_cf` from: the first control
+    // with the field's name in document order (_pg_cf_controls() keeps the
+    // first). Unlike _cfLeadOf(), a same-named group outside a <fieldset>
+    // gives its first box, not the clicked one.
+    function _cfFieldLeadOf(node, root) {
+        var key = String(_cfControlName(node) || '').toLowerCase();
+        if (!key) return node;
+        var list = _cfControls(root);
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].name && list[i].name.toLowerCase() === key) return list[i].node;
+        }
+        return node;
+    }
+
+    // Whether a field can start from the page address. Twin of the skips in
+    // pg_cf_url_prefill_values(): never a file upload or a password, and
+    // never a lone check box (fewer than two distinct values among its boxes,
+    // counted as _pg_cf_controls() counts options).
+    function _cfUrlParamApplies(lead, members) {
+        var type = _cfControlType(lead);
+        if (type === 'file upload' || _cfInputType(lead) === 'password') return false;
+        if (type === 'check box') {
+            var values = [];
+            (members || [lead]).forEach(function (n) {
+                var v = _cfNodeAttr(n, 'value');
+                if (v !== null && v !== '' && values.indexOf(v) === -1) values.push(v);
+            });
+            return values.length >= 2;
+        }
+        return true;
     }
 
     // Every control that shares a name with `node` (a group), or just the node.
@@ -2272,6 +2366,38 @@ const StyleDesigner = (function () {
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
 
+        // A field can start from a named parameter of the page address
+        // (?topic=…), read when the page is drawn (pg_cf_url_prefill_values()).
+        // The setting sits on the field's first control, the one the server
+        // reads, whichever box of a group is selected.
+        var urlLead = _cfFieldLeadOf(node, w.tree);
+        if (_cfUrlParamApplies(urlLead, _cfGroupOf(urlLead, w.tree))) {
+            var urlRec = (urlLead.props && urlLead.props._cf && typeof urlLead.props._cf === 'object' && !Array.isArray(urlLead.props._cf))
+                ? urlLead.props._cf : {};
+            var urlParam  = String(urlRec.url_param || '');
+            var urlOffice = !!urlRec.office_use_only;
+            var urlHints;
+            if (urlOffice) {
+                urlHints = _cfHint(esc(_sdT('A field hidden from the visitor is never filled from the page address.')));
+            } else {
+                urlHints = _cfHint(esc(_sdT('Starts with the value of ?{var}=… in the page address unless the visitor has already typed one. Leave empty to turn it off.', _swUrlParamName(urlParam) || 'topic')));
+                if (_cfIsCheck(urlLead) || _cfTagOf(urlLead) === 'select') {
+                    urlHints += _cfHint(esc(_sdT('Only a value that matches one of the options is used (upper and lower case alike).')));
+                }
+                if (_cfInputType(urlLead) === 'hidden') {
+                    urlHints += _cfHint(esc(_sdT('The visitor can change this value: treat it as something they typed.')));
+                }
+                if (urlParam !== '' && _swUrlParamName(urlParam) === '') {
+                    urlHints += '<div style="font-size:.66rem;color:#b45309;margin-top:2px;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' +
+                        esc(_sdT('This name cannot be used: the software reads it from page addresses itself, or it is not a plain name. Pick another, such as topic or post.')) + '</div>';
+                }
+            }
+            html += row(esc(_sdT('Fill from the address')),
+                '<input type="text" class="form-control form-control-sm sd-cf-urlparam" maxlength="32" spellcheck="false" placeholder="topic"' +
+                    ' aria-label="' + esc(_sdT('Parameter name')) + '" value="' + esc(urlParam) + '"' + (urlOffice ? ' disabled' : '') + '>' +
+                urlHints);
+        }
+
         html += row(_sdT('RSS / list role'),
             _cfSel('sd-cf-rss', rec.rss_field || '', rss, null) +
             _cfHint(_sdT('<strong>Title</strong> is the submission\'s name, address and RSS title; <strong>Description</strong> is the meta description; <strong>Media</strong> is the image (og:image). Each role belongs to one field in the form.')));
@@ -2474,6 +2600,21 @@ const StyleDesigner = (function () {
         on('sd-cf-contact', 'change', function (el) {
             _cfRec(lead).contact_field = el.value;
             commit(false);
+        });
+        on('sd-cf-urlparam', 'change', function (el) {
+            // Written on the control the server reads (the field's first),
+            // cleaned as a list filter's parameter name is.
+            var fl  = _cfFieldLeadOf(node, w.tree);
+            var v   = String(el.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+            var rec = _cfRec(fl);
+            if (v) {
+                rec.url_param = v;
+            } else {
+                delete rec.url_param;
+                // An empty `_cf` turns into an array on the server's round trip.
+                if (!Object.keys(rec).length) delete fl.props._cf;
+            }
+            commit(true);
         });
         on('sd-cf-rss', 'change', function (el) {
             var role = el.value;
@@ -3821,6 +3962,14 @@ const StyleDesigner = (function () {
         if (typeof node.props.text !== 'string') return false;
         if (node.type === 'content') {
             return ['heading', 'paragraph', 'button', 'link', 'span', 'text'].indexOf(node.props.contentType) !== -1;
+        }
+        // The atomic components keep their label in props.text, which the
+        // content-level save takes (pg_designer_merge_restricted_tree()):
+        // the call-to-action button of every ready-made block and a badge.
+        // An older opaque component (card, pricing, hero) is left out: its
+        // in-place edit writes props the save does not take.
+        if (node.type === 'component') {
+            return node.props.componentType === 'btn' || node.props.componentType === 'badge';
         }
         return node.type === 'semantic';
     }
@@ -5332,6 +5481,35 @@ const StyleDesigner = (function () {
         '.fixed-top', '.fixed-bottom', '.stretched-link', '.sticky-top', '.sticky-bottom']
         .concat(['sm', 'md', 'lg', 'xl', 'xxl'].map(function (b) { return '.sticky-' + b + '-top, .sticky-' + b + '-bottom'; }))
         .join(', ') + ')';
+    // Bootstrap's breakpoints, smallest first: the infix of a responsive
+    // class and the width its media query starts at.
+    var _SD_BS_BREAKPOINTS = [['', 0], ['-sm', 576], ['-md', 768], ['-lg', 992], ['-xl', 1200], ['-xxl', 1400]];
+    // The rules fn(infix) returns for every breakpoint: a wider one in its
+    // min-width media query and after the narrower ones, as in Bootstrap, so
+    // the widest that applies wins.
+    function _sdBreakpointCss(fn) {
+        return _SD_BS_BREAKPOINTS.map(function (b) {
+            var css = fn(b[0]);
+            return b[1] ? '@media (min-width:' + b[1] + 'px){' + css + '}' : css;
+        }).join('\n');
+    }
+    // Bootstrap's row-cols-* sizes a row's direct children
+    // (`.row-cols-2 > * { flex:0 0 auto; width:50% }`). On the canvas that
+    // child is the wrapper, drawn see-through, so the real column kept .col's
+    // equal share of the line: six logos side by side at 375px where the
+    // page shows two per line, the picture grids a third of their height.
+    // The size goes on the element; one with a col-* class of its own is
+    // left to that class, which comes later in Bootstrap and wins on the page
+    // (this selector is more specific than it).
+    function _sdRowColsCss() {
+        var sizes = [['auto', 'auto'], ['1', '100%'], ['2', '50%'], ['3', '33.33333333%'], ['4', '25%'], ['5', '20%'], ['6', '16.66666667%']];
+        return _sdBreakpointCss(function (bp) {
+            return sizes.map(function (s) {
+                return '.row-cols' + bp + '-' + s[0] + ' > .sd-wrap:not([data-sd-type="col"]) > :not([class*="col-"])' + _SD_FX_EL +
+                    ' { flex:0 0 auto; width:' + s[1] + '; }';
+            }).join(' ');
+        });
+    }
     var IFRAME_CSS = [
         '*, *::before, *::after { box-sizing: border-box; }',
         // html is the scroll container so position:sticky works inside the canvas iframe.
@@ -5344,7 +5522,11 @@ const StyleDesigner = (function () {
         '@layer sd-canvas-base { body { margin:0; padding:0; min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; } }',
         // The editor hides its own wrappers with d-none (a single-screen
         // widget's loop area); a custom design has no Bootstrap to honour it.
-        '.sd-wrap.d-none, .sd-loop-tr.d-none { display:none !important; }',
+        // A column's wrapper is the column itself and carries the column's
+        // classes: its display classes are the design's, left to the
+        // framework (a "d-none d-lg-block" picture column never showed on the
+        // canvas, at any width).
+        '.sd-wrap.d-none:not([data-sd-type="col"]), .sd-loop-tr.d-none { display:none !important; }',
         // A login region element that belongs to the session state the
         // canvas is not drawing (switched on the widget's band).
         '.sd-wrap.sd-state-off { display:none !important; }',
@@ -5522,8 +5704,11 @@ const StyleDesigner = (function () {
         // Horizontal insertion indicators (inline siblings inside a/button/.nav-link/.btn): left/right bars
         '.sd-insert-before-x.sd-insert-before-x { box-shadow:-2px 0 0 0 #0d6efd !important; }',
         '.sd-insert-after-x.sd-insert-after-x  { box-shadow: 2px 0 0 0 #0d6efd !important; }',
-        // Let the icon behave inline like a span, rather than taking the full width
-        '.sd-wrap[data-content-type="icon"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; }',
+        // Let the icon behave inline like a span, rather than taking the full
+        // width: on the baseline and with no vertical margin, as the icon
+        // sits on the page's text line (middle-aligned with the content
+        // wrapper's 3px margins, a line of star icons stood 2-8px taller).
+        '.sd-wrap[data-content-type="icon"] { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; margin:0; }',
         '.sd-wrap[data-content-type="icon"] > .sd-lbl { display:none; }',
         // Image: the wrapper follows the image's own size instead of spanning the block width (img-fluid still works — max-width:100%)
         _SD_BX + '.sd-wrap[data-content-type="image"] { display:inline-block; vertical-align:top; width:auto; min-height:unset; max-width:100%; }',
@@ -5538,9 +5723,12 @@ const StyleDesigner = (function () {
         '.sd-img-placeholder .bi-image { font-size:2.5rem; color:rgba(0,0,0,.25); }',
         '.sd-img-ph-hint { font-size:.72rem; color:rgba(0,0,0,.35); }',
         '.sd-wrap[data-content-type="image"] > .sd-img-placeholder { display:flex; }',
-        // Inline components (btn, badge) must not fill the block
-        _SD_BX + '.sd-wrap[data-component-type="btn"], .sd-wrap[data-component-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
-        _SD_BX + '.sd-wrap[data-content-type="button"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; }',
+        // Inline components (btn, badge) must not fill the block. They sit on
+        // the text line as on the page: no vertical margin (the content and
+        // component wrappers' 3px made each line 6px taller), a button
+        // middle-aligned like Bootstrap's .btn, a link or badge on the baseline.
+        _SD_BX + '.sd-wrap[data-component-type="btn"], .sd-wrap[data-content-type="button"] { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        _SD_BX + '.sd-wrap[data-component-type="badge"], .sd-wrap[data-content-type="link"], .sd-wrap[data-content-type="badge"] { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; max-width:100%; margin:0; }',
         // Span / text content is inline on the page; its block wrapper pushed
         // the label of an "icon + text" list item onto its own line. Inline,
         // no margin, baseline-aligned like the <span> it stands for.
@@ -5550,8 +5738,16 @@ const StyleDesigner = (function () {
         // No margin, like the span/text wrapper above: the 3px of a content
         // wrapper grew the line box (and a block-drawn d-block wrapper) by
         // 6px, so a caption under a strong title stood 12px taller than on
-        // the page.
-        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:middle; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        // the page. On the baseline: middle-aligned, the wrapper's box stood
+        // above and below the text and grew the line 2px (a footer list of
+        // links 8px taller).
+        _SD_BX + '.sd-wrap.sd-wrap-inline { display:inline-block; vertical-align:baseline; width:auto; min-height:unset; max-width:100%; margin:0; }',
+        // An inline element told to fill its line (a .btn.w-100 sign-in
+        // button) took the percentage of its shrink-wrapped wrapper and came
+        // out as narrow as its label; the wrapper takes the line, so the
+        // percentage applies to the parent as on the page.
+        _SD_BX + '.sd-wrap.sd-wrap-inline:has(> .w-100), .sd-wrap[data-component-type="btn"]:has(> .w-100), ' +
+            '.sd-wrap[data-content-type="button"]:has(> .w-100), .sd-wrap[data-content-type="link"]:has(> .w-100) { display:block; width:auto; }',
         // Empty-element minimum sizing (no placeholder text — icon-only FAB buttons must render
         // clean). Keep the min-width/height so a brand-new empty button is still grabbable. The
         // ::before placeholder rule was dropped when virtual-text replaced it for button/a.
@@ -5714,6 +5910,13 @@ const StyleDesigner = (function () {
         // children should be .col without explicit numbers).
         _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"])                       { display:contents !important; }',
         _SD_BX + '[class*="row-cols-"] > .sd-wrap:not([data-sd-type="col"]) > *                   { padding-right:calc(var(--bs-gutter-x) * .5); padding-left:calc(var(--bs-gutter-x) * .5); margin-top:var(--bs-gutter-y); }',
+        // The size of `.row > *` (flex-shrink:0; width:100%; max-width:100%),
+        // which every child of a row has before its col-* class: across the
+        // wrapper the element took its content's width (a col-md-6 field under
+        // 768px drew at three quarters of the row). With zero specificity
+        // (:where()) the element's own col-* class still wins, as on the page.
+        _SD_BX + ':where(.row > .sd-wrap:not([data-sd-type="col"]) > ' + _SD_FX_EL + ') { flex-shrink:0; width:100%; max-width:100%; }',
+        _SD_BX + _sdRowColsCss(),
         // sd-wrap has no box when display:contents, so its toolbar would render in free space and
         // its selection outline would disappear. Hide the toolbar, and transfer outlines to the
         // direct Bootstrap child instead so users still get visual feedback on hover/selection.
@@ -5803,7 +6006,11 @@ const StyleDesigner = (function () {
             '.modal-content', '.modal-header', '.modal-body', '.modal-footer', '.offcanvas-header', '.offcanvas-body',
             '.toast-header', '.toast-body', '.alert', '.breadcrumb', '.pagination', '.dropdown-menu',
             '.navbar', '.navbar-nav', '.nav-item', '.form-floating', '.form-check', '.figure'].map(function (c) {
-            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT;
+            // A floating label lies over its control (position:absolute,
+            // rebuilt below): lifted, it dropped under the control on the
+            // first click of a double-click and its text could not be edited
+            // in place.
+            return c + ' > .sd-wrap.sd-selected > ' + _SD_FX_EL + _SD_SEL_LIFT + (c === '.form-floating' ? ':not(label)' : '');
         }).join(', ') + ' { position:relative; z-index:2; }',
         _SD_BX + '.accordion-item > .sd-wrap:hover:not(.sd-selected) > *, .accordion-header > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.card-body > .sd-wrap:hover:not(.sd-selected) > *, .card-header > .sd-wrap:hover:not(.sd-selected) > *, .card-footer > .sd-wrap:hover:not(.sd-selected) > *, ' +
@@ -5816,6 +6023,58 @@ const StyleDesigner = (function () {
             '.navbar > .sd-wrap:hover:not(.sd-selected) > *, .navbar-nav > .sd-wrap:hover:not(.sd-selected) > *, .nav-item > .sd-wrap:hover:not(.sd-selected) > *, ' +
             '.form-floating > .sd-wrap:hover:not(.sd-selected) > *, .form-check > .sd-wrap:hover:not(.sd-selected) > * ' +
             '{ outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        // Rules of the see-through containers above that match a child by its
+        // place (`+`, `> x`, `:last-child`): each child sits in a wrapper of its
+        // own on the canvas, so no item followed another and none was a direct
+        // child. Re-created across the wrapper, sides in logical terms so a
+        // right-to-left design gets them mirrored as Bootstrap's RTL sheet does.
+        // A breadcrumb item after another draws the divider and its space: the
+        // canvas trail had neither and fitted one line at 375px where the page
+        // wraps it.
+        _SD_BX + '.breadcrumb > .sd-wrap + .sd-wrap > .breadcrumb-item { padding-inline-start:var(--bs-breadcrumb-item-padding-x); }',
+        _SD_BX + '.breadcrumb > .sd-wrap + .sd-wrap > .breadcrumb-item::before { float:inline-start; padding-inline-end:var(--bs-breadcrumb-item-padding-x); color:var(--bs-breadcrumb-divider-color); content:var(--bs-breadcrumb-divider, "/"); }',
+        // A list group item after another drops its top border (a horizontal
+        // list its start border), a flush list draws only the bottom one and
+        // none under the last item: every canvas item drew all four, a doubled
+        // seam per item and side borders on a flush list.
+        _SD_BX + '.list-group > .sd-wrap + .sd-wrap > .list-group-item { border-top-width:0; }',
+        _SD_BX + '.list-group > .sd-wrap + .sd-wrap > .list-group-item.active { margin-top:calc(-1 * var(--bs-list-group-border-width)); border-top-width:var(--bs-list-group-border-width); }',
+        _SD_BX + _sdBreakpointCss(function (bp) {
+            var x = '.list-group-horizontal' + bp + ' > .sd-wrap + .sd-wrap > .list-group-item';
+            return x + ' { border-top-width:var(--bs-list-group-border-width); border-inline-start-width:0; } ' +
+                x + '.active { margin-top:0; margin-inline-start:calc(-1 * var(--bs-list-group-border-width)); border-inline-start-width:var(--bs-list-group-border-width); }';
+        }),
+        _SD_BX + '.list-group-flush > .sd-wrap > .list-group-item { border-width:0 0 var(--bs-list-group-border-width); }',
+        _SD_BX + '.list-group-flush > .sd-wrap:last-child > .list-group-item { border-bottom-width:0; }',
+        // An accordion item that is not the first of its type drops its top
+        // border, the first and last round their outer corners: inside its
+        // wrapper an item comes after the toolbar (a div), so on the canvas
+        // the first item lost its top border too and every item had the
+        // last one's corners. A flush accordion draws no side borders and no
+        // top and bottom line.
+        _SD_BX + '.accordion > .sd-wrap:first-child > .accordion-item { border-top:var(--bs-accordion-border-width) solid var(--bs-accordion-border-color); border-top-left-radius:var(--bs-accordion-border-radius); border-top-right-radius:var(--bs-accordion-border-radius); }',
+        _SD_BX + '.accordion > .sd-wrap:not(:last-child) > .accordion-item { border-bottom-right-radius:0; border-bottom-left-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap > .accordion-item { border-right:0; border-left:0; border-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap:first-child > .accordion-item { border-top:0; border-radius:0; }',
+        _SD_BX + '.accordion-flush > .sd-wrap:last-child > .accordion-item { border-bottom:0; }',
+        // Floating labels: the control's height and padding and the label laid
+        // over it come from `.form-floating > .form-control` / `> label`; the
+        // canvas drew a short field with its label under it. The label keeps
+        // its pointer events here (the page lets clicks through to the field):
+        // on the canvas it is the only place to pick and edit its text, and
+        // it covers only its own width of the field.
+        _SD_BX + '.form-floating > .sd-wrap > .form-control, .form-floating > .sd-wrap > .form-control-plaintext, .form-floating > .sd-wrap > .form-select { height:calc(3.5rem + calc(var(--bs-border-width) * 2)); min-height:calc(3.5rem + calc(var(--bs-border-width) * 2)); line-height:1.25; }',
+        _SD_BX + '.form-floating > .sd-wrap > label { position:absolute; top:0; inset-inline-start:0; z-index:2; max-width:100%; height:100%; padding:1rem .75rem; overflow:hidden; color:rgba(var(--bs-body-color-rgb),.65); text-align:start; text-overflow:ellipsis; white-space:nowrap; border:var(--bs-border-width) solid transparent; transform-origin:0 0; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control, .form-floating > .sd-wrap > .form-control-plaintext { padding:1rem .75rem; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control::placeholder, .form-floating > .sd-wrap > .form-control-plaintext::placeholder { color:transparent; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-control:focus, .form-floating > .sd-wrap > .form-control:not(:placeholder-shown), ' +
+            '.form-floating > .sd-wrap > .form-control-plaintext:focus, .form-floating > .sd-wrap > .form-control-plaintext:not(:placeholder-shown) { padding-top:1.625rem; padding-bottom:.625rem; }',
+        _SD_BX + '.form-floating > .sd-wrap > .form-select { padding-top:1.625rem; padding-bottom:.625rem; padding-inline-start:.75rem; }',
+        // The label moves up over a control that shows a value. Not on focus,
+        // as the page does: a click on the label focuses its control, and the
+        // text moved away from under the second click of a double-click.
+        _SD_BX + '.form-floating > .sd-wrap:has(> .form-control-plaintext) ~ .sd-wrap > label, ' +
+            '.form-floating > .sd-wrap:has(> .form-control:not(:placeholder-shown)) ~ .sd-wrap > label, .form-floating > .sd-wrap:has(> .form-select) ~ .sd-wrap > label { transform:scale(.85) translateY(-.5rem) translateX(.15rem); }',
         // ─── Virtual Button Text (canvas-only) ───
         // Rendered by buildNodeEl for button/a targets ONLY when props.text is non-empty, so
         // icon-only FABs (text:'') show no placeholder. Double-click → contenteditable; drag
@@ -6151,6 +6410,13 @@ const StyleDesigner = (function () {
         // height on the page; the empty-wrapper minimum pushed the frame's
         // bottom edge, and every bottom-0 card, below the picture).
         '.sd-wrap.sd-fx-unpos { position:static !important; min-height:0; }',
+        // A wrapper around a shorter element that has a bottom margin (a 27px
+        // li.mb-2 of a price list): the empty-wrapper minimum made it taller
+        // than its element, and Chromium then drops the margin the element
+        // passes through the wrapper's bottom, so the items stood closer than
+        // on the page and the card came out shorter. No minimum there; an
+        // empty or thin element keeps it as its handle (_sdFxFits()).
+        '.sd-wrap.sd-fx-fit { min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
         // carries an id, style or attribute keeps its box and fills the column.
@@ -6983,13 +7249,21 @@ const StyleDesigner = (function () {
     // never runs on top of the previous copy. The iframe element is replaced
     // rather than reopened: document.open() keeps the window, its timers and
     // its globals. The editor's own state (selection, zoom, width, dark
-    // canvas, grid and outline, scroll position) carries over.
+    // canvas, grid and outline, scroll position, an open modal, offcanvas or
+    // dropdown menu) carries over.
     var _sdPendingScrollY = 0;
+    // The modals, offcanvases and dropdown menus open in the old document
+    // and the page they were drawn for: the first renderCanvas() of the new
+    // one opens them again (their open state is on the canvas only).
+    var _sdPendingOpen = null;
     function _sdCanvasRealmReset() {
         var old = document.getElementById('sd-canvas-iframe');
         if (!old || !old.parentNode) return;
         if (canvasDoc && canvasDoc.documentElement) {
             _sdPendingScrollY = canvasDoc.documentElement.scrollTop || (canvasDoc.body ? canvasDoc.body.scrollTop : 0) || 0;
+        }
+        if (canvasDoc && canvasDoc.body) {
+            _sdPendingOpen = { page: canvasDoc.body._sdDrawnPage, open: _sdCanvasOpenCapture(canvasDoc) };
         }
         var fresh = document.createElement('iframe');
         for (var i = 0; i < old.attributes.length; i++) {
@@ -7121,10 +7395,24 @@ const StyleDesigner = (function () {
      */
     function getCanvasInnerEl(nodeId) {
         if (!canvasDoc) return null;
-        var wrap = canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]');
+        return _sdWrapInner(canvasDoc.querySelector('[data-sd-id="' + nodeId + '"]'));
+    }
+
+    // The same for a node rather than an id: the wrapper is looked up within
+    // the node's widget (_findCanvasEl()), since a widget's tree keeps ids
+    // that page nodes use too. For state that only the canvas element holds
+    // (an open dropdown menu), the element of another node would be read or
+    // written instead.
+    function _sdCanvasInnerOf(node) {
+        return _sdWrapInner(_findCanvasEl(node));
+    }
+
+    // The semantic element of a canvas wrapper: the wrapper itself when it
+    // draws itself (data-sd-self), else its first child that is not the
+    // selection toolbar or a drop zone.
+    function _sdWrapInner(wrap) {
         if (!wrap) return null;
         if (wrap.hasAttribute('data-sd-self')) return wrap;
-        // The first child that is NOT sd-tb and NOT sd-dz is the inner el
         for (var i = 0; i < wrap.children.length; i++) {
             var ch = wrap.children[i];
             if (!ch.classList.contains('sd-tb') && !ch.classList.contains('sd-dz')) {
@@ -7929,42 +8217,35 @@ const StyleDesigner = (function () {
             if (labelEl) labelEl.textContent = 'Dropdown';
             bar.removeAttribute('data-ctx-target-id');
 
+            // Open or closed on the canvas: a menu's open state is never in
+            // the tree ("Toggleable open state"). The menu node itself, not
+            // its id, names the element: inside a widget the id may be a page
+            // node's too.
             var menuNode   = findDropdownMenu(ddContainer);
-            var isExpanded = menuNode
-                ? (menuNode.props.cssClass || '').split(/\s+/).indexOf('show') !== -1
-                : false;
+            var menuEl     = menuNode ? _sdCanvasInnerOf(menuNode) : null;
+            var isExpanded = !!(menuEl && menuEl.classList.contains('show'));
             var menuId = menuNode ? menuNode._id : '';
 
             // Open/Close toggle button (inside showHide section)
             if (showHide) {
                 showHide.innerHTML =
                     '<button type="button" class="sd-ctx-btn sd-ctx-dd-open-close' +
-                    (isExpanded ? ' sd-ctx-active' : '') +
-                    '" data-dd-container-id="' + ddContainer._id + '">' +
+                    (isExpanded ? ' sd-ctx-active' : '') + '">' +
                     '<span class="bi ' + (isExpanded ? 'bi-eye-slash' : 'bi-eye') + '"></span> ' +
                     (isExpanded ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>';
                 showHide.style.display = '';
                 var ocBtn = showHide.querySelector('.sd-ctx-dd-open-close');
                 if (ocBtn) ocBtn.addEventListener('click', function() {
-                    var cNode = findNodeById(this.getAttribute('data-dd-container-id'), activeTree());
-                    if (!cNode) return;
-                    var mNode = findDropdownMenu(cNode);
-                    if (!mNode) return;
-                    var wasExpanded = (mNode.props.cssClass || '').split(/\s+/).indexOf('show') !== -1;
-                    saveState();
-                    var mcls = (mNode.props.cssClass || '').split(/\s+/).filter(Boolean);
-                    var si = mcls.indexOf('show');
-                    if (!wasExpanded && si === -1) mcls.push('show');
-                    if (wasExpanded  && si !== -1) mcls.splice(si, 1);
-                    mNode.props.cssClass = mcls.join(' ');
-                    var mel = getCanvasInnerEl(mNode._id);
-                    if (mel) {
-                        mel.classList.toggle('show', !wasExpanded);
-                        // Never keep data-bs-popper: with our .sd-wrap min-height the attribute
-                        // causes `top:100%` to land below the menu's own wrapper (not the button),
-                        // producing a visible gap. Natural flow position matches the post-render state.
-                        mel.removeAttribute('data-bs-popper');
-                    }
+                    // The bar is drawn again after every render, so the
+                    // menu node it was drawn for is current.
+                    var mel = menuNode ? _sdCanvasInnerOf(menuNode) : null;
+                    if (!mel) return;
+                    var wasExpanded = mel.classList.contains('show');
+                    mel.classList.toggle('show', !wasExpanded);
+                    // Never keep data-bs-popper: with our .sd-wrap min-height the attribute
+                    // causes `top:100%` to land below the menu's own wrapper (not the button),
+                    // producing a visible gap. Natural flow position matches the post-render state.
+                    mel.removeAttribute('data-bs-popper');
                     // Sync Expanded switch in properties panel
                     var expInp = document.querySelector('#sd-properties [data-dd-prop="expanded"]');
                     if (expInp) expInp.checked = !wasExpanded;
@@ -8482,7 +8763,9 @@ const StyleDesigner = (function () {
 
     /**
      * Called by Show/Hide buttons. toShow=true → add 'show', false → remove 'show'.
-     * State is persisted to node.props.cssClass so renders don't reset it.
+     * A collapse's state is written to node.props.cssClass so renders don't
+     * reset it (the save puts the authored state back); a modal, offcanvas or
+     * dropdown menu is shown on the canvas only, and renderCanvas() keeps it.
      */
     function ctxBarToggle(toShow) {
         var bar = document.getElementById('sd-ctx-bar');
@@ -8498,12 +8781,10 @@ const StyleDesigner = (function () {
         var isModal    = nodeCls.indexOf('modal') !== -1;
         var isDropdown = nodeCls.indexOf('dropdown-menu') !== -1;
 
-        // ── 1. Persist to node props ──────────────────────────────────────
-        var clsList = nodeCls.slice();
-        var showIdx = clsList.indexOf('show');
-        if (toShow  && showIdx === -1) clsList.push('show');
-        if (!toShow && showIdx !== -1) clsList.splice(showIdx, 1);
-        targetNode.props.cssClass = clsList.join(' ');
+        // ── 1. Persist to node props (a collapse only) ────────────────────
+        if (!_sdShowIsCanvasOnly(targetNode.props.cssClass)) {
+            targetNode.props.cssClass = _sdClassToggled(targetNode.props.cssClass, 'show', toShow);
+        }
 
         // ── 2. Update DOM element ──────────────────────────────────────────
         if (toShow) {
@@ -8558,16 +8839,11 @@ const StyleDesigner = (function () {
         // set is derived from it.
         _sdEditableInvalidate();
         _sdTrackSharedEditing();
-        // BEFORE re-rendering the canvas, mirror any LIVE `.show` state on
-        // toggleable elements (modal / offcanvas / collapse / dropdown-menu)
-        // back into their tree node's props.cssClass. Without this sync the
-        // next renderCanvas() rebuilds the DOM strictly from props, dropping
-        // any .show class that Bootstrap added when the user opened the
-        // modal via a real data-bs-toggle trigger. Symptom: "click inside
-        // an opened modal to edit content → modal disappears the moment a
-        // child node is selected" (every inner click fires render() which
-        // wiped the .show bit). Toolbar Show/Hide already writes to props;
-        // this catches the gap for native Bootstrap interactions.
+        // BEFORE re-rendering the canvas, mirror the LIVE `.show` of each
+        // collapse back into its tree node's props.cssClass, so a panel
+        // Bootstrap opened on a click survives the rebuild. A modal,
+        // offcanvas or dropdown menu is kept open by renderCanvas() itself,
+        // never through the tree (see "Toggleable open state").
         _syncToggleableShowStateFromDom();
         renderCanvas();
         renderProperties();
@@ -8617,6 +8893,31 @@ const StyleDesigner = (function () {
     // (_pgBaselineTreeKey()): selecting inside a widget is not an edit.
     function _sdSharedTreeJSON(t) {
         return t ? JSON.stringify(t, _pgBaselineTreeKey) : '{}';
+    }
+
+    // Puts the cached tree of component `sid` back to what its row holds,
+    // dropping the edits not saved yet, so the next save sends it nothing:
+    // the snapshot when it has one (what the row held at the first draw, or
+    // what the last save sent), else the row read again (prefetchShared()
+    // replaces an entry that is neither dirty nor snapshotted). `cb` once
+    // the tree is back.
+    function _sdSharedRevert(sid, cb) {
+        var c = _sharedCache[sid];
+        if (!c) { if (cb) cb(); return; }
+        delete _sharedDirty[sid];
+        var t = null;
+        if (_sharedSnapshots[sid]) {
+            try { t = JSON.parse(_sharedSnapshots[sid]); } catch (e) { t = null; }
+        }
+        if (t && typeof t === 'object' && t.type) {
+            // A snapshot of a starter placeholder carries no node ids.
+            _backfillIds(t);
+            c.tree = t;
+            if (cb) cb();
+            return;
+        }
+        delete _sharedSnapshots[sid];
+        prefetchShared([sid], cb);
     }
 
     // Marks the component holding `node` as changed. Called by the paths
@@ -8683,16 +8984,17 @@ const StyleDesigner = (function () {
         return !!st && st !== _sdSessionPreview;
     }
 
-    // Walk all toggleable elements in the canvas and sync their live
-    // `.show` class state into their tree node's props.cssClass. Called
-    // before every render() so DOM-driven open/close (Bootstrap clicks)
-    // survives the re-render. Idempotent + cheap (typical tree has 0-3
-    // toggleable nodes).
+    // Walk the collapse elements in the canvas and sync their live `.show`
+    // class state into their tree node's props.cssClass. Called before every
+    // render() so a panel Bootstrap opened or closed on a click survives the
+    // re-render; the save puts the authored state back
+    // (_normalizeToggleableShowState()). Modal, offcanvas and dropdown-menu
+    // are left out: their open state stays on the canvas (renderCanvas()).
+    // Only while the canvas shows the active page: after a page switch the
+    // ids on the canvas name nodes of the page left. Idempotent + cheap.
     function _syncToggleableShowStateFromDom() {
-        if (!canvasDoc) return;
-        // Selectors for the four toggleable types Bootstrap can flip.
-        var sel = '.modal, .offcanvas, .collapse, .dropdown-menu';
-        var live = canvasDoc.querySelectorAll(sel);
+        if (!canvasDoc || !canvasDoc.body || canvasDoc.body._sdDrawnPage !== _pgActivePage()) return;
+        var live = canvasDoc.querySelectorAll('.collapse');
         if (!live || !live.length) return;
         for (var i = 0; i < live.length; i++) {
             var el = live[i];
@@ -8713,7 +9015,7 @@ const StyleDesigner = (function () {
                     }
                 }
             }
-            if (!node || !node.props) continue;
+            if (!node || !node.props || _sdShowIsCanvasOnly(node.props.cssClass)) continue;
             var hasShowDom  = el.classList.contains('show');
             var cls         = (node.props.cssClass || '').split(/\s+/).filter(Boolean);
             var showIdx     = cls.indexOf('show');
@@ -9102,6 +9404,31 @@ const StyleDesigner = (function () {
         'div.sd-wrap[data-content-type="badge"], div.sd-wrap[data-content-type="span"], div.sd-wrap[data-content-type="text"], ' +
         'div.sd-wrap[data-component-type="btn"], div.sd-wrap[data-component-type="badge"]';
 
+    // Below this height (CSS px) an element is no handle of its own: its
+    // wrapper keeps the empty-wrapper minimum (a divider's 1px line).
+    var _SD_FX_FIT_MIN_GRAB = 12;
+
+    // Whether a boxed wrapper should drop its empty-wrapper minimum height
+    // (sd-fx-fit): its element is in the flow, has a bottom margin and is
+    // shown but shorter than that minimum, yet tall enough to hover and
+    // click. The wrapper has no bottom padding or border, so the margin
+    // passes through its bottom, and under a min-height Chromium drops it.
+    // `had`: the wrapper has the class (its minimum is then 0; the one it
+    // had is kept on the wrapper). The minimum is in CSS pixels and the
+    // canvas zoom (CSS zoom on the canvas root) scales what
+    // getBoundingClientRect() reports, so the zoom is divided out.
+    function _sdFxFits(w, el, cs, win, had) {
+        if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed' || cs.cssFloat !== 'none') return false;
+        if (!(parseFloat(cs.marginBottom) > 0)) return false;
+        var wcs = win.getComputedStyle(w);
+        if (wcs.display !== 'block' || parseFloat(wcs.paddingBottom) || parseFloat(wcs.borderBottomWidth)) return false;
+        var min = had ? (w._sdFitMin || 0) : (parseFloat(wcs.minHeight) || 0);
+        var z = w.currentCSSZoom;
+        var h = el.getBoundingClientRect().height / ((typeof z === 'number' && z > 0) ? z : 1);
+        if (min > 0 && h >= _SD_FX_FIT_MIN_GRAB && h < min) { w._sdFitMin = min; return true; }
+        return false;
+    }
+
     // Runs after each render, once there is a layout to measure, and again
     // when the canvas is resized or a stylesheet or picture arrives.
     function _sdCanvasFidelityPass() {
@@ -9179,13 +9506,17 @@ const StyleDesigner = (function () {
         // its classes. An element clipped to nothing (visually hidden text,
         // the input of a .btn-check toggle) shows nowhere either way and keeps
         // its wrapper box, the only place to pick it on the canvas.
-        var absWraps = [], unposWraps = [];
+        var absWraps = [], unposWraps = [], addFit = [], dropFit = [];
         if (!_sdFxFlatOn()) {
             canvasDoc.querySelectorAll('div.sd-wrap:not([data-sd-self])').forEach(function (w) {
                 if (w.style.display) return;
                 var el = _sdWrapEl(w);
                 if (!el) return;
                 var cs = win.getComputedStyle(el);
+                // A short element's bottom margin, kept (sd-fx-fit).
+                var fitHad = w.classList.contains('sd-fx-fit');
+                if (_sdFxFits(w, el, cs, win, fitHad)) { if (!fitHad) addFit.push(w); }
+                else if (fitHad) dropFit.push(w);
                 if (cs.position !== 'absolute' || cs.display === 'none' || cs.clip === 'rect(0px, 0px, 0px, 0px)') return;
                 absWraps.push(w);
                 for (var p = w.parentElement; p && p !== canvasDoc.body; p = p.parentElement) {
@@ -9206,6 +9537,8 @@ const StyleDesigner = (function () {
                 }
             });
         }
+        addFit.forEach(function (w) { w.classList.add('sd-fx-fit'); });
+        dropFit.forEach(function (w) { w.classList.remove('sd-fx-fit'); });
         addBlock.forEach(function (w) { w.classList.add('sd-fx-block'); });
         dropBlock.forEach(function (w) { w.classList.remove('sd-fx-block'); });
         addInline.forEach(function (w) { w.classList.add('sd-fx-inline', 'sd-fx-flat'); });
@@ -9901,6 +10234,16 @@ const StyleDesigner = (function () {
         // resets to whatever the tree marks as active = always tab 1).
         _captureTabState();
         _captureDetailsState();
+        // A modal, offcanvas or dropdown menu open on the canvas stays open:
+        // the tree has no `show` for it. Only for the page drawn before; the
+        // ids of another page's tree name other nodes. The page object is
+        // compared, not its key: the first save of a new page re-keys it
+        // (_pgTabsAfterSave()). A fresh canvas document gets what the old one
+        // had open (_sdCanvasRealmReset()).
+        var _page = _pgActivePage();
+        var _openToggleables = canvasDoc.body._sdDrawnPage === _page ? _sdCanvasOpenCapture(canvasDoc)
+            : ((_sdPendingOpen && _sdPendingOpen.page === _page) ? _sdPendingOpen.open : {});
+        _sdPendingOpen = null;
         if (tree) injectGoogleFonts();
         canvasDoc.body.innerHTML = '';
         // A shared tree left marked open by an interrupted render would draw
@@ -9908,6 +10251,8 @@ const StyleDesigner = (function () {
         _sdSharedOpen = {};
         if (tree) canvasDoc.body.appendChild(buildNodeEl(tree));
         canvasDoc._sdDrawn = true;
+        canvasDoc.body._sdDrawnPage = _page;
+        _sdCanvasOpenRestore(canvasDoc, _openToggleables, _sdFindNodeForEl);
         // Apply root-level fontFamily directly to the iframe <body> so the
         // canvas previews body-wide typography. Empty/missing prop clears
         // the inline style so Bootstrap's --bs-body-font-family takes over.
@@ -25571,7 +25916,10 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
         var structural = _sdCanEditNode(node);
         if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
-        var textOk = structural || _sdCanEditNode(node, 'text');
+        // A text island only where _sdCodeApplyText() writes it back: a
+        // component prints its own label (a btn, a badge), so a keystroke
+        // there would be taken and then dropped by the next redraw.
+        var textOk = structural || (_sdCanEditNode(node, 'text') && _sdCodeTextKind(node) !== 'none');
         if (!structural) {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
@@ -31593,6 +31941,9 @@ const StyleDesigner = (function () {
                             if (f.contact_field)   flags.push(_sdT('contacts'));
                             if (f.office_use_only) flags.push(_sdT('staff'));
                             if (f.rich)            flags.push(_sdT('rich text'));
+                            // Only what the server honours (pg_cf_url_prefill_values()).
+                            var fUrl = _swUrlParamName(f.url_param);
+                            if (fUrl && !f.office_use_only && _cfUrlParamApplies(f.lead, f.members)) flags.push('?' + fUrl + '=');
                             _cfList += '<li class="sd-cf-jump" data-node="' + esc(f.lead._id) + '" style="cursor:pointer">' +
                                 '<span class="bi bi-dot"></span>' +
                                 '<strong>' + esc(f.label) + '</strong> ' +
@@ -32029,6 +32380,21 @@ const StyleDesigner = (function () {
                     (_uHere.length ? _uHere.join(', ') : '—') +
                     (_uElse.length ? '<br><span style="opacity:.75">' + esc(_sdT('Other designs')) + ': ' + esc(_uElse.join(', ')) + '</span>' : '') +
                 '</div>');
+            // A widget the other places also show gets its own copy for this
+            // page here, its kind kept (_swForkOffer() says when).
+            if (_swForkOffer(n)) {
+                usageHtml +=
+                    '<div class="sd-prop-row">' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
+                            '<span class="bi bi-files me-1"></span>' + esc(_sdT('Make a copy for this page')) +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="sd-prop-row">' +
+                        '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                            esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) +
+                        '</div>' +
+                    '</div>';
+            }
         }
         var nameHtml = _cfg
             ? row(_sdT('Name'),
@@ -32092,6 +32458,53 @@ const StyleDesigner = (function () {
                 var sid   = parseInt(this.dataset.swId, 10);
                 var sname = (this.dataset.swName || '').trim();
                 if (sid && typeof _systemDeleteFn === 'function') _systemDeleteFn(sid, sname);
+            });
+        }
+
+        // ── A copy of the widget for this page ──────────────────────────────
+        // The copy the type change offers, with the kind kept: a new row with
+        // the same layout and settings, this page's placements re-pointed at
+        // it, every other place left on the original. The row is created at
+        // once; the page's changed reference makes the page dirty, so Save
+        // writes it (_pgPageUnchanged() reads the tree). Layout edits not
+        // saved yet go into the copy; the operator picks whether the
+        // original keeps them too or goes back to its saved layout.
+        var forkBtn = document.getElementById('sd-sw-fork-page');
+        if (forkBtn) {
+            forkBtn.addEventListener('click', function () {
+                var btn = this;
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+                // Asked again: another tab may have dropped its placement
+                // since the panel was drawn.
+                var offer = _swForkOffer(selectedNode);
+                if (!offer || offer.sid !== parseInt(btn.dataset.swId, 10)) { renderProperties(); return; }
+                var cached = _sharedCache[offer.sid];
+                sdChoose({
+                    title: _sdT('This widget is on other pages too'),
+                    html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
+                          '<p class="mb-0">' + esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) + ' ' +
+                              esc(_sdT('A later change to one of them stays in that one.')) + '</p>' +
+                          (offer.unsaved
+                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
+                              : ''),
+                    choices: offer.unsaved
+                        ? [
+                            { value: 'keep', label: _sdT('Make a copy, keep the others as saved'), variant: 'primary', icon: 'bi-files' },
+                            { value: 'both', label: _sdT('Make a copy, change the others too'),    variant: 'outline-primary' },
+                            { value: 'no',   label: _sdT('Cancel'),                                variant: 'outline-secondary' }
+                        ]
+                        : [
+                            { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
+                            { value: 'no',   label: _sdT('Cancel'),                    variant: 'outline-secondary' }
+                        ]
+                }).then(function (choice) {
+                    if (choice !== 'fork' && choice !== 'keep' && choice !== 'both') return;
+                    // One copy per click: the button stays off until the
+                    // panel is drawn again.
+                    btn.disabled = true;
+                    _swForkForThisPage(offer.sid, { keepOriginal: choice === 'keep' }, function () { renderProperties(); });
+                });
             });
         }
 
@@ -34065,11 +34478,28 @@ const StyleDesigner = (function () {
 
     // The list view offers the shared set plus its own state: the value a
     // URL-parameter filter took from the page address (?author=Jane),
-    // filled only when "is equal to" finds records for it.
+    // filled only when "is equal to" finds records for it, and how many
+    // records the list matched (capped at max results, as search results
+    // and the classic list count them; _render_system_widget_form_list()).
     var SW_FORM_LIST_VIEW_TOKENS = [
-        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')]
+        ['__filter_value', _sdT('Value from the page address (when is equal to finds records)')],
+        ['__result_count', _sdT('Number of results')]
     ];
     var SW_BUILTIN_FIELD_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat(SW_FORM_LIST_VIEW_TOKENS);
+
+    // A link in a form list row or on a form detail page that opens another
+    // page of the site with values from the record in its address
+    // (pg_sw_page_link_bindings() in includes/fn/widgets.php). The href
+    // binding is this sentinel, which the server expands per link; the page
+    // and the values are kept beside it in props._bindParams.href. It is in
+    // no token palette, so the code view's {{ list never offers a link that
+    // has no page to open.
+    var SW_PAGE_LINK_TOKEN = '__page_link';
+    // Twin of pg_sw_page_link_max(): the most values one link carries.
+    var _SW_PAGE_LINK_MAX = 8;
+    // The widget kinds whose renderer expands the link: the form list under
+    // its four names and the form detail.
+    var _SW_PAGE_LINK_TYPES = { form_list_view: 1, submitted_forms_list: 1, form_list: 1, blog_list: 1, form_item_view: 1 };
 
     // Standard names a form's own field overrides on the server
     // (pg_sw_form_field_wins() in includes/fn/widgets.php keeps the same
@@ -35585,7 +36015,9 @@ const StyleDesigner = (function () {
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
-            ['no_filter_value',  _sdT('No value from the page address is applied')]
+            ['no_filter_value',  _sdT('No value from the page address is applied')],
+            ['has_records',      _sdT('The list found records')],
+            ['no_records',       _sdT('The list found nothing')]
         ],
         form_item_view: [
             ['has_new_account',        _sdT('The form just opened an account for the visitor')],
@@ -36755,9 +37187,14 @@ const StyleDesigner = (function () {
             );
         }
 
+        // "Another page, with values from the record": a link's href only,
+        // and only in the widget kinds whose renderer expands it.
+        var _pageLinkOffered = _swPageLinkOffered(node);
+
         // Build the field-select options:  form fields → built-ins → custom input
-        function _buildOptionsHtml(currentVal) {
+        function _buildOptionsHtml(currentVal, prop) {
             if (currentVal && Object.prototype.hasOwnProperty.call(_bindAlias, currentVal)) currentVal = _bindAlias[currentVal];
+            var withPageLink = (prop === 'href' && _pageLinkOffered);
             var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
             // Form fields group
             if (formFields.length) {
@@ -36788,8 +37225,12 @@ const StyleDesigner = (function () {
                 html += '<option value="' + esc(o[0]) + '"' + (o[0] === currentVal ? ' selected' : '') + '>' + esc(_builtinLabel(o)) + '</option>';
             });
             html += '</optgroup>';
+            if (withPageLink) {
+                html += '<option value="' + esc(SW_PAGE_LINK_TOKEN) + '"' + (currentVal === SW_PAGE_LINK_TOKEN ? ' selected' : '') + '>' + esc(_sdT('Another page, with values from the record')) + '</option>';
+            }
             // Custom — shown when the saved binding doesn't match any known token
             var isCustom = !!(currentVal &&
+                              !(withPageLink && currentVal === SW_PAGE_LINK_TOKEN) &&
                               !formFields.some(function (ff) { return ((ff.name && ('' + ff.name).trim()) || ('field_' + ff.id)) === currentVal; }) &&
                               !(_withLabels && formFields.some(function (ff) { return _labelToken(ff) === currentVal; })) &&
                               !_builtins.some(function (o) { return o[0] === currentVal; }));
@@ -36797,10 +37238,73 @@ const StyleDesigner = (function () {
             return { html: html, isCustom: isCustom };
         }
 
+        // The page a link opens and the values its address carries
+        // (props._bindParams.href), under the href select. The values are
+        // the record's fields as stored and the standard fields; the names
+        // follow the rules of the list filter that reads them there.
+        function _sdPageLinkRows(n, fields) {
+            var spec = _swPageLinkSpec(n.props && n.props._bindParams && n.props._bindParams.href);
+            if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
+            var note = function (text, warn) {
+                return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
+                           (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
+            };
+            var cur = spec.page_id ? String(spec.page_id) : '0';
+            var html = '<div class="sd-sw-plink mt-2">' +
+                '<div style="font-size:.7rem;font-weight:600;margin-bottom:2px">' + esc(_sdT('Page to open')) + '</div>' +
+                '<select class="form-select form-select-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                    _swPageOptions(cur, _allPagesCache, { none: _sdT('— Choose a page —') }) +
+                '</select>';
+            if (!spec.page_id) {
+                html += note(_sdT('Choose the page this link opens.'), false);
+            } else if (_swPageLinkPageGone(spec.page_id, (typeof _pages !== 'undefined' && _pages) ? _pages : [], _allPagesCache)) {
+                html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
+            }
+            var tokenOptions = function (curToken) {
+                var lc = String(curToken || '').toLowerCase(), known = (lc === '');
+                var opt = function (token, label) {
+                    var on = (lc !== '' && String(token).toLowerCase() === lc);
+                    if (on) known = true;
+                    return '<option value="' + esc(token) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
+                };
+                var out = '<option value=""' + (lc === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                if (fields.length) {
+                    out += '<optgroup label="' + esc(_sdT('Form fields')) + '">';
+                    fields.forEach(function (ff) { out += opt(_swFormFieldToken(ff), ff.label || ff.name || ('#' + ff.id)); });
+                    out += '</optgroup>';
+                }
+                out += '<optgroup label="' + esc(_sdT('Built-in fields')) + '">';
+                SW_STANDARD_FIELD_OPTIONS.forEach(function (o) {
+                    if (_swStandardYields(o[0], fields)) return;
+                    out += opt(o[0], _builtinLabel(o));
+                });
+                out += '</optgroup>';
+                // A field the form no longer has stays chosen, marked.
+                if (!known) out += '<option value="' + esc(curToken) + '" selected>' + esc(curToken + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+                return out;
+            };
+            html += '<div style="font-size:.7rem;font-weight:600;margin:8px 0 2px">' + esc(_sdT('Values in the address')) + '</div>';
+            spec.params.forEach(function (p, i) {
+                html +=
+                    '<div class="d-flex gap-1 mt-1 align-items-center">' +
+                        '<input type="text" class="form-control form-control-sm sd-sw-plink-name" data-plink-i="' + i + '" value="' + esc(p.name) + '" maxlength="32" placeholder="board" style="width:96px;flex:none" aria-label="' + esc(_sdT('Parameter name')) + '">' +
+                        '<select class="form-select form-select-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
+                    '</div>' +
+                    '<div class="sd-sw-plink-warn" data-plink-i="' + i + '">' + _swPageLinkNameWarn(spec.params, i) + '</div>';
+            });
+            html +=
+                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
+                    '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a value')) + '</button>' +
+                note(_sdT('Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.'), false) +
+            '</div>';
+            return html;
+        }
+
         var rowsHtml = '';
         bindable.forEach(function (b) {
             var current = bindings[b.prop] || '';
-            var built = _buildOptionsHtml(current);
+            var built = _buildOptionsHtml(current, b.prop);
             var sel =
                 '<select class="form-select form-select-sm sd-sw-bind-sel"' +
                 ' data-bind-prop="' + esc(b.prop) + '">' +
@@ -36812,7 +37316,9 @@ const StyleDesigner = (function () {
                 ' placeholder="' + esc(_sdT('custom_field_name')) + '"' +
                 ' value="' + esc(built.isCustom ? current : '') + '"' +
                 (built.isCustom ? '' : ' style="display:none"') + '>';
-            rowsHtml += row(b.label, sel + customInp + _sdBindFormatRow(b.prop, current, node));
+            var pageLinkRows = (b.prop === 'href' && _pageLinkOffered && current === SW_PAGE_LINK_TOKEN)
+                ? _sdPageLinkRows(node, formFields) : '';
+            rowsHtml += row(b.label, sel + customInp + pageLinkRows + _sdBindFormatRow(b.prop, current, node));
         });
 
         return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'),
@@ -36872,7 +37378,80 @@ const StyleDesigner = (function () {
             // The custom-token field calls this on every keystroke.
             saveState(_sdEditRun('bind:' + propName));
             _sdNodeSetBinding(selectedNode, propName, value);
+            // A link to another page keeps its page and values beside the
+            // binding (props._bindParams). Picking it starts one empty value
+            // row, or takes back what the code view left there; any other
+            // choice drops them. The code view never does (it writes through
+            // _sdNodeSetBinding() alone), so a token typed again there gets
+            // its page and values back.
+            var bp = selectedNode.props;
+            if (bp && value === SW_PAGE_LINK_TOKEN) {
+                if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
+            } else if (bp && bp._bindParams) {
+                delete bp._bindParams[propName];
+                if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
+            }
             renderCanvas();
+        }
+
+        // One edit of a link's page or values: `fn` changes the spec, which
+        // is stored back normalised. `runKey` joins the keystrokes of one
+        // name into one undo step; `repaint` redraws the panel (not while a
+        // name is typed: the input would lose the caret).
+        function _sdPageLinkEdit(fn, runKey, repaint) {
+            if (!selectedNode || !selectedNode.props) return;
+            saveState(runKey);
+            var p = selectedNode.props;
+            if (!p._bindParams || typeof p._bindParams !== 'object' || Array.isArray(p._bindParams)) p._bindParams = {};
+            var spec = _swPageLinkSpec(p._bindParams.href);
+            fn(spec);
+            p._bindParams.href = _swPageLinkSpec(spec);
+            var sid = _isInsideSystemWidget(selectedNode);
+            if (sid) _sharedDirty[sid] = true;
+            renderCanvas();
+            if (repaint && typeof renderProperties === 'function') renderProperties();
+        }
+        var plinkPage = document.querySelector('.sd-sw-plink-page');
+        if (plinkPage) {
+            plinkPage.addEventListener('change', function () {
+                var v = _swPageVal(this);
+                _sdPageLinkEdit(function (spec) { spec.page_id = v; }, undefined, true);
+            });
+        }
+        document.querySelectorAll('.sd-sw-plink-name').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                var v = this.value;
+                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].name = v; }, _sdEditRun('plink:name:' + i), false);
+                // The warnings change in place: this row's, and a later
+                // row's that repeats or stops repeating this name.
+                var params = _swPageLinkSpec(selectedNode && selectedNode.props._bindParams && selectedNode.props._bindParams.href).params;
+                document.querySelectorAll('.sd-sw-plink-warn').forEach(function (w) {
+                    w.innerHTML = _swPageLinkNameWarn(params, parseInt(w.dataset.plinkI, 10));
+                });
+            });
+        });
+        document.querySelectorAll('.sd-sw-plink-token').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                var v = this.value;
+                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].token = v; }, undefined, true);
+            });
+        });
+        document.querySelectorAll('.sd-sw-plink-remove').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                _sdPageLinkEdit(function (spec) { spec.params.splice(i, 1); }, undefined, true);
+            });
+        });
+        var plinkAdd = document.querySelector('.sd-sw-plink-add');
+        if (plinkAdd) {
+            plinkAdd.addEventListener('click', function () {
+                _sdPageLinkEdit(function (spec) {
+                    if (spec.params.length < _SW_PAGE_LINK_MAX) spec.params.push({ name: '', token: '' });
+                }, undefined, true);
+            });
         }
 
         sels.forEach(function (sel) {
@@ -39742,7 +40321,9 @@ const StyleDesigner = (function () {
         var trigCls    = triggerNode ? (triggerNode.props.cssClass  || '').split(/\s+/) : [];
         var trigAttrs  = triggerNode ? (triggerNode.props._attrs   || []) : [];
 
-        var isExpanded  = menuCls.indexOf('show') !== -1;
+        // Expanded is the canvas view of the menu, not a saved state.
+        var menuEl      = menuNode ? _sdCanvasInnerOf(menuNode) : null;
+        var isExpanded  = !!(menuEl && menuEl.classList.contains('show'));
         var alignment   = menuCls.indexOf('dropdown-menu-end') !== -1 ? 'end'
                         : menuCls.indexOf('dropdown-menu-lg-end') !== -1 ? 'lg-end'
                         : menuCls.indexOf('dropdown-menu-start') !== -1 ? 'start' : '';
@@ -39780,7 +40361,8 @@ const StyleDesigner = (function () {
             });
         }
 
-        saveState();
+        // Expanded opens the menu on the canvas only: no tree change, no undo step.
+        if (ddProp !== 'expanded') saveState();
 
         function toggleCls(node, cls, on) {
             var arr = (node.props.cssClass || '').split(/\s+/).filter(Boolean);
@@ -39788,7 +40370,7 @@ const StyleDesigner = (function () {
             if (on && idx === -1) arr.push(cls);
             if (!on && idx !== -1) arr.splice(idx, 1);
             node.props.cssClass = arr.join(' ');
-            var el = getCanvasInnerEl(node._id);
+            var el = _sdCanvasInnerOf(node);
             if (el) el.classList.toggle(cls, on);
         }
         function swapCls(node, group, newCls) {
@@ -39796,7 +40378,7 @@ const StyleDesigner = (function () {
             group.forEach(function(c) { var i = arr.indexOf(c); if (i !== -1) arr.splice(i, 1); });
             if (newCls) arr.push(newCls);
             node.props.cssClass = arr.join(' ');
-            var el = getCanvasInnerEl(node._id);
+            var el = _sdCanvasInnerOf(node);
             if (el) { group.forEach(function(c) { el.classList.remove(c); }); if (newCls) el.classList.add(newCls); }
         }
 
@@ -39806,20 +40388,17 @@ const StyleDesigner = (function () {
                 break;
             case 'expanded':
                 if (menuNode) {
-                    toggleCls(menuNode, 'show', val);
-                    // Sync ctx bar
-                    var showBtn = document.getElementById('sd-ctx-show');
-                    var hideBtn = document.getElementById('sd-ctx-hide');
-                    if (showBtn) showBtn.classList.toggle('sd-ctx-active', val);
-                    if (hideBtn) hideBtn.classList.toggle('sd-ctx-active', !val);
+                    var mel = _sdCanvasInnerOf(menuNode);
+                    if (mel) mel.classList.toggle('show', !!val);
                     // Sync trigger aria-expanded
                     if (triggerNode) {
-                        var tel = getCanvasInnerEl(triggerNode._id);
+                        var tel = _sdCanvasInnerOf(triggerNode);
                         if (tel) tel.setAttribute('aria-expanded', val ? 'true' : 'false');
                     }
                     // Strip any stale data-bs-popper — see ctxBarToggle comment for why.
-                    var mel = getCanvasInnerEl(menuNode._id);
                     if (mel) mel.removeAttribute('data-bs-popper');
+                    // The context bar's Open / Close reads the menu element.
+                    updateCtxBar();
                 }
                 break;
             case 'alignment':
@@ -39844,7 +40423,7 @@ const StyleDesigner = (function () {
                     }
                     triggerNode.props._attrs = attrs;
                     // Sync DOM
-                    var trigEl = getCanvasInnerEl(triggerNode._id);
+                    var trigEl = _sdCanvasInnerOf(triggerNode);
                     if (trigEl) {
                         if (val === 'true') trigEl.removeAttribute('data-bs-auto-close');
                         else trigEl.setAttribute('data-bs-auto-close', val);
@@ -44832,6 +45411,9 @@ const StyleDesigner = (function () {
                     content = (content.slice(0, blk.selStart) + content.slice(blk.bodyEnd + 1)).replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '').replace(/\n{2,}$/, '\n');
                 }
                 if (darkBefore) {
+                    // Found again: the cut above tidies the text in front of
+                    // the dark block, so its old offset may be stale.
+                    dark = _themeFindBlock(content, 'dark');
                     content = content.slice(0, dark.selStart) + sharedPart + '\n\n' + content.slice(dark.selStart);
                 }
                 if (taken.length && light) {
@@ -47512,8 +48094,13 @@ const StyleDesigner = (function () {
     // Give THIS page its own copy of a widget other pages also place:
     // a new row with the same layout and settings (or the starter layout of
     // `opts.regionType` when the copy is made to change the kind), every
-    // placement on the active page re-pointed at it. The other pages keep
-    // the original untouched.
+    // placement in the page's tree re-pointed at it. The other pages keep
+    // the original. The page is the tab open at the call: the server may
+    // answer after another tab was opened, and the copy still goes to the
+    // page that asked (its parked tree; the undo step only on the open one).
+    // `opts.keepOriginal`: layout edits not saved yet stay in the copy alone
+    // and the original goes back to what its row holds (_sdSharedRevert());
+    // without it the next save also writes them to the original.
     function _swForkForThisPage(sid, opts, cb) {
         opts = opts || {};
         var cached = _sharedCache[sid];
@@ -47521,7 +48108,8 @@ const StyleDesigner = (function () {
         var cfg = {};
         try { cfg = JSON.parse(cached.system_region_config || '{}') || {}; } catch (e) { cfg = {}; }
         if (Array.isArray(cfg)) cfg = {};
-        var type = opts.regionType || cfg.regionType || '';
+        var page = _pgActivePage();
+        var key  = page ? page.key : _activeKey;
         var newTree;
         if (opts.regionType && opts.regionType !== cfg.regionType) {
             cfg = _swTypeDefaults(cfg, opts.regionType);
@@ -47529,16 +48117,20 @@ const StyleDesigner = (function () {
         } else {
             newTree = cloneTree(cached.tree || _swBlankTree());
             (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(newTree);
-            // Field row ids belong to the page the ORIGINAL sits on; the
-            // copy gets its own rows on the first save.
-            (function strip(nd) {
-                if (nd && nd.props && nd.props._cf) delete nd.props._cf.ids;
-                if (nd && Array.isArray(nd.children)) nd.children.forEach(strip);
-            })(newTree);
+            _swKeepPageFieldIds(newTree, page ? page.page_id : 0);
         }
-        var name = _swAutoName(type);
+        var name = _swAutoName(opts.regionType || _swNameKind(cfg), page);
         _swCreateRow(name, cfg, newTree, function (newId, newName) {
-            saveState();
+            var p    = _pgPageByKey(key);
+            var live = (key === _activeKey);
+            var t    = live ? tree : (p ? p.tree : null);
+            if (!t) {
+                // The page was closed meanwhile: the copy is listed, unplaced.
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                if (cb) cb(newId, newName);
+                return;
+            }
+            if (live) saveState();
             var moved = 0;
             (function walk(node) {
                 if (!node) return;
@@ -47551,14 +48143,50 @@ const StyleDesigner = (function () {
                     return;
                 }
                 if (node.children) node.children.forEach(walk);
-            })(tree);
-            render();
-            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
-            if (typeof _pgTabsRefreshDirty === 'function') _pgTabsRefreshDirty();
-            sdToast(_sdT('A copy was made for this page: <strong>{var}</strong>', esc(newName)) +
-                    (moved > 1 ? ' ' + esc(_sdT('({var} placements)', moved)) : ''), 'success', 4500);
+            })(t);
+            var redraw = function () {
+                render();
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                if (typeof _pgTabsRefreshDirty === 'function') _pgTabsRefreshDirty();
+            };
+            if (opts.keepOriginal) _sdSharedRevert(sid, redraw);
+            else redraw();
+            var made = live
+                ? _sdT('A copy was made for this page: <strong>{var}</strong>', esc(newName))
+                : _sdT('A copy was made for {var:1}: <strong>{var:2}</strong>', [esc(p.page_name || _sdT('New Page')), esc(newName)]);
+            sdToast(made + (moved > 1 ? ' ' + esc(_sdT('({var} placements)', moved)) : ''), 'success', 4500);
             if (cb) cb(newId, newName);
         });
+    }
+
+    // The kind a widget's name is made from, as the panel and the renderer
+    // read the row's settings: a row from before the kind was stored (no
+    // string `regionType`) and the old form-list aliases are form list
+    // views; '' is the empty widget.
+    function _swNameKind(cfg) {
+        var t = cfg ? cfg.regionType : undefined;
+        if (typeof t !== 'string' || t === 'submitted_forms_list' || t === 'form_list' || t === 'blog_list') return 'form_list_view';
+        return t;
+    }
+
+    // Form field row ids in a copied widget tree. They are kept per page
+    // (`_cf.ids[page_id]`) and the copy stands on one page only, so it keeps
+    // that page's id and drops the others: the page save matches a control
+    // by its row id before its name, so a field renamed since the last save
+    // keeps its row and the values submitted under it. A page never saved
+    // (page_id 0) has no rows yet.
+    function _swKeepPageFieldIds(t, pageId) {
+        var k = String(parseInt(pageId, 10) || 0);
+        (function walk(nd) {
+            if (!nd) return;
+            var cf = nd.props ? nd.props._cf : null;
+            if (cf && typeof cf === 'object' && cf.ids !== undefined) {
+                var id = (k !== '0' && cf.ids && typeof cf.ids === 'object') ? parseInt(cf.ids[k], 10) || 0 : 0;
+                if (id > 0) { cf.ids = {}; cf.ids[k] = id; }
+                else delete cf.ids;
+            }
+            if (Array.isArray(nd.children)) nd.children.forEach(walk);
+        })(t);
     }
 
     // Rename on the server, then everywhere the name is shown. `cb(name)`
@@ -47604,6 +48232,31 @@ const StyleDesigner = (function () {
             if (parseInt(u.style_id, 10) !== styleId) out.push(_sharedUsageText(u));
         });
         return out;
+    }
+
+    // Whether the panel of placement `n` offers "Make a copy for this page",
+    // and what the question says: { sid, others, unsaved } or null. Only a
+    // system widget other pages or designs also place, at full access (the
+    // server refuses a content editor's `create`), placed in the page tree
+    // itself: one inside another shared component (a header) stands on every
+    // page that places that component, and _swForkForThisPage() re-points
+    // only the page's own placements. `unsaved` is a layout change the row
+    // does not hold yet: the copy takes it and the flush still writes it to
+    // the original. Selecting inside a widget marks it dirty without a
+    // change, so the snapshot decides when there is one.
+    function _swForkOffer(n) {
+        if (!n || n.type !== 'shared_ref' || _sdIsContentLevel()) return null;
+        var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+        var c = sid ? _sharedCache[sid] : null;
+        if (!c || !c.system_region_config || !findParent(n, tree)) return null;
+        var others = _swOtherPlacements(sid);
+        if (!others.length) return null;
+        var snap = _sharedSnapshots[sid];
+        return {
+            sid:     sid,
+            others:  others,
+            unsaved: !!c.tree && (snap ? _sdSharedTreeJSON(c.tree) !== snap : !!_sharedDirty[sid])
+        };
     }
 
     /* ── Page pickers: this design's pages first, unsaved ones included ──
@@ -47742,6 +48395,7 @@ const StyleDesigner = (function () {
     // Query parameter names the software reads itself, so a filter may not
     // take its value from them; twin of pg_sw_url_param_reserved() in
     // includes/fn/widgets.php (a test compares the two lists).
+    // A designed form control's _cf.url_param obeys the same names.
     var _SW_URL_PARAM_RESERVED = [
         'page', 'page_number', 'query', 'r', 'rss', 'pdf', 'icalendar', 'email',
         'edit', 'edit_theme', 'edit_submitted_form', 'theme_id', 'from', 'logged_out',
@@ -47758,6 +48412,67 @@ const StyleDesigner = (function () {
         if (n.indexOf('utm_') === 0 || n.indexOf('pg_') === 0) return '';
         if (_SW_URL_PARAM_RESERVED.indexOf(n) !== -1) return '';
         return n;
+    }
+    // A link's page and values (props._bindParams.href) as the panel edits
+    // them. Not the server's normaliser (pg_sw_page_link_spec()): the page
+    // stays a positive id, a 'tab:<key>' of an unsaved tab, or 0; a name is
+    // kept trimmed and lowercased even when it cannot be used, so its
+    // warning stays under it; a row with no name or no field yet is kept to
+    // be filled in. The server leaves out what it cannot use.
+    function _swPageLinkSpec(spec) {
+        spec = (spec && typeof spec === 'object') ? spec : {};
+        var pid = spec.page_id, page = 0;
+        if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
+        else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
+        var params = [];
+        (Array.isArray(spec.params) ? spec.params : []).forEach(function (p) {
+            if (params.length >= _SW_PAGE_LINK_MAX || !p || typeof p !== 'object') return;
+            params.push({
+                name:  String(p.name == null ? '' : p.name).trim().toLowerCase(),
+                token: String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '')
+            });
+        });
+        return { page_id: page, params: params };
+    }
+    // Whether the Bind Data panel offers the link for `node`: only inside a
+    // widget whose renderer expands it. _getSystemWidgetRegionType() reads
+    // an unknown kind as a form list, so the stored kind is asked itself.
+    function _swPageLinkOffered(node) {
+        var cfg = _sdSystemWidgetCfgOf(node);
+        return !!(cfg && _SW_PAGE_LINK_TYPES[cfg.regionType] === 1);
+    }
+    // The warning under value row `i` of a link: a name the software reads
+    // itself, or one an earlier row already sends. '' when the name is fine
+    // or not typed yet. An earlier row counts only when the server keeps it
+    // (pg_sw_page_link_spec() drops a row with no field or a refused name
+    // before it takes the name), so a row still being filled in never marks
+    // a later one as not sent.
+    function _swPageLinkNameWarn(params, i) {
+        var name = (params[i] && params[i].name) || '';
+        var usable = _swUrlParamName(name);
+        var text = '';
+        if (name !== '' && usable === '') {
+            text = _sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.');
+        } else if (name !== '') {
+            for (var j = 0; j < i; j++) {
+                var p = params[j];
+                if (p && String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '') !== '' && _swUrlParamName(p.name) === usable) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
+            }
+        }
+        return text ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(text) + '</div>' : '';
+    }
+    // Whether the page a link opens (a page id) is gone: not a tab of this
+    // design, and the site's page list (list_all_pages, `serverPages`, null
+    // until it arrives) lacks it or has it in the Recycle Bin. A tab is
+    // live even when the list, fetched once per session, predates it, as in
+    // _swMissingPageOption(). A 'tab:' key or 0 is never gone here.
+    function _swPageLinkPageGone(pageId, tabs, serverPages) {
+        if (typeof pageId !== 'number' || !(pageId > 0) || !Array.isArray(serverPages)) return false;
+        var isTab = (tabs || []).some(function (p) { return p && parseInt(p.page_id, 10) === pageId; });
+        if (isTab) return false;
+        var hit = null;
+        serverPages.forEach(function (p) { if (p && parseInt(p.page_id, 10) === pageId) hit = p; });
+        return !hit || _swPageBinned(hit);
     }
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
         var formFields = _swFilterFormFields(fields);
@@ -47923,6 +48638,7 @@ const StyleDesigner = (function () {
 
     function _swBindLabel(type, token) {
         if (type === 'form_list_view' || type === 'form_item_view') {
+            if (token === SW_PAGE_LINK_TOKEN) return _sdT('Another page, with values from the record');
             // Names the settings once gave these values (see _bindAlias).
             if (token === '__detail_url' && type === 'form_list_view') token = 'form_item_view';
             if (token === '__not_found_message' && type === 'form_item_view') token = 'not_found';
@@ -48129,10 +48845,37 @@ const StyleDesigner = (function () {
         return '<option value="' + esc(cur) + '" selected>' + esc(lbl) + '</option>';
     }
 
-    // After a save: every `tab:<key>` in a cached widget config, and in the
-    // per-page form settings, becomes the page id the server handed out.
-    // `map` is {key: page_id}. Nothing is marked dirty — the server did the
-    // same substitution on its side.
+    // The page a link to another page opens, in a widget tree: every
+    // props._bindParams.*.page_id that reads 'tab:<key>' becomes the page id
+    // in `map` (0 for a key it lacks), as pg_sw_page_link_resolve_tabs()
+    // does on the server. Nothing else is read. Returns whether anything
+    // changed.
+    function _swResolveTreeTabRefs(node, map) {
+        if (!node || typeof node !== 'object') return false;
+        var changed = false;
+        var bp = node.props && node.props._bindParams;
+        if (bp && typeof bp === 'object') {
+            Object.keys(bp).forEach(function (k) {
+                var spec = bp[k];
+                if (spec && typeof spec === 'object' && typeof spec.page_id === 'string' && /^tab:/.test(spec.page_id)) {
+                    var key = spec.page_id.slice(4);
+                    spec.page_id = map[key] ? parseInt(map[key], 10) : 0;
+                    changed = true;
+                }
+            });
+        }
+        (Array.isArray(node.children) ? node.children : []).forEach(function (c) {
+            if (_swResolveTreeTabRefs(c, map)) changed = true;
+        });
+        return changed;
+    }
+
+    // After a save: every `tab:<key>` in a cached widget config, in the
+    // pages its links open (the widget tree) and in the per-page form
+    // settings becomes the page id the server handed out. `map` is
+    // {key: page_id}. Nothing is marked dirty — the server did the same
+    // substitution on its side. A tree's snapshot gets the same swap rather
+    // than being taken again, so an edit not saved yet still counts as one.
     function _swResolveTabRefs(map) {
         if (!map) return;
         var swap = function (obj) {
@@ -48151,7 +48894,16 @@ const StyleDesigner = (function () {
         };
         Object.keys(_sharedCache).forEach(function (sid) {
             var c = _sharedCache[sid];
-            if (!c || !c.system_region_config) return;
+            if (!c) return;
+            if (c.tree && _swResolveTreeTabRefs(c.tree, map) && _sharedSnapshots[sid]) {
+                var snap = null;
+                try { snap = JSON.parse(_sharedSnapshots[sid]); } catch (e) {}
+                if (snap && typeof snap === 'object') {
+                    _swResolveTreeTabRefs(snap, map);
+                    _sharedSnapshots[sid] = _sdSharedTreeJSON(snap);
+                }
+            }
+            if (!c.system_region_config) return;
             var cfg = null;
             try { cfg = JSON.parse(c.system_region_config); } catch (e) {}
             if (!cfg || typeof cfg !== 'object') return;

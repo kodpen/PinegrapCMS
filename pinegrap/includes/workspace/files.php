@@ -81,7 +81,7 @@ function ws_upload_macro_extensions()
  */
 function ws_upload_name_parts($name)
 {
-    $base = basename(str_replace('\\', '/', (string) $name));
+    $base = pg_basename(str_replace('\\', '/', (string) $name));
     $names = array($base);
 
     if (function_exists('prepare_file_name')) {
@@ -483,7 +483,7 @@ function ws_store_upload($viewer, $channel, $original_name, $data)
  */
 function ws_upload_inspect($original_name, $binary)
 {
-    $original_name = trim(preg_replace('/[\x00-\x1F\x7F]/', '', basename(str_replace('\\', '/', (string) $original_name))));
+    $original_name = trim(preg_replace('/[\x00-\x1F\x7F]/', '', pg_basename(str_replace('\\', '/', (string) $original_name))));
     $extension = strtolower((string) pathinfo($original_name, PATHINFO_EXTENSION));
     $refused = lang('This file type is not allowed.');
 

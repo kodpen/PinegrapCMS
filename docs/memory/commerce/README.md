@@ -49,7 +49,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, product matching, unmatched lines and their retry, relay emails.
 - marketplace-order-money.md: Amounts of an imported marketplace order: per-unit price/tax/discount, the line's discount_total, mp_order_totals(), n11 line discounts that do not divide by the quantity.
-- marketplace-order-status-sync.md: mp_order_apply_status() rules for shipped/delivered/cancelled marketplace packages: first sight, fill-only dates, tracking once, no-refund cancel, stock restore, auto-accept only Created.
+- marketplace-order-status-sync.md: Marketplace package status rules: first sight, fill-only dates, tracking once, cancel without refund or customer e-mail, stock restore, cancellations first, auto-accept only Created.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
@@ -83,6 +83,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-returns-reminders.md: Daily refund reminder of customer returns (return_reminder_job.php): the two stages, the once-only stamps on order_returns (step 11.0.25), how the job is scheduled
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
+- order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge classes.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier

@@ -134,3 +134,37 @@ function test_designer_code_view_attribute_token_retyped()
 	pg_assert_true($answer['literalStored'], 'a literal is stored by the caller');
 	pg_assert_same(array('alt' => 'Foto'), $answer['literal'], 'and ends the binding');
 }
+
+// A link to another page keeps its page and values (props._bindParams)
+// while its href token is retyped: through a full intermediate token, a
+// half token and a literal. Only the Bind Data panel drops them.
+function test_designer_code_view_page_link_spec_kept()
+{
+	$answer = designer_code_view_binding_test_run(
+		'_getBindableProps = function (n) { return [{ prop: "text" }, { prop: "href" }]; };'
+		. 'var out = {};'
+		. 'var spec = { href: { page_id: 12, params: [{ name: "board", token: "board" }] } };'
+		. 'var n = { inWidget: true, props: { href: "#", _bindings: { href: "__page_link" }, _bindParams: JSON.parse(JSON.stringify(spec)) } };'
+		. '_sdCodeApplyBoundValue(n, "href", "{{__page_lin}}"); out.mid = state(n);'
+		. '_sdCodeApplyBoundValue(n, "href", "{{__page_link}}"); out.back = state(n);'
+		. 'if (!_sdCodeApplyBoundValue(n, "href", "{{")) n.props.href = "{{"; out.half = state(n);'
+		. '_sdCodeApplyBoundValue(n, "href", "{{__page_link}}"); out.again = state(n);'
+		. 'if (!_sdCodeApplyBoundValue(n, "href", "/x")) n.props.href = "/x"; out.literal = state(n);'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	$spec = array('href' => array('page_id' => 12, 'params' => array(array('name' => 'board', 'token' => 'board'))));
+	pg_assert_same('__page_lin', $answer['mid']['_bindings']['href'], 'a full intermediate token binds');
+	pg_assert_same($spec, $answer['mid']['_bindParams'], 'and leaves the spec');
+	pg_assert_same(array('href' => '#', '_bindings' => array('href' => '__page_link'), '_bindParams' => $spec), $answer['back'], 'the token typed again finds its page and values');
+	pg_assert_false(isset($answer['half']['_bindings']), 'half a token ends the binding');
+	pg_assert_same($spec, $answer['half']['_bindParams'], 'and leaves the spec');
+	pg_assert_same('#', $answer['again']['href'], 'the finished token gets the design-time href back');
+	pg_assert_same(array('href' => '__page_link'), $answer['again']['_bindings'], 'binds the link again');
+	pg_assert_same($spec, $answer['again']['_bindParams'], 'which finds its page and values');
+	pg_assert_same(array('href' => '/x', '_bindParams' => $spec), $answer['literal'], 'a literal ends the binding; the spec stays, inert');
+}
