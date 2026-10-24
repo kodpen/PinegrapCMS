@@ -1,6 +1,6 @@
 ---
 name: marketplace-trendyol-hepsiburada
-description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#<PR>) done; 2b or 4c next
+description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada connectors on the n11 layer; Trendyol steps 1 (#880), 2 (#906), 3 (#932), 4a (#1452), 4b (#1453) done; 2b or 4c next
 ---
 
 ## Why?
@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2, first) and Hepsiburada co
 2b. Listing update (V2 update needs `contentId`), approval/rejection status from the product filter services onto the map row (an approved listing sets an `error` map back to `active`: a stock line refused while awaiting approval stops the product), commission shown read-only (S–M).
 3. ~~Stock/price queue.~~ Done #932. Its webhook receiver moved to step 4b: Trendyol webhooks carry only order statuses.
 4a. ~~Order import (V2), Picking push, cancel sync, barcode/sku matching.~~ Done #1452.
-4b. ~~Webhook receiver `marketplace_webhook.php`, registration from the account screen, acceptance of webhook-imported packages by the job.~~ Done #<PR>.
+4b. ~~Webhook receiver `marketplace_webhook.php`, registration from the account screen, acceptance of webhook-imported packages by the job.~~ Done #1453.
 4c. Own-carrier shipment push (alternative delivery) (S).
 5. Invoice link push, returns, Q&A (M).
 6. API fields: `/products/{id}/marketplaces`, webhook events `marketplace.order.*` (S).
