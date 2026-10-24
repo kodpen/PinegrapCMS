@@ -33,6 +33,7 @@ validate_ecommerce_access($user);
 
 require_once(dirname(__FILE__) . '/includes/api/outbound/connectors/base.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/listings.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
 
 $liveform = new liveform('marketplace_settings');
 
@@ -183,6 +184,12 @@ if ($_POST) {
 
 			}
 
+			// What the blob holds besides the form's fields - the webhook's key
+			// and id - is kept. The form never carries those, and writing the
+			// fields alone would leave a registered webhook delivering with a
+			// key nothing here knows any more.
+			$credentials = array_merge((array)$account['credentials'], $credentials);
+
 			$status = (isset($_POST['status']) && $_POST['status'] === 'active') ? 'active' : 'paused';
 
 			db("UPDATE marketplace_accounts SET
@@ -204,6 +211,15 @@ if ($_POST) {
 			)), $user['username']);
 
 			$liveform->add_notice(lang('Saved.'));
+
+			if (!empty($credentials['webhook_id']) && ($status !== 'active' || empty($_POST['pull_orders']))) {
+
+				$liveform->add_warning(h(lang(array(
+					'string' => 'While this account is paused or does not bring orders in, the orders {var:1} sends are refused, and after repeated refusals {var:1} switches the webhook off. Remove the webhook if this lasts.',
+					'vars'   => array(mp_provider_name($account['provider']))
+				))));
+
+			}
 
 			header('Location: ' . $screen_url . '?account=' . $account_id);
 
@@ -594,6 +610,118 @@ if ($_POST) {
 		$liveform->add_notice(lang('The orders that failed will be read from the marketplace again on the next run.'));
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
+	// The webhook: the marketplace posts each order package to this site as it
+	// changes, instead of waiting for the next pull. The key is made here, kept
+	// in the account's encrypted credentials and never shown; the marketplace
+	// sends it back with every delivery (includes/api/outbound/webhook_receiver.php).
+	if ($action === 'webhook_register' && $account) {
+
+		$provider_name = mp_provider_name($account['provider']);
+
+		$problem = mp_can($account['provider'], 'register_webhook')
+			? mp_webhook_register_problem($account)
+			: lang(array('string' => '{var:1} cannot do this.', 'vars' => array($provider_name)));
+
+		if ($problem !== '') {
+
+			$liveform->add_warning(h($problem));
+
+		} else {
+
+			$credentials = (array)$account['credentials'];
+
+			// A key from an earlier registration is used again; otherwise a new
+			// one, 32 random bytes written URL-safe.
+			$key = (isset($credentials['webhook_key']) && is_string($credentials['webhook_key']) && $credentials['webhook_key'] !== '')
+				? $credentials['webhook_key']
+				: pg_short_link_new_token();
+
+			$result = mp_call($account['provider'], 'register_webhook', array($account, mp_webhook_url($account_id), $key));
+
+			if ($result['ok']) {
+
+				$credentials['webhook_key'] = $key;
+				$credentials['webhook_id'] = (string)$result['data']['webhook_id'];
+
+				db("UPDATE marketplace_accounts
+					SET credentials = '" . e(mp_credentials_encode($credentials)) . "', updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($account_id) . "'");
+
+				log_activity(lang(array(
+					'string' => 'Marketplace webhook registered: {var:1}.',
+					'vars'   => array($account['name'])
+				)), $user['username']);
+
+				$liveform->add_notice(h(lang(array(
+					'string' => 'Webhook registered. {var:1} now sends new orders to this site as they happen.',
+					'vars'   => array($provider_name)
+				))));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'Could not register the webhook: {var:1}',
+					'vars'   => array(h($result['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-webhook');
+
+		exit();
+
+	}
+
+	if ($action === 'webhook_remove' && $account) {
+
+		if (!mp_can($account['provider'], 'remove_webhook')) {
+
+			$liveform->add_warning(h(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(mp_provider_name($account['provider']))
+			))));
+
+		} else {
+
+			$result = mp_call($account['provider'], 'remove_webhook', array($account));
+
+			if ($result['ok']) {
+
+				// The key stays, for a registration made again later.
+				$credentials = (array)$account['credentials'];
+
+				unset($credentials['webhook_id']);
+
+				db("UPDATE marketplace_accounts
+					SET credentials = '" . e(mp_credentials_encode($credentials)) . "', updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($account_id) . "'");
+
+				log_activity(lang(array(
+					'string' => 'Marketplace webhook removed: {var:1}.',
+					'vars'   => array($account['name'])
+				)), $user['username']);
+
+				$liveform->add_notice(lang('Webhook removed. Orders are read every five minutes again.'));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'Could not remove the webhook: {var:1}',
+					'vars'   => array(h($result['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-webhook');
 
 		exit();
 
@@ -1359,7 +1487,83 @@ if ($selected) {
 		</div>
 	</div>';
 
+	/* ------------------------------------------------------------ webhook */
+
+	// The marketplace's webhook, for a connector that registers one. It sits at
+	// the top of the orders card. While one is registered and import is off,
+	// the card is not drawn but the webhook keeps delivering (and being
+	// refused), so it is drawn on its own, where it can still be removed. The
+	// key is never printed.
+	$webhook_block = '';
+
+	$webhook_id = isset($selected['credentials']['webhook_id']) ? (string)$selected['credentials']['webhook_id'] : '';
+
+	if ($can_orders && mp_can($selected['provider'], 'register_webhook')
+		&& (($webhook_id !== '') || !empty($selected['pull_orders']))) {
+
+		$provider_name = mp_provider_name($selected['provider']);
+
+		if ($webhook_id !== '') {
+
+			$webhook_text = h(lang(array(
+				'string' => '{var:1} sends new orders to this site as they happen.',
+				'vars'   => array($provider_name)
+			)));
+
+			if ($selected['status'] !== 'active' || empty($selected['pull_orders'])) {
+
+				$webhook_text .= '<div class="text-danger mt-1">' . h(lang(array(
+					'string' => 'While this account is paused or does not bring orders in, the orders {var:1} sends are refused, and after repeated refusals {var:1} switches the webhook off. Remove the webhook if this lasts.',
+					'vars'   => array($provider_name)
+				))) . '</div>';
+
+			}
+
+			$webhook_action = 'webhook_remove';
+
+			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-danger"
+						onclick="return confirm(' . h(json_encode(lang('Remove the webhook?'))) . ')">
+						<i class="bi bi-x-lg me-1"></i>' . lang('Remove webhook') . '</button>';
+
+		} else {
+
+			$webhook_text = h(lang(array(
+				'string' => 'Orders are read every five minutes. Register a webhook so {var:1} sends them as they happen.',
+				'vars'   => array($provider_name)
+			)));
+
+			$webhook_action = 'webhook_register';
+
+			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline-secondary">
+						<i class="bi bi-broadcast me-1"></i>' . lang('Register webhook') . '</button>';
+
+		}
+
+		$webhook_block = '
+			<div class="d-flex align-items-center flex-wrap gap-2 small px-2 pb-3 mb-3 border-bottom" id="mp-webhook">
+				<i class="bi bi-broadcast"></i>
+				<div class="flex-grow-1">' . $webhook_text . '</div>
+				<form method="post" action="marketplace_settings.php" class="d-inline">
+					' . get_token_field() . '
+					<input type="hidden" name="mp_action" value="' . $webhook_action . '">
+					<input type="hidden" name="account_id" value="' . $selected_id . '">
+					' . $webhook_button . '
+				</form>
+			</div>';
+
+	}
+
 	/* ------------------------------------------------------------- orders */
+
+	if ($webhook_block !== '' && empty($selected['pull_orders'])) {
+
+		echo '
+	<div class="card mb-3">
+		<div class="card-body px-2 pt-3 pb-0">' . $webhook_block . '
+		</div>
+	</div>';
+
+	}
 
 	if ($can_orders && !empty($selected['pull_orders'])) {
 
@@ -1382,7 +1586,7 @@ if ($selected) {
 					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
 			</form>' : '') . '
 		</div>
-		<div class="card-body px-2 py-3">';
+		<div class="card-body px-2 py-3">' . $webhook_block;
 
 		if (!$orders) {
 
