@@ -727,9 +727,11 @@ function pg_panel_shared_component($request, $action)
             // media / category), wysiwyg says whether a text area holds
             // markup, office_use_only keeps staff fields off a public
             // layout — the designer builds a form's starter layout from
-            // these, in the form's own order.
+            // these, in the form's own order. translate_values says whether
+            // the answers are translated (the field panel's switch).
             $sc_ff_rows = db_items(
-                "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only
+                "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only"
+                     . (pg_schema_has('form_fields', 'translate_values') ? ", translate_values" : "") . "
                      FROM form_fields
                      WHERE page_id = '$sc_ff_pid'
                      ORDER BY sort_order ASC, id ASC"

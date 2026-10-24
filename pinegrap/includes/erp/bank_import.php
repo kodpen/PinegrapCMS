@@ -70,19 +70,40 @@ function erp_bank_line_statuses()
 }
 
 /**
- * Read an uploaded CSV into rows of cells: the separator is guessed from the
- * first lines (see erp_bank_csv_separator()), and a file that is not UTF-8 is
- * read as Windows-1254, the way Turkish banks save it.
+ * Read an uploaded CSV into rows of cells: the separator is the one given, or
+ * guessed from the first lines (see erp_bank_csv_separator()), and a file
+ * that is not UTF-8 is read as Windows-1254, the way Turkish banks save it.
+ * The non-empty lines come back too, so the statement can keep them and be
+ * split again on another separator before its columns are chosen.
  *
  * @param string $path
- * @return array ['rows' => array, 'error' => string]
+ * @param string $separator  One character, or '' to guess it
+ * @return array ['rows' => array, 'lines' => array, 'error' => string]
  */
-function erp_bank_read_csv($path)
+function erp_bank_read_csv($path, $separator = '')
+{
+    $read = erp_bank_csv_lines($path);
+
+    if ($read['error'] !== '') {
+        return array('rows' => array(), 'lines' => array(), 'error' => $read['error']);
+    }
+
+    return array('rows' => erp_bank_csv_split($read['lines'], $separator), 'lines' => $read['lines'], 'error' => '');
+}
+
+/**
+ * The non-empty lines of an uploaded CSV as UTF-8 text, the byte order mark
+ * dropped, at most ERP_BANK_IMPORT_MAX_ROWS of them.
+ *
+ * @param string $path
+ * @return array ['lines' => array, 'error' => string]
+ */
+function erp_bank_csv_lines($path)
 {
     $text = @file_get_contents($path);
 
     if (($text === false) || ($text === '')) {
-        return array('rows' => array(), 'error' => lang('The file could not be read.'));
+        return array('lines' => array(), 'error' => lang('The file could not be read.'));
     }
 
     if (strncmp($text, "\xEF\xBB\xBF", 3) === 0) {
@@ -94,27 +115,84 @@ function erp_bank_read_csv($path)
         $text = ($converted !== false) ? $converted : mb_convert_encoding($text, 'UTF-8', 'ISO-8859-9');
     }
 
-    $lines = preg_split('/\r\n|\r|\n/', $text);
-    $separator = erp_bank_csv_separator($lines);
-
-    $rows = array();
-    foreach ($lines as $line) {
+    $lines = array();
+    foreach (preg_split('/\r\n|\r|\n/', $text) as $line) {
         if (trim($line) === '') {
             continue;
         }
 
-        $rows[] = array_map('trim', str_getcsv($line, $separator, '"', '\\'));
+        $lines[] = $line;
 
-        if (count($rows) >= ERP_BANK_IMPORT_MAX_ROWS) {
+        if (count($lines) >= ERP_BANK_IMPORT_MAX_ROWS) {
             break;
         }
     }
 
-    if (empty($rows)) {
-        return array('rows' => array(), 'error' => lang('The file has no lines.'));
+    if (empty($lines)) {
+        return array('lines' => array(), 'error' => lang('The file has no lines.'));
     }
 
-    return array('rows' => $rows, 'error' => '');
+    return array('lines' => $lines, 'error' => '');
+}
+
+/**
+ * Split a CSV's lines into rows of trimmed cells, quotes respected.
+ *
+ * @param array  $lines
+ * @param string $separator  One character, or '' for erp_bank_csv_separator()'s guess
+ * @return array
+ */
+function erp_bank_csv_split($lines, $separator = '')
+{
+    $lines = array_values(array_filter(array_map('strval', (array) $lines), function ($line) {
+        return trim($line) !== '';
+    }));
+
+    if (!is_string($separator) || (strlen($separator) !== 1)) {
+        $separator = erp_bank_csv_separator($lines);
+    }
+
+    $rows = array();
+    foreach ($lines as $line) {
+        $rows[] = array_map('trim', str_getcsv($line, $separator, '"', '\\'));
+    }
+
+    return $rows;
+}
+
+/**
+ * The separators the column screen offers, by the name the form posts: a
+ * tab sent as the character itself could be trimmed on the way.
+ *
+ * @return array  name => character ('' for the guess)
+ */
+function erp_bank_csv_separators()
+{
+    return array('auto' => '', 'semicolon' => ';', 'comma' => ',', 'tab' => "\t", 'pipe' => '|');
+}
+
+/**
+ * A posted separator name, or 'auto' for anything the screen does not offer.
+ *
+ * @param mixed $key
+ * @return string
+ */
+function erp_bank_csv_separator_key($key)
+{
+    return (is_string($key) && array_key_exists($key, erp_bank_csv_separators())) ? $key : 'auto';
+}
+
+/**
+ * The character of a separator name; '' (guess it) for 'auto' and unknown names.
+ *
+ * @param mixed $key
+ * @return string
+ */
+function erp_bank_csv_separator_char($key)
+{
+    $separators = erp_bank_csv_separators();
+
+    return $separators[erp_bank_csv_separator_key($key)];
 }
 
 /**
@@ -191,9 +269,12 @@ function erp_bank_csv_separator($lines)
  * A document that is neither (Numbers, PDF) is refused rather than read as
  * text.
  *
+ * A CSV also returns its lines ('csv_lines'), which the statement keeps so
+ * the column screen can split them again on another separator.
+ *
  * @param string $path
  * @param string $file_name
- * @return array ['rows' => array, 'error' => string]
+ * @return array ['rows' => array, 'error' => string, 'csv_lines' => array (CSV only)]
  */
 function erp_bank_read_file($path, $file_name)
 {
@@ -203,9 +284,13 @@ function erp_bank_read_file($path, $file_name)
         return array('rows' => array(), 'error' => lang('Save the statement as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in again.'));
     }
 
-    $read = in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)
-        ? erp_bank_read_spreadsheet($path, $extension)
-        : erp_bank_read_csv($path);
+    if (in_array($extension, array('xlsx', 'xlsm', 'xls', 'ods'), true)) {
+        $read = erp_bank_read_spreadsheet($path, $extension);
+    } else {
+        $read = erp_bank_read_csv($path);
+        $read['csv_lines'] = $read['lines'];
+        unset($read['lines']);
+    }
 
     if ($read['error'] === '') {
         $read['rows'] = erp_bank_rows_from_heading($read['rows']);
@@ -601,8 +686,113 @@ function erp_bank_amount($text)
 }
 
 /**
- * Take a file in for a bank account: the statement row, with its cells kept
- * until the columns are chosen.
+ * What a statement keeps in raw_rows until its columns are chosen: a CSV's
+ * lines under 'csv', split each time they are read (erp_bank_statement_rows()),
+ * or a workbook's rows of cells.
+ *
+ * @param array $read  erp_bank_read_file()'s result
+ * @return string  JSON
+ */
+function erp_bank_statement_raw($read)
+{
+    return isset($read['csv_lines'])
+        ? json_encode(array('csv' => array_values((array) $read['csv_lines'])), JSON_UNESCAPED_UNICODE)
+        : json_encode($read['rows'], JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * Whether a statement's raw_rows hold a CSV's lines, which can be split again.
+ *
+ * @param string|null $raw_rows
+ * @return bool
+ */
+function erp_bank_statement_is_csv($raw_rows)
+{
+    $raw = json_decode((string) $raw_rows, true);
+
+    return is_array($raw) && isset($raw['csv']) && is_array($raw['csv']);
+}
+
+/**
+ * A statement's rows of cells, as the column screen shows them and the
+ * build reads them: a CSV's kept lines split on the chosen separator, the
+ * bank's title block cut off again (the heading can move with the split). A
+ * workbook, or a CSV taken in before the lines were kept, holds its cells
+ * already and comes back as it is.
+ *
+ * @param string|null $raw_rows
+ * @param mixed       $separator_key  A name from erp_bank_csv_separators()
+ * @return array
+ */
+function erp_bank_statement_rows($raw_rows, $separator_key)
+{
+    $raw = json_decode((string) $raw_rows, true);
+
+    if (!is_array($raw)) {
+        return array();
+    }
+
+    if (!array_key_exists('csv', $raw)) {
+        return $raw;
+    }
+
+    if (!is_array($raw['csv'])) {
+        return array();
+    }
+
+    return erp_bank_rows_from_heading(erp_bank_csv_split($raw['csv'], erp_bank_csv_separator_char($separator_key)));
+}
+
+/**
+ * The columns a statement starts with when its bank account has none remembered.
+ *
+ * @return array
+ */
+function erp_bank_default_mapping()
+{
+    return array('header' => true, 'date' => -1, 'description' => -1, 'amount' => -1, 'debit' => -1, 'credit' => -1, 'date_order' => 'dmy', 'separator' => 'auto');
+}
+
+/**
+ * A statement's stored columns, or the defaults.
+ *
+ * @param array $statement
+ * @return array
+ */
+function erp_bank_statement_mapping($statement)
+{
+    $mapping = json_decode((string) ($statement['mapping'] ?? ''), true);
+
+    return is_array($mapping) ? $mapping : erp_bank_default_mapping();
+}
+
+/**
+ * Split a statement's kept lines on another separator: the name is stored
+ * with its columns, so the column screen shows the new split and the build
+ * reads it, and the next statement of the bank account starts with it.
+ *
+ * @param int    $statement_id
+ * @param string $separator_key
+ * @return bool
+ */
+function erp_bank_statement_set_separator($statement_id, $separator_key)
+{
+    $statement = erp_bank_statement($statement_id);
+
+    if (($statement === null) || ((string) $statement['status'] !== 'mapping') || !erp_bank_statement_is_csv($statement['raw_rows'])) {
+        return false;
+    }
+
+    $mapping = erp_bank_statement_mapping($statement);
+    $mapping['separator'] = erp_bank_csv_separator_key($separator_key);
+
+    return db("UPDATE erp_bank_statements SET mapping = '" . escape(json_encode($mapping)) . "'
+        WHERE id = '" . (int) $statement['id'] . "' AND status = 'mapping'") !== false;
+}
+
+/**
+ * Take a file in for a bank account: the statement row, with its lines (a
+ * CSV) or cells (a workbook) kept until the columns are chosen.
  *
  * @param int    $cash_account_id
  * @param string $path
@@ -635,7 +825,7 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
             cash_account_id = '" . (int) $cash_account_id . "',
             file_name = '" . escape(mb_substr(basename((string) $file_name), 0, 150)) . "',
             status = 'mapping',
-            raw_rows = '" . escape(json_encode($read['rows'], JSON_UNESCAPED_UNICODE)) . "',
+            raw_rows = '" . escape(erp_bank_statement_raw($read)) . "',
             mapping = " . (is_string($last) && ($last !== '') ? "'" . escape($last) . "'" : "NULL") . ",
             created_by = '" . (int) $user_id . "',
             created_at = UNIX_TIMESTAMP()");
@@ -671,7 +861,8 @@ function erp_bank_statement($id)
  *
  * @param int   $statement_id
  * @param array $mapping  header (bool), date_order (dmy | mdy), date, description,
- *                        amount | debit + credit (column numbers, -1 for none)
+ *                        amount | debit + credit (column numbers, -1 for none),
+ *                        separator (a name from erp_bank_csv_separators(), for a CSV)
  * @return array ['success' => bool, 'added' => int, 'skipped' => int, 'matched' => int, 'error' => string]
  */
 function erp_bank_statement_build($statement_id, $mapping)
@@ -694,8 +885,8 @@ function erp_bank_statement_build($statement_id, $mapping)
         return $fail(lang('Choose the date column and the amount column (or the debit and credit columns).'));
     }
 
-    $rows = json_decode((string) $statement['raw_rows'], true);
-    $rows = is_array($rows) ? $rows : array();
+    $mapping['separator'] = erp_bank_csv_separator_key($mapping['separator'] ?? 'auto');
+    $rows = erp_bank_statement_rows($statement['raw_rows'], $mapping['separator']);
 
     if (!empty($mapping['header'])) {
         array_shift($rows);
