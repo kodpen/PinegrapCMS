@@ -26794,5 +26794,18 @@
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
     "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
+    "All Forms": "Tüm Formlar",
+    "Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and the arrow at the top takes you back. The button at the top left changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden.": "Yazılımın yapabildiği her şey burada toplanır: sitenizin sayfaları ve dosyaları, mağaza, ziyaretçiler ve raporlar. Yanında ok işareti olan bir satır, sayfalarını menünün içinde açar; üstteki ok geri götürür. Sol üstteki düğme her tıklamada menüyü bir sonraki görünüme geçirir: önce yalnız simgeleriyle minik, sonra adlarıyla açık, sonra gizli.",
+    "The panel theme, the dashboard and the rich-text editor.": "Panel teması, Panel ekranı ve zengin metin editörü.",
+    "dashboard, widget, card style, backdrop, refresh, reset widgets, welcome": "dashboard, widget, card style, backdrop, refresh, reset widgets, welcome, panel, panel ekranı, panel ekrani, gösterge paneli, gosterge paneli, pano, bileşen, bilesen, kart tarzı, kart tarzi, arka plan, arkaplan, yenileme, yenile, sıfırla, sifirla, karşılama, karsilama",
+    "How the cards on the dashboard are drawn, for everyone who uses the panel.": "Panel ekranındaki kartların görünümü; paneli kullanan herkes için geçerlidir.",
+    "What sits behind the dashboard cards. Match Card Style picks the one that suits the chosen style.": "Panel ekranındaki kartların arkasında ne olacağı. Kart Tarzına Göre, seçilen tarza uyanı kullanır.",
+    "How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.": "Panel ekranının güncel rakamları ne sıklıkla isteyeceği, en az 10 saniye. Yalnızca bu oturum için saklanır; bir sonraki girişte 60 saniyeye döner.",
+    "Puts the dashboard cards back in their default order. This button also saves the settings above.": "Panel ekranındaki kartları varsayılan sıralarına döndürür. Bu düğme yukarıdaki ayarları da kaydeder.",
+    "The dashboard widgets are back in their default order.": "Panel ekranındaki widget'lar varsayılan sıralarına döndü.",
+    "You will find the widget theme settings in Site Settings, under Appearance.": "Widget tema ayarlarını Site Ayarları'nda, Görünüm altında bulursun.",
+    "Store Lists": "Mağaza Listeleri",
+    "Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.": "Panel ekranındaki kartları varsayılan sıralarına döndürür. Bu düğme bu ekrandaki diğer ayarları da kaydeder.",
+    "Change menu view": "Menü görünümünü değiştir",
     "comments: replies are being added; {var:1} follows in the next pass": "comments: yanıtlar ekleniyor; {var:1} bir sonraki geçişte eklenecek"
 }
