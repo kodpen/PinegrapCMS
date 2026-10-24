@@ -1432,11 +1432,27 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
  * sole proprietor trading under a name), as the ERP's Paraşüt driver opens
  * a card (erp_edoc_parasut_contact_attributes()).
  *
- * @param array  $order      Order row (billing_* fields)
- * @param string $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
+ * A Turkish billing address goes in Paraşüt's own fields, mapped as the
+ * ERP's driver writes a card (erp_address_from_checkout()): the street
+ * lines in address, the checkout's state field (the province) in city, its
+ * city field (the district) in district, the postcode in postal_code. An
+ * e-Archive or e-Invoice reads the city and the district off the card. The
+ * address is Turkish when its billing country is TR or, with none given,
+ * when the store's is (erp_account_country(), the way
+ * erp_address_from_checkout() reads an empty country). Any other address
+ * goes as one line in address (street, city, state, postcode, country)
+ * with no city, district or postal_code. The ERP's address code
+ * (includes/erp/accounts.php) must be loaded for a Turkish address;
+ * parasut_sync_contact() loads it.
+ *
+ * @param array       $order      Order row (billing_* fields)
+ * @param string      $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
+ * @param string|null $country    The country the address is read by; null for the billing
+ *                                country, else the store's (erp_account_country(), which asks
+ *                                the database when the order names none)
  * @return array
  */
-function parasut_order_contact_attributes($order, $id_number)
+function parasut_order_contact_attributes($order, $id_number, $country = null)
 {
     $id_number = trim((string) $id_number);
     $billing_company = trim($order['billing_company'] ?? '');
@@ -1461,6 +1477,30 @@ function parasut_order_contact_attributes($order, $id_number)
 
     if ($id_number !== '') {
         $attributes['tax_number'] = $id_number;
+    }
+
+    if ($country === null) {
+        $country = erp_account_country((string) ($order['billing_country'] ?? ''));
+    }
+
+    if (strtoupper(trim((string) $country)) === 'TR') {
+        $place = erp_address_from_checkout((string) ($order['billing_city'] ?? ''), (string) ($order['billing_state'] ?? ''), 'TR');
+        $fields = [
+            // The street lines joined as the ERP account takes them.
+            'address' => trim(trim((string) ($order['billing_address_1'] ?? '')) . ' ' . trim((string) ($order['billing_address_2'] ?? ''))),
+            'city' => $place['city'],
+            'district' => $place['district'],
+            'postal_code' => trim((string) ($order['billing_zip_code'] ?? '')),
+        ];
+
+        // An empty field is left off, as the folded address was.
+        foreach ($fields as $key => $value) {
+            if ($value !== '') {
+                $attributes[$key] = $value;
+            }
+        }
+
+        return $attributes;
     }
 
     // Build address string.
@@ -1499,6 +1539,10 @@ function parasut_sync_contact($order)
         return ['success' => true, 'parasut_contact_id' => $order['parasut_contact_id'], 'error' => ''];
     }
 
+    // The address is read by the ERP's accounts code (erp_account_country(),
+    // erp_address_from_checkout()); E-Shipment does not load it itself.
+    _parasut_order_invoice_load();
+
     $attributes = parasut_order_contact_attributes($order, _parasut_order_identity($order));
 
     $body = [
@@ -1526,9 +1570,11 @@ function parasut_sync_contact($order)
 /**
  * Load what an order's Paraşüt invoice is built with: the ERP's order lines
  * (includes/erp/order_bridge.php) and the Paraşüt driver's VAT shift,
- * refusals and sales invoice body (includes/erp/edoc/parasut.php). They are
- * loaded whether the ERP is switched on or not; its tables are installed
- * either way, and the order's lines are the ones its ERP invoice carries.
+ * refusals and sales invoice body (includes/erp/edoc/parasut.php), and the
+ * address mapping the buyer card is opened with (includes/erp/accounts.php).
+ * They are loaded whether the ERP is switched on or not; its tables are
+ * installed either way, and the order's lines are the ones its ERP invoice
+ * carries.
  *
  * @return void
  */
