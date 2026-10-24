@@ -439,12 +439,17 @@ function test_image_webp_embed_icc()
 
 		// What this GD writes: decoded again with the profile in it.
 		if (function_exists('imagewebp') && function_exists('imagecreatefromwebp')) {
-			foreach (array('webp', 'webp-lossless', 'webp-alpha') as $output) {
+			// GD writes lossless WebP from PHP 8.1 (IMG_WEBP_LOSSLESS); before
+			// it a quality of 101 stops PHP with a fatal error.
+			$outputs = defined('IMG_WEBP_LOSSLESS') ? array('webp', 'webp-lossless', 'webp-alpha') : array('webp', 'webp-alpha');
+
+			foreach ($outputs as $output) {
 				$out = pg_image_webp_embed_icc(image_color_profile_test_gd_bytes($output), $p3);
 
 				pg_assert_true(is_string($out), $output . ' from GD: written');
-				pg_assert_true(@imagecreatefromstring((string) $out) !== false, $output . ' from GD: still decodes');
 				file_put_contents($folder . '/gd.webp', (string) $out);
+				// imagecreatefromstring() reads WebP only from PHP 7.3.
+				pg_assert_true(@imagecreatefromwebp($folder . '/gd.webp') !== false, $output . ' from GD: still decodes');
 				pg_assert_same($p3, pg_image_icc_profile($folder . '/gd.webp'), $output . ' from GD: read back');
 			}
 		}
@@ -495,7 +500,7 @@ function test_image_gd_keeps_foreign_color_profile()
 			pg_assert_same('success', $webp['status'], 'WebP conversion');
 			file_put_contents($folder . '/out.webp', $webp['data']);
 			pg_assert_same($p3, pg_image_icc_profile($folder . '/out.webp'), 'WebP keeps the profile');
-			pg_assert_true(@imagecreatefromstring($webp['data']) !== false, 'WebP decodes');
+			pg_assert_true(@imagecreatefromwebp($folder . '/out.webp') !== false, 'WebP decodes');
 		}
 
 		if (pg_image_format_writer('avif') === 'gd') {

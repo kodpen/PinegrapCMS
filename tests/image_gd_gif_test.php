@@ -68,6 +68,18 @@ function image_gd_gif_test_near($rgb, $image, $x, $y)
 	return $rgb;
 }
 
+// A WebP's bytes as an image. imagecreatefromstring() reads WebP only from
+// PHP 7.3 on; imagecreatefromwebp() reads it on every version.
+function image_gd_gif_test_webp_image($data)
+{
+	$path = tempnam(sys_get_temp_dir(), 'pg_webp_test_');
+	file_put_contents($path, $data);
+	$image = imagecreatefromwebp($path);
+	unlink($path);
+
+	return $image;
+}
+
 function test_image_gd_gif_rotate_keeps_transparency()
 {
 	if (!image_gd_gif_test_gd()) {
@@ -159,7 +171,7 @@ function test_image_gd_gif_rotate_to_webp_keeps_alpha()
 	$data = pg_process_image_with_gd($path, IMAGETYPE_GIF, false, 0, 0, 92, 'webp', 90);
 	pg_assert_true(is_string($data) && ($data !== ''), 'webp writes bytes');
 
-	$image = imagecreatefromstring($data);
+	$image = image_gd_gif_test_webp_image($data);
 	pg_assert_true(image_gd_gif_test_transparent($image, 20, 20), 'webp: the middle is transparent');
 	pg_assert_false(image_gd_gif_test_transparent($image, 25, 5), 'webp: the block is opaque');
 	imagedestroy($image);
