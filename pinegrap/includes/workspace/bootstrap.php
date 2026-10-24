@@ -60,6 +60,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude_setup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/delegation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_catalogue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');

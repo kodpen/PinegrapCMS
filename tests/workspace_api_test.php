@@ -13,7 +13,8 @@
  * (includes/workspace/files.php), that a handler calls the panel's
  * functions that log in the signed-in person's name as the application's
  * owner, whose name a bell row carries, and that every write can be
- * rehearsed and stops before it writes.
+ * rehearsed and stops before it writes. Also that the ready-made MCP
+ * connectors are listed to an administrator only, and by no MCP tool.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -347,6 +348,30 @@ function test_ws_api_hide_reaches_the_other_devices_in_the_docs()
 	pg_assert_true(strpos($descriptions['workspace.messages.list'], 'deleted for themselves since then') !== false, 'changed_since names hidden messages');
 	pg_assert_true(strpos($descriptions['workspace.sync'], 'deleted for themselves since') !== false, 'sync names hidden messages');
 	pg_assert_true(strpos($descriptions['workspace.messages.hide'], 'other devices') !== false, 'hide names the other devices');
+}
+
+// The ready-made MCP connectors are read by an administrator's application
+// only, and no MCP tool lists them: adding a server is the settings screen's.
+function test_ws_api_mcp_catalogue_is_for_administrators_and_no_tool()
+{
+	$catalogue = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.mcp_servers.catalogue') {
+			$catalogue = $route;
+		}
+	}
+
+	pg_assert_true(is_array($catalogue), 'workspace.mcp_servers.catalogue is declared');
+	pg_assert_same('GET', $catalogue['method']);
+	pg_assert_same('/workspace/mcp-servers/catalogue', $catalogue['path']);
+	pg_assert_same('workspace:read', $catalogue['scope']);
+	pg_assert_false(pg_mcp_route_is_offered($catalogue), 'no MCP tool');
+
+	$source = ws_api_test_handler_source($catalogue['handler']);
+
+	pg_assert_true(strpos($source, "(int) \$viewer['role'] !== 0") !== false, 'an administrator only');
+	pg_assert_true(strpos($source, 'api_fail(403') !== false, 'the others get 403');
 }
 
 // The sync an app polls is a read and no tool: a model gains nothing from a
