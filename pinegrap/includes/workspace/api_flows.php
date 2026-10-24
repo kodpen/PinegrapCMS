@@ -57,16 +57,7 @@ function ws_api_flow_version_schema()
  */
 function ws_api_flow_graph_present($graph)
 {
-    return array(
-        'v'     => 1,
-        'nodes' => array_map(function ($node) {
-            $node['config'] = (object) $node['config'];
-
-            return $node;
-        }, $graph['nodes']),
-        'edges' => $graph['edges'],
-        'notes' => $graph['notes'],
-    );
+    return ws_flow_graph_present($graph);
 }
 
 // What ws_api_flow_graph_present() returns.
