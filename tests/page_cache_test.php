@@ -74,6 +74,7 @@ function test_page_cache_session_allowlist()
 		'token' => 'x', 'device_type' => 'desktop', 'visitor_id' => '5', 'http_referer' => 'https://example.com/',
 		'tracking_code' => 't', 'affiliate_code' => 'a', 'utm_source' => 's', 'utm_medium' => 'm',
 		'utm_campaign' => 'c', 'utm_term' => 't', 'utm_content' => 'c', 'cookie_id' => '9'))), 'tracking keys');
+	pg_assert_true(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'wishlist_cookie' => str_repeat('a', 64)))), 'a guest who saved a favourite');
 
 	pg_assert_false(pg_page_cache_session_anonymous(array('sessionusername' => 'erdal')), 'signed in');
 	pg_assert_false(pg_page_cache_session_anonymous(array('ecommerce' => array('order_id' => 4))), 'an order');

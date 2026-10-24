@@ -191,7 +191,7 @@ function test_wishlist_cookie_follows_list()
 	pg_assert_contains('SELECT MAX(wishlist_items.added_at) FROM wishlist_items WHERE', $follow, 'from the newest product in the list');
 	pg_assert_contains('pg_wishlist_cookie_expires(', $follow);
 	pg_assert_contains('pg_wishlist_cookie_clear()', $follow, 'an emptied list clears it');
-	pg_assert_contains('pg_wishlist_cookie_write(pg_wishlist_cookie_value(), $expires)', $follow, 'only the cookie the request holds');
+	pg_assert_contains('pg_wishlist_cookie_write(pg_wishlist_visitor_token(), $expires)', $follow, 'only the visitor\'s own cookie, the one this session started included');
 	pg_assert_false(strpos($follow, 'time()') !== false, 'never a year from now');
 }
 
@@ -242,6 +242,102 @@ function test_wishlist_reads_start_no_cookie()
 
 	foreach (array_keys($callers) as $call) {
 		pg_assert_same(0, substr_count($endpoint, $call), 'the endpoint goes through pg_wishlist_set(): ' . $call);
+	}
+}
+
+// Two saves a visitor without a cookie sends at once both arrive without one.
+// The session's file lock runs them one after the other, and the second
+// writes into the list the first one started, whose cookie the session keeps
+// until the browser sends it, instead of starting a list of its own whose
+// cookie the browser would keep in place of the first one's.
+function test_wishlist_first_saves_share_one_list()
+{
+	$saved_cookie = $_COOKIE;
+	$saved_session = $_SESSION ?? null;
+
+	$started = str_repeat('7e', 32);
+	$sent = str_repeat('4b', 32);
+	$owner = array('user_id' => 0, 'cookie_token' => hash('sha256', $started));
+
+	try {
+		$_COOKIE = array();
+		$_SESSION = array('software' => array('wishlist_cookie' => $started));
+
+		pg_assert_same($started, pg_wishlist_visitor_token(), 'the cookie this session started, before the browser sends it');
+		pg_assert_same($owner, pg_wishlist_owner(true), 'a second save writes into that list');
+		pg_assert_same($started, $_SESSION['software']['wishlist_cookie'], 'and starts no list of its own');
+		pg_assert_same($owner, pg_wishlist_owner(false), 'a read or a removal sees it too');
+
+		$_COOKIE = array(PG_WISHLIST_COOKIE => $sent);
+		pg_assert_same($sent, pg_wishlist_visitor_token(), 'the cookie the request carries comes first');
+
+		$_COOKIE = array();
+		$_SESSION['software']['wishlist_cookie'] = 'forged';
+		pg_assert_same('', pg_wishlist_visitor_token(), 'a session value of another shape names no list');
+		pg_assert_same(null, pg_wishlist_owner(false));
+
+		$_SESSION = array();
+		pg_assert_same('', pg_wishlist_visitor_token(), 'nothing started');
+	} finally {
+		$_COOKIE = $saved_cookie;
+		$_SESSION = $saved_session;
+	}
+
+	$owner_source = wishlist_test_function_source('pg_wishlist_owner');
+
+	$read = strpos($owner_source, 'pg_wishlist_visitor_token()');
+	$new = strpos($owner_source, 'pg_wishlist_token_new()');
+	$keep = strpos($owner_source, "\$_SESSION['software']['wishlist_cookie'] = \$cookie;");
+
+	pg_assert_true(($read !== false) && ($new !== false) && ($read < $new), 'a new cookie only when the session started none');
+	pg_assert_true(($new !== false) && ($keep !== false) && ($new < $keep), 'the session keeps the cookie it started');
+	pg_assert_contains('pg_wishlist_visitor_token()', wishlist_test_function_source('pg_wishlist_merge'), 'signing in moves that list too');
+
+	$clear = wishlist_test_function_source('pg_wishlist_cookie_clear');
+	$forget = strpos($clear, "unset(\$_SESSION['software']['wishlist_cookie']);");
+	$sent_check = strpos($clear, 'headers_sent()');
+
+	pg_assert_true(($forget !== false) && ($sent_check !== false) && ($forget < $sent_check), 'a merged or emptied list is not started again from the session');
+
+	// A guest who saved something still gets the catalog from the page cache:
+	// the key stands for the pg_wishlist cookie, which the cache does not look
+	// at either, and the hearts are filled in by script.
+	pg_assert_true(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'wishlist_cookie' => $started))), 'the session stays anonymous');
+}
+
+// Deleting a product for good takes it out of every list in the same request:
+// MySQL 5.7 hands the highest id out again after a restart, a new product
+// with that id would show as saved in each of them, and the trim no longer
+// sees those rows as orphaned once the id is in use. A product in the
+// Recycle Bin is not deleted and keeps its place in the lists.
+function test_wishlist_forget_product()
+{
+	pg_assert_same("DELETE FROM wishlist_items WHERE product_id = '812'", pg_wishlist_forget_product_sql(812));
+	pg_assert_same("DELETE FROM wishlist_items WHERE product_id = '812'", pg_wishlist_forget_product_sql('812'));
+	pg_assert_same('', pg_wishlist_forget_product_sql(0), 'no product');
+	pg_assert_same('', pg_wishlist_forget_product_sql('0'));
+	pg_assert_same('', pg_wishlist_forget_product_sql(-4));
+	pg_assert_same('', pg_wishlist_forget_product_sql('abc'));
+	pg_assert_same('', pg_wishlist_forget_product_sql(array(812)), 'an array');
+	pg_assert_same('', pg_wishlist_forget_product_sql(null));
+
+	$forget = wishlist_test_function_source('pg_wishlist_forget_product');
+
+	pg_assert_contains('pg_wishlist_forget_product_sql(', $forget);
+	pg_assert_contains('pg_wishlist_ready()', $forget, 'only where the table exists');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
+	$from = strpos($source, 'function pg_pb_delete_product(');
+	$body = ($from !== false) ? substr($source, $from, strpos($source, "\n}\n", $from) - $from) : '';
+
+	$delete = strpos($body, "DELETE FROM products WHERE");
+	$call = strpos($body, 'pg_wishlist_forget_product($product_id);');
+
+	pg_assert_true($call !== false, 'every permanent delete of a product removes it from the lists');
+	pg_assert_true(($delete !== false) && ($call !== false) && ($delete < $call), 'with the product row');
+
+	foreach (pg_catalog_bin_statements('product', 5, array(5), 0, 1) as $statement) {
+		pg_assert_false(strpos($statement, 'wishlist_items') !== false, 'the Recycle Bin keeps the lists');
 	}
 }
 

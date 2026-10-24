@@ -124,6 +124,9 @@ function pg_page_cache_personal($reason = null)
 /**
  * Whether a session holds nothing but what every anonymous visitor's session
  * holds: the CSRF token, the device type and what visitor tracking keeps.
+ * The favourites cookie a visitor's first save started (wishlist_cookie)
+ * counts too: it is the session's copy of the pg_wishlist cookie, which no
+ * stored page is drawn from (the hearts are filled in by script).
  * Anything else (a sign-in, an order, a currency, an offer code, a liveform
  * notice, a guest pass, an auto dialog's visit start, a stored URL id) makes
  * it personal, and so does a key added later that is not on this list.
@@ -136,6 +139,7 @@ function pg_page_cache_session_anonymous(array $session)
     $allowed = array(
         'token', 'device_type', 'visitor_id', 'http_referer', 'tracking_code', 'affiliate_code',
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'cookie_id',
+        'wishlist_cookie',
     );
 
     foreach ($session as $key => $value) {

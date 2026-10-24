@@ -16,7 +16,9 @@
  * trim removes the list. The table keeps only its sha256, so a row read out
  * of the database cannot be replayed as a cookie. The cookie is strictly
  * necessary (it holds what the visitor asked the site to keep), so it is
- * listed under necessary in the cookie notice.
+ * listed under necessary in the cookie notice. The session keeps the cookie
+ * it started until the browser sends it back (pg_wishlist_visitor_token()),
+ * so saves sent before the first answer arrived share one list.
  *
  * Once the visitor is signed in, the first wishlist read or write of the
  * request moves the cookie's list into the account (pg_wishlist_merge()) and
@@ -40,7 +42,8 @@
  * wishlist.php is the endpoint the heart buttons use. A daily pass
  * (pg_wishlist_trim_daily(), from job.php) removes visitor lists no cookie
  * can name any more and rows of deleted products and accounts; deleting an
- * account removes its list at once (pg_wishlist_forget_user()).
+ * account or a product removes its rows at once (pg_wishlist_forget_user(),
+ * pg_wishlist_forget_product()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -191,13 +194,17 @@ function pg_wishlist_cookie_expires($newest)
 }
 
 /**
- * Removes the visitor cookie, with the same path and flags it was sent with.
+ * Removes the visitor cookie, with the same path and flags it was sent with,
+ * and the session's copy of it.
  *
  * @return void
  */
 function pg_wishlist_cookie_clear()
 {
     unset($_COOKIE[PG_WISHLIST_COOKIE]);
+
+    // A merged or emptied list is not started again from the session.
+    unset($_SESSION['software']['wishlist_cookie']);
 
     if (headers_sent()) {
         return;
@@ -223,6 +230,30 @@ function pg_wishlist_cookie_value()
     $value = isset($_COOKIE[PG_WISHLIST_COOKIE]) ? $_COOKIE[PG_WISHLIST_COOKIE] : '';
 
     return pg_wishlist_token_valid($value) ? $value : '';
+}
+
+/**
+ * The visitor's cookie: the one the request carries, or else the one this
+ * session started (pg_wishlist_owner()) and the browser has not sent back
+ * yet. Two saves a visitor without a cookie sends at once both arrive
+ * without one; PHP's file sessions lock, so the second runs once the first
+ * has finished and finds its cookie here. Starting a list of its own instead,
+ * it would answer with a cookie the browser keeps in place of the first one,
+ * and the first product would be lost.
+ *
+ * @return string '' without one
+ */
+function pg_wishlist_visitor_token()
+{
+    $cookie = pg_wishlist_cookie_value();
+
+    if ($cookie !== '') {
+        return $cookie;
+    }
+
+    $started = isset($_SESSION['software']['wishlist_cookie']) ? $_SESSION['software']['wishlist_cookie'] : '';
+
+    return pg_wishlist_token_valid($started) ? $started : '';
 }
 
 /**
@@ -268,10 +299,11 @@ function pg_wishlist_owner_for($user_id, $cookie)
 /**
  * The owner of the request's list. For a signed-in visitor it first moves a
  * cookie list into the account (pg_wishlist_merge()), so every read and
- * write sees one list. A visitor without a cookie gets a new one only when
- * $create is true, which only pg_wishlist_set() asks for when it saves a
- * product, and only while the headers can still carry it: it is sent once the
- * row is written (pg_wishlist_cookie_follow()).
+ * write sees one list. A visitor without a cookie (pg_wishlist_visitor_token())
+ * gets a new one only when $create is true, which only pg_wishlist_set() asks
+ * for when it saves a product, and only while the headers can still carry
+ * it: it is sent once the row is written (pg_wishlist_cookie_follow()), and
+ * the session keeps it until the browser sends it back.
  *
  * @param bool $create
  * @return array|null user_id, cookie_token; null for a visitor with no list
@@ -287,13 +319,14 @@ function pg_wishlist_owner($create = false)
         return pg_wishlist_owner_for($user_id, '');
     }
 
-    $cookie = pg_wishlist_cookie_value();
+    $cookie = pg_wishlist_visitor_token();
 
     if ($create && ($cookie === '') && !headers_sent()) {
         $cookie = pg_wishlist_token_new();
 
         if ($cookie !== '') {
             $_COOKIE[PG_WISHLIST_COOKIE] = $cookie;
+            $_SESSION['software']['wishlist_cookie'] = $cookie;
         }
     }
 
@@ -305,8 +338,8 @@ function pg_wishlist_owner($create = false)
  * the list does (pg_wishlist_cookie_expires()): a year from its newest
  * product, not from this request, so saving a product the list holds already
  * or removing the newest one keeps the cookie and the daily trim in step. An
- * emptied list clears the cookie. Only the cookie the request holds is sent,
- * the one pg_wishlist_owner(true) has just started included.
+ * emptied list clears the cookie. Only the visitor's own cookie is sent
+ * (pg_wishlist_visitor_token()), the one this session started included.
  *
  * @param array|null $owner the owner whose list was written
  * @return void
@@ -327,7 +360,7 @@ function pg_wishlist_cookie_follow($owner)
         return;
     }
 
-    pg_wishlist_cookie_write(pg_wishlist_cookie_value(), $expires);
+    pg_wishlist_cookie_write(pg_wishlist_visitor_token(), $expires);
 }
 
 /**
@@ -386,10 +419,10 @@ function pg_wishlist_merge_sql($user_id, $key)
 }
 
 /**
- * Moves the visitor cookie's list into the signed-in account and clears the
- * cookie. Runs once a request, and costs nothing without a cookie. Skipped
- * while a member of staff is signed in as another account: the list in their
- * browser is theirs, not the customer's.
+ * Moves the visitor cookie's list (pg_wishlist_visitor_token()) into the
+ * signed-in account and clears the cookie. Runs once a request, and costs
+ * nothing without a cookie. Skipped while a member of staff is signed in as
+ * another account: the list in their browser is theirs, not the customer's.
  *
  * @return void
  */
@@ -404,7 +437,7 @@ function pg_wishlist_merge()
     $done = true;
 
     $user_id = pg_wishlist_user_id();
-    $cookie = pg_wishlist_cookie_value();
+    $cookie = pg_wishlist_visitor_token();
 
     if (($user_id <= 0) || ($cookie === '') || !pg_wishlist_ready()) {
         return;
@@ -690,6 +723,43 @@ function pg_wishlist_forget_user_sql($user_id)
 function pg_wishlist_forget_user($user_id)
 {
     $delete = pg_wishlist_forget_user_sql($user_id);
+
+    if (($delete !== '') && pg_wishlist_ready()) {
+        db($delete);
+    }
+}
+
+/**
+ * The statement that removes a deleted product from every list.
+ *
+ * @param mixed $product_id
+ * @return string '' for anything that is not a product id
+ */
+function pg_wishlist_forget_product_sql($product_id)
+{
+    $product_id = is_scalar($product_id) ? (int) $product_id : 0;
+
+    if ($product_id <= 0) {
+        return '';
+    }
+
+    return "DELETE FROM wishlist_items WHERE product_id = '" . $product_id . "'";
+}
+
+/**
+ * Removes a product deleted for good from every list (pg_pb_delete_product(),
+ * which every permanent delete runs, emptying the Recycle Bin included). The
+ * daily trim cannot be left to it: MySQL 5.7 hands the highest id out again
+ * after a restart, and once a new product holds the id its rows no longer
+ * look orphaned, so every list would show the new product as saved. A
+ * product put in the Recycle Bin is not deleted and keeps its place.
+ *
+ * @param mixed $product_id
+ * @return void
+ */
+function pg_wishlist_forget_product($product_id)
+{
+    $delete = pg_wishlist_forget_product_sql($product_id);
 
     if (($delete !== '') && pg_wishlist_ready()) {
         db($delete);
