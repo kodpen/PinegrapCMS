@@ -1441,14 +1441,15 @@ function parasut_ensure_product_stock_tracking($parasut_product_id, $needed_qty,
  * when the store's is (erp_account_country(), the way
  * erp_address_from_checkout() reads an empty country). Any other address
  * goes as one line in address (street, city, state, postcode, country)
- * with no city, district or postal_code.
+ * with no city, district or postal_code. The ERP's address code
+ * (includes/erp/accounts.php) must be loaded for a Turkish address;
+ * parasut_sync_contact() loads it.
  *
  * @param array       $order      Order row (billing_* fields)
  * @param string      $id_number  The buyer's VKN or TCKN (_parasut_order_identity()), '' for none
  * @param string|null $country    The country the address is read by; null for the billing
- *                                country, else the store's (erp_account_country(), which needs
- *                                includes/erp/accounts.php and asks the database when the
- *                                order names none)
+ *                                country, else the store's (erp_account_country(), which asks
+ *                                the database when the order names none)
  * @return array
  */
 function parasut_order_contact_attributes($order, $id_number, $country = null)
