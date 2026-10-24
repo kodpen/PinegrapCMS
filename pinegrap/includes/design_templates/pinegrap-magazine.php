@@ -1017,10 +1017,10 @@ $contents_row = function ($s) use ($el, $para, $bind, $attr, $card_kicker, $card
 // A story in a desk list: its title and Status on top, then its section,
 // the byline ($with_writer: the editors' lists), its issue, when it was
 // sent, its publication time once an editor set one, when anything last
-// happened to it (a message, a change) and the messages under it. A list
-// cannot be ordered by the last activity, so each row shows it: a story
-// that has gone quiet stands out. The row opens the list's detail page:
-// the submission page on the desks, the public story in "Live now".
+// happened to it (a message, a change) and the messages under it. Each row
+// shows the last activity, so a story that has gone quiet stands out. The
+// row opens the list's detail page: the submission page on the desks, the
+// public story in "Live now".
 $desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $head, $statuses) {
     $s = $head(3);
     $detail = function ($icon_name, $name, $children, $class = 'd-inline-flex align-items-center gap-1') use ($el, $icon) {

@@ -1,6 +1,6 @@
 ---
 name: record-view-counts
-description: Views on designed record pages (form counters, people only, counted after the page is sent) and form lists ordered by views, comments or views in recent days; why not visitor_content_hourly
+description: Views on designed record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 ---
 
 ## What counts a view?
@@ -24,6 +24,7 @@ description: Views on designed record pages (form counters, people only, counted
 
 ## How do lists sort?
 - `order_by_field` / `order_by_2_field`: `number_of_views`, `number_of_comments`, `recent_views` with `order_recent_days` (today and N-1 days before, 1-180, default 7, `pg_sw_recent_views_days()`), built by `pg_sw_counter_order_sql()`. Without the daily table `recent_views` reads all-time views.
+- `newest_activity_date_and_time`: the later of `forms.submitted_timestamp` and the `created_timestamp` of the comment the detail page's `submitted_form_info.newest_comment_id` names (MAX subquery, integers, 0 when none). The source the token prints and the classic list orders by, so date and order agree.
 - The names win over a same-named form field (the editor drops that option).
 - They read the list's `detail_page_id`; without one the list keeps date order and the panel says so.
 - Editor: Statistics group in Sort field, Days input for recent days (clamped on save); a switch to catalog listing maps them to `sort_order`.

@@ -67,6 +67,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/cron.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_rates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/tour.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/dashboard.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/system_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
