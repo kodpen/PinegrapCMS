@@ -5901,9 +5901,12 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
  * it - 'form_id' for a form's confirmation or notification, 'order_id' for an
  * order receipt. A widget on an e-mail page has no address to read ?r= or
  * ?order_id= from, and the recipient is chosen by the server, so the checks
- * that keep a visitor to their own records do not apply there. Pass an array
- * to set (the previous context comes back, for restoring); pass nothing to
- * read.
+ * that keep a visitor to their own records do not apply there. 'page_id' is
+ * the page being drawn: a widget whose data is the page's own (the comments
+ * widget's thread) reads it here, never through _pg_sw_current_page_id(),
+ * which is 0 on the live home page, in e-mails and in the search index, and
+ * is cached for the whole request. Pass an array to set (the previous
+ * context comes back, for restoring); pass nothing to read.
  *
  * @param array|null $set
  * @return array
