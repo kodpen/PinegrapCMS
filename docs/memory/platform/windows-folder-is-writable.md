@@ -9,7 +9,7 @@ description: Never gate a write on is_writable() of a folder: PHP on Windows rea
 - A file's read-only attribute is enforced, so `is_writable()` of a file is a fair question.
 
 ## Where did it bite, and how is it handled?
-- Workspace notes import: every upload answered "The file could not be saved." on the dev site (Windows, in a OneDrive folder; issue #1469); `ws_note_import_temp_dir()` asks `is_dir()` only (workspace/workspace-notes-import.md). tests/workspace_notes_import_test.php emulates such a folder with a stream wrapper whose `url_stat` reports mode 040555 (no write bit for anyone), since root passes any chmod.
+- Workspace notes import: every upload answered "The file could not be saved." on the dev site (Windows, in a OneDrive folder; PR #1497, issue #1469); `ws_note_import_temp_dir()` asks `is_dir()` only (workspace/workspace-notes-import.md). tests/workspace_notes_import_test.php emulates such a folder with a stream wrapper whose `url_stat` reports mode 040555 (no write bit for anyone), since root passes any chmod.
 - ERP document archive: no `is_writable()`, the write answers (erp/erp-document-archive.md).
 - System Status folder checks: `is_writable()`, and on Windows a `tempnam()` probe when it says no (`$folder_writable` in includes/fn/system_status.php).
 
