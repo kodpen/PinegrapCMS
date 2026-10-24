@@ -63,7 +63,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, avatar component, channel colour in the header, empty-state art, motion; no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
-- workspace-mcp-capabilities.md: Plan (2026-10-23, not started, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
+- workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-2 in PR #1468, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, steps 1, 3-6 in PR #1463, answers 1, 3, 4 given): Workspace MCP client as simple as Claude's connectors: protocol and card fixes, bundled catalogue, URL-only add, API
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; left: command registry over the API, ERP overdue to task, designer task panel
 - workspace-quotes.md: Plan (2026-10-23, not started, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links

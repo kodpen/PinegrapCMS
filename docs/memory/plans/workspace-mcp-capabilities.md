@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-capabilities
-description: Plan (2026-10-23, not started, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
+description: Plan (2026-10-23, steps 1-2 in PR #1468, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route for every plan, resources and prompts, API gaps
 ---
 
 ## What is asked? (owner, 2026-10-23)
