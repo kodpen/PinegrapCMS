@@ -641,7 +641,7 @@ pg_page_shell([
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
 
-            ' . ws_mcp_settings_card($self_url, $viewer) . '
+            ' . ws_mcp_settings_card($self_url, $viewer, $liveform) . '
         </div>
 
         <div class="col-xl-4">
