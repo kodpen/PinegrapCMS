@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555, F7 built): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555, F7 #1578): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -27,7 +27,7 @@ description: Plan (2026-10-24, F1 #1503, F2 #1529, F3a #1551, F3b #1555, F7 buil
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
-7. F7 shares built (11.0.83; workspace/workspace-flows-shares.md). F8 MCP tool, assistant, AI draft cards, starters.
+7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md). F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b (role-3 members only personal flows with steps in their own reach), 3 a (a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". 5-8: recommendations taken (owner: decide without asking).
