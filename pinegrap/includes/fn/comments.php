@@ -28,8 +28,42 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The item types the comment block of a classic page type names, as
+ * get_page_content.php picks the item for it. Pure.
+ *
+ * - 'catalog': a product group: the one the address names, else the page's
+ *   own product group, else the top-level one.
+ * - 'catalog detail': the product or product group the address names. The
+ *   page opened without one comments on itself.
+ * - 'calendar event view': the event in ?id=. The page opened without one
+ *   comments on itself.
+ *
+ * Every other page type comments on the page itself only ('' and 0). A legacy
+ * form item view page and a page with a record view widget take a submitted
+ * form instead (pg_comment_thread_decision()).
+ *
+ * @param mixed $page_type the page row's page_type
+ * @return array
+ */
+function pg_comment_classic_item_types($page_type)
+{
+    switch (is_scalar($page_type) ? (string) $page_type : '') {
+        case 'catalog':
+            return array('product_group');
+
+        case 'catalog detail':
+            return array('product', 'product_group');
+
+        case 'calendar event view':
+            return array('calendar_event');
+    }
+
+    return array();
+}
+
+/**
  * Which thread a comment posted to a page may join. Pure: the caller reads
- * the page and its record view widget (pg_comment_thread_verify()).
+ * the page, its record view widget and the item (pg_comment_thread_verify()).
  *
  * - A legacy form item view page (page type 'form item view') takes only a
  *   submitted form; its form_item_view_pages row decides who may see which.
@@ -41,19 +75,26 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *   custom form and lets this visitor see (access setting and record
  *   filters). The page's own thread ('' and 0), a product or another form's
  *   record is refused; it would be stored where the page never shows it.
- * - Any other page takes the posted item as it is, except a submitted form.
- *   Whether a product or calendar event id is one the page shows is not
- *   looked up here.
+ * - Any other page takes its own thread ('') as posted, or an item of a type
+ *   its comment block names (pg_comment_classic_item_types()) that the page
+ *   shows ($item_shown). A submitted form, a product on a calendar event
+ *   view page, a product on a catalog page (which names product groups) or
+ *   an item type no page names is refused for its type; an id the page does
+ *   not show is refused as an item.
  *
  * $record_id is the id of the record the widget resolved for the posted id
  * (0 when it found none), $record_visible whether the visitor may see it.
+ * $item_shown is whether the page shows the posted product, product group or
+ * calendar event (pg_comment_classic_item_shown()).
  *
  * Returns array('accept' => bool, 'refusal' => string, 'item_type',
  * 'item_id'). 'refusal' is '' when accepted, 'item_type' for a type the
  * record view page does not take, 'record' for a record it does not show to
  * this visitor, 'page_type' for an item type a page without a record view
- * widget does not take. An accepted record view post carries the record's
- * id; any other accepted post carries the posted values unchanged.
+ * widget does not take, 'item' for an item of the right type that page does
+ * not show. An accepted record or item carries its id as an integer, the id
+ * the database compares; the page's own thread and a legacy form item view
+ * page's record carry the posted values unchanged.
  *
  * @param mixed      $page_type
  * @param bool       $has_record_widget
@@ -61,9 +102,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param mixed      $item_id
  * @param int|string $record_id
  * @param bool       $record_visible
+ * @param bool       $item_shown
  * @return array
  */
-function pg_comment_thread_decision($page_type, $has_record_widget, $item_type, $item_id, $record_id = 0, $record_visible = false)
+function pg_comment_thread_decision($page_type, $has_record_widget, $item_type, $item_id, $record_id = 0, $record_visible = false, $item_shown = false)
 {
     $page_type = is_scalar($page_type) ? (string) $page_type : '';
     $type = is_scalar($item_type) ? (string) $item_type : '';
@@ -105,23 +147,106 @@ function pg_comment_thread_decision($page_type, $has_record_widget, $item_type, 
         return $out;
     }
 
-    if ($type === 'submitted_form') {
+    // A type that is no value (item_type[]=) names no thread. A missing field
+    // (null) is the page itself, as before.
+    $type_is_value = is_scalar($item_type) || ($item_type === null);
+
+    if ($type_is_value && ($type === '')) {
+        $out['accept'] = true;
+        return $out;
+    }
+
+    if (!$type_is_value || !in_array($type, pg_comment_classic_item_types($page_type), true)) {
         $out['refusal'] = 'page_type';
         return $out;
     }
 
+    $id = is_scalar($item_id) ? (int) $item_id : 0;
+
+    if (($id <= 0) || !$item_shown) {
+        $out['refusal'] = 'item';
+        return $out;
+    }
+
     $out['accept'] = true;
+    $out['item_type'] = $type;
+    $out['item_id'] = $id;
     return $out;
 }
 
 /**
+ * Whether the classic page $page_id shows this product, product group or
+ * calendar event, by the rule get_page_content.php uses to pick the item of
+ * its comment block. The caller asks only for an item type the page type
+ * names (pg_comment_classic_item_types()).
+ *
+ * - A product or product group: any that exists. A catalog or catalog detail
+ *   page finds its item by the address name in the URL, with no tie to the
+ *   page's own product group, and draws its comment block under a disabled
+ *   item too ("not currently available"). An id that names nothing is drawn
+ *   only under "the item could not be found" (a 404).
+ * - A calendar event: one that exists, is published and sits in a calendar
+ *   this calendar event view page takes (calendar_event_views_calendars_xref).
+ *   For any other event get_calendar_event_view_screen_content() ends the
+ *   request with an error page before the comments are drawn.
+ *
+ * No page, no id or another item type answers false without a query. A
+ * failed query ends the request with an error page (db_value()), as
+ * add_comment.php's own queries do.
+ *
+ * @param mixed $page_id
+ * @param mixed $item_type
+ * @param mixed $item_id
+ * @return bool
+ */
+function pg_comment_classic_item_shown($page_id, $item_type, $item_id)
+{
+    $pid = is_scalar($page_id) ? (int) $page_id : 0;
+    $type = is_scalar($item_type) ? (string) $item_type : '';
+    $id = is_scalar($item_id) ? (int) $item_id : 0;
+
+    if (($pid <= 0) || ($id <= 0)) {
+        return false;
+    }
+
+    switch ($type) {
+        case 'product':
+            $sql = "SELECT COUNT(*) FROM products WHERE id = '" . $id . "'";
+            break;
+
+        case 'product_group':
+            $sql = "SELECT COUNT(*) FROM product_groups WHERE id = '" . $id . "'";
+            break;
+
+        case 'calendar_event':
+            $sql =
+                "SELECT COUNT(*)
+                FROM calendar_events
+                INNER JOIN calendar_events_calendars_xref ON calendar_events_calendars_xref.calendar_event_id = calendar_events.id
+                INNER JOIN calendar_event_views_calendars_xref ON calendar_event_views_calendars_xref.calendar_id = calendar_events_calendars_xref.calendar_id
+                WHERE
+                    (calendar_events.id = '" . $id . "')
+                    AND (calendar_events.published != '0')
+                    AND (calendar_event_views_calendars_xref.page_id = '" . $pid . "')";
+            break;
+
+        default:
+            return false;
+    }
+
+    return ((int) db_value($sql) > 0);
+}
+
+/**
  * The thread a comment posted to $page_id may join: pg_comment_thread_decision()
- * over the page's record view widget.
+ * over the page's record view widget and the posted item.
  *
  * A page other than a legacy form item view is asked for its form_item_view
  * widget (pg_sw_record_comment_context()), with the posted id: the widget
  * looks the record up in its own custom form only and applies its access
- * setting and record filters, with no e-mail exception.
+ * setting and record filters, with no e-mail exception. A page without one
+ * that was posted an item of a type its comment block names is asked whether
+ * it shows that item (pg_comment_classic_item_shown()).
  *
  * Returns the decision plus 'record': the widget's context (null when the
  * page carries no such widget). add_comment.php treats a page with an
@@ -147,13 +272,24 @@ function pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)
         $record_id = (int) $record['form']['id'];
     }
 
+    $item_shown = false;
+
+    if (
+        ($record === null)
+        && is_scalar($item_type)
+        && in_array((string) $item_type, pg_comment_classic_item_types($page_type), true)
+    ) {
+        $item_shown = pg_comment_classic_item_shown($page_id, $item_type, $item_id);
+    }
+
     $decision = pg_comment_thread_decision(
         $page_type,
         $record !== null,
         $item_type,
         $item_id,
         $record_id,
-        ($record !== null) && !empty($record['visible'])
+        ($record !== null) && !empty($record['visible']),
+        $item_shown
     );
 
     $decision['record'] = $record;
