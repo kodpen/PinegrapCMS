@@ -50,7 +50,9 @@ function delete_order($request) {
     // The order's return requests and their lines name its order lines by id.
     pg_returns_delete_for_order($order['id']);
 
-    // Cancel order abandoned auto campaign for this order, if one exists.
+    // Cancel the order abandoned and review request auto campaigns of this
+    // order that have not been sent yet: both would reach the customer about
+    // an order that is gone.
     db(
         "UPDATE email_campaigns
         SET
@@ -58,7 +60,7 @@ function delete_order($request) {
             email_campaigns.last_modified_user_id = '" . (defined('USER_ID') ? (int) USER_ID : 0) . "',
             email_campaigns.last_modified_timestamp = UNIX_TIMESTAMP()
         WHERE
-            (email_campaigns.action = 'order_abandoned')
+            (email_campaigns.action IN ('order_abandoned', 'order_review_request'))
             AND
             (
                 (email_campaigns.status = 'ready')

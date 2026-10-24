@@ -362,22 +362,47 @@ function mp_sync_send_listings($account, &$summary) {
 
 		$group_id = (int) $row['group_id'];
 
-		$ids = (array) db_items("SELECT marketplace_sync_queue.id
+		// The bin filter is part of the second join, not of WHERE: a line whose
+		// product was binned after it was queued still has to be read, so it
+		// can be closed below instead of waiting for ever.
+		$lines = (array) db_items("SELECT marketplace_sync_queue.id,
+				products.id AS found_id, products.name AS product_name, live.id AS live_id
 			FROM marketplace_sync_queue
 			INNER JOIN products_groups_xref ON products_groups_xref.product = marketplace_sync_queue.product_id
+			LEFT JOIN products ON (products.id = marketplace_sync_queue.product_id)
+			LEFT JOIN products AS live ON (live.id = marketplace_sync_queue.product_id)" . pg_catalog_bin_live_sql('live') . "
 			WHERE (marketplace_sync_queue.account_id = '" . e($account_id) . "')
 			  AND (marketplace_sync_queue.operation = 'create')
 			  AND (marketplace_sync_queue.status = 'waiting')
 			  AND (marketplace_sync_queue.run_after <= UNIX_TIMESTAMP())
 			  AND (products_groups_xref.product_group = '" . e($group_id) . "')");
 
-		$queue_ids = array();
+		$split = mp_listing_split_live($lines);
 
-		foreach ($ids as $id_row) {
+		// The listing leaves these products out, so their lines are closed
+		// here, before the lease, with the reason. Sent with the batch they
+		// would close as done with nothing listed. The article's row is left
+		// alone: the article is fine, the product is not for sale.
+		foreach ($split['binned'] as $queue_id => $product_name) {
 
-			$queue_ids[] = (int) $id_row['id'];
+			mp_sync_finish_row($queue_id, 'failed', lang(array(
+				'string' => '{var:1} is in the Recycle Bin, so it was not listed.',
+				'vars'   => array($product_name)
+			)));
+
+			$summary['failed']++;
 
 		}
+
+		foreach ($split['missing'] as $queue_id) {
+
+			mp_sync_finish_row($queue_id, 'failed', lang('The product no longer exists.'));
+
+			$summary['failed']++;
+
+		}
+
+		$queue_ids = $split['send'];
 
 		if (!$queue_ids) {
 
@@ -787,10 +812,7 @@ function mp_sync_approve($account, $package, $order_id) {
 
 	}
 
-	// Only an open package is accepted. One that arrived already shipped or
-	// delivered is past the step acceptance moves it to, and the marketplace
-	// refuses it.
-	if (mp_order_stage($account, $package) !== 'open') {
+	if (!mp_sync_approvable($account, $package)) {
 
 		return;
 
@@ -814,7 +836,9 @@ function mp_sync_approve($account, $package, $order_id) {
 
 	}
 
-	$result = mp_call($account['provider'], 'approve_lines', array($account, $line_ids));
+	// The package goes along: a marketplace whose status service names the
+	// package and each line's quantity (Trendyol) needs more than the ids.
+	$result = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
 
 	$map_id = (int) db_value("SELECT id FROM marketplace_order_map
 		WHERE (account_id = '" . e((int)$account['id']) . "')
@@ -842,6 +866,26 @@ function mp_sync_approve($account, $package, $order_id) {
 		SET last_error = '" . e(mb_substr((string)$result['error'], 0, 500)) . "',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
+
+}
+
+// Whether a package may be accepted.
+//
+// Only an open package whose status is still exactly Created, the word both
+// n11 and Trendyol use for the one state acceptance moves on from. One that
+// arrived shipped, delivered or cancelled is past that step; one already
+// Picking or Invoiced was accepted by hand in their panel, and sending Picking
+// again is refused and would fill the map row's error as if something had
+// gone wrong.
+function mp_sync_approvable($account, $package) {
+
+	if (mp_order_stage($account, $package) !== 'open') {
+
+		return false;
+
+	}
+
+	return isset($package['remote_status']) && ((string)$package['remote_status'] === 'Created');
 
 }
 

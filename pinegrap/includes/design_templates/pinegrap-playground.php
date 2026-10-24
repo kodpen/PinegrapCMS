@@ -1831,12 +1831,11 @@ $widgets = array(
                                     $span(lang('Email') . ': ', '', lang('Label')),
                                     $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
                                 )),
-                                $el('p', 'mb-2', lang('Temporary Password'), array(
-                                    $span(lang('Temporary password') . ': ', '', lang('Label')),
-                                    $span('a1b2c3d4', 'fw-semibold font-monospace', lang('Value'), $bind('__new_account_password')),
-                                )),
-                                $para(lang('You are signed in. Keep these details, and choose a password of your own.'), 'small mb-2'),
-                                $link(lang('Change Password'), '{{page:change_password}}', 'btn btn-sm btn-primary rounded-pill border border-2 border-dark fw-bold'),
+                                // The single-use set password link, for the person who sent the form
+                                // while it is live; the sentence below covers a used or expired link.
+                                $link(lang('Set your password'), '#', 'btn btn-sm btn-primary rounded-pill border border-2 border-dark fw-bold', array(),
+                                    array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
+                                $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
                             ), $show_when('has_new_account')),
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
                                 $el('a', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold', lang('Link'), array(
@@ -2222,7 +2221,7 @@ $widgets = array(
             $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
             // The account the form opened for a visitor who had none: the
             // address it signs in with, and how to choose a password (the
-            // temporary one is shown on the conversation page, not mailed).
+            // set password link is shown on the conversation page, not mailed).
             $el('div', 'border-top pt-3', lang('New Account'), array(
                 $el('p', 'mb-2', lang('Sign-in Email'), array(
                     $span(lang('We opened an account for you with this address:') . ' ', '', lang('Label')),

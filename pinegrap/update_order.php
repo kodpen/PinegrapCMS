@@ -273,6 +273,11 @@ function update_order($request) {
             'email_address' => $order['billing_email_address'],
             'fields' => $fields,
             'data' => array('order' => $order)));
+
+        // Ask the customer to review what was bought, once per order. The
+        // helper keeps the review form's own rule: an order placed with an
+        // account and bought (paid, or put on the account).
+        pg_review_request_start((int) $order['id']);
     }
 
     // The deliveries this save recorded, after the shipment so a save that

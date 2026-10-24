@@ -12,7 +12,7 @@ description: Loading curtain printed by pg_preloader_markup() on every panel scr
 
 ## When does it drop and when does it show again?
 - **No artificial floor.** The criterion is DOM ready. A screen still building after ready DOM (Visual Editor) sets `window.pgPreloaderHold = true` and calls `window.pgPreloaderDone()` when painted.
-- **It shows on exit too:** link clicks and form submits call `pgPreloaderShow()`. Filters: `target`, `download`, `data-bs-toggle`, `#`/`javascript:`/`mailto:`, external origin, fragment-only change, modifier keys, links the settings dialog answers (`pgSettingsModal.asked()`).
+- **It shows on exit too:** link clicks and form submits call `pgPreloaderShow()`. Filters: `target`, `download`, `data-bs-toggle`, `data-pg-menu-panel` (a main menu row that opens its panel, `main-menu-panels.md`), `#`/`javascript:`/`mailto:`, external origin, fragment-only change, modifier keys, links the settings dialog answers (`pgSettingsModal.asked()`).
 - Both listeners run on the document in the capture phase, before the form's own handler can cancel the submit: a form that never leaves the page (sent over Ajax, like the settings dialog's) carries `data-pg-no-curtain`.
 - **There must be four ways out of a stuck curtain:** DOM ready / first interaction after a redirect that never happens / timeout / if the script never ran, the CSS animation. The first `hide()` proves the script ran and **removes** that animation; if the `forwards` fill stayed, on a long-open page the curtain could never open again.
 

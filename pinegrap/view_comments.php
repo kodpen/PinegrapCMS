@@ -31,6 +31,28 @@ if (isset($_SESSION['software']['comments']['query']) == false) {
     $_SESSION['software']['comments']['query'] = '';
 }
 
+// The verified purchase filter: '' lists every comment, 'yes' the reviews of
+// verified purchases, 'no' the rest. It is kept in the session like the
+// search, so the sort links keep it; anything but the three choices lists
+// every comment. Sites without the review columns have no filter.
+$reviews_ready = pg_reviews_ready();
+$verified = '';
+
+if ($reviews_ready) {
+    if (isset($_GET['verified'])) {
+        $_SESSION['software']['comments']['verified'] =
+            (is_string($_GET['verified']) && in_array($_GET['verified'], array('', 'yes', 'no'), true))
+                ? $_GET['verified']
+                : '';
+    }
+
+    $verified = (string) ($_SESSION['software']['comments']['verified'] ?? '');
+
+    if (!in_array($verified, array('', 'yes', 'no'), true)) {
+        $verified = '';
+    }
+}
+
 // these are only ever appended to further below, so they have to start out empty
 $where = '';
 $output_rows = '';
@@ -74,9 +96,22 @@ $search_query = mb_strtolower(($_SESSION['software']['comments']['query'] ?? '')
 // create where clause for sql
 $sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '%" . escape($search_query) . "%')";
 
+// The search and the verified filter narrow the list together.
+$conditions = array();
+
 if (($_SESSION['software']['comments']['query'] ?? '') != '') {
     // Get only the results the user wanted in the search.
-    $where .= "WHERE $sql_search";
+    $conditions[] = $sql_search;
+}
+
+$sql_verified = pg_review_verified_filter_sql($verified);
+
+if ($sql_verified !== '') {
+    $conditions[] = '(' . $sql_verified . ')';
+}
+
+if ($conditions) {
+    $where .= 'WHERE ' . implode(' AND ', $conditions);
 }
 
 
@@ -106,7 +141,7 @@ $query =
         forms.reference_code as reference_code,
         product_groups.address_name as product_group_address_name,
         products.address_name as product_address_name,
-        " . (pg_reviews_ready() ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+        " . ($reviews_ready ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
         comments.created_timestamp
     FROM comments
     LEFT JOIN forms ON forms.id = comments.item_id
@@ -233,6 +268,18 @@ foreach ($comments as $comment) {
 }
 
 
+// The verified filter in the toolbar's filter slot. It submits
+// ?verified=yes|no, and ?verified= for all comments.
+$output_verified_filter = '';
+
+if ($reviews_ready) {
+    $output_verified_filter = pg_filter_select('verified', array(
+        ''    => lang('All comments'),
+        'yes' => lang('Verified purchases'),
+        'no'  => lang('Not verified'),
+    ), $verified, array('label' => lang('Verified purchase'), 'action' => 'view_comments.php', 'id' => 'verified'));
+}
+
 print
     pg_page_shell(
         array(
@@ -255,6 +302,7 @@ print
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default) . '
+                        ' . $output_verified_filter . '
                     </nav>
                 </div>
             </div>

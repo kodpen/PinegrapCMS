@@ -56,6 +56,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The Spam Protection card's CAPTCHA provider: checked, and its keys
+    // asked about, before anything is written, like Apple's application.
+    $captcha_settings_post = function_exists('pg_captcha_settings_check') ? pg_captcha_settings_check($_POST, $liveform) : null;
+
+    if ($liveform->check_form_errors()) {
+        return;
+    }
+
 
 
     // ── Firewall settings ────────────────────────────────────────────────
@@ -90,6 +98,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 "login_throttle_captcha_after = " . max(0, min(100, (int) post_value('login_throttle_captcha_after'))) . ",";
         }
     }
+    // Form submission limits (2026.11.0): the same fragment pattern, clamped
+    // to the bounds pg_cf_throttle_limits() applies when it reads them.
+    $sql_form_limits = '';
+
+    if (function_exists('pg_schema_has') && pg_schema_has('config', 'form_limit_ip_hour')) {
+        $sql_form_limits =
+            "form_limit_ip_hour = " . max(0, min(10000, (int) post_value('form_limit_ip_hour'))) . ",
+             form_limit_recipient_day = " . max(0, min(10000, (int) post_value('form_limit_recipient_day'))) . ",
+             form_limit_domain_hour = " . max(0, min(10000, (int) post_value('form_limit_domain_hour'))) . ",
+             form_spam_blacklist = " . (post_value('form_spam_blacklist') ? 1 : 0) . ",";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -100,6 +120,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             remember_me = '" . escape(post_value('remember_me')) . "',
             forgot_password_link = '" . escape(post_value('forgot_password_link')) . "',
             " . $sql_login_throttle . "
+            " . $sql_form_limits . "
             oauth_google_enabled = '" . escape(post_value('oauth_google_enabled')) . "',
             oauth_google_client_id = '" . escape(trim(post_value('oauth_google_client_id'))) . "',
             registration_contact_group_id = '" . escape(post_value('registration_contact_group_id')) . "',
@@ -113,6 +134,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             membership_expiration_warning_email_days_before_expiration = '" . escape(post_value('membership_expiration_warning_email_days_before_expiration')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if (function_exists('pg_captcha_settings_save')) {
+        pg_captcha_settings_save($captcha_settings_post, USER_ID, $liveform);
+    }
 
 
     // Device limit lives in a column a not-yet-upgraded database may not have

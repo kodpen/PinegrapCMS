@@ -4,14 +4,14 @@ description: Accounts a form auto-registers or an administrator creates (add use
 ---
 
 ## Why is the password no longer written anywhere?
-- `custom_form.php` (auto_registration = 1) used to keep the random password in the session and print it in the sender's e-mail, the administrator's copy, watchers' HTML copies, the confirmation page and old layouts. Reported on kodpen.com, 2026-10-21. Fixed in PR #1172.
-- The account is created without a password (`create_member_user()` without `'password'`: algo 3, empty hash, which `pg_password_verify()` rejects). The change password screen and widget then ask for no current password. `set_password.php` writes algo 2. The session entry holds only `email_address` and `user_id`.
+- `custom_form.php` (auto_registration = 1) used to keep the random password in the session and print it in every e-mail copy, the confirmation page and old layouts. Fixed in PR #1172.
+- The account is created without a password (`create_member_user()` without `'password'`: algo 3, empty hash, rejected by `pg_password_verify()`). Change password then asks for no current password. `set_password.php` writes algo 2. The session entry holds only `email_address` and `user_id`.
 
 ## How is the link made and checked?
-- `includes/fn/auth.php`: `pg_set_password_link_issue($user_id)` writes `user.token = sha256(T)` and `user.token_timestamp`, the columns `forgot_password.php` uses, so `set_password.php` and the set password widget accept it unchanged. No schema change.
-- `T = pg_set_password_link_token()` = HMAC-SHA256 of `set-password:<user_id>:<issued_at>` under `ENCRYPTION_KEY`. Derived, so a later request (the confirmation page) redraws the same link from the user id; `T` is not stored. No key: no link.
+- `includes/fn/auth.php`: `pg_set_password_link_issue($user_id)` writes `user.token = sha256(T)` and `user.token_timestamp` (as `forgot_password.php`), so `set_password.php` and its widget accept it. No schema change.
+- `T = pg_set_password_link_token()` = HMAC-SHA256 of `set-password:<user_id>:<issued_at>` under `ENCRYPTION_KEY`. Derived, so a later request redraws the same link; `T` is not stored. No key: no link.
 - `pg_set_password_link($user_id)` shows the link only while `hash_equals(user.token, sha256(T))` and `pg_set_password_link_live()` (the same 24 hours as `set_password.php`). Setting the password clears the token and a forgot password request replaces it, so each link works once.
-- Address: `pg_sign_in_screen_url('set password', 'set_password.php')`, else the panel's `set_password.php`; the request's language via `pg_tr_rewrite_url()`; host `URL_SCHEME . HOSTNAME_SETTING` (`platform/hostname-in-mail-links.md`).
+- Address: `pg_sign_in_screen_url('set password', 'set_password.php')`, else the panel's; language via `pg_tr_rewrite_url()`; host `URL_SCHEME . HOSTNAME_SETTING` (`platform/hostname-in-mail-links.md`).
 
 ## Who sees the link?
 - Only the form's sender: their plain-text copy (`pg_cf_new_account_plain_text(…, true)`), HTML copy and confirmation page.
@@ -21,9 +21,9 @@ description: Accounts a form auto-registers or an administrator creates (add use
 - Orders: the same; the customer's receipt copy is secret, the store gets its own copy without the link (`commerce/order-auto-registration-set-password-link.md`, #1220).
 
 ## What does $auto_registration_password carry now?
-- Layouts in `data/backups/*/layouts/` (untouchable) and their modified copies print it with `h()` under "Password" / "Geçici Şifre". It now holds `pg_cf_new_account_password_note()`: "Set it with this link: <url>" for the sender, the "Forgot password" sentence when there is no live link, '' for anyone else, so those layouts stay harmless unedited.
+- Layouts in `data/backups/*/layouts/` (untouchable) and their copies print it with `h()` under "Password" / "Geçici Şifre". It holds `pg_cf_new_account_password_note()`: "Set it with this link: <url>" for the sender, the "Forgot password" sentence when there is no live link, '' for anyone else, so those layouts stay harmless unedited.
 - `includes/templates/form_item_view.php` gets `$auto_registration_set_password_url` and `$auto_registration_for_submitter` and shows a "Set your password" button.
-- The designer token `__new_account_password` (widgets.php) carries the same note; no separate link token or new designer label yet.
+- Designer (form item view, `widgets.php`): `__new_account_password` carries the same note (kept for saved trees); `__new_account_set_password_url` is the bare link for an href, flag `has_set_password_link` (off for anyone but the sender and once the link is used or expired). Shipped templates: a "Set your password" button, then the "Forgot password" sentence (#1348).
 
 ## What does an administrator's "New Account" e-mail carry?
 - A set password link, never the password (`add_user.php`, `import_users.php`): `core/admin-new-account-email-link.md` (#1217).
