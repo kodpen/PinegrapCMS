@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 done #1503, F2 in #1529, F3a in #1551): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -13,24 +13,24 @@ description: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: pr
 
 ## What is proposed? (not approved yet)
 - One "Flow" ("Akış"): graph JSON (boxes, arrows, notes), draft, versions; engine: plans/workspace-flows-engine.md.
-- Canvas (main): new workspace_flows.php, bundle `assets/js/workspace_flow.min.js` (`pg_js_bundles()`); HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_sync`).
+- Canvas (main): workspace_flows.php, bundle `assets/js/workspace_flow.min.js` (`pg_js_bundles()`); HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_sync`).
 - Process template: task boxes on "after" arrows; also from a channel template or table rows (workflow mode).
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
-- Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds its runs; table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
+- Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds the runs started there (a run keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is a shared step.
 - From plans/workspace-canvas-workflow-tables.md T3 (canvas = flow), T4, T5 moved here; T1, T2, T6, S1, S2 stay.
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
 1. Done (PR #1503): F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
 2. PR #1529: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. Later: from a template, notes/whiteboard, undo/redo, auto-layout, multi-select, Help link.
-3. F3 runner: Run, tasks wait for done, run view, cancel.
+3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine, API: PR #1551 (workspace/workspace-flows-runner.md); F3b view next.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
 7. F7 shares (schema); F8 MCP tool, assistant, AI draft cards, starters.
 
 ## Which questions are answered?
-Owner 2026-10-24: 1 a (own editor), 2 b (staff build and share; role-3 members only personal flows with steps in their own reach), 3 a (publishing decides; a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". Recommendations taken for 5-8 (owner: decide without asking).
+Owner 2026-10-24: 1 a, 2 b (role-3 members only personal flows with steps in their own reach), 3 a (a run an AI app starts asks first, per the MCP plan), 4 a; name "Akışlar". 5-8: recommendations taken (owner: decide without asking).
 1. Editor: own vanilla (not JointJS, not Drawflow).
 2. Builders: staff; home channel readers Run; role-3 personal flows from F6.
 3. Record writes: publish decides, like `change`.
