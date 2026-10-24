@@ -703,11 +703,10 @@ if ($_POST) {
 
 			$credentials = (array)$account['credentials'];
 
-			// A key from an earlier registration is used again; otherwise a new
-			// one, 32 random bytes written URL-safe.
-			$key = (isset($credentials['webhook_key']) && is_string($credentials['webhook_key']) && $credentials['webhook_key'] !== '')
-				? $credentials['webhook_key']
-				: pg_short_link_new_token();
+			// A new key for every registration, 32 random bytes written URL-safe,
+			// so a webhook from an earlier registration that is still alive over
+			// there presents a key the receiver no longer accepts.
+			$key = pg_short_link_new_token();
 
 			$result = mp_call($account['provider'], 'register_webhook', array($account, mp_webhook_url($account_id), $key));
 
@@ -762,10 +761,10 @@ if ($_POST) {
 
 			if ($result['ok']) {
 
-				// The key stays, for a registration made again later.
+				// The key goes with the id; a later registration makes a new one.
 				$credentials = (array)$account['credentials'];
 
-				unset($credentials['webhook_id']);
+				unset($credentials['webhook_id'], $credentials['webhook_key']);
 
 				db("UPDATE marketplace_accounts
 					SET credentials = '" . e(mp_credentials_encode($credentials)) . "', updated_timestamp = UNIX_TIMESTAMP()

@@ -369,6 +369,34 @@ function test_marketplace_webhook_screen_never_draws_the_key()
 	pg_assert_contains("mp_webhook_register_problem(\$account)", $source, 'registration is refused while one is registered');
 }
 
+// Every registration makes a new key and Remove drops the old one with the
+// id, so a webhook removed here but still alive at the marketplace presents a
+// key no later registration accepts.
+function test_marketplace_webhook_key_is_new_for_every_registration()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+
+	$start = strpos($source, "if (\$action === 'webhook_register' && \$account) {");
+	$middle = strpos($source, "if (\$action === 'webhook_remove' && \$account) {");
+
+	pg_assert_true(($start !== false) && ($middle !== false) && ($start < $middle));
+
+	$register = substr($source, $start, $middle - $start);
+	$remove = substr($source, $middle, 3000);
+
+	pg_assert_contains('$key = pg_short_link_new_token();', $register);
+	pg_assert_true(strpos($register, "\$credentials['webhook_key'] = \$key;") !== false, 'the new key is stored');
+	pg_assert_same(1, substr_count($register, 'webhook_key'), 'the stored key is never read back');
+	pg_assert_contains("unset(\$credentials['webhook_id'], \$credentials['webhook_key']);", $remove);
+
+	$old = webhook_test_account();
+	$new = webhook_test_account(array(), array('webhook_key' => 'a-n3w-k3y-fr0m-th3-n3xt-r3g1str4t10n-0f-32-byt3s'));
+
+	pg_assert_same(0, mp_webhook_gate('POST', $old, $old['credentials']['webhook_key']));
+	pg_assert_same(401, mp_webhook_gate('POST', $new, $old['credentials']['webhook_key']),
+		'the earlier webhook\'s key is refused once a new one is registered');
+}
+
 // Deleting an account removes its webhook from the marketplace first, and a
 // failed removal leaves the account in place: a webhook left behind delivers
 // to an address answering 404 for ever.

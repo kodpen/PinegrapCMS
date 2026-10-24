@@ -4,7 +4,7 @@ description: How a marketplace order webhook is registered and removed from the 
 ---
 
 ## How is it registered and removed?
-- From the account screen (`mp_action=webhook_register` / `webhook_remove`), by the operator. The key is the stored one or a new `pg_short_link_new_token()`, kept with `webhook_id` in the encrypted credentials blob and never drawn. Refused while `webhook_id` is set and unless the account is on and imports orders (`mp_webhook_register_problem()`). Removing drops `webhook_id`, keeps the key.
+- From the account screen (`mp_action=webhook_register` / `webhook_remove`), by the operator. Every registration makes a new key (`pg_short_link_new_token()`), kept with `webhook_id` in the encrypted credentials blob and never drawn. Refused while `webhook_id` is set and unless the account is on and imports orders (`mp_webhook_register_problem()`). Removing drops `webhook_id` and the key, so a webhook removed here but still alive at the marketplace never matches a later key.
 - Paused or import off with a webhook registered: deliveries get 403 and Trendyol switches it off. Save warns, and the block with Remove stays drawn.
 
 ## Which saves are refused while a webhook is registered?

@@ -142,10 +142,10 @@ function mp_webhook_receive() {
 // account's; an address naming no account has no key to compare with.
 //
 // An account with no webhook registered refuses every delivery before the key
-// is looked at. Removing a webhook here drops its id and keeps the key for a
-// later registration, so a webhook removed here but still alive over there
-// (the removal answered as gone, or the id was dropped some other way) would
-// otherwise go on delivering with a key this site still accepts.
+// is looked at. Removing a webhook here drops its id and its key, and every
+// registration makes a new key, so a webhook removed here but still alive over
+// there (the removal answered as gone, or the id was dropped some other way)
+// is refused now and keeps being refused after a later registration.
 function mp_webhook_gate($method, $account, $presented_key) {
 
 	if ($method !== 'POST') {
