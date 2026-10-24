@@ -4,7 +4,7 @@ description: Scripts minified from a list (pg_js_bundles(), tools/build_js.php):
 ---
 
 ## Which scripts are built, and from what?
-- `pg_js_bundles()` (`includes/fn/output.php`) maps each `.min.js` under `assets/js/` to its sources in run order. Today `workspace.min.js` joins twelve Workspace scripts (`workspace_editor.js` first, `workspace.js` last); `workspace_palette`, `workspace_board_channel`, `workspace_tour` and `workspace_guest` are one-to-one. The sources carry no `.src` in their names.
+- `pg_js_bundles()` (`includes/fn/output.php`) maps each `.min.js` under `assets/js/` to its sources in run order. Today `workspace.min.js` joins thirteen Workspace scripts (`workspace_editor.js` first, `workspace.js` last); `workspace_palette`, `workspace_board_channel`, `workspace_tour` and `workspace_guest` are one-to-one. The sources carry no `.src` in their names.
 - After editing a source run `php tools/build_js.php` (needs Node with `npx`). terser is pinned in the tool (`TERSER`) so every machine writes the same bytes; change it only together with a rebuild of every bundle. CI runs `--check`: a `.min.js` that no longer matches its sources fails the PR (line endings do not count).
 
 ## How does a screen load a bundle?
