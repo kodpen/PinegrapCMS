@@ -3057,7 +3057,17 @@ function output_menu($properties = false)
         $menu_items[2]['title'] = 'Pages';
         $menu_items[2]['context'] = true;
         $menu_items[2]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-window bi-me-2\'>' . lang('Pages') . '</a>';
-        $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_page.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page'))) . '</a>';
+        // add_page.php refuses a role 3 user without create_pages, as
+        // view_pages.php hides its own Add Page button from them.
+        if (($user['role'] < 3) || !empty($user['create_pages'])) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_page.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page'))) . '</a>';
+        }
+        // PAGES > Visual Page Editor. Its home admits managers and users at
+        // content level (pg_designer_access()): the designs and the pages
+        // they may edit. Roles 0-1 have the editor's own row (21).
+        if ($user['role'] >= 2) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
+        }
         // PAGES > Search Index
         if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -3102,7 +3112,9 @@ function output_menu($properties = false)
     }
 
 
-    if ((CALENDARS === true) && (($user['role'] < 3) || ($user['manage_calendars'] == true))) {
+    // The calendar screens also need at least one calendar assigned to a role 3
+    // user (validate_calendars_access()); without one every entry is refused.
+    if ((CALENDARS === true) && validate_calendars_access($user, true)) {
         // CALENDARS
         $menu_items[4]['id'] = 4;
         $menu_items[4]['href'] = 'view_calendars.php';
@@ -3168,7 +3180,10 @@ function output_menu($properties = false)
         }
     }
 
-    if ((($user['role'] < 3) || ($user['manage_contacts'] == true))) {
+    // The contact screens also need at least one contact group assigned to a
+    // role 3 user (validate_contacts_access()); without one every entry is
+    // refused.
+    if (validate_contacts_access($user, true)) {
         // CONTACTS
         $menu_items[7]['id'] = 7;
         $menu_items[7]['href'] = 'view_contacts.php';
@@ -3181,7 +3196,11 @@ function output_menu($properties = false)
         // CONTACTS > Contact Groups
         $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
         $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-rolodex bi-me-2\'>' . lang('All Contact Groups') . '</a>';
-        $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+        // add_contact_group.php refuses role 3 (view_contact_groups.php shows
+        // its Create button to role < 3 only).
+        if ($user['role'] < 3) {
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+        }
 
         // CONTACTS > Personal data export (staff only: it reads users and orders too)
         if ($user['role'] < 3) {
@@ -3336,16 +3355,20 @@ function output_menu($properties = false)
         }
 
 
-        // ECOMMERCE > Shipping
+        // ECOMMERCE > Shipping, and the store's other lists. The row is built
+        // for everyone who sees the store (role < 3, manage_ecommerce or
+        // manage_ecommerce_reports); each entry below is under the gate of its
+        // own screen.
         $menu_items[15]['id'] = 15;
         $menu_items[15]['href'] = 'view_shipping_methods.php';
         $menu_items[15]['menu_icon'] = 'shipping';
         $menu_items[15]['color_class'] = 'ecommerce-color';
         $menu_items[15]['title'] = 'All Shipping Methods';
         $menu_items[15]['context'] = true;
+        $menu_items[15]['data-bs-content'] = '';
 
         if (USER_MANAGE_ECOMMERCE and ECOMMERCE_SHIPPING) {
-            $menu_items[15]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-truck bi-me-2\'>' . lang('All Shipping Methods') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-truck bi-me-2\'>' . lang('All Shipping Methods') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_shipping_method.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Shipping Method'))) . '</a>';
             // ECOMMERCE > Zones
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -3363,11 +3386,18 @@ function output_menu($properties = false)
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_containers.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-box bi-me-2\'>' . lang('All Containers') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_container.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Container'))) . '</a>';
+            // ECOMMERCE > Ship Date Adjustments (validate_ecommerce_access(): they
+            // do not need the reports right)
+            $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar4-range bi-me-2\'>' . lang('All Ship Date Adjustments') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ship_date_adjustment.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ship Date Adjustment'))) . '</a>';
         }
 
         if (USER_MANAGE_ECOMMERCE) {
             // ECOMMERCE > Countries
-            $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            if ($menu_items[15]['data-bs-content'] !== '') {
+                $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            }
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_countries.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-flag bi-me-2\'>' . lang('All Countries') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_country.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Country'))) . '</a>';
             // ECOMMERCE > States
@@ -3378,19 +3408,29 @@ function output_menu($properties = false)
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_tax_zones.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calculator bi-me-2\'>' . lang('All Tax Zones') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_tax_zone.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Tax Zone'))) . '</a>';
+            // ECOMMERCE > Referral Sources and Currencies. Site Settings › Store
+            // Lists has them too, but a role 3 user does not get that row.
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-signpost-2 bi-me-2\'>' . lang('All Referral Sources') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_currencies.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-coin bi-me-2\'>' . lang('All Currencies') . '</a>';
+        } elseif (USER_MANAGE_ECOMMERCE_REPORTS) {
+            // A role 3 user with the reports right only: view_shipping_methods.php
+            // refuses them, and no other row of theirs holds the order reports
+            // (Orders needs manage_ecommerce, Visitors manage_visitors).
+            $menu_items[15]['href'] = 'view_order_reports.php';
+            $menu_items[15]['menu_icon'] = 'orders';
+            $menu_items[15]['title'] = 'Order Reports';
+            // ECOMMERCE > Order Reports
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
         }
 
         if (USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
-
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
-            if (USER_MANAGE_ECOMMERCE) {
-                // ECOMMERCE > Ship Date Adjustments
+            if ($menu_items[15]['data-bs-content'] !== '') {
                 $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
-                $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar4-range bi-me-2\'>' . lang('All Ship Date Adjustments') . '</a>';
-                $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ship_date_adjustment.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ship Date Adjustment'))) . '</a>';
             }
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
     }
 
@@ -3416,8 +3456,10 @@ function output_menu($properties = false)
         $menu_items[17]['context'] = true;
         $menu_items[17]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('Page Styles') . '</a>';
         $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_custom_style.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page Style'))) . '</a>';
-        // DESIGN > Import Design
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-down bi-me-2\'>' . lang('Import My Site') . '</a>';
+        // DESIGN > Import Design (closed on a hosted site, import_design.php)
+        if (!pg_hosted()) {
+            $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-down bi-me-2\'>' . lang('Import My Site') . '</a>';
+        }
 
         // DESIGN > Themes
         $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-2\' />';
@@ -3555,7 +3597,10 @@ function output_menu($properties = false)
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_audit.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-shield-check bi-me-2\'>' . lang('Audit trail') . '</a>';
         }
 
-        if (USER_MANAGE_ERP_SETTINGS) {
+        // The accountant's read-only right wins over the settings right:
+        // validate_erp_access($user, 'settings') refuses it (erp_accountant.php
+        // computes the same $can_settings).
+        if (USER_MANAGE_ERP_SETTINGS && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
             $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php\'' . $output_parent_target . ' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('ERP Settings') . '</a>';
         }
 
@@ -3807,13 +3852,16 @@ function output_menu($properties = false)
         case 'view_orders.php':
         case 'view_order.php':
         case 'view_orders_for_contact.php':
-        case 'view_order_reports.php':
-        case 'view_order_report.php':
         case 'add_order.php':
         case 'view_parasut_inbox.php':
         case 'view_returns.php':
         case 'view_return.php':
             $active_menu = 10;
+            break;
+        case 'view_order_reports.php':
+        case 'view_order_report.php':
+            // A reports-only user has them in the store's last row instead.
+            $active_menu = USER_MANAGE_ECOMMERCE ? 10 : 15;
             break;
         case 'view_products.php':
         case 'add_product.php':
@@ -3890,6 +3938,9 @@ function output_menu($properties = false)
             $active_menu = 16;
             break;
         case 'view_system_styles.php':
+            // Below the designer the editor's home is in the Pages panel.
+            $active_menu = ($user['role'] < 2) ? 21 : 2;
+            break;
         case 'add_system_style.php':
         case 'edit_system_style.php':
             $active_menu = 21;
@@ -3964,17 +4015,13 @@ function output_menu($properties = false)
         case 'settings_commerce.php':
         case 'settings_api.php':
         case 'settings_languages.php':
+        case 'translations.php':
         case 'view_log.php':
         case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':
-        case 'view_referral_sources.php':
-        case 'add_referral_source.php':
-        case 'edit_referral_source.php':
-        case 'view_currencies.php':
-        case 'add_currency.php':
-        case 'edit_currency.php':
+        case 'private_label.php':
         case 'software_update.php':
         case 'software_repair.php':
         case 'view_performance_log.php':
@@ -3984,6 +4031,16 @@ function output_menu($properties = false)
         case 'backups.php':
         case 'cloudflare.php':
             $active_menu = 20;
+            break;
+        case 'view_referral_sources.php':
+        case 'add_referral_source.php':
+        case 'edit_referral_source.php':
+        case 'view_currencies.php':
+        case 'add_currency.php':
+        case 'edit_currency.php':
+            // Site Settings › Store Lists; a role 3 user, who has no Site
+            // Settings row, finds them in the shipping row.
+            $active_menu = ($user['role'] <= 2) ? 20 : 15;
             break;
     }
 
@@ -4132,9 +4189,11 @@ function pg_menu_settings_entries($user, $parent_target)
     include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
     $categories = pg_settings_categories();
+    $screens = pg_settings_category_screens($user);
 
     foreach ($categories as $key => $category) {
         $categories[$key]['url'] = pg_settings_url($key);
+        $categories[$key]['screens'] = isset($screens[$key]) ? $screens[$key] : array();
     }
 
     return pg_menu_settings_markup($categories, pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
@@ -4143,13 +4202,15 @@ function pg_menu_settings_entries($user, $parent_target)
 /**
  * The Site Settings row's entries and second-level panels, from its lists.
  *
- * Each category opens a panel with its page and its sections; each group of
- * neighbouring screens opens a panel with its screens. The category pages are
+ * Each category opens a panel with its page, its sections and, under a
+ * divider, the screens that go with it (pg_settings_category_screens()); each
+ * group of neighbouring screens opens a panel with its screens. The category pages are
  * the page path of the settings (settings_<category>.php), so every link to
  * them carries data-pg-settings-page, which tells pgSettingsModal not to
  * answer it with the modal (backend.src.js).
  *
- * @param array  $categories    key => label, icon, url, sections (id => label)
+ * @param array  $categories    key => label, icon, url, sections (id => label),
+ *                              screens (optional: label, icon, url)
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
@@ -4181,6 +4242,14 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
 
         foreach ($category['sections'] as $section => $label) {
             $sections .= '<a href=\'' . h($base . $page . '#' . $section) . '\'' . $parent_target . ' class=\'' . $class . 'bi-dot bi-me-2\' data-pg-settings-page>' . h($label) . '</a>';
+        }
+
+        if (!empty($category['screens'])) {
+            $sections .= '<hr class=\'divider my-2\' />';
+
+            foreach ($category['screens'] as $screen) {
+                $sections .= '<a href=\'' . h($base . $screen['url']) . '\'' . $parent_target . ' class=\'' . $class . h($screen['icon']) . ' bi-me-2\'>' . h($screen['label']) . '</a>';
+            }
         }
 
         $panels .= pg_menu_panel($panel_id, $entry_id, $category['label'], $sections);

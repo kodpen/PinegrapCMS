@@ -418,49 +418,12 @@ function api_orders_has_notes() {
 }
 
 // What a status change asks of an order, from the status it has ($from) to the
-// one sent ($to):
-//  'none'    nothing (the same status);
-//  'set'     a plain write (complete and exported, either way);
-//  'cancel'  the store's cancellation path (process_order_cancellation());
-//  'restore' the order screen's Restore (pg_order_restore_cancelled()): out of
-//            cancelled, the cancellation's bookkeeping and refund flag are
-//            cleared and the gift cards it expired come back;
-//  'refuse'  a move the store has no path for. incomplete is the cart's
-//            status: a placed order is never turned back into a cart (which
-//            the abandoned cart mail would then pick up), and a cart becomes
-//            an order only through the checkout, which numbers it, takes the
-//            payment and moves the stock. The order screen offers neither,
-//            nor a cancel for a cart.
+// one sent ($to): 'none', 'set', 'cancel', 'restore' or 'refuse'. The store's
+// one rule, pg_order_status_move() (includes/fn/order_status.php), which the
+// Workspace's order writer follows too.
 function api_orders_status_move($from, $to) {
 
-	$from = (string)$from;
-	$to   = (string)$to;
-
-	if ($from === $to) {
-
-		return 'none';
-
-	}
-
-	if (($from === 'incomplete') || ($to === 'incomplete')) {
-
-		return 'refuse';
-
-	}
-
-	if ($to === 'cancelled') {
-
-		return 'cancel';
-
-	}
-
-	if ($from === 'cancelled') {
-
-		return 'restore';
-
-	}
-
-	return 'set';
+	return pg_order_status_move($from, $to);
 
 }
 
@@ -493,10 +456,7 @@ function api_orders_update($params) {
 
 	if ($move === 'refuse') {
 
-		api_fail_validation(lang(array(
-			'string' => 'An order cannot be moved from {var:1} to {var:2}: a basket becomes an order only through the checkout, and an order does not go back to being a basket.',
-			'vars'   => array($existing['status'], $params['status'])
-		)), 'status');
+		api_fail_validation(pg_order_status_move_refusal($existing['status'], $params['status']), 'status');
 
 	}
 

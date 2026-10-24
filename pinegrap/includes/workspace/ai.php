@@ -1278,6 +1278,52 @@ function ws_ai_hold($seconds, $error)
 }
 
 /**
+ * Is the channel told that a request held back could be served with a form?
+ * Only a request written to an MCP server's alias in a channel, only when
+ * Pinegrap AI itself failed (not reached, a 5xx, no model listed), and only
+ * at the request's first call: one tried before or that took a step was told
+ * already, or got on without it.
+ *
+ * @param array $row            the request as the call began (ai_steps and
+ *                              ai_attempts before this call was counted)
+ * @param bool  $gateway_failed
+ * @return bool
+ */
+function ws_ai_form_hint_due($row, $gateway_failed)
+{
+    return $gateway_failed
+        && ((int) ($row['mcp_server_id'] ?? 0) > 0)
+        && ((int) ($row['channel_id'] ?? 0) > 0)
+        && ((int) ($row['note_id'] ?? 0) === 0)
+        && ((int) ($row['task_id'] ?? 0) === 0)
+        && ((int) ($row['ai_steps'] ?? 0) === 0)
+        && ((int) ($row['ai_attempts'] ?? 0) === 0);
+}
+
+/**
+ * After a request to an MCP server's alias was held because Pinegrap AI
+ * could not answer: once, the channel gets the link to run the server's
+ * tools that read with a form meanwhile (mcp_form.php), as it does when
+ * Pinegrap AI is not set up at all (ws_ai_after_send()).
+ *
+ * @param array $row            as for ws_ai_form_hint_due()
+ * @param bool  $gateway_failed
+ */
+function ws_ai_hold_form_hint($row, $gateway_failed)
+{
+    if (!ws_ai_form_hint_due($row, $gateway_failed) || !function_exists('ws_mcp_form_hint')) {
+        return;
+    }
+
+    $server = ws_mcp_server((int) $row['mcp_server_id']);
+    $hint = $server ? ws_mcp_form_hint($server, (int) $row['channel_id']) : '';
+
+    if ($hint !== '') {
+        ws_message_system((int) $row['channel_id'], lang('Pinegrap AI could not be reached, so the request waits and is tried again.') . $hint);
+    }
+}
+
+/**
  * One model call for a request, and what it asked for.
  *
  * @param array $row
@@ -1314,6 +1360,7 @@ function ws_ai_step($row)
 
     if ($model === '') {
         ws_ai_hold(120, lang('Pinegrap AI lists no model to answer with.'));
+        ws_ai_hold_form_hint($row, true);
         return 'held';
     }
 
@@ -1360,6 +1407,10 @@ function ws_ai_step($row)
     }
 
     if ($problem !== '') {
+        if ($problem === 'error') {
+            ws_ai_hold_form_hint($row, ($response['http'] === 0) || ($response['http'] >= 500));
+        }
+
         return 'held';
     }
 
