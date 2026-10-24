@@ -749,10 +749,18 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 
 	$provider_name = mp_provider_name($account['provider']);
 
+	// A row with a line still out at the marketplace is left for a later
+	// pass: the verdict the next poll applies would write over what is read
+	// now, and a refusal landing on a row already seen approved would stop it
+	// for good, since approved rows are not asked about again.
 	$ids = array_map('intval', (array) db_values("SELECT id FROM marketplace_product_map
 		WHERE (account_id = '" . e($account_id) . "')
 		  AND (remote_code <> '')
 		  AND (remote_id = '')
+		  AND NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
+			WHERE (marketplace_sync_queue.account_id = marketplace_product_map.account_id)
+			  AND (marketplace_sync_queue.product_id = marketplace_product_map.product_id)
+			  AND (marketplace_sync_queue.status = 'sent'))
 		ORDER BY id ASC"));
 
 	// A start drawn every pass rather than one read from the clock: a job that
@@ -814,8 +822,18 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 
 			}
 
+			// Only onto the row as it was read: matched again under another
+			// code meanwhile, the answer belongs to the old code.
 			db("UPDATE marketplace_product_map SET " . implode(', ', $set) . "
-				WHERE id = '" . e((int)$row['id']) . "'");
+				WHERE (id = '" . e((int)$row['id']) . "')
+				  AND (remote_code = '" . e($code) . "')
+				  AND (remote_id = '')");
+
+			if (mysqli_affected_rows(db::$con) < 1) {
+
+				continue;
+
+			}
 
 			// Its stock and price were refused while it waited, and nothing
 			// would send them again until the product changed.

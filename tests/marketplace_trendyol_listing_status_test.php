@@ -312,6 +312,22 @@ function test_marketplace_trendyol_listing_status_rejected_row_approved_after_a_
 	pg_assert_contains("(remote_id = '')", $source);
 }
 
+// A line still out at the marketplace is answered by the next poll, after the
+// read; its verdict would write over the read, so such rows wait. The write
+// goes only onto the row as it was read.
+function test_marketplace_trendyol_listing_status_leaves_rows_with_a_line_in_flight()
+{
+	$source = listing_status_test_function_source('mp_sync_listing_states_account');
+
+	pg_assert_contains("AND NOT EXISTS (SELECT 1 FROM marketplace_sync_queue", $source);
+	pg_assert_contains("(marketplace_sync_queue.status = 'sent')", $source);
+	pg_assert_contains("(marketplace_sync_queue.product_id = marketplace_product_map.product_id)", $source);
+
+	pg_assert_contains('AND (remote_code = \'" . e($code) . "\')', $source);
+	pg_assert_true(strpos($source, 'mysqli_affected_rows(db::$con) < 1') < strpos($source, 'mp_enqueue('),
+		'a row changed meanwhile is not queued');
+}
+
 function listing_status_test_function_source($name)
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/sync.php');
@@ -436,7 +452,10 @@ function test_marketplace_trendyol_listing_status_runs_last_and_keeps_the_deadli
 	$account = listing_status_test_function_source('mp_sync_listing_states_account');
 
 	pg_assert_contains('$deadline', $account);
-	pg_assert_true(strpos($account, 'microtime(true) >= $deadline') > strpos($account, 'array_chunk('),
+
+	$check = strpos($account, 'microtime(true) >= $deadline');
+
+	pg_assert_true($check > strpos($account, 'array_chunk(') && $check < strpos($account, 'mp_call('),
 		'checked before each call, not only before each account');
 }
 
