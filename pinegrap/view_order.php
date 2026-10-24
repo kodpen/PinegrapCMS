@@ -3069,13 +3069,27 @@ if (!$_POST) {
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
             VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
 
-        // If full amount has been refunded, mark order as cancelled.
-        if ($new_refunded_total >= (int)$order_row['total']) {
-            db("UPDATE orders SET status = 'cancelled' WHERE id = '" . e($order_id) . "'");
-        }
-
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
 
+        // The full amount back cancels the order through the store's one
+        // cancellation: the canceller, date and reason are recorded, a waiting
+        // review request is cancelled, the gift cards the order issued are
+        // expired, the customer is mailed and order.cancelled is announced.
+        // No void: the money is back already, and the cancellation reads
+        // refunded_amount, so it neither voids nor flags the payment (what
+        // gift cards paid is still flagged, as on every cancellation). An
+        // order another request cancelled meanwhile answers 'already'.
+        if ($new_refunded_total >= (int)$order_row['total']) {
+            process_order_cancellation(
+                $order_id,
+                lang('The full amount was refunded.'),
+                true,                                           // admin context (page is admin-gated)
+                (int) (isset($user['id']) ? $user['id'] : 0),   // validate_user() key is "id", not "user_id"
+                false                                           // no void: the money is back already
+            );
+        }
+
+        // One line for the refund, the cancellation it caused included.
         pg_audit_record('refund', 'orders', $order_id, $audit_before);
 
         // The return invoice for the same lines comes next, filled in; the

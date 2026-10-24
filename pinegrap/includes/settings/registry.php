@@ -175,7 +175,7 @@ function pg_settings_categories()
 
         'languages' => array(
             'label' => lang('Languages and Translation'),
-            'icon'  => 'bi-translate',
+            'icon'  => 'bi-globe',
             'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
             'sections' => array(
                 'pgset-languages' => lang('Site Languages'),
@@ -427,6 +427,41 @@ function pg_settings_legacy_anchors()
 
 
 /**
+ * Screens that belong with a category without being one of its sections.
+ *
+ * The main menu lists them in the category's panel, under its sections
+ * (pg_menu_settings_markup()), so a screen that no other menu path reaches
+ * for some of the people its own gate admits has a home beside the settings
+ * it goes with. Same rule as the groups below: each item under the gate of
+ * the screen itself, and the gate decides visibility only.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array category key => array of array(label, icon, url)
+ */
+function pg_settings_category_screens($user)
+{
+    $role = isset($user['role']) ? (int) $user['role'] : 3;
+
+    $screens = array();
+
+    // The translations of the pages and texts: validate_area_access($user,
+    // 'manager'). Its other entry, in the Visual Page Editor panel, is drawn
+    // for role < 2 only, so a manager had no way to it.
+    if ($role <= 2) {
+        $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
+    }
+
+    // The panel's own logo, stylesheet and footer links:
+    // validate_area_access($user, 'administrator'). No other link led to it.
+    if ($role === 0) {
+        $screens['appearance'][] = array('label' => lang('Private Label Branding'), 'icon' => 'bi-badge-tm', 'url' => 'private_label.php');
+    }
+
+    return $screens;
+}
+
+
+/**
  * The neighbouring screens, grouped the way the Settings menu groups them.
  *
  * The groups are the point: what the operator is looking for is either a screen
@@ -487,13 +522,17 @@ function pg_settings_tool_groups($user)
     // Jobs. The ones that change or remove something sit here together, and
     // they wear the same colour as every other row: severity is carried by the
     // icon and by the confirmation, not by a tint.
-    $tools = array(
-        array('label' => lang('Check for Updates'),   'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php'),
-    );
+    // On a hosted site the hosting platform updates and repairs the software,
+    // and both screens refuse (pg_hosted()).
+    $tools = array();
+
+    if (!pg_hosted()) {
+        $tools[] = array('label' => lang('Check for Updates'), 'icon' => 'bi-arrow-repeat', 'url' => 'software_update.php');
+    }
 
     // Writing the release package over the software is an administrator's
     // job, like the screen's own door.
-    if ($role === 0) {
+    if (($role === 0) && !pg_hosted()) {
         $tools[] = array('label' => lang('Repair Software'), 'icon' => 'bi-bandaid', 'url' => 'software_repair.php');
     }
 

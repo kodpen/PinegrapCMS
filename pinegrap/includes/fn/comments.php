@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Comment rules shared by the comment handlers: which thread a comment posted
- * to a page may join.
+ * to a page may join, which form record a stored comment is about, and the
+ * record's comment counters moderation keeps up to date.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -157,4 +158,172 @@ function pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)
     $decision['record'] = $record;
 
     return $decision;
+}
+
+// Moderation of a stored comment: which form record it belongs to, and that
+// record's counters.
+//
+// The stored row is enough to tell. add_comment.php stores item type
+// 'submitted_form' only on a page that shows records: a legacy form item view
+// page, or a page whose form_item_view widget shows the record
+// (pg_comment_thread_verify() above). Such a designed page has page type
+// 'standard', so moderation must not decide from the page type, or a designed
+// record page keeps a stale comment count and its record's submitter is never
+// mailed when a held comment is approved.
+
+/**
+ * The id of the form record a stored comment is about, or 0 when it is about
+ * a page, product, product group or calendar event. Pure.
+ *
+ * @param mixed $item_type comments.item_type
+ * @param mixed $item_id   comments.item_id
+ * @return int
+ */
+function pg_comment_record_id($item_type, $item_id)
+{
+    if (!is_scalar($item_type) || ((string) $item_type !== 'submitted_form') || !is_scalar($item_id)) {
+        return 0;
+    }
+
+    $id = (int) $item_id;
+
+    return ($id > 0) ? $id : 0;
+}
+
+/**
+ * Whether a comment's first publish mails the submitter of the form record it
+ * is about (send_comment_email_to_custom_form_submitter()). Pure.
+ *
+ * True when the comment is about a form record, the page has a submitter
+ * e-mail page, and someone other than the submitter wrote the comment: nobody
+ * is mailed about their own comment. 0 is anonymous on both sides, and two
+ * anonymous people are not the same person. add_comment.php applies the same
+ * writer rule to the visitor who posts.
+ *
+ * @param mixed $item_type               comments.item_type
+ * @param mixed $item_id                 comments.item_id
+ * @param mixed $submitter_email_page_id page.comments_submitter_email_page_id
+ * @param mixed $writer_user_id          comments.created_user_id
+ * @param mixed $submitter_user_id       forms.user_id of the record
+ * @return bool
+ */
+function pg_comment_submitter_mail_due($item_type, $item_id, $submitter_email_page_id, $writer_user_id, $submitter_user_id)
+{
+    if (pg_comment_record_id($item_type, $item_id) <= 0) {
+        return false;
+    }
+
+    if ((is_scalar($submitter_email_page_id) ? (int) $submitter_email_page_id : 0) <= 0) {
+        return false;
+    }
+
+    $writer = is_scalar($writer_user_id) ? (int) $writer_user_id : 0;
+    $submitter = is_scalar($submitter_user_id) ? (int) $submitter_user_id : 0;
+
+    return !(($writer > 0) && ($writer === $submitter));
+}
+
+/**
+ * Logs a failed query of the counter rebuild. error_log() is disabled on some
+ * hosts, so it is asked for first.
+ */
+function _pg_comment_db_failed()
+{
+    if (function_exists('error_log')) {
+        error_log('Pinegrap: query failed: ' . mysqli_error(db::$con));
+    }
+}
+
+/**
+ * The first column of the first row of $sql as an integer (0 for no row or
+ * NULL), or null when the query failed.
+ *
+ * @param string $sql
+ * @return int|null
+ */
+function _pg_comment_db_int($sql)
+{
+    $result = @mysqli_query(db::$con, $sql);
+
+    if (!($result instanceof mysqli_result)) {
+        _pg_comment_db_failed();
+        return null;
+    }
+
+    $row = mysqli_fetch_row($result);
+    mysqli_free_result($result);
+
+    return (is_array($row) && ($row[0] !== null)) ? (int) $row[0] : 0;
+}
+
+/**
+ * Rebuilds the submitted_form_info row of a form record on the page its
+ * comment was written on, after a comment was published, held, scheduled,
+ * edited or deleted. Does nothing for a comment that is not about a form
+ * record.
+ *
+ * The form lists read number_of_comments and newest_comment_id from this row
+ * (sorting by comment count, the ^^newest_comment^^ tokens, the newest
+ * activity date), and so do the subjects of the comment e-mails, so the
+ * callers rebuild it before they mail. number_of_views is kept as the highest
+ * value of the existing rows, as the list readers take it with MAX(), and
+ * duplicate rows for the pair collapse into one.
+ *
+ * The statements keep the legacy read, DELETE, INSERT shape without a lock on
+ * purpose, like the other comment writers. A failed query is logged and
+ * answers false: a failed read writes nothing, so the old counters stay. It
+ * uses @mysqli_query() rather than db(), whose failure prints an HTML error
+ * screen, also inside the API and MCP (the same choice as
+ * pg_sfv_count_view()).
+ *
+ * @param mixed $page_id   comments.page_id
+ * @param mixed $item_type comments.item_type
+ * @param mixed $item_id   comments.item_id
+ * @return bool true when the row was rebuilt
+ */
+function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
+{
+    $pid = is_scalar($page_id) ? (int) $page_id : 0;
+    $rid = pg_comment_record_id($item_type, $item_id);
+
+    // class_exists() first: isset() on a static property of a class that is
+    // not declared yet throws. db_connect() declares the class.
+    if (($pid <= 0) || ($rid <= 0) || !class_exists('db') || !isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $pair = "(submitted_form_id = '" . $rid . "') AND (page_id = '" . $pid . "')";
+    $published = "(page_id = '" . $pid . "') AND (item_id = '" . $rid . "') AND (item_type = 'submitted_form') AND (published = '1')";
+
+    $views = _pg_comment_db_int("SELECT MAX(number_of_views) FROM submitted_form_info WHERE " . $pair);
+    $count = _pg_comment_db_int("SELECT COUNT(*) FROM comments WHERE " . $published);
+
+    if (($views === null) || ($count === null)) {
+        return false;
+    }
+
+    $newest = 0;
+
+    if ($count > 0) {
+        $newest = _pg_comment_db_int("SELECT id FROM comments WHERE " . $published . " ORDER BY created_timestamp DESC, id DESC LIMIT 1");
+
+        if ($newest === null) {
+            return false;
+        }
+    }
+
+    if (!@mysqli_query(db::$con, "DELETE FROM submitted_form_info WHERE " . $pair)) {
+        _pg_comment_db_failed();
+        return false;
+    }
+
+    $insert = "INSERT INTO submitted_form_info (submitted_form_id, page_id, number_of_views, number_of_comments, newest_comment_id)
+        VALUES ('" . $rid . "', '" . $pid . "', '" . $views . "', '" . $count . "', '" . $newest . "')";
+
+    if (!@mysqli_query(db::$con, $insert)) {
+        _pg_comment_db_failed();
+        return false;
+    }
+
+    return true;
 }

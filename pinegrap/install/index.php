@@ -7510,7 +7510,7 @@ function process_install_backup_upload($liveform, $install_site_exists) {
 
 	if ($folder_name == '') {
 
-		$folder_name = pathinfo($upload['name'], PATHINFO_FILENAME);
+		$folder_name = pg_file_name_stem($upload['name']);
 
 	}
 

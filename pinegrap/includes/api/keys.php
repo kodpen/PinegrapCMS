@@ -92,3 +92,131 @@ function api_secret_hint($secret) {
 	return substr((string)$secret, -4);
 
 }
+
+// Makes an application key for a panel screen that sets one up by itself (the
+// assistants' cards in the Workspace settings). Always kind 'server': a
+// 'device' or 'oauth' application lets people sign in, which nothing made
+// here is for. $owner_id owns the key and is recorded as the one who made it;
+// its scopes are capped by that account's rights on every call
+// (api_effective_scopes()).
+//
+// With $with_secret a secret is made and only its hash and its last four
+// characters are stored; without one the key cannot sign in at all, since
+// api_secret_matches() needs a stored hash. The plain secret exists only in
+// the answer: the caller shows it once and keeps it nowhere. The audit line
+// masks api_key and api_secret_* by name (pg_audit_secret_key()), and the Site
+// Log line names the application only. $username is whose name that line
+// carries.
+//
+// Answers array('id' => int, 'key' => string, 'secret' => string, empty
+// without a secret), or null when the row could not be written.
+//
+// api_settings.php still writes the same INSERT in its create branch: a change
+// to one belongs in the other too.
+function api_app_create($name, $description, array $scopes, $owner_id, $with_secret, $username) {
+
+	require_once(dirname(__FILE__) . '/scopes.php');
+
+	$key    = api_generate_key();
+	$secret = $with_secret ? api_generate_secret() : '';
+
+	$written = db("INSERT INTO api_apps
+		(name, description, api_key, api_secret_hash, api_secret_hint, owner_user_id,
+		 scopes, status, rate_limit_per_min, kind, created_user_id, created_timestamp, updated_timestamp)
+		VALUES (
+			'" . escape((string)$name) . "',
+			'" . escape((string)$description) . "',
+			'" . escape($key) . "',
+			'" . escape(($secret !== '') ? api_secret_hash($secret) : '') . "',
+			'" . escape(($secret !== '') ? api_secret_hint($secret) : '') . "',
+			'" . (int)$owner_id . "',
+			'" . escape(json_encode(api_scopes_normalise($scopes))) . "',
+			'active',
+			'120',
+			'server',
+			'" . (int)$owner_id . "',
+			UNIX_TIMESTAMP(),
+			UNIX_TIMESTAMP()
+		)");
+
+	$id = (int)mysqli_insert_id(db::$con);
+
+	if (($written === false) || ($id <= 0)) {
+
+		return null;
+
+	}
+
+	pg_audit_record('create', 'api_apps', $id);
+
+	log_activity(lang(array(
+		'string' => 'API application ({var:1}) was created.',
+		'vars'   => (string)$name
+	)), (string)$username);
+
+	return array('id' => $id, 'key' => $key, 'secret' => $secret);
+
+}
+
+// Issues a new secret for a 'server' application; any other kind has none to
+// replace and is refused. With $grace_seconds the outgoing secret keeps
+// answering that long, the way Application Access rotates. With 0 it stops at
+// once, and so does a previous secret still inside an earlier rotation's grace:
+// api_secret_matches() then accepts only the new one.
+//
+// The plain secret exists only in the answer, as with api_app_create().
+// Answers array('name', 'key', 'secret'), or null when there is no such
+// application or the row could not be written.
+//
+// api_settings.php still writes its own rotation (24 hours of grace): a
+// change to one belongs in the other too.
+function api_app_rotate_secret($app_id, $grace_seconds, $username) {
+
+	$app_id = (int)$app_id;
+
+	$grace_seconds = max(0, (int)$grace_seconds);
+
+	$existing = ($app_id > 0)
+		? db_item("SELECT id, name, api_key, api_secret_hash FROM api_apps
+			WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1")
+		: null;
+
+	if (!$existing) {
+
+		return null;
+
+	}
+
+	$secret = api_generate_secret();
+
+	$audit_before = pg_audit_fetch('api_apps', $app_id);
+
+	$previous = ($grace_seconds > 0)
+		? "api_secret_prev_hash = '" . escape($existing['api_secret_hash']) . "',
+			api_secret_prev_expires = UNIX_TIMESTAMP() + " . $grace_seconds
+		: "api_secret_prev_hash = '',
+			api_secret_prev_expires = 0";
+
+	$written = db("UPDATE api_apps SET
+			" . $previous . ",
+			api_secret_hash = '" . escape(api_secret_hash($secret)) . "',
+			api_secret_hint = '" . escape(api_secret_hint($secret)) . "',
+			updated_timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . $app_id . "' AND kind = 'server'");
+
+	if ($written === false) {
+
+		return null;
+
+	}
+
+	pg_audit_record('rotate', 'api_apps', $app_id, $audit_before);
+
+	log_activity(lang(array(
+		'string' => 'A new secret was issued for the API application ({var:1}).',
+		'vars'   => $existing['name']
+	)), (string)$username);
+
+	return array('name' => (string)$existing['name'], 'key' => (string)$existing['api_key'], 'secret' => $secret);
+
+}

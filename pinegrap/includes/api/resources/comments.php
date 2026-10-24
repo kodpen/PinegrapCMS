@@ -18,8 +18,11 @@
 //
 // Publishing one does what the screen does when it publishes: the people
 // watching the page, and the person who submitted the form record the comment
-// is about, get their e-mail, and a form record's comment count is brought up
-// to date for the form lists.
+// is about (unless they wrote it), get their e-mail. Publishing, holding or
+// removing a comment about a form record brings the record's comment count
+// up to date for the form lists. This is the same on a form item view page
+// and on a page built in the visual designer that shows the record: the
+// comment's own item decides, not the page type (includes/fn/comments.php).
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -255,39 +258,6 @@ function api_comments_get($params) {
 
 }
 
-// A form record's comment count and newest comment, which the form lists
-// read instead of counting (edit_comment.php keeps the same row).
-function api_comment_refresh_form_info($row) {
-
-	if ((string)$row['page_type'] !== 'form item view') {
-
-		return;
-
-	}
-
-	$page_id = (int)$row['page_id'];
-
-	$item_id = (int)$row['item_id'];
-
-	$item_type = escape((string)$row['item_type']);
-
-	$views = (int)api_value("SELECT number_of_views FROM submitted_form_info
-		WHERE submitted_form_id = '" . $item_id . "' AND page_id = '" . $page_id . "' LIMIT 1");
-
-	$published = "comments.page_id = '" . $page_id . "' AND comments.item_id = '" . $item_id . "'
-		AND comments.item_type = '" . $item_type . "' AND comments.published = '1'";
-
-	$count = (int)api_value("SELECT COUNT(*) FROM comments WHERE " . $published);
-
-	$newest = ($count > 0) ? (int)api_value("SELECT id FROM comments WHERE " . $published . " ORDER BY created_timestamp DESC LIMIT 1") : 0;
-
-	api_exec("DELETE FROM submitted_form_info WHERE submitted_form_id = '" . $item_id . "' AND page_id = '" . $page_id . "'");
-
-	api_exec("INSERT INTO submitted_form_info (submitted_form_id, page_id, number_of_views, number_of_comments, newest_comment_id)
-		VALUES ('" . $item_id . "', '" . $page_id . "', '" . $views . "', '" . $count . "', '" . ($newest > 0 ? $newest : '') . "')");
-
-}
-
 function api_comments_update($params) {
 
 	$app = api_current_app();
@@ -334,11 +304,19 @@ function api_comments_update($params) {
 
 	}
 
+	// The record's submitter is mailed about someone else's comment only
+	// (includes/fn/comments.php). A read, so it runs before the dry run stops.
+	$record_id = pg_comment_record_id($row['item_type'], $row['item_id']);
+
+	$submitter_user_id = ($record_id > 0) ? (int)api_value("SELECT user_id FROM forms WHERE id = '" . $record_id . "'") : 0;
+
+	$mail_submitter = pg_comment_submitter_mail_due($row['item_type'], $row['item_id'], $row['comments_submitter_email_page_id'], $row['created_user_id'], $submitter_user_id);
+
 	api_dry_run_stop('updated', 'comment', array(
 		'id'      => $id,
 		'page_id' => (int)$row['page_id'],
 		'changes' => array_keys($set),
-		'emails'  => $publishing && (((int)$row['comments_watcher_email_page_id'] > 0) || (((string)$row['page_type'] === 'form item view') && ((int)$row['comments_submitter_email_page_id'] > 0)))
+		'emails'  => $publishing && (((int)$row['comments_watcher_email_page_id'] > 0) || $mail_submitter)
 	));
 
 	$sql = array();
@@ -358,10 +336,22 @@ function api_comments_update($params) {
 		'vars'   => array((string)$row['page_name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
+	if (isset($set['published'])) {
+
+		// A form record's comment count and newest comment, read by the form
+		// lists. Rebuilt before the e-mails below, whose subject reads them.
+		pg_comment_refresh_record_info((int)$row['page_id'], (string)$row['item_type'], (int)$row['item_id']);
+
+		// A review published or held back moves its product's rating
+		// (includes/fn/reviews.php).
+		pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);
+
+	}
+
 	// What the comments screen sends when it publishes a comment.
 	if ($publishing) {
 
-		if (((string)$row['page_type'] === 'form item view') && ((int)$row['comments_submitter_email_page_id'] > 0)) {
+		if ($mail_submitter) {
 
 			send_comment_email_to_custom_form_submitter($id);
 
@@ -372,16 +362,6 @@ function api_comments_update($params) {
 			send_comment_email_to_watchers($id);
 
 		}
-
-	}
-
-	if (isset($set['published'])) {
-
-		api_comment_refresh_form_info($row);
-
-		// A review published or held back moves its product's rating
-		// (includes/fn/reviews.php).
-		pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);
 
 	}
 
@@ -421,7 +401,7 @@ function api_comments_delete($params) {
 
 	api_exec("DELETE FROM notifications WHERE comment_id = '" . $id . "'");
 
-	api_comment_refresh_form_info($row);
+	pg_comment_refresh_record_info((int)$row['page_id'], (string)$row['item_type'], (int)$row['item_id']);
 
 	pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);
 

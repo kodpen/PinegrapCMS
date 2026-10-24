@@ -1589,7 +1589,7 @@ function ws_note_file_store_bytes($viewer, $note, $original_name, $binary)
         return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
-    $original_name = trim(preg_replace('/[\x00-\x1F\x7F]/', '', basename(str_replace('\\', '/', (string) $original_name))));
+    $original_name = trim(preg_replace('/[\x00-\x1F\x7F]/', '', pg_basename(str_replace('\\', '/', (string) $original_name))));
     $extension = strtolower((string) pathinfo($original_name, PATHINFO_EXTENSION));
 
     if (($original_name === '') || ($extension === '') || ws_upload_refused($original_name)) {
