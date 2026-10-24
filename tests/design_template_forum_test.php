@@ -7,7 +7,7 @@
  * Community Docs and Forum Reports forms and their office-use-only fields,
  * the live rules every list and record view a visitor or a member opens
  * carries (a topic while its Status is not Hidden, a guide while it is
- * Published, a report never), the members' own lists, the moderators'
+ * Live on the site, a report never), the members' own lists, the moderators'
  * pages, the one vocabulary of boards, kinds, statuses, sections and tags,
  * the sample topics and guides, the archives read from the address
  * (?board=, ?tag=, ?member=, ?section=), the links that carry a record's
@@ -108,7 +108,7 @@ function _test_forum_sections()
 
 function _test_forum_doc_statuses()
 {
-	return array(lang('Awaiting review'), lang('In review'), lang('Changes requested'), lang('Published'), lang('Archived'), lang('Not accepted'));
+	return array(lang('Awaiting review'), lang('In review'), lang('Changes requested'), lang('Live on the site'), lang('Withdrawn'), lang('Not accepted'));
 }
 
 function _test_forum_report_reasons()
@@ -141,7 +141,7 @@ function _test_forum_topic_live()
 
 function _test_forum_doc_live()
 {
-	return array('field' => 'status', 'operator' => 'is equal to', 'value' => lang('Published'), 'dynamic_value' => '');
+	return array('field' => 'status', 'operator' => 'is equal to', 'value' => lang('Live on the site'), 'dynamic_value' => '');
 }
 
 // -- trees ---------------------------------------------------------------------
@@ -643,7 +643,7 @@ function test_forum_placeholders_resolve()
 
 // Every list and record view placed on a page a visitor or a member opens
 // shows topics only while they are not Hidden and guides only while they
-// are Published; a members' page shows a guide in another status only to
+// are Live on the site; a members' page shows a guide in another status only to
 // the member who sent it; no such page shows a report or the staff
 // directory; and nothing on a public page is anyone's own records.
 function test_forum_public_views_carry_live_rules()
@@ -690,7 +690,7 @@ function test_forum_public_views_carry_live_rules()
 	$want = array('home_count_topics', 'home_count_solved', 'home_count_guides', 'home_announcements', 'home_latest', 'home_unanswered',
 		'home_popular', 'home_guides', 'forum_count', 'forum_pinned', 'forum_topics', 'board_head', 'board_pinned', 'board_topics',
 		'tag_topics', 'member_topics', 'unanswered_topics', 'docs_count', 'docs_featured', 'docs_latest', 'docs_all', 'section_guides',
-		'topic_view', 'topic_aside', 'doc_view', 'my_topics_started', 'my_topics_followed', 'my_docs_list', 'my_docs_live');
+		'topic_view', 'topic_aside', 'doc_view', 'my_topics_started', 'my_docs_list', 'my_docs_live');
 	foreach (array_keys(_test_forum_boards()) as $board) {
 		$want[] = 'board_count_' . $board;
 	}
@@ -800,7 +800,7 @@ function test_forum_private_views()
 
 	// The members' own lists: their own records only, never every record
 	// for whoever may edit the form.
-	$own = array('my_topics_started' => array(true, false), 'my_topics_followed' => array(false, true), 'my_docs_list' => array(true, false), 'my_docs_live' => array(true, false));
+	$own = array('my_topics_started' => array(true, false), 'my_docs_list' => array(true, false), 'my_docs_live' => array(true, false));
 	foreach ($own as $key => $want) {
 		$cfg = $w[$key]['config'];
 		pg_assert_true(!empty($cfg['viewer_filter']), $key . ' lists the viewer\'s own');
@@ -823,6 +823,12 @@ function test_forum_private_views()
 		}
 		if (!empty($cfg['viewer_filter'])) {
 			pg_assert_same('registration', $folder, $key . ': a viewer\'s own list is on a members\' page');
+		}
+		// The watcher filter finds a legacy form item view page only, never
+		// the designed topic page: a list of followed topics would always be
+		// empty.
+		if (_test_forum_form_of($cfg) === 'topic_form' && !empty($cfg['viewer_filter'])) {
+			pg_assert_true(empty($cfg['viewer_filter_watcher']), $key . ': no list of followed topics');
 		}
 	}
 }
@@ -1086,8 +1092,7 @@ function test_forum_one_vocabulary()
 
 	// The tags to pick from are words the sample topics carry: in English
 	// each is one of a line's words as written there, and in Turkish it is
-	// found in a line the way the tag page's "contains" finds it (the
-	// Turkish of "tasks", görev, finds görevler).
+	// found in a line the way the tag page's "contains" finds it.
 	$tr = _test_forum_tr();
 	$lines = array();
 	foreach (_test_forum_samples('new_topic') as $r) {
@@ -1199,7 +1204,7 @@ function test_forum_sample_guides()
 				pg_assert_true(isset($r[$name]) && $r[$name] !== '', 'guide ' . $i . ' fills ' . $name);
 			}
 		}
-		pg_assert_same(lang('Published'), $r['status'], 'guide ' . $i . ' is published');
+		pg_assert_same(lang('Live on the site'), $r['status'], 'guide ' . $i . ' is published');
 		pg_assert_same('yes', $r['rights'], 'guide ' . $i . ' agreed to the rights');
 		pg_assert_same(1, preg_match('/^\d{2}$/', $r['doc_order']), 'guide ' . $i . ' has a two-digit order');
 		pg_assert_false(isset($orders[$r['section']][$r['doc_order']]), 'guide ' . $i . ' order is its own in its section');
@@ -1699,7 +1704,7 @@ function test_forum_comments()
 	$tpl = _test_forum_tpl();
 	$pages = _test_forum_pages();
 	$want = array(
-		'topic' => array(lang('Reply'), 'topic_view', lang('Replies')),
+		'topic' => array(lang('reply'), 'topic_view', lang('Replies')),
 		'doc' => array(lang('Feedback'), 'doc_view', lang('Feedback')),
 		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators')),
 		'conversation' => array(lang('Message'), 'conversation', lang('Replies')),
@@ -1937,6 +1942,33 @@ function test_forum_css()
 	}
 	pg_assert_contains('.pf-replies .alert a:not(.btn){color:var(--bs-alert-link-color)}', $own, 'notice links in the replies are readable');
 	pg_assert_contains('.pf-topic.pg-edit-host,', $own, 'a row with the moderators\' pencil makes room for it');
+	// A guide card's pencil goes into the column around it: the card makes
+	// room for it too.
+	$card_lists = 0;
+	foreach ($tpl['widgets'] as $key => $w) {
+		$found = is_array($w['tree']) ? _test_forum_loop_parent($w['tree']) : null;
+		foreach ($found !== null ? $found[1]['children'] : array() as $item) {
+			$inner = array();
+			foreach (_test_forum_nodes($item) as $n) {
+				$inner = array_merge($inner, _test_forum_classes($n));
+			}
+			if (in_array('col', _test_forum_classes($item), true) && in_array('pf-card-link', $inner, true)) {
+				$card_lists++;
+			}
+		}
+	}
+	pg_assert_true($card_lists >= 3, 'the guide card lists are found');
+	pg_assert_contains('.pg-edit-host .pf-card-link{padding-inline-start:2.75rem}', $own, 'a guide card makes room for the pencil');
+	// The topic page's aside stays in view only on a screen tall enough to
+	// show all of it.
+	pg_assert_contains('@media (min-width:992px) and (min-height:56rem){.pf-sticky{position:sticky;', $own, 'the aside is sticky only where it fits');
+	pg_assert_false(strpos($own, '@media (min-width:992px){.pf-sticky') !== false, 'never sticky on a short screen');
+	// The home page's numbers: two in a row on a phone, so a count of
+	// thousands keeps inside its card.
+	$home = json_encode(_test_forum_pages()['home']['tree']);
+	pg_assert_false(strpos($home, '"cssClass":"col-4"') !== false, 'no three numbers in a row on a phone');
+	pg_assert_same(2, substr_count($home, 'col-6 col-sm-4'), 'two numbers share a row on a phone');
+	pg_assert_same(1, substr_count($home, 'col-12 col-sm-4'), 'the third takes the row below');
 
 	// Outlined buttons carry no words; the language switcher is filled; a
 	// record's first element is no grid row (the edit chip goes into it).
@@ -1990,6 +2022,16 @@ function test_forum_focus_rings()
 	pg_assert_same(1, preg_match('/\.pf-navlink:focus-visible\{[^}]*outline:2px solid[^}]*\}/', $own), 'the main links show their focus');
 	pg_assert_same(1, preg_match('/\.nav-underline \.nav-link:focus-visible\{[^}]*outline:2px solid[^}]*\}/', $own), 'the underlined navs show their focus');
 	pg_assert_contains('.pf-tag:focus-visible{outline:2px solid', $own, 'a tag shows its focus');
+	// The FAQ's accordion buttons: an inset ring, which the next item
+	// cannot cover, in place of Bootstrap's faint shadow.
+	pg_assert_same(1, preg_match('/(^|\n)body \.accordion-button:focus-visible\{outline:2px solid var\(--bs-emphasis-color\);outline-offset:-2px;box-shadow:none\}/', $own), 'an accordion button shows its focus');
+	$accordions = 0;
+	foreach (_test_forum_all_trees() as $where => $tree) {
+		foreach (_test_forum_nodes($tree) as $n) {
+			$accordions += in_array('accordion-button', _test_forum_classes($n), true) ? 1 : 0;
+		}
+	}
+	pg_assert_true($accordions >= 12, 'the FAQ\'s accordion buttons are found');
 
 	// Every nav link is a main link or sits in an underlined nav.
 	$links = 0;
@@ -2268,8 +2310,8 @@ function test_forum_moderation()
 		pg_assert_true(in_array($key, $placed, true), 'the dashboard places ' . $key);
 	}
 	$w = $tpl['widgets'];
-	pg_assert_same(array(array('field' => 'submitted_date_and_time', 'operator' => 'is greater than or equal to', 'value' => '', 'dynamic_value' => 'days ago', 'dynamic_value_attribute' => 7)),
-		$w['staff_new_topics']['config']['filters'], 'new topics: the last seven days, in any status');
+	pg_assert_same(array(_test_forum_topic_live(), array('field' => 'submitted_date_and_time', 'operator' => 'is greater than or equal to', 'value' => '', 'dynamic_value' => 'days ago', 'dynamic_value_attribute' => 7)),
+		$w['staff_new_topics']['config']['filters'], 'new topics: the live ones of the last seven days');
 	pg_assert_same(array('recent_views', 7), array($w['staff_popular']['config']['order_by_field'], $w['staff_popular']['config']['order_recent_days']), 'most viewed this week');
 	pg_assert_true(_test_forum_has_row($w['staff_hidden']['config'], array('field' => 'status', 'operator' => 'is equal to', 'value' => lang('Hidden'), 'dynamic_value' => '')), 'the hidden topics');
 	pg_assert_true(_test_forum_has_row($w['staff_reports_waiting']['config'], array('field' => 'status', 'operator' => 'is equal to', 'value' => lang('Open'), 'dynamic_value' => '')), 'the open reports');
@@ -2277,6 +2319,31 @@ function test_forum_moderation()
 	foreach (_test_forum_nodes($w['staff_hidden']['tree']) as $n) {
 		pg_assert_false(isset($n['props']['_bindings']['href']) && $n['props']['_bindings']['href'] === 'form_item_view', 'a hidden topic\'s row opens no page that would not show it');
 	}
+	// Any list of topics that may hold a hidden one (no live rule, and no
+	// fixed Status other than Hidden) links no row to the topic page, which
+	// would say the topic is not available: the topics desk, whose ?status=
+	// may be Hidden, the hidden topics, and the new topic's e-mail to the
+	// moderators (sent while the topic is Open).
+	$may_hide = array();
+	foreach ($w as $key => $widget) {
+		$cfg = $widget['config'];
+		if (!_test_forum_is_view($cfg) || _test_forum_form_of($cfg) !== 'topic_form' || _test_forum_has_row($cfg, _test_forum_topic_live())) {
+			continue;
+		}
+		$fixed = false;
+		foreach (isset($cfg['filters']) ? $cfg['filters'] : array() as $row) {
+			$fixed = $fixed || ($row['field'] === 'status' && $row['operator'] === 'is equal to' && $row['dynamic_value'] === '' && $row['value'] !== lang('Hidden'));
+		}
+		if ($fixed) {
+			continue;
+		}
+		$may_hide[] = $key;
+		foreach (_test_forum_nodes($widget['tree']) as $n) {
+			pg_assert_false(isset($n['props']['_bindings']['href']) && $n['props']['_bindings']['href'] === 'form_item_view', $key . ': a row that may be hidden opens no topic page');
+		}
+	}
+	sort($may_hide);
+	pg_assert_same(array('email_topic_staff', 'staff_count_hidden', 'staff_hidden', 'staff_topics_list'), $may_hide, 'the topic lists that may hold a hidden topic');
 	foreach (array('staff_docs_waiting', 'staff_docs_in_review', 'staff_docs_changes', 'staff_docs_published', 'staff_docs_all') as $key) {
 		pg_assert_same('staff_docs', $w[$key]['page'], $key . ' is on the docs desk');
 	}
@@ -2361,6 +2428,28 @@ function test_forum_turkish()
 			pg_assert_same($value, pg_sw_url_param_value(array('x' => $value), 'x'), 'a name goes into an address whole: ' . $value);
 		}
 	}
+
+	// Turkish words that mean something else in this template or in the
+	// panel: haber (news; the magazine's rule too), bildirim (the panel's
+	// notifications; a report is a şikâyet, while geri bildirim is feedback
+	// and the verb bildir stays for telling the moderators), a bare rehber
+	// for the template's own team list (a rehber is a guide in the docs;
+	// the shared staff directory keys keep theirs), and "açılan" for a view
+	// (a topic is açılan when it is started).
+	foreach ($literals as $key) {
+		$value = isset($tr[$key]) ? $tr[$key] : '';
+		pg_assert_same(0, preg_match('/haber/iu', $value), 'no "haber": ' . $key);
+		if (preg_match('/report/i', $key)) {
+			pg_assert_same(0, preg_match('/bildirim/iu', preg_replace('/geri bildirim/iu', '', $value)), 'a report is no notification: ' . $key);
+		}
+		if (preg_match('/\b(viewed|views?)\b/i', $key)) {
+			pg_assert_same(0, preg_match('/açılan/u', $value), 'a view is no start: ' . $key);
+		}
+		if (preg_match('/directory/i', $key) && preg_match('/team/i', $key)) {
+			pg_assert_same(0, preg_match('/(^|[^a-zçğıöşü])rehber/iu', preg_replace('/personel rehber/iu', '', $value)), 'the team list is no guide: ' . $key);
+		}
+	}
+	pg_assert_false(in_array('Reply', $literals, true), 'no lang(\'Reply\'): its Turkish is a verb');
 
 	$seen = array();
 	foreach (_test_forum_pages() as $key => $p) {

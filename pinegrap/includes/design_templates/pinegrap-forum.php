@@ -22,16 +22,16 @@
  * A topic is a record of the Forum Topics form, owned by the Start a Topic
  * page in the "registration" folder: a member sends it, and it is public at
  * once. Moderators set its Status, pin it, make it an announcement and keep
- * a staff note in the control panel (office-use-only fields). Every list
- * of topics a visitor or a member opens, and the topic page, carry one
+ * a moderator note in the control panel (office-use-only fields). Every
+ * list of topics a visitor or a member opens, and the topic page, carry one
  * rule: the Status is not Hidden ($topic_live). A guide is a record of the
  * Community Docs form, owned by the Contribute a Guide page: it is public
- * only while its Status is Published ($doc_live); its author follows it on
- * the docs desk. A report (Forum Reports, the Report a Post page) is never
- * public: only the moderators' pages show it. Replies are comments of the
- * topic page, feedback (with a rating, held for the moderators) comments of
- * the guide page; the author and the moderators write messages under a
- * guide on the desk, and the moderators notes under a report.
+ * only while its Status is Live on the site ($doc_live); its author follows
+ * it on the docs desk. A report (Forum Reports, the Report a Post page) is
+ * never public: only the moderators' pages show it. Replies are comments of
+ * the topic page, feedback (with a rating, held for the moderators)
+ * comments of the guide page; the author and the moderators write messages
+ * under a guide on the desk, and the moderators notes under a report.
  *
  * The look ships in the template's User Styles: the template's own rules,
  * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
@@ -252,17 +252,18 @@ $section_url = function ($key) use ($doc_sections) {
 // separated by commas, so the tag page finds the topics whose line contains
 // the word. The moderators keep this short list in step with the forum.
 $popular_tags = array(
-    lang('sync'), lang('reminders'), lang('templates'), lang('tasks'), lang('search'),
+    lang('sync'), lang('reminders'), lang('templates'), lang('notebooks'), lang('search'),
     lang('workspaces'), lang('keyboard shortcuts'), lang('export'), lang('feature request'), lang('getting started'),
 );
 $tag_url = function ($tag) {
     return '{{page:tag}}?tag=' . rawurlencode($tag);
 };
 
-// A guide's Status on the docs desk: the magazine's six desk statuses,
-// adapted. Only the fourth makes a guide public ($doc_live below).
+// A guide's Status on the docs desk: the magazine's six desk statuses, in
+// the magazine's words, and in an order of their own. Only the fourth makes
+// a guide public ($doc_live below); Withdrawn takes one out of the docs.
 $doc_statuses = array(lang('Awaiting review'), lang('In review'), lang('Changes requested'),
-                      lang('Published'), lang('Archived'), lang('Not accepted'));
+                      lang('Live on the site'), lang('Withdrawn'), lang('Not accepted'));
 $published_value = $doc_statuses[3];
 
 // ── The filters of the lists ────────────────────────────────────────────
@@ -373,6 +374,9 @@ $forum_css = implode("\n", array(
     'body .form-control:focus,body .form-select:focus{outline:2px solid var(--bs-emphasis-color);outline-offset:1px}',
     'body .form-check-input:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
     '.nav-underline .nav-link:focus-visible{box-shadow:none;outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
+    // An accordion button's ring sits inside it: the next item would cover
+    // an outer one.
+    'body .accordion-button:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:-2px;box-shadow:none}',
     // The masthead's menu button has no colour variant and so no focus
     // ring of its own.
     '.pf-masthead .btn:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
@@ -437,7 +441,7 @@ $forum_css = implode("\n", array(
     // The forum's numbers.
     '.pf-stat{display:flex;flex-direction:column;gap:.125rem;padding:1rem 1.25rem}',
     '.pf-stat-num{margin:0;font-weight:700;font-size:clamp(1.5rem,1.2rem + 1vw,2rem);line-height:1.1;color:var(--bs-emphasis-color);font-variant-numeric:tabular-nums}',
-    '.pf-stat-label{margin:0;font-size:.875rem;color:var(--bs-secondary-color)}',
+    '.pf-stat-label{margin:0;font-size:.875rem;color:var(--bs-secondary-color);overflow-wrap:anywhere}',
     // A board: its icon beside its name, its line and its number of topics.
     '.pf-board{display:flex;gap:1rem;align-items:flex-start}',
     '.pf-board-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 2.75rem;width:2.75rem;height:2.75rem;border-radius:var(--pg-radius,.5rem);font-size:1.25rem;color:var(--pf-accent);background-color:var(--bs-tertiary-bg)}',
@@ -514,8 +518,10 @@ $forum_css = implode("\n", array(
     '.pf-fact{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.25rem 1rem;padding:.5rem 0;border-bottom:1px solid var(--bs-border-color);font-size:.875rem}',
     '.pf-fact dt{font-weight:400;color:var(--bs-secondary-color)}',
     '.pf-fact dd{margin:0;font-weight:600;color:var(--bs-emphasis-color);text-align:end;overflow-wrap:anywhere}',
-    // A side column that stays in view beside a long thread from lg.
-    '@media (min-width:992px){.pf-sticky{position:sticky;top:1.5rem}}',
+    // A side column that stays in view beside a long thread from lg, on a
+    // screen tall enough to show all of it: on a shorter one its lower
+    // cards would stay out of view for the whole thread.
+    '@media (min-width:992px) and (min-height:56rem){.pf-sticky{position:sticky;top:1.5rem}}',
     // A call-out: an icon beside its words and its button.
     '.pf-callout{display:flex;flex-direction:column;gap:1rem;padding:1.5rem;border-radius:var(--pg-radius-card,var(--bs-border-radius-lg))}',
     '@media (min-width:768px){.pf-callout{flex-direction:row;align-items:center}}',
@@ -531,6 +537,9 @@ $forum_css = implode("\n", array(
     // there by the list for whoever may edit the record) moves its words
     // clear of it.
     '.pf-topic.pg-edit-host,.pf-guide.pg-edit-host,.pf-compact.pg-edit-host{padding-inline-start:2.75rem}',
+    // A guide card's pencil goes into the column around it, over the
+    // card's corner: the card moves its words clear of it the same way.
+    '.pg-edit-host .pf-card-link{padding-inline-start:2.75rem}',
     // A person's picture in the staff directory.
     '.pf-avatar{width:3.75rem;height:3.75rem;border-radius:50%;object-fit:cover}',
     '@media (prefers-reduced-motion:reduce){.pf-card-link{transition:none}}',
@@ -1010,8 +1019,9 @@ $row_count = function ($label, $sample, $name) use ($el, $span, $bind) {
 // (h) A topic on the moderators' pages: its Status first among its badges;
 // who started it, by the name on their profile and by their account's user
 // name; when it was posted and last active; its replies and views. $linked
-// false: a hidden topic, which only the control panel opens (the pencil on
-// its row), so its title is no link to a page that would not show it.
+// false: a list that holds hidden topics, which only the control panel
+// opens (the pencil on its row), so no title links to a page that would
+// not show its topic.
 $staff_topic_row = function ($s, $linked = true, $tag = 'h3') use ($el, $link, $span, $bind, $bind_date, $dot, $board_badge, $member_link, $topic_counts, $status_badge) {
     $title = $linked
         ? $link($s['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view')))
@@ -1323,7 +1333,7 @@ $staff_bar = function () use ($el, $link, $span, $attr) {
             $el('nav', 'nav nav-underline align-items-center column-gap-4 row-gap-1', lang('Staff Links'), array(
                 $span(lang('Moderators'), 'badge text-bg-primary', lang('Staff Badge')),
                 $item('staff', lang('Moderation')),
-                $item('staff_topics', lang('All topics')),
+                $item('staff_topics', lang('Topics desk')),
                 $item('staff_docs', lang('Docs desk')),
                 $item('staff_reports', lang('Reported posts')),
                 $item('inbox', lang('Inbox')),
@@ -1564,14 +1574,17 @@ $mail_settings = array('folder' => 'private', 'search' => false, 'sitemap' => fa
 
 // ── Comments ────────────────────────────────────────────────────────────
 // The comment settings of the record pages. Each label is a singular noun:
-// the platform puts it in plural and into sentences ("2 Replies", "Notify
-// me when a Reply is added.").
+// the platform puts it in plural and into sentences ("2 replies", "Add
+// reply", "Notify me when a reply is added.").
 
 // The replies under a topic: signed in, published at once, mailed to the
 // topic's followers. No staff address: the moderators follow replies on
-// their dashboard and in the control panel's Comments screen.
+// their dashboard and in the control panel's Comments screen. The label is
+// a key of its own, in lower case: the shared "Reply" is a verb button of
+// the workspace, and its Turkish, a verb, would make the "Add reply" heading
+// and button under every topic ungrammatical.
 $reply_comments = array(
-    'label'         => lang('Reply'),
+    'label'         => lang('reply'),
     'allow_new'     => true,
     'auto_publish'  => true,
     'show_date'     => true,
@@ -2027,8 +2040,10 @@ $pages = array();
 // and the week's most viewed, the featured guides and the guidelines. Its
 // RSS feed is its first list, the count of every live topic: every live
 // topic, the newest first.
-$stat = function ($widget_key) use ($el, $widget) {
-    return $el('div', 'col-4', lang('Column'), array($widget($widget_key)));
+// Three numbers in a row from sm; on a phone two in a row and the third
+// across, so a count of thousands keeps inside its card.
+$stat = function ($widget_key, $class = 'col-6 col-sm-4') use ($el, $widget) {
+    return $el('div', $class, lang('Column'), array($widget($widget_key)));
 };
 $pages[] = array(
     'key'              => 'home',
@@ -2069,7 +2084,7 @@ $pages[] = array(
                 $el('div', 'row g-2 g-md-3 mt-4', lang('Numbers'), array(
                     $stat('home_count_topics'),
                     $stat('home_count_solved'),
-                    $stat('home_count_guides'),
+                    $stat('home_count_guides', 'col-12 col-sm-4'),
                 ), array('_attrs' => array($attr('aria-label', lang('The forum in numbers')), $attr('role', 'group')))),
             )),
         ), array('_attrs' => array($attr('aria-labelledby', 'pf-welcome-title')))),
@@ -2083,7 +2098,7 @@ $pages[] = array(
             $sec_head(lang('Browse the boards'), lang('Every topic'), '{{page:forum}}'),
             $board_tiles(),
         ), 'pf-band', array('id' => 'boards')),
-        $band(lang('Activity'), array(
+        $band(lang('Latest Activity'), array(
             $row(array(
                 $col(array(
                     $sec_head(lang('Latest activity'), lang('Every topic'), '{{page:forum}}'),
@@ -3032,9 +3047,10 @@ $pages[] = array(
 );
 
 // The member's own topics: the ones they started, the most recently active
-// first (the page's one list with page links), and the ones they follow.
-// Both hold live topics only: a topic the moderators hid opens nowhere, so
-// it leaves this page too.
+// first (the page's one list with page links). Live topics only: a topic
+// the moderators hid opens nowhere, so it leaves this page too. No list of
+// the topics they follow: a form list's watcher filter finds only a legacy
+// form item view page, never a designed topic page, so it would stay empty.
 $pages[] = array(
     'key'     => 'my_topics',
     'name'    => lang('my-topics'),
@@ -3044,26 +3060,22 @@ $pages[] = array(
     'sitemap' => false,
     'noindex' => true,
     'tree'    => $page(array(
-        $page_header(lang('My topics'), lang('The topics you started and the topics you follow, the most recently active first.'), array(
+        $page_header(lang('My topics'), lang('The topics you started, the most recently active first.'), array(
             $breadcrumb(array(array(lang('My Account'), '{{page:my_account}}'), array(lang('My topics'), ''))),
         )),
         $band(lang('Content'), array(
             $row(array(
                 $col(array(
-                    $el('section', 'mb-5', lang('Started'), array(
+                    $el('section', '', lang('Started'), array(
                         $sec_head(lang('Topics you started'), lang('Start a topic'), '{{page:new_topic}}', 'pf-started'),
                         $widget('my_topics_started'),
                     ), array('_attrs' => array($attr('aria-labelledby', 'pf-started')))),
-                    $el('section', '', lang('Followed'), array(
-                        $sec_head(lang('Topics you follow'), '', '', 'pf-followed'),
-                        $widget('my_topics_followed'),
-                    ), array('_attrs' => array($attr('aria-labelledby', 'pf-followed')))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', '', lang('Side Column'), array(
                         $side_card(lang('Following'), lang('How following works'), array(
                             $para(lang('Every reply to a topic you started comes to you by e-mail.'), 'small'),
-                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: the topic then appears here, and its new replies come to you by e-mail.'), 'small mb-0'),
+                            $para(lang('To follow someone else\'s topic, tick the box under the reply form when you reply: its new replies then come to you by e-mail.'), 'small mb-0'),
                         ), 'pf-card pf-tint mb-4'),
                         $side_card(lang('Missing Topic'), lang('A topic is missing?'), array(
                             $para(lang('A topic the moderators hid no longer shows anywhere, this page included. If you think that was a mistake, write to them.'), 'small text-body-secondary mb-3'),
@@ -3222,7 +3234,7 @@ $staff_notes = array(
     lang('Mark a topic Solved, pin it or make it an announcement the same way, in its Status, Pinned and Announcement fields. Closed is only a word on the topic: to stop new replies, use the moderators\' button under its replies.'),
     lang('Replies are published at once; feedback on a guide waits until a moderator publishes it. Edit, publish or delete them under Comments in the control panel, or with the pencil on each one on its page.'),
     lang('A topic shows the name in its author\'s profile. A reply, a message and a note are signed with the writer\'s user name, and so are yours: give moderators user names members may see.'),
-    lang('A guide arrives as Awaiting review. Open it on the docs desk, write to its author under it and set its Status: In review while you read it, Changes requested once you wrote what to change, Published to put it in the docs, Archived to take it out, Not accepted to decline it. A Status alone sends no e-mail: say what you did in a message under the guide.'),
+    lang('A guide arrives as Awaiting review. Open it on the docs desk, write to its author under it and set its Status: In review while you read it, Changes requested once you wrote what to change, Live on the site to put it in the docs, Withdrawn to take it out, Not accepted to decline it. A Status alone sends no e-mail: say what you did in a message under the guide.'),
     lang('Before you publish a guide, check its links and remove pictures that load from other sites: both are printed as written, for every reader. Readers can open its attachment once it is published.'),
     lang('Give each guide an order of two digits in its section, such as 10, 20 and 30: the order is compared as text, so 100 would come before 20, and a guide without one comes first. Featured shows a published guide on the home page and in the docs.'),
     lang('A report arrives as Open. Its post is what the member typed: copy it into your browser, it is never a link. Act on the post, write a note under the report for the other moderators, then set the report to Resolved or Dismissed. The member who wrote the post is never told who reported it.'),
@@ -3285,9 +3297,9 @@ $pages[] = array(
             $row(array(
                 $desk_section('open-reports', lang('Open reports'), lang('Reported posts nobody has dealt with yet, the oldest first.'), 'staff_reports_waiting', lang('All reports'), '{{page:staff_reports}}'),
                 $desk_section('guides-to-review', lang('Guides awaiting review'), lang('Guides sent to the docs that no moderator has opened yet, the oldest first.'), 'staff_guides_waiting', lang('Docs desk'), '{{page:staff_docs}}'),
-                $desk_section('new-topics', lang('New topics this week'), lang('Every topic posted in the last seven days, in any status, the newest first.'), 'staff_new_topics', lang('All topics'), '{{page:staff_topics}}'),
+                $desk_section('new-topics', lang('New topics this week'), lang('Every live topic posted in the last seven days, the newest first. A topic taken off the site is under Hidden topics.'), 'staff_new_topics', lang('Topics desk'), '{{page:staff_topics}}'),
                 $desk_section('unanswered-topics', lang('Unanswered topics'), lang('Live topics still waiting for a first reply, the oldest first.'), 'staff_unanswered', lang('See all'), '{{page:unanswered}}'),
-                $desk_section('most-viewed', lang('Most viewed this week'), lang('The live topics opened most in the last seven days.'), 'staff_popular'),
+                $desk_section('most-viewed', lang('Most viewed this week'), lang('The live topics viewed most in the last seven days.'), 'staff_popular'),
                 $desk_section('recently-solved', lang('Recently solved'), lang('Solved topics, the most recently active first.'), 'staff_solved'),
                 $desk_section('hidden-topics', lang('Hidden topics'), lang('Topics taken off the site, the most recently active first. Only the control panel opens them: use the pencil on a row.'), 'staff_hidden',
                     lang('Every hidden topic'), '{{page:staff_topics}}?status=' . rawurlencode($hidden_value)),
@@ -3298,7 +3310,7 @@ $pages[] = array(
             $row(array(
                 $staff_shortcut('bi-chat-square-quote', lang('Comments'), lang('Every reply, feedback, message and note: publish feedback, edit or delete a reply.'), $comments_url),
                 $staff_shortcut('bi-ui-checks', lang('Submitted Forms'), lang('Every topic, guide and report as a record: set a status, pin a topic, feature a guide.'), $forms_url),
-                $staff_shortcut('bi-list-ul', lang('All topics'), lang('Every topic in any status, with a search.'), '{{page:staff_topics}}'),
+                $staff_shortcut('bi-list-ul', lang('Topics desk'), lang('Every topic in any status, with a search.'), '{{page:staff_topics}}'),
                 $staff_shortcut('bi-journal-check', lang('Docs desk'), lang('The guides sent to the docs, by status.'), '{{page:staff_docs}}'),
                 $staff_shortcut('bi-flag', lang('Reported posts'), lang('Open, resolved and dismissed reports.'), '{{page:staff_reports}}'),
                 $staff_shortcut('bi-inbox', lang('Inbox'), lang('Every message from the contact page. Answer under each one.'), '{{page:inbox}}'),
@@ -3316,24 +3328,26 @@ $pages[] = array(
     )),
 );
 
-// Every topic in any status, the most recently active first, with a search
-// (the page's one list with page links); the links above it narrow the
-// list to one Status (?status=).
+// The topics desk: every topic in any status, the most recently active
+// first, with a search (the page's one list with page links); the links
+// above it narrow the list to one Status (?status=). Its titles are no
+// links: a hidden topic's page would not show it, and a list cannot link
+// some rows and not others. The pencil on a row opens the record.
 $status_links = array($el('li', 'nav-item', lang('Menu Item'), array($link(lang('Every status'), '{{page:staff_topics}}', 'nav-link'))));
 foreach ($topic_statuses as $status) {
     $status_links[] = $el('li', 'nav-item', lang('Menu Item'), array($link($status, '{{page:staff_topics}}?status=' . rawurlencode($status), 'nav-link')));
 }
 $pages[] = array(
     'key'     => 'staff_topics',
-    'name'    => lang('all-topics'),
+    'name'    => lang('topics-desk'),
     'folder'  => 'private',
-    'title'   => lang('All topics'),
+    'title'   => lang('Topics desk'),
     'search'  => false,
     'sitemap' => false,
     'noindex' => true,
     'tree'    => $staff_page(array(
-        $page_header(lang('All topics'), lang('Every topic of the forum in any status, the most recently active first. A hidden topic opens only in the control panel: use the pencil on its row.'), array(
-            $breadcrumb(array(array(lang('Moderation'), '{{page:staff}}'), array(lang('All topics'), ''))),
+        $page_header(lang('Topics desk'), lang('Every topic of the forum in any status, the most recently active first. The pencil on a row opens the topic in the control panel: set its status, pin it or write a note there.'), array(
+            $breadcrumb(array(array(lang('Moderation'), '{{page:staff}}'), array(lang('Topics desk'), ''))),
         ), array(
             $el('nav', 'mt-4', lang('Statuses'), array(
                 $el('ul', 'nav nav-underline column-gap-4', lang('Links'), $status_links),
@@ -3362,7 +3376,7 @@ $pages[] = array(
             array(lang('Awaiting review'), 'awaiting-review'),
             array(lang('In review'), 'in-review'),
             array(lang('With the author'), 'with-the-author'),
-            array(lang('Published'), 'published'),
+            array(lang('Live on the site'), 'published'),
             array(lang('Every guide'), 'every-guide'),
         )),
         $band(lang('Desk'), array(
@@ -3370,7 +3384,7 @@ $pages[] = array(
                 $desk_section('awaiting-review', lang('Awaiting review'), lang('New guides, the oldest first.'), 'staff_docs_waiting'),
                 $desk_section('in-review', lang('In review'), lang('Guides a moderator is reading now.'), 'staff_docs_in_review'),
                 $desk_section('with-the-author', lang('With the author'), lang('Guides sent back for changes. Look at the last activity: a quiet one may need a word.'), 'staff_docs_changes'),
-                $desk_section('published', lang('Published'), lang('What readers see in the docs, the newest first. A row opens the guide as readers see it.'), 'staff_docs_published'),
+                $desk_section('published', lang('Live on the site'), lang('What readers see in the docs, the newest first. A row opens the guide as readers see it.'), 'staff_docs_published'),
                 $desk_section('every-guide', lang('Every guide'), lang('Every guide sent to the docs, in any status, with a search.'), 'staff_docs_all', '', '', ''),
             ), '4', '', 'g-lg-5'),
         )),
@@ -3421,7 +3435,7 @@ $pages[] = array(
     'noindex'  => true,
     'comments' => $staff_note_comments,
     'tree'     => $staff_page(array(
-        $el('div', 'container pf-band pt-4', lang('Report'), array(
+        $el('div', 'container pf-band pt-4', lang('Content'), array(
             $row(array(
                 $col(array(
                     $widget('staff_report_view'),
@@ -3921,7 +3935,7 @@ $widgets['home_unanswered'] = $topic_list('home', 5, 5, array($unanswered),
 // days (the views the topic page counts); topics nobody opened are left
 // out.
 $widgets['home_popular'] = $topic_list('home', 5, 5, array($viewed),
-    lang('The topics opened most this week appear here.'),
+    lang('The topics viewed most this week appear here.'),
     array($el('ul', 'list-unstyled mb-0', lang('List'), array($loop(array($compact_row($topic_sample(3), 'views')))))),
     array(
         'order_by_field'       => 'recent_views',
@@ -4234,7 +4248,7 @@ $widgets['topic_aside'] = array(
                     $fact(lang('Board'), array($link($topic['board'], '#', 'link-body-emphasis', array(),
                         array_merge($page_link('board', array('board' => 'board')), array('_bindings' => array('text' => 'board', 'href' => '__page_link')))))),
                     $fact(lang('Status'), array($span($topic['status'], '', lang('Status'), $bind('status')))),
-                    $fact(lang('Started'), array($span(lang('2 days ago'), '', lang('Time'), $bind_date('submitted_date_and_time', 'relative')))),
+                    $fact(lang('Posted'), array($span(lang('2 days ago'), '', lang('Time'), $bind_date('submitted_date_and_time', 'relative')))),
                     $fact(lang('Last activity'), array($span(lang('2 hours ago'), '', lang('Time'), $bind_date('newest_activity_date_and_time', 'relative')))),
                     $fact(lang('Last reply by'), array($span($topic['replier'], 'pg-field-value', lang('Name'), $bind('newest_comment_name'))), true),
                     $fact(lang('Replies'), array($span('3', '', lang('Number of Replies'), $bind('number_of_comments')))),
@@ -4245,7 +4259,7 @@ $widgets['topic_aside'] = array(
             // Report a Post opens with this topic's address in its Post
             // field (/report?post=<the topic's address>; the field takes
             // ?post= as its starting value).
-            $el('div', 'pf-card mb-4', lang('Report'), array(
+            $el('div', 'pf-card mb-4', lang('Report Card'), array(
                 $heading('h2', lang('Something wrong?'), 'h6 fw-bold mb-2'),
                 $para(lang('If this topic or a reply breaks the guidelines, tell the moderators. The report starts with the topic\'s address; for a reply, paste the link its Share button copies instead.'), 'small text-body-secondary mb-3'),
                 $link(lang('Report a post'), '#', 'btn btn-sm btn-secondary', array(), $page_link('report', array('post' => 'form_item_view'))),
@@ -4373,7 +4387,7 @@ $widgets['topic_form'] = array(
         $field('pf-topic-status', lang('Status'), $office($select('pf-topic-status', 'status', '', $topic_statuses, false, $topic_statuses[0]))),
         $field('pf-topic-pinned', lang('Pinned at the top of the forum and its board'), $office($select('pf-topic-pinned', 'pinned', '', $yes_no, false, $no))),
         $field('pf-topic-announcement', lang('Announcement on the home page'), $office($select('pf-topic-announcement', 'announcement', '', $yes_no, false, $no))),
-        $field('pf-topic-staff-note', lang('Staff note (never shown to members)'), $office($textarea('pf-topic-staff-note', 'staff_note', 3, false))),
+        $field('pf-topic-staff-note', lang('Moderator note (never shown to members)'), $office($textarea('pf-topic-staff-note', 'staff_note', 3, false))),
         $captcha(),
         $submit(lang('Post the topic'), 'btn btn-primary btn-lg px-4'),
         $loop(array()),
@@ -4435,7 +4449,7 @@ $widgets['report_form'] = array(
             lang('What should the moderators look at? Only the moderators read this.')),
         // For the moderators only.
         $field('pf-report-status', lang('Status'), $office($select('pf-report-status', 'status', '', $report_statuses, false, $report_statuses[0]))),
-        $field('pf-report-staff-note', lang('Staff note'), $office($textarea('pf-report-staff-note', 'staff_note', 3, false))),
+        $field('pf-report-staff-note', lang('Moderator note'), $office($textarea('pf-report-staff-note', 'staff_note', 3, false))),
         $captcha(),
         $submit(lang('Send the report')),
         $loop(array()),
@@ -4450,7 +4464,7 @@ $widgets['contact_form'] = array(
     'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
     'tree'   => $widget_root(array(
         $person_fields('pf-contact'),
-        $field('pf-contact-topic', lang('What is it about?'), $select('pf-contact-topic', 'topic', lang('Choose a topic…'), array(
+        $field('pf-contact-topic', lang('What is your message about?'), $select('pf-contact-topic', 'topic', lang('Choose one…'), array(
             lang('My account'),
             lang('A topic or a reply'),
             lang('A guide in the docs'),
@@ -4465,9 +4479,9 @@ $widgets['contact_form'] = array(
 );
 
 // ── The members' own lists ──────────────────────────────────────────────
-// A member sees their own records: the viewer filter on the submitter or
-// on the watcher, never every record for whoever may edit the form (editor
-// off), so a moderator's own pages show their own too.
+// A member sees their own records: the viewer filter on the submitter,
+// never every record for whoever may edit the form (editor off), so a
+// moderator's own pages show their own too.
 $own = function ($submitter, $watcher) {
     return array(
         'viewer_filter'           => true,
@@ -4481,12 +4495,6 @@ $own = function ($submitter, $watcher) {
 $widgets['my_topics_started'] = $topic_list('my_topics', 20, 0, array(),
     lang('You have not started a topic yet. Ask a question or start a discussion: the community will help.'),
     array($topic_rows($topic_sample(2))), $own(true, false));
-// The live topics the member follows: the ones under whose reply form they
-// ticked the box, the twenty most recently active. A follower is kept per
-// topic page (the list's detail page).
-$widgets['my_topics_followed'] = $topic_list('my_topics', 20, 20, array(),
-    lang('You follow no topic yet. Tick the box under the reply form when you reply, and the topic appears here.'),
-    array($topic_rows($topic_sample(7))), $own(false, true));
 
 // A list of the docs desk or the moderators' desks: the records in their
 // state on the desk. No live rule: these lists sit on the member's own page
@@ -4654,16 +4662,17 @@ $widgets['staff_reports_waiting'] = $desk_list('staff', $report_base, 10, 10, ar
     lang('No report is waiting.'), array($report_rows($report)));
 $widgets['staff_guides_waiting'] = $desk_list('staff', $desk_doc_base, 10, 10, array($is_status($doc_statuses[0])),
     lang('No guide is waiting for review.'), array($desk_doc_rows($desk_guide(8, $doc_statuses[0]))));
-// Every topic of the last seven days, in any status, the newest first.
+// Every live topic of the last seven days, the newest first: its title
+// opens its page. A hidden one is in the hidden topics' list.
 $widgets['staff_new_topics'] = $desk_list('staff', $topic_pub, 10, 10,
-    array($f('submitted_date_and_time', 'is greater than or equal to', '', 'days ago', 7)),
+    $with_topic_live(array($f('submitted_date_and_time', 'is greater than or equal to', '', 'days ago', 7))),
     lang('No topic was posted in the last seven days.'), array($staff_topic_rows($topic_sample(2))),
     array('order_by_field' => 'submitted_date_and_time', 'order_by_direction' => 'DESC', 'order_by_2_field' => ''));
 $widgets['staff_unanswered'] = $desk_list('staff', $topic_pub, 10, 10, $with_topic_live(array($unanswered)),
     lang('Every live topic has a reply.'), array($staff_topic_rows($topic_sample(4, array('replier' => '', 'replies' => '0', 'views' => '6')))),
     array('order_by_field' => 'submitted_date_and_time', 'order_by_direction' => 'ASC', 'order_by_2_field' => ''));
 $widgets['staff_popular'] = $desk_list('staff', $topic_pub, 10, 10, $with_topic_live(array($viewed)),
-    lang('No topic was opened this week.'), array($staff_topic_rows($topic_sample(3))),
+    lang('No topic was viewed this week.'), array($staff_topic_rows($topic_sample(3))),
     array(
         'order_by_field'       => 'recent_views',
         'order_by_direction'   => 'DESC',
@@ -4679,7 +4688,8 @@ $widgets['staff_hidden'] = $desk_list('staff', $topic_pub, 10, 10, array($is_sta
 
 // Every topic in any status, or in the Status the address names (?status=),
 // the most recently active first, twenty to a page, with a search over the
-// title, the text, the tags, the board, the Status and the staff note.
+// title, the text, the tags, the board, the Status and the moderator note.
+// No title links: the list holds hidden topics too.
 $widgets['staff_topics_list'] = $desk_list('staff_topics', $topic_pub, 20, 0,
     array($f('status', 'is equal to', '', 'url parameter', 'status')),
     lang('No topic found. Try other words, or another status.'),
@@ -4693,14 +4703,14 @@ $widgets['staff_topics_list'] = $desk_list('staff_topics', $topic_pub, 20, 0,
             $span(lang('Topics:'), 'me-1', lang('Label')),
             $span('1,284', 'fw-semibold', lang('Number of Results'), $bind('__result_count')),
         ), $show_when('has_records')),
-        $staff_topic_rows($topic_sample(8), true, 'h2'),
+        $staff_topic_rows($topic_sample(8), false, 'h2'),
     ),
     array(
         'filter_title'   => lang('Topics: {value}'),
         'search_enabled' => true,
         'search_fields'  => array('title', 'body', 'tags', 'board', 'status', 'staff_note'),
         'search_width'   => 'full',
-        'search_label'   => lang('Search by title, text, tag, board, status or staff note…'),
+        'search_label'   => lang('Search by title, text, tag, board, status or moderator note…'),
     ));
 
 // The docs desk. Only the last list, every guide, pages through.
@@ -4767,7 +4777,7 @@ $widgets['staff_report_view'] = array(
             $para(lang('This report could not be found.'), 'text-body-secondary mb-4', $bind('not_found')),
             $link(lang('Reported posts'), '{{page:staff_reports}}', 'btn btn-primary'),
         ), $show_when('record_not_found')),
-        $el('article', '', lang('Report'), array(
+        $el('article', '', lang('Reported Post'), array(
             $record_toolbar(lang('Reported posts'), '{{page:staff_reports}}', lang('Change Status')),
             $el('header', 'mb-4', lang('Report Header'), array(
                 $para(lang('Reported post'), 'pf-kicker mb-1'),
@@ -4785,8 +4795,8 @@ $widgets['staff_report_view'] = array(
                 $fact(lang('Reference Code'), array($span('ABC123', 'font-monospace', lang('Reference Code'), $bind('reference_code')))),
             )),
             $para(lang('To read the post, copy its address into your browser: it is what the member typed, so it is never a link.'), 'pf-meta mb-4'),
-            $record_words(lang('Details'), lang('This reply only links to a shop and has nothing to do with the topic.'), 'details'),
-            $record_words(lang('Staff note'), lang('Hid the reply and wrote to the member.'), 'staff_note'),
+            $record_words(lang('Details of the report'), lang('This reply only links to a shop and has nothing to do with the topic.'), 'details'),
+            $record_words(lang('Moderator note'), lang('Hid the reply and wrote to the member.'), 'staff_note'),
             $el('div', 'border-top pt-4 d-print-none', lang('Notes'), array(
                 $heading('h2', lang('Notes'), 'pf-sec-title mb-1'),
                 $para(lang('Notes are for the moderators only: say what you found and what you did.'), 'pf-meta mb-3'),
@@ -5010,10 +5020,10 @@ $widgets['email_report_staff'] = $mail_widget('email_report_new', 'report', lang
     $mail_box(array(
         $mail_value(lang('Reason'), $report['reason'], 'reason'),
         $mail_value(lang('Address of the post'), $report['post'], 'post'),
-        $mail_value(lang('Details'), lang('This reply only links to a shop and has nothing to do with the topic.'), 'details'),
+        $mail_value(lang('Details of the report'), lang('This reply only links to a shop and has nothing to do with the topic.'), 'details'),
         $mail_value(lang('Reported by'), $report['by'], 'submitter_name'),
         $mail_value(lang('Account'), $report['account'], 'submitter'),
-    ), lang('Report')),
+    ), lang('Report Details')),
     $mail_small(lang('The post is what the member typed: copy it into your browser rather than following it.')),
     $mail_button(lang('Open the report'), '{{page:staff_report}}?r=^^reference_code^^'),
     $mail_reference(),

@@ -12,7 +12,7 @@ The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the t
 - Not built: votes or likes, public member profiles, accepted answers beyond a featured comment shown first.
 - 2026-10-24: the template is built now on the existing comments block (`comments_block` region and page `comments` arrays); it moves to the comments widget in its own PR.
 
-## Which general steps are done? (one PR each)
+## Which general steps are done, one PR each?
 1. Form lists: 1a sort by last activity (`newest_activity_date_and_time`, #1473); 1b `^^__result_count^^` with `has_records` / `no_records` (#1489); 1c no code: unanswered lists filter "number of comments is less than 1" (#1473).
 2. Links with parameters: an href to another page with query parameters valued from row tokens (#1474, [[record-value-page-links]]).
 3. A designed form control filled from a named address parameter (#1501): the Report form's post field.
@@ -21,7 +21,7 @@ The plan was claimed as `[plan:design-template-forum]` (#1431, steps 1-5); the t
 ## What is left?
 4. Recent comments mode of the comments widget: newest comments across the records a detail page shows, published for everyone, awaiting approval for staff, the viewer's own; record title and link tokens. After designable-comments 18.
 - Then the template moves to the comments widget in its own PR, and gains My replies (members) and replies awaiting approval (dashboard).
-- A small platform PR: the form list's watcher filter accepts a designed page whose form_item_view shows the list's form (today it wants `page_type = 'form item view'`, so My topics' "Topics you follow" stays empty). Then a test and a memory note.
+- A small platform PR: the form list's watcher filter accepts a designed page whose form_item_view shows the list's form (today it wants `page_type = 'form item view'`, so the template ships no "Topics you follow" list). Then a test, the list on My topics (`viewer_filter_watcher`, the "How following works" card saying it appears there), and the memory notes.
 - When the display name for comments lands (#1490), the staff note's sentence on user names and the FAQ change with it.
 
 ## Where to start?
