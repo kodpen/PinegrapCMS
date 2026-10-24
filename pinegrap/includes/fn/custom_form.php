@@ -3541,3 +3541,399 @@ function pg_cf_new_account_password_note($set_password_url, $for_submitter)
 
     return lang('You can set a password with "Forgot password" on the sign-in page.');
 }
+
+/* Form submission protections: a signed fill time and per address, per
+   e-mail and per domain limits. custom_form.php applies them to everyone
+   but staff (pg_user_has_panel_access()). */
+
+/**
+ * The key the fill time is signed with: the site's encryption key, or ''
+ * when the site has none (then the check is skipped).
+ *
+ * @return string
+ */
+function pg_cf_issued_key()
+{
+    return defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+}
+
+/**
+ * The value of the pg_form_issued field: when the form was drawn, and a
+ * signature over that second, so a script cannot write a time of its own.
+ * Stateless: no session entry, so a reopened page still verifies.
+ *
+ * @param int    $time Unix time the form is drawn at
+ * @param string $key
+ * @return string "<time>.<32 hex>", or '' without a key
+ */
+function pg_cf_issued_token($time, $key)
+{
+    $key = (string) $key;
+
+    if ($key === '') {
+        return '';
+    }
+
+    $time = (int) $time;
+
+    return $time . '.' . substr(hash_hmac('sha256', 'pg-form-issued|' . $time, $key), 0, 32);
+}
+
+/**
+ * Judge a posted pg_form_issued value.
+ *
+ * @param mixed  $token   The posted value
+ * @param int    $now
+ * @param string $key
+ * @param int    $min     Seconds a person needs at least
+ * @param int    $max_age Seconds after which the form counts as expired
+ * @return string ok, missing, bad, fast or old; always ok without a key
+ */
+function pg_cf_issued_verdict($token, $now, $key, $min = 3, $max_age = 86400)
+{
+    $key = (string) $key;
+
+    if ($key === '') {
+        return 'ok';
+    }
+
+    if (!is_string($token) || ($token === '')) {
+        return 'missing';
+    }
+
+    if (!preg_match('/^(\d{1,12})\.([0-9a-f]{32})$/', $token, $match)) {
+        return 'bad';
+    }
+
+    if (!hash_equals(pg_cf_issued_token((int) $match[1], $key), $token)) {
+        return 'bad';
+    }
+
+    $age = (int) $now - (int) $match[1];
+
+    // A time ahead of the clock is signed by this site but not reached yet;
+    // it counts as too fast rather than as a free pass.
+    if ($age < (int) $min) {
+        return 'fast';
+    }
+
+    if ($age > (int) $max_age) {
+        return 'old';
+    }
+
+    return 'ok';
+}
+
+/**
+ * The time a form is signed at. A visitor sent back to the form with an error
+ * (custom_form.php keeps when in the session) has spent the time once
+ * already, so the form drawn for them is signed as if drawn the minimum time
+ * ago: correcting one field and submitting again within seconds is not
+ * refused as too fast. A note older than ten minutes is ignored.
+ *
+ * @param int $now
+ * @param int $retry_at When the visitor was last sent back, or 0
+ * @param int $min      The minimum fill time pg_cf_issued_verdict() checks
+ * @return int
+ */
+function pg_cf_issued_time($now, $retry_at, $min = 3)
+{
+    $now      = (int) $now;
+    $retry_at = (int) $retry_at;
+
+    if (($retry_at > 0) && ($retry_at <= $now) && ($now - $retry_at <= 600)) {
+        return $now - (int) $min;
+    }
+
+    return $now;
+}
+
+/**
+ * The hidden field every form posting to custom_form.php carries. Empty on a
+ * site without an encryption key.
+ *
+ * @return string
+ */
+function pg_cf_issued_field()
+{
+    $retry_at = isset($_SESSION['software']['pg_form_retry']) ? (int) $_SESSION['software']['pg_form_retry'] : 0;
+
+    // Used once: the next form drawn is the one the visitor was sent back to.
+    if ($retry_at) {
+        unset($_SESSION['software']['pg_form_retry']);
+    }
+
+    $token = pg_cf_issued_token(pg_cf_issued_time(time(), $retry_at), pg_cf_issued_key());
+
+    if ($token === '') {
+        return '';
+    }
+
+    return '<input type="hidden" name="pg_form_issued" value="' . h($token) . '">';
+}
+
+/**
+ * The three limits from the Security settings, each 0..10000; 0 turns one
+ * off. The defaults apply until the 2026.11.0 step adds the columns. The
+ * domain limit is off by default: its counter is shared by every visitor at
+ * that domain, so a few submissions naming gmail.com addresses would refuse
+ * every Gmail user for the hour; the per-address and per-visitor limits
+ * already stop one inbox from being flooded.
+ *
+ * @return array ip_hour, recipient_day, domain_hour
+ */
+function pg_cf_throttle_limits()
+{
+    $limits = array();
+
+    foreach (array(
+        'ip_hour'       => array('form_limit_ip_hour', 10),
+        'recipient_day' => array('form_limit_recipient_day', 3),
+        'domain_hour'   => array('form_limit_domain_hour', 0),
+    ) as $name => $setting) {
+        $value = function_exists('waf_setting') ? waf_setting($setting[0], $setting[1]) : $setting[1];
+
+        $limits[$name] = max(0, min(10000, (int) $value));
+    }
+
+    return $limits;
+}
+
+/**
+ * The counters one submission is held against, in waf_rate:
+ *
+ *   cfi  the visitor's address (its /64 for IPv6), per hour
+ *   cfr  the e-mail address the form writes to, per day (waf_rate_long_scopes())
+ *   cfd  that address's domain, per hour
+ *
+ * The address is folded to the inbox it reaches (pg_cf_throttle_mailbox()),
+ * so Foo@, foo+1@ and, at Gmail, f.oo@ share one counter; waf_rate_key()
+ * hashes every subject, so no address is stored. A limit of 0 drops its row,
+ * an empty subject too.
+ *
+ * @param string $email      The address the form writes to, or ''
+ * @param string $ip_subject waf_ip_subject() of the visitor, or ''
+ * @param array  $limits     pg_cf_throttle_limits()
+ * @return array Rows of subject, scope, window (seconds) and limit
+ */
+function pg_cf_throttle_subjects($email, $ip_subject, $limits)
+{
+    $rows = array();
+
+    $ip_subject = (string) $ip_subject;
+
+    if (($ip_subject !== '') && !empty($limits['ip_hour'])) {
+        $rows[] = array('subject' => 'i|' . $ip_subject, 'scope' => 'cfi', 'window' => 3600, 'limit' => (int) $limits['ip_hour']);
+    }
+
+    $email = pg_cf_throttle_mailbox($email);
+    $at    = strrpos($email, '@');
+
+    if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
+        return $rows;
+    }
+
+    if (!empty($limits['recipient_day'])) {
+        $rows[] = array('subject' => 'r|' . $email, 'scope' => 'cfr', 'window' => 86400, 'limit' => (int) $limits['recipient_day']);
+    }
+
+    if (!empty($limits['domain_hour'])) {
+        $rows[] = array('subject' => 'd|' . substr($email, $at + 1), 'scope' => 'cfd', 'window' => 3600, 'limit' => (int) $limits['domain_hour']);
+    }
+
+    return $rows;
+}
+
+/**
+ * Whether the visitor's address gets a counter of its own. A private or
+ * reserved address (10/8, 172.16/12, 192.168/16, fc00::/7, loopback...) is
+ * the peer of a reverse proxy or load balancer not listed as a Trusted Proxy,
+ * or of a local network, and is shared by every visitor behind it: counting
+ * it would hold the whole site to one visitor's allowance.
+ *
+ * @param string $ip
+ * @return bool
+ */
+function pg_cf_visitor_address_counted($ip)
+{
+    return filter_var((string) $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+}
+
+/**
+ * An e-mail address folded to the inbox it reaches, for the counters only:
+ * trimmed and lower-cased, a "+tag" dropped from the name (plus addressing
+ * delivers name+anything@ to name@ at every large provider), and at Gmail the
+ * dots dropped too, googlemail.com being the same domain. Without this one
+ * inbox could be flooded through any number of counters of its own.
+ *
+ * @param string $email
+ * @return string The folded address, or the trimmed text when it is not one
+ */
+function pg_cf_throttle_mailbox($email)
+{
+    $email = mb_strtolower(trim((string) $email), 'UTF-8');
+    $at    = strrpos($email, '@');
+
+    if (($at === false) || ($at === 0) || ($at === strlen($email) - 1)) {
+        return $email;
+    }
+
+    $local  = substr($email, 0, $at);
+    $domain = substr($email, $at + 1);
+
+    // A quoted name is taken as it is.
+    if ($local[0] !== '"') {
+        $plus = strpos($local, '+');
+
+        if ($plus) {
+            $local = substr($local, 0, $plus);
+        }
+
+        if (($domain == 'gmail.com') || ($domain == 'googlemail.com')) {
+            $domain = 'gmail.com';
+            $bare   = str_replace('.', '', $local);
+
+            if ($bare !== '') {
+                $local = $bare;
+            }
+        }
+    }
+
+    return $local . '@' . $domain;
+}
+
+/**
+ * The submitter's address as custom_form.php settles it after the form row
+ * is written, worked out before it so the limits can be checked first: the
+ * field connected to the contact's e-mail address, else the signed-in
+ * account's address, else the form's only e-mail field. Fields whose value
+ * is a list (check box groups, multi-selects) are skipped, as there.
+ *
+ * @param array  $fields     form_fields rows (id, type, contact_field)
+ * @param array  $values     Posted value per field id
+ * @param string $user_email USER_EMAIL_ADDRESS, or ''
+ * @return string
+ */
+function pg_cf_submitter_address_guess($fields, $values, $user_email)
+{
+    $email_fields  = 0;
+    $email_value   = '';
+    $contact_value = '';
+
+    foreach ($fields as $field) {
+        $id    = isset($field['id']) ? $field['id'] : '';
+        $value = isset($values[$id]) ? $values[$id] : '';
+
+        if (is_array($value)) {
+            continue;
+        }
+
+        $value = (string) $value;
+
+        if (isset($field['type']) && ($field['type'] == 'email address')) {
+            $email_fields++;
+            $email_value = $value;
+        }
+
+        if (isset($field['contact_field']) && ($field['contact_field'] == 'email_address')) {
+            $contact_value = $value;
+        }
+    }
+
+    if ($contact_value != '') {
+        return $contact_value;
+    }
+
+    if ((string) $user_email !== '') {
+        return (string) $user_email;
+    }
+
+    if ($email_fields == 1) {
+        return $email_value;
+    }
+
+    return '';
+}
+
+/**
+ * Whether a form writes to the submitter's address: it mails them, adds
+ * them to a contact group or opens an account for them. Only then is the
+ * address a recipient the per-address and per-domain limits protect; a
+ * form that only stores what was typed has no one to flood.
+ *
+ * @param array $settings submitter_email, contact_group_id, auto_registration
+ * @return bool
+ */
+function pg_cf_form_writes_to_submitter($settings)
+{
+    return !empty($settings['submitter_email'])
+        || !empty($settings['contact_group_id'])
+        || !empty($settings['auto_registration']);
+}
+
+/**
+ * Count one submission on its counters, in order, and return the first row
+ * the count took past its limit; the rows after it are not counted, so a
+ * refused submission uses up no one else's allowance. Counting and testing
+ * are one atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE
+ * KEY UPDATE), so parallel requests, each with a session of its own, cannot
+ * all read room under the limit and all pass. A refused submission is
+ * counted too. Fails open: a counter that cannot be written returns 0.
+ *
+ * Runs before the form's hook code, so a hook that ends the request (go(),
+ * exit) cannot skip the count.
+ *
+ * @param array         $rows   pg_cf_throttle_subjects()
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return array The row over its limit, or an empty array
+ */
+function pg_cf_throttle_take($rows, $record = null)
+{
+    $live = ($record === null);
+
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return array();
+        }
+
+        $record = 'waf_rate_record';
+    }
+
+    $full = array();
+
+    foreach ($rows as $row) {
+        if ((int) call_user_func($record, $row['subject'], $row['scope'], $row['window']) > $row['limit']) {
+            $full = $row;
+            break;
+        }
+    }
+
+    // The firewall's sweep runs only while the firewall is on; these counters
+    // work without it, so they bring their own, as the sign-in throttle does.
+    if ($live && $rows && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    return $full;
+}
+
+/**
+ * Log a refusal by a form limit in the firewall log and in data/firewall.log,
+ * so a limit never refuses silently.
+ *
+ * @param array $row The row over its limit, from pg_cf_throttle_take()
+ * @return void
+ */
+function pg_cf_throttle_log($row)
+{
+    $rule = 'form-' . $row['scope'];
+
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', $rule, 'rate', 5, 'custom_form.php', (int) $row['limit'] . (($row['window'] >= 86400) ? '/day' : '/hour'));
+    }
+
+    if (function_exists('waf_text_log') && function_exists('waf_client_ip')) {
+        waf_text_log('DENY', waf_client_ip(), array('rule' => $rule));
+    }
+}
