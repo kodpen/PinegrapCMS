@@ -29,6 +29,6 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 
 ## Which embedded libraries carry a local change?
 - `includes/iyzipay-php`, to load on PHP 7.1 (above).
-- `mysqldump.php` (ifsnop/mysqldump-php at the software root; the backup, `includes/fn/backup.php`): its constructor sets the buffered-query option through `Pdo\Mysql::ATTR_USE_BUFFERED_QUERY` when that class exists (PHP 8.4 and later; the same value, 1000), because `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY` is deprecated from 8.5 (#?). On 8.5 the unit tests stopped with an ERROR there. An update re-applies it.
+- `mysqldump.php` (ifsnop/mysqldump-php at the software root; the backup, `includes/fn/backup.php`): its constructor sets the buffered-query option through `Pdo\Mysql::ATTR_USE_BUFFERED_QUERY` when that class exists (PHP 8.4 and later; the same value, 1000), because `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY` is deprecated from 8.5 (#1451). On 8.5 the unit tests stopped with an ERROR there. An update re-applies it.
 
 Related: docs/memory/core/dompdf-embedding.md
