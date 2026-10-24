@@ -26793,5 +26793,8 @@
     "order review request": "sipariş değerlendirme isteği",
     "Verified purchases": "Doğrulanmış satın almalar",
     "Not verified": "Doğrulanmamış",
-    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok."
+    "That order has no package number to accept.": "Bu siparişin onaylanacak paket numarası yok.",
+    "Voice message": "Sesli mesaj",
+    "Play": "Oynat",
+    "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek."
 }

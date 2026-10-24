@@ -679,6 +679,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Approval requests, the people outside the team they ask, and read
     // receipts (approvals.php, approval_guests.php, acks.php).
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings());
+    // Voice messages: the recording row and the player (voice.php,
+    // assets/js/workspace_voice.js).
+    $strings = array_merge($strings, ws_voice_js_strings());
     // Status updates and check-ins (status.php, assets/js/workspace_status.js).
     $strings = array_merge($strings, ws_status_js_strings());
     // A task handed to an assistant (delegation.php,
