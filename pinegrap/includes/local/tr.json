@@ -28055,5 +28055,14 @@
     "Note tools": "Not araçları",
     "Strikethrough (Ctrl+Shift+X)": "Üstü Çizili (Ctrl+Shift+X)",
     "Code (Ctrl+E)": "Kod (Ctrl+E)",
-    "Link (Ctrl+K)": "Bağlantı (Ctrl+K)"
+    "Link (Ctrl+K)": "Bağlantı (Ctrl+K)",
+    "Trendyol is asked about at most {var:1} barcodes at a time.": "Trendyol'a tek seferde en çok {var:1} barkod sorulur.",
+    "Rejected by {var:1}: {var:2}": "{var:1} reddetti: {var:2}",
+    "no reason given": "neden belirtilmedi",
+    "Blacklisted on {var:1}.": "{var:1} üzerinde kara listede.",
+    "Locked on {var:1}: {var:2}": "{var:1} üzerinde kilitli: {var:2}",
+    "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
+    "Archived on {var:1}.": "{var:1} üzerinde arşivde.",
+    "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",
+    "On {var:1}": "{var:1} üzerinde"
 }

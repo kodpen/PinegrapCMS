@@ -41,7 +41,7 @@ require_once(dirname(__FILE__) . '/listings.php');
 function mp_sync_run($seconds = 25) {
 
 	$summary = array('pushed' => 0, 'batches' => 0, 'done' => 0, 'failed' => 0, 'waiting' => 0,
-		'orders' => 0, 'order_errors' => 0, 'listed' => 0);
+		'orders' => 0, 'order_errors' => 0, 'listed' => 0, 'listings_checked' => 0);
 
 	if (!defined('DB_CONNECTED')) {
 
@@ -63,6 +63,12 @@ function mp_sync_run($seconds = 25) {
 	// the same run, which keeps a busy morning of orders from turning into one
 	// request per order.
 	mp_sync_orders($deadline, $summary);
+
+	// Where the listings stand comes after both, as the least urgent: a slow
+	// product read then cannot use up the time the stock and the orders need.
+	// A mapping set back to active here, its listing approved, has its stock
+	// and price queued again, and they go out on the next pass.
+	mp_sync_listing_states($deadline, $summary);
 
 	mp_sync_sweep();
 
@@ -695,6 +701,343 @@ function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 
 }
 
+
+/* ------------------------------------------------------- listing states */
+
+// Where the listings stand on the marketplace, onto their mapping rows.
+//
+// A listing created from here goes to the marketplace's approval first, and a
+// stock line sent for it meanwhile can be refused, which puts its mapping in
+// error and stops it. So the rows whose listing has not been seen approved
+// (remote_id still empty) are asked about. That includes the ones written as
+// rejected: a rejection is mostly fixed in the marketplace's own seller panel
+// (a document, the images), and the approval that follows has to set the row
+// back to active. A rejection read again unchanged writes nothing. What each
+// answer writes is mp_sync_listing_row_update().
+//
+// At most a hundred rows an account a pass, fifty to a call and two calls to
+// each fifty (approved and unapproved), far below the marketplace's limits.
+// Rows leave the set as they are approved. Rows the marketplace answers for
+// with neither (never listed there, deleted there) stay, and the hundred asked
+// about start at a random place in the set every pass
+// (mp_sync_listing_window()), so they cannot hide the rest.
+function mp_sync_listing_states($deadline, &$summary) {
+
+	foreach (mp_accounts('', 'active') as $account) {
+
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
+
+		if (!mp_can($account['provider'], 'listing_status')) {
+
+			continue;
+
+		}
+
+		mp_sync_listing_states_account($account, $deadline, $summary);
+
+	}
+
+}
+
+function mp_sync_listing_states_account($account, $deadline, &$summary) {
+
+	$account_id = (int) $account['id'];
+
+	$provider_name = mp_provider_name($account['provider']);
+
+	// A row with a line still out at the marketplace is left for a later
+	// pass: the verdict the next poll applies would write over what is read
+	// now, and a refusal landing on a row already seen approved would stop it
+	// for good, since approved rows are not asked about again.
+	$ids = array_map('intval', (array) db_values("SELECT id FROM marketplace_product_map
+		WHERE (account_id = '" . e($account_id) . "')
+		  AND (remote_code <> '')
+		  AND (remote_id = '')
+		  AND NOT EXISTS (SELECT 1 FROM marketplace_sync_queue
+			WHERE (marketplace_sync_queue.account_id = marketplace_product_map.account_id)
+			  AND (marketplace_sync_queue.product_id = marketplace_product_map.product_id)
+			  AND (marketplace_sync_queue.status = 'sent'))
+		ORDER BY id ASC"));
+
+	// A start drawn every pass rather than one read from the clock: a job that
+	// runs every ten or fifteen minutes would otherwise land on the same
+	// windows every time and never reach the rest.
+	$ids = mp_sync_listing_window($ids, mt_rand(), 100);
+
+	if (!$ids) {
+
+		return;
+
+	}
+
+	$rows = (array) db_items("SELECT id, product_id, remote_code, remote_id, status, last_error
+		FROM marketplace_product_map
+		WHERE id IN (" . implode(',', $ids) . ")
+		ORDER BY id ASC");
+
+	foreach (array_chunk($rows, 50) as $chunk) {
+
+		// Each chunk is two calls, so the time left is looked at before each.
+		if (microtime(true) >= $deadline) {
+
+			return;
+
+		}
+
+		$result = mp_call($account['provider'], 'listing_status', array($account, array_column($chunk, 'remote_code')));
+
+		if (!$result['ok']) {
+
+			mp_account_outcome($account_id, false, $result['error']);
+
+			return;
+
+		}
+
+		$listings = isset($result['data']['listings']) ? (array)$result['data']['listings'] : array();
+
+		foreach ($chunk as $row) {
+
+			$code = (string) $row['remote_code'];
+
+			$summary['listings_checked']++;
+
+			$update = mp_sync_listing_row_update($row, isset($listings[$code]) ? $listings[$code] : null, $provider_name);
+
+			if ($update === null) {
+
+				continue;
+
+			}
+
+			$set = array();
+
+			foreach ($update as $column => $value) {
+
+				$set[] = $column . " = '" . e($value) . "'";
+
+			}
+
+			// Only onto the row as it was read: matched again under another
+			// code meanwhile, the answer belongs to the old code.
+			db("UPDATE marketplace_product_map SET " . implode(', ', $set) . "
+				WHERE (id = '" . e((int)$row['id']) . "')
+				  AND (remote_code = '" . e($code) . "')
+				  AND (remote_id = '')");
+
+			if (mysqli_affected_rows(db::$con) < 1) {
+
+				continue;
+
+			}
+
+			// Its stock and price were not sent while it was stopped, and
+			// nothing would send them again until the product changed.
+			if (isset($update['status']) && $update['status'] === 'active') {
+
+				mp_enqueue((int)$row['product_id']);
+
+			}
+
+		}
+
+	}
+
+}
+
+// The columns a listing's state changes on its mapping row, or null when
+// nothing changes.
+//
+// $row is the mapping (remote_id, status, last_error); $state what the
+// connector's listing_status answered for its code, or null.
+//
+//   approved: remote_id becomes the marketplace's content id. A row in error
+//   goes back to active - its stock line was refused while the listing
+//   waited - while a paused row stays paused. last_error is cleared, or
+//   carries a note when the listing is blacklisted, locked or archived over
+//   there (information: the status is not changed for it).
+//
+//   rejected: the row goes to error with the reasons, under a prefix
+//   (mp_listing_rejected_prefix()) the screen knows it by.
+//
+//   pending: nothing, unless a document is needed, which is noted without
+//   touching the status, and taken off a row that still sends once it is no
+//   longer asked for. A row written as rejected goes back to active: the
+//   listing was fixed and is in their review again.
+//
+//   unknown, or no answer: nothing. The listing may still be on its way
+//   through their batch, and a row written as missing would stop a product
+//   that is about to appear.
+//
+// An approval or a document note only replaces last_error on a row in error,
+// or when it holds nothing or one of these texts
+// (mp_sync_listing_text_is_ours()). On a row that still sends it may hold a
+// push refusal (no price, a second product under the barcode) that the
+// listing's state does not fix, and the next successful push clears it;
+// wiping it would leave the row silent while its stock is not sent.
+function mp_sync_listing_row_update($row, $state, $provider_name) {
+
+	$kind = (is_array($state) && isset($state['state'])) ? (string)$state['state'] : 'unknown';
+
+	$want = array();
+
+	// Whether a push refusal already on the row outranks the text written
+	// here (see above).
+	$keep_refusal = false;
+
+	if ($kind === 'approved') {
+
+		$content_id = isset($state['content_id']) ? (string)$state['content_id'] : '';
+
+		if ($content_id === '') {
+
+			return null;
+
+		}
+
+		$note = '';
+
+		if (!empty($state['blacklisted'])) {
+
+			$note = lang(array('string' => 'Blacklisted on {var:1}.', 'vars' => array($provider_name)));
+
+		} elseif (!empty($state['locked'])) {
+
+			$reason = isset($state['lock_reason']) ? trim((string)$state['lock_reason']) : '';
+
+			$note = ($reason !== '')
+				? lang(array('string' => 'Locked on {var:1}: {var:2}', 'vars' => array($provider_name, $reason)))
+				: lang(array('string' => 'Locked on {var:1}.', 'vars' => array($provider_name)));
+
+		} elseif (!empty($state['archived'])) {
+
+			$note = lang(array('string' => 'Archived on {var:1}.', 'vars' => array($provider_name)));
+
+		}
+
+		$want['remote_id'] = mb_substr($content_id, 0, 64);
+
+		if ((string)$row['status'] === 'error') {
+
+			$want['status'] = 'active';
+
+		}
+
+		$want['last_error'] = mb_substr($note, 0, 500);
+
+		$keep_refusal = true;
+
+	} elseif ($kind === 'rejected') {
+
+		$reasons = (isset($state['reasons']) && is_array($state['reasons'])) ? $state['reasons'] : array();
+
+		$want['status'] = 'error';
+
+		$want['last_error'] = mb_substr(mp_listing_rejected_text($provider_name,
+			$reasons ? implode('; ', $reasons) : lang('no reason given')), 0, 500);
+
+	} elseif ($kind === 'pending' && (string)$row['status'] === 'error'
+		&& strpos((string)$row['last_error'], mp_listing_rejected_prefix($provider_name)) === 0) {
+
+		// Rejected before and back in their review after a fix in the seller
+		// panel: the row waits again as a new listing does.
+		$want['status'] = 'active';
+
+		$want['last_error'] = !empty($state['doc_needed']) ? mp_sync_listing_document_note($provider_name) : '';
+
+	} elseif ($kind === 'pending' && !empty($state['doc_needed'])) {
+
+		$want['last_error'] = mp_sync_listing_document_note($provider_name);
+
+		$keep_refusal = true;
+
+	} elseif ($kind === 'pending' && (string)$row['status'] !== 'error'
+		&& (string)$row['last_error'] === mp_sync_listing_document_note($provider_name)) {
+
+		// The document is in. A stopped row keeps the note, so it is not left
+		// without a reason, until the approval read replaces it.
+		$want['last_error'] = '';
+
+	} else {
+
+		return null;
+
+	}
+
+	if ($keep_refusal && ((string)$row['status'] !== 'error')
+		&& !mp_sync_listing_text_is_ours((string)$row['last_error'], $provider_name)) {
+
+		unset($want['last_error']);
+
+	}
+
+	// Only what changes is written.
+	foreach ($want as $column => $value) {
+
+		if ((string)(isset($row[$column]) ? $row[$column] : '') === (string)$value) {
+
+			unset($want[$column]);
+
+		}
+
+	}
+
+	return $want ? $want : null;
+
+}
+
+// What a pending listing that waits for a document says on its mapping.
+function mp_sync_listing_document_note($provider_name) {
+
+	return lang(array(
+		'string' => '{var:1} needs a document for this listing; upload it in the seller panel.',
+		'vars'   => array($provider_name)
+	));
+
+}
+
+// Whether a mapping's last_error is empty or a text the listing read wrote
+// (a rejection or the document note), so a new answer may replace it.
+function mp_sync_listing_text_is_ours($text, $provider_name) {
+
+	return $text === ''
+		|| strpos($text, mp_listing_rejected_prefix($provider_name)) === 0
+		|| $text === mp_sync_listing_document_note($provider_name);
+
+}
+
+// The $size ids asked about from position $start (any number, counted round
+// the set): $size ids in a row that wrap round, so every id of a set larger
+// than one window is in the window of some start.
+function mp_sync_listing_window($ids, $start, $size) {
+
+	$ids = array_values((array)$ids);
+
+	$count = count($ids);
+
+	if ($count <= $size) {
+
+		return $ids;
+
+	}
+
+	$start = abs((int)$start) % $count;
+
+	$window = array_slice($ids, $start, $size);
+
+	if (count($window) < $size) {
+
+		$window = array_merge($window, array_slice($ids, 0, $size - count($window)));
+
+	}
+
+	return $window;
+
+}
 
 /* --------------------------------------------------------------- orders in */
 
