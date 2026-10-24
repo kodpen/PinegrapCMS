@@ -1694,6 +1694,78 @@ var software = {
         });
     },
 
+    // The add-comment form of a comments widget (widgets_comments.php), found
+    // by its data attributes: the submit button is locked once the form is
+    // sent, leaving the page with typed text asks first, and the publish
+    // picker shows the date of a scheduled comment. The classic comment form
+    // keeps init_add_comment() and init_add_comment_publish().
+    init_comment_forms: function() {
+        software_$('form[data-pg-comment-form]').each(function() {
+            var form = software_$(this);
+
+            if (form.data('pg-comment-init')) {
+                return;
+            }
+
+            form.data('pg-comment-init', true);
+
+            var submitted = false;
+            var label = form.attr('data-pg-comment-label') || '';
+            // A textarea or a one-line input: the server wires either.
+            var message = form.find('[name="message"]');
+
+            // The browser checks the required message before the submit
+            // event, so an empty post never locks the button.
+            form.on('submit', function() {
+                submitted = true;
+                form.find('[data-pg-comment-submit]').prop('disabled', true);
+            });
+
+            // Once something is typed, leaving the page without sending it
+            // asks first.
+            message.one('keyup', function() {
+                software_$(window).on('beforeunload', function() {
+                    if (!submitted && message.val()) {
+                        return lang('WARNING: If you leave this page, then your content will NOT be added.') + (label ? ' (' + label + ')' : '');
+                    }
+                });
+            });
+
+            form.find('[data-pg-comment-publish]').each(function() {
+                var publish = software_$(this);
+                var select = publish.find('[data-pg-comment-publish-select]');
+                var schedule = publish.find('[data-pg-comment-publish-schedule]');
+                var date = schedule.find('input[name="publish_date_and_time"]');
+                var picker = false;
+
+                // The hidden attribute rather than a fade: Bootstrap's
+                // [hidden] { display: none !important } wins over an inline
+                // style.
+                var update = function(focus) {
+                    var scheduled = (select.val() == 'schedule');
+
+                    schedule.prop('hidden', !scheduled);
+
+                    if (scheduled && !picker && software_$.fn.datetimepicker && (typeof datetimepicker_options !== 'undefined')) {
+                        date.datetimepicker(datetimepicker_options);
+                        picker = true;
+                    }
+
+                    // Focused, the date & time field opens its picker.
+                    if (scheduled && focus) {
+                        date.focus();
+                    }
+                };
+
+                update(false);
+
+                select.on('change', function() {
+                    update(true);
+                });
+            });
+        });
+    },
+
     init_auto_dialogs: function(properties) {
         var visit_length = properties.visit_length;
         var auto_dialogs = properties.auto_dialogs;
@@ -5398,3 +5470,8 @@ software.load = function(request) {
     // Load the module.
     document.body.appendChild(script);
 };
+
+// Comments widgets' add-comment forms (software.init_comment_forms()).
+software_$(document).ready(function() {
+    software.init_comment_forms();
+});
