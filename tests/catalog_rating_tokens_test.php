@@ -1,0 +1,209 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the rating of a product in the catalog widgets
+ * (includes/fn/widgets_catalog.php): the __rating_avg and __rating_count
+ * tokens, the columns they are read from before and after the review columns
+ * exist, the has_rating / no_rating flags of a listing card and of the
+ * product page, and what the visual designer offers for them.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+// The source of one function of a file: from its declaration to the closing
+// brace at the start of a line.
+function _catalog_rating_function_source($file, $name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	$start = strpos($source, "\nfunction " . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n}", $start);
+
+	return substr($source, $start, ($end === false) ? null : $end - $start);
+}
+
+// The SELECT statements of a piece of source that read the given column.
+function _catalog_rating_selects($source, $column)
+{
+	preg_match_all('/"SELECT\b.*?"/s', $source, $m);
+
+	return array_values(array_filter($m[0], function ($select) use ($column) {
+		return strpos($select, $column) !== false;
+	}));
+}
+
+// No verified, starred review: both tokens are empty, so a bound element
+// collapses and no rating is shown without a review behind it.
+function test_catalog_rating_values_without_reviews()
+{
+	$empty = array('__rating_avg' => '', '__rating_count' => '');
+
+	pg_assert_same($empty, _pg_catalog_rating_values('0.00', '0'), 'as read from the products row');
+	pg_assert_same($empty, _pg_catalog_rating_values(0, 0), 'numbers');
+	pg_assert_same($empty, _pg_catalog_rating_values('4.50', '0'), 'an average without a review behind it');
+	pg_assert_same($empty, _pg_catalog_rating_values(null, null), 'no columns at all');
+}
+
+// The average with one decimal in the site's number format, the count as a
+// plain number.
+function test_catalog_rating_values_one_decimal()
+{
+	$separators = pg_number_separators();
+	$decimal = $separators['decimal'];
+
+	pg_assert_same(array('__rating_avg' => '4' . $decimal . '3', '__rating_count' => '3'), _pg_catalog_rating_values(4.333, 3));
+	pg_assert_same(array('__rating_avg' => '4' . $decimal . '3', '__rating_count' => '3'), _pg_catalog_rating_values('4.33', '3'), 'strings from MySQL');
+	pg_assert_same(array('__rating_avg' => '5' . $decimal . '0', '__rating_count' => '1'), _pg_catalog_rating_values('5.00', '1'), 'a whole number keeps its decimal');
+	pg_assert_same('4' . $decimal . '8', _pg_catalog_rating_values('4.75', '12')['__rating_avg'], 'rounded, not cut');
+}
+
+// The columns exist from 11.0.14 on; before that the query reads zeros, so it
+// does not fail and the listing does not turn into "No products found".
+function test_catalog_rating_columns()
+{
+	pg_assert_same('products.rating_avg AS rating_avg, products.rating_count AS rating_count', _pg_catalog_rating_columns(true));
+	pg_assert_same('0 AS rating_avg, 0 AS rating_count', _pg_catalog_rating_columns(false));
+	pg_assert_same('products.rating_avg AS product_rating_avg, products.rating_count AS product_rating_count', _pg_catalog_rating_columns(true, 'product_'));
+	pg_assert_same('0 AS product_rating_avg, 0 AS product_rating_count', _pg_catalog_rating_columns(false, 'product_'));
+}
+
+// The listing's card is drawn once for each rating state: an element shown
+// only with a rating is in the rated card alone, one shown only without it in
+// the other, and a flag no catalog evaluates leaves its element drawn.
+function test_catalog_rating_card_templates()
+{
+	$paragraph = function ($text, $flag) {
+		$props = array('contentType' => 'paragraph', 'text' => $text);
+		if ($flag !== '') $props['_bindings'] = array('eo_visible_if' => $flag);
+		return array('type' => 'content', 'props' => $props, 'children' => array());
+	};
+	$card = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'card'), 'children' => array(
+		$paragraph('Always', ''),
+		$paragraph('Stars', 'has_rating'),
+		$paragraph('No reviews yet', 'no_rating'),
+		$paragraph('Pasted', 'record_found'),
+	));
+
+	$templates = _pg_catalog_card_templates(array($card));
+
+	pg_assert_contains('<p>Stars</p>', $templates['rated']);
+	pg_assert_false(strpos($templates['rated'], 'No reviews yet') !== false, 'the rated card has no "no reviews" text');
+	pg_assert_contains('<p>No reviews yet</p>', $templates['unrated']);
+	pg_assert_false(strpos($templates['unrated'], 'Stars') !== false, 'the card without a rating has no stars');
+
+	foreach ($templates as $state => $html) {
+		pg_assert_contains('<p>Always</p>', $html, $state . ': an element without a flag');
+		pg_assert_contains('<p>Pasted</p>', $html, $state . ': a flag of another widget');
+		pg_assert_false(strpos($html, 'pg-vis') !== false, $state . ': no marker is left');
+	}
+
+	// A card that exists only with a rating is empty for a product without one.
+	$templates = _pg_catalog_card_templates(array($paragraph('Stars', 'has_rating')));
+
+	pg_assert_same('<p>Stars</p>', $templates['rated']);
+	pg_assert_same('', $templates['unrated']);
+}
+
+// The listing reads the columns behind the readiness check, fills both tokens
+// from the helper, and gives each row the card of its state.
+function test_catalog_rating_listing_source()
+{
+	$listing = _catalog_rating_function_source('includes/fn/widgets_catalog.php', '_render_system_widget_catalog_listing');
+
+	pg_assert_true($listing !== '', 'the listing renderer is found');
+	pg_assert_contains('$rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());', $listing);
+
+	$selects = _catalog_rating_selects($listing, 'products.seo_score');
+
+	pg_assert_same(1, count($selects), 'one product query');
+	pg_assert_contains('$rating_cols', isset($selects[0]) ? $selects[0] : '', 'the product query reads the rating');
+
+	pg_assert_contains("'__rating_avg'          => \$rating['__rating_avg'],", $listing);
+	pg_assert_contains("'__rating_count'        => \$rating['__rating_count'],", $listing);
+	pg_assert_contains('$rendered = ($rating[\'__rating_count\'] !== \'\') ? $loop_template_rated : $loop_template;', $listing);
+	pg_assert_contains("if (\$loop_template === '' && \$loop_template_rated === '') {", $listing, 'a card shown only with a rating is still a card');
+	pg_assert_same(2, substr_count($listing, '_pg_catalog_card_templates('), 'with and without a loop area');
+}
+
+// The product page reads the columns in its three product queries and the
+// variant query, fills the same keys found or not, passes the rating to the
+// variant swap, and resolves the flags once the product is known.
+function test_catalog_rating_item_view_source()
+{
+	$view = _catalog_rating_function_source('includes/fn/widgets_catalog.php', '_render_system_widget_catalog_item_view');
+
+	pg_assert_true($view !== '', 'the item view renderer is found');
+	pg_assert_contains('$_civ_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());', $view);
+	pg_assert_contains("\$_civ_var_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready(), 'product_');", $view);
+
+	$selects = _catalog_rating_selects($view, 'products.seo_score');
+
+	pg_assert_same(3, count($selects), 'three product queries');
+
+	foreach ($selects as $i => $select) {
+		pg_assert_contains('$_civ_rating_cols', $select, 'product query ' . ($i + 1));
+	}
+
+	$variants = _catalog_rating_selects($view, 'AS product_cf4');
+
+	pg_assert_same(1, count($variants), 'one variant query');
+	pg_assert_contains('$_civ_var_rating_cols', isset($variants[0]) ? $variants[0] : '', 'the variant query reads the rating');
+
+	// Found and not found carry the same keys.
+	pg_assert_same(2, substr_count($view, "'__rating_avg'           => \$_civ_rating['__rating_avg'],"), 'both maps carry the average');
+	pg_assert_same(2, substr_count($view, "'__rating_count'         => \$_civ_rating['__rating_count'],"), 'both maps carry the count');
+
+	// The variant swap writes the fields it is given, by their bare names.
+	pg_assert_contains("'rating_avg'      => \$_p_rating['__rating_avg'],", $view);
+	pg_assert_contains("'rating_count'    => \$_p_rating['__rating_count'],", $view);
+
+	// Marked before the tree is drawn, resolved once the product is read.
+	$mark = strpos($view, "_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating'));");
+	$split = strpos($view, '$split = _split_widget_tree($tree_decoded);');
+	$resolve = strpos($view, '$loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);');
+
+	pg_assert_true($mark !== false && $split !== false && $mark < $split, 'marked before the split');
+	pg_assert_true($resolve !== false && $resolve > strpos($view, '$_civ_var_rating_cols'), 'resolved after the product and its variants are read');
+	pg_assert_contains('$static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);', $view);
+}
+
+// The designer offers both tokens in both catalog widgets, the two flags in
+// "Show only when", and canvas samples that look like a rating.
+function test_catalog_rating_designer_offers()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+
+	foreach (array('SW_CATALOG_TOKEN_GROUPS', 'SW_CATALOG_ITEM_TOKEN_GROUPS') as $palette) {
+		$start = strpos($js, 'var ' . $palette . ' = [');
+		pg_assert_true($start !== false, $palette . ' is found');
+		$body = substr($js, $start, strpos($js, "\n    ];", $start) - $start);
+		pg_assert_contains("['__rating_avg',", $body, $palette);
+		pg_assert_contains("['__rating_count',", $body, $palette);
+	}
+
+	$start = strpos($js, 'var SW_VISIBILITY_FLAGS = {');
+	pg_assert_true($start !== false, 'SW_VISIBILITY_FLAGS is found');
+	$flags = substr($js, $start, strpos($js, "\n    };", $start) - $start);
+
+	foreach (array('catalog_listing', 'catalog_item_view') as $type) {
+		pg_assert_true((bool) preg_match('/\n\s+' . $type . ': \[(.*?)\n\s+\]/s', $flags, $m), $type . ' has flags');
+		pg_assert_contains("['has_rating',", isset($m[1]) ? $m[1] : '', $type);
+		pg_assert_contains("['no_rating',", isset($m[1]) ? $m[1] : '', $type);
+	}
+
+	// The file is too long to print when an assertion fails.
+	pg_assert_true(strpos($js, "'__rating_avg': '4.6'") !== false, 'a canvas sample for the average');
+	pg_assert_true(strpos($js, "'__rating_count': '12'") !== false, 'a canvas sample for the count');
+}

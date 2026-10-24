@@ -21,12 +21,13 @@ description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): whi
 
 ## How is a product's rating kept?
 - `products.rating_avg` (DECIMAL 3,2) and `rating_count`: published, verified, starred (1-5) reviews of the product only (`pg_review_rating_sql()`). Comments from before 11.0.14 are unverified and never count. Group reviews have no rating yet.
-- Refreshed by `pg_review_refresh_products()` / `pg_review_comment_changed()` after add (when published), moderation save or delete (`edit_comment.php`), the scheduled publish (`job.php`) and the API update/delete. Paths that delete a page's comments (`edit_page.php`, `edit_pages.php`, the file manager) do not call it: `pg_review_refresh_daily()` in `job.php` recomputes every product once a day (one UPDATE...JOIN writing only changed rows; state in `data/temp/review_ratings_refreshed.txt`).
+- Refreshed by `pg_review_refresh_products()` / `pg_review_comment_changed()` after add (when published), moderation save or delete (`edit_comment.php`), the scheduled publish (`job.php`) and the API update/delete. Paths that delete a page's comments (`edit_page.php`, `edit_pages.php`, the file manager) do not call it: `pg_review_refresh_daily()` in `job.php` recomputes every product once a day (one UPDATE...JOIN, changed rows only; state in `data/temp/review_ratings_refreshed.txt`).
+- Designer pages: catalog widget tokens `__rating_avg` / `__rating_count`, flags `has_rating` / `no_rating` (`designer/catalog-rating-tokens.md`).
 
 ## When does the markup carry aggregateRating?
 - `pg_review_aggregate_jsonld()`: only with at least one review and an average of 1-5; never invented (`platform/structured-data-open-graph.md`).
-- Only the legacy catalog detail block of `get_page_content.php`, when the page shows comments with stars (`comments` and `comments_rating` on): markup may describe only reviews a visitor can read there. `_pg_build_product_jsonld()` (designer pages) adds none until the designer shows reviews (plan step: `__reviews` token).
+- Only the legacy catalog detail block of `get_page_content.php`, when the page shows comments with stars (`comments` and `comments_rating` on): markup may describe only reviews a visitor can read there. `_pg_build_product_jsonld()` (designer pages) adds none until the designer shows reviews (designable-comments slice 20, with the review form and `__reviews`).
 
 ## What is not done yet?
-- The store's reply: `commerce/product-review-store-reply.md`. The review request e-mail and the verified filter in moderation: `commerce/product-review-request-email.md`. Not done: widget tokens, the API: `plans/storefront-conversion-pack.md`.
+- Store reply: `commerce/product-review-store-reply.md`. Request e-mail, verified filter: `commerce/product-review-request-email.md`. Not done: the API (`plans/storefront-conversion-pack.md`).
 - By default a page with featured comments shows only those first; 28/B(4) asks for an objective order. Owner question.

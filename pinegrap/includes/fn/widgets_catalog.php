@@ -45,6 +45,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   Group:       ^^__category_id^^, ^^__category_name^^, ^^__featured^^, ^^__is_new^^
 //   Custom:      ^^__custom_field_1^^ … ^^__custom_field_4^^
 //   Reward/SEO:  ^^__reward_points^^, ^^__seo_score^^
+//   Reviews:     ^^__rating_avg^^, ^^__rating_count^^ ('' without a verified,
+//                starred review); "Show only when" has_rating / no_rating
+//                per card (_pg_catalog_card_templates())
 //
 // Group-context tokens (featured, is_new, sort_order) are populated from
 // products_groups_xref. When product_group_id = 0 (all products), they are
@@ -480,6 +483,85 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
     }
 }
 
+// ============================================================================
+// The rating of a product in the catalog widgets.
+//
+// products.rating_avg and rating_count hold the published, starred reviews of
+// verified purchases (includes/fn/reviews.php). Both tokens are empty while
+// there is none, so a bound element collapses and no rating is shown without
+// verified reviews behind it; has_rating / no_rating ("Show only when") read
+// the same count, for a wrapper around the stars or a "(12)" label.
+// ============================================================================
+
+/**
+ * The SELECT columns the rating is read from. A column the table does not
+ * have fails the whole query (a listing would show "No products found"), so
+ * before the 11.0.14 columns exist the query reads zeros under the same names.
+ *
+ * @param bool   $ready        pg_reviews_ready()
+ * @param string $alias_prefix prefix of the column aliases ('product_' in the variant query)
+ * @return string
+ */
+function _pg_catalog_rating_columns($ready, $alias_prefix = '')
+{
+    $avg   = $alias_prefix . 'rating_avg';
+    $count = $alias_prefix . 'rating_count';
+
+    return $ready
+        ? 'products.rating_avg AS ' . $avg . ', products.rating_count AS ' . $count
+        : '0 AS ' . $avg . ', 0 AS ' . $count;
+}
+
+/**
+ * The rating tokens of one product: the average with one decimal in the
+ * site's number format, and the number of reviews behind it.
+ *
+ * @param float|int|string|null $rating_avg   products.rating_avg
+ * @param int|string|null       $rating_count products.rating_count
+ * @return array '__rating_avg' and '__rating_count', both '' without a review
+ */
+function _pg_catalog_rating_values($rating_avg, $rating_count)
+{
+    $count = (int)$rating_count;
+
+    if ($count <= 0) {
+        return array('__rating_avg' => '', '__rating_count' => '');
+    }
+
+    return array(
+        '__rating_avg'   => pg_format_number($rating_avg, 1),
+        '__rating_count' => (string)$count,
+    );
+}
+
+/**
+ * The listing's card drawn once for each rating state. has_rating and
+ * no_rating describe the product of a card, so only the card is marked: an
+ * element outside it, or one carrying a flag no catalog evaluates, is drawn
+ * as before. Each product row takes the template of its state; a group row
+ * has no rating and takes the one without.
+ *
+ * @param array $nodes the loop_area's children, or the whole tree when it has none
+ * @return array 'rated' and 'unrated' card HTML
+ */
+function _pg_catalog_card_templates($nodes)
+{
+    $card = array('type' => 'root', 'props' => array(), 'children' => $nodes);
+    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating'));
+
+    $html = '';
+    foreach ($card['children'] as $child) {
+        $html .= _render_tree_node($child, 0, 0);
+    }
+
+    // Resolved on the card alone, before any product's values go in, so a
+    // span never holds a description long enough to exhaust PCRE.
+    return array(
+        'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
+        'unrated' => trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true))),
+    );
+}
+
 function _render_system_widget_catalog_listing($product_group_id, $tree_json, $widget_id, $cfg = array())
 {
     $product_group_id = (int)$product_group_id;  // 0 = all groups
@@ -770,17 +852,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
     $split = _split_widget_tree($tree_decoded);
 
+    // The card comes in two states, with and without a rating (has_rating /
+    // no_rating). $loop_template is the one without: a group row takes it too.
     if ($split['loop_children'] === null) {
-        $loop_template = trim(_render_tree_node($tree_decoded, 0, 0));
+        $_pg_cards     = _pg_catalog_card_templates(array($tree_decoded));
         $static_html   = '';
     } else {
-        $loop_template = '';
-        foreach ($split['loop_children'] as $child) {
-            $loop_template .= _render_tree_node($child, 0, 0);
-        }
-        $loop_template = trim($loop_template);
+        $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
+    $loop_template       = $_pg_cards['unrated'];
+    $loop_template_rated = $_pg_cards['rated'];
 
     // ── Resolve order_by → SQL clause (whitelist!) ────────────────────────
     // Catalog's sort_order lives on products_groups_xref (per-group), so a
@@ -1018,7 +1100,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // tokens leaking through bound containers.
     $no_products = false;
 
-    if ($loop_template === '') {
+    // A card drawn only for a product with a rating is empty without one,
+    // and still a card.
+    if ($loop_template === '' && $loop_template_rated === '') {
         $no_products = true;
     }
 
@@ -1066,6 +1150,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                              xref.featured  AS xref_featured,
                              xref.new_date  AS xref_new_date";
         }
+        $rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
         $products = db_items(
             "SELECT
                  products.id, products.name, products.address_name,
@@ -1076,7 +1161,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  $xref_select
@@ -1262,6 +1347,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                                 ? (int)round(($disc_save_cents / $original_price_cents) * 100) : 0;
         $price_block_html     = _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol);
 
+        $rating = _pg_catalog_rating_values(
+            isset($p['rating_avg']) ? $p['rating_avg'] : 0,
+            isset($p['rating_count']) ? $p['rating_count'] : 0
+        );
+
         $values = array(
             // Basic
             '__id'                  => (string)$pid,
@@ -1362,6 +1452,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__reward_points'       => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'           => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
 
+            // Reviews — empty while no verified, starred review is published.
+            '__rating_avg'          => $rating['__rating_avg'],
+            '__rating_count'        => $rating['__rating_count'],
+
             // NOTE: `__add_to_cart_button` (a whole server-built form with the
             // caption, icon and Bootstrap classes baked in) has been removed.
             // The card's add-to-cart button is designer-owned: drop a real
@@ -1389,7 +1483,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // in pg_sw_raw_token_keys() and pass through untouched.
         $values = pg_sw_escape_token_values($values);
 
-        $rendered = $loop_template;
+        // The card of this product's rating state (has_rating / no_rating).
+        $rendered = ($rating['__rating_count'] !== '') ? $loop_template_rated : $loop_template;
         // Replace longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^'.
         $keys = array_keys($values);
         usort($keys, function ($a, $b) { return strlen($b) - strlen($a); });
@@ -3951,6 +4046,10 @@ function _apply_catalog_item_view_bindings(&$node, $context)
 //   ^^__gallery_image_1^^  — first extra gallery image URL (products_images_xref row 1)
 //   ^^__gallery_image_2^^  — …row 2
 //   ^^__gallery_image_3^^, ^^__gallery_image_4^^, ^^__gallery_image_5^^
+//   The rating (^^__rating_avg^^, ^^__rating_count^^) is in the variant
+//   payload too; "Show only when" has_rating / no_rating is resolved once,
+//   after the product is read (the tree is drawn before), so a variant
+//   switch in the browser moves the two values but not the flags.
 //
 // Config (system_region_config) keys:
 //   product_group_id   int     0 = no group filter; >0 = restrict to this group (security)
@@ -4124,6 +4223,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // run, and the detail page then showed every message the session carried
     // rather than its own.
     _pg_inject_messages_node($tree_decoded, 'catalog_detail');
+    // "Show only when" has_rating / no_rating: the tree is drawn before the
+    // product is read, so the elements are marked here and kept or cut once
+    // the rating is known (below). Another widget's flag stays drawn.
+    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating'));
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -4189,6 +4292,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $select_group_name       = '';
     $select_group_short_desc = '';
 
+    $_civ_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
+
     $p = null;
     if ($product_address_name !== '') {
         $p = db_item(
@@ -4201,7 +4306,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
              FROM products
@@ -4269,7 +4374,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.out_of_stock_message,
                          products.mpn, products.gtin, products.brand, products.weight,
                          products.shippable, products.taxable, products.reward_points,
-                         products.seo_score,
+                         products.seo_score, $_civ_rating_cols,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
                      FROM products
@@ -4292,7 +4397,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score,
+                 products.seo_score, $_civ_rating_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
              FROM products
@@ -4360,6 +4465,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // Pull every enabled product in the group along with their
         // attribute → option assignments. One JOIN-rich query keeps it to
         // a single round-trip.
+        $_civ_var_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready(), 'product_');
         $_civ_var_rows = db_items(
             "SELECT
                  products.id            AS product_id,
@@ -4383,6 +4489,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.custom_field_2 AS product_cf2,
                  products.custom_field_3 AS product_cf3,
                  products.custom_field_4 AS product_cf4,
+                 $_civ_var_rating_cols,
                  pa.id          AS attr_id,
                  pa.name        AS attr_name,
                  pa.label       AS attr_label,
@@ -4433,6 +4540,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                     $_p_image_url   = !empty($_vr['product_image'])
                         ? $base_path . encode_url_path((string)$_vr['product_image'])
                         : '';
+                    $_p_rating      = _pg_catalog_rating_values($_vr['product_rating_avg'], $_vr['product_rating_count']);
                     $vproducts[$_pid] = array(
                         'id'              => $_pid,
                         'name'            => (string)$_vr['product_name'],
@@ -4477,6 +4585,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                         // (or untracked) variant announce "not available" the
                         // moment the visitor switched to it.
                         'out_of_stock_message' => $_p_oos_notice ? _pg_rich_text_to_inline($_vr['product_oos_msg']) : '',
+                        // This variant's rating; empty without a verified,
+                        // starred review, so the bound element collapses.
+                        'rating_avg'      => $_p_rating['__rating_avg'],
+                        'rating_count'    => $_p_rating['__rating_count'],
                         'attrs'           => array(),
                     );
                 }
@@ -4602,6 +4714,22 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         );
     }
 
+    // ── Rating: its tokens and "Show only when" ──────────────────────────
+    // has_rating / no_rating read the same count as the two tokens, so an
+    // element shown only with a rating never wraps an empty one. The spans
+    // marked before the split are kept or cut here, before the variant
+    // picker looks for its anchors and before any value is filled in.
+    $_civ_rating = _pg_catalog_rating_values(
+        ($p && isset($p['rating_avg'])) ? $p['rating_avg'] : 0,
+        ($p && isset($p['rating_count'])) ? $p['rating_count'] : 0
+    );
+    $_civ_flags = array(
+        'has_rating' => $_civ_rating['__rating_count'] !== '',
+        'no_rating'  => $_civ_rating['__rating_count'] === '',
+    );
+    $loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);
+    $static_html   = _pg_sw_resolve_visibility($static_html, $_civ_flags);
+
     // ── Build token map ───────────────────────────────────────────────────
     // The same keys are produced regardless of found/not-found so the designer's
     // template renders consistently. ^^__not_found_message^^ distinguishes the two states.
@@ -4660,6 +4788,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__custom_field_4'       => '',
             '__reward_points'        => '0',
             '__seo_score'            => '0',
+            '__rating_avg'           => $_civ_rating['__rating_avg'],
+            '__rating_count'         => $_civ_rating['__rating_count'],
             '__not_found_message'            => $not_found_message,
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
@@ -4935,6 +5065,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // Reward / SEO
             '__reward_points'        => isset($p['reward_points']) ? (string)$p['reward_points'] : '0',
             '__seo_score'            => isset($p['seo_score']) ? (string)$p['seo_score'] : '0',
+
+            // Reviews — empty while no verified, starred review is published.
+            '__rating_avg'           => $_civ_rating['__rating_avg'],
+            '__rating_count'         => $_civ_rating['__rating_count'],
 
             // not_found: empty when product is found so the designer's not-found region
             // renders blank. The token is exposed so conditional visibility can be bound.
