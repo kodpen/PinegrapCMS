@@ -115,6 +115,16 @@ function test_marketplace_webhook_gate_answers_each_refusal_with_its_status()
 	pg_assert_same(403, mp_webhook_gate('POST', webhook_test_account(array('pull_orders' => 0)), $key), 'not bringing orders in');
 	pg_assert_same(403, mp_webhook_gate('POST', webhook_test_account(array('provider' => 'n11')), $key), 'a connector without webhooks');
 
+	// Removed here, the webhook is not this account's any more, whatever key
+	// still arrives with it: the key is kept for a later registration.
+	pg_assert_same(403, mp_webhook_gate('POST', webhook_test_account(array(), array('webhook_id' => '')), $key), 'no webhook registered');
+
+	$removed = webhook_test_account();
+	unset($removed['credentials']['webhook_id']);
+
+	pg_assert_same(403, mp_webhook_gate('POST', $removed, $key), 'the id dropped by Remove webhook');
+	pg_assert_same(403, mp_webhook_gate('POST', webhook_test_account(array(), array('webhook_id' => array('x'))), $key), 'not an id');
+
 	pg_assert_same(401, mp_webhook_gate('POST', webhook_test_account(), 'wrong'));
 	pg_assert_same(401, mp_webhook_gate('POST', webhook_test_account(), ''), 'no key presented');
 	pg_assert_same(401, mp_webhook_gate('POST', webhook_test_account(array(), array('webhook_key' => '')), ''),

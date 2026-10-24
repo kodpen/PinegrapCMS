@@ -19,9 +19,9 @@
 // credentials, compared in constant time, and never shown on any screen.
 //
 // What it checks, in order: a POST; an account that exists; an account that is
-// switched on, brings orders in, and whose connector reads webhooks; the key;
-// a body of at most 4 MiB that is JSON. Each refusal is a status code and a
-// JSON body that says no more than that.
+// switched on, brings orders in, whose connector reads webhooks and that has a
+// webhook registered; the key; a body of at most 4 MiB that is JSON. Each
+// refusal is a status code and a JSON body that says no more than that.
 //
 // It never calls the marketplace back - no acceptance, no lookup. A network
 // call is not made inside a request (the outbound layer's rule): the request
@@ -140,6 +140,12 @@ function mp_webhook_receive() {
 // $account is the account row with its credentials decoded, or null. The
 // account is looked up before the key is checked because the key is the
 // account's; an address naming no account has no key to compare with.
+//
+// An account with no webhook registered refuses every delivery before the key
+// is looked at. Removing a webhook here drops its id and keeps the key for a
+// later registration, so a webhook removed here but still alive over there
+// (the removal answered as gone, or the id was dropped some other way) would
+// otherwise go on delivering with a key this site still accepts.
 function mp_webhook_gate($method, $account, $presented_key) {
 
 	if ($method !== 'POST') {
@@ -154,9 +160,13 @@ function mp_webhook_gate($method, $account, $presented_key) {
 
 	}
 
+	$webhook_id = (isset($account['credentials']['webhook_id']) && is_scalar($account['credentials']['webhook_id']))
+		? trim((string)$account['credentials']['webhook_id']) : '';
+
 	if ((isset($account['status']) ? $account['status'] : '') !== 'active'
 		|| empty($account['pull_orders'])
-		|| !mp_can(isset($account['provider']) ? (string)$account['provider'] : '', 'webhook_packages')) {
+		|| !mp_can(isset($account['provider']) ? (string)$account['provider'] : '', 'webhook_packages')
+		|| $webhook_id === '') {
 
 		return 403;
 

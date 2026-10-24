@@ -9,7 +9,7 @@ description: marketplace_webhook.php: what calls it and what it imports, its che
 - The account's `last_success`/`last_error` are not touched: they answer whether this site reaches the marketplace, and clearing the error would hide a refused key.
 
 ## What does it answer?
-- 405 not POST; 404 no account; 403 account paused, import off, or connector without `webhook_packages`; 401 key missing or wrong, or none stored (no activity-log line; the firewall's global rate limit covers guessing a 32-byte key); 413 over 4 MiB; 400 not JSON; else 200 `{"ok":true,"imported","skipped","failed"}`.
+- 405 not POST; 404 no account; 403 account paused, import off, connector without `webhook_packages`, or no `webhook_id` in the credentials (a webhook removed here is refused whatever key it presents: Remove keeps the key, PR #1453); 401 key missing or wrong, or none stored (no activity-log line; the firewall's global rate limit covers guessing a 32-byte key); 413 over 4 MiB; 400 not JSON; else 200 `{"ok":true,"imported","skipped","failed"}`.
 - A package that fails to import (a line no product matches) is still 200: the map row keeps the reason and "Try again" re-reads it. A non-2xx makes Trendyol retry every 5 minutes and switch the webhook off.
 - The key (`mp_webhook_presented_key($server)`): `x-api-key`, else `PHP_AUTH_PW`, else Basic in `HTTP_AUTHORIZATION` / `REDIRECT_HTTP_AUTHORIZATION`; `hash_equals()` with `credentials['webhook_key']`.
 
