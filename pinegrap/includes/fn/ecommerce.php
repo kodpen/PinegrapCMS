@@ -9767,7 +9767,8 @@ function get_protected_shipping_method_filter()
  *   4. Cancel the review request e-mail that has not been sent yet, and
  *      expire gift cards that were issued by this order.
  *   5. Log activity + REFUND ACTION REQUIRED reminder for the operator.
- *   6. Optional: customer email notification (ECOMMERCE_CANCEL_EMAIL_NOTIFICATION).
+ *   6. Optional: customer email notification (ECOMMERCE_CANCEL_EMAIL_NOTIFICATION);
+ *      never for a marketplace order (pg_order_cancellation_mails_customer()).
  *   7. Optional: automatic refund through the payment method's driver
  *      (ECOMMERCE_ORDER_CANCEL_AUTO_REFUND) — writes
  *      orders.refund_status / refunded_at / refund_reference when the 2026.1.27

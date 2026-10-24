@@ -1634,9 +1634,11 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 	// Twenty full pages that all sit inside the five-minute overlap would hand
 	// the next pass the same start for ever, so only then does the pull read
-	// on past the cap. They answer at most ten thousand packages of one window,
-	// which at two hundred a page makes page 49 the last one there is: the most
-	// a run of pages that all share one moment can reach.
+	// on past the cap, up to fifty pages' worth of entries new to this pass: the
+	// ten thousand packages they answer for one window. A window started again
+	// reads the entries of its last moment a second time, so the new entries are
+	// counted, not the requests, which are held to three times as many; page 49
+	// is still the last a run of pages that all share one moment can ask for.
 	$ceiling = 50;
 
 	// The modification time of the last entry read that carried one.
@@ -1650,7 +1652,10 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 	$seen = array();
 
-	for ($request = 0; $request < $ceiling; $request++) {
+	// Entries new to this pass, which the ceiling counts.
+	$fresh = 0;
+
+	for ($request = 0; ($request < 3 * $ceiling) && ($page < $ceiling) && ($fresh < $ceiling * $size); $request++) {
 
 		// No status filter: an answer filtered on several statuses once came
 		// back without the status field, and every status matters here anyway.
@@ -1705,9 +1710,23 @@ function mp_trendyol_pull_orders($account, $since, $transport = null) {
 
 			$last = $moment;
 
+			// An entry read again at the same moment is not new, whether or not
+			// it is one to import.
+			$id = is_array($entry) ? mp_trendyol_text($entry, array('shipmentPackageId', 'id')) : '';
+
+			$new = ($id === '') || mp_feed_first_time($seen, $id, $moment);
+
+			if (!$new) {
+
+				continue;
+
+			}
+
+			$fresh++;
+
 			$package = mp_trendyol_package($entry);
 
-			if (($package !== null) && mp_feed_first_time($seen, $package['remote_package_id'], $moment)) {
+			if ($package !== null) {
 
 				$packages[] = $package;
 

@@ -625,7 +625,10 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 	// Twenty full pages that all sit inside the five-minute overlap would hand
 	// the next pass the same start, and it would read the same twenty pages for
 	// ever. Only then does the pull read on past the cap, up to this ceiling,
-	// until the last package read is newer than where it started.
+	// until the last package read is newer than where it started. The ceiling is
+	// a hundred pages' worth of entries new to this pass: a window started again
+	// reads the entries of its last moment a second time, so the new entries are
+	// counted, not the requests, which are held to three times as many.
 	$ceiling = 100;
 
 	// The modification time of the last package read that carried one.
@@ -639,7 +642,10 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 	$seen = array();
 
-	for ($request = 0; $request < $ceiling; $request++) {
+	// Entries new to this pass, which the ceiling counts.
+	$fresh = 0;
+
+	for ($request = 0; ($request < 3 * $ceiling) && ($page < $ceiling) && ($fresh < $ceiling * 100); $request++) {
 
 		$path = '/rest/delivery/v1/shipmentPackages'
 			. '?startDate=' . $start
@@ -681,19 +687,27 @@ function mp_n11_pull_orders($account, $since, $transport = null) {
 
 			$package = mp_n11_package($entry);
 
+			if (($package !== null) && ($package['placed_at'] > 0)) {
+
+				$reached = (int) $package['placed_at'];
+
+			}
+
+			// An entry read again at the same moment is not new, whether or not
+			// it is one to import.
+			$id = (is_array($entry) && isset($entry['id'])) ? (string) $entry['id'] : '';
+
+			if (($id !== '') && !mp_feed_first_time($seen, $id, $moment)) {
+
+				continue;
+
+			}
+
+			$fresh++;
+
 			if ($package !== null) {
 
-				if ($package['placed_at'] > 0) {
-
-					$reached = (int) $package['placed_at'];
-
-				}
-
-				if (mp_feed_first_time($seen, $package['remote_package_id'], $moment)) {
-
-					$packages[] = $package;
-
-				}
+				$packages[] = $package;
 
 			}
 

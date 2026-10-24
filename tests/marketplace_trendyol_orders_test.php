@@ -622,6 +622,32 @@ function test_marketplace_trendyol_orders_pull_failure_hands_over_what_was_read_
 	pg_assert_false($result['data']['complete']);
 }
 
+// A crowded overlap in bursts that each share one moment. A window started
+// again reads the entries of its last moment a second time; only the new
+// entries count toward the ceiling, so the pull still gets through the
+// overlap and the cursor moves on.
+function test_marketplace_trendyol_orders_pull_ceiling_counts_new_entries_not_requests()
+{
+	$since = time() - 86400;
+	$feed = array();
+
+	for ($group = 0; $group < 60; $group++) {
+		$feed = array_merge($feed, trendyol_orders_test_packages(100, $since - 290 + $group * 4, 0, 1000000 + $group * 1000));
+	}
+
+	$feed = array_merge($feed, trendyol_orders_test_packages(500, $since + 1000, 1, 9000000));
+	$calls = array();
+
+	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $since, trendyol_orders_test_feed_transport($feed, $calls));
+
+	pg_assert_true($result['ok']);
+	pg_assert_true($result['data']['complete'], 'the overlap is read through');
+	pg_assert_true($result['data']['read_to'] > $since, 'the cursor moves past where it started');
+	pg_assert_same(6000, count(array_intersect(trendyol_orders_test_ids($result['data']['packages']),
+		trendyol_orders_test_ids(array_map('mp_trendyol_package', array_slice($feed, 0, 6000))))), 'every package of the overlap');
+	pg_assert_true(count($calls) <= 150, 'at most three requests per page of the ceiling');
+}
+
 // A package read on the first page changes before the second page is asked
 // for. Asked by page number inside the same window, every later package would
 // move up one place and the one that moved onto the first page would never be

@@ -443,10 +443,10 @@ function mp_feed_next_page($start, $page, $first, $last) {
 
 }
 
-// Whether a package is new to this pass: not handed over already with the same
+// Whether an entry is new to this pass: not read already with the same
 // modification moment. A package that changed while the pages were walked comes
-// back with a later moment and is handed over again, in order, as it would be
-// on the next pass.
+// back with a later moment and is handed over again; the pass keeps its newest
+// copy (mp_sync_cancellations_first()).
 function mp_feed_first_time(&$seen, $package_id, $moment) {
 
 	$key = $package_id . '|' . (int) $moment;

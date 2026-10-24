@@ -218,6 +218,28 @@ function test_marketplace_n11_pull_failure_hands_over_what_was_read_and_keeps_th
 	pg_assert_false($result['data']['complete']);
 }
 
+// A crowded overlap in bursts that each share one moment: only the new entries
+// count toward the ceiling, so the pull gets through and the cursor moves on.
+function test_marketplace_n11_pull_ceiling_counts_new_entries_not_requests()
+{
+	$since = time() - 86400;
+	$feed = array();
+
+	for ($group = 0; $group < 120; $group++) {
+		$feed = array_merge($feed, n11_test_packages(50, $since - 290 + $group * 2, 0, 'g' . $group . '-'));
+	}
+
+	$feed = array_merge($feed, n11_test_packages(500, $since + 1000, 1, 'new'));
+	$calls = array();
+
+	$result = mp_n11_pull_orders(n11_test_account(), $since, n11_test_feed_transport($feed, $calls));
+
+	pg_assert_true($result['ok']);
+	pg_assert_true($result['data']['complete'], 'the overlap is read through');
+	pg_assert_true($result['data']['read_to'] > $since, 'the cursor moves past where it started');
+	pg_assert_true(count($calls) <= 300, 'at most three requests per page of the ceiling');
+}
+
 // A package read on the first page changes before the second page is asked
 // for: no other package is lost because of it.
 function test_marketplace_n11_pull_loses_no_package_when_one_already_read_changes()
