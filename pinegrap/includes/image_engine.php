@@ -66,6 +66,78 @@ function pg_ini_bytes($value)
 
 
 /**
+ * Whether a new file can be made in a folder. Ask this, never is_writable(),
+ * before refusing a write because of the folder it goes into.
+ *
+ * is_writable() answers from the permission bits, which is the truth on Linux
+ * and a guess on Windows: there PHP reads the folder's read-only attribute
+ * first, and Windows does not enforce that attribute on folders - Explorer
+ * sets it on a customised folder and OneDrive on the folders it decorates -
+ * so a folder that takes files reads as closed. A folder that looks closed on
+ * Windows is therefore asked the only way that settles it, by making a file
+ * in it and removing it again. Elsewhere the cheap answer stands and nothing
+ * is written.
+ *
+ * Here and not in includes/fn/files.php because get_file.php, which makes the
+ * image derivatives, loads this file and never functions.php.
+ *
+ * @param string        $directory
+ * @param bool|null     $windows   null for this server; true or false answers as that platform would
+ * @param callable|null $make_file null for tempnam(); called as $make_file($directory, $prefix) and
+ *                                 answering the path of the file it made, or false
+ * @return bool
+ */
+function pg_dir_writable($directory, $windows = null, $make_file = null)
+{
+    $directory = (string) $directory;
+
+    if (($directory === '') || !@is_dir($directory)) {
+        return false;
+    }
+
+    if (@is_writable($directory)) {
+        return true;
+    }
+
+    if ($windows === null) {
+        $windows = (DIRECTORY_SEPARATOR === '\\');
+    }
+
+    if (!$windows) {
+        return false;
+    }
+
+    if ($make_file === null) {
+        // a host may disable tempnam(); the guess is all there is then
+        if (!function_exists('tempnam')) {
+            return false;
+        }
+
+        $make_file = 'tempnam';
+    }
+
+    $probe = @call_user_func($make_file, $directory, 'pgw');
+
+    if (!is_string($probe) || ($probe === '')) {
+        return false;
+    }
+
+    @unlink($probe);
+
+    // tempnam() falls back to the system temporary folder when the folder
+    // refuses, so only a file inside this one is an answer. It names the file
+    // under the folder's real path, which is compared too.
+    $probe = str_replace('\\', '/', $probe);
+
+    $inside = function ($folder) use ($probe) {
+        return is_string($folder) && ($folder !== '') && (strpos($probe, rtrim(str_replace('\\', '/', $folder), '/') . '/') === 0);
+    };
+
+    return $inside($directory) || (function_exists('realpath') && $inside(@realpath($directory)));
+}
+
+
+/**
  * Image types this software can rewrite, as IMAGETYPE_* constants.
  *
  * Which of them are actually usable depends on the extension present, so this
@@ -1668,8 +1740,9 @@ function pg_image_derivative_directory()
  * week, because a codec plugin can be installed without any version that the
  * key sees changing.
  *
- * Without a writable directory nothing is tried (no derivative can be kept
- * there either) and the claims are answered as they are.
+ * Without a writable directory (pg_dir_writable(), once per request with the
+ * rest of the answer) nothing is tried (no derivative can be kept there
+ * either) and the claims are answered as they are.
  *
  * @param string $directory pg_image_derivative_directory()
  * @return array webp, avif
@@ -1707,7 +1780,7 @@ function pg_image_derivative_formats($directory)
             $formats[$format] = $claimed && !empty($stored['formats'][$format]);
         }
 
-    } elseif (($directory !== '') && (@is_dir($directory) || @mkdir($directory, 0755, true)) && @is_writable($directory)) {
+    } elseif (($directory !== '') && (@is_dir($directory) || @mkdir($directory, 0755, true)) && pg_dir_writable($directory)) {
 
         foreach ($formats as $format => $claimed) {
             $formats[$format] = $claimed && pg_image_format_probe($format, $directory);
@@ -2893,7 +2966,15 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
         return $busy;
     }
 
-    if (!@is_writable($folder)) {
+    // pg_dir_writable(), not is_writable(): Windows folders (see there). Kept
+    // for the request, so such a folder costs one probe file, not one a call.
+    static $folder_writable = array();
+
+    if (!isset($folder_writable[$folder])) {
+        $folder_writable[$folder] = pg_dir_writable($folder);
+    }
+
+    if (!$folder_writable[$folder]) {
         return $busy;
     }
 
