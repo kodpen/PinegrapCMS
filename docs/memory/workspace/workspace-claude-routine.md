@@ -25,7 +25,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 
 ## How is the routine set up on claude.ai?
 - Admin: claude.ai/code/routines → New routine (Cloud), prompt copied from the "Claude in channels" card in Workspace settings, a model; environment with Custom network allowing the site's domain and the API credential (header `Authorization`, `Basic base64(key:secret)`); remove all connectors; Trigger → API → generate token, paste URL and token into the card. The owner enters every credential.
-- App Access: a "Claude" application with Workspace + Tasks read/write and the record types to read.
+- Key: "Create Claude's key" on the card, shown once; "Reset secret" (`workspace-assistant-keys.md`).
 
 ## What was never tested with a real routine?
 - On dev (owner + Claude): two requests in one run, a prompt-injection attempt, the private channel gate, and waiting when the daily allowance runs out (HTTP 429). On 2026-09-23 these were only simulated on localhost.
