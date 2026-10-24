@@ -17,7 +17,7 @@ description: Canvas ghost records of listing widgets (designer/widget_ghosts); t
 - Canvas ghosts and the Preview never draw one: they are SEO renders.
 
 ## Why is the pencil's look written on the pencil?
-- A design's rules for links, svg and pictures reach it. On the Magazine's issue list the pencil was a 340 px svg in the flow above each cover.
+- A design's rules for links, svg and pictures reach it. On the Magazine's issue list the pencil was a 340 px svg in the flow above each cover (fixed in PR #1542).
 - The `<a>`, its `svg` and `path` carry their box inline with `!important`: absolute, top .5rem, left and right .5rem (the box keeps its start side, so top right on a right-to-left page), 1.9rem circle, tone background, flex centring, margin/padding/border/float/font reset; svg .9rem, block, static, `fill:currentColor`, no pointer events.
 - Opacity (.55) and transform are plain inline declarations: a design's rules cannot beat them, the page's stylesheet raises them with `!important` on hover and focus. Print hides it with `visibility` (display is pinned).
 
