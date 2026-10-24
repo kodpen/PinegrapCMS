@@ -151,6 +151,7 @@ if ($rerated_products > 0) {
 
 }
 
+pg_wishlist_trim_daily();
 
 // If commerce is enabled and there is at least one enabled campaign profile
 // that creates auto campaigns for abandoned orders, then check if any orders

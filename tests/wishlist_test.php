@@ -1,0 +1,309 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for includes/fn/wishlist.php and wishlist.php: the visitor cookie and
+ * the key the table keeps for it, whose list a request reads, the SQL of the
+ * owner, the merge into an account and the daily trim, how the endpoint reads
+ * a request and in which order it checks it, and the places outside the
+ * module that know the wishlist (cookie notice, personal data export, the
+ * general job, the page cache).
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+// The source of one function, for the checks that read how it is written.
+function wishlist_test_function_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
+
+// A cookie value is 64 lowercase hex characters, nothing else.
+function test_wishlist_token_valid()
+{
+	$token = str_repeat('a1', 32);
+
+	pg_assert_true(pg_wishlist_token_valid($token), '64 hex');
+	pg_assert_true(pg_wishlist_token_valid(str_repeat('0', 64)), 'digits only');
+	pg_assert_false(pg_wishlist_token_valid(substr($token, 1)), '63 characters');
+	pg_assert_false(pg_wishlist_token_valid($token . 'a'), '65 characters');
+	pg_assert_false(pg_wishlist_token_valid(strtoupper($token)), 'upper case');
+	pg_assert_false(pg_wishlist_token_valid(str_repeat('g', 64)), 'not hex');
+	pg_assert_false(pg_wishlist_token_valid($token . "\n"), 'a trailing new line');
+	pg_assert_false(pg_wishlist_token_valid(''), 'empty');
+	pg_assert_false(pg_wishlist_token_valid(array($token)), 'an array');
+	pg_assert_false(pg_wishlist_token_valid(null), 'null');
+	pg_assert_false(pg_wishlist_token_valid(123), 'a number');
+}
+
+// The table keeps the cookie's sha256, never the cookie.
+function test_wishlist_token_key()
+{
+	$token = str_repeat('5f', 32);
+	$key = pg_wishlist_token_key($token);
+
+	pg_assert_same(hash('sha256', $token), $key, 'sha256 of the cookie');
+	pg_assert_same($key, pg_wishlist_token_key($token), 'the same every time');
+	pg_assert_true(pg_wishlist_token_valid($key), 'fits cookie_token VARCHAR(64)');
+	pg_assert_true($key !== $token, 'not the cookie itself');
+	pg_assert_same('', pg_wishlist_token_key('nope'), 'not a cookie');
+	pg_assert_same('', pg_wishlist_token_key(array()), 'an array');
+}
+
+// A new cookie is 64 random hex characters, a different one each time.
+function test_wishlist_token_new()
+{
+	$first = pg_wishlist_token_new();
+	$second = pg_wishlist_token_new();
+
+	pg_assert_true(pg_wishlist_token_valid($first), 'a valid cookie');
+	pg_assert_true($first !== $second, 'random');
+}
+
+// An account owns its list by id; a visitor by the key of a valid cookie;
+// a visitor without one has no list.
+function test_wishlist_owner_for()
+{
+	$token = str_repeat('c3', 32);
+
+	pg_assert_same(array('user_id' => 7, 'cookie_token' => ''), pg_wishlist_owner_for(7, ''), 'an account');
+	pg_assert_same(array('user_id' => 7, 'cookie_token' => ''), pg_wishlist_owner_for('7', $token), 'an account, whatever cookie it carries');
+	pg_assert_same(array('user_id' => 0, 'cookie_token' => hash('sha256', $token)), pg_wishlist_owner_for(0, $token), 'a visitor');
+	pg_assert_same(null, pg_wishlist_owner_for(0, ''), 'a visitor without a cookie');
+	pg_assert_same(null, pg_wishlist_owner_for(0, 'forged'), 'a visitor with a cookie of another shape');
+	pg_assert_same(null, pg_wishlist_owner_for(-3, ''), 'a negative id');
+}
+
+// The condition of an owner's rows; nothing for an owner that is not well
+// formed, so no query can run without one.
+function test_wishlist_owner_sql()
+{
+	$key = hash('sha256', 'x');
+
+	pg_assert_same("(wishlist_items.user_id = '7') AND (wishlist_items.cookie_token = '')", pg_wishlist_owner_sql(array('user_id' => 7, 'cookie_token' => '')));
+	pg_assert_same("(wishlist_items.user_id = '0') AND (wishlist_items.cookie_token = '" . $key . "')", pg_wishlist_owner_sql(array('user_id' => 0, 'cookie_token' => $key)));
+	pg_assert_same('', pg_wishlist_owner_sql(null), 'no owner');
+	pg_assert_same('', pg_wishlist_owner_sql(array('user_id' => 0, 'cookie_token' => '')), 'nobody');
+	pg_assert_same('', pg_wishlist_owner_sql(array('user_id' => 0, 'cookie_token' => "' OR '1'='1")), 'a key that is no key');
+	pg_assert_same('', pg_wishlist_owner_sql(array('user_id' => 7, 'cookie_token' => $key)), 'both at once');
+	pg_assert_same('', pg_wishlist_owner_sql(array('user_id' => 7)), 'a key missing');
+}
+
+// The merge copies with INSERT IGNORE (a product the account holds already
+// would stop a plain UPDATE at the unique key) and then deletes the visitor's
+// rows; nothing for an account or a key that is not well formed.
+function test_wishlist_merge_sql()
+{
+	$key = hash('sha256', 'visitor');
+	$statements = pg_wishlist_merge_sql(12, $key);
+
+	pg_assert_same(2, count($statements), 'two statements');
+	pg_assert_contains('INSERT IGNORE INTO wishlist_items (user_id, cookie_token, product_id, added_at)', $statements[0], 'copied first');
+	pg_assert_contains("SELECT '12', '', product_id, added_at", $statements[0], 'into the account, keeping when each was saved');
+	pg_assert_contains("(user_id = '0') AND (cookie_token = '" . $key . "')", $statements[0], 'from the visitor list');
+	pg_assert_same("DELETE FROM wishlist_items WHERE (user_id = '0') AND (cookie_token = '" . $key . "')", $statements[1], 'then the visitor rows go');
+	pg_assert_same(array(), pg_wishlist_merge_sql(0, $key), 'no account');
+	pg_assert_same(array(), pg_wishlist_merge_sql(12, 'cookie'), 'no key');
+}
+
+// The merge runs for a signed-in visitor with a cookie, never while staff
+// are signed in as a customer, and clears the cookie once the rows moved.
+function test_wishlist_merge_guards()
+{
+	$source = wishlist_test_function_source('pg_wishlist_merge');
+
+	$guard = strpos($source, "\$_SESSION['software']['logged_in_as_different_user']");
+	$write = strpos($source, 'pg_wishlist_merge_sql(');
+	$clear = strpos($source, 'pg_wishlist_cookie_clear()');
+
+	pg_assert_true($guard !== false, 'skips impersonation');
+	pg_assert_true(($guard !== false) && ($write !== false) && ($guard < $write), 'before any write');
+	pg_assert_true(($write !== false) && ($clear !== false) && ($write < $clear), 'the cookie is cleared after the rows moved');
+	pg_assert_contains('static $done', $source, 'once a request');
+	pg_assert_contains('pg_wishlist_merge()', wishlist_test_function_source('pg_wishlist_owner'), 'every read and write of an account merges first');
+}
+
+// The cookie is written as the language cookie is: a year, HttpOnly, Lax,
+// Secure on https, on PHP before 7.3 too.
+function test_wishlist_cookie_flags()
+{
+	foreach (array('pg_wishlist_cookie_write', 'pg_wishlist_cookie_clear') as $name) {
+		$source = wishlist_test_function_source($name);
+
+		pg_assert_contains("'httponly' => true, 'samesite' => 'Lax'", $source, $name . ' 7.3+');
+		pg_assert_contains("PATH . '; samesite=Lax', '', \$secure, true", $source, $name . ' before 7.3');
+		pg_assert_contains('pg_request_is_https()', $source, $name . ' Secure on https');
+		pg_assert_contains('headers_sent()', $source, $name . ' not after the headers');
+	}
+
+	pg_assert_same('pg_wishlist', PG_WISHLIST_COOKIE);
+	pg_assert_same(31536000, PG_WISHLIST_LIFETIME, 'a year');
+}
+
+// The endpoint's reading of a request.
+function test_wishlist_request_values()
+{
+	pg_assert_same('state', pg_wishlist_action('state'));
+	pg_assert_same('toggle', pg_wishlist_action(' Toggle '));
+	pg_assert_same('', pg_wishlist_action('delete'), 'an unknown action');
+	pg_assert_same('', pg_wishlist_action(array('add')), 'an array');
+
+	pg_assert_same(42, pg_wishlist_product_id('42'));
+	pg_assert_same(42, pg_wishlist_product_id(42));
+	pg_assert_same(0, pg_wishlist_product_id('0'));
+	pg_assert_same(0, pg_wishlist_product_id('-5'));
+	pg_assert_same(0, pg_wishlist_product_id('4x'));
+	pg_assert_same(0, pg_wishlist_product_id('1.5'));
+	pg_assert_same(0, pg_wishlist_product_id('99999999999'), 'beyond the column');
+	pg_assert_same(0, pg_wishlist_product_id(array(4)), 'an array');
+
+	pg_assert_true(pg_wishlist_new_state('add', true));
+	pg_assert_true(pg_wishlist_new_state('add', false));
+	pg_assert_false(pg_wishlist_new_state('remove', true));
+	pg_assert_true(pg_wishlist_new_state('toggle', false));
+	pg_assert_false(pg_wishlist_new_state('toggle', true));
+	pg_assert_same(null, pg_wishlist_new_state('state', false), 'a read');
+}
+
+// Adding is checked against the catalog and starts a cookie; removing needs
+// neither, so a product switched off since can still leave the list.
+function test_wishlist_set_rules()
+{
+	$source = wishlist_test_function_source('pg_wishlist_set');
+
+	$remove = strpos($source, 'if (!$on)');
+	$check = strpos($source, 'pg_wishlist_product_ok($product_id)');
+	$create = strpos($source, 'pg_wishlist_owner(true)');
+
+	pg_assert_true(($remove !== false) && ($check !== false) && ($remove < $check), 'removing comes before the catalog check');
+	pg_assert_true(($check !== false) && ($create !== false) && ($check < $create), 'no cookie for a product that is refused');
+	pg_assert_contains('INSERT IGNORE INTO wishlist_items', $source, 'saving twice keeps one row');
+	pg_assert_contains('UNIX_TIMESTAMP()', $source, 'when it was saved');
+	pg_assert_same('(products.enabled = 1)', pg_wishlist_product_live_sql(), 'what the catalog widgets show');
+	pg_assert_contains('pg_wishlist_product_live_sql()', wishlist_test_function_source('pg_wishlist_ids'), 'the list shows only those');
+}
+
+// A visitor list is kept while a browser may hold its cookie; the trim reads
+// in batches and removes only what it read.
+function test_wishlist_trim_sql()
+{
+	pg_assert_same(1000 - 31536000, pg_wishlist_trim_before(1000));
+
+	$queries = pg_wishlist_trim_queries(5000, 100);
+
+	pg_assert_same(array('visitors', 'products', 'accounts'), array_keys($queries));
+	pg_assert_same('cookie_token', $queries['visitors'][0]);
+	pg_assert_contains("HAVING MAX(added_at) < '5000'", $queries['visitors'][1], 'the last save of the list');
+	pg_assert_contains("WHERE user_id = '0'", $queries['visitors'][1], 'visitor lists only');
+	pg_assert_contains('LEFT JOIN products ON products.id = wishlist_items.product_id', $queries['products'][1]);
+	pg_assert_contains('LEFT JOIN user ON user.user_id = wishlist_items.user_id', $queries['accounts'][1]);
+	pg_assert_contains('(wishlist_items.user_id > 0)', $queries['accounts'][1], 'never a visitor row');
+
+	foreach ($queries as $kind => $query) {
+		pg_assert_contains('LIMIT 100', $query[1], $kind . ' in batches');
+	}
+
+	pg_assert_same("DELETE FROM wishlist_items WHERE id IN ('3', '9')", pg_wishlist_trim_delete_sql('id', array('3', '9', '0', 'x', '3')));
+	$key = hash('sha256', 'old');
+	pg_assert_same("DELETE FROM wishlist_items WHERE (user_id = '0') AND (cookie_token IN ('" . $key . "'))", pg_wishlist_trim_delete_sql('cookie_token', array($key, "x' OR '1'='1")));
+	pg_assert_same('', pg_wishlist_trim_delete_sql('id', array()), 'nothing read');
+}
+
+// Once a day.
+function test_wishlist_trim_due()
+{
+	pg_assert_true(pg_wishlist_trim_due(0, 1000000), 'never ran');
+	pg_assert_false(pg_wishlist_trim_due(1000000, 1000000 + 86399), 'within the day');
+	pg_assert_true(pg_wishlist_trim_due(1000000, 1000000 + 86400), 'a day later');
+	pg_assert_contains("pg_wishlist_trim_daily();", (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php'), 'the general job runs it');
+}
+
+// The endpoint: the state is JSON no cache keeps; a write checks the token
+// with hash_equals() first, then the limit, and only then writes.
+function test_wishlist_endpoint_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/wishlist.php');
+
+	pg_assert_contains("include('init.php');", $source);
+	pg_assert_contains('pg_post_body_discarded()', $source, 'a body over post_max_size');
+	pg_assert_contains("header('Cache-Control: private, no-store');", $source, 'never cached');
+	pg_assert_contains("'ids'", $source, 'the state names the products');
+	pg_assert_contains("'token'", $source, 'and the form token a cached page lacks');
+
+	$token = strpos($source, 'hash_equals($session_token, $post_token)');
+	$limit = strpos($source, 'pg_wishlist_write_throttled()');
+	$merge = strrpos($source, 'pg_wishlist_merge()');
+	$write = strpos($source, 'pg_wishlist_set(');
+
+	pg_assert_true($token !== false, 'the token is compared with hash_equals()');
+	pg_assert_true(($token !== false) && ($limit !== false) && ($token < $limit), 'the token before the limit');
+	pg_assert_true(($limit !== false) && ($merge !== false) && ($limit < $merge), 'the limit before the merge of a write');
+	pg_assert_true(($merge !== false) && ($write !== false) && ($merge < $write), 'the merge before the write');
+	pg_assert_same(1, substr_count($source, 'pg_wishlist_set('), 'one write');
+	pg_assert_contains('pg_safe_redirect_path(', $source, 'a form without a script goes back where it came from');
+	pg_assert_contains('pg_error_throws(true)', $source, 'a failed query answers in JSON');
+}
+
+// The limit is counted per address in the firewall's buckets and logged.
+function test_wishlist_write_limit()
+{
+	$source = wishlist_test_function_source('pg_wishlist_write_throttled');
+
+	pg_assert_contains("waf_rate_exceeded(waf_ip_subject(\$ip), 'wishlist', PG_WISHLIST_WRITE_LIMIT, PG_WISHLIST_WRITE_WINDOW)", $source);
+	pg_assert_contains("waf_log_event('rate', 'rate-wishlist'", $source, 'in the firewall log');
+	pg_assert_contains("waf_text_log('DENY'", $source, 'in data/firewall.log');
+	pg_assert_same(60, PG_WISHLIST_WRITE_LIMIT);
+	pg_assert_same(600, PG_WISHLIST_WRITE_WINDOW);
+}
+
+// The cookie is listed as necessary in the notice, only where the table
+// exists (it does not in the test runner).
+function test_wishlist_consent_row()
+{
+	$names = array();
+
+	foreach (pg_consent_catalogue('<p>page</p>')['necessary'] as $row) {
+		$names[] = $row[0];
+	}
+
+	pg_assert_false(in_array(PG_WISHLIST_COOKIE, $names, true), 'not without the table');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+	$from = strpos($source, 'function pg_consent_catalogue(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+
+	pg_assert_contains('pg_wishlist_ready()', $section, 'only where the table exists');
+	pg_assert_contains("\$catalogue['necessary'][] = array(PG_WISHLIST_COOKIE, true, lang('", $section, 'as a necessary cookie');
+	pg_assert_true(in_array('Remembers the products you saved to your favourites before signing in.', pg_consent_ui_keys(), true), 'its words are in the cookie window list');
+}
+
+// A person's export has their favourites, by account.
+function test_wishlist_privacy_export_section()
+{
+	$sections = pg_privacy_export_sections();
+
+	pg_assert_true(isset($sections['wishlist']), 'a section');
+
+	$source = wishlist_test_function_source('pg_privacy_export_collect');
+
+	pg_assert_contains("\$sections['wishlist']", $source, 'read');
+	pg_assert_contains('FROM wishlist_items', $source);
+	pg_assert_contains("_pg_privacy_export_in('wishlist_items.user_id', \$user_ids)", $source, 'by account');
+}
+
+// A heart click of a signed-in member changes no page anyone else is sent,
+// so it leaves the page cache as it is.
+function test_wishlist_page_cache_untouched()
+{
+	pg_assert_false(pg_page_cache_request_dirties('POST', '/pinegrap/wishlist.php', true, false));
+}

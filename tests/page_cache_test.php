@@ -487,7 +487,7 @@ function test_page_cache_request_dirties()
 	pg_assert_false(pg_page_cache_request_dirties('OPTIONS', 'integration.php', false, true));
 	pg_assert_false(pg_page_cache_request_dirties('POST', 'submit_form.php', false, false), 'a visitor');
 
-	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php') as $script) {
+	foreach (array('page_view.php', 'api.php', 'chat.php', 'workspace_tasks.php', 'workspace.php', 'software_update_check.php', 'wishlist.php') as $script) {
 		pg_assert_false(pg_page_cache_request_dirties('POST', $script, true, false), $script);
 	}
 }
