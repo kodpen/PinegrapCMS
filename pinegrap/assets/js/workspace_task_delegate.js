@@ -197,7 +197,7 @@
         }
 
         if ((change.status === 'pending') && !change.can_apply) {
-            card.appendChild(h.el('div', 'ws-draft-done', change.blocked || (change.no_right ? h.t('change_no_right') : h.t('change_waiting', change.asker))));
+            card.appendChild(h.el('div', 'ws-draft-done', change.blocked || (change.no_right ? h.t('change_no_right') : (change.proposer ? h.t('proposal_change_waiting', change.asker, change.proposer) : h.t('change_waiting', change.asker)))));
         } else if ((change.status === 'pending') && change.account) {
             var account = h.el('div', 'ws-draft-done', h.t('mcp_account', change.account.alias) + ' ');
             var off = h.el('a', '', h.t('mcp_disconnect_me'));
@@ -225,7 +225,7 @@
         } else if (change.status === 'dismissed') {
             card.appendChild(h.el('div', 'ws-draft-done', h.t('change_dismissed', change.decided_by)));
         } else if (change.status === 'stale') {
-            card.appendChild(h.el('div', 'ws-draft-done text-warning-emphasis', h.t((agent === 'ai') ? 'ai_change_stale' : 'change_stale')));
+            card.appendChild(h.el('div', 'ws-draft-done text-warning-emphasis', change.proposer ? h.t('proposal_change_stale', change.proposer) : h.t((agent === 'ai') ? 'ai_change_stale' : 'change_stale')));
         } else if (change.status === 'failed') {
             card.appendChild(h.el('div', 'ws-draft-done text-danger-emphasis', h.t('change_failed', change.error)));
         }
@@ -237,8 +237,12 @@
         var box = h.el('div', 'ws-drafts ws-changes ws-task-delegate-changes');
 
         // A run of an MCP server's own agent waits here for the approval
-        // its tool asks for before it is sent (mcp_agent.php).
-        box.appendChild(h.el('div', 'ws-drafts-title', h.t((item.agent === 'mcp') ? 'mcp_agent_changes' : ((item.agent === 'ai') ? 'ai_changes' : 'claude_changes'))));
+        // its tool asks for before it is sent (mcp_agent.php). Changes an
+        // application proposed on the task (proposals.php) are headed by
+        // its name.
+        var proposer = (item.changes[0] && item.changes[0].proposer) || '';
+
+        box.appendChild(h.el('div', 'ws-drafts-title', proposer ? h.t('proposal_changes', proposer) : h.t((item.agent === 'mcp') ? 'mcp_agent_changes' : ((item.agent === 'ai') ? 'ai_changes' : 'claude_changes'))));
 
         item.changes.forEach(function (change) {
             box.appendChild(changeCard(change, item.agent, h, done, taskId));

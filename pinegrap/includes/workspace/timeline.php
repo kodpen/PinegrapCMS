@@ -292,11 +292,12 @@ function ws_timeline_hidden($viewer, $filters)
 }
 
 /**
- * The record changes Claude proposed that became these decisions, by the
- * decision's message id.
+ * The record changes an assistant or an application proposed that became
+ * these decisions, by the decision's message id.
  *
  * @param int[] $message_ids
- * @return array[] id => type, type_label, action, record_id
+ * @return array[] id => type, type_label, action, record_id, agent, proposer
+ *                 (the application's name, '' for an assistant)
  */
 function ws_timeline_claude_changes($message_ids)
 {
@@ -322,6 +323,9 @@ function ws_timeline_claude_changes($message_ids)
             'action'     => (string) ($row['action'] ?? 'update'),
             'record_id'  => ((int) $row['record_id'] > 0) ? (int) $row['record_id'] : null,
             'agent'      => ((string) ($row['agent'] ?? '') === 'ai') ? 'ai' : 'claude',
+            // An application's proposal (proposals.php) is named by the
+            // application.
+            'proposer'   => function_exists('ws_proposal_name') ? ws_proposal_name((string) ($row['agent'] ?? '')) : '',
         );
     }
 
@@ -525,6 +529,7 @@ function ws_timeline_js_strings()
         'tl_by_channel'     => lang('By channel'),
         'tl_marked_by'      => ws_js_template('Marked by {var:1}', 1),
         'tl_claude'         => lang('On Claude\'s proposal'),
+        'tl_proposal'       => ws_js_template('On {var:1}\'s proposal', 1),
         'tl_archived'       => lang('Archived channel'),
         'tl_private'        => lang('Private channel'),
         'tl_hidden'         => ws_js_template('{var:1} private channel(s) you are not in hold {var:2} decision(s). What they say is not shown here.', 2),

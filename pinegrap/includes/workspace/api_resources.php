@@ -621,7 +621,7 @@ function ws_api_message_threads($viewer, $message_ids)
     return $out;
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null)
 {
     // The messages the reader deleted for themselves (ws_message_hide()).
     if ($hidden === null) {
@@ -662,6 +662,17 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $sender = isset($people[(int) $row['sender_id']]) ? array('user_id' => (int) $row['sender_id'], 'name' => $people[(int) $row['sender_id']]['name']) : null;
     } elseif ($row['sender_kind'] === 'app') {
         $app = ws_app_sender((int) $row['sender_id']);
+
+        // A proposal an OAuth connection made carries the client's own name
+        // (proposals.php), as on the channel screen.
+        if (($proposals === null) && function_exists('ws_proposals_by_reply')) {
+            $proposals = ws_proposals_by_reply(array($row['id']));
+        }
+
+        if (isset($proposals[(int) $row['id']])) {
+            $app = ws_proposal_sender($app, $proposals[(int) $row['id']]);
+        }
+
         $sender = array('user_id' => null, 'name' => $app['name']);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
@@ -899,12 +910,13 @@ function ws_api_messages_present($viewer, $rows)
     $threads = ws_api_message_threads($viewer, $ids);
     $hidden = ws_message_hidden_ids($viewer['id'], $ids);
     $polls = ws_polls_map($ids, $viewer);
+    $proposals = function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals);
     }
 
     return $out;
@@ -4416,7 +4428,7 @@ function ws_api_change_present($row, $entry, $people)
     return array(
         'id'                  => (int) $row['id'],
         'status'              => (string) $row['status'],
-        'agent'               => in_array((string) ($row['agent'] ?? ''), array('ai', 'mcp'), true) ? (string) $row['agent'] : 'claude',
+        'agent'               => ws_change_agent_key((string) ($row['agent'] ?? '')),
         'request_id'          => ((int) $row['request_id'] > 0) ? (int) $row['request_id'] : null,
         'channel_id'          => (int) $row['channel_id'],
         'message_id'          => (int) $row['message_id'],
@@ -4697,9 +4709,11 @@ function ws_api_change_answer($viewer, $id)
 /**
  * An apply or a set-aside that was refused, as the API answers it.
  *
- * @param array $result ws_change_apply() or ws_change_dismiss()
+ * @param array      $result ws_change_apply() or ws_change_dismiss()
+ * @param array|null $change the ws_ai_changes row, for the refusals that
+ *                           name the application that proposed it
  */
-function ws_api_change_refused($result)
+function ws_api_change_refused($result, $change = null)
 {
     $error = (string) $result['error'];
 
@@ -4721,11 +4735,37 @@ function ws_api_change_refused($result)
         lang('That task could not be found.'),
     );
 
+    // Proposed by an application (proposals.php): the refusal names it.
+    $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
+
+    if ($proposer !== '') {
+        $forbidden[] = lang(array('string' => 'Only the person {var:1} proposed this change to can apply it.', 'vars' => $proposer));
+        $forbidden[] = lang(array('string' => 'Only the person {var:1} proposed this change to can set it aside.', 'vars' => $proposer));
+    }
+
     if (in_array($error, $forbidden, true)) {
         api_fail(403, 'forbidden', $error);
     }
 
     api_fail_validation($error);
+}
+
+/**
+ * A change an application proposed (proposals.php) is applied or set aside
+ * by the person alone: on its card, or from their own team devices session.
+ * An OAuth connection is a device row too and passes ws_api_person_only(),
+ * so it could otherwise apply the card it wrote itself and write the record
+ * with the Workspace's scopes and no write scope of its kind; another
+ * connection is no more the person than the one that proposed. A change an
+ * assistant proposed keeps ws_api_person_only() alone.
+ *
+ * @param array $change ws_ai_changes row
+ */
+function ws_api_proposal_decision_gate($change)
+{
+    if (function_exists('ws_change_proposal_agent') && (ws_change_proposal_agent($change) !== '')) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can apply or set aside a change an application proposed; an application key or an OAuth connection cannot, whichever application proposed it.'));
+    }
 }
 
 function ws_api_changes_apply($params)
@@ -4735,6 +4775,7 @@ function ws_api_changes_apply($params)
 
     // Applying is the person's own decision, as on the card.
     ws_api_person_only();
+    ws_api_proposal_decision_gate($change);
 
     // The checks ws_change_apply() makes, made first so that a dry run meets
     // the same refusals: a change to one record is laid against the record
@@ -4743,7 +4784,7 @@ function ws_api_changes_apply($params)
     $checked = ws_change_apply_check($viewer, (int) $change['id']);
 
     if (!$checked['ok']) {
-        ws_api_change_refused($checked);
+        ws_api_change_refused($checked, $change);
     }
 
     $action = (string) ($checked['change']['action'] ?? 'update');
@@ -4752,7 +4793,7 @@ function ws_api_changes_apply($params)
         $laid = ws_change_apply_record_check($viewer, $checked['change']);
 
         if (!$laid['ok']) {
-            ws_api_change_refused($laid);
+            ws_api_change_refused($laid, $change);
         }
     }
 
@@ -4765,7 +4806,7 @@ function ws_api_changes_apply($params)
     $result = ws_change_apply($viewer, (int) $change['id']);
 
     if (!$result['ok']) {
-        ws_api_change_refused($result);
+        ws_api_change_refused($result, $change);
     }
 
     ws_api_change_answer($viewer, $change['id']);
@@ -4777,11 +4818,12 @@ function ws_api_changes_dismiss($params)
     $change = ws_api_change_or_404($viewer, $params['id']);
 
     ws_api_person_only();
+    ws_api_proposal_decision_gate($change);
 
     $checked = ws_change_dismiss_check($viewer, (int) $change['id']);
 
     if (!$checked['ok']) {
-        ws_api_change_refused($checked);
+        ws_api_change_refused($checked, $change);
     }
 
     api_dry_run_stop('dismissed', 'workspace_change', array('id' => (int) $change['id'], 'record_type' => (string) $checked['change']['record_type']));
@@ -4789,7 +4831,7 @@ function ws_api_changes_dismiss($params)
     $result = ws_change_dismiss($viewer, (int) $change['id']);
 
     if (!$result['ok']) {
-        ws_api_change_refused($result);
+        ws_api_change_refused($result, $change);
     }
 
     ws_api_change_answer($viewer, $change['id']);
@@ -4945,6 +4987,12 @@ function ws_api_assistant_requests_list($params)
 
     if (!empty($params['agent']) && function_exists('ws_ai_agent_where')) {
         $where .= ws_ai_agent_where((string) $params['agent']);
+    }
+
+    // An application's proposal (proposals.php) asked no assistant: its
+    // changes are listed by GET /workspace/changes.
+    if (function_exists('ws_proposals_ready') && ws_proposals_ready()) {
+        $where .= " AND " . ws_proposal_where('', false);
     }
 
     if ($cursor !== null) {
