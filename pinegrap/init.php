@@ -1021,6 +1021,19 @@ initialize_user();
 // (who edits HTML, JavaScript and SQL for a living) or from a stranger.
 waf_run('init');
 
+// Page cache: a write by a signed-in user or an API client may change what
+// pages show, so every stored page is made old once the request ends
+// (includes/fn/page_cache.php). The MCP server and OAuth answer reads with
+// POST too: the MCP server marks a tool call that wrote itself
+// (pg_mcp_tool_call()), OAuth changes no page.
+if (function_exists('pg_page_cache_request_dirties') && pg_page_cache_request_dirties(
+    isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '',
+    isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '',
+    USER_LOGGED_IN,
+    defined('PG_API_ENTRY') && !defined('PG_MCP_ENTRY') && !defined('PG_OAUTH_ENTRY'))) {
+    pg_page_cache_mark_dirty();
+}
+
 // Set constant to value from database. Updated by async check after it completes.
 define('SOFTWARE_UPDATE_AVAILABLE', $original_software_update_available);
 
