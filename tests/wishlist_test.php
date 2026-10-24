@@ -150,6 +150,128 @@ function test_wishlist_cookie_flags()
 	pg_assert_same(31536000, PG_WISHLIST_LIFETIME, 'a year');
 }
 
+// A visitor's cookie runs out a year after the newest product in the list,
+// the moment the daily trim may remove the list; an empty list keeps none.
+function test_wishlist_cookie_expires()
+{
+	pg_assert_same(5000 + 31536000, pg_wishlist_cookie_expires('5000'), 'a year from the newest product');
+	pg_assert_same(5000 + 31536000, pg_wishlist_cookie_expires(5000));
+	pg_assert_same(0, pg_wishlist_cookie_expires(null), 'an empty list');
+	pg_assert_same(0, pg_wishlist_cookie_expires('0'));
+	pg_assert_same(0, pg_wishlist_cookie_expires('x'));
+
+	$now = 100000000;
+
+	foreach (array(-1, 0, 1) as $offset) {
+		$newest = pg_wishlist_trim_before($now) + $offset;
+
+		pg_assert_same($newest < pg_wishlist_trim_before($now), pg_wishlist_cookie_expires($newest) < $now, 'the cookie runs out when the trim may remove the list (' . $offset . ')');
+	}
+}
+
+// Each write sends the visitor's cookie again with the expiry the list gives,
+// never a year from now: saving a product the list holds already, or removing
+// the newest one, leaves the cookie and the trim in step.
+function test_wishlist_cookie_follows_list()
+{
+	$set = wishlist_test_function_source('pg_wishlist_set');
+
+	$delete = strpos($set, 'DELETE FROM wishlist_items');
+	$insert = strpos($set, 'INSERT IGNORE INTO wishlist_items');
+	$first = strpos($set, 'pg_wishlist_cookie_follow($owner)');
+	$last = strrpos($set, 'pg_wishlist_cookie_follow($owner)');
+
+	pg_assert_same(2, substr_count($set, 'pg_wishlist_cookie_follow($owner)'), 'after removing and after adding');
+	pg_assert_true(($delete !== false) && ($first !== false) && ($delete < $first), 'once the row is removed');
+	pg_assert_true(($insert !== false) && ($last !== false) && ($insert < $last), 'once the row is written');
+
+	$follow = wishlist_test_function_source('pg_wishlist_cookie_follow');
+
+	pg_assert_contains("(int) \$owner['user_id'] !== 0", $follow, 'a visitor list only');
+	pg_assert_contains('SELECT MAX(wishlist_items.added_at) FROM wishlist_items WHERE', $follow, 'from the newest product in the list');
+	pg_assert_contains('pg_wishlist_cookie_expires(', $follow);
+	pg_assert_contains('pg_wishlist_cookie_clear()', $follow, 'an emptied list clears it');
+	pg_assert_contains('pg_wishlist_cookie_write(pg_wishlist_cookie_value(), $expires)', $follow, 'only the cookie the request holds');
+	pg_assert_false(strpos($follow, 'time()') !== false, 'never a year from now');
+}
+
+// Only saving a product starts a visitor's cookie. Reading the list (the
+// state call of every cached catalog page) never does: that is why the
+// cookie counts as necessary.
+function test_wishlist_reads_start_no_cookie()
+{
+	$owner = wishlist_test_function_source('pg_wishlist_owner');
+
+	$create = strpos($owner, 'if ($create');
+	$new = strpos($owner, 'pg_wishlist_token_new()');
+
+	pg_assert_true(($create !== false) && ($new !== false) && ($create < $new), 'a new cookie only when asked to start one');
+
+	foreach (array('pg_wishlist_ids', 'pg_wishlist_has') as $name) {
+		$source = wishlist_test_function_source($name);
+
+		pg_assert_contains('pg_wishlist_owner(false)', $source, $name);
+		pg_assert_false(strpos($source, 'pg_wishlist_owner(true)') !== false, $name . ' starts nothing');
+	}
+
+	// Which functions of the module make each call.
+	$module = realpath(PG_FUNCTIONS_DIR . '/includes/fn/wishlist.php');
+	$callers = array('pg_wishlist_owner(true)' => array(), 'pg_wishlist_cookie_follow(' => array(), 'pg_wishlist_cookie_write(' => array());
+
+	foreach (get_defined_functions()['user'] as $name) {
+		$function = new ReflectionFunction($name);
+
+		if (realpath($function->getFileName()) !== $module) {
+			continue;
+		}
+
+		$source = str_replace('function ' . $function->getName() . '(', '', wishlist_test_function_source($name));
+
+		foreach (array_keys($callers) as $call) {
+			if (strpos($source, $call) !== false) {
+				$callers[$call][] = $function->getName();
+			}
+		}
+	}
+
+	pg_assert_same(array('pg_wishlist_set'), $callers['pg_wishlist_owner(true)'], 'only saving starts a list');
+	pg_assert_same(array('pg_wishlist_set'), $callers['pg_wishlist_cookie_follow('], 'the cookie is sent after a write');
+	pg_assert_same(array('pg_wishlist_cookie_follow'), $callers['pg_wishlist_cookie_write('], 'and nowhere else');
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/wishlist.php');
+
+	foreach (array_keys($callers) as $call) {
+		pg_assert_same(0, substr_count($endpoint, $call), 'the endpoint goes through pg_wishlist_set(): ' . $call);
+	}
+}
+
+// Deleting an account takes its favourites in the same request: MySQL 5.7
+// hands the highest id out again after a restart, and the next account would
+// inherit the list. Never the visitor lists (user_id 0).
+function test_wishlist_forget_user()
+{
+	pg_assert_same("DELETE FROM wishlist_items WHERE user_id = '12'", pg_wishlist_forget_user_sql(12));
+	pg_assert_same("DELETE FROM wishlist_items WHERE user_id = '12'", pg_wishlist_forget_user_sql('12'));
+	pg_assert_same('', pg_wishlist_forget_user_sql(0), 'never the visitor lists');
+	pg_assert_same('', pg_wishlist_forget_user_sql('0'));
+	pg_assert_same('', pg_wishlist_forget_user_sql(-4));
+	pg_assert_same('', pg_wishlist_forget_user_sql('abc'));
+	pg_assert_same('', pg_wishlist_forget_user_sql(array(12)), 'an array');
+	pg_assert_same('', pg_wishlist_forget_user_sql(null));
+
+	pg_assert_contains('pg_wishlist_forget_user_sql(', wishlist_test_function_source('pg_wishlist_forget_user'));
+
+	foreach (array('delete_users.php', 'edit_user.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		$forget = strpos($source, 'pg_wishlist_forget_user(');
+		$delete = strpos($source, 'DELETE FROM user WHERE');
+
+		pg_assert_true($forget !== false, $file . ' removes the favourites');
+		pg_assert_true(($forget !== false) && ($delete !== false) && ($forget < $delete), $file . ' with the rest of the account');
+	}
+}
+
 // The endpoint's reading of a request.
 function test_wishlist_request_values()
 {
