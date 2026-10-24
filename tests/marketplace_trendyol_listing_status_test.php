@@ -324,8 +324,10 @@ function test_marketplace_trendyol_listing_status_leaves_rows_with_a_line_in_fli
 	pg_assert_contains("(marketplace_sync_queue.product_id = marketplace_product_map.product_id)", $source);
 
 	pg_assert_contains('AND (remote_code = \'" . e($code) . "\')', $source);
-	pg_assert_true(strpos($source, 'mysqli_affected_rows(db::$con) < 1') < strpos($source, 'mp_enqueue('),
-		'a row changed meanwhile is not queued');
+	$guard = strpos($source, 'mysqli_affected_rows(db::$con) < 1');
+
+	pg_assert_true($guard !== false, 'the write is checked');
+	pg_assert_true($guard < strpos($source, 'mp_enqueue('), 'a row changed meanwhile is not queued');
 }
 
 function listing_status_test_function_source($name)
@@ -401,9 +403,26 @@ function test_marketplace_trendyol_listing_status_rejection_and_document_request
 		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Ürün onaylı değil')),
 			$document, 'Trendyol'), 'a row stopped while it waits says what it waits for');
 
-	pg_assert_same(array('last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.'),
+	pg_assert_same(array('status' => 'active', 'last_error' => 'Trendyol needs a document for this listing; upload it in the seller panel.'),
 		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Rejected by Trendyol: Belge eksik')),
 			$document, 'Trendyol'), 'a rejected listing sent back for approval');
+}
+
+// Fixed in the seller panel, a rejected listing goes back to their review: the
+// row waits again as a new listing does, rather than showing the old reasons.
+function test_marketplace_trendyol_listing_status_rejected_listing_back_in_review_waits_again()
+{
+	$pending = array('state' => 'pending', 'reasons' => array(), 'doc_needed' => false);
+
+	pg_assert_same(array('status' => 'active', 'last_error' => ''),
+		mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Rejected by Trendyol: Görsel hatalı')),
+			$pending, 'Trendyol'));
+
+	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('status' => 'error', 'last_error' => 'Ürün onaylı değil')),
+		$pending, 'Trendyol'), 'a row stopped by a refused stock line waits for the approval');
+
+	pg_assert_same(null, mp_sync_listing_row_update(listing_status_test_row(array('last_error' => 'Rejected by Trendyol: x')),
+		$pending, 'Trendyol'), 'only a row in error is set back');
 }
 
 /* --------------------------------------------------------- the set */

@@ -835,8 +835,8 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 
 			}
 
-			// Its stock and price were refused while it waited, and nothing
-			// would send them again until the product changed.
+			// Its stock and price were not sent while it was stopped, and
+			// nothing would send them again until the product changed.
 			if (isset($update['status']) && $update['status'] === 'active') {
 
 				mp_enqueue((int)$row['product_id']);
@@ -865,7 +865,8 @@ function mp_sync_listing_states_account($account, $deadline, &$summary) {
 //   (mp_listing_rejected_prefix()) the screen knows it by.
 //
 //   pending: nothing, unless a document is needed, which is noted without
-//   touching the status.
+//   touching the status. A row written as rejected goes back to active: the
+//   listing was fixed and is in their review again.
 //
 //   unknown, or no answer: nothing. The listing may still be on its way
 //   through their batch, and a row written as missing would stop a product
@@ -937,6 +938,15 @@ function mp_sync_listing_row_update($row, $state, $provider_name) {
 
 		$want['last_error'] = mb_substr(mp_listing_rejected_text($provider_name,
 			$reasons ? implode('; ', $reasons) : lang('no reason given')), 0, 500);
+
+	} elseif ($kind === 'pending' && (string)$row['status'] === 'error'
+		&& strpos((string)$row['last_error'], mp_listing_rejected_prefix($provider_name)) === 0) {
+
+		// Rejected before and back in their review after a fix in the seller
+		// panel: the row waits again as a new listing does.
+		$want['status'] = 'active';
+
+		$want['last_error'] = !empty($state['doc_needed']) ? mp_sync_listing_document_note($provider_name) : '';
 
 	} elseif ($kind === 'pending' && !empty($state['doc_needed'])) {
 
