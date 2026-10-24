@@ -1167,7 +1167,8 @@ function erp_export_temp_path($token, $format)
         @mkdir($directory, 0755, true);
     }
 
-    if (!is_dir($directory) || !is_writable($directory)) {
+    // pg_dir_writable(), not is_writable(): Windows folders (see there)
+    if (!pg_dir_writable($directory)) {
         return '';
     }
 

@@ -19,7 +19,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - customer-returns-flow.md: Plan (approved 2026-10-19, in progress: steps 1-5 done, model to API and webhooks): a staff-recorded request form and the classic order view left
 - design-template-forum-leftovers.md: Forum template plan (2026-10-23; 1a 1c #1473, 1b #1489, 2 #1474, 3 #1501 done, 5 the template built on feature/forum-5-template): step 4, the comments widget move and the watcher fix left
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
-- designable-comments.md: Plan (2026-10-23; 1 done #1461, 3 5 9 in PRs): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
+- designable-comments.md: Plan (1-11 and 3b done; 12-14 in #1567; 15-18 next): comments as a designable system widget kind; layout in the widget row, comments and policy per page; replies via parent_id
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license, formatter, minimap, multi-file search)
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19, in progress: steps 1, 1b, 2 done, PRs #697, #958): auto invoice once paid or shipped, with its two filters, built; internet-sale UBL fields and threshold warnings left
@@ -60,7 +60,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, not started, answers open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-catalog-create.md: Plan (2026-10-23, 1a helper in #1512, answers open): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 - workspace-channel-icons.md: Plan (2026-10-23, steps 1-2 in #1510, answers given): a channel icon its manager picks from a curated Bootstrap Icons list; kind marks stay visible; colour and icon in the API
-- workspace-composer-tools.md: Plan (2026-10-23, not started, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+- workspace-composer-tools.md: Plan (2026-10-23, 1 in #1554, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23, step 1 test in #1512, answers open): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-engine.md: Plan (2026-10-24, not started, answers open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows.md: Plan (2026-10-24, F1 done #1503, F2 in #1529): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine

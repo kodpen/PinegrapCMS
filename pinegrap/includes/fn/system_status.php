@@ -1170,42 +1170,11 @@ function pg_write_permission_scan($fresh = false)
         return ($perms === false) ? '?' : substr(sprintf('%o', $perms), -4);
     };
 
-    // Whether a folder takes a new file. is_writable() answers that from the
-    // permission bits, which is the truth on Linux and a guess on Windows: there
-    // the read-only attribute on a folder means "customised view" (OneDrive and
-    // Explorer set it freely) and stops nothing, yet is_writable() reads it as
-    // closed. So a folder that looks closed on Windows is asked the only way that
-    // settles it - by creating a file in it - and the answer replaces the guess.
-    // Linux keeps the cheap test; a folder that refuses there really refuses.
-    $folder_writable = function ($directory) {
-        if (is_writable($directory)) {
-            return true;
-        }
-
-        if (DIRECTORY_SEPARATOR !== '\\') {
-            return false;
-        }
-
-        $probe = @tempnam($directory, 'pgw');
-
-        if (($probe === false) || (strpos(str_replace('\\', '/', $probe), rtrim(str_replace('\\', '/', $directory), '/') . '/') !== 0)) {
-            // tempnam() falls back to the system temp directory when the folder
-            // refuses; a file that landed elsewhere is not an answer
-            if ($probe !== false) {
-                @unlink($probe);
-            }
-
-            return false;
-        }
-
-        @unlink($probe);
-
-        return true;
-    };
-
+    // Folders are asked through pg_dir_writable(), not is_writable(), which
+    // calls a folder with the Windows read-only attribute closed (see there).
     $result['checked_directories'] = 1;
 
-    if (!$folder_writable($root)) {
+    if (!pg_dir_writable($root)) {
         $result['directories']['.'] = $mode($root);
         $result['directories_count']++;
     }
@@ -1237,7 +1206,7 @@ function pg_write_permission_scan($fresh = false)
             if ($entry->isDir()) {
                 $result['checked_directories']++;
 
-                if (!$folder_writable($path)) {
+                if (!pg_dir_writable($path)) {
                     $result['directories_count']++;
 
                     if (count($result['directories']) < 200) {
