@@ -52,6 +52,7 @@ function api_order_returns_test_row($changes = array())
 		'decided_by' => '118', 'requested_at' => '1792731600', 'decided_at' => '1792735200', 'shipped_at' => '1792821600',
 		'received_at' => '1792908000', 'refunded_at' => '1792911600', 'closed_at' => '0',
 		'refund_due_notified_at' => '0', 'refund_overdue_notified_at' => '0',
+		'refund_amount' => '25000', 'refund_method' => 'driver', 'refund_reference' => 'R-77', 'refund_unclear' => '0',
 		'items' => array(
 			array('order_item_id' => 9009, 'quantity' => 2, 'product_id' => 71, 'name' => 'Yeşil Ofis Sandalyesi'),
 			array('order_item_id' => 9010, 'quantity' => 1, 'product_id' => 70, 'name' => 'Mocha Ofis Sandalyesi'),
@@ -133,6 +134,41 @@ function test_api_order_returns_present_a_new_request()
 	}
 }
 
+// The refund the return keeps: null until it was refunded, then what the
+// order.return.refunded event carried.
+function test_api_order_returns_present_the_refund()
+{
+	pg_assert_same(array('amount' => 25000, 'method' => 'driver', 'reference' => 'R-77', 'unclear' => false),
+		api_order_return_present(api_order_returns_test_row())['refund'], 'a refund through the payment service');
+
+	pg_assert_same(array('amount' => 0, 'method' => 'manual', 'reference' => null, 'unclear' => false),
+		api_order_return_present(api_order_returns_test_row(array('refund_amount' => '0', 'refund_method' => 'manual', 'refund_reference' => '')))['refund'],
+		'0 recorded, no reference');
+
+	pg_assert_same(array('amount' => 25000, 'method' => 'driver', 'reference' => null, 'unclear' => true),
+		api_order_return_present(api_order_returns_test_row(array('refund_reference' => '', 'refund_unclear' => '1')))['refund'],
+		'no clear answer from the service');
+
+	pg_assert_same(array('amount' => 0, 'method' => null, 'reference' => null, 'unclear' => false),
+		api_order_return_present(api_order_returns_test_row(array('refund_amount' => '0', 'refund_method' => '', 'refund_reference' => '')))['refund'],
+		'refunded before the columns, nothing found to fill them');
+
+	pg_assert_same(array('amount' => 25000, 'method' => 'driver', 'reference' => 'R-77', 'unclear' => false),
+		api_order_return_present(api_order_returns_test_row(array('status' => 'closed', 'closed_at' => '1792998000')))['refund'],
+		'closed after the refund');
+
+	pg_assert_same(null, api_order_return_present(api_order_returns_test_row(array('status' => 'received', 'refunded_at' => '0', 'refund_method' => '', 'refund_amount' => '0', 'refund_reference' => '')))['refund'], 'not refunded');
+
+	$before = api_order_returns_test_row();
+	unset($before['refund_amount'], $before['refund_method'], $before['refund_reference'], $before['refund_unclear']);
+
+	pg_assert_same(null, api_order_return_present($before)['refund'], 'the columns are not there yet');
+
+	pg_assert_same('OrderReturnRefund?', api_order_return_schema()['refund'], 'a nested object that may be null');
+	pg_assert_same(array('amount' => 'integer', 'method' => 'string?', 'reference' => 'string?', 'unclear' => 'boolean'), api_order_return_refund_schema());
+	pg_assert_same(array_keys(api_order_return_refund_schema()), array_keys(api_order_return_present(api_order_returns_test_row())['refund']), 'every refund field declared, in order');
+}
+
 // The lines of a POST, as pg_return_create() takes them.
 function test_api_order_returns_lines_of_a_request()
 {
@@ -185,8 +221,8 @@ function test_api_order_returns_list_route()
 	pg_assert_true(function_exists($route['handler']), 'the handler is declared');
 	pg_assert_same(array('list' => 'OrderReturn'), $route['returns']);
 	pg_assert_same(1, count($route['params']), 'the order id and nothing else: one page, no cursor');
-	pg_assert_contains('order.return.refunded', $route['description'], 'says where the refund\'s amount and method are');
-	pg_assert_contains('refund_method', $route['description']);
+	pg_assert_contains('refund', $route['description'], 'names the refund the return keeps');
+	pg_assert_false(strpos($route['description'], 'come only with') !== false, 'the refund is no longer only in the event');
 }
 
 function test_api_order_returns_create_route()
@@ -268,6 +304,7 @@ function test_api_order_returns_object_is_registered()
 	$objects = api_openapi_objects();
 
 	pg_assert_same('api_order_return_schema', $objects['OrderReturn'] ?? null);
+	pg_assert_same('api_order_return_refund_schema', $objects['OrderReturnRefund'] ?? null, 'the refund is an object of its own, so it can be null');
 	pg_assert_true(function_exists('api_order_return_schema'));
 
 	$catalogue = api_error_catalogue();

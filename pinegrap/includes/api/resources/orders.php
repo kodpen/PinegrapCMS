@@ -945,7 +945,7 @@ function api_order_document_schema() {
 // is the approval's or the rejection's. carrier is null until staff named the
 // carrier the goods go back with (a key such as yurtici when the site knows
 // it, otherwise the text given). reason_label is null for a code this version
-// has no name for.
+// has no name for. refund is api_order_return_refund_present()'s.
 function api_order_return_present($row, $reasons = null) {
 
 	if ($reasons === null) {
@@ -987,7 +987,38 @@ function api_order_return_present($row, $reasons = null) {
 		'shipped_at'      => api_time($row['shipped_at']),
 		'received_at'     => api_time($row['received_at']),
 		'refunded_at'     => api_time($row['refunded_at']),
-		'closed_at'       => api_time($row['closed_at'])
+		'closed_at'       => api_time($row['closed_at']),
+		'refund'          => api_order_return_refund_present($row)
+	);
+
+}
+
+// The refund a return keeps (order_returns.refund_*, 11.0.34): what the
+// order.return.refunded event carried. null until the return was refunded,
+// and on a site whose upgrade has not added the columns yet. amount is in
+// minor units (0 is a refund recorded as 0). method is driver (through the
+// payment service) or manual (made another way and recorded); null for a
+// return refunded before the columns whose refund could not be found again.
+// reference is the service's refund id or the typed reference, null when
+// none. unclear: the service gave no clear answer, so the refund is booked
+// but unconfirmed.
+function api_order_return_refund_present($row) {
+
+	if (((int)$row['refunded_at'] <= 0) || !array_key_exists('refund_method', $row)) {
+
+		return null;
+
+	}
+
+	$method = (string)$row['refund_method'];
+
+	$reference = isset($row['refund_reference']) ? (string)$row['refund_reference'] : '';
+
+	return array(
+		'amount'    => (int)(isset($row['refund_amount']) ? $row['refund_amount'] : 0),
+		'method'    => in_array($method, array('driver', 'manual'), true) ? $method : null,
+		'reference' => ($reference !== '') ? $reference : null,
+		'unclear'   => ((int)(isset($row['refund_unclear']) ? $row['refund_unclear'] : 0) === 1)
 	);
 
 }
@@ -1304,7 +1335,21 @@ function api_order_return_schema() {
 		'shipped_at'      => 'string?',
 		'received_at'     => 'string?',
 		'refunded_at'     => 'string?',
-		'closed_at'       => 'string?'
+		'closed_at'       => 'string?',
+		'refund'          => 'OrderReturnRefund?'
+	);
+
+}
+
+// What api_order_return_refund_present() returns, declared for the OpenAPI
+// document.
+function api_order_return_refund_schema() {
+
+	return array(
+		'amount'    => 'integer',
+		'method'    => 'string?',
+		'reference' => 'string?',
+		'unclear'   => 'boolean'
 	);
 
 }
