@@ -1629,9 +1629,19 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
+            // The message it answers (a voice reply): one the API's upload
+            // would take (ws_message_parent_check()). Any other - deleted or
+            // cleared away while the recording ran - is left out and the
+            // file posted on its own, rather than lost.
+            $parent_id = (int) ($request['parent_id'] ?? 0);
+
+            if (ws_message_parent_check($channel, $parent_id) !== '') {
+                $parent_id = 0;
+            }
+
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
-            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
+            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array('parent_id' => $parent_id));
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 

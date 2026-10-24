@@ -573,7 +573,7 @@ function ws_note_import_inline($line)
         $label = trim($match[1]);
 
         if ($label === '') {
-            $label = basename(rawurldecode(preg_replace('/[?#].*$/', '', trim($match[2], '<>'))));
+            $label = pg_basename(rawurldecode(preg_replace('/[?#].*$/', '', trim($match[2], '<>'))));
         }
 
         return '[' . (($label !== '') ? $label : 'image') . '](' . $match[2] . ')';

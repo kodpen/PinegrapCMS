@@ -1106,7 +1106,7 @@ if (!$_POST) {
             lang('Order Checked Out'),
             lang('Order Completed'),
             lang('Order Total'),
-        )));
+        )), ',', '"', '\\');
 
         $query =
             "SELECT
@@ -1148,7 +1148,7 @@ if (!$_POST) {
                 $row['order_checked_out'],
                 $row['order_completed'],
                 number_format($row['order_total'] / 100, 2, '.', ''),
-            )));
+            )), ',', '"', '\\');
 
             // Push each batch down the wire rather than letting it pile up in
             // PHP's output buffer, which would recreate the memory problem in

@@ -1619,6 +1619,49 @@ function test_ws_message_send_file_checks_before_storing()
 	pg_assert_contains('ws_library_send(', $picked, 'the picker goes through it');
 }
 
+// A file may answer a message (a voice reply): files.create declares an
+// optional parent_id, refuses a bad one on that field before its dry run
+// stops, and hands it to the write; the panel's upload sends it on through
+// the same check. Posting a file stays no MCP tool.
+function test_ws_api_files_create_answers_a_message()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.files.create') {
+			$route = $candidate;
+		}
+	}
+
+	$params = array();
+
+	foreach ((array) ($route['params'] ?? array()) as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_true(isset($params['parent_id']), 'files.create declares parent_id');
+	pg_assert_same('body', $params['parent_id']['in'] ?? null, 'parent_id is a body field');
+	pg_assert_same('int', $params['parent_id']['type'] ?? null, 'parent_id is a whole number');
+	pg_assert_same(1, $params['parent_id']['min'] ?? null, 'parent_id names a message');
+	pg_assert_true(empty($params['parent_id']['required']), 'parent_id may be left out');
+	pg_assert_contains('parent_id', (string) $route['description'], 'the description says what parent_id does');
+	pg_assert_false(pg_mcp_route_is_offered($route), 'posting a file stays no MCP tool');
+
+	$api = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_files_create'));
+
+	pg_assert_contains("api_fail_validation(\$refused, 'parent_id')", $api, 'a bad parent is refused on parent_id');
+	pg_assert_contains("'parent_id' => \$parent_id", $api, 'the parent reaches the write');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($actions, "case 'ws_attach':");
+	$attach = ($start === false) ? '' : substr($actions, $start, strpos($actions, 'case \'', $start + 18) - $start);
+	$attach = preg_replace('~^\s*//.*$~m', '', $attach);
+
+	pg_assert_true(strpos($attach, 'ws_message_parent_check(') !== false, 'the panel checks the parent');
+	pg_assert_true(strpos($attach, 'ws_message_parent_check(') < strpos($attach, 'ws_message_send_file('), 'the panel checks the parent first');
+	pg_assert_contains("array('parent_id' => \$parent_id)", $attach, 'the panel hands the parent to the upload');
+}
+
 // Every write of the module can be rehearsed: X-Dry-Run is offered on the
 // route, and the tool an MCP client sees takes dry_run as an argument.
 function test_ws_api_every_write_rehearses()
@@ -1661,6 +1704,7 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_flows_publish'        => array('ws_api_own_words_only(', 'ws_flow_publish_check(', 'api_dry_run_stop(', 'ws_flow_publish('),
 		'ws_api_flows_pause'          => array('ws_flow_pause_check(', 'api_dry_run_stop(', 'ws_flow_pause('),
 		'ws_api_flows_delete'         => array('ws_flow_bin_check(', 'api_dry_run_stop(', 'ws_flow_bin('),
+		'ws_api_files_create'         => array('ws_upload_check(', 'ws_message_send_check(', 'ws_message_parent_check(', 'api_dry_run_stop(', 'ws_store_upload_bytes('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);

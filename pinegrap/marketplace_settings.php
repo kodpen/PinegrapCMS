@@ -119,6 +119,8 @@ if ($_POST) {
 
 		if ($liveform->check_form_errors() == false) {
 
+			$credentials = mp_account_delivery_stamp(array(), $credentials, time());
+
 			// pull_orders is written, not left to the column's default of 1: a
 			// marketplace whose connector cannot bring orders in would start
 			// with the switch on and the job skipping it without a word.
@@ -188,7 +190,8 @@ if ($_POST) {
 			// and id - is kept. The form never carries those, and writing the
 			// fields alone would leave a registered webhook delivering with a
 			// key nothing here knows any more.
-			$credentials = array_merge((array)$account['credentials'], $credentials);
+			$credentials = mp_account_delivery_stamp($account['credentials'],
+				array_merge((array)$account['credentials'], $credentials), time());
 
 			// A registered webhook belongs to the seller and environment it was
 			// registered for, and keeps delivering their packages whatever the

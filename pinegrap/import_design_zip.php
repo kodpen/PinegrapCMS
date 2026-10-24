@@ -61,7 +61,7 @@ if (strtolower(pathinfo($orig_name, PATHINFO_EXTENSION)) !== 'zip' && !(function
 }
 
 $project = isset($_POST['project_name']) ? trim((string)$_POST['project_name']) : '';
-if ($project === '') $project = pathinfo($orig_name, PATHINFO_FILENAME);
+if ($project === '') $project = pg_file_name_stem($orig_name);
 $project = mb_substr(preg_replace('/[\/\\\\:*?"<>|]+/', '-', $project), 0, 60);
 if ($project === '') $project = 'import';
 
