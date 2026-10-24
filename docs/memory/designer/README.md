@@ -33,8 +33,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
+- comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
+- comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, watch box, frontend init
+- comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences
+- comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, tokens, flags, escaping, default layout, checks
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
@@ -137,7 +141,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-theme-light-selector-upgrade.md: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared tr.json key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
-- designer-widget-ghosts-and-edit-chips.md: Ghost records on the canvas for listing widgets (designer/widget_ghosts): kinds, count, DOM-only rules; and the front-end edit pencil on records (pg_sw_add_edit_chip()) with its permission checks.
+- designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
