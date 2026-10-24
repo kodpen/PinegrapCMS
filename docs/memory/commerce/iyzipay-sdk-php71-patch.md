@@ -7,7 +7,7 @@ description: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched 
 - Its `composer.json` asks for PHP 7.4; the product runs on 7.1 and up. The SDK's autoloader `require`s a class file when the class is first used.
 - PHP 7.1-7.3: `AmountBaseRefundRequest` and `AmountBaseRefund` (the refund of both iyzico drivers) did not parse (typed properties). `pg_payment_call()` turned the ParseError into "The payment service could not be reached.": nothing was sent, and no refund from the order screen or a return's refund ever went through.
 - PHP 7.1 only: an `object` parameter type is read as a class named `Iyzipay\Model\Mapper\object`. With the property types dropped alone, the refund would leave and every answer, success included, would read as "an answer that cannot be read".
-- CI never saw it: it runs PHP 8.3, and `tools/lint.php` and `tools/phpcs.xml` skip the folder.
+- CI never saw it: it ran PHP 8.3 only, and `tools/lint.php` and `tools/phpcs.xml` skip the folder. Its PHP 7.1 job now checks the folder (`tools/lint.php --vendored`, workflow/ci-workflows.md).
 
 ## What was changed? (#1353)
 - 24 files under `src/Iyzipay/Request/` and `src/Iyzipay/Model/` (all typed properties of the SDK): `private string $x;` became `private $x;`, defaults kept, nothing else. A getter that reads a property never set throws TypeError (null against its return type) instead of Error; the `?? null` getters still give null. Nothing tells the two apart: `pg_payment_call()` takes both as `\Error`, and the refund driver's TypeError catch wraps only `create()`, after it set every field of the request.

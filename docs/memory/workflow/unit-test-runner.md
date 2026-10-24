@@ -13,7 +13,7 @@ description: tools/test.php: what it loads, which errors fail a test (vendored d
 
 ## What does a run on another PHP version need?
 - `-d memory_limit=-1`: the official Docker images default to 128M and the full suite needs more (it ran out in `designer_blocks_test.php` on 7.1 and in `office_dom_ceiling_test.php` on 8.5). Also the extensions some tests use: `intl` (short link names fold "Ürün" through `Normalizer`), `zip` (office tests), `pdo_mysql` (the mysqldump settings test). Without them those tests fail for the missing extension, not for the PHP version.
-- CI runs PHP 8.3 only (docs/memory/workflow/ci-workflows.md).
+- CI runs the unit tests on PHP 8.3 and 7.1 (docs/memory/workflow/ci-workflows.md). A run without `gd` skips the image tests and hides their failures: on 7.1 two read WebP with `imagecreatefromstring()` (only from PHP 7.3) and one wrote lossless WebP, a fatal error before PHP 8.1.
 
 ## How does a test read data a function builds behind a database probe?
 - From its source, with `tests/helpers/source_reader.php` (not a test file; `require_once(__DIR__ . '/helpers/source_reader.php')`): `pg_test_function_source()`, `pg_test_source_array($function, '$var')` for an array literal (code such as `lang()` or a constant comes back as `PgTestSourceExpression`), `pg_test_ws_change_types()` for the Workspace change catalogue as written.
