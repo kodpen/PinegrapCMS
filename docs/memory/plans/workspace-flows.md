@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1 in PR #1503, answers given): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 in PR #1503, F2 built): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -22,7 +22,7 @@ description: Plan (2026-10-24, F1 in PR #1503, answers given): one Flows system:
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
 1. F1 store (schema, ask first): four tables, `flow_id`, graph check, API.
-2. F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows, from a template.
+2. Built: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. Later: from a template, notes/whiteboard, undo/redo, auto-layout, multi-select, Help link.
 3. F3 runner: Run, tasks wait for done, run view, cancel.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
