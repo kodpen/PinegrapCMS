@@ -1,6 +1,6 @@
 ---
 name: workspace-mcp-connectors
-description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511; answers 1, 3, 4): Workspace MCP client as simple as Claude's connectors: protocol and card fixes, bundled catalogue, URL-only add, API
+description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 (SSE stop); answers 1, 3, 4): Workspace MCP client like Claude's connectors: protocol, card fixes, catalogue, URL-only add, API
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -18,7 +18,7 @@ description: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511; answers 
 ## Slices
 No schema; one PR each.
 1. `pg_mcp_client_send()`: a 401 whose `pg_mcp_client_bearer_challenge()` has `resource_metadata` returns first, naming Sign in to the service (OAuth) or a token (none sent), else today's text plus OAuth; negotiate adds `oauth_challenge`.
-2. `api_http_request()` option `complete` (callable in CURLOPT_WRITEFUNCTION; errno 23 after a stop is success); `pg_mcp_client_post()` stops at the event answering its id (`pg_mcp_client_sse_complete()`, proposed, pure): GitMCP 10 s to under 1 s.
+2. `api_http_request()` option `complete` (callable in CURLOPT_WRITEFUNCTION; errno 23 after a stop is success); `pg_mcp_client_post()` stops at the event answering its id (`pg_mcp_client_sse_complete()`, pure): GitMCP 10 s to under 1 s.
 3. 3xx: "The MCP server moved to {var:1}." (https, same host); not followed.
 4. /sse answered 404/405/410 names the /mcp address.
 5. `pg_mcp_client_read()` takes an error with any id when HTTP >= 400.
