@@ -141,7 +141,7 @@ function workspace_record_kinds_test_lists()
 
 	// The ERP's documents are tagged and read, never written from the
 	// Workspace (docs/memory/workspace/workspace-record-changes.md).
-	$tag_only = array_fill_keys(array('invoice', 'waybill', 'receipt', 'edoc'), 'an ERP document is tag-only: no kind of ws_change_types() writes it');
+	$tag_only = array_fill_keys(array('invoice', 'waybill', 'receipt', 'edoc', 'erp_quote'), 'an ERP document is tag-only: no kind of ws_change_types() writes it');
 
 	$records = array();
 
@@ -225,7 +225,7 @@ function workspace_record_kinds_test_lists()
 		'events' => array(
 			'where'  => 'an event of ws_events_catalog() in includes/workspace/watch.php',
 			'kinds'  => array_values(array_unique(workspace_record_kinds_test_events())),
-			'except' => array_fill_keys(array('product_group', 'offer', 'user_account', 'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'calendar_event', 'file', 'page'),
+			'except' => array_fill_keys(array('product_group', 'offer', 'user_account', 'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'calendar_event', 'file', 'page'),
 				'no event a scheduled action starts on is about it'),
 			'others' => array('task', 'channel', 'approval'),
 		),
@@ -253,7 +253,7 @@ function workspace_record_kinds_test_lists()
 		'customers' => array(
 			'where'  => 'ws_customer_types() in includes/workspace/customer.php',
 			'kinds'  => ws_customer_types(),
-			'except' => array_fill_keys(array('order', 'product', 'product_group', 'offer', 'invoice', 'waybill', 'receipt', 'edoc', 'form', 'calendar_event', 'file', 'page'),
+			'except' => array_fill_keys(array('order', 'product', 'product_group', 'offer', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'form', 'calendar_event', 'file', 'page'),
 				'a record about a customer, not one: a customer is a contact, a user or a current account'),
 			'others' => array(),
 		),
@@ -448,6 +448,28 @@ function test_workspace_record_kinds_events_name_the_record_they_find()
 
 		pg_assert_same(array($record, 7), $found, $event . ': ws_events_record_of() finds the ' . $record . ' ws_events_catalog() names');
 	}
+}
+
+// A word typed after # picks one kind: no two kinds share a prefix. The
+// ERP's sales quote and the site's offer (a discount) are told apart this
+// way, and the quote is shown only with the ERP right.
+function test_workspace_record_kinds_prefixes_pick_one_kind()
+{
+	$owners = array();
+
+	foreach (ws_ref_types(workspace_record_kinds_test_viewer(workspace_record_kinds_test_rights())) as $kind => $info) {
+		foreach ($info['prefixes'] as $prefix) {
+			pg_assert_false(isset($owners[$prefix]), '"' . $prefix . '" picks ' . $kind . (isset($owners[$prefix]) ? ' and ' . $owners[$prefix] : ''));
+			$owners[$prefix] = $kind;
+		}
+	}
+
+	pg_assert_same('erp_quote', $owners['satis'] ?? null, '#satis picks the sales quote');
+	pg_assert_same('erp_quote', $owners['salesquote'] ?? null, '#salesquote picks the sales quote');
+	pg_assert_same('offer', $owners['teklif'] ?? null, '#teklif still picks the offer');
+
+	pg_assert_true(isset(ws_ref_types(workspace_record_kinds_test_viewer(array('erp')))['erp_quote']), 'the ERP right shows the sales quote tag');
+	pg_assert_false(isset(ws_ref_types(workspace_record_kinds_test_viewer(array('ecommerce', 'contacts', 'users', 'forms', 'calendars')))['erp_quote']), 'without the ERP right the sales quote tag is not shown');
 }
 
 // The channel screen offers the same customer kinds as the server.

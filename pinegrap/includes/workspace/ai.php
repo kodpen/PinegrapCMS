@@ -2762,6 +2762,7 @@ function ws_ai_type_scope($type)
         'waybill'        => 'erp:read',
         'receipt'        => 'erp_cash:read',
         'edoc'           => 'erp:read',
+        'erp_quote'      => 'erp:read',
         'form'           => 'forms:read',
         'calendar_event' => 'calendars:read',
         'file'           => 'files:read',

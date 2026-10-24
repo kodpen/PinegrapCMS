@@ -1,6 +1,6 @@
 ---
 name: workspace-quotes
-description: Plan (2026-10-23, not started, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+description: Plan (2026-10-23, 1 built, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -9,14 +9,14 @@ description: Plan (2026-10-23, not started, answers 1, 3 given): Sales quote (ER
 ## What is there today?
 - ERP: `erp_quotes` (`created_by`; includes/erp/quotes.php), MCP `erp_quotes_create`, bell `erp_alert_quote_expiry()`.
 - Site: the saved-cart link (`orders.reference_code`), re-priced by `update_order_item_prices()`.
-- tr.json: "Offer", "Sales quote": both "Teklif", "Quote" (`ws_message_quotes`) "Alıntı"; includes/fn/privacy_export.php's "Price quote" should read "Sales quote".
+- tr.json: "Offer" "Teklif", "Sales quote" "Satış teklifi" (privacy export too), "Quote" (`ws_message_quotes`) "Alıntı".
 
 ## What is proposed? (not approved yet)
 - Sales quote (`erp_quote`, ERP right), Cart quote (`cart_quote`, ecommerce right): never a bare "quote", no conversion, no payment link on sales quotes (erp/erp-not-built-on-purpose.md).
 - Candidate: Pinegrap AI drafts a sales or cart quote from channel messages, after slices 3, 5.
 
 ## Slices
-1. No schema: `erp_quote` tag (refs.php): `ws_record_type_keys()`, `ws_ref_types()` (`lang('Sales quote')`, prefixes `satis`, `salesquote`; Offer keeps `teklif`), `ws_refs_resolve()` (number, account, total, `erp_quote_state()`), `ws_ref_search()`; `erp:read` in `ws_api_search_record_scopes()`, `ws_ai_type_scope()`; "Copy" (add_erp_quote.php `?copy=`) in `chipMenus()`.
+1. Built: the `erp_quote` tag (workspace/workspace-record-kinds.md, erp/erp-quotes.md).
 2. No schema: "New sales quote" (add_erp_quote.php `?account_id=`) on a channel whose customer (`ws_channel_customer_of()`) is or links to (`ws_customer_link_tokens()`) an ERP account; never `erp_account_for_contact()` (it creates).
 3. No schema, after the MCP plan's slice 3: `erp_quote` change kind in `ws_change_types()`, a structured line kind (`lines` is text), writer `erp_quote_save()`, proposed via `workspace.changes.propose`; direct AI writes per the MCP plan's question.
 4. Schema, ask first (next free ERP label): `erp_quote_templates` (proposed: name, scope, owner, `form_data`); "From template" on add_erp_quote.php, ERP API routes (`dry_run`). Tell the ERP owner (local work: plans/erp-edocument-leftovers.md).
@@ -30,4 +30,4 @@ Open: 2. Template scope: personal, channel, site-wide → personal, site-wide.
 3. Cart quote: own tables at catalogue prices, valid until expired or ordered; a single-use offer code later; never a per-line price (not the saved-cart link).
 
 ## Where to start?
-- Slice 1 after plans/workspace-crm-seams.md slice 1 (record-kind drift test); extend `test_ws_api_search_record_scopes_name_known_kinds`.
+- Slice 2 (no schema); the others wait on what each names.

@@ -356,6 +356,7 @@ function ws_js_strings()
         'copy_link'              => lang('Copy the link'),
         'copy_number'            => lang('Copy the task number'),
         'copy_text'              => lang('Copy the text'),
+        'erp_quote_copy'         => lang('Copy as a new sales quote'),
         'copy_all'               => lang('Copy all'),
         'copy_refused'           => lang('The browser did not let the text be copied. Select it and copy it from here.'),
         'copy_select_help'       => lang('Press and hold to select the part you need, then copy it.'),
@@ -723,6 +724,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
             'edit_user' => $base . 'edit_user.php',
+            // The quote editor's copy (?copy=<id>), for whoever may write
+            // ERP documents: the accountant's read-only right saves none.
+            'erp_quote_copy' => (!empty($viewer['erp']) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? $base . 'add_erp_quote.php' : '',
         ),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
