@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23, 1 built, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
+description: Plan (2026-10-23, 1 in #1554, answers open): one toolbar for all Workspace text boxes; lists, quotes, headings, slash inserts, smart paste, record cards, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -8,7 +8,7 @@ description: Plan (2026-10-23, 1 built, answers open): one toolbar for all Works
 
 ## What is there today?
 - One engine, `assets/js/workspace_editor.js` (`PGWsEditor`): selection bar, shortcuts, own undo, `pastePlain()`, table, checklist, code (also on ```), calc windows.
-- Slice 1 built: `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
+- Slice 1 (#1554): `PGWsEditor.toolbar()` draws the rows of `composer()` (now with B/I/S, undo, redo), the notes `toolbar()` and `richField().tools()`; `format()` makes every mark on the nodes, no `execCommand` (docs/memory/workspace/workspace-editor-toolbar.md).
 - `ws_render_body()` (`includes/workspace/render.php`, escape first) draws bold, italic, strike, code, links, tables, checklists, fences, `::: Title`; headings, lists, quotes, `---`, images stay raw. `ws_plain_text()` folds lines into one; guest pages also use `ws_guest_render()`. The import (`ws_note_import_convert()`) makes headings and `==x==` bold.
 
 ## What is proposed? (not approved yet)
@@ -18,7 +18,7 @@ description: Plan (2026-10-23, 1 built, answers open): one toolbar for all Works
 - Saved replies live here, not in the CRM seams plan (proposed).
 
 ## Slices
-1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. Built.
+1. Shared toolbar, no schema: factory, `format()`; the composer gains undo/redo and B/I/S; notes drop `execCommand`. PR #1554.
 2. Lists and quotes, no schema: `- `, `1. ` (one level, Tab, Enter continues, Shift+Enter in the composer), `> `.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
 4. Highlight `==x==` (import keeps it; not read by `ws_calc_inline()`), autoformat (one Ctrl+Z undoes, IME guard, off switch), no schema.
