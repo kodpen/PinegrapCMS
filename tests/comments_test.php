@@ -143,23 +143,61 @@ function test_comments_thread_verify_without_page()
 	pg_assert_same(null, $verify['record']);
 }
 
-// add_comment.php asks before it validates and stores; a refused record view
-// post goes back to its form with what was typed (a form error and the
-// redirect), without the posted thread; the legacy pairing keeps its page.
+// add_comment.php asks before it validates and stores, and answers a refusal
+// only after the page's own gates (comments on, new comments allowed, login,
+// view access): a visitor who may not comment on the page gets the same
+// answer whatever record id was posted. Another item type on a record view
+// page goes back to its form with what was typed, without the posted thread.
+// A record the page does not show gets an error page with the form state
+// dropped: that record's page draws no comment form to carry the message,
+// and the typed text must not turn up on another record's form.
 function test_comments_thread_add_comment_wiring()
 {
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_comment.php');
 
 	$verify = strpos($add, 'pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)');
-	$refusal = strpos($add, "\$comment_thread['refusal'] === 'item_type'");
-	$redirect = strpos($add, 'if ($liveform->check_form_errors() == true)');
+	$gates = array(
+		'comments on' => strpos($add, 'if ($comments == 0)'),
+		'new comments allowed' => strpos($add, 'if ($allow_new_comments == FALSE)'),
+		'login' => strpos($add, '($comments_require_login_to_comment == 1)'),
+		'view access' => strpos($add, 'if (check_view_access($folder_id) == false)'),
+	);
+	$type_refusal = strpos($add, "if (\$comment_thread['refusal'] === 'item_type')");
+	$record_refusal = strpos($add, "if (\$comment_thread['refusal'] === 'record')");
+	$page_refusal = strpos($add, "if (\$comment_thread['refusal'] === 'page_type')");
 	$insert = strpos($add, 'INSERT INTO comments');
+	$found = ($verify !== false) && ($type_refusal !== false) && ($record_refusal !== false) && ($page_refusal !== false) && ($insert !== false);
 
-	pg_assert_true($verify !== false, 'add_comment.php asks');
-	pg_assert_true(($refusal !== false) && ($verify < $refusal) && ($refusal < $redirect), 'a refused record view post is sent back with the form errors');
-	pg_assert_true(($redirect !== false) && ($redirect < $insert), 'before anything is stored');
-	pg_assert_contains("\$liveform->set_field('item_type', array())", $add, 'the posted type is dropped from the form state');
-	pg_assert_contains("\$liveform->set_field('item_id', array())", $add, 'the posted id too');
-	pg_assert_contains("\$comment_thread['refusal'] === 'page_type'", $add, 'the legacy pairing');
+	pg_assert_true($found, 'add_comment.php asks and answers each refusal');
+	pg_assert_same(1, substr_count($add, "\$comment_thread['refusal'] === 'item_type'"), 'the item type refusal is answered in one place');
+	pg_assert_same(1, substr_count($add, "\$comment_thread['refusal'] === 'record'"), 'the record refusal too');
+
+	foreach ($gates as $label => $gate) {
+		pg_assert_true($found && ($gate !== false) && ($verify < $gate) && ($gate < $type_refusal) && ($gate < $record_refusal), 'a refusal is answered after the gate: ' . $label);
+	}
+
+	pg_assert_true($found && ($type_refusal < $record_refusal) && ($record_refusal < $page_refusal) && ($page_refusal < $insert), 'before anything is stored');
+
+	if (!$found || ($record_refusal < $type_refusal) || ($page_refusal < $record_refusal)) {
+		return;
+	}
+
+	$type_block = substr($add, $type_refusal, $record_refusal - $type_refusal);
+
+	pg_assert_contains('$liveform->add_error(', $type_block, 'another item type: a form error');
+	pg_assert_contains("\$liveform->set_field('item_type', array())", $type_block, 'the posted type is dropped from the form state');
+	pg_assert_contains("\$liveform->set_field('item_id', array())", $type_block, 'the posted id too');
+	pg_assert_contains("header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(", $type_block, 'back to the form');
+	pg_assert_contains('exit();', $type_block, 'and nothing after it');
+
+	$record_block = substr($add, $record_refusal, $page_refusal - $record_refusal);
+	$remove = strpos($record_block, '$liveform->remove_form();');
+	$error = strpos($record_block, 'output_error(');
+
+	pg_assert_true(($remove !== false) && ($error !== false) && ($remove < $error), 'a record the page does not show: the form state dropped, then an error page');
+	pg_assert_false(strpos($record_block, 'add_error(') !== false, 'no form error a page without a form would keep');
+	pg_assert_false(strpos($record_block, 'header(') !== false, 'no redirect to a page without a form');
+
+	pg_assert_false(strpos($add, "\$comment_record['visible'] == false") !== false, 'record visibility is decided by pg_comment_thread_verify() only');
 	pg_assert_false(strpos($add, "(\$item_type == 'submitted_form') && function_exists('pg_sw_record_comment_context')") !== false, 'the widget is no longer asked only for a posted submitted form');
 }
