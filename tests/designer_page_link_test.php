@@ -46,8 +46,9 @@ function _page_link_js_slice($js, $from, $to)
 }
 
 // Runs $steps under Node after the editor's link helpers (the constants, the
-// URL parameter rules, _swPageLinkSpec() and the tab resolver), with stubs
-// for what they call; the JSON the steps print, or null without Node.
+// URL parameter rules, _swPageLinkSpec(), the panel's warnings and the tab
+// resolver), with stubs for what they call; the JSON the steps print, or null
+// without Node.
 function _page_link_node($steps)
 {
 	$out = array();
@@ -62,13 +63,14 @@ function _page_link_node($steps)
 	$constants = _page_link_js_slice($js, 'var SW_PAGE_LINK_TOKEN =', 'var _SW_FORM_FIELD_WINS =');
 	$names = _page_link_js_slice($js, 'var _SW_URL_PARAM_RESERVED = [', 'function _swFormListFiltersHtml(');
 	$tabs = _page_link_js_slice($js, 'function _swResolveTreeTabRefs(', '// A three-way question.');
-	pg_assert_true(($constants !== '') && ($names !== '') && ($tabs !== ''), 'the designer has the helpers');
+	$binned = _page_link_js_slice($js, 'function _swPageBinned(', "\n");
+	pg_assert_true(($constants !== '') && ($names !== '') && ($tabs !== '') && ($binned !== ''), 'the designer has the helpers');
 
 	$script = 'function _sdT(s) { return s; } function esc(s) { return s; }'
 		. 'function _sdSystemWidgetCfgOf(n) { return n.cfg || null; }'
 		. 'function _sdSharedTreeJSON(t) { return JSON.stringify(t); }'
 		. 'var _sharedCache = {}, _sharedSnapshots = {}, _pages = [], _activeKey = "";'
-		. $constants . $names . $tabs
+		. $constants . $names . $tabs . $binned . "\n"
 		. $steps;
 
 	$file = tempnam(sys_get_temp_dir(), 'pgpagelink');
@@ -166,8 +168,8 @@ function test_designer_page_link_editor_spec()
 		. ' capped: _swPageLinkSpec({ params: rows }).params.length,'
 		. ' offered: [_swPageLinkOffered({ cfg: { regionType: "blog_list" } }), _swPageLinkOffered({ cfg: { regionType: "form_item_view" } }),'
 		. '           _swPageLinkOffered({ cfg: { regionType: "catalog_listing" } }), _swPageLinkOffered({ cfg: { regionType: "unknown_kind" } }), _swPageLinkOffered({})],'
-		. ' warn: [_swPageLinkNameWarn([{ name: "board" }], 0), _swPageLinkNameWarn([{ name: "query" }], 0) !== "",'
-		. '        _swPageLinkNameWarn([{ name: "board" }, { name: "board" }], 1) !== "", _swPageLinkNameWarn([{ name: "" }], 0)]'
+		. ' warn: [_swPageLinkNameWarn([{ name: "board", token: "board" }], 0), _swPageLinkNameWarn([{ name: "query", token: "board" }], 0) !== "",'
+		. '        _swPageLinkNameWarn([{ name: "board", token: "board" }, { name: "board", token: "x" }], 1) !== "", _swPageLinkNameWarn([{ name: "" }], 0)]'
 		. '}));'
 	);
 
@@ -185,6 +187,107 @@ function test_designer_page_link_editor_spec()
 	pg_assert_same(8, $answer['capped']);
 	pg_assert_same(array(true, true, false, false, false), $answer['offered'], 'only the kinds the server expands it in');
 	pg_assert_same(array('', true, true, ''), $answer['warn'], 'refused and repeated names are warned about');
+}
+
+// A repeated name is warned about only when the earlier row is one the server
+// sends: pg_sw_page_link_spec() drops a row with no field or a refused name
+// before it takes the name.
+function test_designer_page_link_editor_repeated_name_follows_server()
+{
+	$cases = array(
+		'no field yet' => array(array(array('name' => 'board', 'token' => ''), array('name' => 'board', 'token' => 'board')), false),
+		'a field cut to nothing' => array(array(array('name' => 'board', 'token' => '<>'), array('name' => 'board', 'token' => 'board')), false),
+		'both sent' => array(array(array('name' => 'board', 'token' => 'board'), array('name' => 'board', 'token' => 'x')), true),
+		'the later one has no field yet' => array(array(array('name' => 'board', 'token' => 'board'), array('name' => 'board', 'token' => '')), true),
+		'typed with spaces and capitals' => array(array(array('name' => ' Board ', 'token' => 'board'), array('name' => 'board', 'token' => 'x')), true),
+		'another name' => array(array(array('name' => 'board', 'token' => 'board'), array('name' => 'member', 'token' => 'x')), false),
+	);
+	$rows = array();
+
+	foreach ($cases as $label => $case) {
+		$rows[$label] = $case[0];
+	}
+
+	$answer = _page_link_node(
+		'var cases = ' . json_encode($rows) . ';'
+		. 'var out = {}; Object.keys(cases).forEach(function (k) { out[k] = _swPageLinkNameWarn(cases[k], 1) !== ""; });'
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	foreach ($cases as $label => $case) {
+		pg_assert_same($case[1], $answer[$label], $label);
+	}
+
+	// The server's side: with no field on the first row the second is sent,
+	// with a field on both the first one is.
+	$spec = pg_sw_page_link_spec(array('page_id' => 4, 'params' => $rows['no field yet']));
+	pg_assert_same(array(array('name' => 'board', 'token' => 'board')), $spec['params']);
+	$spec = pg_sw_page_link_spec(array('page_id' => 4, 'params' => $rows['both sent']));
+	pg_assert_same(array(array('name' => 'board', 'token' => 'board')), $spec['params']);
+}
+
+// The deleted-page warning: a tab of this design is live even when the page
+// list, fetched once per session, was fetched before the tab was saved.
+function test_designer_page_link_editor_page_gone()
+{
+	$answer = _page_link_node(
+		'console.log(JSON.stringify(['
+		. ' _swPageLinkPageGone(12, [{ page_id: 12, key: "p12" }], [{ page_id: "3" }]),'
+		. ' _swPageLinkPageGone(12, [], [{ page_id: "3" }]),'
+		. ' _swPageLinkPageGone(12, [], null),'
+		. ' _swPageLinkPageGone(12, [], [{ page_id: "12", binned: 0 }]),'
+		. ' _swPageLinkPageGone(12, [], [{ page_id: "12", binned: "1" }]),'
+		. ' _swPageLinkPageGone(12, [{ page_id: 0, key: "k" }], []),'
+		. ' _swPageLinkPageGone("tab:k", [], []),'
+		. ' _swPageLinkPageGone(0, [], [])'
+		. ']));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(
+		array(false, true, false, false, true, true, false, false),
+		$answer,
+		'a tab of the design, missing, list not loaded yet, listed, in the bin, an unsaved tab only, a tab key, no page'
+	);
+}
+
+// The panel itself: a page saved in this session after the page list was
+// fetched draws no warning; a page neither list holds does.
+function test_designer_page_link_editor_panel_new_tab()
+{
+	$rows = _page_link_js_slice(_page_link_js(), 'function _sdPageLinkRows(n, fields) {', 'var rowsHtml = \'\';');
+	pg_assert_true($rows !== '', 'the panel rows are found');
+
+	$answer = _page_link_node(
+		'var _allPagesCache = [{ page_id: "3", page_name: "home" }];'
+		. 'function _fetchAllPages() {} function renderProperties() {} function _swPageOptions() { return ""; }'
+		. 'function _swFormFieldToken(ff) { return ff.name; } function _builtinLabel(o) { return o[1]; }'
+		. 'var SW_STANDARD_FIELD_OPTIONS = [["board", "Board"]]; function _swStandardYields() { return false; }'
+		. $rows
+		. 'var link = { props: { _bindParams: { href: { page_id: 12, params: [{ name: "board", token: "" }, { name: "board", token: "board" }] } } } };'
+		. '_pages = [{ page_id: 12, key: "p12", page_name: "board" }];'
+		. 'var saved = _sdPageLinkRows(link, []);'
+		. '_pages = [];'
+		. 'var gone = _sdPageLinkRows(link, []);'
+		. 'var warn = "This page is deleted or in the Recycle Bin";'
+		. 'var dup = "An earlier value already uses this name";'
+		. 'console.log(JSON.stringify({ saved: saved.indexOf(warn) !== -1, gone: gone.indexOf(warn) !== -1, dup: saved.indexOf(dup) !== -1 }));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_false($answer['saved'], 'a tab saved after the list was fetched is not called deleted');
+	pg_assert_true($answer['gone'], 'a page no list holds is');
+	pg_assert_false($answer['dup'], 'a row with no field yet does not make the next one a repeat');
 }
 
 // -- the pre-pass ---------------------------------------------------------------
@@ -454,7 +557,8 @@ function test_designer_page_link_editor_wiring()
 	pg_assert_contains('_swPageOptions(cur, _allPagesCache, { none: _sdT(\'— Choose a page —\') })', $rows);
 	pg_assert_contains('if (_swStandardYields(o[0], fields)) return;', $rows, 'a standard name the form overrides is not offered');
 	pg_assert_contains('_swPageLinkNameWarn(spec.params, i)', $rows);
-	pg_assert_contains("if (name !== '' && _swUrlParamName(name) === '') {", _page_link_js_slice($js, 'function _swPageLinkNameWarn(', 'function _swFormListFiltersHtml('), 'the warning uses the URL filter rule');
+	pg_assert_contains('var usable = _swUrlParamName(name);', _page_link_js_slice($js, 'function _swPageLinkNameWarn(', 'function _swFormListFiltersHtml('), 'the warning uses the URL filter rule');
+	pg_assert_contains('_swPageLinkPageGone(spec.page_id, (typeof _pages !== \'undefined\' && _pages) ? _pages : [], _allPagesCache)', $rows, 'the deleted-page warning asks the design\'s tabs first');
 
 	$resolve = _page_link_js_slice($js, 'function _swResolveTabRefs(map) {', '// A three-way question.');
 	pg_assert_contains('_swResolveTreeTabRefs(c.tree, map) && _sharedSnapshots[sid]', $resolve);

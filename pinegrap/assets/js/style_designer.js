@@ -36837,12 +36837,8 @@ const StyleDesigner = (function () {
                 '</select>';
             if (!spec.page_id) {
                 html += note(_sdT('Choose the page this link opens.'), false);
-            } else if (typeof spec.page_id === 'number' && _allPagesCache) {
-                var hit = null;
-                _allPagesCache.forEach(function (p) { if (parseInt(p.page_id, 10) === spec.page_id) hit = p; });
-                if (!hit || _swPageBinned(hit)) {
-                    html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
-                }
+            } else if (_swPageLinkPageGone(spec.page_id, (typeof _pages !== 'undefined' && _pages) ? _pages : [], _allPagesCache)) {
+                html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
             }
             var tokenOptions = function (curToken) {
                 var lc = String(curToken || '').toLowerCase(), known = (lc === '');
@@ -47952,18 +47948,36 @@ const StyleDesigner = (function () {
     }
     // The warning under value row `i` of a link: a name the software reads
     // itself, or one an earlier row already sends. '' when the name is fine
-    // or not typed yet.
+    // or not typed yet. An earlier row counts only when the server keeps it
+    // (pg_sw_page_link_spec() drops a row with no field or a refused name
+    // before it takes the name), so a row still being filled in never marks
+    // a later one as not sent.
     function _swPageLinkNameWarn(params, i) {
         var name = (params[i] && params[i].name) || '';
+        var usable = _swUrlParamName(name);
         var text = '';
-        if (name !== '' && _swUrlParamName(name) === '') {
+        if (name !== '' && usable === '') {
             text = _sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.');
         } else if (name !== '') {
             for (var j = 0; j < i; j++) {
-                if (params[j] && params[j].name === name) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
+                var p = params[j];
+                if (p && String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '') !== '' && _swUrlParamName(p.name) === usable) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
             }
         }
         return text ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(text) + '</div>' : '';
+    }
+    // Whether the page a link opens (a page id) is gone: not a tab of this
+    // design, and the site's page list (list_all_pages, `serverPages`, null
+    // until it arrives) lacks it or has it in the Recycle Bin. A tab is
+    // live even when the list, fetched once per session, predates it, as in
+    // _swMissingPageOption(). A 'tab:' key or 0 is never gone here.
+    function _swPageLinkPageGone(pageId, tabs, serverPages) {
+        if (typeof pageId !== 'number' || !(pageId > 0) || !Array.isArray(serverPages)) return false;
+        var isTab = (tabs || []).some(function (p) { return p && parseInt(p.page_id, 10) === pageId; });
+        if (isTab) return false;
+        var hit = null;
+        serverPages.forEach(function (p) { if (p && parseInt(p.page_id, 10) === pageId) hit = p; });
+        return !hit || _swPageBinned(hit);
     }
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl) {
         var formFields = _swFilterFormFields(fields);
