@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, not started, answers given): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
+description: Plan (2026-10-24, F1 in PR #1503, answers given): one Flows system: process templates, "when X do Y" rules, an n8n-like Workspace canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
