@@ -6266,7 +6266,7 @@ const StyleDesigner = (function () {
         // than its element, and Chromium then drops the margin the element
         // passes through the wrapper's bottom, so the items stood closer than
         // on the page and the card came out shorter. No minimum there; an
-        // empty element keeps it (_sdFxFits()).
+        // empty or thin element keeps it as its handle (_sdFxFits()).
         '.sd-wrap.sd-fx-fit { min-height:0; }',
         // A column's inner holder adds no box: the column's own layout reaches
         // its children and an h-100 card fills the stretched column. One that
@@ -9219,20 +9219,28 @@ const StyleDesigner = (function () {
         'div.sd-wrap[data-content-type="badge"], div.sd-wrap[data-content-type="span"], div.sd-wrap[data-content-type="text"], ' +
         'div.sd-wrap[data-component-type="btn"], div.sd-wrap[data-component-type="badge"]';
 
+    // Below this height (CSS px) an element is no handle of its own: its
+    // wrapper keeps the empty-wrapper minimum (a divider's 1px line).
+    var _SD_FX_FIT_MIN_GRAB = 12;
+
     // Whether a boxed wrapper should drop its empty-wrapper minimum height
     // (sd-fx-fit): its element is in the flow, has a bottom margin and is
-    // shown but shorter than that minimum. The wrapper has no bottom padding
-    // or border, so the margin passes through its bottom, and under a
-    // min-height Chromium drops it. `had`: the wrapper has the class (its
-    // minimum is then 0; the one it had is kept on the wrapper).
+    // shown but shorter than that minimum, yet tall enough to hover and
+    // click. The wrapper has no bottom padding or border, so the margin
+    // passes through its bottom, and under a min-height Chromium drops it.
+    // `had`: the wrapper has the class (its minimum is then 0; the one it
+    // had is kept on the wrapper). The minimum is in CSS pixels and the
+    // canvas zoom (CSS zoom on the canvas root) scales what
+    // getBoundingClientRect() reports, so the zoom is divided out.
     function _sdFxFits(w, el, cs, win, had) {
         if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed' || cs.cssFloat !== 'none') return false;
         if (!(parseFloat(cs.marginBottom) > 0)) return false;
         var wcs = win.getComputedStyle(w);
         if (wcs.display !== 'block' || parseFloat(wcs.paddingBottom) || parseFloat(wcs.borderBottomWidth)) return false;
         var min = had ? (w._sdFitMin || 0) : (parseFloat(wcs.minHeight) || 0);
-        var h = el.getBoundingClientRect().height;
-        if (min > 0 && h > 0 && h < min) { w._sdFitMin = min; return true; }
+        var z = w.currentCSSZoom;
+        var h = el.getBoundingClientRect().height / ((typeof z === 'number' && z > 0) ? z : 1);
+        if (min > 0 && h >= _SD_FX_FIT_MIN_GRAB && h < min) { w._sdFitMin = min; return true; }
         return false;
     }
 

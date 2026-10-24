@@ -16,7 +16,9 @@ description: Canvas vs published page of a Bootstrap design: width buttons give 
 - Inline wrappers (`sd-wrap-inline`, icon, link, badge) sit on the baseline without margin; btn/button ones stay middle-aligned, without margin; an inline `.w-100` gets a block wrapper (the sign-in button was as narrow as its label).
 
 ## What is sd-fx-fit?
-- Under the 28px empty-wrapper minimum Chromium drops the bottom margin a shorter element passes through its wrapper: `li.mb-2` lines of a price list stood 8px closer and pricing-tiers came out 56px shorter at 375px. `_sdCanvasFidelityPass()` measures it (`_sdFxFits()`: shown, in the flow, bottom margin, shorter than the minimum, wrapper without bottom padding or border) and sets `sd-fx-fit` (`min-height:0`). An empty element keeps the minimum: it is its only handle.
+- Under the 28px empty-wrapper minimum Chromium drops the bottom margin a shorter element passes through its wrapper: `li.mb-2` lines of a price list stood 8px closer and pricing-tiers came out 56px shorter at 375px. `_sdCanvasFidelityPass()` measures it (`_sdFxFits()`: shown, in the flow, bottom margin, from 12px (`_SD_FX_FIT_MIN_GRAB`) up to the minimum, wrapper without bottom padding or border) and sets `sd-fx-fit` (`min-height:0`).
+- An empty or thinner element keeps the minimum, its only handle: a divider (`hr`, 1px) shrank to its line and could not be hovered or clicked.
+- Heights are CSS px: the rect is divided by the wrapper's `currentCSSZoom` (the canvas zoom). Undivided, at 150% the items lost the class at the next render.
 
 ## What still differs on purpose?
 - The editor's spacing: container/area wrappers `padding:8px 4px; margin-bottom:6px`, block content/component wrappers `margin:3px 0`, the 28px (column 36px) minimum. A section is about 25-30px taller than on the page, more with many small lines.

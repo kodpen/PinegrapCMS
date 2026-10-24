@@ -382,8 +382,9 @@ function test_designer_canvas_accordion_item_borders()
 
 // _sdFxFits(): a boxed wrapper drops its empty-wrapper minimum when its
 // element is shown, in the flow, has a bottom margin and is shorter than the
-// minimum (Chromium drops that margin under a min-height); an empty element
-// keeps the minimum as its handle.
+// minimum (Chromium drops that margin under a min-height); an empty element,
+// or one too thin to pick (a divider's 1px line), keeps the minimum as its
+// handle. Heights are compared in CSS pixels, the canvas zoom divided out.
 function test_designer_canvas_fit_short_element_keeps_its_margin()
 {
 	$out = array();
@@ -393,13 +394,15 @@ function test_designer_canvas_fit_short_element_keeps_its_margin()
 		return;
 	}
 	$js = _test_canvas_bs_js();
-	$from = strpos($js, '    function _sdFxFits(');
-	pg_assert_true($from !== false, 'the designer has _sdFxFits()');
+	pg_assert_true(strpos($js, '    function _sdFxFits(') !== false, 'the designer has _sdFxFits()');
+	// The function with the grab height declared above it.
+	$from = strpos($js, '    var _SD_FX_FIT_MIN_GRAB = ');
+	pg_assert_true($from !== false && $from < strpos($js, '    function _sdFxFits('), 'the grab height is declared before it');
 	$to = strpos($js, "\n    }\n", $from);
 	$fn = substr($js, $from, $to - $from + 7);
 	$script = $fn . '
 		function run(c) {
-			var w = { _sdFitMin: c.kept || 0 };
+			var w = { _sdFitMin: c.kept || 0, currentCSSZoom: c.zoom };
 			var el = { getBoundingClientRect: function () { return { height: c.h }; } };
 			var cs = { display: c.display || "flex", position: c.position || "static", cssFloat: c.float || "none", marginBottom: c.mb };
 			var win = { getComputedStyle: function () { return { display: c.wdisplay || "block", paddingBottom: c.pb || "0px", borderBottomWidth: "0px", minHeight: c.had ? "0px" : (c.min || "28px") }; } };
@@ -418,7 +421,15 @@ function test_designer_canvas_fit_short_element_keeps_its_margin()
 			run({ h: 27, mb: "8px", min: "auto" }),
 			run({ h: 27, mb: "8px", had: true, kept: 28 }),
 			run({ h: 30, mb: "8px", had: true, kept: 28 }),
-			run({ h: 30, mb: "8px", min: "36px" })
+			run({ h: 30, mb: "8px", min: "36px" }),
+			run({ h: 1, mb: "16px" }),
+			run({ h: 11, mb: "8px" }),
+			run({ h: 12, mb: "8px" }),
+			run({ h: 40.5, mb: "8px", zoom: 1.5 }),
+			run({ h: 40.5, mb: "8px", zoom: 1.5, had: true, kept: 28 }),
+			run({ h: 1.5, mb: "16px", zoom: 1.5 }),
+			run({ h: 20, mb: "8px", zoom: 0.5 }),
+			run({ h: 9, mb: "8px", zoom: 0.5 })
 		]));';
 	$file = tempnam(sys_get_temp_dir(), 'pgfit');
 	file_put_contents($file, $script);
@@ -426,7 +437,15 @@ function test_designer_canvas_fit_short_element_keeps_its_margin()
 	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	unlink($file);
 	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 5)));
-	pg_assert_same(array('true:28', 'false', 'false', 'false', 'false', 'false', 'false', 'false', 'false', 'true:28', 'false', 'true:36'), json_decode(implode("\n", $out), true));
+	pg_assert_same(array(
+		'true:28', 'false', 'false', 'false', 'false', 'false', 'false', 'false', 'false', 'true:28', 'false', 'true:36',
+		// A divider, and an element just under and at the grab height.
+		'false', 'false', 'true:28',
+		// At 150%: a 27px item still fits, a divider still keeps its box.
+		'true:28', 'true:28', 'false',
+		// At 50%: a 40px item is no short element, an 18px one is.
+		'false', 'true:28'
+	), json_decode(implode("\n", $out), true));
 
 	$css = _test_canvas_bs_iframe_css();
 	if ($css !== null) {
