@@ -762,16 +762,43 @@
         }
     }
 
-    function select(startNode, startOffset, endNode, endOffset) {
+    // backward: the selection is put back the way it was made, its focus at
+    // the start, so that Shift+Arrow goes on moving the end it moved before.
+    function select(startNode, startOffset, endNode, endOffset, backward) {
         var range = document.createRange();
         var selection = window.getSelection();
 
         range.setStart(startNode, startOffset);
         range.setEnd(endNode, endOffset);
+
+        if (backward && selection.setBaseAndExtent) {
+            selection.setBaseAndExtent(endNode, endOffset, startNode, startOffset);
+            return range;
+        }
+
         selection.removeAllRanges();
         selection.addRange(range);
 
         return range;
+    }
+
+    // Whether the selection was made backwards: its focus (the end that
+    // Shift+Arrow moves) stands before its anchor. A Range has no direction,
+    // so a selection rebuilt from one would turn forwards.
+    function selectionBackward() {
+        var selection = window.getSelection();
+
+        if (!selection || !selection.rangeCount || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) {
+            return false;
+        }
+
+        var range = document.createRange();
+
+        range.setStart(selection.anchorNode, selection.anchorOffset);
+        // An end set before the start collapses the range onto it.
+        range.setEnd(selection.focusNode, selection.focusOffset);
+
+        return range.collapsed;
     }
 
     // A text node taken out of a mark around it: the mark is cut in two where
@@ -867,8 +894,9 @@
     //
     // A mark turned on or off with nothing selected changes nothing yet: it
     // waits for the next letters typed at that caret, which are put in it
-    // (or out of it). A caret moved elsewhere forgets it. One surface at a
-    // time holds a caret, so one surface at a time has marks waiting.
+    // (or out of it), or for the next word composed there. A caret moved
+    // elsewhere forgets it. One surface at a time holds a caret, so one
+    // surface at a time has marks waiting.
 
     var waitingIn = null;
 
@@ -884,7 +912,18 @@
     function waiting(surface, range) {
         var held = surface.wsMarks;
 
-        if (!held || !range || !range.collapsed || !surface.contains(range.startContainer) || (caretCount(surface, range) !== held.at)) {
+        if (!held || !range || !surface.contains(range.startContainer)) {
+            return null;
+        }
+
+        // A word being composed (an IME, the dead keys of a Mac, a phone's
+        // keyboard, which composes every word) moves the caret on with each
+        // letter: the marks wait for the whole word, until composedMarked().
+        if (surface.wsComposing) {
+            return held.marks;
+        }
+
+        if (!range.collapsed || (caretCount(surface, range) !== held.at)) {
             return null;
         }
 
@@ -998,6 +1037,116 @@
         return true;
     }
 
+    // The place just before the character that stands a count of characters
+    // from the start of a surface, counted as caretCount() counts them
+    // (plainOf(): chips, cards and line breaks one each, a line before a
+    // block, results beside a line none); null when none stands there.
+    function placeOf(surface, count) {
+        var seen = 0;
+        var spot = null;
+
+        function walk(parent) {
+            var level = { length: 0, last: '' };
+
+            for (var i = 0; (i < parent.childNodes.length) && !spot; i++) {
+                var child = parent.childNodes[i];
+
+                if (child.nodeType === 3) {
+                    var size = child.nodeValue.length;
+
+                    if (count < seen + size) {
+                        spot = [child, count - seen];
+                    } else if (size) {
+                        seen += size;
+                        level.length += size;
+                        level.last = child.nodeValue.charAt(size - 1);
+                    }
+
+                    continue;
+                }
+
+                if ((child.nodeType !== 1) || child.hasAttribute('data-ws-skip')) {
+                    continue;
+                }
+
+                var one = child.hasAttribute('data-token') || child.classList.contains('ws-rich-block') || (child.tagName === 'BR');
+                var line = !one && BLOCKS.test(child.tagName) && (level.length > 0) && (level.last !== '\n');
+
+                if ((one || line) && (count === seen)) {
+                    spot = [parent, i];
+                    continue;
+                }
+
+                if (one || line) {
+                    seen += 1;
+                    level.length += 1;
+                    level.last = (one && (child.tagName !== 'BR')) ? OBJECT : '\n';
+                }
+
+                if (!one) {
+                    var inner = walk(child);
+
+                    level.length += inner.length;
+                    level.last = inner.length ? inner.last : level.last;
+                }
+            }
+
+            return level;
+        }
+
+        walk(surface);
+
+        return spot;
+    }
+
+    // The word a composition has just left where marks waited for it: taken
+    // out and typed again by typeMarked(), so that it carries the marks as
+    // letters typed one by one would. It stays part of the typing around it
+    // in the undo history. true when it was typed again.
+    function composedMarked(surface) {
+        var held = surface.wsMarks;
+        var range = selectionRange();
+
+        if (!held) {
+            return false;
+        }
+
+        if (!range || !range.collapsed || !surface.contains(range.startContainer)) {
+            forgetWaiting();
+            return false;
+        }
+
+        var end = caretCount(surface, range);
+
+        // Nothing came of it (the composition was cancelled): the marks go on
+        // waiting at the caret.
+        if (end === held.at) {
+            return false;
+        }
+
+        var start = (end > held.at) ? placeOf(surface, held.at) : null;
+        var run = document.createRange();
+
+        if (start) {
+            run.setStart(start[0], start[1]);
+            run.setEnd(range.startContainer, range.startOffset);
+        }
+
+        // Only words: a composition makes no line break, chip or card, and
+        // a result drawn beside a line is no part of it.
+        var text = start ? run.toString() : '';
+
+        if ((text === '') || (text.length !== end - held.at) || (plainOf(run.cloneContents()) !== text.replace(/\u00a0/g, ' '))) {
+            forgetWaiting();
+            return false;
+        }
+
+        run.deleteContents();
+        select(run.startContainer, run.startOffset, run.startContainer, run.startOffset);
+
+        return typeMarked(surface, text);
+    }
+
     // ── Putting marks on and off ──
 
     // Which marks a caret or a selection has: a caret by the marks around it
@@ -1031,14 +1180,14 @@
 
     // Code holds its words as they are: the selection's text in one <code>,
     // or the code the selection is in back to plain text.
-    function toggleCode(surface, range) {
+    function toggleCode(surface, range, backward) {
         var code = insideCode(range);
 
         if (code && (code !== surface) && surface.contains(code)) {
             var plain = document.createTextNode(code.textContent);
 
             code.parentNode.replaceChild(plain, code);
-            select(plain, 0, plain, plain.nodeValue.length);
+            select(plain, 0, plain, plain.nodeValue.length, backward);
 
             return true;
         }
@@ -1075,7 +1224,7 @@
         working.insertNode(piece);
 
         // Still selected, so the bar can take it off again.
-        select(fresh.firstChild, 0, fresh.firstChild, fresh.firstChild.nodeValue.length);
+        select(fresh.firstChild, 0, fresh.firstChild, fresh.firstChild.nodeValue.length, backward);
 
         return true;
     }
@@ -1090,8 +1239,10 @@
             return false;
         }
 
+        var backward = selectionBackward();
+
         if (name === 'code') {
-            return toggleCode(surface, range);
+            return toggleCode(surface, range, backward);
         }
 
         if (range.collapsed) {
@@ -1141,14 +1292,14 @@
 
         var last = texts[texts.length - 1];
 
-        select(texts[0], 0, last, last.nodeValue.length);
+        select(texts[0], 0, last, last.nodeValue.length, backward);
 
         return true;
     }
 
     // A link over a selection: the links inside it are taken off first, then
     // each piece of its words is linked; chips and cards stay as they are.
-    function linkRange(surface, range, url) {
+    function linkRange(surface, range, url, backward) {
         var working = range.cloneRange();
 
         splitEdges(working);
@@ -1183,7 +1334,7 @@
 
         var last = texts[texts.length - 1];
 
-        select(texts[0], 0, last, last.nodeValue.length);
+        select(texts[0], 0, last, last.nodeValue.length, backward);
 
         return true;
     }
@@ -1361,6 +1512,7 @@
     function openLink(surface, anchor) {
         var range = selectionRange();
         var saved = range ? range.cloneRange() : null;
+        var backward = selectionBackward();
         var rect = anchor ? anchor.getBoundingClientRect() : (range ? range.getBoundingClientRect() : surface.getBoundingClientRect());
 
         hideBar();
@@ -1441,7 +1593,7 @@
                 selection.addRange(saved);
 
                 if (!saved.collapsed) {
-                    return linkRange(surface, saved, url);
+                    return linkRange(surface, saved, url, backward);
                 }
 
                 var link = el('a', '', url.replace(/^mailto:/, ''));
@@ -1493,6 +1645,7 @@
 
         if (box && box.wsEditor) {
             box.wsEditor.savedRange = range.cloneRange();
+            box.wsEditor.savedBackward = selectionBackward();
             notifySoon(box.wsEditor);
         }
     });
@@ -1629,6 +1782,26 @@
             }
         });
 
+        // A composed word comes as composition text, never as insertText, and
+        // the browser's own composition is left to run as it is (changing the
+        // nodes under it breaks the IME): marks waiting at its caret are held
+        // through it and put on the word once it is done.
+        surface.addEventListener('compositionstart', function () {
+            if (surface.wsMarks && !waiting(surface, selectionRange())) {
+                forgetWaiting();
+            }
+
+            surface.wsComposing = true;
+        });
+
+        surface.addEventListener('compositionend', function () {
+            surface.wsComposing = false;
+
+            if (surface.wsMarks && composedMarked(surface)) {
+                surface.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
         surface.addEventListener('paste', function (event) {
             pastePlain(event, singleLine);
         });
@@ -1675,6 +1848,7 @@
 
         self.options = options || {};
         self.savedRange = null;
+        self.savedBackward = false;
         self.history = { states: [], at: -1, timer: 0, pending: false, since: 0, quiet: false };
         self.watchers = [];
 
@@ -1778,6 +1952,7 @@
 
             if (range && node.contains(range.startContainer)) {
                 self.savedRange = range.cloneRange();
+                self.savedBackward = selectionBackward();
             }
         });
 
@@ -2247,14 +2422,17 @@
         // Puts the caret back where it was before a button took the focus.
         // A caret still in the box stays where it is: a button that does not
         // take the focus (a note's toolbar) leaves no blur to remember it by.
+        // The selection is put back by its anchor and its focus, not as a
+        // range, so that one made backwards stays backwards.
         restore: function () {
             var selection = window.getSelection();
             var range = selection.rangeCount ? selection.getRangeAt(0) : null;
 
             if (range && this.node.contains(range.startContainer)) {
+                var ends = [selection.anchorNode, selection.anchorOffset, selection.focusNode, selection.focusOffset];
+
                 this.node.focus();
-                selection.removeAllRanges();
-                selection.addRange(range);
+                selection.setBaseAndExtent(ends[0], ends[1], ends[2], ends[3]);
                 this.savedRange = range.cloneRange();
                 return;
             }
@@ -2262,8 +2440,9 @@
             this.node.focus();
 
             if (this.savedRange && this.node.contains(this.savedRange.startContainer)) {
-                selection.removeAllRanges();
-                selection.addRange(this.savedRange);
+                var saved = this.savedRange;
+
+                select(saved.startContainer, saved.startOffset, saved.endContainer, saved.endOffset, this.savedBackward);
             } else if (!selection.rangeCount || !this.node.contains(selection.getRangeAt(0).startContainer)) {
                 this.caretToEnd();
             }

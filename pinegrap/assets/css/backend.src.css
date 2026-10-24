@@ -12885,7 +12885,9 @@ a.ws-chip:hover {
 /* The composer's own marks and steps (PGWsEditor.toolbar()): two small
    groups after the inserts. Where the row is too narrow for them (a phone,
    the discussion panel, a narrow window) they are left out and the row
-   stays as it was; the bar over a selection still formats there. */
+   stays as it was; the bar over a selection still formats there. The widest
+   row (Turkish "Gönder" with the scheduled-send clock beside it) needs about
+   33rem with them; the cut-off leaves a margin for wider system fonts. */
 .ws-composer-tools {
   container-type: inline-size;
 }
@@ -12897,7 +12899,7 @@ a.ws-chip:hover {
   padding-left: .25rem;
   border-left: 1px solid var(--bs-border-color-translucent);
 }
-@container (max-width: 32rem) {
+@container (max-width: 34rem) {
   .ws-composer-format {
     display: none;
   }
