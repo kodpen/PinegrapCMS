@@ -620,6 +620,8 @@ function test_parasut_create_invoice_looks_before_it_writes_again()
 
 // The order screen draws the invoice's badges from that one helper and
 // offers Create Invoice again on the mark (the press looks for the record).
+// A record's id is told apart from the mark in what the button says; the
+// press on a record reads it first (parasut_stale_ids_test.php).
 function test_parasut_order_screen_reads_the_mark()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
@@ -627,7 +629,7 @@ function test_parasut_order_screen_reads_the_mark()
 	pg_assert_contains('$parasut_invoice_sent = ($parasut_invoice_id !== \'\') && !$parasut_invoice_unsure;', $source);
 	pg_assert_contains('$output_parasut_invoice_badge = parasut_order_invoice_status_badge($parasut_invoice_id, true);', $source);
 	pg_assert_contains('$invoice_row_badge  = parasut_order_invoice_status_badge($parasut_invoice_id);', $source);
-	pg_assert_contains('$output_parasut_invoice_action = $parasut_invoice_sent', $source, 'only a record disables the button');
+	pg_assert_true(strpos($source, 'title="\' . ($parasut_invoice_sent') !== false, 'only a record changes what the button says');
 }
 
 // The buyer card the order's invoice goes on keeps the identity number in

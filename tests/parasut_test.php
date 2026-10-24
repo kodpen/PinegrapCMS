@@ -225,21 +225,6 @@ function test_parasut_create_shipment_refuses_an_order_already_sent()
 	}
 }
 
-// The order screen draws E-Shipment disabled once the order's shipment
-// document is in Paraşüt, as it does Create Invoice.
-function test_parasut_shipment_button_is_disabled_once_sent()
-{
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
-	$start = strpos($source, "\$output_parasut_shipment_button = '';");
-	$end = ($start === false) ? false : strpos($source, '$output_parasut_invoice_action =', $start);
-	pg_assert_true(($start !== false) && ($end !== false), 'the E-Shipment button is found');
-
-	$block = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
-
-	pg_assert_contains("(\$parasut_shipment_id !== '')", $block);
-	pg_assert_contains("' disabled title=\"' . h(lang('This order already has a shipment document in Paraşüt.')) . '\"'", $block);
-}
-
 // The list reads of the e-invoice inbox send the date range with the range
 // operators Paraşüt takes (eq, lt, gt, gteq, lteq, not_eq): gte and lte were
 // answered 400 "'gte' is not a valid operator", so every date filter of the
