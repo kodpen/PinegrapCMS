@@ -43,10 +43,12 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
+- form-mail-link-variables.md: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form e-mails: who gets a link, where and in which order they are filled in, why they are not standard fields (PR #1385)
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - main-menu-icons.md: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a drawing is needed, the 24-unit grid, module colour and accent colour classes, hover motion, what stays a Bootstrap icon.
+- main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden chosen at its foot, the bar button that hides and restores it (the drawer on phones), cookies, server-drawn classes, Ctrl+D
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.

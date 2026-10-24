@@ -4,15 +4,15 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 ---
 
 ## What is recorded and why?
-- `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time the price a product sells at changes, its own or an offer's (offer rows: product-price-history-offers.md). The "price before the discount" (TR price label rule: lowest of the last 30 days, last 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
+- `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time the price a product sells at changes, its own or an offer's (offer rows: product-price-history-offers.md). The "price before the discount" (TR: lowest of 30 days, 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
 - `channel` is `web` for `products.price`, the shop's own price. `pos` / `marketplace:<code>` are reserved for prices kept per channel (a marketplace account selling at its own prices).
 - `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved). VARCHAR, not ENUM, so a later label never turns into `''`.
 - `products.compare_at_price` (INT NULL), same step: the merchant's "was" price, never in the history.
 
 ## How do writers record a change?
-- After the write, `pg_price_history_record($ids, $source)` (`includes/fn/price_history.php`): it reads the stored price, compares it with the product's newest row not of source `offer` (MAX(id)) and writes a row only when price or currency differs; comparing with an offer row would write a row on every save during an offer. The same price again writes nothing, so a screen that cannot tell whether the price changed calls it on every save.
+- After the write, `pg_price_history_record($ids, $source)` (`includes/fn/price_history.php`): it reads the stored price, compares it with the product's newest row not of source `offer` (MAX(id)) and writes a row only when price or currency differs; against an offer row every save during an offer would write one. The same price again writes nothing, so a screen that cannot tell whether the price changed calls it on every save.
 - Bulk writers call `pg_price_history_queue($id, $source)` after each write and `pg_price_history_flush()` after the loop. The queue writes every 500 products and from a shutdown function, so an import stopped by `output_error()` or the time limit keeps the rows of the prices it changed.
-- It never stops the request: `@mysqli_query`, failures go to the error log (`Price history: ... failed`); the next save of that product catches up.
+- It never stops the request: failures go to the error log (`Price history: ... failed`); the next save of that product catches up.
 - `pg_pb_delete_product()` calls `pg_price_history_forget()`: MySQL 5.7 may reuse a deleted product's id after a restart.
 
 ## Which code paths call it?
@@ -21,6 +21,7 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 
 ## How is it read back?
 - `GET /products/{id}/price-history`: product-price-history-api.md. No panel screen reads the rows yet.
+- Kept 13 months, trimmed daily: product-price-history-retention.md.
 
 ## What does the upgrade write?
 - One `initial` row per product at its current price, stamped with the upgrade time (PHP clock); a product with a `web` row is skipped, so a rerun adds nothing. A fresh install loads the starter data first, so its products get the row too.

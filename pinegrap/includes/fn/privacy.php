@@ -110,13 +110,46 @@ function pg_consent_log_purposes()
 }
 
 /**
- * The answers a row records. A withdrawal is a refused row after a granted one.
+ * Whether a purpose may be recorded on a channel: one of the channel's
+ * purposes, or on the e-mail channel one contact group, "group:<id>" (the
+ * group a double opt-in form adds to once the person confirms). The column is
+ * 32 characters; the longest group purpose is 16.
+ *
+ * @param string $channel
+ * @param mixed  $purpose
+ * @return bool
+ */
+function pg_consent_log_purpose_valid($channel, $purpose)
+{
+    $purposes = pg_consent_log_purposes();
+    $channel = (string) $channel;
+
+    if (!isset($purposes[$channel]) || !is_string($purpose)) {
+        return false;
+    }
+
+    if (in_array($purpose, $purposes[$channel], true)) {
+        return true;
+    }
+
+    if (($channel !== 'email') || (preg_match('/^group:([1-9][0-9]{0,9})$/', $purpose, $match) !== 1)) {
+        return false;
+    }
+
+    // INT UNSIGNED, the contact_groups.id column.
+    return (float) $match[1] <= 4294967295;
+}
+
+/**
+ * The answers a row records. A withdrawal is a refused row after a granted
+ * one; pending is a request sent and not answered yet (a double opt-in mail),
+ * never a consent.
  *
  * @return string[]
  */
 function pg_consent_log_statuses()
 {
-    return array('granted', 'refused');
+    return array('granted', 'refused', 'pending');
 }
 
 /**
@@ -136,6 +169,7 @@ function pg_consent_log_sources()
         'import',       // brought in with a contact list
         'api',          // an application through the external API
         'iys',          // pulled back from İYS
+        'form',         // a custom form that adds to a contact group (double opt-in)
     );
 }
 
@@ -165,7 +199,7 @@ function pg_consent_log_row(array $event, $now = null)
 
     $purpose = isset($event['purpose']) ? (string) $event['purpose'] : '';
 
-    if (!in_array($purpose, $purposes[$channel], true)) {
+    if (!pg_consent_log_purpose_valid($channel, $purpose)) {
         return 'purpose';
     }
 

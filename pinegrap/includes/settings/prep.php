@@ -217,6 +217,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $login_throttle_minutes   = isset($row['login_throttle_minutes']) ? (int)$row['login_throttle_minutes'] : 15;
     $login_throttle_lockout   = isset($row['login_throttle_lockout']) ? (int)$row['login_throttle_lockout'] : 60;
 
+    // Form submission limits and the StopForumSpam switch arrive together
+    // with 2026.11.0; one column stands for the set.
+    $form_limits_ready        = isset($row['form_limit_ip_hour']);
+    $form_limit_ip_hour       = isset($row['form_limit_ip_hour']) ? (int)$row['form_limit_ip_hour'] : 10;
+    $form_limit_recipient_day = isset($row['form_limit_recipient_day']) ? (int)$row['form_limit_recipient_day'] : 3;
+    $form_limit_domain_hour   = isset($row['form_limit_domain_hour']) ? (int)$row['form_limit_domain_hour'] : 0;
+    $form_spam_blacklist      = isset($row['form_spam_blacklist']) ? (int)$row['form_spam_blacklist'] : 0;
+
     // Security headers, the plain-text block log, the concurrency and ban
     // ceilings and the sign-in question arrive together in one upgrade step;
     // one column stands for the set, like waf_enabled above.

@@ -392,8 +392,19 @@ function duplicate_page($request) {
         }
         
         foreach ($form_fields as $form_field) {
+            // SELECT * returns translate_values only once the upgrade has added
+            // the column, so the copy keeps the field's translation switch then.
+            $translate_column = '';
+            $translate_value = '';
+
+            if (array_key_exists('translate_values', $form_field)) {
+                $translate_column = 'translate_values,';
+                $translate_value = "'" . ((int) $form_field['translate_values'] ? 1 : 0) . "',";
+            }
+
             // create form field
             $query = "INSERT INTO form_fields (
+                        " . $translate_column . "
                         form_type,
                         page_id,
                         name,
@@ -418,6 +429,7 @@ function duplicate_page($request) {
                         user,
                         timestamp)
                      VALUES (
+                        " . $translate_value . "
                         '" . e($form_field['form_type']) . "',
                         '" . e($new_page['id']) . "',
                         '" . escape($form_field['name']) . "',

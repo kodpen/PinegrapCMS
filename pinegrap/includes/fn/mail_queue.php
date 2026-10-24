@@ -548,14 +548,15 @@ function pg_mail_list_unsubscribe_headers($mailto, $url)
 
 // The headers for one recipient. The URL carries the same id and signature
 // as the preferences link in the footer, so a site without ENCRYPTION_KEY -
-// which cannot sign - sends no header rather than a link that cannot work.
+// which cannot sign - sends no header rather than a link that cannot work,
+// and neither does an empty address or one without "@".
 function pg_mail_list_unsubscribe_for($email_address, $mailto)
 {
-    if (pg_email_preferences_signature($email_address) === '') {
+    $url = pg_email_preferences_url($email_address);
+
+    if ($url === '') {
         return array();
     }
 
-    $url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/email_preferences.php?' . pg_email_preferences_query($email_address) . '&unsubscribe=1';
-
-    return pg_mail_list_unsubscribe_headers($mailto, $url);
+    return pg_mail_list_unsubscribe_headers($mailto, $url . '&unsubscribe=1');
 }

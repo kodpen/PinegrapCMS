@@ -278,6 +278,43 @@ function pg_email_preferences_placeholder_value($email_address)
     return urlencode(pg_email_preferences_id($email_address)) . '&amp;sig=' . pg_email_preferences_signature($email_address);
 }
 
+/**
+ * The whole address of the e-mail preferences screen for one address, from
+ * the site's base address ($base: scheme, host and software directory, no
+ * trailing slash) and the signature over that address. '' when the address
+ * is empty or has no "@", or there is no signature (a site without
+ * ENCRYPTION_KEY), so a mail merge field filled with it falls back to the
+ * other half of its [[...||...]] block instead of a link that cannot work.
+ * The address is not validated further: the List-Unsubscribe header of a
+ * campaign uses this too, and every address mail is sent to keeps it.
+ *
+ * @param string $base
+ * @param string $email_address
+ * @param string $signature pg_email_preferences_signature() of the address
+ * @return string
+ */
+function pg_email_preferences_url_build($base, $email_address, $signature)
+{
+    $email_address = (string) $email_address;
+    $signature = (string) $signature;
+
+    if (($signature === '') || (strpos(trim($email_address), '@') === false)) {
+        return '';
+    }
+
+    return (string) $base . '/email_preferences.php?id=' . urlencode(pg_email_preferences_id($email_address)) . '&sig=' . urlencode($signature);
+}
+
+// The preferences link for $email_address on this site, or '' (see
+// pg_email_preferences_url_build()).
+function pg_email_preferences_url($email_address)
+{
+    return pg_email_preferences_url_build(
+        URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY,
+        $email_address,
+        pg_email_preferences_signature($email_address));
+}
+
 function get_email_campaign_status_name($status)
 {
     switch ($status) {
@@ -747,13 +784,49 @@ function get_email_campaign_profile_options()
     }
     return $email_campaign_profile_options;
 }
+/**
+ * Takes the scheme off a link whose address is exactly a mail-merge field that
+ * holds a whole address (href="http://^^review_url^^" becomes
+ * href="^^review_url^^"). The editor's Link dialog puts its default protocol
+ * (http://) in front of whatever is typed into it, and the field brings its
+ * own, so the e-mail would link to "http://https://...". Any other address,
+ * one with a host or more text around the field included, is left as it is.
+ *
+ * @param string $body   the e-mail's HTML
+ * @param array  $fields names of the fields that hold a whole address
+ * @return string
+ */
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url'))
+{
+    $body = (string) $body;
+    $names = array();
+
+    foreach ((array) $fields as $field) {
+        if ((string) $field !== '') {
+            $names[] = preg_quote((string) $field, '/');
+        }
+    }
+
+    if (!$names || ($body === '')) {
+        return $body;
+    }
+
+    // The field must close the attribute with the quote that opened it.
+    $result = preg_replace(
+        '/(<\s*a\s(?:[^>]*?\s)?href\s*=\s*(["\']))\s*https?:\/\/(\^\^(?:' . implode('|', $names) . ')\^\^)(?=\2)/i',
+        '$1$3',
+        $body);
+
+    return ($result === null) ? $body : $result;
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_shipped", "order_delivered", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
-// order_id: Used by order_abandoned action.
+// order_id: Used by the order_abandoned and order_review_request actions.
 // contact_id: The ID of the contact that generated the action.
 // email_address: You can pass an email address for recipient, instead of the contact above.
 // If you pass both, then the contact email address will be used.
@@ -881,14 +954,18 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
+            // A link made with the editor's Link button to ^^review_url^^ was stored with http:// in front of it.
+            $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
             // If there is not a base tag in the HTML, add base tag and convert relative links to absolute links.
             if (!$base_in_html) {
                 $base = '<head>' . "\n" . '<base href="' . URL_SCHEME . HOSTNAME_SETTING . '/" />';
                 $body = preg_replace('/<head>/i', $base, $body);
-                // Change relative URLs to absolute URLs for links.
-                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+                // Change relative URLs to absolute URLs for links. A link whose address is a
+                // mail-merge field (href="^^review_url^^") is left as written: the field holds a
+                // whole address and is filled in below, after this pass.
+                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/|\^\^)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
                 // Change relative URLs to absolute URLs for images.
                 $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
                 // Change relative URLs to absolute URLs for CSS background images.
@@ -918,6 +995,12 @@ function create_auto_email_campaigns($properties)
                     // remove new lines from the link
                     $url = str_replace("\r\n", '', $url);
                     $url = str_replace("\n", '', $url);
+                    // A link whose address is a mail-merge field gets no tracking code: the
+                    // address is only known once the field is filled in, and a code added
+                    // here would land behind its #fragment.
+                    if (mb_substr($url, 0, 2) == '^^') {
+                        continue;
+                    }
                     $url_parts = @parse_url($url);
                     // if the URL is valid
                     // and if there is not a scheme or the scheme is http or https
@@ -1185,6 +1268,9 @@ function create_auto_email_campaigns($properties)
                 case 'order_completed':
                     $log_action = lang('order completed');
                     break;
+                case 'order_review_request':
+                    $log_action = lang('order review request');
+                    break;
                 case 'order_shipped':
                     $log_action = lang('order shipped');
                     break;
@@ -1231,7 +1317,8 @@ function replace_variables($properties)
         foreach ($conditionals as $conditional) {
             $whole_string = $conditional[0];
             $positive_string = $conditional[1];
-            $negative_string = $conditional[4];
+            // Optional capture group: absent when the conditional has no else part.
+            $negative_string = $conditional[4] ?? '';
             $field_name = $conditional[2];
             // Assume that the field name is not valid, until we find out otherwise.
             $field_name_valid = false;
@@ -1960,7 +2047,19 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             $from_email_address = EMAIL_ADDRESS;
         }
 
-        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['submitter_email_subject'], $prepare_for_html = false);
+        // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+        // are filled in for the address this copy goes to, and in no other e-mail.
+        pg_cf_mail_links_context(array(
+            'email_address' => $submitter_email_address,
+            'contact_id' => (int) $contact_id,
+            'custom_form_page_id' => (int) $custom_form['page_id'],
+            'form_id' => (int) $form_id));
+
+        $mail_link_values = pg_cf_mail_link_values();
+
+        // The link fields go into the template before the submitted values, so a
+        // value holding "[[" or "]]" cannot open or close a block around other text.
+        $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links($custom_form['submitter_email_subject'], $mail_link_values, 'plain_text'), $prepare_for_html = false);
 
         // If the format of the e-mail should be plain text,
         // then prepare that.
@@ -1969,7 +2068,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             // Check the body for variable data and replace
             // any variables with content from the submitted form;
             // an empty body becomes the list of the form's fields.
-            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body'], true), $prepare_for_html = false);
+            $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['submitter_email_body'], true), $mail_link_values, 'plain_text'), $prepare_for_html = false);
 
         // Otherwise the format of the e-mail should be HTML, so prepare that.
         } else {
@@ -1977,6 +2076,9 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
             $body = get_page_content($custom_form['submitter_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+
+            // Bare link fields only: the body already holds the submitted values.
+            $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
 
         }
 
@@ -1987,8 +2089,12 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             'subject' => $subject,
             'format' => $custom_form['submitter_email_format'],
             'body' => $body,
+            // A signed link stays out of the failure log and the delivery-failed notice.
+            'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
             'queue' => true
         ));
+
+        pg_cf_mail_links_context(false);
 
     }
 
@@ -2034,7 +2140,9 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
             or $custom_form['administrator_email_bcc_email_address']
         ) {
 
-            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, $custom_form['administrator_email_subject'], $prepare_for_html = false);
+            // The signed links belong to the sender alone: empty here, filled into
+            // the template before the submitted values go in.
+            $subject = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links($custom_form['administrator_email_subject'], array(), 'plain_text'), $prepare_for_html = false);
 
             // If the format of the e-mail should be plain text,
             // then prepare that.
@@ -2043,7 +2151,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
                 // Check the body for variable data and replace
                 // any variables with content from the submitted form;
                 // an empty body becomes the list of the form's fields.
-                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['administrator_email_body']), $prepare_for_html = false);
+                $body = get_variable_submitted_form_data_for_content($custom_form['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($custom_form['page_id'], $custom_form['administrator_email_body']), array(), 'plain_text'), $prepare_for_html = false);
 
             // Otherwise the format of the e-mail should be HTML, so prepare that.
             } else {
@@ -2051,6 +2159,7 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
                 require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
                 $body = get_page_content($custom_form['administrator_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $form_id));
+                $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
 
             }
 

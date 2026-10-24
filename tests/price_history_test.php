@@ -4,8 +4,9 @@
  *
  * Tests for the pure parts of includes/fn/price_history.php: which products
  * get a history row after a write, the product list a writer hands over, the
- * source label, the statements the recorder runs and the query that lists a
- * product's rows back.
+ * source label, the statements the recorder runs, the query that lists a
+ * product's rows back, the offer pass's timing and the retention trim's
+ * statements.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -287,4 +288,101 @@ function test_price_history_offer_pass_timing()
 	pg_assert_false(pg_price_history_offer_pass_idle($quiet, array(3 => 900.0)), 'an offer started');
 	pg_assert_false(pg_price_history_offer_pass_idle(array('offers' => true) + $quiet, array()), 'an offer ended since');
 	pg_assert_false(pg_price_history_offer_pass_idle(array('after_id' => 40) + $quiet, array()), 'a pass under way is finished');
+}
+
+// Rows are kept thirteen months by their age alone.
+function test_price_history_trim_before()
+{
+	pg_assert_same(396, PG_PRICE_HISTORY_KEEP_DAYS, 'thirteen months, rounded up to whole days');
+	pg_assert_same(1760000000 - (396 * 86400), pg_price_history_trim_before(1760000000));
+	pg_assert_same(1760000000 - (396 * 86400), pg_price_history_trim_before('1760000000'), 'a string from a file');
+}
+
+// The marker the trim keeps between ticks, read whatever is in the file.
+function test_price_history_trim_state()
+{
+	pg_assert_same(array('after_id' => 0, 'done_at' => 0), pg_price_history_trim_state(null), 'no file: a pass that never ran');
+	pg_assert_same(array('after_id' => 0, 'done_at' => 0), pg_price_history_trim_state('not json'));
+	pg_assert_same(
+		array('after_id' => 120, 'done_at' => 1760000000),
+		pg_price_history_trim_state(array('after_id' => '120', 'done_at' => '1760000000', 'other' => 1)));
+	pg_assert_same(0, pg_price_history_trim_state(array('after_id' => -5))['after_id'], 'no negative cursor');
+}
+
+// Daily, and every tick while a pass is under way.
+function test_price_history_trim_timing()
+{
+	$now = 1760086400;
+	$state = pg_price_history_trim_state(array('after_id' => 0, 'done_at' => $now - 3600));
+
+	pg_assert_false(pg_price_history_trim_due_at($state, $now), 'ran an hour ago');
+	pg_assert_true(pg_price_history_trim_due_at(array('done_at' => $now - PG_PRICE_HISTORY_TRIM_EVERY) + $state, $now), 'a day ago');
+	pg_assert_true(pg_price_history_trim_due_at(array('after_id' => 500) + $state, $now), 'under way');
+	pg_assert_true(pg_price_history_trim_due_at(pg_price_history_trim_state(null), $now), 'never ran');
+}
+
+// The pass walks the history's own product ids in order, a chunk at a time.
+function test_price_history_trim_walk_sql()
+{
+	$sql = pg_price_history_trim_walk_sql('120', 500);
+
+	pg_assert_contains('SELECT DISTINCT product_id', $sql);
+	pg_assert_contains('FROM product_price_history', $sql);
+	pg_assert_contains("WHERE product_id > '120'", $sql);
+	pg_assert_contains('ORDER BY product_id', $sql);
+	pg_assert_contains('LIMIT 500', $sql);
+
+	pg_assert_contains("product_id > '0'", pg_price_history_trim_walk_sql(-3, 500), 'no negative cursor');
+	pg_assert_contains('LIMIT 1', pg_price_history_trim_walk_sql(0, 0), 'at least one row');
+}
+
+// Only a channel with two old rows or more can lose one: a single old row is
+// the price at the cutoff and stays.
+function test_price_history_trim_candidates_sql()
+{
+	$sql = pg_price_history_trim_candidates_sql(array(3, '5', 3, 'x'), 1726000000);
+
+	pg_assert_contains('product_id IN (3,5)', $sql);
+	pg_assert_contains("changed_at < '1726000000'", $sql);
+	pg_assert_contains('GROUP BY product_id, channel', $sql);
+	pg_assert_contains('HAVING COUNT(*) > 1', $sql);
+
+	pg_assert_same('', pg_price_history_trim_candidates_sql(array(), 1726000000), 'no product');
+	pg_assert_same('', pg_price_history_trim_candidates_sql(array(0, 'x'), 1726000000), 'no product id');
+}
+
+// In each product and channel the newest old row stays, found in the order
+// the rows are read back, and so does the newest row a writer wrote, which
+// the recorder compares the stored price with.
+function test_price_history_trim_keep_sql()
+{
+	$sql = pg_price_history_trim_keep_sql(array(3, 5), 1726000000);
+
+	pg_assert_contains('SELECT product_id, channel, MAX(changed_at) AS changed_at', $sql, 'the newest moment before the cutoff');
+	pg_assert_contains("(product_id IN (3,5))\n                AND (changed_at < '1726000000')", $sql);
+	pg_assert_contains('(latest.changed_at = history.changed_at)', $sql);
+	pg_assert_contains('SELECT MAX(history.id) AS id', $sql, 'the last row written in that second');
+	pg_assert_contains('GROUP BY history.product_id, history.channel', $sql, 'per product and channel');
+	pg_assert_contains('UNION', $sql);
+	pg_assert_contains("(product_id IN (3,5))\n            AND (source <> 'offer')", $sql, 'the newest writer row, of any age');
+
+	pg_assert_same('', pg_price_history_trim_keep_sql(array(), 1726000000), 'no product');
+}
+
+// The delete stays inside the products, before the cutoff and away from the
+// kept rows, and is never written without rows to keep.
+function test_price_history_trim_delete_sql()
+{
+	$sql = pg_price_history_trim_delete_sql(array(3, '5'), 1726000000, array('41', 57, '41'), 5000);
+
+	pg_assert_contains('DELETE FROM product_price_history', $sql);
+	pg_assert_contains('(product_id IN (3,5))', $sql);
+	pg_assert_contains("(changed_at < '1726000000')", $sql);
+	pg_assert_contains('(id NOT IN (41,57))', $sql);
+	pg_assert_contains('LIMIT 5000', $sql);
+
+	pg_assert_same('', pg_price_history_trim_delete_sql(array(3), 1726000000, array(), 5000), 'nothing to keep: nothing removed');
+	pg_assert_same('', pg_price_history_trim_delete_sql(array(3), 1726000000, array('x', 0), 5000), 'no id to keep');
+	pg_assert_same('', pg_price_history_trim_delete_sql(array(), 1726000000, array(41), 5000), 'no product');
+	pg_assert_contains('LIMIT 1', pg_price_history_trim_delete_sql(array(3), 1726000000, array(41), 0), 'at least one row');
 }

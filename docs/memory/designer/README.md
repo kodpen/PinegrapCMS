@@ -39,6 +39,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - custom-form-rich-text.md: Rich-text text areas on designed forms: three-state _cf.wysiwyg, one editor per live page, aria-required, filtered prefill, rich seeding, open items.
 - custom-form-settings-shortcut.md: Designer custom_form: "Form settings" shortcut from any node inside the widget, new page form seeded with the site address, silent-form warning in the panel and after publish.
 - custom-form-sync.md: custom_form field derivation on the server, per-page ids map and its PHP round-trip trap, name/group rules (_cfEnsureNames), RSS roles per widget.
+- custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.

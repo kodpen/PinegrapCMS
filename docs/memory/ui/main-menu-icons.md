@@ -4,7 +4,7 @@ description: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a
 ---
 
 ## Which icons are not Bootstrap Icons?
-- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, $color_class)` (`includes/fn/output.php`). Everything else, the right-click menu of those same rows included, stays `bi`.
+- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, $color_class)` (`includes/fn/output.php`). Everything else, the entries in the panels those rows open included, stays `bi`.
 - A new main menu item gets its own drawing in `pg_menu_icon()`. Without one the row falls back to a `bi` icon (`'icon'`), then an svg, then a letter in a circle.
 
 ## How is a menu icon drawn?
