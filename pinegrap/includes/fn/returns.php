@@ -3143,6 +3143,20 @@ function pg_return_refund($return_id, $options, $user_id = 0)
                 NOW())");
     }
 
+    // The refund is kept on the return (11.0.34): what order.return.refunded
+    // carries, for the panel and GET /orders/{id}/returns. Written under the
+    // lock and only while the return is refunded; a refusal went back to
+    // received above with nothing kept. Before the step adds the columns the
+    // refund works as it did.
+    if (pg_schema_has('order_returns', 'refund_method')) {
+        db("UPDATE order_returns
+            SET refund_amount = '" . (int) $amount . "',
+                refund_method = '" . e($method) . "',
+                refund_reference = '" . e($reference) . "',
+                refund_unclear = '" . (($unclear !== null) ? 1 : 0) . "'
+            WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
+    }
+
     $release();
 
     $after = pg_return_audit_fields($moved['return']);
@@ -3268,6 +3282,73 @@ function pg_return_refund_refused_line($return_id, $order_number, $amount, $serv
     return lang(array(
         'string' => 'Return request {var:1} of order {var:2}: {var:4} refused the refund of {var:3} ({var:5}). The return is back to received.',
         'vars'   => array((int) $return_id, (string) $order_number, pg_return_money_text($amount), (string) $service, ((string) $message !== '') ? (string) $message : lang('no message'))));
+}
+
+/**
+ * The refund of a return refunded before order_returns kept it (step
+ * 11.0.34), worked out from what pg_return_refund() wrote at the time.
+ *
+ * The audit line is exact for the amount, the method and the reference; it
+ * holds only what changed, so a reference left empty is not in it. Whether
+ * the payment service gave a clear answer is only in the order_refunds note
+ * ("Return request #<id> (unconfirmed: ..."), written when money moved. With
+ * no audit line the order_refunds row gives the amount, the method (by its
+ * type) and the reference. A row belongs to the return only by its exact
+ * note: "Return request #1" must not take the refund of #12.
+ *
+ * @param array|null $audit_after the after-values of the return's refund
+ *                                audit line, decoded, or null
+ * @param array      $refund_rows order_refunds rows of the return's order
+ *                                (refund_type, amount_cents, transaction_id,
+ *                                notes)
+ * @param int        $return_id
+ * @return array|null amount, method (driver or manual), reference, unclear
+ *                    (0 or 1); null when neither source has it
+ */
+function pg_return_refund_backfill_values($audit_after, $refund_rows, $return_id)
+{
+    $note = 'Return request #' . (int) $return_id;
+    $row = null;
+    $unclear = 0;
+
+    foreach (is_array($refund_rows) ? $refund_rows : array() as $candidate) {
+        if (!is_array($candidate) || !isset($candidate['notes']) || !in_array((string) (isset($candidate['refund_type']) ? $candidate['refund_type'] : ''), array('return', 'return_manual'), true)) {
+            continue;
+        }
+
+        $notes = (string) $candidate['notes'];
+
+        if ($notes === $note) {
+            $row = $candidate;
+            break;
+        }
+
+        if (strpos($notes, $note . ' (unconfirmed') === 0) {
+            $row = $candidate;
+            $unclear = 1;
+            break;
+        }
+    }
+
+    if (is_array($audit_after) && isset($audit_after['refund_method']) && in_array((string) $audit_after['refund_method'], array('driver', 'manual'), true)) {
+        return array(
+            'amount'    => max(0, (int) (isset($audit_after['refund_amount']) ? $audit_after['refund_amount'] : 0)),
+            'method'    => (string) $audit_after['refund_method'],
+            'reference' => isset($audit_after['refund_reference']) && is_scalar($audit_after['refund_reference']) ? (string) $audit_after['refund_reference'] : '',
+            'unclear'   => $unclear,
+        );
+    }
+
+    if ($row === null) {
+        return null;
+    }
+
+    return array(
+        'amount'    => max(0, (int) $row['amount_cents']),
+        'method'    => ((string) $row['refund_type'] === 'return') ? 'driver' : 'manual',
+        'reference' => isset($row['transaction_id']) ? (string) $row['transaction_id'] : '',
+        'unclear'   => $unclear,
+    );
 }
 
 /**
