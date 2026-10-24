@@ -476,9 +476,10 @@ function erp_line_total($unit_price, $quantity)
  * the lines on the invoice.
  *
  * The parts always add up to the total. Each line gets its floor share, and the
- * kurus left over go to the lines with the largest remainders, biggest first;
- * rounding each line on its own would leave the document a kurus or two short
- * of itself.
+ * kurus left over go to the lines with the largest remainders, biggest first
+ * and equal ones in the lines' own order; rounding each line on its own would
+ * leave the document a kurus or two short of itself. The checkout splits an
+ * order's tax with the same rule (pg_tax_spread()).
  *
  * @param int   $total    Kurus to distribute
  * @param array $weights  key => weight (line totals, usually)
@@ -508,6 +509,7 @@ function erp_allocate($total, $weights)
     }
 
     $remainders = array();
+    $position = array();
     $allocated = 0;
 
     foreach ($weights as $key => $weight) {
@@ -515,6 +517,7 @@ function erp_allocate($total, $weights)
         $floor = (int) floor($exact);
         $shares[$key] = $floor;
         $remainders[$key] = $exact - $floor;
+        $position[$key] = count($position);
         $allocated += $floor;
     }
 
@@ -522,8 +525,17 @@ function erp_allocate($total, $weights)
 
     if ($left !== 0) {
         $step = ($left > 0) ? 1 : -1;
-        arsort($remainders);
+        // Equal remainders are ordered by position, not left to arsort():
+        // sorting is stable only from PHP 8.0, and before it the equal
+        // remainders of more than 16 lines came out in another order, so the
+        // kurus went to other lines on PHP 7 than on PHP 8.
         $order = array_keys($remainders);
+        usort($order, function ($a, $b) use ($remainders, $position) {
+            if ($remainders[$a] == $remainders[$b]) {
+                return $position[$a] - $position[$b];
+            }
+            return ($remainders[$a] < $remainders[$b]) ? 1 : -1;
+        });
         if ($left < 0) {
             $order = array_reverse($order);
         }

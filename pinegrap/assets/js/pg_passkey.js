@@ -11,13 +11,21 @@
  *   PgPasskey.supported()            whether this browser can use passkeys
  *   PgPasskey.signIn({url, token})   the second step of a sign-in: resolves
  *                                    with the credential JSON to post
- *   PgPasskey.register({url, token, name})
+ *   PgPasskey.register({url, token, name, currentPassword, code})
  *                                    adds a passkey to the signed-in account:
- *                                    resolves with the kept passkey
+ *                                    the current password (when the account
+ *                                    has one) and a code from the
+ *                                    authenticator app or a recovery code go
+ *                                    with the request for the options, which
+ *                                    the server answers only when both are
+ *                                    right; resolves with the kept passkey
  *
  * A refusal rejects with an Error whose code is the server's (or the
  * browser's name: NotAllowedError when the person cancelled or the time ran
  * out) and whose message is the sentence to show, when the server gave one.
+ * An answer that is not JSON with status 429 (the sign-in throttle's page
+ * for the attempt that locks the account out) rejects with the code
+ * attempts and no message.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -142,7 +150,7 @@
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(function (response) {
             return response.json().catch(function () {
-                return { ok: false, error: 'response', message: '' };
+                return { ok: false, error: (response.status === 429) ? 'attempts' : 'response', message: '' };
             });
         }).then(function (answer) {
             if (!answer || !answer.ok) {
@@ -181,7 +189,12 @@
     }
 
     function register(settings) {
-        return post(settings.url, { action: 'register_options', token: settings.token }).then(function (answer) {
+        return post(settings.url, {
+            action: 'register_options',
+            token: settings.token,
+            current_password: settings.currentPassword || '',
+            code: settings.code || ''
+        }).then(function (answer) {
             return window.navigator.credentials.create({ publicKey: creationOptions(answer.options) }).catch(browserFailure);
         }).then(function (credential) {
             if (!credential) {

@@ -442,6 +442,19 @@ function test_short_link_redirects_columns_wait_for_the_upgrade()
 	pg_assert_same(255, pg_short_link_url_max(), 'the address column before the upgrade');
 }
 
+function test_short_link_redirects_name_fault_codes()
+{
+	pg_assert_same('', pg_short_link_name_fault('blog/Ürün_Sayfası', 191), 'a name that can be used');
+	pg_assert_same('empty', pg_short_link_name_fault('', 191), 'empty');
+	pg_assert_same('length', pg_short_link_name_fault(str_repeat('ç', 101), 100), 'counted in letters');
+	pg_assert_same('', pg_short_link_name_fault(str_repeat('ç', 100), 100), 'as long as allowed');
+	pg_assert_same('characters', pg_short_link_name_fault('a?b', 191), 'a character outside the rule');
+	pg_assert_same('wildcards', pg_short_link_name_fault(str_repeat('a*', 10), 191), 'ten stars');
+	pg_assert_same('stars_only', pg_short_link_name_fault('*/*', 191), 'stars and slashes alone');
+	pg_assert_same('dot_part', pg_short_link_name_fault('a/../b', 191), 'a part a browser resolves');
+	pg_assert_same(pg_short_link_name_rule_text(), pg_short_link_name_problem('a?b'), 'the problem says the rule for a character');
+}
+
 function test_short_link_redirects_renamed_page_old_name()
 {
 	pg_assert_same('', pg_short_link_rename_problem('hakkimizda', 'kurumsal'), 'a new name');

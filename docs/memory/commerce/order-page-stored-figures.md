@@ -5,7 +5,7 @@ description: Order view (My Account) and receipt page/e-mail show a placed order
 
 ## Which pages does this cover?
 - `get_view_order_screen_content.php` (My Account's order view, both the system and the custom layout; also `order_history_view_order.php`), `get_order_receipt.php` (the receipt page, both layouts) and `get_order_receipt_in_plain_text.php` (the receipt e-mail).
-- The designer order view widget (`includes/fn/widgets.php`) and the panel's order screen already read the stored columns. The classic express order and order preview pages are not touched: their arithmetic is frozen (workflow/decisions-made-product.md).
+- The designer order view widget (`includes/fn/widgets.php`) and the panel's order screen already read the stored columns. The classic express order and order preview pages are not touched: they show the cart before it is placed, and their arithmetic changes only to follow the checkout's rules (workflow/decisions-made-product.md).
 
 ## Where do the discount, tax and total come from?
 - `pg_order_page_figures($order, $_SESSION['ecommerce'])` (includes/fn/ecommerce.php, pure, `tests/order_page_figures_test.php`). A placed order (any status but `incomplete`) gives `orders.discount`, `orders.tax` and `orders.total`, the figures `submit_order()` charged and wrote.

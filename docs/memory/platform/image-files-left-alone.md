@@ -1,12 +1,12 @@
 ---
 name: image-files-left-alone
-description: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), non-sRGB ICC profile under GD (PR #1267); how each is told from its bytes and what each path does
+description: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
 ---
 
 ## Which images does pg_process_image_file() leave alone?
 - Animated images, reason `animated` (`pg_image_is_animated()` in `includes/image_engine.php`). GD and Imagick read one frame and write a still back, so a derivative, an Optimize or a product upload would end the animation for good.
 - A JPEG with an Exif block whose orientation cannot be read, reason `orientation_unreadable`, GD half only (Imagick reads the tag itself). Which way up a browser shows it is not known, and the written copy has no tag.
-- A colour profile other than sRGB, reason `color_profile`, GD half only: docs/memory/platform/image-color-profile.md.
+- A colour profile GD cannot carry (unreadable, not RGB, or AVIF output), reason `color_profile`, GD half only; GD writes an RGB one back into JPEG, PNG and WebP: docs/memory/platform/image-color-profile.md.
 - Other refusals (too large, missing, no library) are in docs/memory/platform/image-processing-engine.md.
 
 ## How is an animated file told apart?
@@ -25,8 +25,9 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 - Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md). Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
 - Optimize, the file manager's buttons, `edit_file.php`: one sentence per reason ("is an animated image ... left alone" and the orientation one), file untouched.
 - Product and API uploads: the file is stored byte for byte.
+- Image editor Replace (`image_editor_save.php`): any animated file (`pg_image_is_animated()`) is refused with a JSON message; Save as new file still works. The footer hides Replace only for `.gif` names, so an APNG or animated WebP learns it on save.
 - Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
-- Not covered: the image editor's Replace still checks only GIFs (`image_editor_save.php`).
+- Until PR #1340 Replace checked only `.gif` names and wrote one frame over an APNG or animated WebP.

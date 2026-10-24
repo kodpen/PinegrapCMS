@@ -3212,7 +3212,9 @@ function get_express_order($properties) {
                         && ($nonrecurring_transaction)
                         && ($show_credit_debit_card_payment_method)
                     ) {
-                        $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $grand_total, 2);
+                        // Taken in minor units, as submit_order.php charges
+                        // it (pg_percent_of()), and shown in major units.
+                        $surcharge = pg_percent_of(round($grand_total * 100), ECOMMERCE_SURCHARGE_PERCENTAGE) / 100;
 
                         // Like the shipping, a minor unit lower where it
                         // would leave a rate's total no amount reaches.
@@ -5808,7 +5810,9 @@ function get_express_order($properties) {
 
                         $show_surcharge = true;
 
-                        $surcharge = round(ECOMMERCE_SURCHARGE_PERCENTAGE / 100 * $total, 2);
+                        // Taken in minor units, as submit_order.php charges
+                        // it (pg_percent_of()), and shown in major units.
+                        $surcharge = pg_percent_of(round($total * 100), ECOMMERCE_SURCHARGE_PERCENTAGE) / 100;
 
                         // Like the shipping, a minor unit lower where it
                         // would leave a rate's total no amount reaches.

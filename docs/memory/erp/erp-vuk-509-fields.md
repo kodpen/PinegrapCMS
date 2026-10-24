@@ -4,7 +4,7 @@ description: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge deriv
 ---
 
 ## Which fields does the bridge derive?
-Fields e-Arşiv treats as mandatory live on `erp_invoices`. `erp_order_sale_fields()` derives them from the order, for `erp_invoice_from_order()` and for the order screen's own Paraşüt button, which sends them with its e-document (#1278, erp-parasut-legacy-order-buttons.md). A return document COPIES all of them from the parent invoice (`returns.php`), it does not re-derive.
+Fields e-Arşiv treats as mandatory live on `erp_invoices`. `erp_order_sale_fields()` derives them from the order, for `erp_invoice_from_order()` and for the order screen's own Paraşüt button, which sends them with its e-document (#1278, erp-parasut-legacy-invoice.md). A return document COPIES all of them from the parent invoice (`returns.php`), it does not re-derive.
 
 | Field | Source |
 |---|---|

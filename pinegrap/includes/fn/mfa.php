@@ -824,18 +824,117 @@ function pg_mfa_attempt_clear($user_id)
 }
 
 /**
+ * Check the proofs a signed-in person gives before a change a stolen session
+ * must not make: the current password (unless the account is Google-only,
+ * algo 3, which has no password) and, while the account's second factor is
+ * on, a TOTP or recovery code. Used for turning the second factor off
+ * (pg_mfa_self_disable_check()) and for adding or removing a passkey
+ * (passkey.php, account_security.php). Never prints and never exits, except
+ * where pg_login_record_failure() does: the failure that opens a lockout is
+ * answered 429 with the error page there.
+ *
+ * Order and limits: the second-step attempt counter first (each call counts,
+ * so only when a code will be checked), then the password through the
+ * sign-in throttle like the sign-in forms (a locked name or address is
+ * refused before the password is compared), then the code. The attempt
+ * counters are cleared when the code is accepted.
+ *
+ * An account with neither proof (Google-only, second factor off) has nothing
+ * to prove and gets ''; the caller decides whether its session alone is
+ * enough (pg_passkey_reauth_fields()).
+ *
+ * @param int    $user_id
+ * @param string $username
+ * @param string $current_password
+ * @param string $code
+ * @return string '' when every proof was accepted, otherwise the refusal:
+ *                'attempts', 'locked', 'password' or 'code'
+ *                (pg_mfa_reauth_message() words it).
+ */
+function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
+{
+    $user_id = (int) $user_id;
+    $username = (string) $username;
+    $mfa = pg_mfa_enabled($user_id);
+
+    if ($mfa && pg_mfa_attempt_blocked($user_id)) {
+        log_activity(lang('access denied (too many two-step verification attempts)'), $username);
+
+        return 'attempts';
+    }
+
+    $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
+
+    if ($algo !== 3) {
+        if (pg_login_throttle_locked($username)) {
+            return 'locked';
+        }
+
+        $current_password = (string) $current_password;
+
+        if (($current_password === '') || ((int) validate_login($username, $current_password) !== $user_id)) {
+            pg_login_record_failure($username);
+
+            return 'password';
+        }
+    }
+
+    if ($mfa) {
+        if (pg_mfa_verify_code($user_id, (string) $code) === false) {
+            return 'code';
+        }
+
+        pg_mfa_attempt_clear($user_id);
+    }
+
+    return '';
+}
+
+/**
+ * The sentence a refusal of pg_mfa_reauth_refusal() is shown as.
+ *
+ * @param string $refusal 'attempts', 'locked', 'password', 'code' or ''
+ * @param int    $minutes how long a sign-in lockout lasts; 0 reads it from
+ *                        the throttle settings (60 where they cannot be read)
+ * @return string '' for ''
+ */
+function pg_mfa_reauth_message($refusal, $minutes = 0)
+{
+    switch ((string) $refusal) {
+        case '':
+            return '';
+
+        case 'attempts':
+            return lang('Too many attempts. Please wait a few minutes and try again.');
+
+        case 'locked':
+            if ((int) $minutes <= 0) {
+                $minutes = function_exists('waf_setting') ? (int) (pg_login_throttle_limits()['lockout'] / 60) : 60;
+            }
+
+            return lang(array(
+                'string' => 'Too many failed sign-in attempts. Please wait {var:1} minutes and try again.',
+                'vars'   => (int) $minutes));
+
+        case 'password':
+            return lang('The password you entered is incorrect. Please remember that passwords are case sensitive.');
+    }
+
+    return lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
+}
+
+/**
  * Check what a person must prove to turn off their own second factor: the
- * current password (unless the account is Google-only, algo 3, which has no
- * password) and a TOTP or recovery code. Counts the attempt and clears the
- * counters on success; does not disable anything. Used by the account
- * page (account_security.php), which every member reaches with a session
- * alone, so a stolen session cannot remove the second step there. The
- * panel's user screen turns it off without these proofs; that screen is
+ * current password (none for a Google-only account) and a TOTP or recovery
+ * code, through pg_mfa_reauth_refusal(). Does not disable anything. Used by
+ * the account page (account_security.php), which every member reaches with
+ * a session alone, so a stolen session cannot remove the second step there.
+ * The panel's user screen turns it off without these proofs; that screen is
  * behind the panel's own role gate.
  *
- * The password check goes through the sign-in throttle like the sign-in
- * forms. pg_login_throttle_guard() does not return while the name or the
- * address is locked out: it answers 429 with the error page and exits.
+ * pg_login_throttle_guard() is called for a locked name or address, so this
+ * does not return then: it answers 429 with the error page and exits, as the
+ * sign-in forms do.
  *
  * @param int    $user_id
  * @param string $username
@@ -846,36 +945,19 @@ function pg_mfa_attempt_clear($user_id)
  */
 function pg_mfa_self_disable_check($user_id, $username, $current_password, $code)
 {
-    $user_id = (int) $user_id;
-    $username = (string) $username;
+    $refusal = pg_mfa_reauth_refusal($user_id, $username, $current_password, $code);
 
-    if (pg_mfa_attempt_blocked($user_id)) {
-        log_activity(lang('access denied (too many two-step verification attempts)'), $username);
-
-        return lang('Too many attempts. Please wait a few minutes and try again.');
+    if ($refusal === 'locked') {
+        pg_login_throttle_guard((string) $username);
     }
 
-    $algo = (int) db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'");
-
-    if ($algo !== 3) {
-        pg_login_throttle_guard($username);
-
-        $current_password = (string) $current_password;
-
-        if (($current_password === '') || ((int) validate_login($username, $current_password) !== $user_id)) {
-            pg_login_record_failure($username);
-
-            return lang('The password you entered is incorrect. Please remember that passwords are case sensitive.');
-        }
+    // With no second factor on there is no code to accept, and nothing to
+    // turn off.
+    if (($refusal === '') && !pg_mfa_enabled((int) $user_id)) {
+        $refusal = 'code';
     }
 
-    if (pg_mfa_verify_code($user_id, (string) $code) === false) {
-        return lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
-    }
-
-    pg_mfa_attempt_clear($user_id);
-
-    return '';
+    return pg_mfa_reauth_message($refusal);
 }
 
 /**

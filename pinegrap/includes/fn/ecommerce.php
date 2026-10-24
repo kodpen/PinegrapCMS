@@ -1158,14 +1158,22 @@ function pg_order_list_status_html($order, $paid_known)
     // parasut_exported is set by two different things: the spreadsheet export
     // and an invoice raised through the API. Only parasut_invoice_id tells
     // them apart, so the tooltip is chosen from that rather than claiming an
-    // invoice exists for an order that was only exported to a file.
+    // invoice exists for an order that was only exported to a file. The
+    // unsure mark a create with no answer leaves there is no invoice: the
+    // order is marked to be checked at Paraşüt instead.
     $parasut_invoice_id = trim((string) ($order['parasut_invoice_id'] ?? ''));
+    $parasut_unsure = parasut_order_invoice_unsure($parasut_invoice_id);
+    $parasut_invoiced = ($parasut_invoice_id !== '') && !$parasut_unsure;
 
-    if (((int) ($order['parasut_exported'] ?? 0) != 0) || ($parasut_invoice_id !== '')) {
-        $title = ($parasut_invoice_id !== '')
+    if (((int) ($order['parasut_exported'] ?? 0) != 0) || $parasut_invoiced) {
+        $title = $parasut_invoiced
             ? lang('An invoice was created for this order in Parasut')
             : lang('This order has been exported for upload to parasut.com');
         $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+    }
+
+    if ($parasut_unsure) {
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;
@@ -6792,13 +6800,15 @@ function pg_format_number($amount, $decimals = 2)
  * it back either way.
  *
  * @param float|int|string $amount
+ * @param int              $decimals 2 for money; 5 for an exchange rate
+ *                                   (currencies.exchange_rate is decimal(10,5))
  * @return string
  */
-function pg_format_input_amount($amount)
+function pg_format_input_amount($amount, $decimals = 2)
 {
     $s = pg_number_separators();
     $amount = is_numeric($amount) ? (float) $amount : 0.0;
-    return number_format($amount, 2, $s['decimal'], '');
+    return number_format($amount, max(0, (int) $decimals), $s['decimal'], '');
 }
 
 /**
@@ -6815,10 +6825,15 @@ function pg_format_input_amount($amount)
  * be 123456,00) and read back with pg_normalize_amount() or
  * pg_pb_price_to_cents(), which take either way of writing.
  *
+ * The exchange rate box passes 5 decimals, the scale of
+ * currencies.exchange_rate (decimal(10,5)) and of what the rate updater
+ * writes; with two, a rate of 0.02853 was saved as 0.03.
+ *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return array attribute => value, as $liveform->output_field() takes them
  */
-function pg_money_mask_attributes($separators = null)
+function pg_money_mask_attributes($separators = null, $decimals = 2)
 {
     $s = is_array($separators) ? $separators : pg_number_separators();
 
@@ -6826,7 +6841,7 @@ function pg_money_mask_attributes($separators = null)
         'data-inputmask-alias'          => 'currency',
         'data-inputmask-radixPoint'     => (string) $s['decimal'],
         'data-inputmask-groupSeparator' => (string) $s['thousands'],
-        'data-inputmask-digits'         => '2',
+        'data-inputmask-digits'         => (string) max(0, (int) $decimals),
         'data-inputmask-digitsOptional' => 'false',
         'data-inputmask-placeholder'    => '0',
     );
@@ -6837,13 +6852,14 @@ function pg_money_mask_attributes($separators = null)
  * space in front of each attribute.
  *
  * @param array|null $separators pg_number_separators(); null for the panel's
+ * @param int        $decimals   decimals the box always shows (2 for money)
  * @return string HTML
  */
-function pg_money_mask_html($separators = null)
+function pg_money_mask_html($separators = null, $decimals = 2)
 {
     $html = '';
 
-    foreach (pg_money_mask_attributes($separators) as $name => $value) {
+    foreach (pg_money_mask_attributes($separators, $decimals) as $name => $value) {
         $html .= ' ' . $name . '="' . h($value) . '"';
     }
 
@@ -11351,4 +11367,109 @@ function pg_product_more_images($product_ids)
     }
 
     return $images;
+}
+
+// Product import (import_products.php): the price cells and the row cells of
+// an import file.
+
+// A price cell of an import file (price, extra_shipping_cost,
+// compare_at_price) in minor units, or null when it is not an amount.
+//
+// Two kinds of text reach the importer. A spreadsheet stores a number with a
+// dot and as many decimals as it has (1499.99, 1799.988 for a formula's
+// =B2*1,2, 1799.9879999999998 when Excel writes all seventeen digits, 1E+3),
+// and a .xlsx or .ods cell comes through as exactly that: it is read as the
+// number it is and rounded to the minor unit. Anything else was typed: a
+// currency symbol or code, a decimal comma, grouping (₺15,00, 12,50,
+// 1.234,56, 1 234,56, 1.234 TL), read by the product screen's own rule,
+// pg_pb_price_figure() (the figure behind pg_pb_price_to_cents()), so a
+// figure means the same in a file as in the box.
+//
+// Words, other characters, a minus sign, more than fifteen digits (beyond
+// that a float is no longer exact) or more than the price column holds give
+// null: the caller reports the row rather than storing a figure nobody wrote.
+// Needs product_builder.php for the typed reader.
+function pg_products_import_price_cents($value)
+{
+    $value = trim((string) $value);
+
+    if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
+
+        $amount = round(((float) $value) * 100);
+
+        if (!is_finite($amount) || ($amount > 2147483647)) {
+            return null;
+        }
+
+        return (int) $amount;
+    }
+
+    // A symbol or a code before or after the figure, and spaces or
+    // apostrophes that group its digits, are left out; whatever else is
+    // there makes it not an amount.
+    if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
+        return null;
+    }
+
+    $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
+    $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
+
+    if (($digits === 0) || ($digits > 15)) {
+        return null;
+    }
+
+    // Bounded as a float, before the int cast: on a 32-bit build the cast
+    // would wrap an amount above the top into a wrong or negative price.
+    $amount = round(((float) pg_pb_price_figure($figure)) * 100);
+
+    if (!is_finite($amount) || ($amount > 2147483647)) {
+        return null;
+    }
+
+    return (int) $amount;
+}
+
+// The money cells of one import row, read before the database is touched.
+// $money_positions maps each money column the header has (price,
+// extra_shipping_cost, compare_at_price) to its position. Returns
+// array('prices' => array(column => minor units), 'refused' => bool): an
+// empty cell (or spaces alone) is left out, as is a compare_at_price that
+// starts with a minus sign, which leaves the stored one alone; a cell that is
+// not an amount refuses the whole row.
+//
+// A function of its own because the importer keeps each header column's
+// position in a script variable named <column>_key: a loop there with a
+// variable such as $price_key overwrote the price column's position.
+function pg_products_import_row_prices($row, $money_positions)
+{
+    $prices = array();
+
+    foreach ($money_positions as $money_column => $money_position) {
+        $cell = trim(pg_products_import_row_value($row, $money_position));
+
+        if (($cell === '') || (($money_column == 'compare_at_price') && (strpos($cell, '-') === 0))) {
+            continue;
+        }
+
+        $cents = pg_products_import_price_cents($cell);
+
+        if ($cents === null) {
+            return array('prices' => array(), 'refused' => true);
+        }
+
+        $prices[$money_column] = $cents;
+    }
+
+    return array('prices' => $prices, 'refused' => false);
+}
+
+// The text of one column of a CSV row: '' when the file has no such column
+// (null, or false from array_search()) or the row ends before it.
+function pg_products_import_row_value($row, $key)
+{
+    if (($key === null) || ($key === false) || !isset($row[$key])) {
+        return '';
+    }
+
+    return (string) $row[$key];
 }

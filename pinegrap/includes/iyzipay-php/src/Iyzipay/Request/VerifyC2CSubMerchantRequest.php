@@ -7,8 +7,8 @@ use Iyzipay\Request;
 use Iyzipay\RequestStringBuilder;
 
 class VerifyC2CSubMerchantRequest extends Request {
-    private string $txId;
-    private string $smsVerificationCode;
+    private $txId;
+    private $smsVerificationCode;
 
     public function getTxId(): string {
         return $this->txId;

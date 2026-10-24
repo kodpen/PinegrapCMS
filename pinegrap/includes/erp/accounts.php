@@ -578,7 +578,7 @@ function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
         return $existing;
     }
 
-    $data = erp_account_data_from_contact($contact_id);
+    $data = erp_account_data_for_contact($contact_id, $order);
 
     if ($data === null) {
         return 0;
@@ -588,8 +588,6 @@ function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
     $typed_title = '';
 
     if (is_array($order)) {
-        $data = erp_account_data_with_order($data, $order, $contact_id);
-
         // An account opened for an order is about to be billed: a company is
         // given the name GİB registers its VKN under before the account (and
         // its creation event) is written.
@@ -622,6 +620,29 @@ function erp_account_for_contact($contact_id, $created_by = 0, $order = null)
     }
 
     return (int) $result['id'];
+}
+
+/**
+ * The fields erp_account_for_contact() opens a contact's account with: the
+ * contact card, and for an account opened for an order, the gaps the card
+ * leaves filled from the order's billing block. Nothing is written and GİB
+ * is not asked for the registered name, so the order screen can hold an
+ * account that does not exist yet to what the e-document provider would
+ * refuse.
+ *
+ * @param int        $contact_id
+ * @param array|null $order  The order being billed, with its billing_* columns
+ * @return array|null  Fields for erp_account_save(), or null when the contact does not exist
+ */
+function erp_account_data_for_contact($contact_id, $order = null)
+{
+    $data = erp_account_data_from_contact($contact_id);
+
+    if (($data !== null) && is_array($order)) {
+        $data = erp_account_data_with_order($data, $order, (int) $contact_id);
+    }
+
+    return $data;
 }
 
 /**
