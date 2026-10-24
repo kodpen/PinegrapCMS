@@ -1331,6 +1331,14 @@ function ws_change_check($viewer, $type, $action, $record, $values)
             return '';
 
         case 'order':
+            // A status moves the way the external API moves it
+            // (pg_order_status_move()): never to or from a basket, and out of
+            // cancelled only to complete or exported, through the restore.
+            if (array_key_exists('status', $values) && is_array($record)
+                && (pg_order_status_move((string) ($record['status'] ?? ''), (string) $values['status']) === 'refuse')) {
+                return pg_order_status_move_refusal((string) ($record['status'] ?? ''), (string) $values['status']);
+            }
+
             if (array_key_exists('tracking_numbers', $values)) {
                 if ((string) $record['status'] === 'cancelled') {
                     return lang('A cancelled order does not ship.');
@@ -2756,12 +2764,12 @@ function ws_change_apply($viewer, $change_id)
  * good is not recorded here: pg_pb_delete_product() and _pg_offer_delete()
  * write their own line.
  *
- * An order is recorded as the order screen and the external API record it:
- * a "cancel" when it goes to cancelled from another status (the condition on
- * which ws_change_write_order() runs process_order_cancellation()), a
- * "restore" when it leaves cancelled for another status but incomplete
- * (api_orders_status_move(): an order never goes to or from a basket there).
- * Any other action is an "update".
+ * An order is recorded as the order screen and the external API record it,
+ * by the move pg_order_status_move() names, which is also what
+ * ws_change_write_order() carries out: a "cancel" when it goes through
+ * process_order_cancellation(), a "restore" when it goes through
+ * pg_order_restore_cancelled(). Any other action is an "update" (a refused
+ * move is never written, so it leaves no line).
  *
  * @param string     $type   a kind of ws_change_types()
  * @param string     $action create, update, delete, add, remove
@@ -2806,15 +2814,10 @@ function ws_change_audit_target($type, $action, array $done, array $values = arr
     }
 
     if (($type === 'order') && ($action === 'update') && is_array($record) && isset($values['status'])) {
-        $from = (string) ($record['status'] ?? '');
-        $to = (string) $values['status'];
+        $move = pg_order_status_move((string) ($record['status'] ?? ''), (string) $values['status']);
 
-        if (($to === 'cancelled') && ($from !== 'cancelled')) {
-            return array('table' => $tables[$type], 'action' => 'cancel');
-        }
-
-        if (($from === 'cancelled') && ($to !== 'cancelled') && ($to !== 'incomplete')) {
-            return array('table' => $tables[$type], 'action' => 'restore');
+        if (($move === 'cancel') || ($move === 'restore')) {
+            return array('table' => $tables[$type], 'action' => $move);
         }
     }
 
@@ -3387,8 +3390,13 @@ function ws_change_write_stock($viewer, $action, $record, $values)
 }
 
 /**
- * The status and the notes. Cancelling goes through the store's own
- * cancellation, which refunds, records who and why, and mails the customer.
+ * The status and the notes. The status moves by the store's rule
+ * (pg_order_status_move()), as the external API moves it: cancelling goes
+ * through the store's own cancellation, which refunds, records who and why,
+ * and mails the customer; leaving cancelled goes through the order screen's
+ * Restore, which clears the cancellation and gives the gift cards it expired
+ * their date back. A move the rule refuses (to or from a basket) is not
+ * written; ws_change_check() refuses it first.
  *
  * @param array      $viewer
  * @param string     $action
@@ -3399,8 +3407,13 @@ function ws_change_write_stock($viewer, $action, $record, $values)
 function ws_change_write_order($viewer, $action, $record, $values)
 {
     $status = $values['status'] ?? null;
+    $move = ($status === null) ? 'none' : pg_order_status_move((string) $record['status'], (string) $status);
 
-    if (($status === 'cancelled') && ($record['status'] !== 'cancelled')) {
+    if ($move === 'refuse') {
+        return array('ok' => false, 'error' => pg_order_status_move_refusal((string) $record['status'], (string) $status), 'id' => 0);
+    }
+
+    if ($move === 'cancel') {
         if (!function_exists('process_order_cancellation')) {
             return array('ok' => false, 'error' => lang('Orders cannot be cancelled on this site.'), 'id' => 0);
         }
@@ -3419,8 +3432,22 @@ function ws_change_write_order($viewer, $action, $record, $values)
         if (!in_array($outcome['status'], array('ok', 'success', 'cancelled', 'already'), true)) {
             return array('ok' => false, 'error' => (string) ($outcome['message'] ?? lang('The order could not be cancelled.')), 'id' => 0);
         }
-    } elseif (($status !== null) && ($status !== $record['status'])) {
-        db("UPDATE orders SET status = '" . e($status) . "' WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
+    } elseif (($move === 'restore') || ($move === 'set')) {
+        if ($move === 'restore') {
+            // False when another request took the order out of cancelled
+            // meanwhile; nothing was written then.
+            if (!pg_order_restore_cancelled((int) $record['id'], $status)) {
+                return array('ok' => false, 'error' => lang('Only cancelled orders can be restored.'), 'id' => 0);
+            }
+        } else {
+            // Only while the order still has the status it was read with: a
+            // cancellation that came in between is not written over by hand.
+            db("UPDATE orders SET status = '" . e($status) . "' WHERE id = '" . (int) $record['id'] . "' AND status = '" . e($record['status']) . "' LIMIT 1");
+
+            if (mysqli_affected_rows(db::$con) < 1) {
+                return array('ok' => false, 'error' => lang('The record changed meanwhile, so nothing was written.'), 'id' => 0);
+            }
+        }
 
         pg_announce('order.status_changed', array(
             'id'           => (int) $record['id'],

@@ -55,6 +55,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_protection();        // 11.0.28
 	upgrade_2026_11_0_form_double_opt_in();     // 11.0.27
 	upgrade_2026_11_0_page_cache_generation();  // 11.0.29
+	upgrade_2026_11_0_theme_light_selector();   // 11.0.32
+	upgrade_2026_11_0_comment_replies();        // 11.0.31
 
 }
 
@@ -1248,5 +1250,317 @@ function upgrade_2026_11_0_page_cache_generation() {
 	install_add_column('config', 'page_cache_generation', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Page cache: the number that tells which pages kept on disk are current is added. Nothing changes on the site with this update.');
+
+}
+
+// The Themes panel's old combined light block in stored designs (2026.11.0,
+// 11.0.32; no table changes; includes/fn/designer_theme_vars.php).
+//
+// Until the panel kept its light and shared blocks apart it wrote every
+// light value under `:root, [data-bs-theme="light"]`. That `:root` also
+// matches an <html> a theme switcher set to dark, and the design's User
+// Styles load after bootstrap.css, so a light Background (#fdf6e3) kept a
+// "Dark" page light with light grey text. The editor splits the block when a
+// design is opened and before every panel write; a design nobody opens kept
+// it. This step makes the same split, byte for byte, wherever the old block
+// is stored and served without the editor:
+//   - the design's asset list, style.style_custom_css (its User Styles entry,
+//     meta 'user-styles');
+//   - the per-page copy designs saved before 2026.4.4 still render from
+//     while the design's own list is empty, page.page_custom_css;
+//   - the asset list inside a design template made from a design,
+//     design_template.template_json (assets.css), which a new design is
+//     installed from;
+//   - a theme file the old "Save these colours as a theme" wrote: a design
+//     CSS file in exactly that shape, loaded after the User Styles. It is
+//     written again as the button writes it now. A stylesheet written or
+//     changed by hand is not in that shape and is left alone, and so are
+//     the palette files (their unquoted `[data-bs-theme=light]` is not the
+//     panel's block, and they set every colour again in their dark block).
+// A row that is not a JSON list, has no User Styles entry or holds no old
+// block is left as it is, so a second run changes nothing.
+function upgrade_2026_11_0_theme_light_selector() {
+
+	if (!function_exists('pg_theme_vars_upgrade_assets_json')) {
+
+		install_skipped('Visual designer: the old light colours of the Themes panel were not split, because includes/fn/designer_theme_vars.php is missing. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$designs = upgrade_2026_11_0_theme_light_selector_rows('style', 'style_id', 'style_custom_css', 'pg_theme_vars_upgrade_assets_json');
+
+	$pages = upgrade_2026_11_0_theme_light_selector_rows('page', 'page_id', 'page_custom_css', 'pg_theme_vars_upgrade_assets_json');
+
+	$templates = upgrade_2026_11_0_theme_light_selector_rows('design_template', 'id', 'template_json', 'pg_theme_vars_upgrade_template_json');
+
+	$files = upgrade_2026_11_0_theme_light_selector_files();
+
+	@unlink(upgrade_2026_11_0_theme_light_selector_progress_file());
+
+	if (($designs + $pages + $templates + $files) === 0) {
+
+		install_skipped('Visual designer: no design keeps its Themes panel light colours in the old block that also applied to a dark page.');
+
+		return;
+
+	}
+
+	install_ran('Visual designer: the Themes panel light colours that also applied to a page a theme switcher set to dark were split from the fonts and radii, as the editor does when a design is opened (designs: ' . $designs . ', pages: ' . $pages . ', design templates: ' . $templates . ', theme files: ' . $files . '). A dark page now takes the dark colours; light pages look as before.');
+
+}
+
+// How far the step got, per table and column: the last id read and how many
+// rows were rewritten. The next pass goes on from there: in the same request
+// from memory, in a new one (the upgrade screen runs a paused version again
+// in the next request) from a file in data/temp written before every pause.
+// The file only saves reading the rows done before again and keeps the
+// counts of the final note; without it the step starts from the first row
+// and finds nothing more to split in the rows it already rewrote. The file
+// is deleted when the step has gone through every row; a file older than
+// ten minutes belongs to a run that was given up on and is not read,
+// because the rows may have been restored from a backup since.
+function upgrade_2026_11_0_theme_light_selector_progress_file() {
+
+	return dirname(__FILE__) . '/../../data/temp/upgrade_theme_light_selector.json';
+
+}
+
+function &upgrade_2026_11_0_theme_light_selector_progress() {
+
+	static $progress = null;
+
+	if ($progress === null) {
+
+		$progress = array();
+
+		$saved = @json_decode((string) @file_get_contents(upgrade_2026_11_0_theme_light_selector_progress_file()), true);
+
+		if (is_array($saved) && isset($saved['time'], $saved['rows']) && is_array($saved['rows']) && ((time() - (int) $saved['time']) < 600)) {
+
+			foreach ($saved['rows'] as $key => $row) {
+
+				if (is_array($row) && isset($row['last'], $row['changed'])) {
+
+					$progress[(string) $key] = array('last' => (int) $row['last'], 'changed' => (int) $row['changed']);
+
+				}
+
+			}
+
+		}
+
+	}
+
+	return $progress;
+
+}
+
+function upgrade_2026_11_0_theme_light_selector_progress_save() {
+
+	$file = upgrade_2026_11_0_theme_light_selector_progress_file();
+
+	if (!is_dir(dirname($file))) {
+
+		@mkdir(dirname($file), 0755, true);
+
+	}
+
+	@file_put_contents($file, json_encode(array('time' => time(), 'rows' => upgrade_2026_11_0_theme_light_selector_progress())), LOCK_EX);
+
+}
+
+// The rows of one table whose column holds a User Styles entry, one at a
+// time in id order (a design's assets can be megabytes), each rewritten
+// with $rewrite when it gives a new text. Returns how many were rewritten,
+// in this pass and the ones before it. When the pass has used its time
+// budget the version pauses and the next pass goes on after the last id
+// it reached.
+function upgrade_2026_11_0_theme_light_selector_rows($table, $id_column, $column, $rewrite) {
+
+	$progress = &upgrade_2026_11_0_theme_light_selector_progress();
+
+	if (!install_table_exists($table) || !install_column_exists($table, $column)) {
+
+		return 0;
+
+	}
+
+	$key = $table . '.' . $column;
+
+	if (!isset($progress[$key])) {
+
+		$progress[$key] = array('last' => 0, 'changed' => 0);
+
+	}
+
+	while (true) {
+
+		$row = db_item(
+			"SELECT `$id_column` AS id, `$column` AS value FROM `$table`
+			WHERE (`$id_column` > '" . (int) $progress[$key]['last'] . "') AND (`$column` LIKE '%user-styles%')
+			ORDER BY `$id_column`
+			LIMIT 1");
+
+		if (!$row) {
+
+			break;
+
+		}
+
+		$progress[$key]['last'] = (int) $row['id'];
+
+		$value = (string) $row['value'];
+
+		$new = $rewrite($value);
+
+		if (is_string($new) && ($new !== $value)) {
+
+			db("UPDATE `$table` SET `$column` = '" . e($new) . "' WHERE `$id_column` = '" . (int) $row['id'] . "'");
+
+			$progress[$key]['changed']++;
+
+		}
+
+		if (install_pass_seconds() >= install_pause_budget()) {
+
+			upgrade_2026_11_0_theme_light_selector_progress_save();
+
+			install_pause('Visual designer: splitting the old Themes panel light colours, ' . $table . ' up to id ' . (int) $row['id'] . '.');
+
+		}
+
+	}
+
+	return $progress[$key]['changed'];
+
+}
+
+// Theme files the old "Save these colours as a theme" wrote: design CSS
+// files in the file manager, in exactly the shape that button wrote
+// (pg_theme_vars_is_old_theme_file()), written again as it writes them now.
+// Returns how many were rewritten.
+function upgrade_2026_11_0_theme_light_selector_files() {
+
+	if (!defined('FILE_DIRECTORY_PATH') || !install_column_exists('files', 'design')) {
+
+		return 0;
+
+	}
+
+	$changed = 0;
+
+	foreach ((array) db_items("SELECT id, name FROM files WHERE (design = '1') AND (type = 'css') ORDER BY id") as $row) {
+
+		$name = (string) $row['name'];
+
+		if (($name === '') || ($name !== basename($name)) || ($name[0] === '.')) {
+
+			continue;
+
+		}
+
+		$path = FILE_DIRECTORY_PATH . '/' . $name;
+
+		// The button refuses a stylesheet over 500 KB.
+		if (!is_file($path) || (filesize($path) > 512000)) {
+
+			continue;
+
+		}
+
+		$css = @file_get_contents($path);
+
+		if (!is_string($css) || !pg_theme_vars_is_old_theme_file($css) || !preg_match('//u', $css)) {
+
+			continue;
+
+		}
+
+		$new = pg_theme_vars_theme_css($css);
+
+		if (($new === '') || ($new === pg_theme_vars_trim($css))) {
+
+			continue;
+
+		}
+
+		if (@file_put_contents($path, $new) === false) {
+
+			install_note('Visual designer: the theme file ' . $name . ' in data/files could not be written, so it still keeps its light colours on a page a theme switcher set to dark. Save the colours as a theme again from the Themes panel.');
+
+			continue;
+
+		}
+
+		db("UPDATE files SET size = '" . (int) strlen($new) . "' WHERE id = '" . (int) $row['id'] . "'");
+
+		$changed++;
+
+	}
+
+	return $changed;
+
+}
+
+// Replies to comments (2026.11.0, 11.0.31).
+//
+// comments.parent_id is the comment a comment answers, 0 for one that answers
+// none. Every comment written before this step reads 0 and stays a top-level
+// comment, so nothing is migrated; the classic comments block does not read
+// the column. idx_parent finds the replies to a comment; idx_thread reads one
+// thread (page, item type, item) in the order it was written, which the
+// existing page_id key leaves to a sort of every comment on the page.
+//
+// The column is added in place where the server can, as 11.0.14 does for the
+// same table. An index added to an InnoDB table is built in place; on a
+// comments table left on MyISAM (2026.4.8 converts it unless it is over the
+// size limits, upgrade_2026_4_8_innodb_limits()) the column and each index
+// copy the table whole, and on the first run 11.0.14 has already copied it up
+// to four times in the same pass. So none of the three is started once this
+// pass has run a statement and its budget is spent (install_pass_spent()); it
+// waits for the next pass, in the next request when the screen runs one
+// version at a time.
+function upgrade_2026_11_0_comment_replies() {
+
+	$columns = array(
+		'parent_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'comments: replies are being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	$indexes = array(
+		'idx_parent' => "INDEX idx_parent (parent_id)",
+		'idx_thread' => "INDEX idx_thread (page_id, item_type, item_id, created_timestamp)",
+	);
+
+	foreach ($indexes as $index => $definition) {
+
+		if (install_pass_spent() && !install_index_exists('comments', $index)) {
+
+			install_pause(lang(array('string' => 'comments: replies are being added; {var:1} follows in the next pass', 'vars' => $index)));
+
+		}
+
+		install_add_index('comments', $index, $definition);
+
+	}
+
+	install_note('Comments: a comment can now be stored as a reply to another one. Every comment written before this version stays a comment of its own, and comments are shown as before.');
 
 }

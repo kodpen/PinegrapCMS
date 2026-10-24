@@ -220,6 +220,29 @@ JS
 	pg_assert_same(array('--bs-border-radius' => '0', '--bs-body-bg' => '#new', '--bs-link-color' => '#00f'), $answer[6]);
 }
 
+// An old block with nothing to move after the dark block is cut out, which
+// tidies the text in front of the dark block (no leading whitespace, no run
+// of blank lines); the shared block goes in front of the dark block where it
+// is after that cut, never into the middle of its selector.
+function test_designer_theme_light_selector_upgrade_dark_first()
+{
+	$answer = designer_theme_light_selector_test_run(<<<'JS'
+var blank = '.hero-note { color: #586e75; }\n\n\n\n[data-bs-theme="dark"] { --bs-border-color:#495057; --bs-body-bg:#101820 }\n\n:root,\n[data-bs-theme="light"] { --bs-body-font-family: Georgia, serif; --bs-border-radius: 0 }';
+var lead = '\n[data-bs-theme="dark"]{--bs-body-bg:#101820}\n\n:root, [data-bs-theme="light"] { --bs-border-radius: 0 }';
+var out = [blank, lead].map(_themeUpgradeLightSelector);
+console.log(JSON.stringify([out, out.map(function (c) { return _themeUpgradeLightSelector(c) === c; })]));
+JS
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(".hero-note { color: #586e75; }\n\n:root,\n[data-bs-theme=\"light\"] { --bs-body-font-family: Georgia, serif; --bs-border-radius: 0 }\n\n[data-bs-theme=\"dark\"] { --bs-border-color:#495057; --bs-body-bg:#101820 }\n", $answer[0][0], 'blank lines before the dark block');
+	pg_assert_same(":root, [data-bs-theme=\"light\"] { --bs-border-radius: 0 }\n\n[data-bs-theme=\"dark\"]{--bs-body-bg:#101820}\n", $answer[0][1], 'a newline before the dark block');
+	pg_assert_same(array(true, true), $answer[1], 'a second pass changes nothing');
+}
+
 // What a page shows: before the split a light background beat the dark
 // page; after it the dark page has Bootstrap's or the design's dark
 // background while the font and the radius set for light mode stay, and a

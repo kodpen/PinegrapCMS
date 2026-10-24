@@ -133,7 +133,7 @@ if (!$_POST) {
             continue;
         }
 
-        if (pg_upload_name_blocked(basename($archive_item['filename']))) {
+        if (pg_upload_name_blocked(pg_basename($archive_item['filename']))) {
             log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $archive_item['filename'])), $_SESSION['sessionusername']);
             $skipped_blocked++;
             continue;
@@ -223,7 +223,7 @@ if (!$_POST) {
         $url = 'http://example.com/' . $archive_item['filename'];
         $base_url = $url;
 
-        $name = basename($archive_item['filename']);
+        $name = pg_basename($archive_item['filename']);
         $extension = pathinfo($name, PATHINFO_EXTENSION);
         $extension_lowercase = mb_strtolower($extension);
 

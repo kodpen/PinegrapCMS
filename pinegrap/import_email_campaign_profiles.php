@@ -106,7 +106,7 @@ if (!$_POST) {
     $handle = fopen($_FILES['file']['tmp_name'], 'r');
 
     // Get column names from first row of CSV file.
-    $row = fgetcsv($handle, 100000, ',');
+    $row = fgetcsv($handle, 100000, ',', '"', '\\');
     
     // If the file is empty then add error and forward user back to previous screen.
     if (!$row) {
@@ -166,7 +166,7 @@ if (!$_POST) {
     $skipped_count = 0;
 
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
-    while ($row = fgetcsv($handle, 100000, ',')) {
+    while ($row = fgetcsv($handle, 100000, ',', '"', '\\')) {
         // Trim all values.
         $row = array_map('trim', $row);
 

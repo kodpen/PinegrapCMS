@@ -26,7 +26,8 @@ description: Paraşüt e-document driver: what awaits the live test, what is sti
 - No: the v4 API has no webhook or event subscription. State is only ever read back (poll, the queue worker); nothing listens for Paraşüt.
 
 ## Can incoming e-invoices come through Paraşüt?
-- No: v4 lists no incoming e-invoices (`e_invoices` has create, show and pdf only) and hands out no UBL; `purchase_bills` are Paraşüt's own expense records (what `view_parasut_inbox.php` lists). The driver declares no `inbox`.
+- Not yet: no UBL is handed out; `purchase_bills` are Paraşüt's own expense records (`view_parasut_inbox.php`). The driver declares no `inbox`.
+- Demo probe 2026-10-24 (empty): `GET e_invoices` 200 (filters issue_date, scenario, net_total; includes invoice, responses) and `GET inbound_e_despatches` 200 (incoming e-waybills). Incoming in `e_invoices`? Needs an integrated company.
 
 ## Can the account card fill itself?
 - Done (#625): Query beside the tax number on the account form fills the name from GİB's register (erp-taxpayer-lookup.md). GİB tax plate lookup has a captcha, MERSİS no open API: address and tax office still come from the customer or the order, and a number that is not an e-Invoice user gets no name.
