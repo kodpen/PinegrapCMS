@@ -56,3 +56,30 @@ function test_money_mask_posted_values_read_back()
 	pg_assert_same('12500', pg_normalize_amount('12,500.00'), 'English grouping');
 	pg_assert_same('1234.56', pg_normalize_amount('1234,56'), 'what pg_format_input_amount() fills on a Turkish panel');
 }
+
+// The exchange rate box keeps the five decimals currencies.exchange_rate
+// (decimal(10,5)) and the rate updater store, so a manual save does not
+// round 0.02853 to 0.03.
+function test_money_mask_exchange_rate_five_decimals()
+{
+	$separators = array('decimal' => ',', 'thousands' => '.');
+	$rate = pg_money_mask_attributes($separators, 5);
+
+	pg_assert_same('5', $rate['data-inputmask-digits'], 'five decimals for a rate');
+	pg_assert_same('false', $rate['data-inputmask-digitsOptional'], 'always shown');
+	pg_assert_same('2', pg_money_mask_attributes($separators)['data-inputmask-digits'], 'money stays at two decimals');
+	pg_assert_contains(' data-inputmask-digits="5"', pg_money_mask_html($separators, 5), 'the tag form takes the decimals too');
+
+	$decimal = pg_number_separators()['decimal'];
+
+	pg_assert_same('0' . $decimal . '02853', pg_format_input_amount('0.02853', 5), 'a rate fills with five decimals');
+	pg_assert_same('16000' . $decimal . '00000', pg_format_input_amount('16000', 5), 'no grouping in the filled rate');
+	pg_assert_same('1234' . $decimal . '56', pg_format_input_amount('1234.56'), 'money still fills with two');
+}
+
+function test_money_mask_exchange_rate_posted_values_read_back()
+{
+	pg_assert_same('0.02853', pg_normalize_amount('0,02853'), 'Turkish rate below one');
+	pg_assert_same('16000', pg_normalize_amount('16.000,00000'), 'Turkish grouped rate');
+	pg_assert_same('16000.12345', pg_normalize_amount('16,000.12345'), 'English grouped rate');
+}

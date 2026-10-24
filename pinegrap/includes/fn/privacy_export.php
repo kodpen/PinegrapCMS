@@ -40,6 +40,7 @@ function pg_privacy_export_sections()
         'sessions'           => lang('Sign-in sessions'),
         'two_step'           => lang('Two-step verification'),
         'identities'         => lang('Connected sign-in accounts'),
+        'passkeys'           => lang('Passkeys'),
         'push_subscriptions' => lang('Device notifications'),
         'contact'            => lang('Contact'),
         'contact_groups'     => lang('Contact groups'),
@@ -759,6 +760,13 @@ function pg_privacy_export_collect(array $found)
 
     if (pg_schema_has('user_identities', 'user_id')) {
         $sections['identities'] = _pg_privacy_export_select("SELECT * FROM user_identities WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
+    }
+
+    // What the person named each passkey and when it was used; the credential
+    // itself (its id, public key, user handle, counter) is the site's key
+    // material, not the person's data, and is not read.
+    if (pg_schema_has('user_passkeys', 'user_id')) {
+        $sections['passkeys'] = _pg_privacy_export_select("SELECT id, user_id, name, aaguid, transports, backup_eligible, backup_state, created_at, last_used_at FROM user_passkeys WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
     }
 
     if (pg_schema_has('push_subscriptions', 'user_id')) {

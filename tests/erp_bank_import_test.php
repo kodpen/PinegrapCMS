@@ -8,7 +8,8 @@
  * erp_bank_rows_from_heading(), which drops the bank's title block, and
  * erp_bank_read_file() over a small .xlsx and .ods written here. The older
  * .xls goes through PHPExcel, which is checked on the sandbox rather than
- * here. A CSV statement's separator (erp_bank_read_csv()) and the amounts
+ * here. A CSV statement's separator (erp_bank_read_csv()), the one chosen on
+ * the column screen (erp_bank_statement_rows()) and the amounts
  * erp_bank_amount() reads are checked too.
  *
  * @author      Erdal Güral (Kodpen)
@@ -243,13 +244,13 @@ function test_erp_bank_read_file_refuses_other_documents()
 }
 
 // Write a CSV statement to a temporary file and read it back as rows.
-function erp_bank_test_read_csv($text)
+function erp_bank_test_read_csv($text, $separator = '')
 {
 	$path = tempnam(sys_get_temp_dir(), 'pg_bank_csv_');
 	file_put_contents($path, $text);
 
 	try {
-		return erp_bank_read_csv($path);
+		return erp_bank_read_csv($path, $separator);
 	} finally {
 		unlink($path);
 	}
@@ -330,6 +331,73 @@ function test_erp_bank_read_csv_other_separators()
 	$read = erp_bank_test_read_csv("01.10.2026\tKIRA\t-800,40\n02.10.2026\tEFT\t1.250,75\n");
 
 	pg_assert_same(array('02.10.2026', 'EFT', '1.250,75'), $read['rows'][1], 'tab file with no heading row, kurus');
+}
+
+// The separator the operator chooses on the column screen overrides the
+// guess; an empty one is the guess.
+function test_erp_bank_csv_split_chosen_separator()
+{
+	$lines = array('Tarih;Açıklama;Tutar', '01.10.2026;KIRA, EKIM;-800,00');
+
+	pg_assert_same(array(
+		array('Tarih', 'Açıklama', 'Tutar'),
+		array('01.10.2026', 'KIRA, EKIM', '-800,00'),
+	), erp_bank_csv_split($lines, ''), 'guessed: semicolon');
+
+	pg_assert_same(array(
+		array('Tarih;Açıklama;Tutar'),
+		array('01.10.2026;KIRA', 'EKIM;-800', '00'),
+	), erp_bank_csv_split($lines, ','), 'chosen: comma');
+
+	$read = erp_bank_test_read_csv("Tarih;Açıklama;Tutar\n\n01.10.2026;KIRA, EKIM;-800,00\n", ',');
+
+	pg_assert_same('', $read['error'], 'read with a chosen separator');
+	pg_assert_same(array('01.10.2026;KIRA', 'EKIM;-800', '00'), $read['rows'][1], 'the file split on the chosen separator');
+	pg_assert_same($lines, $read['lines'], 'the non-empty lines are kept as they are');
+}
+
+// The column screen posts a separator by its name, never the character: a
+// tab would be trimmed. A name it does not know is the guess.
+function test_erp_bank_csv_separator_keys()
+{
+	pg_assert_same(array('auto', 'semicolon', 'comma', 'tab', 'pipe'), array_keys(erp_bank_csv_separators()), 'names');
+	pg_assert_same("\t", erp_bank_csv_separator_char('tab'), 'tab');
+	pg_assert_same('|', erp_bank_csv_separator_char('pipe'), 'pipe');
+	pg_assert_same('', erp_bank_csv_separator_char('auto'), 'auto');
+	pg_assert_same('', erp_bank_csv_separator_char(';'), 'a raw character is not a name');
+	pg_assert_same('', erp_bank_csv_separator_char(array('tab')), 'an array');
+	pg_assert_same('comma', erp_bank_csv_separator_key('comma'), 'known name kept');
+	pg_assert_same('auto', erp_bank_csv_separator_key('Tab'), 'names are exact');
+	pg_assert_same('auto', erp_bank_csv_separator_key(null), 'nothing');
+}
+
+// A CSV statement keeps its lines until the columns are chosen and is split
+// each time it is read, so a new separator splits it again; a workbook, or a
+// CSV taken in before the lines were kept, holds its cells and is shown as is.
+function test_erp_bank_statement_rows()
+{
+	$text = "Örnek Bankası, Kadıköy Şubesi\nTarih;Açıklama;Tutar\n01.10.2026;EFT GELEN;1.250,00\n02.10.2026;KIRA, EKIM;-800,00\n";
+	$read = erp_bank_test_read_csv($text);
+	$raw = json_encode(array('csv' => $read['lines']), JSON_UNESCAPED_UNICODE);
+
+	pg_assert_true(erp_bank_statement_is_csv($raw), 'kept lines');
+	pg_assert_same(erp_bank_rows_from_heading($read['rows']), erp_bank_statement_rows($raw, 'auto'), 'auto: as taken in, title block cut');
+	pg_assert_same(erp_bank_statement_rows($raw, 'auto'), erp_bank_statement_rows($raw, 'unknown'), 'an unknown name is auto');
+	pg_assert_same(array('Tarih', 'Açıklama', 'Tutar'), erp_bank_statement_rows($raw, 'semicolon')[0], 'semicolon: heading row first');
+
+	$comma = erp_bank_statement_rows($raw, 'comma');
+
+	pg_assert_same(array('Örnek Bankası', 'Kadıköy Şubesi'), $comma[0], 'comma: split again, no dated amount to cut at');
+	pg_assert_same(array('02.10.2026;KIRA', 'EKIM;-800', '00'), $comma[3], 'comma: split again');
+
+	$cells = array(array('Tarih', 'Tutar'), array('01.10.2026', '1.250,00'));
+	$legacy = json_encode($cells);
+
+	pg_assert_true(!erp_bank_statement_is_csv($legacy), 'cells');
+	pg_assert_same($cells, erp_bank_statement_rows($legacy, 'comma'), 'cells are not split again');
+	pg_assert_same(array(), erp_bank_statement_rows('', 'auto'), 'nothing kept');
+	pg_assert_same(array(), erp_bank_statement_rows('{"csv":"x"}', 'auto'), 'broken');
+	pg_assert_true(!erp_bank_statement_is_csv(null), 'null');
 }
 
 // A row is a transaction when a date and a non-zero amount stand in cells of

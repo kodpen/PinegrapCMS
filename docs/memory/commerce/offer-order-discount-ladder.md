@@ -9,7 +9,7 @@ description: Tiered order discount (ladder) and how the order discount is chosen
 
 ## Which rate does a laddered offer take?
 - `pg_offer_order_discount_percentage($tiers, $subtotal, $action_percentage)`: the rung the subtotal reached, 0 below the first rung, the action's own percentage only when there is no ladder (also when `offer_conditions` is missing on a site that has not upgraded).
-- `pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)`: what one action takes off in minor units: the amount when it has one (an amount comes before a percentage), else the percentage of the subtotal, rounded; never more than the subtotal.
+- `pg_offer_order_discount_value($amount, $percentage, $tiers, $subtotal)`: what one action takes off in minor units: the amount when it has one (an amount comes before a percentage), else the percentage of the subtotal (`pg_percent_of()`, exact on every PHP version: offer-percent-rounding.md); never more than the subtotal.
 
 ## How is the order discount chosen?
 - `apply_offers_to_cart()` keeps every `discount order` action as a candidate and decides after its loop, against the cart as it then stands: first each candidate's conditions with the final subtotal (`validate_offer($offer_id, 0, $final_subtotal)`), then among those that pass `pg_offer_best_order_discount($candidates, $subtotal)`, the most taken off, the first candidate on a tie, `array(0, 0)` when nothing is taken off (`discount_offer_id` 0, the session's `order_discount` removed).

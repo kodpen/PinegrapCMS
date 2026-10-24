@@ -296,7 +296,7 @@ foreach ($fields as $field) {
                     $error_message = '';
                     
                     if ($field['label']) {
-                        $error_message = lang(array('string'=>'{var:1} is required.','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
+                        $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                     }
                     
                     $liveform->mark_error($field['id'], $error_message);
@@ -307,7 +307,7 @@ foreach ($fields as $field) {
                 $error_message = '';
                 
                 if ($field['label']) {
-                    $error_message = lang(array('string'=>'{var:1} is required.','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
+                    $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                 }
                 
                 $liveform->validate_required_field($field['id'], $error_message);
@@ -342,22 +342,22 @@ foreach ($fields as $field) {
 
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
         if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has date & time type and there is not already an error for this field and user entered value for field and submitted date & time is invalid, prepare error
         if (($field['type'] == 'date and time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date_and_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has email address type and there is not already an error for this field and user entered value for field and submitted e-mail address is invalid, prepare error
         if (($field['type'] == 'email address') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_email_address($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
         
         // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
         if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
         }
 
         // Pattern validation, when the field carries one.
@@ -387,12 +387,13 @@ foreach ($fields as $field) {
                 $message = trim((string)$field['validation_message']);
 
                 // The message the designer wrote, in the visitor's language.
-                if (($message !== '') && function_exists('pg_tr_label')) {
-                    $message = pg_tr_label($message);
+                // It is text, and a liveform message is HTML.
+                if ($message !== '') {
+                    $message = h(function_exists('pg_tr_label') ? pg_tr_label($message) : $message);
                 }
 
                 if ($message == '') {
-                    $message = lang(array('string'=>'Please enter a valid value for {var:1}','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
+                    $message = lang(array('string'=>'Please enter a valid value for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
                 }
 
                 $liveform->mark_error($field['id'], $message);
@@ -412,7 +413,7 @@ foreach ($fields as $field) {
 
             // If that address name is already in use, then output error.
             if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($_POST['page_id'] ?? '') . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
-                $liveform->mark_error($field['id'], lang(array('string'=>'Sorry, that {var:1} is already in use. Can you please enter a different {var:1}?','vars'=>(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+                $liveform->mark_error($field['id'], lang(array('string'=>'Sorry, that {var:1} is already in use. Can you please enter a different {var:1}?','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
             }
         }
     }
@@ -1350,14 +1351,34 @@ if ($liveform->check_form_errors() == false) {
                     $from_email_address = EMAIL_ADDRESS;
                 }
                 
+                // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+                // go into the sender's own copy only; a watcher's copy gets them empty.
+                if ($to_email_address == $submitter_email_address) {
+                    pg_cf_mail_links_context(array(
+                        'email_address' => $submitter_email_address,
+                        'contact_id' => (int) $contact_id,
+                        'custom_form_page_id' => (int) $_POST['page_id'],
+                        'form_id' => (int) $form_id));
+                } else {
+                    pg_cf_mail_links_context(false);
+                }
+
+                $mail_link_values = pg_cf_mail_link_values();
+
+                // The link fields are filled into the template before the submitted
+                // values go in, so a value holding "[[" or "]]" cannot open or close
+                // a block around other text. $submitter_email_subject stays the
+                // template for the next recipient.
+                $subject = pg_cf_fill_mail_links($submitter_email_subject, $mail_link_values, 'plain_text');
+
                 // check the subject line for variable data and replace any variables with content from the submitted form
-                $submitter_email_subject = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $submitter_email_subject, $prepare_for_html = FALSE);
+                $subject = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $subject, $prepare_for_html = FALSE);
 
                 // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                 // with the key code that was created, or a blank value if no key code was created.
                 if ($offer) {
-                    $submitter_email_subject = replace_variables(array(
-                        'content' => $submitter_email_subject,
+                    $subject = replace_variables(array(
+                        'content' => $subject,
                         'fields' => array(array(
                             'name' => 'key_code',
                             'data' => $key_code,
@@ -1370,7 +1391,8 @@ if ($liveform->check_form_errors() == false) {
 
                     // Check the body for variable data and replace any variables with content from the submitted form.
                     // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body, true), $prepare_for_html = FALSE);
+                    // The link fields go into the template first (see the subject).
+                    $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($_POST['page_id'], $submitter_email_body, true), $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
 
                     // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
                     // with the key code that was created, or a blank value if no key code was created.
@@ -1420,19 +1442,28 @@ if ($liveform->check_form_errors() == false) {
                             'format' => 'html'));
                     }
 
+                    // Bare link fields outside the form item view (other regions of the
+                    // e-mail page); the body already holds the submitted values, so no
+                    // [[...]] block is evaluated here.
+                    $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
+
                 }
                 
                 email(array(
                     'to' => $to_email_address,
                     'from_name' => ORGANIZATION_NAME,
                     'from_email_address' => $from_email_address,
-                    'subject' => $submitter_email_subject,
+                    'subject' => $subject,
                     'format' => $submitter_email_format,
                     'body' => $body,
-                    // The sender's copy may carry the set password link, which must
-                    // stay out of the failure log and the delivery-failed notice.
-                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== '')),
+                    // The sender's copy may carry the set password link or a signed
+                    // link, which must stay out of the failure log and the
+                    // delivery-failed notice.
+                    'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== ''))
+                        || pg_cf_mail_links_in($subject . $body, $mail_link_values),
                     'queue' => true));
+
+                pg_cf_mail_links_context(false);
 
             }
         }
@@ -1446,6 +1477,10 @@ if ($liveform->check_form_errors() == false) {
             $administrator_email_addresses[] = $administrator_email_to_email_address;
         }
         
+        // The signed links belong to the sender alone: empty in the administrator's
+        // e-mail, filled into the template before the submitted values go in.
+        $administrator_email_subject = pg_cf_fill_mail_links($administrator_email_subject, array(), 'plain_text');
+
         // check the subject line for variable data and replace any variables with content from the submitted form
         $administrator_email_subject = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, $administrator_email_subject, $prepare_for_html = FALSE);
 
@@ -1465,7 +1500,7 @@ if ($liveform->check_form_errors() == false) {
         if ($administrator_email_format == 'plain_text') {
             // Check the body for variable data and replace any variables with content from the submitted form.
             // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_email_body_or_default($_POST['page_id'], $administrator_email_body), $prepare_for_html = FALSE);
+            $body = get_variable_submitted_form_data_for_content($_POST['page_id'], $form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($_POST['page_id'], $administrator_email_body), array(), 'plain_text'), $prepare_for_html = FALSE);
 
             // If this form grants an offer, then replace ^^key_code^^ mail-merge field,
             // with the key code that was created, or a blank value if no key code was created.
@@ -1511,6 +1546,8 @@ if ($liveform->check_form_errors() == false) {
                         'type' => '')),
                     'format' => 'html'));
             }
+
+            $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
 
         }
 

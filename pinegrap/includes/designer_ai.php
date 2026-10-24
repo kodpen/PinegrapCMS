@@ -1598,7 +1598,7 @@ function _pg_dai_inner($dom)
     $html = '';
 
     foreach ($dom->childNodes as $child) {
-        $html .= $dom->ownerDocument->saveHTML($child);
+        $html .= pg_dom_html($child);
     }
 
     return trim($html);
